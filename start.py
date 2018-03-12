@@ -10,11 +10,11 @@ def get_start_widget(appbase, jupbase):
         <th style="text-align:center">Cp2k</th>        
     <tr>
     <td valign="top"><ul>
-    <li><a href="{appbase}/upload_structure.ipynb" target="_blank">Optimize unitcell</a>
+    <li><a href="{appbase}/qe/cell_opt.ipynb" target="_blank">Optimize unitcell</a>
     </ul></td>
     
     <td valign="top"><ul>
-    <li><a href="{appbase}/nanoribbon/submit.ipynb" target="_blank">Optimize unitcell</a>
+    <li><a href="{appbase}/cp2k/cell_opt.ipynb" target="_blank">Optimize unitcell</a>
     </ul></td>
     </tr></table>
 """
