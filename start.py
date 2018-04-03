@@ -8,21 +8,15 @@ def get_start_widget(appbase, jupbase, notebase):
         <th style="text-align:center">Quantum Espresso</th>
         <th style="width:70px" rowspan=2></th>
         <th style="text-align:center">Cp2k</th>
-        <th style="width:70px" rowspan=2></th>
-        <th style="text-align:center">Other examples</th>
     <tr>
     <td valign="top"><ul>
     <li><a href="{appbase}/qe/cell_opt.ipynb" target="_blank">Optimize unitcell</a>
-    <li><a href="{appbase}/qe/eos.ipynb" target="_blank">Equation of state</a>
+    <li><a href="{appbase}/qe/equation_of_states.ipynb" target="_blank">Equation of states</a>
     </ul></td>
     
     <td valign="top"><ul>
     <li><a href="{appbase}/cp2k/cell_opt.ipynb" target="_blank">Optimize unitcell</a>
-    <li><a href="{appbase}/cp2k/eos.ipynb" target="_blank">Equation of state</a>
-    </ul></td>
-
-    <td valign="top"><ul>
-    <li><a href="{appbase}/other/cell_opt.ipynb" target="_blank"> I don't know</a>
+    <li><a href="{appbase}/cp2k/eos.ipynb" target="_blank">Equation of states</a>
     </ul></td>
 
     </tr></table>
