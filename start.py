@@ -16,7 +16,7 @@ def get_start_widget(appbase, jupbase, notebase):
     
     <td valign="top"><ul>
     <li><a href="{appbase}/cp2k/cell_opt.ipynb" target="_blank">Optimize unitcell</a>
-    <li><a href="{appbase}/cp2k/eos.ipynb" target="_blank">Equation of states</a>
+    <li><a href="{appbase}/cp2k/equation_of_states.ipynb" target="_blank">Equation of states</a>
     </ul></td>
 
     </tr></table>
