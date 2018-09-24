@@ -11,7 +11,7 @@ import datetime
 
 class StructureBrowser(ipw.VBox):
     
-    def __init__(self):
+    def __init__(self, mymode='uploaded'):
         # Find all process labels
         qb = QueryBuilder()
         qb.append(WorkCalculation,
@@ -21,6 +21,7 @@ class StructureBrowser(ipw.VBox):
                   }
         )
         qb.order_by({WorkCalculation:{'ctime':'desc'}})
+
         process_labels = []
         for i in qb.iterall():
             if i[0] not in process_labels:
@@ -28,42 +29,14 @@ class StructureBrowser(ipw.VBox):
 
         layout = ipw.Layout(width="900px")
 
-        self.mode = ipw.RadioButtons(options=['all', 'uploaded', 'edited', 'calculated'],
-                                     layout=ipw.Layout(width="25%"))
-        
-        
-        # Date range
-        self.dt_now = datetime.datetime.now()
-        self.dt_end = self.dt_now - datetime.timedelta(days=7)
-        self.date_start = ipw.Text(value='',
-                                   description='From: ',
-                                   style={'description_width': '120px'})
-
-        self.date_end = ipw.Text(value='',
-                                 description='To: ')
-
-        self.date_text = ipw.HTML(value='<p>Select the date range:</p>')
-        
-        self.btn_date = ipw.Button(description='Search',
-                                   layout={'margin': '1em 0 0 0'})
-
-        self.age_selection = ipw.VBox([self.date_text, ipw.HBox([self.date_start, self.date_end]), self.btn_date],
-                                      layout={'border': '1px solid #fafafa', 'padding': '1em'})
-
-
-
-        self.btn_date.on_click(self.search)
-        self.mode.observe(self.search, names='value')
-        
+        self.mode = mymode
+                
         hr = ipw.HTML('<hr>')
-        box = ipw.VBox([self.age_selection,
-                        hr,
-                        ipw.HBox([self.mode])])
         
         self.results = ipw.Dropdown(layout=layout)
         self.search()
-        super(StructureBrowser, self).__init__([box, hr, self.results])
-    
+        super(StructureBrowser, self).__init__([hr, self.results])
+
     
     def preprocess(self):
         qb = QueryBuilder()
@@ -82,20 +55,11 @@ class StructureBrowser(ipw.VBox):
         self.preprocess()
         
         qb = QueryBuilder()
-        try: # If the date range is valid, use it for the search
-            self.start_date = datetime.datetime.strptime(self.date_start.value, '%Y-%m-%d')
-            self.end_date = datetime.datetime.strptime(self.date_end.value, '%Y-%m-%d') + datetime.timedelta(hours=24)
-        except ValueError: # Otherwise revert to the standard (i.e. last 7 days)
-            self.start_date = self.dt_end
-            self.end_date = self.dt_now + datetime.timedelta(hours=24)
 
-            self.date_start.value = self.start_date.strftime('%Y-%m-%d')
-            self.date_end.value = self.end_date.strftime('%Y-%m-%d')
 
         filters = {}
-        filters['ctime'] = {'and':[{'<=': self.end_date},{'>': self.start_date}]}
         filters['or'] = [{'type':CifData._plugin_type_string},{'type':StructureData._plugin_type_string}]
-        if self.mode.value == "uploaded":
+        if self.mode== "uploaded":
             qb2 = QueryBuilder()
             qb2.append(StructureData, project=["id"])
             qb2.append(Node, input_of=StructureData)
@@ -104,26 +68,17 @@ class StructureBrowser(ipw.VBox):
                 filters['id'] = {"!in":processed_nodes}
             qb.append(StructureData, filters=filters)
 
-        elif self.mode.value == "calculated":
+        elif self.mode == "calculated":
             qb.append(JobCalculation)
             qb.append(Node, output_of=JobCalculation, filters=filters)
-
-        elif self.mode.value == "edited":
-            qb.append(WorkCalculation)
-            qb.append(StructureData, output_of=WorkCalculation, filters=filters)
-
         else:
-            self.mode.value == "all"
-            qb.append(Node, filters=filters)
+            pass
 
-#        qb.order_by({StructureData:{'ctime':'desc'}})
         matches = set([n[0] for n in qb.iterall()])
         matches = sorted(matches, reverse=True, key=lambda n: n.ctime)
         
         c = len(matches)
         options = OrderedDict()
-        options["Select a Structure (%d found)"%c] = False
-
         for n in matches:
             label  = "PK: %d" % n.pk
             label += " | " + n.ctime.strftime("%Y-%m-%d %H:%M")
