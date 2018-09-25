@@ -11,13 +11,13 @@ def get_start_widget(appbase, jupbase, notebase):
     <table style="width:100%">
       <tr>
         <th></th>
-        <th>Please choose the code:</th> 
+        <th><h4><b>Please choose the code:</h4></b></th> 
         <th></th>
       </tr>
       <tr>
         <th> <div align="center"> <a href="{appbase}/cp2k/cp2k.ipynb" target="_blank"> <img src="https://www.cp2k.org/_media/cp2k_logo_300.png" width="40%" height="40%"> </a> </div> </th>
         <th> <div align="center"><font size="+2">OR</font></div></th> 
-        <th><div align="center"><img src="https://gitlab.com/QEF/q-e/raw/develop/logo.jpg" width="40%" height="40%"></div> </th>
+        <th><div align="center"> <a href="{appbase}/qe/qe.ipynb" target="_blank"><img src="https://gitlab.com/QEF/q-e/raw/develop/logo.jpg" width="40%" height="40%"> </a> </div> </th>
       </tr>
     </table>
 """
