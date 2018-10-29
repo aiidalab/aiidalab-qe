@@ -1,0 +1,15 @@
+#!/bin/bash
+jupyter nbextension     enable --py --sys-prefix appmode
+jupyter serverextension enable --py --sys-prefix appmode
+reentry scan
+
+# set up AiiDA profile
+source .local/start-singleuser.sh
+
+echo "source activate kernel" >> ${AIIDA_HOME}/.bashrc
+ 
+# make aiida demos discoverable by home app
+ln -s ${AIIDALAB_HOME} ${AIIDALAB_APPS}/aiida_demos
+
+# stop postgres properly (makes restart faster)
+psql_stop 
