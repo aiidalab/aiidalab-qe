@@ -88,6 +88,7 @@ if [ ! -e ${AIIDALAB_APPS} ]; then
    mkdir ${AIIDALAB_APPS}
    touch ${AIIDALAB_APPS}/__init__.py
    git clone https://github.com/materialscloud-org/mc-home ${AIIDALAB_APPS}/home
+   git clone git@github.com:aiidalab/aiidalab-widgets-base.git ${AIIDALAB_APPS}/aiidalab-widgets-base
 
 fi
 
