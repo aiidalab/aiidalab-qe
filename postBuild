@@ -1,8 +1,8 @@
 #!/bin/bash
 #jupyter nbextension     enable --py --sys-prefix appmode
 #jupyter serverextension enable --py --sys-prefix appmode
-jupyter nbextension    install --py --sys-prefix fileupload
-jupyter nbextension     enable --py --sys-prefix fileupload
+#jupyter nbextension    install --py --sys-prefix fileupload
+#jupyter nbextension     enable --py --sys-prefix fileupload
 reentry scan
 
 # set up AiiDA profile
