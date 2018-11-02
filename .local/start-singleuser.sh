@@ -118,7 +118,7 @@ cp2k at localhost
 False
 ${codeplugin}
 ${compname}
-${codepath} " | verdi code setup
+${codepath}" | verdi code setup
 
 # import pseudo family for QE
 base_url=http://archive.materialscloud.org/file/2018.0001/v1

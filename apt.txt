@@ -1,5 +1,3 @@
-graphviz
-gfortran
 locales
 less
 psmisc
