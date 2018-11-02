@@ -113,8 +113,9 @@ direct
 mpirun -np {tot_num_mpiprocs}
 1" | verdi computer setup && verdi computer configure ${compname} )
 
+# Quantum Espresso
 verdi code show ${codename}@${compname} || echo "${codename}
-cp2k at localhost
+pw.x on this computer
 False
 ${codeplugin}
 ${compname}
@@ -125,6 +126,20 @@ base_url=http://archive.materialscloud.org/file/2018.0001/v1
 pseudo_name=SSSP_efficiency_pseudos
 wget ${base_url}/${pseudo_name}.aiida
 verdi import ${pseudo_name}.aiida
+
+
+# Cp2k
+codename=cp2k
+codeplugin=cp2k
+codexec=cp2k.popt
+codepath=`which $codexec`
+
+verdi code show ${codename}@${compname} || echo "${codename}
+cp2k on this computer
+False
+${codeplugin}
+${compname}
+${codepath}" | verdi code setup
 
 ##EOF
 
