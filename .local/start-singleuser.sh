@@ -94,5 +94,31 @@ if [ ! -e ${AIIDALAB_APPS} ]; then
 
 fi
 
+# setup localhost and codes
+
+compname=localhost
+codename=pw
+codeplugin=quantumespresso.pw
+codexec=pw.x
+codepath=`which $codexec`
+
+verdi computer show ${compname} || ( echo "${compname}
+localhost
+this computer
+True
+local
+direct
+#!/bin/bash
+/home/{username}/aiida_run/
+mpirun -np {tot_num_mpiprocs}
+1" | verdi computer setup && verdi computer configure ${compname} )
+
+verdi code show ${codename}@${compname} || echo "${codename}
+cp2k at localhost
+False
+${codeplugin}
+${compname}
+${codepath} " | verdi code setup
+
 ##EOF
 
