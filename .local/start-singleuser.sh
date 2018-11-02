@@ -21,8 +21,8 @@ psql_start
 export PYTHONPATH=${AIIDALAB_HOME}
 export SHELL=/bin/bash
 
-jupyter nbextension    install --py --sys-prefix fileupload
-jupyter nbextension     enable --py --sys-prefix fileupload
+#jupyter nbextension    install --py --sys-prefix fileupload
+#jupyter nbextension     enable --py --sys-prefix fileupload
 #===============================================================================
 # setup AiiDA
 aiida_backend=django
