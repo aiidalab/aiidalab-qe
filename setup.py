@@ -7,8 +7,8 @@ if __name__ == '__main__':
     with open('setup.json', 'r') as info:
         kwargs = json.load(info)
 
-    with open('requirements.txt', 'r') as rfile:
-        requirements = rfile.read().splitlines()
+#    with open('requirements.txt', 'r') as rfile:
+#        requirements = rfile.read().splitlines()
 
     setup(
         packages=find_packages(),
@@ -26,7 +26,7 @@ if __name__ == '__main__':
                 "jupyter-config/jupyter_notebook_config.d/aiidalab.json"
             ])
         ],
-        install_requires=requirements,
+#        install_requires=requirements,
         # For packages not yet published on pypi
         # Note: this only works when installing aiidalab from github
         zip_safe=False,
