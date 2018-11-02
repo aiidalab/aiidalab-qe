@@ -1,0 +1,7 @@
+{
+  "NotebookApp": {
+    "nbserver_extensions": {
+      "appmode.server_extension": true
+    }
+  }
+}

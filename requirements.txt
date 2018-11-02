@@ -1,5 +1,5 @@
 aiida==0.12.2
-aiida-core[rest,atomic_tools]==0.12.2
+aiida-core==0.12.2
 aiida-cp2k==0.9
 aiida-quantumespresso==2.0.1
 aiidalab-widgets-base==0.2.0a2
