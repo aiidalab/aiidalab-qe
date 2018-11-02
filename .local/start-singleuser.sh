@@ -21,8 +21,8 @@ psql_start
 export PYTHONPATH=${AIIDALAB_HOME}
 export SHELL=/bin/bash
 
-#jupyter nbextension    install --py --sys-prefix fileupload
-#jupyter nbextension     enable --py --sys-prefix fileupload
+jupyter nbextension    install --py --sys-prefix fileupload
+jupyter nbextension     enable --py --sys-prefix fileupload
 #===============================================================================
 # setup AiiDA
 aiida_backend=django
@@ -90,7 +90,7 @@ if [ ! -e ${AIIDALAB_APPS} ]; then
    mkdir ${AIIDALAB_APPS}
    touch ${AIIDALAB_APPS}/__init__.py
    git clone https://github.com/materialscloud-org/mc-home ${AIIDALAB_APPS}/home
-   git clone https://github.com/aiidalab/aiidalab-widgets-base.git ${AIIDALAB_APPS}/aiidalab-widgets-base
+#   git clone https://github.com/aiidalab/aiidalab-widgets-base.git ${AIIDALAB_APPS}/aiidalab-widgets-base
 
 fi
 
