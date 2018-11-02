@@ -1,5 +1,5 @@
 postgresql
 python-dev
-git
+vim
 quantum-espresso
 cp2k
