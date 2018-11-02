@@ -120,5 +120,11 @@ ${codeplugin}
 ${compname}
 ${codepath} " | verdi code setup
 
+# import pseudo family for QE
+base_url=http://archive.materialscloud.org/file/2018.0001/v1
+pseudo_name=SSSP_efficiency_pseudos
+wget ${base_url}/${pseudo_name}.aiida
+verdi import ${pseudo_name}.aiida
+
 ##EOF
 
