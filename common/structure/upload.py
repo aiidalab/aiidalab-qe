@@ -174,18 +174,19 @@ class StructureUploadWidget(ipw.VBox):
             description=self.structure_description.value)
 
     def store_structure(self, name, description=None):
-        structure_ase = self.get_ase(self.tmp_folder + '/' + name)
+        structure_ase = self.structure_ase
         if structure_ase is None:
             return
 
         from aiida.orm.data.structure import StructureData
-        structure_node = StructureData(ase=structure_ase)
+        self.structure_node = StructureData(ase=structure_ase)
         if description is None:
-            structure_node.description = self.get_description(
+            self.structure_node.description = self.get_description(
                 structure_ase, name)
         else:
-            structure_node.description = description
-        structure_node.label = ".".join(name.split('.')[:-1])
-        structure_node.store()
-        print("Stored in AiiDA: " + repr(structure_node))
+            self.structure_node.description = description
+        self.structure_node.label = ".".join(name.split('.')[:-1])
+        self.structure_node.store()
+        print("Stored in AiiDA: " + repr(self.structure_node))
 
+#EOF
