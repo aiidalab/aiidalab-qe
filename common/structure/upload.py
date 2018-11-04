@@ -29,8 +29,8 @@ class StructureUploadWidget(ipw.VBox):
         structures = {
                 "Select structure": False,
 #                'Aluminium':get_example_structure('al'),
-                'Silicon' : get_example_structure('si.cif'),
-                'Gallium arsenide': get_example_structure('gaas.cif'),
+#                'Silicon' : get_example_structure('si.cif'),
+#                'Gallium arsenide': get_example_structure('gaas.cif'),
                 }
         self.structure_select = ipw.Dropdown(
                 options=structures,
