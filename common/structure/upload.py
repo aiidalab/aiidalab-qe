@@ -9,48 +9,8 @@ import nglview
 from six.moves import zip
 
 def get_example_structure(key):
-    from ase.lattice.spacegroup import crystal
-    from ase import Atoms
-
-    if key == 'diamond':
-        # This is the lattice constant in angstrom
-        alat = 3.56
-        diamond_ase = crystal('C', [(0,0,0)], spacegroup=227,
-                          cellpar=[alat, alat, alat, 90, 90, 90],primitive_cell=True)
-        return diamond_ase
-    elif key == 'al':
-        # This is the lattice constant in angstrom
-        alat = 4.05
-        Al_ase = crystal('Al', [(0,0,0)], spacegroup=225,
-                          cellpar=[alat, alat, alat, 90, 90, 90],primitive_cell=False)
-        return Al_ase
-    elif key == 'si':
-        cell = [[2.6954645, 2.6954645, 0],
-                [2.6954645, 0, 2.6954645],
-                [0, 2.6954645, 2.6954645]]
-        a_si = Atoms("Si2", cell=cell, scaled_positions=[[0, 0, 0], [0.25, 0.25, 0.25]])
-
-        alat = 2.69
-        a_si = crystal('Si', [(0, 0, 0)], spacegroup=227,
-                cellpar=[alat, alat, alat, 90, 90, 90],primitive_cell=True)
-        return a_si
-    elif key == 'gaas':
-        # This is the lattice constant in angstrom
-        alat = 5.75
-        GaAs_ase = crystal('GaAs', [(0,0,0),(0.25,0.25,0.25)], spacegroup=216,
-                          cellpar=[alat, alat, alat, 90, 90, 90],primitive_cell=True)
-        return GaAs_ase
-    elif key == 'co':
-        # These are the lattice constants in angstrom
-        a = 2.5
-        c = 4.07
-        Co_ase = crystal('Co', [(1./3,2./3,0.25)], spacegroup=194,
-                          cellpar=[a, a, c, 90, 90, 120],primitive_cell=True)
-        return Co_ase
-    else:
-        raise ValueError("Unknown or unsupported example structure '{}'".format(key))
-
-
+    from ase.io import read
+    return read('structures/' + key)
 
 
 class StructureUploadWidget(ipw.VBox):
@@ -69,9 +29,8 @@ class StructureUploadWidget(ipw.VBox):
         structures = {
                 "Select structure": False,
 #                'Aluminium':get_example_structure('al'),
-                'Silicon' : get_example_structure('si'),
-                'Diamond':get_example_structure('diamond'),
-                'Gallium arsenide': get_example_structure('gaas'),
+                'Silicon' : get_example_structure('si.cif'),
+                'Gallium arsenide': get_example_structure('gaas.cif'),
                 }
         self.structure_select = ipw.Dropdown(
                 options=structures,
