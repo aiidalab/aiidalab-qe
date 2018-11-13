@@ -1,3 +1,4 @@
+graphviz
 postgresql
 quantum-espresso
 cp2k
