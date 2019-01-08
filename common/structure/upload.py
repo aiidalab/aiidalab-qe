@@ -22,19 +22,14 @@ class StructureUploadWidget(ipw.VBox):
 
         :param text: Text to display before upload button
         :type text: str
-
         """
 
         self.file_upload = FileUploadWidget(text)
         structures = {
                 "Select structure": False,
-#                'Aluminium':get_example_structure('al'),
-#                'Silicon' : get_example_structure('si.cif'),
-#                'Gallium arsenide': get_example_structure('gaas.cif'),
                 }
         self.structure_select = ipw.Dropdown(
-                options=structures,
-                value=False,
+                options=[],
                 description='Or choose from examples:',
                 style={'description_width': '160px'},
                 disabled=False)
@@ -53,7 +48,7 @@ class StructureUploadWidget(ipw.VBox):
             children=children, **kwargs)
 
         self.file_upload.observe(self._on_file_upload, names='data')
-        self.structure_select.observe(self._on_structure_select, names='value')
+        self.structure_select.observe(self._on_structure_select, names=['value'])
         self.btn_store.on_click(self._on_click_store)
 
         from aiida import load_dbenv, is_dbenv_loaded
