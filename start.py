@@ -1,6 +1,5 @@
 import ipywidgets as ipw
 from IPython.core.display import HTML
-import urllib2
 import os
 #HTML(open("/project/apps/calcexamples/custom1.css").read())
 #HTML(os.getcwd())
