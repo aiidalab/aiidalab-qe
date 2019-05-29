@@ -10,7 +10,7 @@ from six.moves import zip
 
 def get_example_structure(key):
     from ase.io import read
-    return read('structures/' + key)
+    return read('miscellaneous/structures/' + key)
 
 
 class StructureUploadWidget(ipw.VBox):
