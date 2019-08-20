@@ -1,4 +1,4 @@
-# AiiDA Lab calculation examples
+# AiiDA lab calculation examples
 
 ## Try it live
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/aiidalab/aiidalab-calculation-examples/master/?urlpath=apps/apps/home/start.ipynb)
