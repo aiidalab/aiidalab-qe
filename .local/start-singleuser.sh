@@ -127,19 +127,5 @@ pseudo_name=SSSP_efficiency_pseudos
 wget ${base_url}/${pseudo_name}.aiida
 verdi import ${pseudo_name}.aiida
 
-
-# Cp2k
-codename=cp2k
-codeplugin=cp2k
-codexec=cp2k.popt
-codepath=`which $codexec`
-
-verdi code show ${codename}@${compname} || echo "${codename}
-cp2k on this computer
-False
-${codeplugin}
-${compname}
-${codepath}" | verdi code setup
-
 ##EOF
 

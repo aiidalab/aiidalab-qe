@@ -1,5 +1,5 @@
 {
-    "description": "Calculation examples",
-    "title": "Calculation examples",
-    "version": "0.4.3"
+    "description": "Perform Quantum ESPRESSO calculations",
+    "title": "Quantum ESPRESSO",
+    "version": "0.1.0"
 }
