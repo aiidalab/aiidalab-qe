@@ -62,13 +62,13 @@ class ComputeBandsSubmitWidget(CodeSubmitWidget):
         builder = WorkflowFactory('quantumespresso.pw.bands').get_builder()
 
         builder.scf.pw.code = self.code_group.selected_code
-        builder.scf.pw.parameters = load_default_parameters
+        builder.scf.pw.parameters = load_default_parameters()
         builder.scf.pw.metadata.options = self.options
         builder.scf.kpoints_distance = Float(0.8)
         builder.scf.pseudo_family = Str(self.pseudo_family.value)
 
         builder.bands.pw.code = self.code_group.selected_code
-        builder.bands.pw.parameters = load_default_parameters
+        builder.bands.pw.parameters = load_default_parameters()
         builder.bands.pw.metadata.options = self.options
         builder.bands.pseudo_family = Str(self.pseudo_family.value)
 
