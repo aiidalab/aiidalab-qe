@@ -3,5 +3,6 @@
     "title": "Quantum ESPRESSO",
     "version": "0.1.0",
     "authors": "Carl Simon Adorf, Aliaksandr Yakutovich",
+    "logo": "miscellaneous/logos/QE.jpg",
     "state": "development"
 }
