@@ -29,7 +29,6 @@ def _read_ase_atoms(data, filename=None):
         # TODO: REACT TO len(traj) > 1
     except Exception as error:
         print(error, file=sys.stderr)
-        print(error)
     else:
         return traj[0]
 
@@ -67,7 +66,6 @@ class StructureFileUploadWidget(ipw.VBox):
         with self.hold_trait_notifications():
             self.file_upload.value.clear()
             self.file_upload.disabled = False
-            print(self.file_upload.value)
 
 
 class SelectionStructureUploadWidget(ipw.Dropdown):
