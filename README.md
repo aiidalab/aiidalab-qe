@@ -1,9 +1,11 @@
-# AiiDA lab calculation examples
+# AiiDA lab Quantum ESPRESSO application
 
-## Try it live
-[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/aiidalab/aiidalab-calculation-examples/master/?urlpath=apps/apps/home/start.ipynb)
+## About
 
-Сlick the binder badge to try it live without installing anything. This will take you directly to the "app" version of the notebook.
+This is a early-development implementation of an AiiDA lab application for Quantum ESPRESSO workflow.
+The app allows the execution of a workflow with Quantum ESPRESSO that includes the selection of an input structure, its relaxation, and the bands structure calculation.
+
+**The app is currently in an early development stage!**
 
 ## Acknowledgements
 
