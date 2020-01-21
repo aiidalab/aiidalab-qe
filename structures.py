@@ -135,7 +135,12 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
 
         if viewer:
             self.viewer = nglview.NGLWidget(width='300px', height='300px')
-            self.viewer_box = ipw.Box(children=[self.viewer], layout=ipw.Layout(border='solid 1px'))
+            self.viewer_box = ipw.Box(
+                    children=[self.viewer],
+                    layout=ipw.Layout(
+                        border='solid 1px',
+                        max_height='300px',
+                        max_width='300px',))
         else:
             self.viewer = None
             self.viewer_box = None
