@@ -63,6 +63,9 @@ class RelaxSubmitWidget(CodeSubmitWidget):
         builder = WorkflowFactory('quantumespresso.pw.relax').get_builder()
         builder.base.pw.code = self.code_group.selected_code
         builder.base.pw.parameters = load_default_parameters()
+        builder.base.pw.parameters['SYSTEM']['tot_charge'] =  1
+        builder.base.pw.parameters['SYSTEM']['degauss'] = 0.005
+       
         builder.base.pw.metadata.options = self.options
         builder.base.kpoints_distance = Float(0.8)
         builder.base.pseudo_family = Str(self.pseudo_family.value)
