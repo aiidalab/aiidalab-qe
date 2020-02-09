@@ -62,12 +62,19 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
         self.pseudo_family = ipw.ToggleButtons(
             options={
-                'SSSP efficiency': 'SSSP_efficiency_v1.0',
-                'SSSP accuracy': 'SSSP_precision_v1.0',
+                'SSSP efficiency': 'SSSP_1.1_efficiency',
+                'SSSP accuracy': 'SSSP_1.1_precision',
             },
             description='Pseudopotential family:',
             style={'description_width': 'initial'}
         )
+        
+        self.total_charge_slider = ipw.IntSlider(
+            max=10, min=-10, description='Total charge: ')
+        
+        self.custom_option = ipw.VBox(children=[
+            self.total_charge_slider
+        ])
 
         # Clicking on the 'submit' button will trigger the execution of the
         # submit() method.
@@ -97,12 +104,14 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.buttons = ipw.HBox(children=[self.submit_button, self.skip_button])
 
         self.config_tabs = ipw.Tab(
-            children=[self.code_group, self.pseudo_family, self.resources],
+            children=[self.code_group, self.pseudo_family, self.resources, self.custom_option],
             layout=ipw.Layout(height='200px'),
         )
         self.config_tabs.set_title(0, 'Code')
         self.config_tabs.set_title(1, 'Pseudopotential')
         self.config_tabs.set_title(2, 'Compute resources')
+        self.config_tabs.set_title(3, 'Custom Options')
+
 
         self.process_status = ProcessStatusWidget()
         ipw.dlink((self, 'process'), (self.process_status, 'process'))
