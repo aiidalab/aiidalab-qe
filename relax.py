@@ -3,6 +3,7 @@ import traitlets
 from aiida.orm import StructureData, Float, Str
 from aiida.plugins import WorkflowFactory
 from aiida.engine import submit
+from aiida.common.exceptions import NotExistent
 
 from wizard import WizardApp
 from codes import CodeSubmitWidget
@@ -42,7 +43,10 @@ class RelaxSubmitWidget(CodeSubmitWidget):
         with self.hold_trait_notifications():
             process_node = super()._observe_process(change)
             if process_node is not None:
-                self.input_structure = process_node.inputs.structure
+                try:
+                    self.input_structure = process_node.inputs.structure
+                except NotExistent:
+                    self.input_structure = process_node.inputs.pw__structure
         return process_node
 
     def skip(self, _):
@@ -60,16 +64,34 @@ class RelaxSubmitWidget(CodeSubmitWidget):
     def submit(self, _=None):
         assert self.input_structure is not None
 
-        builder = WorkflowFactory('quantumespresso.pw.relax').get_builder()
-        builder.base.pw.code = self.code_group.selected_code
-        builder.base.pw.parameters = load_default_parameters()
-        builder.base.pw.parameters['SYSTEM']['tot_charge'] =  1
-        builder.base.pw.parameters['SYSTEM']['degauss'] = 0.005
-       
-        builder.base.pw.metadata.options = self.options
-        builder.base.kpoints_distance = Float(0.8)
-        builder.base.pseudo_family = Str(self.pseudo_family.value)
-        builder.structure = self.input_structure
+        if (self.total_charge_slider.value != 0):
+            builder = WorkflowFactory('quantumespresso.pw.base').get_builder()
+            builder.pw.code = self.code_group.selected_code
+            builder.pw.parameters = load_default_parameters()
+
+            # total charge
+            builder.pw.parameters['SYSTEM']['tot_charge'] = self.total_charge_slider.value
+            builder.pw.parameters['SYSTEM']['degauss'] = 0.01
+            builder.pw.parameters['SYSTEM']['smearing'] = "cold"
+            builder.pw.parameters['SYSTEM']['occupations'] = "smearing"
+            # total charge end
+            builder.pw.metadata.options = self.options
+            builder.kpoints_distance = Float(0.8)
+            builder.pseudo_family = Str(self.pseudo_family.value)
+
+            builder.pw.structure = self.input_structure
+
+        else:
+            builder = WorkflowFactory('quantumespresso.pw.relax').get_builder()
+            builder.base.pw.code = self.code_group.selected_code
+            builder.base.pw.parameters = load_default_parameters()
+            builder.base.pw.parameters['SYSTEM']['degauss'] = 0.01
+            builder.base.pw.parameters['SYSTEM']['smearing'] = "cold"
+            builder.base.pw.parameters['SYSTEM']['occupations'] = "smearing"
+            builder.base.pw.metadata.options = self.options
+            builder.base.kpoints_distance = Float(0.8)
+            builder.base.pseudo_family = Str(self.pseudo_family.value)
+            builder.structure = self.input_structure
 
         self.process = submit(builder)
 
