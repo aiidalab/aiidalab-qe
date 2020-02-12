@@ -111,7 +111,7 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
         [traitlets.Instance(ase.Atoms), traitlets.Instance(aiida.orm.StructureData)],
         allow_none=True
     )
-    confirmed_structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
     def __init__(self, data_importers=None, examples=None, viewer=True, **kwargs):
         if data_importers is None:
@@ -238,8 +238,8 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
 
     def confirm(self, _):
         with self.hold_trait_notifications():
-            if isinstance(self.structure, aiida.orm.StructureData):
-                self.confirmed_structure = self.structure.get_ase()
+            if isinstance(self.structure, ase.Atoms):
+                self.confirmed_structure = aiida.orm.StructureData(ase=self.structure)
             else:
                 self.confirmed_structure = self.structure
 
