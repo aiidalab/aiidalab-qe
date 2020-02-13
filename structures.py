@@ -37,7 +37,7 @@ def _read_ase_atoms(data, filename=None):
 class StructureFileUploadWidget(ipw.VBox):
     """Select a structure from a file upload."""
 
-    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
     def __init__(self):
         self.description = ipw.Label("Upload a structure file:")
@@ -56,7 +56,7 @@ class StructureFileUploadWidget(ipw.VBox):
 
     def on_file_uploaded(self, change):
         for fn, item in change['new'].items():
-            self.structure = _read_ase_atoms(data=item['content'], filename=fn)
+            self.structure = aiida.orm.StructureData(ase=_read_ase_atoms(data=item['content'], filename=fn))
             self.file_upload.value.clear()
             break
 
@@ -72,7 +72,7 @@ class StructureFileUploadWidget(ipw.VBox):
 class SelectionStructureUploadWidget(ipw.Dropdown):
     """Select a structure from a given set of of options."""
 
-    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
     def __init__(self, options=None, hint='Select structure', **kwargs):
         if options is None:
@@ -93,7 +93,7 @@ class SelectionStructureUploadWidget(ipw.Dropdown):
                 self.structure = None
             else:
                 traj = ase.io.read(filename, index=':')
-                self.structure = traj[0]
+                self.structure = aiida.orm.StructureData(ase=traj[0])
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -107,10 +107,7 @@ class SelectionStructureUploadWidget(ipw.Dropdown):
 class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
     """Integrated widget for the selection of structures from different sources."""
 
-    structure = traitlets.Union(
-        [traitlets.Instance(ase.Atoms), traitlets.Instance(aiida.orm.StructureData)],
-        allow_none=True
-    )
+    structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
     def __init__(self, data_importers=None, examples=None, viewer=True, **kwargs):
@@ -200,11 +197,7 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
             if structure is None:
                 self.structure_name_text.value = ""
             else:
-                if isinstance(structure, ase.Atoms):
-                    self.structure_name_text.value = str(self.structure.get_chemical_formula())
-                else:
-                    # AiiDA StructureData
-                    self.structure_name_text.value = str(self.structure.get_formula())
+                self.structure_name_text.value = str(self.structure.get_formula())
             self._update_state()
             self.refresh_view()
 
@@ -230,18 +223,12 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
         for comp_id in self.viewer._ngl_component_ids:  # pylint: disable=protected-access
             self.viewer.remove_component(comp_id)
         if self.structure is not None:
-            if isinstance(self.structure, aiida.orm.StructureData):
-                self.viewer.add_component(nglview.ASEStructure(self.structure.get_ase()))
-            else:
-                self.viewer.add_component(nglview.ASEStructure(self.structure))
+            self.viewer.add_component(nglview.ASEStructure(self.structure.get_ase()))
             self.viewer.add_unitcell()
 
     def confirm(self, _):
         with self.hold_trait_notifications():
-            if isinstance(self.structure, ase.Atoms):
-                self.confirmed_structure = aiida.orm.StructureData(ase=self.structure)
-            else:
-                self.confirmed_structure = self.structure
+            self.confirmed_structure = self.structure
 
     def reset(self):  # unconfirm
         with self.hold_trait_notifications():
