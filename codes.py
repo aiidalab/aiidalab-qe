@@ -62,8 +62,8 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
         self.pseudo_family = ipw.ToggleButtons(
             options={
-                'SSSP efficiency': 'SSSP_efficiency_v1.0',
-                'SSSP accuracy': 'SSSP_precision_v1.0',
+                'SSSP efficiency': 'SSSP_1.1_efficiency',
+                'SSSP accuracy': 'SSSP_1.1_precision',
             },
             description='Pseudopotential family:',
             style={'description_width': 'initial'}
