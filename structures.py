@@ -17,134 +17,14 @@ import ipywidgets as ipw
 from wizard import WizardApp, WizardAppStep
 
 
-def _read_ase_atoms(data, filename=None):
-    """Read the structure data into an ase.Atoms object."""
-    ext = None if filename is None else os.path.splitext(filename)[1]
-
-    try:
-        with tempfile.NamedTemporaryFile(suffix=ext) as file:
-            file.write(data)
-            file.flush()
-
-            traj = ase.io.read(file.name, index=':')
-        # TODO: REACT TO len(traj) > 1
-    except Exception as error:
-        print(error, file=sys.stderr)
-    else:
-        return traj[0]
-
-
-class StructureFileUploadWidget(ipw.VBox):
-    """Select a structure from a file upload."""
-
-    structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
-
-    def __init__(self):
-        self.description = ipw.Label("Upload a structure file:")
-        self.supported_formats = ipw.HTML(
-            """<a href="https://wiki.fysik.dtu.dk/ase/_modules/ase/io/formats.html" target="_blank">
-            Supported formats
-            </a>""")
-        self.file_upload = ipw.FileUpload(
-            description="Select file",
-            multiple=False,
-        )
-
-        self.file_upload.observe(self.on_file_uploaded, names='value')
-
-        super().__init__(children=[self.description, self.file_upload, self.supported_formats])
-
-    def on_file_uploaded(self, change):
-        for fn, item in change['new'].items():
-            self.structure = aiida.orm.StructureData(ase=_read_ase_atoms(data=item['content'], filename=fn))
-            self.file_upload.value.clear()
-            break
-
-    def freeze(self):
-        self.file_upload.disabled = True
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.file_upload.value.clear()
-            self.file_upload.disabled = False
-
-
-class SelectionStructureUploadWidget(ipw.Dropdown):
-    """Select a structure from a given set of of options."""
-
-    structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
-
-    def __init__(self, options=None, hint='Select structure', **kwargs):
-        if options is None:
-            options = []
-        else:
-            options.insert(0, (hint, None))
-
-        super().__init__(options=options, **kwargs)
-
-    @traitlets.observe('index')
-    def _observe_index(self, change):
-        index = change['new']
-        if index is None:
-            self.structure = None
-        else:
-            filename = self.options[index][1]
-            if filename is None:
-                self.structure = None
-            else:
-                traj = ase.io.read(filename, index=':')
-                self.structure = aiida.orm.StructureData(ase=traj[0])
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.index = 0
-            self.disabled = False
-
-    def freeze(self):
-        self.disabled = True
-
-
-class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
+class StructureSelectionStep(ipw.VBox, WizardAppStep):
     """Integrated widget for the selection of structures from different sources."""
 
     structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
-    def __init__(self, data_importers=None, examples=None, viewer=True, **kwargs):
-        if data_importers is None:
-            self.data_importers = [('Upload', StructureFileUploadWidget())]
-        else:
-            self.data_importers = data_importers
-
-        if examples:
-            self.example_widget = SelectionStructureUploadWidget(options=examples)
-            self.data_importers.append(('Examples', self.example_widget))
-        else:
-            self.example_widget = None
-
-        if len(self.data_importers) > 1:
-            self.structure_sources_tab = ipw.Tab(children=[s[1] for s in self.data_importers])
-            for i, source in enumerate(self.data_importers):
-                self.structure_sources_tab.set_title(i, source[0])
-        else:
-            self.structure_sources_tab = self.data_importers[0][1]
-
-        self.structure_sources_tab.layout = ipw.Layout(
-            display='flex',
-            flex_flow='column',
-        )
-
-        if viewer:
-            self.viewer = nglview.NGLWidget(width='300px', height='300px')
-            self.viewer_box = ipw.Box(
-                    children=[self.viewer],
-                    layout=ipw.Layout(
-                        border='solid 1px',
-                        max_height='300px',
-                        max_width='300px',))
-        else:
-            self.viewer = None
-            self.viewer_box = None
+    def __init__(self, manager, **kwargs):
+        self.manager = manager
 
         self.structure_name_text = ipw.Text(
             placeholder='[No structure selected]',
@@ -152,12 +32,6 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
             disabled=True,
             layout=ipw.Layout(width='auto', flex="1 1 auto"),
         )
-
-        self.structure_sources_tab.layout = ipw.Layout(min_width='600px')
-
-        grid = ipw.GridspecLayout(1, 3)
-        grid[:, :2] = self.structure_sources_tab
-        grid[:, 2] = self.viewer_box
 
         self.confirm_button = ipw.Button(
             description='Confirm',
@@ -168,11 +42,12 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
         )
         self.confirm_button.on_click(self.confirm)
 
-        for data_importer in self.data_importers:
-            traitlets.dlink((data_importer[1], 'structure'), (self, 'structure'))
+        # Create directional link from the (read-only) 'structure_node' traitlet of the
+        # structure manager to our 'structure' traitlet:
+        ipw.dlink((manager, 'structure_node'), (self, 'structure'))
 
         super().__init__(
-            children=[grid, self.structure_name_text, self.confirm_button], **kwargs)
+            children=[self.manager, self.structure_name_text, self.confirm_button], **kwargs)
 
     @traitlets.default('state')
     def _default_state(self):
@@ -199,7 +74,6 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
             else:
                 self.structure_name_text.value = str(self.structure.get_formula())
             self._update_state()
-            self.refresh_view()
 
     @traitlets.observe('confirmed_structure')
     def _observe_confirmed_structure(self, _):
@@ -210,29 +84,11 @@ class StructureUploadComboWidget(ipw.VBox, WizardAppStep):
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             state = change['new']
-            if state is WizardApp.State.SUCCESS:
-                self.freeze()
-            self.confirm_button.disabled = self.state != WizardApp.State.CONFIGURED
+            self.confirm_button.disabled = state != WizardApp.State.CONFIGURED
+            self.manager.disabled = state is WizardApp.State.SUCCESS
 
-    def freeze(self):
-        for child in self.structure_sources_tab.children:
-            child.freeze()
-
-    def refresh_view(self):
-        # Note: viewer.clear() only removes the 1st component (TODO: FIX UPSTREAM!)
-        for comp_id in self.viewer._ngl_component_ids:  # pylint: disable=protected-access
-            self.viewer.remove_component(comp_id)
-        if self.structure is not None:
-            self.viewer.add_component(nglview.ASEStructure(self.structure.get_ase()))
-            self.viewer.add_unitcell()
-
-    def confirm(self, _):
-        with self.hold_trait_notifications():
-            self.confirmed_structure = self.structure
+    def confirm(self, _=None):
+        self.confirmed_structure = self.structure
 
     def reset(self):  # unconfirm
-        with self.hold_trait_notifications():
-            for child in self.structure_sources_tab.children:
-                child.reset()
-            self.confirmed_structure = None
-            self.structure = None
+        self.confirmed_structure = None

@@ -1,0 +1,3 @@
+[submodule "aiidalab-widgets-base"]
+	path = external/aiidalab-widgets-base
+	url = git@github.com:aiidalab/aiidalab-widgets-base.git
