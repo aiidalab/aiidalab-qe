@@ -98,9 +98,19 @@ class WizardApp(ipw.VBox):
             icon = self.icons().get(widget.state, str(widget.state).upper())
             self.accordion.set_title(i, f"{icon} Step {i+1}: {title}")
 
+    def _consider_switch(self, _=None):
+        with self.hold_trait_notifications():
+            index = self.accordion.selected_index
+            last_step_selected = index + 1 == len(self.accordion.children)
+            selected_widget = self.accordion.children[index]
+            if selected_widget.auto_next and not last_step_selected and selected_widget.state == self.State.SUCCESS:
+                self.accordion.selected_index += 1
+
     def _update_step_state(self, _):
-        self._update_titles()
-        self._update_buttons()
+        with self.hold_trait_notifications():
+            self._update_titles()
+            self._update_buttons()
+            self._consider_switch()
 
     @traitlets.observe('selected_index')
     def _observe_selected_index(self, change):
@@ -146,3 +156,4 @@ class WizardAppStep(traitlets.HasTraits):
     "One step of a WizardApp."
 
     state = traitlets.UseEnum(WizardApp.State)
+    auto_next = traitlets.Bool()
