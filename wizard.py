@@ -70,6 +70,7 @@ class WizardApp(ipw.VBox):
             description='Reset',
             icon='undo',
             layout=ipw.Layout(width='auto', flex='1 1 auto'),
+            tooltip="Unlock the current step for editing (if possible).",
             disabled=True)
         self.reset_button.on_click(self._on_click_reset_step)
 
@@ -78,6 +79,7 @@ class WizardApp(ipw.VBox):
             description='Previous step',
             icon='step-backward',
             layout=ipw.Layout(width='auto', flex='1 1 auto'),
+            tooltip="Go to the previous step.",
             disabled=True)
         self.back_button.on_click(self._on_click_back_button)
 
@@ -86,6 +88,7 @@ class WizardApp(ipw.VBox):
             description='Next step',
             icon='step-forward',
             layout=ipw.Layout(width='auto', flex='1 1 auto'),
+            tooltip="Go to the next step.",
             disabled=True)
         self.next_button.on_click(self._on_click_next_button)
 

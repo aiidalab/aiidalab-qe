@@ -1,3 +1,4 @@
+import ipywidgets as ipw
 import traitlets
 
 from aiida.orm import StructureData, Float, Str, BandsData
@@ -13,6 +14,11 @@ class ComputeBandsSubmitWidget(CodeSubmitWidget):
 
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     band_structure = traitlets.Instance(BandsData, allow_none=True)
+
+    def __init__(self, **kwargs):
+        description = ipw.Label(
+            'Specify the parameters and options for the calculation and then click on "Submit".')
+        super().__init__(description=description, **kwargs)
 
     def _update_state(self):
         if self.process is None:
@@ -65,12 +71,12 @@ class ComputeBandsSubmitWidget(CodeSubmitWidget):
         builder.scf.pw.parameters = load_default_parameters()
         builder.scf.pw.metadata.options = self.options
         builder.scf.kpoints_distance = Float(0.8)
-        builder.scf.pseudo_family = Str(self.pseudo_family.value)
+        builder.scf.pseudo_family = Str(self.pseudo_family_selection.value)
 
         builder.bands.pw.code = self.code_group.selected_code
         builder.bands.pw.parameters = load_default_parameters()
         builder.bands.pw.metadata.options = self.options
-        builder.bands.pseudo_family = Str(self.pseudo_family.value)
+        builder.bands.pseudo_family = Str(self.pseudo_family_selection.value)
 
         builder.structure = self.input_structure
 

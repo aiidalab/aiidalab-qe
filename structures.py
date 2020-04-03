@@ -23,8 +23,14 @@ class StructureSelectionStep(ipw.VBox, WizardAppStep):
     structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
-    def __init__(self, manager, **kwargs):
+    def __init__(self, manager, description=None, **kwargs):
         self.manager = manager
+
+        if description is None:
+            description = ipw.Label(
+                'Select a structure from one of the following sources and then '
+                'click "Confirm" to go to the next step.')
+        self.description = description
 
         self.structure_name_text = ipw.Text(
             placeholder='[No structure selected]',
@@ -35,6 +41,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppStep):
 
         self.confirm_button = ipw.Button(
             description='Confirm',
+            tooltip="Confirm the currently selected structure and go to the next step.",
             button_style='success',
             icon='check-circle',
             disabled=True,
@@ -47,7 +54,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppStep):
         ipw.dlink((manager, 'structure_node'), (self, 'structure'))
 
         super().__init__(
-            children=[self.manager, self.structure_name_text, self.confirm_button], **kwargs)
+            children=[self.description, self.manager, self.structure_name_text, self.confirm_button], **kwargs)
 
     @traitlets.default('state')
     def _default_state(self):

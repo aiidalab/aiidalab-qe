@@ -26,7 +26,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
     def _update_total_num_cpus(self, change):
         self.total_num_cpus.value = self.number_of_nodes.value * self.cpus_per_node.value
 
-    def __init__(self, **kwargs):
+    def __init__(self, description=None, **kwargs):
         self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code")
 
         extra = {
@@ -53,26 +53,56 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.number_of_nodes.observe(self._update_total_num_cpus, 'value')
         self.cpus_per_node.observe(self._update_total_num_cpus, 'value')
 
-        self.resources = ipw.VBox(children=[
-            ipw.Label("Resources:"),
-            self.number_of_nodes,
-            self.cpus_per_node,
-            self.total_num_cpus,
+        resource_selection_prompt = ipw.HTML(
+            "Select the compute resources for this calculation.")
+        resource_selection_help = ipw.HTML("""<div style="line-height:120%; padding-top:25px;">
+            <p>There is no general rule of thumb on how to select the appropriate number of
+            nodes and cores. In general:</p>
+            <ul>
+            <li>Increase the number of nodes if you run out of memory for larger structures.</li>
+            <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
+            </ul>
+            <p>However, specifying the optimal configuration of resources is a complex issue and
+            simply increasing either cores or nodes may not have the desired effect.</p></div>""")
+        self.resources = ipw.HBox(children=[
+            ipw.VBox(
+                children=[
+                    resource_selection_prompt,
+                    self.number_of_nodes,
+                    self.cpus_per_node,
+                    self.total_num_cpus,
+                ],
+                layout=ipw.Layout(min_width='310px'),
+            ),
+            resource_selection_help,
         ])
 
-        self.pseudo_family = ipw.ToggleButtons(
+        # Setup pseudofamily potential selection group:
+        link_url = "https://www.materialscloud.org/discover/sssp/table/precision"
+        pseudo_family_prompt = ipw.HTML(
+            f'Select the <a href="{link_url}" target="_blank">pseudopotential library</a> for the calculation.')
+        pseudo_family_help = ipw.HTML("""
+            <div style="line-height:120%;">If you are unsure what to choose, select 'SSSP efficiency', which for most
+            calculations will produce sufficiently accurate results at comparatively small computational cost. If
+            your calculation requires a higher accuracy, select 'SSSP accuracy', which will be computationally more
+            expensive, but will produce even more accurate results.</div>""")
+        self.pseudo_family_selection = ipw.ToggleButtons(
             options={
                 'SSSP efficiency': 'SSSP_1.1_efficiency',
                 'SSSP accuracy': 'SSSP_1.1_precision',
             },
-            description='Pseudopotential family:',
-            style={'description_width': 'initial'}
         )
+        self.pseudo_family_group = ipw.VBox(children=[
+            pseudo_family_prompt,
+            self.pseudo_family_selection,
+            pseudo_family_help,
+            ])
 
         # Clicking on the 'submit' button will trigger the execution of the
         # submit() method.
         self.submit_button = ipw.Button(
             description='Submit',
+            tooltip="Submit the calculation with the selected parameters.",
             icon='play',
             button_style='success',
             layout=ipw.Layout(width='auto', flex="1 1 auto"),
@@ -97,7 +127,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.buttons = ipw.HBox(children=[self.submit_button, self.skip_button])
 
         self.config_tabs = ipw.Tab(
-            children=[self.code_group, self.pseudo_family, self.resources],
+            children=[self.code_group, self.pseudo_family_group, self.resources],
             layout=ipw.Layout(height='200px'),
         )
         self.config_tabs.set_title(0, 'Code')
@@ -128,7 +158,11 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
         self.callbacks = list()
 
-        super().__init__(children=[self.accordion, self.buttons], **kwargs)
+        super().__init__(children=[
+            ipw.Label() if description is None else description,
+            self.accordion,
+            self.buttons],
+            **kwargs)
 
     def _update_state(self):
         "Update state based on the process state."
@@ -157,7 +191,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.code_group.disabled = value
         self.number_of_nodes.disabled = value
         self.cpus_per_node.disabled = value
-        self.pseudo_family.disabled = value
+        self.pseudo_family_selection.disabled = value
 
     @property
     def options(self):

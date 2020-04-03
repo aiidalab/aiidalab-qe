@@ -65,7 +65,7 @@ class RelaxSubmitWidget(CodeSubmitWidget):
         builder.base.pw.parameters = load_default_parameters()
         builder.base.pw.metadata.options = self.options
         builder.base.kpoints_distance = Float(0.8)
-        builder.base.pseudo_family = Str(self.pseudo_family.value)
+        builder.base.pseudo_family = Str(self.pseudo_family_selection.value)
         builder.structure = self.input_structure
 
         self.process = submit(builder)
