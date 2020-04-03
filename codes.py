@@ -22,6 +22,7 @@ from wizard import WizardApp, WizardAppStep
 class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
     process = traitlets.Instance(ProcessNode, allow_none=True)
+    disabled = traitlets.Bool()
 
     def _update_total_num_cpus(self, change):
         self.total_num_cpus.value = self.number_of_nodes.value * self.cpus_per_node.value
@@ -154,9 +155,17 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.accordion.set_title(1, 'Status')
         self.accordion.set_title(2, 'Results (0)')
 
-        self._freeze_config()
-
         self.callbacks = list()
+
+        ipw.dlink((self, 'disabled'), (self.skip_button, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.submit_button, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.code_group, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.number_of_nodes, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.cpus_per_node, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.pseudo_family_selection, 'disabled'))
+
+        # Initialize widget disabled status based on step state.
+        self.disabled = self.state != WizardApp.State.READY
 
         super().__init__(children=[
             ipw.Label() if description is None else description,
@@ -179,19 +188,11 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
     @traitlets.observe('state')
     def _observe_state(self, change):
-        self.skip_button.disabled = self.state is not WizardApp.State.READY
-        self.submit_button.disabled = self.state is not WizardApp.State.READY
+        with self.hold_trait_notifications():
+            self.disabled = change['new'] != WizardApp.State.READY
 
-        if change['new'] == WizardApp.State.ACTIVE:
-            self.accordion.selected_index = 1
-
-        self._freeze_config(change['new'] != WizardApp.State.READY)
-
-    def _freeze_config(self, value=True):
-        self.code_group.disabled = value
-        self.number_of_nodes.disabled = value
-        self.cpus_per_node.disabled = value
-        self.pseudo_family_selection.disabled = value
+            if change['new'] == WizardApp.State.ACTIVE:
+                self.accordion.selected_index = 1
 
     @property
     def options(self):
