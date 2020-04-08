@@ -132,7 +132,7 @@ class ProcessStatusWidget(ipw.VBox):
 
     def __init__(self, **kwargs):
         self.progress_bar = ProgressBarWidget()
-        self.log_output = ProcessOutputFollower(layout=ipw.Layout(min_height='200px', max_height='400px'))
+        self.log_output = ProcessOutputFollower(layout=ipw.Layout(min_height='150px', max_height='400px'))
         self.process_id_text = ipw.Text(
             value='',
             description='Process:',
@@ -144,8 +144,11 @@ class ProcessStatusWidget(ipw.VBox):
         ipw.dlink((self, 'process'), (self.log_output, 'process'))
         ipw.dlink((self, 'process'), (self.progress_bar, 'process'))
 
-        super().__init__(children=[self.progress_bar,
-                                   self.log_output, self.process_id_text], **kwargs)
+        super().__init__(children=[
+            self.progress_bar,
+            self.process_id_text,
+            self.log_output,
+            ], **kwargs)
 
     def update(self):
         self.progress_bar.update()
