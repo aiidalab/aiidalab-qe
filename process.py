@@ -5,6 +5,7 @@ from collections import deque
 import traitlets
 import ipywidgets as ipw
 from aiida.orm import ProcessNode
+from widgets import ProcessOutputFollower
 
 
 def get_calc_job_output(process):
@@ -34,8 +35,9 @@ def get_calc_job_output(process):
 class ProgressBarWidget(ipw.VBox):
     """A bar showing the proggress of a process."""
 
+    process = traitlets.Instance(ProcessNode, allow_none=True)
+
     def __init__(self, **kwargs):
-        self._process = None
         self.correspondance = {
             None: (0, 'warning'),
             "created": (0, 'info'),
@@ -60,22 +62,14 @@ class ProgressBarWidget(ipw.VBox):
         )
         super().__init__(children=[self.state, self.bar], **kwargs)
 
-    def update(self):
+    @traitlets.observe('process')
+    def update(self, _=None):
         """Update the bar."""
         self.bar.value, self.bar.bar_style = self.correspondance[self.current_state]
         if self.current_state is None:
             self.state.value = 'N/A'
         else:
             self.state.value = self.current_state.capitalize()
-
-    @property
-    def process(self):
-        return self._process
-
-    @process.setter
-    def process(self, value):
-        self._process = value
-        self.update()
 
     @property
     def current_state(self):
@@ -137,11 +131,8 @@ class ProcessStatusWidget(ipw.VBox):
     process = traitlets.Instance(ProcessNode, allow_none=True)
 
     def __init__(self, **kwargs):
-        self._process_output = None  # Generator function for the process output
-
-        # Widgets
         self.progress_bar = ProgressBarWidget()
-        self.log_output = LogOutputWidget()
+        self.log_output = ProcessOutputFollower(layout=ipw.Layout(min_height='200px', max_height='400px'))
         self.process_id_text = ipw.Text(
             value='',
             description='Process:',
@@ -150,21 +141,11 @@ class ProcessStatusWidget(ipw.VBox):
         )
         ipw.dlink((self, 'process'), (self.process_id_text, 'value'),
                   transform=lambda proc: str(proc))
+        ipw.dlink((self, 'process'), (self.log_output, 'process'))
+        ipw.dlink((self, 'process'), (self.progress_bar, 'process'))
 
         super().__init__(children=[self.progress_bar,
                                    self.log_output, self.process_id_text], **kwargs)
 
-    @traitlets.observe('process')
-    def _observe_process(self, change):
-        with self.hold_trait_notifications():
-            self._process_output = get_calc_job_output(change['new'])
-            self.progress_bar.process = change['new']
-            if change['new'] != change['old']:
-                self.log_output.clear()
-
     def update(self):
-        try:
-            self.log_output.append_line(next(self._process_output))
-        except (TypeError, StopIteration):
-            pass
         self.progress_bar.update()
