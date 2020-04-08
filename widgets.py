@@ -99,7 +99,7 @@ class LogOutputWidget(ipw.VBox):
 
         # Replace the first line if there is no output whatsoever
         if len(text.strip()) == 0 and len(lines) > 0:
-            lines[0] = '[no output]'
+            lines[0] = '[waiting for output]'
 
         text = '\n'.join(lines)
         return '<pre style="background-color: #1f1f2e; color: white; line-height: 100%">{}</pre>'.format(text)
