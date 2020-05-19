@@ -1,0 +1,21 @@
+# Run basic tests for this app on the latest aiidalab-docker image.
+
+name: continuous-integration
+
+on:
+  [push]
+
+jobs:
+
+  test-app:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+
+      - name: Check out app
+        uses: actions/checkout@v2
+
+      - name: Test app
+        uses: aiidalab/aiidalab-test-app-action@v1
