@@ -159,7 +159,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
         ipw.dlink((self, 'disabled'), (self.skip_button, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.submit_button, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.code_group, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.code_group.dropdown, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.number_of_nodes, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.cpus_per_node, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.pseudo_family_selection, 'disabled'))
