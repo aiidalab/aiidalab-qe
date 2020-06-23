@@ -12,10 +12,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    strategy:
+      matrix:
+        tag: [ stable, latest ]
+        browser: [ chrome, firefox ]
+      fail-fast: false
+
     steps:
 
       - name: Check out app
         uses: actions/checkout@v2
 
       - name: Test app
-        uses: aiidalab/aiidalab-test-app-action@v1
+        uses: aiidalab/aiidalab-test-app-action@v2
+        with:
+          image: aiidalab/aiidalab-docker-stack:${{ matrix.tag }}
+          browser: ${{ matrix.browser }}
