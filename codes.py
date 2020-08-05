@@ -28,7 +28,13 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.total_num_cpus.value = self.number_of_nodes.value * self.cpus_per_node.value
 
     def __init__(self, description=None, **kwargs):
-        self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code")
+        setup_code_params = {
+            "label": "pw",
+            "computer": "localhost",
+            "description":  "pw.x in AiiDA lab container.",
+            'exec_path': '/usr/bin/pw.x',
+        }
+        self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
 
         extra = {
             'style': {'description_width': '150px'},
