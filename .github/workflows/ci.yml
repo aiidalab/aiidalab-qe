@@ -12,27 +12,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
-    strategy:
-      matrix:
-        tag: [ stable, latest ]
-        browser: [ chrome, firefox ]
-      fail-fast: false
-
     steps:
 
       - name: Check out app
         uses: actions/checkout@v2
 
       - name: Test app
-        uses: aiidalab/aiidalab-test-app-action@v2
+        uses: aiidalab/aiidalab-test-app-action@feature/app-name
         with:
-          image: aiidalab/aiidalab-docker-stack:${{ matrix.tag }}
-          browser: ${{ matrix.browser }}
+          image: csadorf/aiidalab-docker-stack:skip-install-of-apps
+          browser: chrome
           name: quantum-espresso
 
       - name: Upload screenshots as artifacts
         uses: actions/upload-artifact@v2
         if: ${{ always() }}
         with:
-          name: Screenshots-${{ matrix.tag }}-${{ matrix.browser }}
+          name: Screenshots
           path: 'screenshots/'
