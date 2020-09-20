@@ -31,7 +31,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         setup_code_params = {
             "label": "pw",
             "computer": "localhost",
-            "description":  "pw.x in AiiDA lab container.",
+            "description":  "pw.x in AiiDAlab container.",
             'exec_path': '/usr/bin/pw.x',
         }
         self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
