@@ -1,8 +1,8 @@
-# AiiDA lab Quantum ESPRESSO application
+# AiiDAlab Quantum ESPRESSO application
 
 ## About
 
-This is a early-development implementation of an AiiDA lab application for Quantum ESPRESSO workflow.
+This is a early-development implementation of an AiiDAlab application for Quantum ESPRESSO workflow.
 The app allows the execution of a workflow with Quantum ESPRESSO that includes the selection of an input structure, its relaxation, and the bands structure calculation.
 
 **The app is currently in an early development stage!**
