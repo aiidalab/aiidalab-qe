@@ -1,9 +1,11 @@
-aiida-core==1.0.1
-aiidalab-widgets-base==1.0.0a7
-aiida-quantumespresso==2.0.1
+aiida-core~=1.0
+aiidalab-optimade~=1.1.2
+aiidalab-widgets-base==1.0.0b12
+aiida-quantumespresso~=3.2
 appmode-aiidalab==0.5.0.1
-ase==3.18.1
+ase~=3.18
 fileupload==0.1.5
 future==0.16.0
 Markdown==2.6.9
 nglview==2.7.1
+ipywidgets~=7.5
