@@ -8,6 +8,7 @@ import click
 from dulwich.repo import Repo
 from dulwich.porcelain import active_branch, reset
 from jinja2 import Environment, FileSystemLoader
+from jsonschema import validate
 from packaging.specifiers import SpecifierSet
 from packaging.version import parse
 
@@ -84,6 +85,9 @@ def cli(metadata_template):
         metadata = json.loads(metadata_template.render())
     except json.decoder.JSONDecodeError as error:
         raise RuntimeError(f"{error}\n{metadata_template.render()}")
+    validate(
+        instance=metadata,
+        schema={"$ref": "https://aiidalab.github.io/aiidalab-registry/schemas/v1/metadata.schema.json"})
     metadata_json.write_text(json.dumps(metadata, indent=2))
     click.echo(f"Write {metadata_json.relative_to(Path.cwd())}")
 
