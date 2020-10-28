@@ -4,5 +4,9 @@
     "version": "0.1.0",
     "authors": "Carl Simon Adorf, Aliaksandr Yakutovich",
     "logo": "miscellaneous/logos/QE.jpg",
-    "state": "development"
+    "state": "development",
+    "requires": {
+      {{ ">=20.09,<20.10.2" | get_requirements(version="20.10.2") }},
+      {{ ">=20.10.2" | get_requirements }}
+    }
 }
