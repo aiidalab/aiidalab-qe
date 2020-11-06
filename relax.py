@@ -40,6 +40,8 @@ class RelaxSubmitWidget(CodeSubmitWidget):
     @traitlets.observe('process')
     def _observe_process(self, change):
         with self.hold_trait_notifications():
+            super()._observe_process(change)
+            process_node = change['new']
             process_node = super()._observe_process(change)
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
@@ -48,8 +50,8 @@ class RelaxSubmitWidget(CodeSubmitWidget):
     def skip(self, _):
         self.output_structure = self.input_structure
 
-    def _refresh_outputs_keys(self):
-        process_node = super()._refresh_outputs_keys()
+    def _refresh_outputs_keys(self, process_id):
+        process_node = super()._refresh_outputs_keys(process_id)
         if process_node is not None:
             with self.hold_trait_notifications():
                 if 'output_structure' in process_node.outputs:
