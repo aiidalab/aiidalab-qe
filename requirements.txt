@@ -1,5 +1,4 @@
 aiida-core~=1.0
-aiidalab-optimade~=1.1
 aiidalab-widgets-base~=1.0b
 aiida-quantumespresso~=3.2
 ase~=3.18
