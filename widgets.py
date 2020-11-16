@@ -218,7 +218,7 @@ class ProcessOutputFollower(ipw.VBox):
             try:
                 lines = _get_output(calcjob)
             except Exception as error:
-                self._output_queue.put((calcjob, [f'ERROR: {error}']))
+                self._output_queue.put((calcjob, [f'[ERROR: {error}]']))
             else:
                 self._output_queue.put((calcjob, lines[lineno:]))
                 lineno = len(lines)
@@ -263,6 +263,9 @@ class ProcessOutputFollower(ipw.VBox):
             if calcjob is None:
                 self._log_output.value = '', ''
             else:
-                filename = calcjob.attributes['output_filename']
-                lines = self._output[calcjob.pk][restrict_num_lines:]
-                self._log_output.value = filename, '\n'.join(lines)
+                try:
+                    filename = calcjob.attributes['output_filename']
+                    lines = self._output[calcjob.pk][restrict_num_lines:]
+                    self._log_output.value = filename, '\n'.join(lines)
+                except Exception as error:
+                    self._log_output.value = '', f'[ERROR: {error}]'
