@@ -171,7 +171,7 @@ class WorkChainSelector(ipw.HBox):
 
     # When this trait is set to a positive value, the work chains are automatically
     # refreshed every `auto_refresh_interval` seconds.
-    auto_refresh_interval = traitlets.Int(allow_none=True)  # seconds
+    auto_refresh_interval = traitlets.Int()  # seconds
 
     # Indicate whether the widget is currently updating the work chain options.
     busy = traitlets.Bool(read_only=True)
