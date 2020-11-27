@@ -17,6 +17,7 @@ from aiidalab_widgets_base import CodeDropdown, viewer
 
 from process import ProcessStatusWidget
 from wizard import WizardApp, WizardAppStep
+from pseudos import SSSPInstallWidget
 
 
 class CodeSubmitWidget(ipw.VBox, WizardAppStep):
@@ -100,9 +101,11 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
                 'SSSP accuracy': 'SSSP_1.1_precision',
             },
         )
+        self.sssp_install_widget = SSSPInstallWidget()
+
         self.pseudo_family_group = ipw.VBox(children=[
             pseudo_family_prompt,
-            self.pseudo_family_selection,
+            ipw.HBox([self.pseudo_family_selection, self.sssp_install_widget]),
             pseudo_family_help,
             ])
 
@@ -199,7 +202,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
     @traitlets.observe('state')
     def _observe_state(self, change):
         with self.hold_trait_notifications():
-            self.disabled = change['new'] != WizardApp.State.READY
+            self.disabled = change['new'] != WizardApp.State.READY or not self.sssp_install_widget.installed
 
             if change['new'] == WizardApp.State.ACTIVE:
                 self.accordion.selected_index = 1
