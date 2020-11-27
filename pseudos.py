@@ -38,7 +38,7 @@ class SSSPInstallWidget(ipw.HBox):
 
     base_url = 'http://legacy-archive.materialscloud.org/file/2018.0001/v3'
 
-    def __init__(self):
+    def __init__(self, **kwargs):
 
         self.install_button = ipw.Button(
             description='Install pseudos',
@@ -46,13 +46,16 @@ class SSSPInstallWidget(ipw.HBox):
             icon='cloud-download',
             tooltip='Download and install the SSSP pseudo potential families.',
             disabled=True,
+            layout=ipw.Layout(width='140px'),
             )
         self.install_button.on_click(lambda _: self.download())
 
         self.spinner = Spinner()
         ipw.dlink((self, 'busy'), (self.spinner, 'enabled'))
 
-        super().__init__(children=[self.install_button, self.spinner])
+        kwargs.setdefault('layout', ipw.Layout(width='180px'))
+
+        super().__init__(children=[self.install_button, self.spinner], **kwargs)
         self._refresh_installed()
 
     def _refresh_installed(self):
