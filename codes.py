@@ -20,6 +20,9 @@ from wizard import WizardApp, WizardAppStep
 from pseudos import SSSPInstallWidget
 
 
+WARNING_ICON = '\u26A0'
+
+
 class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
     process = traitlets.Instance(ProcessNode, allow_none=True)
@@ -142,8 +145,14 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
             layout=ipw.Layout(height='200px'),
         )
         self.config_tabs.set_title(0, 'Code')
-        self.config_tabs.set_title(1, 'Pseudopotential')
+        # second tab initialized below
         self.config_tabs.set_title(2, 'Compute resources')
+
+        # Show warning in cofig title when pseudos are not installed:
+        def _set_pseudo_potential_tab(change):
+            self.config_tabs.set_title(1, 'Pseudopotential' + ('' if change['new'] else f' {WARNING_ICON}'))
+        self.sssp_install_widget.observe(_set_pseudo_potential_tab, 'installed')
+        _set_pseudo_potential_tab(change=dict(new=self.sssp_install_widget.installed))  # init
 
         self.process_status = ProcessStatusWidget()
         ipw.dlink((self, 'process'), (self.process_status, 'process'))
