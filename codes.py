@@ -4,8 +4,8 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
+import itertools
 import threading
-from time import sleep
 
 from IPython.display import display, clear_output
 import ipywidgets as ipw
@@ -147,14 +147,12 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
         self.outputs_keys = ipw.Dropdown()
         self.outputs_keys.observe(self._refresh_outputs_view, names=['options', 'value'])
-        self.output_control = ipw.HBox(children=[self.outputs_keys])
-
         self.output_area = ipw.Output(
             layout={
                 'width': 'auto',
                 'height': 'auto',
                 'border': '1px solid black'})
-        self.results_view = ipw.VBox(children=[self.output_control, self.output_area])
+        self.results_view = ipw.VBox(children=[self.outputs_keys, self.output_area])
 
         self.accordion = ipw.Accordion(
             children=[self.config_tabs, self.process_status, self.results_view])
@@ -174,6 +172,11 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
 
+        # Set up process monitoring.
+        self._monitor_thread = None
+        self._monitor_thread_stop = threading.Event()
+        self._monitor_thread_lock = threading.Lock()
+
         super().__init__(children=[
             ipw.Label() if description is None else description,
             self.accordion,
@@ -185,7 +188,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         if self.process is None:
             self.state = WizardApp.State.INIT
         else:
-            process_state = load_node(self.process.id).process_state
+            process_state = self.process.process_state
             if process_state in (ProcessState.CREATED, ProcessState.RUNNING, ProcessState.WAITING):
                 self.state = WizardApp.State.ACTIVE
             elif process_state in (ProcessState.EXCEPTED, ProcessState.KILLED):
@@ -209,17 +212,17 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
                 'num_machines': self.number_of_nodes.value,
                 'num_mpiprocs_per_machine': self.cpus_per_node.value}}
 
-    def _refresh_outputs_keys(self):
-        if self.process is None:
-            with self.hold_sync():
+    def _refresh_outputs_keys(self, process_id):
+        with self.hold_trait_notifications():
+            if process_id is None:
                 self.outputs_keys.options = ["[No outputs]"]
                 self.outputs_keys.disabled = True
+                return None
 
-        else:
-            with self.hold_sync():
-                process_node = load_node(self.process.id)
-                self.outputs_keys.options = ["[Select output]"] + \
-                    [str(o) for o in process_node.outputs]
+            process_node = load_node(process_id)
+            self.outputs_keys.options = ["[Select output]"] + \
+                [str(o) for o in process_node.outputs]
+            self.outputs_keys.disabled = False
             return process_node
 
     def _refresh_outputs_view(self, change=None):
@@ -242,38 +245,47 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
                 display(output_viewer_widget)
 
-    def _monitor_process(self):
-        assert self.process is not None
-        process_node = load_node(self.process.id)
+    def _monitor_process(self, process_id, timeout=.1):
+        self._monitor_thread_stop.wait(timeout=10 * timeout)  # brief delay to increase app stability
 
-        while not process_node.is_sealed:
+        process = None if process_id is None else load_node(process_id)
+
+        iteration = itertools.count()
+        while not (process is None or process.is_sealed):
+            if next(iteration) % round(100 / timeout) == 0:
+                self._refresh_outputs_keys(process_id)
+
             self.process_status.update()
             for callback in self.callbacks:
                 callback(self)
-            sleep(0.1)
 
-        with self.hold_trait_notifications():
-            self.process_status.update()
-            self._refresh_outputs_keys()
+            if self._monitor_thread_stop.wait(timeout=timeout):
+                break
 
-        return process_node
+        # Final update:
+        self.process_status.update()
+        self._refresh_outputs_keys(process_id)
 
     @traitlets.observe('process')
     def _observe_process(self, change):
+        self._update_state()
         process = change['new']
-        with self.hold_trait_notifications():
-            if process is None:
-                self._refresh_outputs_keys()
-            else:
-                process_node = load_node(process.id)
-                self.process_status.process = process_node
-                if process_node.is_sealed:
-                    self._refresh_outputs_keys()
-                else:
-                    self.state = WizardApp.State.ACTIVE
-                    monitor_thread = threading.Thread(target=self._monitor_process)
-                    monitor_thread.start()
-                return process_node
+        if process is None or process.id != getattr(change['old'], 'id', None):
+            with self.hold_trait_notifications():
+                with self._monitor_thread_lock:
+                    # stop thread
+                    if self._monitor_thread is not None:
+                        self._monitor_thread_stop.set()
+                        self._monitor_thread.join()
+
+                    # reset output
+                    self._refresh_outputs_keys(None)
+
+                    # start monitor thread
+                    self._monitor_thread_stop.clear()
+                    process_id = getattr(process, 'id', None)
+                    self._monitor_thread = threading.Thread(target=self._monitor_process, args=(process_id, ))
+                    self._monitor_thread.start()
 
     skip = False
 
