@@ -149,10 +149,12 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.config_tabs.set_title(2, 'Compute resources')
 
         # Show warning in cofig title when pseudos are not installed:
-        def _set_pseudo_potential_tab(change):
+        def _observe_sssp_installed(change):
             self.config_tabs.set_title(1, 'Pseudopotential' + ('' if change['new'] else f' {WARNING_ICON}'))
-        self.sssp_install_widget.observe(_set_pseudo_potential_tab, 'installed')
-        _set_pseudo_potential_tab(change=dict(new=self.sssp_install_widget.installed))  # init
+            self._observe_state(change=dict(new=self.state))  # trigger refresh
+
+        self.sssp_install_widget.observe(_observe_sssp_installed, 'installed')
+        _observe_sssp_installed(change=dict(new=self.sssp_install_widget.installed))  # init
 
         self.process_status = ProcessStatusWidget()
         ipw.dlink((self, 'process'), (self.process_status, 'process'))
