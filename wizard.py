@@ -72,7 +72,7 @@ class WizardApp(ipw.VBox):
             layout=ipw.Layout(width='auto', flex='1 1 auto'),
             tooltip="Unlock the current step for editing (if possible).",
             disabled=True)
-        self.reset_button.on_click(self._on_click_reset_step)
+        self.reset_button.on_click(self._on_click_reset_button)
 
         # Create a back-button, to switch to the previous step when possible:
         self.back_button = ipw.Button(
@@ -141,12 +141,23 @@ class WizardApp(ipw.VBox):
                 self.reset_button.disabled = not (  # reset possible when:
                     hasattr(selected_widget, 'reset')
                     and selected_widget.state in self.SEALED_STATES
-                    and (last_step_selected or next_widget.state not in self.SEALED_STATES)
                 )
 
-    def _on_click_reset_step(self, _):
+    def reset(self, step=0):
+        """Reset the app down to the given step.
+
+        For example, with step=0 (the default), the whole app is reset.
+        With step=1, all but the first step are reset.
+        """
         with self.hold_sync():
-            self.accordion.children[self.accordion.selected_index].reset()
+            for index in range(step, len(self.accordion.children)):
+                self.accordion.children[index].reset()
+
+    def _on_click_reset_button(self, _):
+        with self.hold_sync():
+            current_index = self.accordion.selected_index
+            self.reset(current_index)
+        self.accordion.selected_index = current_index  # restore selected step
 
     def _on_click_back_button(self, _):
         self.accordion.selected_index -= 1
