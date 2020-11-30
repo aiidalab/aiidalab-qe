@@ -16,5 +16,5 @@ def test_qe_app_select_silicon(selenium, url):
     time.sleep(10)
     selenium.find_element(By.CSS_SELECTOR, ".p-TabBar-tab:nth-child(6) > .p-TabBar-tabLabel").click()
     selenium.find_element(By.XPATH, "//option[@value=\'Silicon\']").click()
-    selenium.find_element(By.CSS_SELECTOR, ".mod-success:nth-child(4)").click()
+    selenium.find_element(By.XPATH, "//button[contains(.,'Confirm')]").click()
     selenium.get_screenshot_as_file('screenshots/qe-app-select-silicon.png')
