@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import json
 import re
+import shutil
 from pathlib import Path
 from subprocess import run, CalledProcessError
 
@@ -90,6 +91,13 @@ def cli(metadata_template):
         schema={"$ref": "https://aiidalab.github.io/aiidalab-registry/schemas/v1/metadata.schema.json"})
     metadata_json.write_text(json.dumps(metadata, indent=2))
     click.echo(f"Write {metadata_json.relative_to(Path.cwd())}")
+
+    # QE.jpg
+    src = root / 'miscellaneous' / 'logos' / 'QE.jpg'
+    dst = output_dir / 'miscellaneous' / 'logos' / 'QE.jpg'
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dst)
+    click.echo(f"Copy {dst.relative_to(Path.cwd())}")
 
 
 if __name__ == '__main__':
