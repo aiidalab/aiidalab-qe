@@ -1,7 +1,7 @@
 {
     "description": "Perform Quantum ESPRESSO calculations",
     "title": "Quantum ESPRESSO",
-    "version": "20.11.1",
+    "version": "20.11.2",
     "authors": "Carl Simon Adorf, Aliaksandr Yakutovich",
     "logo": "miscellaneous/logos/QE.jpg",
     "state": "development",
