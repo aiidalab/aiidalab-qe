@@ -29,7 +29,10 @@ class ComputeBandsSubmitWidget(CodeSubmitWidget):
                     self.state = WizardApp.State.FAIL
             else:
                 if self.band_structure is None:
-                    self.state = WizardApp.State.READY
+                    if self.code_group.selected_code is None:
+                        self.state = WizardApp.State.READY
+                    else:
+                        self.state = WizardApp.State.CONFIGURED
                 else:
                     self.state = WizardApp.State.SUCCESS
         else:

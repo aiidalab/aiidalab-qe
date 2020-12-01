@@ -40,6 +40,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
             'remote_abs_path': '/usr/bin/pw.x',
         }
         self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
+        self.code_group.observe(lambda _: self._update_state(), ['selected_code'])
 
         extra = {
             'style': {'description_width': '150px'},
@@ -177,7 +178,6 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.callbacks = list()
 
         ipw.dlink((self, 'disabled'), (self.skip_button, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.submit_button, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.code_group.dropdown, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.number_of_nodes, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.cpus_per_node, 'disabled'))
@@ -213,7 +213,9 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
     @traitlets.observe('state')
     def _observe_state(self, change):
         with self.hold_trait_notifications():
-            self.disabled = change['new'] != WizardApp.State.READY or not self.sssp_install_widget.installed
+            self.disabled = change['new'] not in (WizardApp.State.READY, WizardApp.State.CONFIGURED) \
+                    or not self.sssp_install_widget.installed
+            self.submit_button.disabled = change['new'] != WizardApp.State.CONFIGURED
 
             if change['new'] == WizardApp.State.ACTIVE:
                 self.accordion.selected_index = 1
