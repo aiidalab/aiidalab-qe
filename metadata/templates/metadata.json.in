@@ -6,6 +6,6 @@
     "logo": "miscellaneous/logos/QE.jpg",
     "state": "development",
     "requires": {
-      {{ ">=20.09" | get_requirements(version="v20.11.0") }}
+      {{ ">=20.09" | get_requirements(version="v20.11.2") }}
     }
 }
