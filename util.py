@@ -3,7 +3,7 @@ import json
 from aiida.orm import Dict
 
 
-DEFAULT_PARAMETERS_FILE = 'parameters.json'
+DEFAULT_PARAMETERS_FILE = "parameters.json"
 
 
 def load_default_parameters():
