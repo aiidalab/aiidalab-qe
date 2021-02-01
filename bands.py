@@ -68,14 +68,13 @@ class ComputeBandsSubmitWidget(CodeSubmitWidget):
     @traitlets.observe('process')
     def _observe_process(self, change):
         with self.hold_trait_notifications():
-            super()._observe_process(change)
             process_node = change['new']
             if process_node is None:
                 self.band_structure = None
             else:
                 # Restore the code parameters
                 builder = process_node.get_builder_restart()
-                self.pseudo_family_selection.value = builder.scf.pseudo_family.value
+                self.pseudo_family_selector.value = builder.scf.pseudo_family.value
                 try:
                     self.code_group.selected_code = builder.scf.pw['code'].full_label
                 except traitlets.TraitError:
@@ -103,12 +102,12 @@ class ComputeBandsSubmitWidget(CodeSubmitWidget):
         builder.scf.pw.parameters = load_default_parameters()
         builder.scf.pw.metadata.options = self.options
         builder.scf.kpoints_distance = Float(0.8)
-        builder.scf.pseudo_family = Str(self.pseudo_family_selection.value)
+        builder.scf.pseudo_family = Str(self.pseudo_family_selector.value)
 
         builder.bands.pw.code = self.code_group.selected_code
         builder.bands.pw.parameters = load_default_parameters()
         builder.bands.pw.metadata.options = self.options
-        builder.bands.pseudo_family = Str(self.pseudo_family_selection.value)
+        builder.bands.pseudo_family = Str(self.pseudo_family_selector.value)
 
         builder.structure = self.input_structure
 
