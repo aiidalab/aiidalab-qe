@@ -29,19 +29,19 @@ class RelaxSubmitWidget(CodeSubmitWidget):
         else:
             super()._update_state()
 
-    @traitlets.observe('input_structure')
+    @traitlets.observe("input_structure")
     def _observe_input_structure(self, change):
         self._update_state()
 
-    @traitlets.observe('output_structure')
+    @traitlets.observe("output_structure")
     def _observe_output_structure(self, change):
         self._update_state()
 
-    @traitlets.observe('process')
+    @traitlets.observe("process")
     def _observe_process(self, change):
         with self.hold_trait_notifications():
             super()._observe_process(change)
-            process_node = change['new']
+            process_node = change["new"]
             process_node = super()._observe_process(change)
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
@@ -54,7 +54,7 @@ class RelaxSubmitWidget(CodeSubmitWidget):
         process_node = super()._refresh_outputs_keys(process_id)
         if process_node is not None:
             with self.hold_trait_notifications():
-                if 'output_structure' in process_node.outputs:
+                if "output_structure" in process_node.outputs:
                     self.output_structure = process_node.outputs.output_structure
                 elif process_node.is_sealed:
                     self.state = WizardApp.State.FAIL
@@ -62,7 +62,7 @@ class RelaxSubmitWidget(CodeSubmitWidget):
     def submit(self, _=None):
         assert self.input_structure is not None
 
-        builder = WorkflowFactory('quantumespresso.pw.relax').get_builder()
+        builder = WorkflowFactory("quantumespresso.pw.relax").get_builder()
         builder.base.pw.code = self.code_group.selected_code
         builder.base.pw.parameters = load_default_parameters()
         builder.base.pw.metadata.options = self.options

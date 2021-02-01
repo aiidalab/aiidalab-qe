@@ -4,13 +4,7 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
-import os
-import sys
-import tempfile
-
 import aiida
-import ase
-import nglview
 import traitlets
 import ipywidgets as ipw
 
@@ -28,35 +22,43 @@ class StructureSelectionStep(ipw.VBox, WizardAppStep):
 
         if description is None:
             description = ipw.Label(
-                'Select a structure from one of the following sources and then '
-                'click "Confirm" to go to the next step.')
+                "Select a structure from one of the following sources and then "
+                'click "Confirm" to go to the next step.'
+            )
         self.description = description
 
         self.structure_name_text = ipw.Text(
-            placeholder='[No structure selected]',
-            description='Selected:',
+            placeholder="[No structure selected]",
+            description="Selected:",
             disabled=True,
-            layout=ipw.Layout(width='auto', flex="1 1 auto"),
+            layout=ipw.Layout(width="auto", flex="1 1 auto"),
         )
 
         self.confirm_button = ipw.Button(
-            description='Confirm',
+            description="Confirm",
             tooltip="Confirm the currently selected structure and go to the next step.",
-            button_style='success',
-            icon='check-circle',
+            button_style="success",
+            icon="check-circle",
             disabled=True,
-            layout=ipw.Layout(width='auto'),
+            layout=ipw.Layout(width="auto"),
         )
         self.confirm_button.on_click(self.confirm)
 
         # Create directional link from the (read-only) 'structure_node' traitlet of the
         # structure manager to our 'structure' traitlet:
-        ipw.dlink((manager, 'structure_node'), (self, 'structure'))
+        ipw.dlink((manager, "structure_node"), (self, "structure"))
 
         super().__init__(
-            children=[self.description, self.manager, self.structure_name_text, self.confirm_button], **kwargs)
+            children=[
+                self.description,
+                self.manager,
+                self.structure_name_text,
+                self.confirm_button,
+            ],
+            **kwargs
+        )
 
-    @traitlets.default('state')
+    @traitlets.default("state")
     def _default_state(self):
         return WizardApp.State.READY
 
@@ -72,9 +74,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppStep):
             else:
                 self.state = WizardApp.State.SUCCESS
 
-    @traitlets.observe('structure')
+    @traitlets.observe("structure")
     def _observe_structure(self, change):
-        structure = change['new']
+        structure = change["new"]
         with self.hold_trait_notifications():
             if structure is None:
                 self.structure_name_text.value = ""
@@ -82,15 +84,15 @@ class StructureSelectionStep(ipw.VBox, WizardAppStep):
                 self.structure_name_text.value = str(self.structure.get_formula())
             self._update_state()
 
-    @traitlets.observe('confirmed_structure')
+    @traitlets.observe("confirmed_structure")
     def _observe_confirmed_structure(self, _):
         with self.hold_trait_notifications():
             self._update_state()
 
-    @traitlets.observe('state')
+    @traitlets.observe("state")
     def _observe_state(self, change):
         with self.hold_trait_notifications():
-            state = change['new']
+            state = change["new"]
             self.confirm_button.disabled = state != WizardApp.State.CONFIGURED
             self.manager.disabled = state is WizardApp.State.SUCCESS
 

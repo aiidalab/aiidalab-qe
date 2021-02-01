@@ -18,16 +18,18 @@ from wizard import WizardApp, WizardAppStep
 from pseudos import PseudoFamilySelector
 
 
-WARNING_ICON = '\u26A0'
+WARNING_ICON = "\u26A0"
 
 
 class ResourceSelectionWidget(ipw.HBox):
     """Widget for the selection of compute (CPU) resources."""
 
     resource_selection_prompt = ipw.HTML(
-        "Select the compute resources for this calculation.")
+        "Select the compute resources for this calculation."
+    )
 
-    resource_selection_help = ipw.HTML("""<div style="line-height:120%; padding-top:25px;">
+    resource_selection_help = ipw.HTML(
+        """<div style="line-height:120%; padding-top:25px;">
         <p>There is no general rule of thumb on how to select the appropriate number of
         nodes and cores. In general:</p>
         <ul>
@@ -35,48 +37,47 @@ class ResourceSelectionWidget(ipw.HBox):
         <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
         </ul>
         <p>However, specifying the optimal configuration of resources is a complex issue and
-        simply increasing either cores or nodes may not have the desired effect.</p></div>""")
-
+        simply increasing either cores or nodes may not have the desired effect.</p></div>"""
+    )
 
     def __init__(self, **kwargs):
         extra = {
-            'style': {'description_width': '150px'},
-            'layout': {'max_width': '200px'}
+            "style": {"description_width": "150px"},
+            "layout": {"max_width": "200px"},
         }
         self.number_of_nodes = ipw.BoundedIntText(
-            value=1, step=1, min=1,
-            description="# nodes",
-            disabled=False,
-            **extra)
+            value=1, step=1, min=1, description="# nodes", disabled=False, **extra
+        )
         self.cpus_per_node = ipw.BoundedIntText(
-            value=1, step=1, min=1,
-            description="# cpus per node",
-            **extra)
+            value=1, step=1, min=1, description="# cpus per node", **extra
+        )
         self.total_num_cpus = ipw.BoundedIntText(
-            value=1, step=1, min=1,
-            description="# total cpus",
-            disabled=True,
-            **extra)
+            value=1, step=1, min=1, description="# total cpus", disabled=True, **extra
+        )
 
         # Update the total # of CPUs int text:
-        self.number_of_nodes.observe(self._update_total_num_cpus, 'value')
-        self.cpus_per_node.observe(self._update_total_num_cpus, 'value')
+        self.number_of_nodes.observe(self._update_total_num_cpus, "value")
+        self.cpus_per_node.observe(self._update_total_num_cpus, "value")
 
-        super().__init__(children=[
-            ipw.VBox(
-                children=[
-                    self.resource_selection_prompt,
-                    self.number_of_nodes,
-                    self.cpus_per_node,
-                    self.total_num_cpus,
-                ],
-                layout=ipw.Layout(min_width='310px'),
-            ),
-            self.resource_selection_help,
-        ])
+        super().__init__(
+            children=[
+                ipw.VBox(
+                    children=[
+                        self.resource_selection_prompt,
+                        self.number_of_nodes,
+                        self.cpus_per_node,
+                        self.total_num_cpus,
+                    ],
+                    layout=ipw.Layout(min_width="310px"),
+                ),
+                self.resource_selection_help,
+            ]
+        )
 
     def _update_total_num_cpus(self, change):
-        self.total_num_cpus.value = self.number_of_nodes.value * self.cpus_per_node.value
+        self.total_num_cpus.value = (
+            self.number_of_nodes.value * self.cpus_per_node.value
+        )
 
 
 class CodeSubmitWidget(ipw.VBox, WizardAppStep):
@@ -88,13 +89,17 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
     def __init__(self, description=None, **kwargs):
         setup_code_params = {
             "computer": "localhost",
-            "description":  "pw.x in AiiDAlab container.",
+            "description": "pw.x in AiiDAlab container.",
             "label": "pw",
             "input_plugin": "quantumespresso.pw",
-            'remote_abs_path': '/usr/bin/pw.x',
+            "remote_abs_path": "/usr/bin/pw.x",
         }
-        self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
-        self.code_group.observe(lambda _: self._update_state(), ['selected_code'])
+        self.code_group = CodeDropdown(
+            input_plugin="quantumespresso.pw",
+            text="Select code",
+            setup_code_params=setup_code_params,
+        )
+        self.code_group.observe(lambda _: self._update_state(), ["selected_code"])
 
         # Setup pseudo potential family selection
         self.pseudo_family_selector = PseudoFamilySelector()
@@ -105,86 +110,98 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         # Clicking on the 'submit' button will trigger the execution of the
         # submit() method.
         self.submit_button = ipw.Button(
-            description='Submit',
+            description="Submit",
             tooltip="Submit the calculation with the selected parameters.",
-            icon='play',
-            button_style='success',
-            layout=ipw.Layout(width='auto', flex="1 1 auto"),
-            disabled=True)
+            icon="play",
+            button_style="success",
+            layout=ipw.Layout(width="auto", flex="1 1 auto"),
+            disabled=True,
+        )
         self.submit_button.on_click(self._on_submit_button_clicked)
 
         # The 'skip' button is only shown when the skip() method is implemented.
         self.skip_button = ipw.Button(
-            description='Skip',
-            icon='fast-forward',
-            button_style='info',
-            layout=ipw.Layout(width='auto', flex="1 1 auto"),
-            disabled=True)
+            description="Skip",
+            icon="fast-forward",
+            button_style="info",
+            layout=ipw.Layout(width="auto", flex="1 1 auto"),
+            disabled=True,
+        )
         if self.skip:  # skip() method is implemented
             # connect with skip_button
             self.skip_button.on_click(self.skip)  # connect with skip_button
         else:  # skip() not implemented
             # hide the button
-            self.skip_button.layout.visibility = 'hidden'
+            self.skip_button.layout.visibility = "hidden"
 
         # Place all buttons at the footer of the widget.
         self.buttons = ipw.HBox(children=[self.submit_button, self.skip_button])
 
         self.config_tabs = ipw.Tab(
             children=[self.code_group, self.pseudo_family_selector, self.resources],
-            layout=ipw.Layout(height='200px'),
+            layout=ipw.Layout(height="200px"),
         )
-        self.config_tabs.set_title(0, 'Code')
+        self.config_tabs.set_title(0, "Code")
         # second tab initialized below
-        self.config_tabs.set_title(2, 'Compute resources')
+        self.config_tabs.set_title(2, "Compute resources")
 
         # Show warning in cofig title when pseudos are not installed:
         def _observe_sssp_installed(change):
-            self.config_tabs.set_title(1, 'Pseudopotential' + ('' if change['new'] else f' {WARNING_ICON}'))
+            self.config_tabs.set_title(
+                1, "Pseudopotential" + ("" if change["new"] else f" {WARNING_ICON}")
+            )
             self._observe_state(change=dict(new=self.state))  # trigger refresh
 
-        self.pseudo_family_selector.observe(_observe_sssp_installed, 'installed')
-        _observe_sssp_installed(change=dict(new=self.pseudo_family_selector.installed))  # init
+        self.pseudo_family_selector.observe(_observe_sssp_installed, "installed")
+        _observe_sssp_installed(
+            change=dict(new=self.pseudo_family_selector.installed)
+        )  # init
 
         self.process_status = ProcessStatusWidget()
-        ipw.dlink((self, 'process'), (self.process_status, 'process'))
+        ipw.dlink((self, "process"), (self.process_status, "process"))
 
         self.outputs_keys = ipw.Dropdown()
-        self.outputs_keys.observe(self._refresh_outputs_view, names=['options', 'value'])
+        self.outputs_keys.observe(
+            self._refresh_outputs_view, names=["options", "value"]
+        )
         self.output_area = ipw.Output(
-            layout={
-                'width': 'auto',
-                'height': 'auto',
-                'border': '1px solid black'})
+            layout={"width": "auto", "height": "auto", "border": "1px solid black"}
+        )
         self.results_view = ipw.VBox(children=[self.outputs_keys, self.output_area])
 
         self.accordion = ipw.Accordion(
-            children=[self.config_tabs, self.process_status, self.results_view])
-        self.accordion.set_title(0, 'Config')
-        self.accordion.set_title(1, 'Status')
-        self.accordion.set_title(2, 'Results (0)')
+            children=[self.config_tabs, self.process_status, self.results_view]
+        )
+        self.accordion.set_title(0, "Config")
+        self.accordion.set_title(1, "Status")
+        self.accordion.set_title(2, "Results (0)")
 
-        ipw.dlink((self, 'disabled'), (self.skip_button, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.code_group.dropdown, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.resources.number_of_nodes, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.resources.cpus_per_node, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.pseudo_family_selector, 'disabled'))
+        ipw.dlink((self, "disabled"), (self.skip_button, "disabled"))
+        ipw.dlink((self, "disabled"), (self.code_group.dropdown, "disabled"))
+        ipw.dlink((self, "disabled"), (self.resources.number_of_nodes, "disabled"))
+        ipw.dlink((self, "disabled"), (self.resources.cpus_per_node, "disabled"))
+        ipw.dlink((self, "disabled"), (self.pseudo_family_selector, "disabled"))
 
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
 
         # Setup process monitor
-        self.process_monitor = ProcessMonitor(callbacks=[
-            (lambda _: self.process_status.update(), 1),
-            (self._refresh_outputs_keys, 1000),
-            ])
-        ipw.dlink((self, 'process'), (self.process_monitor, 'process'))
+        self.process_monitor = ProcessMonitor(
+            callbacks=[
+                (lambda _: self.process_status.update(), 1),
+                (self._refresh_outputs_keys, 1000),
+            ]
+        )
+        ipw.dlink((self, "process"), (self.process_monitor, "process"))
 
-        super().__init__(children=[
-            ipw.Label() if description is None else description,
-            self.accordion,
-            self.buttons],
-            **kwargs)
+        super().__init__(
+            children=[
+                ipw.Label() if description is None else description,
+                self.accordion,
+                self.buttons,
+            ],
+            **kwargs,
+        )
 
     def _update_state(self):
         "Update state based on the process state."
@@ -192,30 +209,38 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
             self.state = WizardApp.State.INIT
         else:
             process_state = self.process.process_state
-            if process_state in (ProcessState.CREATED, ProcessState.RUNNING, ProcessState.WAITING):
+            if process_state in (
+                ProcessState.CREATED,
+                ProcessState.RUNNING,
+                ProcessState.WAITING,
+            ):
                 self.state = WizardApp.State.ACTIVE
             elif process_state in (ProcessState.EXCEPTED, ProcessState.KILLED):
                 self.state = WizardApp.State.FAIL
             elif process_state is ProcessState.FINISHED:
                 self.state = WizardApp.State.SUCCESS
 
-    @traitlets.observe('state')
+    @traitlets.observe("state")
     def _observe_state(self, change):
         with self.hold_trait_notifications():
-            self.disabled = change['new'] not in (WizardApp.State.READY, WizardApp.State.CONFIGURED) \
-                    or not self.pseudo_family_selector.installed
-            self.submit_button.disabled = change['new'] != WizardApp.State.CONFIGURED
+            self.disabled = (
+                change["new"] not in (WizardApp.State.READY, WizardApp.State.CONFIGURED)
+                or not self.pseudo_family_selector.installed
+            )
+            self.submit_button.disabled = change["new"] != WizardApp.State.CONFIGURED
 
-            if change['new'] == WizardApp.State.ACTIVE:
+            if change["new"] == WizardApp.State.ACTIVE:
                 self.accordion.selected_index = 1
 
     @property
     def options(self):
         return {
-            'max_wallclock_seconds': 3600*2,
-            'resources': {
-                'num_machines': self.resources.number_of_nodes.value,
-                'num_mpiprocs_per_machine': self.resources.cpus_per_node.value}}
+            "max_wallclock_seconds": 3600 * 2,
+            "resources": {
+                "num_machines": self.resources.number_of_nodes.value,
+                "num_mpiprocs_per_machine": self.resources.cpus_per_node.value,
+            },
+        }
 
     def _refresh_outputs_keys(self, process_id):
         with self.hold_trait_notifications():
@@ -225,18 +250,19 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
                 return None
 
             process_node = load_node(process_id)
-            self.outputs_keys.options = ["[Select output]"] + \
-                [str(o) for o in process_node.outputs]
+            self.outputs_keys.options = ["[Select output]"] + [
+                str(o) for o in process_node.outputs
+            ]
             self.outputs_keys.disabled = False
             return process_node
 
     def _refresh_outputs_view(self, change=None):
         self.accordion.set_title(2, f"Results ({len(self.outputs_keys.options)-1})")
 
-        if change is None or change['name'] == 'options':
+        if change is None or change["name"] == "options":
             selection_key = self.outputs_keys.value
         else:
-            selection_key = change['new']
+            selection_key = change["new"]
 
         with self.output_area:
             # Clear first to ensure that we are not showing the wrong thing.
