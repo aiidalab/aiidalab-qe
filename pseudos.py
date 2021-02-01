@@ -112,6 +112,8 @@ class PseudoFamilySelector(ipw.VBox):
     installed = traitlets.Bool()
     disabled = traitlets.Bool()
 
+    value = traitlets.Unicode(allow_none=True)
+
     def __init__(self, **kwargs):
         self.pseudo_family_selection = ipw.ToggleButtons(
             options={
@@ -119,6 +121,7 @@ class PseudoFamilySelector(ipw.VBox):
                 'SSSP accuracy': 'SSSP_1.1_precision',
             },
         )
+        ipw.link((self.pseudo_family_selection, 'value'), (self, 'value'))
         ipw.dlink((self, 'disabled'), (self.pseudo_family_selection, 'disabled'))
 
         # Setup pseudofamily potential selection group:

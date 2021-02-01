@@ -1,5 +1,6 @@
 """Widgets for the monitoring of processes."""
 import os
+import itertools
 from collections import deque
 from dataclasses import dataclass
 from threading import Thread, Event, Lock
@@ -130,6 +131,63 @@ class LogOutputWidget(ipw.VBox):
 
             self.last_lines.value = self._format_code('\n'.join(lines_to_show))
             self.raw_log.value = '\n'.join(self.lines)
+
+
+class ProcessMonitor(traitlets.HasTraits):
+    """Monitor a process and execute callback functions at specified intervals."""
+
+    process = traitlets.Instance(ProcessNode, allow_none=True)
+
+    def __init__(self, callbacks=None, timeout=None, **kwargs):
+        self.callbacks = [] if callbacks is None else list(callbacks)
+        self.timeout = .1 if timeout is None else timeout
+
+        self._monitor_thread = None
+        self._monitor_thread_stop = Event()
+        self._monitor_thread_lock = Lock()
+
+        super().__init__(**kwargs)
+
+    @traitlets.observe('process')
+    def _observe_process(self, change):
+        process = change['new']
+        if process is None or process.id != getattr(change['old'], 'id', None):
+            with self.hold_trait_notifications():
+                with self._monitor_thread_lock:
+                    # stop thread
+                    if self._monitor_thread is not None:
+                        self._monitor_thread_stop.set()
+                        self._monitor_thread.join()
+
+                    # reset output
+                    for callback, _ in self.callbacks:
+                        callback(None)
+
+                    # start monitor thread
+                    self._monitor_thread_stop.clear()
+                    process_id = getattr(process, 'id', None)
+                    self._monitor_thread = Thread(target=self._monitor_process, args=(process_id, ))
+                    self._monitor_thread.start()
+
+    def _monitor_process(self, process_id):
+        self._monitor_thread_stop.wait(timeout=10 * self.timeout)  # brief delay to increase app stability
+
+        process = None if process_id is None else load_node(process_id)
+
+        iterations = itertools.count()
+        while not (process is None or process.is_sealed):
+
+            iteration = next(iterations)
+            for callback, period in self.callbacks:
+                if iteration % period == 0:
+                    callback(process_id)
+
+            if self._monitor_thread_stop.wait(timeout=self.timeout):
+                break
+
+        # Final update:
+        for callback, _ in self.callbacks:
+            callback(process_id)
 
 
 class ProcessStatusWidget(ipw.VBox):

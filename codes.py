@@ -4,9 +4,6 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
-import itertools
-import threading
-
 from IPython.display import display, clear_output
 import ipywidgets as ipw
 import traitlets
@@ -15,6 +12,7 @@ from aiida.engine import ProcessState
 
 from aiidalab_widgets_base import CodeDropdown, viewer
 
+from process import ProcessMonitor
 from process import ProcessStatusWidget
 from wizard import WizardApp, WizardAppStep
 from pseudos import PseudoFamilySelector
@@ -166,8 +164,6 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.accordion.set_title(1, 'Status')
         self.accordion.set_title(2, 'Results (0)')
 
-        self.callbacks = list()
-
         ipw.dlink((self, 'disabled'), (self.skip_button, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.code_group.dropdown, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.resources.number_of_nodes, 'disabled'))
@@ -177,10 +173,12 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
 
-        # Set up process monitoring.
-        self._monitor_thread = None
-        self._monitor_thread_stop = threading.Event()
-        self._monitor_thread_lock = threading.Lock()
+        # Setup process monitor
+        self.process_monitor = ProcessMonitor(callbacks=[
+            (lambda _: self.process_status.update(), 1),
+            (self._refresh_outputs_keys, 1000),
+            ])
+        ipw.dlink((self, 'process'), (self.process_monitor, 'process'))
 
         super().__init__(children=[
             ipw.Label() if description is None else description,
@@ -251,48 +249,6 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
                 output_viewer_widget = viewer(data)
 
                 display(output_viewer_widget)
-
-    def _monitor_process(self, process_id, timeout=.1):
-        self._monitor_thread_stop.wait(timeout=10 * timeout)  # brief delay to increase app stability
-
-        process = None if process_id is None else load_node(process_id)
-
-        iteration = itertools.count()
-        while not (process is None or process.is_sealed):
-            if next(iteration) % round(100 / timeout) == 0:
-                self._refresh_outputs_keys(process_id)
-
-            self.process_status.update()
-            for callback in self.callbacks:
-                callback(self)
-
-            if self._monitor_thread_stop.wait(timeout=timeout):
-                break
-
-        # Final update:
-        self.process_status.update()
-        self._refresh_outputs_keys(process_id)
-
-    @traitlets.observe('process')
-    def _observe_process(self, change):
-        self._update_state()
-        process = change['new']
-        if process is None or process.id != getattr(change['old'], 'id', None):
-            with self.hold_trait_notifications():
-                with self._monitor_thread_lock:
-                    # stop thread
-                    if self._monitor_thread is not None:
-                        self._monitor_thread_stop.set()
-                        self._monitor_thread.join()
-
-                    # reset output
-                    self._refresh_outputs_keys(None)
-
-                    # start monitor thread
-                    self._monitor_thread_stop.clear()
-                    process_id = getattr(process, 'id', None)
-                    self._monitor_thread = threading.Thread(target=self._monitor_process, args=(process_id, ))
-                    self._monitor_thread.start()
 
     skip = False
 
