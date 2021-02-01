@@ -4,9 +4,6 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
-import itertools
-import threading
-
 from IPython.display import display, clear_output
 import ipywidgets as ipw
 import traitlets
@@ -15,38 +12,37 @@ from aiida.engine import ProcessState
 
 from aiidalab_widgets_base import CodeDropdown, viewer
 
+from process import ProcessMonitor
 from process import ProcessStatusWidget
 from wizard import WizardApp, WizardAppStep
-from pseudos import SSSPInstallWidget
+from pseudos import PseudoFamilySelector
 
 
 WARNING_ICON = '\u26A0'
 
 
-class CodeSubmitWidget(ipw.VBox, WizardAppStep):
+class ResourceSelectionWidget(ipw.HBox):
+    """Widget for the selection of compute (CPU) resources."""
 
-    process = traitlets.Instance(ProcessNode, allow_none=True)
-    disabled = traitlets.Bool()
+    resource_selection_prompt = ipw.HTML(
+        "Select the compute resources for this calculation.")
 
-    def _update_total_num_cpus(self, change):
-        self.total_num_cpus.value = self.number_of_nodes.value * self.cpus_per_node.value
+    resource_selection_help = ipw.HTML("""<div style="line-height:120%; padding-top:25px;">
+        <p>There is no general rule of thumb on how to select the appropriate number of
+        nodes and cores. In general:</p>
+        <ul>
+        <li>Increase the number of nodes if you run out of memory for larger structures.</li>
+        <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
+        </ul>
+        <p>However, specifying the optimal configuration of resources is a complex issue and
+        simply increasing either cores or nodes may not have the desired effect.</p></div>""")
 
-    def __init__(self, description=None, **kwargs):
-        setup_code_params = {
-            "computer": "localhost",
-            "description":  "pw.x in AiiDAlab container.",
-            "label": "pw",
-            "input_plugin": "quantumespresso.pw",
-            'remote_abs_path': '/usr/bin/pw.x',
-        }
-        self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
-        self.code_group.observe(lambda _: self._update_state(), ['selected_code'])
 
+    def __init__(self, **kwargs):
         extra = {
             'style': {'description_width': '150px'},
             'layout': {'max_width': '200px'}
         }
-
         self.number_of_nodes = ipw.BoundedIntText(
             value=1, step=1, min=1,
             description="# nodes",
@@ -66,52 +62,45 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.number_of_nodes.observe(self._update_total_num_cpus, 'value')
         self.cpus_per_node.observe(self._update_total_num_cpus, 'value')
 
-        resource_selection_prompt = ipw.HTML(
-            "Select the compute resources for this calculation.")
-        resource_selection_help = ipw.HTML("""<div style="line-height:120%; padding-top:25px;">
-            <p>There is no general rule of thumb on how to select the appropriate number of
-            nodes and cores. In general:</p>
-            <ul>
-            <li>Increase the number of nodes if you run out of memory for larger structures.</li>
-            <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
-            </ul>
-            <p>However, specifying the optimal configuration of resources is a complex issue and
-            simply increasing either cores or nodes may not have the desired effect.</p></div>""")
-        self.resources = ipw.HBox(children=[
+        super().__init__(children=[
             ipw.VBox(
                 children=[
-                    resource_selection_prompt,
+                    self.resource_selection_prompt,
                     self.number_of_nodes,
                     self.cpus_per_node,
                     self.total_num_cpus,
                 ],
                 layout=ipw.Layout(min_width='310px'),
             ),
-            resource_selection_help,
+            self.resource_selection_help,
         ])
 
-        # Setup pseudofamily potential selection group:
-        link_url = "https://www.materialscloud.org/discover/sssp/table/precision"
-        pseudo_family_prompt = ipw.HTML(
-            f'Select the <a href="{link_url}" target="_blank">pseudopotential library</a> for the calculation.')
-        pseudo_family_help = ipw.HTML("""
-            <div style="line-height:120%;">If you are unsure what to choose, select 'SSSP efficiency', which for most
-            calculations will produce sufficiently accurate results at comparatively small computational cost. If
-            your calculation requires a higher accuracy, select 'SSSP accuracy', which will be computationally more
-            expensive, but will produce even more accurate results.</div>""")
-        self.pseudo_family_selection = ipw.ToggleButtons(
-            options={
-                'SSSP efficiency': 'SSSP_1.1_efficiency',
-                'SSSP accuracy': 'SSSP_1.1_precision',
-            },
-        )
-        self.sssp_install_widget = SSSPInstallWidget()
+    def _update_total_num_cpus(self, change):
+        self.total_num_cpus.value = self.number_of_nodes.value * self.cpus_per_node.value
 
-        self.pseudo_family_group = ipw.VBox(children=[
-            pseudo_family_prompt,
-            ipw.HBox([self.pseudo_family_selection, self.sssp_install_widget]),
-            pseudo_family_help,
-            ])
+
+class CodeSubmitWidget(ipw.VBox, WizardAppStep):
+    """A step that concludes with the submission of a code."""
+
+    process = traitlets.Instance(ProcessNode, allow_none=True)
+    disabled = traitlets.Bool()
+
+    def __init__(self, description=None, **kwargs):
+        setup_code_params = {
+            "computer": "localhost",
+            "description":  "pw.x in AiiDAlab container.",
+            "label": "pw",
+            "input_plugin": "quantumespresso.pw",
+            'remote_abs_path': '/usr/bin/pw.x',
+        }
+        self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
+        self.code_group.observe(lambda _: self._update_state(), ['selected_code'])
+
+        # Setup pseudo potential family selection
+        self.pseudo_family_selector = PseudoFamilySelector()
+
+        # Setup the compute resources tab
+        self.resources = ResourceSelectionWidget()
 
         # Clicking on the 'submit' button will trigger the execution of the
         # submit() method.
@@ -142,7 +131,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.buttons = ipw.HBox(children=[self.submit_button, self.skip_button])
 
         self.config_tabs = ipw.Tab(
-            children=[self.code_group, self.pseudo_family_group, self.resources],
+            children=[self.code_group, self.pseudo_family_selector, self.resources],
             layout=ipw.Layout(height='200px'),
         )
         self.config_tabs.set_title(0, 'Code')
@@ -154,8 +143,8 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
             self.config_tabs.set_title(1, 'Pseudopotential' + ('' if change['new'] else f' {WARNING_ICON}'))
             self._observe_state(change=dict(new=self.state))  # trigger refresh
 
-        self.sssp_install_widget.observe(_observe_sssp_installed, 'installed')
-        _observe_sssp_installed(change=dict(new=self.sssp_install_widget.installed))  # init
+        self.pseudo_family_selector.observe(_observe_sssp_installed, 'installed')
+        _observe_sssp_installed(change=dict(new=self.pseudo_family_selector.installed))  # init
 
         self.process_status = ProcessStatusWidget()
         ipw.dlink((self, 'process'), (self.process_status, 'process'))
@@ -175,21 +164,21 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.accordion.set_title(1, 'Status')
         self.accordion.set_title(2, 'Results (0)')
 
-        self.callbacks = list()
-
         ipw.dlink((self, 'disabled'), (self.skip_button, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.code_group.dropdown, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.number_of_nodes, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.cpus_per_node, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.pseudo_family_selection, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.resources.number_of_nodes, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.resources.cpus_per_node, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.pseudo_family_selector, 'disabled'))
 
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
 
-        # Set up process monitoring.
-        self._monitor_thread = None
-        self._monitor_thread_stop = threading.Event()
-        self._monitor_thread_lock = threading.Lock()
+        # Setup process monitor
+        self.process_monitor = ProcessMonitor(callbacks=[
+            (lambda _: self.process_status.update(), 1),
+            (self._refresh_outputs_keys, 1000),
+            ])
+        ipw.dlink((self, 'process'), (self.process_monitor, 'process'))
 
         super().__init__(children=[
             ipw.Label() if description is None else description,
@@ -214,7 +203,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             self.disabled = change['new'] not in (WizardApp.State.READY, WizardApp.State.CONFIGURED) \
-                    or not self.sssp_install_widget.installed
+                    or not self.pseudo_family_selector.installed
             self.submit_button.disabled = change['new'] != WizardApp.State.CONFIGURED
 
             if change['new'] == WizardApp.State.ACTIVE:
@@ -225,8 +214,8 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         return {
             'max_wallclock_seconds': 3600*2,
             'resources': {
-                'num_machines': self.number_of_nodes.value,
-                'num_mpiprocs_per_machine': self.cpus_per_node.value}}
+                'num_machines': self.resources.number_of_nodes.value,
+                'num_mpiprocs_per_machine': self.resources.cpus_per_node.value}}
 
     def _refresh_outputs_keys(self, process_id):
         with self.hold_trait_notifications():
@@ -260,48 +249,6 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
                 output_viewer_widget = viewer(data)
 
                 display(output_viewer_widget)
-
-    def _monitor_process(self, process_id, timeout=.1):
-        self._monitor_thread_stop.wait(timeout=10 * timeout)  # brief delay to increase app stability
-
-        process = None if process_id is None else load_node(process_id)
-
-        iteration = itertools.count()
-        while not (process is None or process.is_sealed):
-            if next(iteration) % round(100 / timeout) == 0:
-                self._refresh_outputs_keys(process_id)
-
-            self.process_status.update()
-            for callback in self.callbacks:
-                callback(self)
-
-            if self._monitor_thread_stop.wait(timeout=timeout):
-                break
-
-        # Final update:
-        self.process_status.update()
-        self._refresh_outputs_keys(process_id)
-
-    @traitlets.observe('process')
-    def _observe_process(self, change):
-        self._update_state()
-        process = change['new']
-        if process is None or process.id != getattr(change['old'], 'id', None):
-            with self.hold_trait_notifications():
-                with self._monitor_thread_lock:
-                    # stop thread
-                    if self._monitor_thread is not None:
-                        self._monitor_thread_stop.set()
-                        self._monitor_thread.join()
-
-                    # reset output
-                    self._refresh_outputs_keys(None)
-
-                    # start monitor thread
-                    self._monitor_thread_stop.clear()
-                    process_id = getattr(process, 'id', None)
-                    self._monitor_thread = threading.Thread(target=self._monitor_process, args=(process_id, ))
-                    self._monitor_thread.start()
 
     skip = False
 
