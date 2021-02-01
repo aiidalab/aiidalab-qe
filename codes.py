@@ -23,30 +23,28 @@ from pseudos import SSSPInstallWidget
 WARNING_ICON = '\u26A0'
 
 
-class CodeSubmitWidget(ipw.VBox, WizardAppStep):
+class ResourceSelectionWidget(ipw.HBox):
+    """Widget for the selection of compute (CPU) resources."""
 
-    process = traitlets.Instance(ProcessNode, allow_none=True)
-    disabled = traitlets.Bool()
+    resource_selection_prompt = ipw.HTML(
+        "Select the compute resources for this calculation.")
 
-    def _update_total_num_cpus(self, change):
-        self.total_num_cpus.value = self.number_of_nodes.value * self.cpus_per_node.value
+    resource_selection_help = ipw.HTML("""<div style="line-height:120%; padding-top:25px;">
+        <p>There is no general rule of thumb on how to select the appropriate number of
+        nodes and cores. In general:</p>
+        <ul>
+        <li>Increase the number of nodes if you run out of memory for larger structures.</li>
+        <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
+        </ul>
+        <p>However, specifying the optimal configuration of resources is a complex issue and
+        simply increasing either cores or nodes may not have the desired effect.</p></div>""")
 
-    def __init__(self, description=None, **kwargs):
-        setup_code_params = {
-            "computer": "localhost",
-            "description":  "pw.x in AiiDAlab container.",
-            "label": "pw",
-            "input_plugin": "quantumespresso.pw",
-            'remote_abs_path': '/usr/bin/pw.x',
-        }
-        self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
-        self.code_group.observe(lambda _: self._update_state(), ['selected_code'])
 
+    def __init__(self, **kwargs):
         extra = {
             'style': {'description_width': '150px'},
             'layout': {'max_width': '200px'}
         }
-
         self.number_of_nodes = ipw.BoundedIntText(
             value=1, step=1, min=1,
             description="# nodes",
@@ -66,29 +64,40 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.number_of_nodes.observe(self._update_total_num_cpus, 'value')
         self.cpus_per_node.observe(self._update_total_num_cpus, 'value')
 
-        resource_selection_prompt = ipw.HTML(
-            "Select the compute resources for this calculation.")
-        resource_selection_help = ipw.HTML("""<div style="line-height:120%; padding-top:25px;">
-            <p>There is no general rule of thumb on how to select the appropriate number of
-            nodes and cores. In general:</p>
-            <ul>
-            <li>Increase the number of nodes if you run out of memory for larger structures.</li>
-            <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
-            </ul>
-            <p>However, specifying the optimal configuration of resources is a complex issue and
-            simply increasing either cores or nodes may not have the desired effect.</p></div>""")
-        self.resources = ipw.HBox(children=[
+        super().__init__(children=[
             ipw.VBox(
                 children=[
-                    resource_selection_prompt,
+                    self.resource_selection_prompt,
                     self.number_of_nodes,
                     self.cpus_per_node,
                     self.total_num_cpus,
                 ],
                 layout=ipw.Layout(min_width='310px'),
             ),
-            resource_selection_help,
+            self.resource_selection_help,
         ])
+
+    def _update_total_num_cpus(self, change):
+        self.total_num_cpus.value = self.number_of_nodes.value * self.cpus_per_node.value
+
+
+class CodeSubmitWidget(ipw.VBox, WizardAppStep):
+    """A step that concludes with the submission of a code."""
+
+    process = traitlets.Instance(ProcessNode, allow_none=True)
+    disabled = traitlets.Bool()
+
+    def __init__(self, description=None, **kwargs):
+        setup_code_params = {
+            "computer": "localhost",
+            "description":  "pw.x in AiiDAlab container.",
+            "label": "pw",
+            "input_plugin": "quantumespresso.pw",
+            'remote_abs_path': '/usr/bin/pw.x',
+        }
+        self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
+        self.code_group.observe(lambda _: self._update_state(), ['selected_code'])
+
 
         # Setup pseudofamily potential selection group:
         link_url = "https://www.materialscloud.org/discover/sssp/table/precision"
@@ -112,6 +121,9 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
             ipw.HBox([self.pseudo_family_selection, self.sssp_install_widget]),
             pseudo_family_help,
             ])
+
+        # Setup the compute resources tab
+        self.resources = ResourceSelectionWidget()
 
         # Clicking on the 'submit' button will trigger the execution of the
         # submit() method.
@@ -179,8 +191,8 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
 
         ipw.dlink((self, 'disabled'), (self.skip_button, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.code_group.dropdown, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.number_of_nodes, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.cpus_per_node, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.resources.number_of_nodes, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.resources.cpus_per_node, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.pseudo_family_selection, 'disabled'))
 
         # Initialize widget disabled status based on step state.
@@ -225,8 +237,8 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         return {
             'max_wallclock_seconds': 3600*2,
             'resources': {
-                'num_machines': self.number_of_nodes.value,
-                'num_mpiprocs_per_machine': self.cpus_per_node.value}}
+                'num_machines': self.resources.number_of_nodes.value,
+                'num_mpiprocs_per_machine': self.resources.cpus_per_node.value}}
 
     def _refresh_outputs_keys(self, process_id):
         with self.hold_trait_notifications():
