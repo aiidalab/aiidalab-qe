@@ -17,7 +17,7 @@ from aiidalab_widgets_base import CodeDropdown, viewer
 
 from process import ProcessStatusWidget
 from wizard import WizardApp, WizardAppStep
-from pseudos import SSSPInstallWidget
+from pseudos import PseudoFamilySelector
 
 
 WARNING_ICON = '\u26A0'
@@ -98,29 +98,8 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.code_group = CodeDropdown(input_plugin='quantumespresso.pw', text="Select code", setup_code_params=setup_code_params)
         self.code_group.observe(lambda _: self._update_state(), ['selected_code'])
 
-
-        # Setup pseudofamily potential selection group:
-        link_url = "https://www.materialscloud.org/discover/sssp/table/precision"
-        pseudo_family_prompt = ipw.HTML(
-            f'Select the <a href="{link_url}" target="_blank">pseudopotential library</a> for the calculation.')
-        pseudo_family_help = ipw.HTML("""
-            <div style="line-height:120%;">If you are unsure what to choose, select 'SSSP efficiency', which for most
-            calculations will produce sufficiently accurate results at comparatively small computational cost. If
-            your calculation requires a higher accuracy, select 'SSSP accuracy', which will be computationally more
-            expensive, but will produce even more accurate results.</div>""")
-        self.pseudo_family_selection = ipw.ToggleButtons(
-            options={
-                'SSSP efficiency': 'SSSP_1.1_efficiency',
-                'SSSP accuracy': 'SSSP_1.1_precision',
-            },
-        )
-        self.sssp_install_widget = SSSPInstallWidget()
-
-        self.pseudo_family_group = ipw.VBox(children=[
-            pseudo_family_prompt,
-            ipw.HBox([self.pseudo_family_selection, self.sssp_install_widget]),
-            pseudo_family_help,
-            ])
+        # Setup pseudo potential family selection
+        self.pseudo_family_selector = PseudoFamilySelector()
 
         # Setup the compute resources tab
         self.resources = ResourceSelectionWidget()
@@ -154,7 +133,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         self.buttons = ipw.HBox(children=[self.submit_button, self.skip_button])
 
         self.config_tabs = ipw.Tab(
-            children=[self.code_group, self.pseudo_family_group, self.resources],
+            children=[self.code_group, self.pseudo_family_selector, self.resources],
             layout=ipw.Layout(height='200px'),
         )
         self.config_tabs.set_title(0, 'Code')
@@ -166,8 +145,8 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
             self.config_tabs.set_title(1, 'Pseudopotential' + ('' if change['new'] else f' {WARNING_ICON}'))
             self._observe_state(change=dict(new=self.state))  # trigger refresh
 
-        self.sssp_install_widget.observe(_observe_sssp_installed, 'installed')
-        _observe_sssp_installed(change=dict(new=self.sssp_install_widget.installed))  # init
+        self.pseudo_family_selector.observe(_observe_sssp_installed, 'installed')
+        _observe_sssp_installed(change=dict(new=self.pseudo_family_selector.installed))  # init
 
         self.process_status = ProcessStatusWidget()
         ipw.dlink((self, 'process'), (self.process_status, 'process'))
@@ -193,7 +172,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
         ipw.dlink((self, 'disabled'), (self.code_group.dropdown, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.resources.number_of_nodes, 'disabled'))
         ipw.dlink((self, 'disabled'), (self.resources.cpus_per_node, 'disabled'))
-        ipw.dlink((self, 'disabled'), (self.pseudo_family_selection, 'disabled'))
+        ipw.dlink((self, 'disabled'), (self.pseudo_family_selector, 'disabled'))
 
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
@@ -226,7 +205,7 @@ class CodeSubmitWidget(ipw.VBox, WizardAppStep):
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             self.disabled = change['new'] not in (WizardApp.State.READY, WizardApp.State.CONFIGURED) \
-                    or not self.sssp_install_widget.installed
+                    or not self.pseudo_family_selector.installed
             self.submit_button.disabled = change['new'] != WizardApp.State.CONFIGURED
 
             if change['new'] == WizardApp.State.ACTIVE:

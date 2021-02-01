@@ -95,3 +95,38 @@ class SSSPInstallWidget(ipw.HBox):
     def download(self):
         thread = Thread(target=self._download)
         thread.start()
+
+
+class PseudoFamilySelector(ipw.VBox):
+
+    pseudo_family_prompt = ipw.HTML(
+        'Select the <a href="https://www.materialscloud.org/discover/sssp/table/precision" '
+        'target="_blank">pseudopotential library</a> for the calculation.')
+
+    pseudo_family_help = ipw.HTML("""
+        <div style="line-height:120%;">If you are unsure what to choose, select 'SSSP efficiency', which for most
+        calculations will produce sufficiently accurate results at comparatively small computational cost. If
+        your calculation requires a higher accuracy, select 'SSSP accuracy', which will be computationally more
+        expensive, but will produce even more accurate results.</div>""")
+
+    installed = traitlets.Bool()
+    disabled = traitlets.Bool()
+
+    def __init__(self, **kwargs):
+        self.pseudo_family_selection = ipw.ToggleButtons(
+            options={
+                'SSSP efficiency': 'SSSP_1.1_efficiency',
+                'SSSP accuracy': 'SSSP_1.1_precision',
+            },
+        )
+        ipw.dlink((self, 'disabled'), (self.pseudo_family_selection, 'disabled'))
+
+        # Setup pseudofamily potential selection group:
+        self.sssp_install_widget = SSSPInstallWidget()
+        ipw.dlink((self.sssp_install_widget, 'installed'), (self, 'installed'))
+
+        super().__init__(children=[
+            self.pseudo_family_prompt,
+            ipw.HBox([self.pseudo_family_selection, self.sssp_install_widget]),
+            self.pseudo_family_help,
+        ])
