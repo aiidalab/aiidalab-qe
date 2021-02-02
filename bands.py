@@ -66,23 +66,8 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
         )
         self.submit_button.on_click(self._on_submit_button_clicked)
 
-        # The 'skip' button is only shown when the skip() method is implemented.
-        self.skip_button = ipw.Button(
-            description="Skip",
-            icon="fast-forward",
-            button_style="info",
-            layout=ipw.Layout(width="auto", flex="1 1 auto"),
-            disabled=True,
-        )
-        if self.skip:  # skip() method is implemented
-            # connect with skip_button
-            self.skip_button.on_click(self.skip)  # connect with skip_button
-        else:  # skip() not implemented
-            # hide the button
-            self.skip_button.layout.visibility = "hidden"
-
         # Place all buttons at the footer of the widget.
-        self.buttons = ipw.HBox(children=[self.submit_button, self.skip_button])
+        self.buttons = ipw.HBox(children=[self.submit_button])
 
         self.config_tabs = ipw.Tab(
             children=[self.code_group, self.pseudo_family_selector, self.resources],
@@ -123,7 +108,6 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
         self.accordion.set_title(1, "Status")
         self.accordion.set_title(2, "Results (0)")
 
-        ipw.dlink((self, "disabled"), (self.skip_button, "disabled"))
         ipw.dlink((self, "disabled"), (self.code_group.dropdown, "disabled"))
         ipw.dlink((self, "disabled"), (self.resources.number_of_nodes, "disabled"))
         ipw.dlink((self, "disabled"), (self.resources.cpus_per_node, "disabled"))
@@ -287,8 +271,6 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
                 output_viewer_widget = viewer(data)
 
                 display(output_viewer_widget)
-
-    skip = False
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
