@@ -1,16 +1,24 @@
 """Widgets for the monitoring of processes."""
-import os
 import itertools
-from collections import deque
+import os
 from dataclasses import dataclass
 from threading import Thread, Event, Lock
 
 import traitlets
 import ipywidgets as ipw
+from IPython.display import clear_output
+from IPython.display import display
+from aiida.cmdline.utils.ascii_vis import calc_info
 from aiida.cmdline.utils.query.calculation import CalculationQueryBuilder
-from aiida.orm import load_node
+from aiida.engine import ProcessState
+from aiida.orm import CalcFunctionNode
+from aiida.orm import CalcJobNode
+from aiida.orm import Node
 from aiida.orm import ProcessNode
-from widgets import ProcessOutputFollower
+from aiida.orm import WorkChainNode
+from aiida.orm import load_node
+from ipytree import Node as TreeNode
+from ipytree import Tree
 
 
 def get_calc_job_output(process):
@@ -86,59 +94,6 @@ class ProgressBarWidget(ipw.VBox):
             return self.process.process_state.value
 
 
-class LogOutputWidget(ipw.VBox):
-    def __init__(self, title="Output:", num_lines_shown=3, **kwargs):
-        self.description = ipw.Label(value=title)
-        self.last_lines = ipw.HTML()
-
-        self.lines = []
-        self.lines_shown = deque([""] * num_lines_shown, maxlen=num_lines_shown)
-
-        self.raw_log = ipw.Textarea(
-            layout=ipw.Layout(
-                width="auto",
-                height="auto",
-                display="flex",
-                flex="1 1 auto",
-            ),
-            disabled=True,
-        )
-
-        self.accordion = ipw.Accordion(children=[self.raw_log])
-        self.accordion.set_title(0, "Raw log")
-        self.accordion.selected_index = None
-
-        self._update()
-        super().__init__(
-            children=[self.description, self.last_lines, self.accordion], **kwargs
-        )
-
-    def clear(self):
-        self.lines.clear()
-        self.lines_shown.clear()
-        self._update()
-
-    def append_line(self, line):
-        self.lines.append(line.strip())
-        self.lines_shown.append("{:03d}: {}".format(len(self.lines), line.strip()))
-        self._update()
-
-    @staticmethod
-    def _format_code(text):
-        return '<pre style="background-color: #1f1f2e; color: white;">{}</pre>'.format(
-            text
-        )
-
-    def _update(self):
-        with self.hold_trait_notifications():
-            lines_to_show = self.lines_shown.copy()
-            while len(lines_to_show) < self.lines_shown.maxlen:
-                lines_to_show.append(" ")
-
-            self.last_lines.value = self._format_code("\n".join(lines_to_show))
-            self.raw_log.value = "\n".join(self.lines)
-
-
 class ProcessMonitor(traitlets.HasTraits):
     """Monitor a process and execute callback functions at specified intervals."""
 
@@ -200,46 +155,6 @@ class ProcessMonitor(traitlets.HasTraits):
             callback(process_id)
 
 
-class ProcessStatusWidget(ipw.VBox):
-
-    process = traitlets.Instance(ProcessNode, allow_none=True)
-
-    def __init__(self, **kwargs):
-        self.progress_bar = ProgressBarWidget()
-        self.log_output = ProcessOutputFollower(
-            layout=ipw.Layout(min_height="150px", max_height="400px")
-        )
-        self.process_id_text = ipw.Text(
-            value="",
-            description="Process:",
-            layout=ipw.Layout(width="auto", flex="1 1 auto"),
-            disabled=True,
-        )
-        ipw.dlink(
-            (self, "process"),
-            (self.process_id_text, "value"),
-            transform=lambda proc: str(proc),
-        )
-        ipw.dlink((self, "process"), (self.log_output, "process"))
-        ipw.dlink((self, "process"), (self.progress_bar, "process"))
-
-        super().__init__(
-            children=[
-                self.progress_bar,
-                self.process_id_text,
-                self.log_output,
-            ],
-            **kwargs
-        )
-
-    @traitlets.observe("process")
-    def _observe_process(self, change):
-        self.update()
-
-    def update(self):
-        self.progress_bar.update()
-
-
 class WorkChainSelector(ipw.HBox):
 
     # The PK of a 'aiida.workflows:quantumespresso.pw.bands' WorkChainNode.
@@ -281,7 +196,7 @@ class WorkChainSelector(ipw.HBox):
 
         super().__init__(
             children=[self.work_chains_selector, self.refresh_work_chains_button],
-            **kwargs
+            **kwargs,
         )
 
     @dataclass
@@ -379,3 +294,230 @@ class WorkChainSelector(ipw.HBox):
             self.refresh_work_chains()
 
         self.work_chains_selector.value = new
+
+
+class AiidaNodeTreeNode(TreeNode):
+    def __init__(self, pk, name, **kwargs):
+        self.pk = pk
+        self.nodes_registry = dict()
+        super().__init__(name=name, **kwargs)
+
+    @traitlets.default("opened")
+    def _default_openend(self):
+        return False
+
+
+class AiidaProcessNodeTreeNode(AiidaNodeTreeNode):
+    def __init__(self, pk, **kwargs):
+        self.outputs_node = AiidaOutputsTreeNode(name="outputs", parent_pk=pk)
+        super().__init__(pk=pk, **kwargs)
+
+
+class WorkChainProcessTreeNode(AiidaProcessNodeTreeNode):
+    icon = traitlets.Unicode("chain").tag(sync=True)
+
+
+class CalcJobTreeNode(AiidaProcessNodeTreeNode):
+    icon = traitlets.Unicode("gears").tag(sync=True)
+
+
+class CalcFunctionTreeNode(AiidaProcessNodeTreeNode):
+    icon = traitlets.Unicode("gear").tag(sync=True)
+
+
+class AiidaOutputsTreeNode(TreeNode):
+    icon = traitlets.Unicode("folder").tag(sync=True)
+    disabled = traitlets.Bool(True).tag(sync=True)
+
+    def __init__(self, name, parent_pk, **kwargs):
+        self.parent_pk = parent_pk
+        self.nodes_registry = dict()
+        super().__init__(name=name, **kwargs)
+
+
+class UnknownTypeTreeNode(AiidaNodeTreeNode):
+    icon = traitlets.Unicode("file").tag(sync=True)
+
+
+class NodesTreeWidget(ipw.Output):
+    """A tree widget for the structured representation of a nodes graph."""
+
+    nodes = traitlets.Tuple().tag(trait=traitlets.Instance(Node))
+    selected_nodes = traitlets.Tuple(read_only=True).tag(trait=traitlets.Instance(Node))
+
+    PROCESS_STATE_STYLE = {
+        ProcessState.EXCEPTED: "danger",
+        ProcessState.FINISHED: "success",
+        ProcessState.KILLED: "warning",
+        ProcessState.RUNNING: "info",
+        ProcessState.WAITING: "info",
+    }
+
+    PROCESS_STATE_STYLE_DEFAULT = "default"
+
+    NODE_TYPE = {
+        WorkChainNode: WorkChainProcessTreeNode,
+        CalcFunctionNode: CalcFunctionTreeNode,
+        CalcJobNode: CalcJobTreeNode,
+    }
+
+    def __init__(self, **kwargs):
+        self._tree = Tree()
+        self._tree.observe(self._observe_tree_selected_nodes, ["selected_nodes"])
+
+        super().__init__(**kwargs)
+
+    def _refresh_output(self):
+        # There appears to be a bug in the ipytree implementation that sometimes
+        # causes the output to not be properly cleared. We therefore refresh the
+        # displayed tree upon change of the process trait.
+        with self:
+            clear_output()
+            display(self._tree)
+
+    def _observe_tree_selected_nodes(self, change):
+        return self.set_trait(
+            "selected_nodes",
+            tuple(
+                load_node(pk=node.pk) for node in change["new"] if hasattr(node, "pk")
+            ),
+        )
+
+    def _convert_to_tree_nodes(self, old_nodes, new_nodes):
+        "Convert nodes into tree nodes while re-using already converted nodes."
+        old_nodes_ = {node.pk: node for node in old_nodes}
+        assert len(old_nodes_) == len(old_nodes)  # no duplicated nodes
+
+        for node in new_nodes:
+            if node.pk in old_nodes_:
+                yield old_nodes_[node.pk]
+            else:
+                yield self._to_tree_node(node, opened=True)
+
+    @traitlets.observe("nodes")
+    def _observe_nodes(self, change):
+        self._tree.nodes = list(
+            sorted(
+                self._convert_to_tree_nodes(
+                    old_nodes=self._tree.nodes, new_nodes=change["new"]
+                ),
+                key=lambda node: node.pk,
+            )
+        )
+        self.update()
+        self._refresh_output()
+
+    @classmethod
+    def _to_tree_node(cls, node, name=None, **kwargs):
+        """Convert an AiiDA node to a tree node."""
+        if name is None:
+            if isinstance(node, ProcessNode):
+                name = calc_info(node)
+            else:
+                name = str(node)
+        return cls.NODE_TYPE.get(type(node), UnknownTypeTreeNode)(
+            pk=node.pk, name=name, **kwargs
+        )
+
+    @classmethod
+    def _find_called(cls, root):
+        assert isinstance(root, AiidaProcessNodeTreeNode)
+        process_node = load_node(root.pk)
+        called = process_node.called
+        called.sort(key=lambda p: p.ctime)
+        for node in called:
+            if node.pk not in root.nodes_registry:
+                root.nodes_registry[node.pk] = cls._to_tree_node(
+                    node, name=calc_info(node)
+                )
+            yield root.nodes_registry[node.pk]
+
+    @classmethod
+    def _find_outputs(cls, root):
+        assert isinstance(root, AiidaOutputsTreeNode)
+        process_node = load_node(root.parent_pk)
+        outputs = {k: process_node.outputs[k] for k in process_node.outputs}
+        for key in sorted(outputs.keys(), key=lambda k: outputs[k].pk):
+            output_node = outputs[key]
+            if output_node.pk not in root.nodes_registry:
+                root.nodes_registry[output_node.pk] = cls._to_tree_node(
+                    output_node, name=f"{key}<{output_node.pk}>"
+                )
+            yield root.nodes_registry[output_node.pk]
+
+    @classmethod
+    def _find_children(cls, root):
+        """Find all children of the provided AiiDA node."""
+        if isinstance(root, AiidaProcessNodeTreeNode):
+            yield root.outputs_node
+            yield from cls._find_called(root)
+        elif isinstance(root, AiidaOutputsTreeNode):
+            yield from cls._find_outputs(root)
+
+    @classmethod
+    def _build_tree(cls, root):
+        """Recursively build a tree nodes graph for a given tree node."""
+        root.nodes = [cls._build_tree(child) for child in cls._find_children(root)]
+        return root
+
+    @classmethod
+    def _walk_tree(cls, root):
+        """Breadth-first search of the node tree."""
+        yield root
+        for node in root.nodes:
+            yield from cls._walk_tree(node)
+
+    def _update_tree_node(self, tree_node):
+        if isinstance(tree_node, AiidaProcessNodeTreeNode):
+            process_node = load_node(tree_node.pk)
+            tree_node.name = calc_info(process_node)
+            tree_node.icon_style = self.PROCESS_STATE_STYLE.get(
+                process_node.process_state, self.PROCESS_STATE_STYLE_DEFAULT
+            )
+
+    def update(self, _=None):
+        """Refresh nodes based on the latest state of the root process and its children."""
+        for root_node in self._tree.nodes:
+            self._build_tree(root_node)
+            for tree_node in self._walk_tree(root_node):
+                self._update_tree_node(tree_node)
+
+
+class ProcessNodesTreeWidget(ipw.VBox):
+    """A tree widget for the structured representation of a process graph.
+
+    Args:
+        refresh_period:
+            The time period in between updates to the process tree view in seconds.
+    """
+
+    process = traitlets.Instance(ProcessNode, allow_none=True)
+    selected_nodes = traitlets.Tuple(read_only=True).tag(trait=traitlets.Instance(Node))
+
+    def __init__(self, refresh_period=0.2, **kwargs):
+        self._tree = NodesTreeWidget()
+        ipw.dlink(
+            (self, "process"),
+            (self._tree, "nodes"),
+            transform=lambda process: [process] if process else [],
+        )
+        self._tree.observe(self._observe_tree_selected_nodes, ["selected_nodes"])
+
+        if refresh_period > 0:
+            self._process_monitor = ProcessMonitor(
+                timeout=refresh_period,
+                callbacks=[
+                    (self.update, 1),
+                ],
+            )
+            ipw.dlink((self, "process"), (self._process_monitor, "process"))
+        else:
+            self._process_monitor = None  # externally managed
+
+        super().__init__(children=[self._tree], **kwargs)
+
+    def _observe_tree_selected_nodes(self, change):
+        self.set_trait("selected_nodes", change["new"])
+
+    def update(self, _=None):
+        self._tree.update()
