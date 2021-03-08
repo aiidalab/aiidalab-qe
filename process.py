@@ -482,6 +482,12 @@ class NodesTreeWidget(ipw.Output):
             for tree_node in self._walk_tree(root_node):
                 self._update_tree_node(tree_node)
 
+    def find_node(self, pk):
+        for node in self._walk_tree(self._tree):
+            if getattr(node, "pk", None) == pk:
+                return node
+        raise KeyError(pk)
+
 
 class ProcessNodesTreeWidget(ipw.VBox):
     """A tree widget for the structured representation of a process graph.
@@ -496,11 +502,6 @@ class ProcessNodesTreeWidget(ipw.VBox):
 
     def __init__(self, refresh_period=0.2, **kwargs):
         self._tree = NodesTreeWidget()
-        ipw.dlink(
-            (self, "process"),
-            (self._tree, "nodes"),
-            transform=lambda process: [process] if process else [],
-        )
         self._tree.observe(self._observe_tree_selected_nodes, ["selected_nodes"])
 
         if refresh_period > 0:
@@ -521,3 +522,12 @@ class ProcessNodesTreeWidget(ipw.VBox):
 
     def update(self, _=None):
         self._tree.update()
+
+    @traitlets.observe("process")
+    def _observe_process(self, change):
+        process = change["new"]
+        if process:
+            self._tree.nodes = [process]
+            self._tree.find_node(process.pk).selected = True
+        else:
+            self._tree.nodes = []
