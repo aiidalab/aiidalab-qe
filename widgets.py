@@ -1,55 +1,39 @@
+"""Widgets for the QE app.
+
+Authors:
+
+    * Carl Simon Adorf <simon.adorf@epfl.ch>
+"""
+
 import base64
 from tempfile import NamedTemporaryFile
-from threading import Thread, Event, Lock
-from queue import Queue, Empty
-from collections import defaultdict
-from itertools import count
+from threading import Event
+from threading import Lock
+from threading import Thread
+from queue import Queue
 
-import traitlets
 import ipywidgets as ipw
-
-from aiida.orm import CalcJobNode, ProcessNode
+import traitlets
+from aiida.orm import CalcJobNode
+from aiida.orm import Node
+from aiidalab_widgets_base import viewer
+from aiidalab_widgets_base import register_viewer_widget
+from IPython.display import clear_output
+from IPython.display import display
 
 
 __all__ = [
-    "ProcessOutputFollower",
+    "CalcJobOutputFollower",
+    "LogOutputWidget",
+    "NodeViewWidget",
 ]
-
-
-_EOF = None
-
-
-def _get_calcjobs(process):
-    for called in process.called:
-        if isinstance(called, CalcJobNode):
-            yield called
-
-        elif isinstance(called, ProcessNode):
-            yield from _get_calcjobs(called)
-
-        else:
-            raise TypeError(called)
-
-
-def _get_output(calcjob):
-    assert isinstance(calcjob, CalcJobNode)
-    if "remote_folder" in calcjob.outputs:
-        try:
-            fn_out = calcjob.attributes["output_filename"]
-            with NamedTemporaryFile() as tmpfile:
-                calcjob.outputs.remote_folder.getfile(fn_out, tmpfile.name)
-                return tmpfile.read().decode().splitlines()
-        except OSError:
-            return list()
-    else:
-        return list()
 
 
 class LogOutputWidget(ipw.VBox):
 
     value = traitlets.Tuple(traitlets.Unicode(), traitlets.Unicode())
 
-    def __init__(self, num_min_lines=10, **kwargs):
+    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):
         self._num_min_lines = num_min_lines
 
         self._filename = ipw.Text(
@@ -59,8 +43,10 @@ class LogOutputWidget(ipw.VBox):
             layout=ipw.Layout(flex="1 1 auto", width="auto"),
         )
 
-        self._output = ipw.HTML(layout=ipw.Layout(min_width="60em"))
-        self._output_container = ipw.VBox(children=[self._output])
+        self._output = ipw.HTML(layout=ipw.Layout(min_width="50em"))
+        self._output_container = ipw.VBox(
+            children=[self._output], layout=ipw.Layout(max_height=max_output_height)
+        )
         self._download_link = ipw.HTML(layout=ipw.Layout(width="auto"))
 
         self._refresh_output()
@@ -91,6 +77,8 @@ class LogOutputWidget(ipw.VBox):
             html_download = f'<a download="{filename}" href="data:text/plain;base64,{payload}" target="_blank">Download</a>'
             self._download_link.value = html_download
 
+    style = "background-color: #253239; color: #cdd3df; line-height: normal"
+
     def _format_output(self, text):
         lines = text.splitlines()
 
@@ -105,44 +93,29 @@ class LogOutputWidget(ipw.VBox):
             lines[0] = "[waiting for output]"
 
         text = "\n".join(lines)
-        return '<pre style="background-color: #1f1f2e; color: white; line-height: 100%">{}</pre>'.format(
-            text
-        )
+        return f"""<pre style="{self.style}">{text}</pre>"""
 
 
-class ProcessOutputFollower(ipw.VBox):
+class CalcJobOutputFollower(traitlets.HasTraits):
 
-    process = traitlets.Instance(ProcessNode, allow_none=True)
+    calcjob = traitlets.Instance(CalcJobNode, allow_none=True)
+    filename = traitlets.Unicode(allow_none=True)
+    output = traitlets.List(trait=traitlets.Unicode)
+    lineno = traitlets.Int()
 
     def __init__(self, **kwargs):
-        # Setup the output queue and widgets.
-        self._calcjobs = dict()
-
         self._output_queue = Queue()
-        self._output = defaultdict(list)
-        self._most_recently_updated_calcjob = None
 
         self._lock = Lock()
-        self._push_threads = dict()
-        self._stop_monitor_process = Event()
+        self._push_thread = None
         self._pull_thread = None
-        self._monitor_process_thread = None
+        self._stop_follow_output = Event()
+        self._follow_output_thread = None
 
-        # This is the widget showing the various outputs.
-        self._log_output = LogOutputWidget()
+        super().__init__(**kwargs)
 
-        # Setup selector which the user can use to select the displayed output node.
-        self.selector = ipw.Dropdown(
-            description="Calcjob:", layout=ipw.Layout(width="auto", flex="1 1 auto")
-        )
-        # Update the output widget when a different calcjob is selected.
-        self.selector.observe(self._update, names=["value"])
-
-        super().__init__(children=[self.selector, self._log_output], **kwargs)
-
-    @traitlets.observe("process")
-    def _observe_process(self, change):
-        # Process any remaining items on the queue until it is empty.
+    @traitlets.observe("calcjob")
+    def _observe_calcjob(self, change):
         try:
             if change["old"].pk == change["new"].pk:
                 # Old and new process are identical.
@@ -151,134 +124,170 @@ class ProcessOutputFollower(ipw.VBox):
             pass
 
         with self._lock:
-            self._stop_monitor_process.set()
+            # Stop following
+            self._stop_follow_output.set()
 
-            if self._monitor_process_thread:
-                self._monitor_process_thread.join()
-                self._monitor_process_thread = None
+            if self._follow_output_thread:
+                self._follow_output_thread.join()
+                self._follow_output_thread = None
 
-            # Reset all widgets
-            self._update_calcjobs(None)
-            self._update()
-            self._stop_monitor_process.clear()
+            # Reset all traitlets and signals.
+            self.output.clear()
+            self.lineno = 0
+            self._stop_follow_output.clear()
 
+            # (Re/)start following
             if change["new"]:
-                self._monitor_process_thread = Thread(
-                    target=self._monitor_process, args=(change["new"],)
+                self._follow_output_thread = Thread(
+                    target=self._follow_output, args=(change["new"],)
                 )
-                self._monitor_process_thread.start()
+                self._follow_output_thread.start()
 
-    def _update_calcjobs(self, process):
-        """Update the list of available calcjobs."""
-        if process is None:
-            with self.hold_trait_notifications():
-                self._calcjobs = dict()
-                self.selector.options = []
-                self.selector.value = None
-                return
+    def _follow_output(self, calcjob):
+        """Monitor calcjob and orchestrate pushing and pulling of output."""
+        self._pull_thread = Thread(target=self._pull_output, args=(calcjob,))
+        self._pull_thread.start()
+        self._push_thread = Thread(target=self._push_output, args=(calcjob,))
+        self._push_thread.start()
 
-        self._calcjobs = {cj.pk: cj for cj in _get_calcjobs(process)}
+    def _fetch_output(self, calcjob):
+        assert isinstance(calcjob, CalcJobNode)
+        if "remote_folder" in calcjob.outputs:
+            try:
+                fn_out = calcjob.attributes["output_filename"]
+                self.filename = fn_out
+                with NamedTemporaryFile() as tmpfile:
+                    calcjob.outputs.remote_folder.getfile(fn_out, tmpfile.name)
+                    return tmpfile.read().decode().splitlines()
+            except OSError:
+                return list()
+        else:
+            return list()
 
-        with self.hold_trait_notifications():
-            previous_calcjobs = {
-                pk for _, pk in self.selector.options if pk is not None
-            }
-            new_calcjobs = set(self._calcjobs)
-
-            if new_calcjobs != previous_calcjobs:
-                options = [("<latest>", self._SHOW_MOST_RECENTLY_UPDATED)] + [
-                    (str(self._calcjobs[pk]), pk) for pk in sorted(self._calcjobs)
-                ]
-
-                previously_selected = self.selector.value
-                self.selector.options = options
-                if previously_selected in self.selector.options:
-                    self.selector.value = previously_selected
-
-    def _start_push_threads(self):
-        """Start push threads for calcjobs where thread is not started yet."""
-        for pk, calcjob in self._calcjobs.items():
-            if pk not in self._push_threads:
-                push_thread = Thread(target=self._push_output, args=(calcjob,))
-                self._push_threads[pk] = push_thread
-                push_thread.start()
-
-    def _monitor_process(self, process):
-        """Monitor process and orchestrate pushing and pulling of output."""
-        i = count()
-        while not process.is_sealed:
-            if next(i) % 10 == 0:
-                self._update_calcjobs(process)
-                self._start_push_threads()
-
-            # Pull all new output and update widget.
-            self._pull_output(timeout=0.1)
-            self._update()
-
-            if self._stop_monitor_process.wait(0.1):
-                break
-
-        # One final search, push, pull, and update.
-        self._update_calcjobs(process)
-        self._start_push_threads()
-        self._pull_output(timeout=3)
-        self._update()
+    _EOF = None
 
     def _push_output(self, calcjob, delay=0.2):
         """Push new log lines onto the queue."""
         lineno = 0
         while True:
             try:
-                lines = _get_output(calcjob)
+                lines = self._fetch_output(calcjob)
             except Exception as error:
-                self._output_queue.put((calcjob, [f"[ERROR: {error}]"]))
+                self._output_queue.put([f"[ERROR: {error}]"])
             else:
-                self._output_queue.put((calcjob, lines[lineno:]))
+                self._output_queue.put(lines[lineno:])
                 lineno = len(lines)
             finally:
-                if calcjob.is_sealed or self._stop_monitor_process.wait(delay):
-                    self._output_queue.put((calcjob, _EOF))
+                if calcjob.is_sealed or self._stop_follow_output.wait(delay):
+                    # Pushing EOF signals to the pull thread to stop.
+                    self._output_queue.put(self._EOF)
                     break
 
-    def _pull_output(self, timeout=None):
-        """Pull new log lines from the queue and update output widget."""
+    def _pull_output(self, calcjob):
+        """Pull new log lines from the queue and update traitlets."""
         while True:
-            try:
-                calcjob, item = self._output_queue.get(timeout=timeout)
-            except Empty:
+            item = self._output_queue.get()
+            if item is self._EOF:
+                self._output_queue.task_done()
                 break
-            else:
-                if item is _EOF:
-                    self._push_threads[calcjob.pk].join()
-                else:
-                    self._output[calcjob.pk].extend(item)
-                self._most_recently_updated_calcjob = calcjob.pk
+            else:  # item is 'new lines'
+                with self.hold_trait_notifications():
+                    self.output.extend(item)
+                    self.lineno += len(item)
                 self._output_queue.task_done()
 
-    _SHOW_MOST_RECENTLY_UPDATED = -1
-    """Internal constant to signal that the widget should show the most recently updated output."""
 
-    def _update(self, change=None):
-        """Update the output widgets."""
-        if change and (change["old"] == change["new"]):
-            return
+@register_viewer_widget("process.calculation.calcjob.CalcJobNode.")
+class CalcJobNodeViewerWidget(ipw.VBox):
+    def __init__(self, calcjob, **kwargs):
+        self.calcjob = calcjob
+        self.output_follower = CalcJobOutputFollower()
+        self.log_output = LogOutputWidget()
 
-        with self.hold_trait_notifications():
-            pk = self.selector.value if change is None else change["new"]
+        self.output_follower.observe(self._observe_output_follower_lineno, ["lineno"])
+        self.output_follower.calcjob = self.calcjob
 
-            if pk is self._SHOW_MOST_RECENTLY_UPDATED:
-                calcjob = self._calcjobs.get(self._most_recently_updated_calcjob)
-                restrict_num_lines = -10
-            else:
-                calcjob = self._calcjobs.get(pk)
-                restrict_num_lines = None
+        super().__init__(
+            [ipw.HTML(f"CalcJob: {self.calcjob}"), self.log_output], **kwargs
+        )
 
-            if calcjob is None:
-                self._log_output.value = "", ""
-            else:
-                try:
-                    filename = calcjob.attributes["output_filename"]
-                    lines = self._output[calcjob.pk][restrict_num_lines:]
-                    self._log_output.value = filename, "\n".join(lines)
-                except Exception as error:
-                    self._log_output.value = "", f"[ERROR: {error}]"
+    def _observe_output_follower_lineno(self, change):
+        restrict_num_lines = None if self.calcjob.is_sealed else -10
+        new_lines = "\n".join(self.output_follower.output[restrict_num_lines:])
+        self.log_output.value = self.output_follower.filename, new_lines
+
+
+class NodeViewWidget(ipw.VBox):
+
+    node = traitlets.Instance(Node, allow_none=True)
+
+    def __init__(self, **kwargs):
+        self._output = ipw.Output()
+        super().__init__(children=[self._output], **kwargs)
+
+    @traitlets.observe("node")
+    def _observe_node(self, change):
+        if change["new"] != change["old"]:
+            with self._output:
+                clear_output()
+                if change["new"]:
+                    display(viewer(change["new"]))
+
+
+class ResourceSelectionWidget(ipw.HBox):
+    """Widget for the selection of compute (CPU) resources."""
+
+    resource_selection_prompt = ipw.HTML(
+        "Select the compute resources for this calculation."
+    )
+
+    resource_selection_help = ipw.HTML(
+        """<div style="line-height:120%; padding-top:25px;">
+        <p>There is no general rule of thumb on how to select the appropriate number of
+        nodes and cores. In general:</p>
+        <ul>
+        <li>Increase the number of nodes if you run out of memory for larger structures.</li>
+        <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
+        </ul>
+        <p>However, specifying the optimal configuration of resources is a complex issue and
+        simply increasing either cores or nodes may not have the desired effect.</p></div>"""
+    )
+
+    def __init__(self, **kwargs):
+        extra = {
+            "style": {"description_width": "150px"},
+            "layout": {"max_width": "200px"},
+        }
+        self.number_of_nodes = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="# nodes", disabled=False, **extra
+        )
+        self.cpus_per_node = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="# cpus per node", **extra
+        )
+        self.total_num_cpus = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="# total cpus", disabled=True, **extra
+        )
+
+        # Update the total # of CPUs int text:
+        self.number_of_nodes.observe(self._update_total_num_cpus, "value")
+        self.cpus_per_node.observe(self._update_total_num_cpus, "value")
+
+        super().__init__(
+            children=[
+                ipw.VBox(
+                    children=[
+                        self.resource_selection_prompt,
+                        self.number_of_nodes,
+                        self.cpus_per_node,
+                        self.total_num_cpus,
+                    ],
+                    layout=ipw.Layout(min_width="310px"),
+                ),
+                self.resource_selection_help,
+            ]
+        )
+
+    def _update_total_num_cpus(self, change):
+        self.total_num_cpus.value = (
+            self.number_of_nodes.value * self.cpus_per_node.value
+        )
