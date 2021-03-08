@@ -8,17 +8,17 @@ import ipywidgets as ipw
 import traitlets
 from aiida.engine import ProcessState
 from aiida.engine import submit
-from aiidalab_widgets_base import CodeDropdown, viewer
-from aiida.orm import load_node, ProcessNode
+from aiidalab_widgets_base import CodeDropdown
+from aiida.orm import ProcessNode
 from aiida.orm import StructureData, Float, Str, BandsData
 from aiida.plugins import WorkflowFactory
-from IPython.display import display, clear_output
 
-from codes import ResourceSelectionWidget
 from process import ProcessMonitor
-from process import ProcessStatusWidget
+from process import ProcessNodesTreeWidget
 from pseudos import PseudoFamilySelector
 from util import load_default_parameters
+from widgets import NodeViewWidget
+from widgets import ResourceSelectionWidget
 from wizard import WizardApp, WizardAppStep
 
 
@@ -89,24 +89,25 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
             change=dict(new=self.pseudo_family_selector.installed)
         )  # init
 
-        self.process_status = ProcessStatusWidget()
-        ipw.dlink((self, "process"), (self.process_status, "process"))
-
-        self.outputs_keys = ipw.Dropdown()
-        self.outputs_keys.observe(
-            self._refresh_outputs_view, names=["options", "value"]
+        self.process_tree = ProcessNodesTreeWidget(
+            refresh_period=-1,  # managed within this class,
         )
-        self.output_area = ipw.Output(
+        ipw.dlink((self, "process"), (self.process_tree, "process"))
+
+        self.node_view = NodeViewWidget(
             layout={"width": "auto", "height": "auto", "border": "1px solid black"}
         )
-        self.results_view = ipw.VBox(children=[self.outputs_keys, self.output_area])
-
-        self.accordion = ipw.Accordion(
-            children=[self.config_tabs, self.process_status, self.results_view]
+        ipw.dlink(
+            (self.process_tree, "selected_nodes"),
+            (self.node_view, "node"),
+            transform=lambda nodes: nodes[0] if nodes else None,
         )
+
+        self.process_status = ipw.VBox(children=[self.process_tree, self.node_view])
+
+        self.accordion = ipw.Accordion(children=[self.config_tabs, self.process_status])
         self.accordion.set_title(0, "Config")
-        self.accordion.set_title(1, "Status")
-        self.accordion.set_title(2, "Results (0)")
+        self.accordion.set_title(1, "Status and Results")
 
         ipw.dlink((self, "disabled"), (self.code_group.dropdown, "disabled"))
         ipw.dlink((self, "disabled"), (self.resources.number_of_nodes, "disabled"))
@@ -118,10 +119,10 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
 
         # Setup process monitor
         self.process_monitor = ProcessMonitor(
+            timeout=0.2,  # run every half second
             callbacks=[
-                (lambda _: self.process_status.update(), 1),
-                (self._refresh_outputs_keys, 1000),
-            ]
+                (self.process_tree.update, 1),
+            ],
         )
         ipw.dlink((self, "process"), (self.process_monitor, "process"))
 
@@ -235,42 +236,6 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
                 "num_mpiprocs_per_machine": self.resources.cpus_per_node.value,
             },
         }
-
-    def _refresh_outputs_keys(self, process_id):
-        with self.hold_trait_notifications():
-            if process_id is None:
-                self.outputs_keys.options = ["[No outputs]"]
-                self.outputs_keys.disabled = True
-                return None
-
-            process_node = load_node(process_id)
-            self.outputs_keys.options = ["[Select output]"] + [
-                str(o) for o in process_node.outputs
-            ]
-            if "band_structure" in process_node.outputs:
-                self.band_structure = process_node.outputs.band_structure
-            self.outputs_keys.disabled = False
-            return process_node
-
-    def _refresh_outputs_view(self, change=None):
-        self.accordion.set_title(2, f"Results ({len(self.outputs_keys.options)-1})")
-
-        if change is None or change["name"] == "options":
-            selection_key = self.outputs_keys.value
-        else:
-            selection_key = change["new"]
-
-        with self.output_area:
-            # Clear first to ensure that we are not showing the wrong thing.
-            clear_output()
-
-            if self.outputs_keys.index and selection_key is not None:
-                # Load data
-                process_node = load_node(self.process.id)
-                data = process_node.outputs[selection_key]
-                output_viewer_widget = viewer(data)
-
-                display(output_viewer_widget)
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
