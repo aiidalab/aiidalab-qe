@@ -10,7 +10,7 @@ from aiida.engine import ProcessState
 from aiida.engine import submit
 from aiidalab_widgets_base import CodeDropdown
 from aiida.orm import ProcessNode
-from aiida.orm import StructureData, Float, Str, BandsData
+from aiida.orm import StructureData, Float, Str
 from aiida.plugins import WorkflowFactory
 
 from process import ProcessMonitor
@@ -25,11 +25,10 @@ from wizard import WizardApp, WizardAppStep
 WARNING_ICON = "\u26A0"
 
 
-class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
+class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     """Step for submission of a bands workchain."""
 
     input_structure = traitlets.Instance(StructureData, allow_none=True)
-    band_structure = traitlets.Instance(BandsData, allow_none=True)
 
     process = traitlets.Instance(ProcessNode, allow_none=True)
     disabled = traitlets.Bool()
@@ -89,26 +88,6 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
             change=dict(new=self.pseudo_family_selector.installed)
         )  # init
 
-        self.process_tree = ProcessNodesTreeWidget(
-            refresh_period=-1,  # managed within this class,
-        )
-        ipw.dlink((self, "process"), (self.process_tree, "process"))
-
-        self.node_view = NodeViewWidget(
-            layout={"width": "auto", "height": "auto", "border": "1px solid black"}
-        )
-        ipw.dlink(
-            (self.process_tree, "selected_nodes"),
-            (self.node_view, "node"),
-            transform=lambda nodes: nodes[0] if nodes else None,
-        )
-
-        self.process_status = ipw.VBox(children=[self.process_tree, self.node_view])
-
-        self.accordion = ipw.Accordion(children=[self.config_tabs, self.process_status])
-        self.accordion.set_title(0, "Config")
-        self.accordion.set_title(1, "Status and Results")
-
         ipw.dlink((self, "disabled"), (self.code_group.dropdown, "disabled"))
         ipw.dlink((self, "disabled"), (self.resources.number_of_nodes, "disabled"))
         ipw.dlink((self, "disabled"), (self.resources.cpus_per_node, "disabled"))
@@ -117,21 +96,12 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
 
-        # Setup process monitor
-        self.process_monitor = ProcessMonitor(
-            timeout=0.2,  # run every half second
-            callbacks=[
-                (self.process_tree.update, 1),
-            ],
-        )
-        ipw.dlink((self, "process"), (self.process_monitor, "process"))
-
         super().__init__(
             children=[
                 ipw.Label(
                     'Specify the parameters and options for the calculation and then click on "Submit".'
                 ),
-                self.accordion,
+                self.config_tabs,
                 self.buttons,
             ],
             **kwargs,
@@ -140,49 +110,28 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
     def _update_state(self):
         if self.process is None:
             if self.input_structure is None:
-                if self.band_structure is None:
-                    self.state = WizardApp.State.INIT
-                else:
-                    self.state = WizardApp.State.FAIL
-            else:
-                if self.band_structure is None:
-                    if self.code_group.selected_code is None:
-                        self.state = WizardApp.State.READY
-                    else:
-                        self.state = WizardApp.State.CONFIGURED
-                else:
-                    self.state = WizardApp.State.SUCCESS
-        else:
-            process_state = self.process.process_state
-            if process_state in (
-                ProcessState.CREATED,
-                ProcessState.RUNNING,
-                ProcessState.WAITING,
+                self.state = WizardApp.State.INIT
+            elif (
+                self.code_group.selected_code is None
+                or not self.pseudo_family_selector.installed
             ):
-                self.state = WizardApp.State.ACTIVE
-            elif process_state in (ProcessState.EXCEPTED, ProcessState.KILLED):
-                self.state = WizardApp.State.FAIL
-            elif process_state is ProcessState.FINISHED:
-                self.state = WizardApp.State.SUCCESS
+                self.state = WizardApp.State.READY
+            else:
+                self.state = WizardApp.State.CONFIGURED
+        else:
+            self.state = WizardApp.State.SUCCESS
 
     @traitlets.observe("state")
     def _observe_state(self, change):
         with self.hold_trait_notifications():
-            self.disabled = (
-                change["new"] not in (WizardApp.State.READY, WizardApp.State.CONFIGURED)
-                or not self.pseudo_family_selector.installed
+            self.disabled = change["new"] not in (
+                WizardApp.State.READY,
+                WizardApp.State.CONFIGURED,
             )
             self.submit_button.disabled = change["new"] != WizardApp.State.CONFIGURED
 
-            if change["new"] == WizardApp.State.ACTIVE:
-                self.accordion.selected_index = 1
-
     @traitlets.observe("input_structure")
     def _observe_input_structure(self, change):
-        self._update_state()
-
-    @traitlets.observe("band_structure")
-    def _observe_band_structure(self, change):
         self._update_state()
 
     @traitlets.validate("process")
@@ -212,9 +161,7 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
     def _observe_process(self, change):
         with self.hold_trait_notifications():
             process_node = change["new"]
-            if process_node is None:
-                self.band_structure = None
-            else:
+            if process_node is not None:
                 # Restore the code parameters
                 builder = process_node.get_builder_restart()
                 self.pseudo_family_selector.value = builder.scf.pseudo_family.value
@@ -264,3 +211,58 @@ class ComputeBandsSubmitWidget(ipw.VBox, WizardAppStep):
 
     def reset(self):
         self.process = None
+
+
+class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppStep):
+
+    process = traitlets.Instance(ProcessNode, allow_none=True)
+
+    def __init__(self, **kwargs):
+        self.process_tree = ProcessNodesTreeWidget(
+            refresh_period=-1,  # managed within this class,
+        )
+        ipw.dlink((self, "process"), (self.process_tree, "process"))
+
+        self.node_view = NodeViewWidget(
+            layout={"width": "auto", "height": "auto", "border": "1px solid black"}
+        )
+        ipw.dlink(
+            (self.process_tree, "selected_nodes"),
+            (self.node_view, "node"),
+            transform=lambda nodes: nodes[0] if nodes else None,
+        )
+        self.process_status = ipw.VBox(children=[self.process_tree, self.node_view])
+
+        # Setup process monitor
+        self.process_monitor = ProcessMonitor(
+            timeout=0.2,  # run every half second
+            callbacks=[
+                (self.process_tree.update, 1),
+            ],
+        )
+        ipw.dlink((self, "process"), (self.process_monitor, "process"))
+
+        super().__init__([self.process_status], **kwargs)
+
+    def reset(self):
+        self.process = None
+
+    def _update_state(self):
+        if self.process is None:
+            self.state = WizardApp.State.INIT
+        else:
+            process_state = self.process.process_state
+            if process_state in (
+                ProcessState.CREATED,
+                ProcessState.RUNNING,
+                ProcessState.WAITING,
+            ):
+                self.state = WizardApp.State.ACTIVE
+            elif process_state in (ProcessState.EXCEPTED, ProcessState.KILLED):
+                self.state = WizardApp.State.FAIL
+            elif process_state is ProcessState.FINISHED:
+                self.state = WizardApp.State.SUCCESS
+
+    @traitlets.observe("process")
+    def _observe_process(self, change):
+        self._update_state()
