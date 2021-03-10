@@ -11,7 +11,6 @@ from aiida.engine import submit
 from aiidalab_widgets_base import CodeDropdown
 from aiida.orm import ProcessNode
 from aiida.orm import StructureData, Float, Str
-from aiida.plugins import WorkflowFactory
 
 from process import ProcessMonitor
 from process import ProcessNodesTreeWidget
@@ -21,6 +20,8 @@ from widgets import NodeViewWidget
 from widgets import ResourceSelectionWidget
 from wizard import WizardApp, WizardAppStep
 
+
+from apps.quantumespresso.qe_workflow import QeAppWorkChain
 
 WARNING_ICON = "\u26A0"
 
@@ -138,6 +139,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     def _validate_process(self, proposal):
         process_node = proposal["value"]
         builder = process_node.get_builder_restart()
+        """
         try:
             # Check that parameters are consistent with what we would expect for the app.
             # This ensures that both processes we create with the app and those that are
@@ -154,7 +156,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             raise traitlets.TraitError(
                 f"Unable to set process, parameters are inconsistent: {error}"
             )
-
+        """
         return proposal["value"]
 
     @traitlets.observe("process")
@@ -164,9 +166,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             if process_node is not None:
                 # Restore the code parameters
                 builder = process_node.get_builder_restart()
-                self.pseudo_family_selector.value = builder.scf.pseudo_family.value
+                self.pseudo_family_selector.value = builder.relax.base[
+                    "pseudo_family"
+                ].value
                 try:
-                    self.code_group.selected_code = builder.scf.pw["code"].full_label
+                    self.code_group.selected_code = builder.relax.base["pw"][
+                        "code"
+                    ].full_label
                 except traitlets.TraitError:
                     # It's not considered a critical issue if the exact code cannot
                     # be retrieved, however we set it to "None" in the interface to
@@ -192,21 +198,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     def submit(self, _=None):
         assert self.input_structure is not None
 
-        builder = WorkflowFactory("quantumespresso.pw.bands").get_builder()
+        builder = QeAppWorkChain.get_builder()
 
-        builder.scf.pw.code = self.code_group.selected_code
-        builder.scf.pw.parameters = load_default_parameters()
-        builder.scf.pw.metadata.options = self.options
-        builder.scf.kpoints_distance = Float(0.8)
-        builder.scf.pseudo_family = Str(self.pseudo_family_selector.value)
-
-        builder.bands.pw.code = self.code_group.selected_code
-        builder.bands.pw.parameters = load_default_parameters()
-        builder.bands.pw.metadata.options = self.options
-        builder.bands.pseudo_family = Str(self.pseudo_family_selector.value)
-
+        # Input structure.
         builder.structure = self.input_structure
 
+        # Geometry optimization section.
+        builder.relax.base.pw.code = self.code_group.selected_code
+        builder.relax.base.pw.parameters = load_default_parameters()
+        builder.relax.base.pw.metadata.options = self.options
+        builder.relax.base.kpoints_distance = Float(0.8)
+        builder.relax.base.pseudo_family = Str(self.pseudo_family_selector.value)
+
+        # builder.bands.pw.code = self.code_group.selected_code
+        # builder.bands.pw.parameters = load_default_parameters()
+        # builder.bands.pw.metadata.options = self.options
+        # builder.bands.pseudo_family = Str(self.pseudo_family_selector.value)
         self.process = submit(builder)
 
     def reset(self):

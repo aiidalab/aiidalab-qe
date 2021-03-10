@@ -14,11 +14,11 @@ from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 
 
 # Data objects and work chains.
-PwRelaxWorkChain = WorkflowFactory('quantumespresso.pw.relax')
-PwBandsWorkChain = WorkflowFactory('quantumespresso.pw.bands')
-PdosWorkChain = WorkflowFactory('quantumespresso.pdos')
-StructureData = DataFactory('structure')
-BandsData = DataFactory('array.bands')
+PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
+PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
+PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
+StructureData = DataFactory("structure")
+BandsData = DataFactory("array.bands")
 
 
 class QeAppWorkChain(WorkChain):
@@ -27,7 +27,7 @@ class QeAppWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
-        #yapf: disable
+        # yapf: disable
         super().define(spec)
         spec.input('structure', valid_type=StructureData, help='The inputs structure.')
         spec.input('clean_workdir', valid_type=Bool, default=lambda: Bool(False),
@@ -72,8 +72,15 @@ class QeAppWorkChain(WorkChain):
 
     @classmethod
     def get_builder_from_protocol(
-        cls, structure, pw_code, dos_code=None, projwfc_code=None, protocol=None, overrides=None,
-        relax_type=RelaxType.NONE, **kwargs
+        cls,
+        structure,
+        pw_code,
+        dos_code=None,
+        projwfc_code=None,
+        protocol=None,
+        overrides=None,
+        relax_type=RelaxType.NONE,
+        **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
         overrides = overrides or {}
@@ -82,34 +89,46 @@ class QeAppWorkChain(WorkChain):
 
         if relax_type is not RelaxType.NONE:
             relax = PwRelaxWorkChain.get_builder_from_protocol(
-                code=pw_code, structure=structure, protocol=protocol, overrides=overrides.get('relax', None), 
-                relax_type=relax_type, **kwargs
+                code=pw_code,
+                structure=structure,
+                protocol=protocol,
+                overrides=overrides.get("relax", None),
+                relax_type=relax_type,
+                **kwargs,
             )
-            relax.pop('structure', None)
-            relax.pop('clean_workdir', None)
-            relax.pop('base_final_scf', None)
+            relax.pop("structure", None)
+            relax.pop("clean_workdir", None)
+            relax.pop("base_final_scf", None)
             builder.relax = relax
         else:
-            builder.pop('relax', None)
+            builder.pop("relax", None)
 
         bands = PwBandsWorkChain.get_builder_from_protocol(
-            code=pw_code, structure=structure, protocol=protocol, overrides=overrides.get('bands', None), **kwargs
+            code=pw_code,
+            structure=structure,
+            protocol=protocol,
+            overrides=overrides.get("bands", None),
+            **kwargs,
         )
-        bands.pop('relax')
-        bands.pop('structure', None)
-        bands.pop('clean_workdir', None)
+        bands.pop("relax")
+        bands.pop("structure", None)
+        bands.pop("clean_workdir", None)
         builder.bands = bands
 
         if dos_code is not None and projwfc_code is not None:
             pdos = PdosWorkChain.get_builder_from_protocol(
-                pw_code=pw_code, dos_code=dos_code, projwfc_code=projwfc_code, structure=structure,
-                overrides=overrides.get('pdos', None), **kwargs
+                pw_code=pw_code,
+                dos_code=dos_code,
+                projwfc_code=projwfc_code,
+                structure=structure,
+                overrides=overrides.get("pdos", None),
+                **kwargs,
             )
-            pdos.pop('structure', None)
-            pdos.pop('clean_workdir', None)
+            pdos.pop("structure", None)
+            pdos.pop("clean_workdir", None)
             builder.pdos = pdos
 
-        builder.clean_workdir = overrides.get('clean_workdir', Bool(False))
+        builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
 
         return builder
 
@@ -121,17 +140,17 @@ class QeAppWorkChain(WorkChain):
 
     def should_run_relax(self):
         """Check if the geometry of the input structure should be optimized."""
-        return 'relax' in self.inputs
+        return "relax" in self.inputs
 
     def run_relax(self):
         """Run the `PwRelaxWorkChain`."""
-        inputs = AttributeDict(self.exposed_inputs(PwRelaxWorkChain, namespace='relax'))
-        inputs.metadata.call_link_label = 'relax'
+        inputs = AttributeDict(self.exposed_inputs(PwRelaxWorkChain, namespace="relax"))
+        inputs.metadata.call_link_label = "relax"
         inputs.structure = self.ctx.current_structure
 
         running = self.submit(PwRelaxWorkChain, **inputs)
 
-        self.report(f'launching PwRelaxWorkChain<{running.pk}>')
+        self.report(f"launching PwRelaxWorkChain<{running.pk}>")
 
         return ToContext(workchain_relax=running)
 
@@ -140,30 +159,36 @@ class QeAppWorkChain(WorkChain):
         workchain = self.ctx.workchain_relax
 
         if not workchain.is_finished_ok:
-            self.report(f'PwRelaxWorkChain failed with exit status {workchain.exit_status}')
+            self.report(
+                f"PwRelaxWorkChain failed with exit status {workchain.exit_status}"
+            )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_RELAX
 
         self.ctx.current_structure = workchain.outputs.output_structure
-        self.ctx.current_number_of_bands = workchain.outputs.output_parameters.get_attribute('number_of_bands')
+        self.ctx.current_number_of_bands = (
+            workchain.outputs.output_parameters.get_attribute("number_of_bands")
+        )
 
     def should_run_bands(self):
         """Check if the band structure should be calculated."""
-        return 'bands' in self.inputs
+        return "bands" in self.inputs
 
     def run_bands(self):
         """Run the `PwBandsWorkChain`."""
-        inputs = AttributeDict(self.exposed_inputs(PwBandsWorkChain, namespace='bands'))
-        inputs.metadata.call_link_label = 'bands'
+        inputs = AttributeDict(self.exposed_inputs(PwBandsWorkChain, namespace="bands"))
+        inputs.metadata.call_link_label = "bands"
         inputs.structure = self.ctx.current_structure
         inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
 
         if self.ctx.current_number_of_bands:
-            inputs.scf.pw.parameters.setdefault('SYSTEM', {}).setdefault('nbnd', self.ctx.current_number_of_bands)
+            inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+                "nbnd", self.ctx.current_number_of_bands
+            )
 
         inputs = prepare_process_inputs(PwBandsWorkChain, inputs)
         running = self.submit(PwBandsWorkChain, **inputs)
 
-        self.report(f'launching PwBandsWorkChain<{running.pk}>')
+        self.report(f"launching PwBandsWorkChain<{running.pk}>")
 
         return ToContext(workchain_bands=running)
 
@@ -172,34 +197,40 @@ class QeAppWorkChain(WorkChain):
         workchain = self.ctx.workchain_bands
 
         if not workchain.is_finished_ok:
-            self.report(f'PwBandsWorkChain failed with exit status {workchain.exit_status}')
+            self.report(
+                f"PwBandsWorkChain failed with exit status {workchain.exit_status}"
+            )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_BANDS
 
-        scf = workchain.get_outgoing(WorkChainNode, link_label_filter='scf').all_nodes()[0]
+        scf = workchain.get_outgoing(
+            WorkChainNode, link_label_filter="scf"
+        ).all_nodes()[0]
         self.ctx.scf_parent_folder = scf.outputs.remote_folder
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""
-        return 'pdos' in self.inputs
+        return "pdos" in self.inputs
 
     def run_pdos(self):
         """Run the `PdosWorkChain`."""
-        inputs = AttributeDict(self.exposed_inputs(PdosWorkChain, namespace='pdos'))
-        inputs.metadata.call_link_label = 'bands'
+        inputs = AttributeDict(self.exposed_inputs(PdosWorkChain, namespace="pdos"))
+        inputs.metadata.call_link_label = "bands"
         inputs.structure = self.ctx.current_structure
         inputs.base_nscf.pw.parameters = inputs.base_nscf.pw.parameters.get_dict()
 
         if self.ctx.current_number_of_bands:
-            inputs.base_nscf.pw.parameters.setdefault('SYSTEM', {}).setdefault('nbnd', self.ctx.current_number_of_bands)
+            inputs.base_nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+                "nbnd", self.ctx.current_number_of_bands
+            )
 
         if self.ctx.scf_parent_folder:
-            inputs.pop('base_scf')
+            inputs.pop("base_scf")
             inputs.base_nscf.pw.parent_folder = self.ctx.scf_parent_folder
 
         inputs = prepare_process_inputs(PdosWorkChain, inputs)
         running = self.submit(PdosWorkChain, **inputs)
 
-        self.report(f'launching PdosWorkChain<{running.pk}>')
+        self.report(f"launching PdosWorkChain<{running.pk}>")
 
         return ToContext(workchain_pdos=running)
 
@@ -208,21 +239,29 @@ class QeAppWorkChain(WorkChain):
         workchain = self.ctx.workchain_pdos
 
         if not workchain.is_finished_ok:
-            self.report(f'PdosWorkChain failed with exit status {workchain.exit_status}')
+            self.report(
+                f"PdosWorkChain failed with exit status {workchain.exit_status}"
+            )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_PDOS
 
     def results(self):
         """Add the results to the outputs."""
-        self.out('structure', self.ctx.current_structure)
-        self.out('band_structure', self.ctx.workchain_bands.outputs.band_structure)
-        self.out_many(self.exposed_outputs(self.ctx.workchain_pdos, PdosWorkChain, namespace='pdos'))
+        self.out("structure", self.ctx.current_structure)
+        if "workchain_bands" in self.ctx:
+            self.out("band_structure", self.ctx.workchain_bands.outputs.band_structure)
+        if "workchain_pdos" in self.ctx:
+            self.out_many(
+                self.exposed_outputs(
+                    self.ctx.workchain_pdos, PdosWorkChain, namespace="pdos"
+                )
+            )
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
         super().on_terminated()
 
         if self.inputs.clean_workdir.value is False:
-            self.report('remote folders will not be cleaned')
+            self.report("remote folders will not be cleaned")
             return
 
         cleaned_calcs = []
@@ -236,5 +275,6 @@ class QeAppWorkChain(WorkChain):
                     pass
 
         if cleaned_calcs:
-            self.report(f"cleaned remote folders of calculations: {' '.join(map(str, cleaned_calcs))}")
-
+            self.report(
+                f"cleaned remote folders of calculations: {' '.join(map(str, cleaned_calcs))}"
+            )
