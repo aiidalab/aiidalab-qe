@@ -4,24 +4,26 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
+import yaml
 import ipywidgets as ipw
 import traitlets
 from aiida.engine import ProcessState
 from aiida.engine import submit
 from aiidalab_widgets_base import CodeDropdown
 from aiida.orm import ProcessNode
-from aiida.orm import StructureData, Float, Str
+from aiida.orm import Dict, Float, Str
+from aiida.plugins import DataFactory
 
 from process import ProcessMonitor
 from process import ProcessNodesTreeWidget
 from pseudos import PseudoFamilySelector
-from util import load_default_parameters
 from widgets import NodeViewWidget
 from widgets import ResourceSelectionWidget
 from wizard import WizardApp, WizardAppStep
 
-
 from apps.quantumespresso.qe_workflow import QeAppWorkChain
+
+StructureData = DataFactory("structure")
 
 WARNING_ICON = "\u26A0"
 
@@ -35,7 +37,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     disabled = traitlets.Bool()
 
     def __init__(self, description=None, **kwargs):
-        self.code_group = CodeDropdown(
+        self.code_group_pw = CodeDropdown(
             input_plugin="quantumespresso.pw",
             text="Select code",
             setup_code_params={
@@ -46,7 +48,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
                 "remote_abs_path": "/usr/bin/pw.x",
             },
         )
-        self.code_group.observe(lambda _: self._update_state(), ["selected_code"])
+        self.code_group_pw.observe(lambda _: self._update_state(), ["selected_code"])
 
         # Setup pseudo potential family selection
         self.pseudo_family_selector = PseudoFamilySelector()
@@ -66,22 +68,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         )
         self.submit_button.on_click(self._on_submit_button_clicked)
 
-        # Place all buttons at the footer of the widget.
-        self.buttons = ipw.HBox(children=[self.submit_button])
-
-        self.config_tabs = ipw.Tab(
-            children=[self.code_group, self.pseudo_family_selector, self.resources],
-            layout=ipw.Layout(height="200px"),
-        )
-        self.config_tabs.set_title(0, "Code")
-        # second tab initialized below
-        self.config_tabs.set_title(2, "Compute resources")
-
         # Show warning in cofig title when pseudos are not installed:
         def _observe_sssp_installed(change):
-            self.config_tabs.set_title(
-                1, "Pseudopotential" + ("" if change["new"] else f" {WARNING_ICON}")
-            )
             self._observe_state(change=dict(new=self.state))  # trigger refresh
 
         self.pseudo_family_selector.observe(_observe_sssp_installed, "installed")
@@ -89,7 +77,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             change=dict(new=self.pseudo_family_selector.installed)
         )  # init
 
-        ipw.dlink((self, "disabled"), (self.code_group.dropdown, "disabled"))
+        ipw.dlink((self, "disabled"), (self.code_group_pw.dropdown, "disabled"))
         ipw.dlink((self, "disabled"), (self.resources.number_of_nodes, "disabled"))
         ipw.dlink((self, "disabled"), (self.resources.cpus_per_node, "disabled"))
         ipw.dlink((self, "disabled"), (self.pseudo_family_selector, "disabled"))
@@ -97,13 +85,34 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
 
+        # Geometry optimization.
+        self.run_geo_opt = ipw.Checkbox(
+            value=True,
+            description="Run Geometry Optimization",
+            disabled=False,
+            indent=False,
+        )
+        # Band Structure.
+        self.run_band_structure = ipw.Checkbox(
+            value=True, description="Run Band Structure", disabled=False, indent=False
+        )
+        # PDOS.
+        self.run_pdos = ipw.Checkbox(
+            value=True, description="Run PDOS", disabled=False, indent=False
+        )
+
         super().__init__(
             children=[
                 ipw.Label(
                     'Specify the parameters and options for the calculation and then click on "Submit".'
                 ),
-                self.config_tabs,
-                self.buttons,
+                self.code_group_pw,
+                self.pseudo_family_selector,
+                self.resources,
+                self.run_geo_opt,
+                self.run_band_structure,
+                self.run_pdos,
+                self.submit_button,
             ],
             **kwargs,
         )
@@ -113,7 +122,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             if self.input_structure is None:
                 self.state = WizardApp.State.INIT
             elif (
-                self.code_group.selected_code is None
+                self.code_group_pw.selected_code is None
                 or not self.pseudo_family_selector.installed
             ):
                 self.state = WizardApp.State.READY
@@ -137,8 +146,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
 
     @traitlets.validate("process")
     def _validate_process(self, proposal):
-        process_node = proposal["value"]
-        builder = process_node.get_builder_restart()
+        # process_node = proposal["value"]
+        # builder = process_node.get_builder_restart()
         """
         try:
             # Check that parameters are consistent with what we would expect for the app.
@@ -165,19 +174,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             process_node = change["new"]
             if process_node is not None:
                 # Restore the code parameters
-                builder = process_node.get_builder_restart()
+                # builder = process_node.get_builder_restart()
+                """
                 self.pseudo_family_selector.value = builder.relax.base[
                     "pseudo_family"
                 ].value
                 try:
-                    self.code_group.selected_code = builder.relax.base["pw"][
+                    self.code_group_pw.selected_code = builder.relax.base["pw"][
                         "code"
                     ].full_label
                 except traitlets.TraitError:
                     # It's not considered a critical issue if the exact code cannot
                     # be retrieved, however we set it to "None" in the interface to
                     # indicate that to the user.
-                    self.code_group.selected_code = None
+                    self.code_group_pw.selected_code = None
+                """
                 self.input_structure = process_node.inputs.structure
 
     @property
@@ -204,16 +215,39 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         builder.structure = self.input_structure
 
         # Geometry optimization section.
-        builder.relax.base.pw.code = self.code_group.selected_code
-        builder.relax.base.pw.parameters = load_default_parameters()
-        builder.relax.base.pw.metadata.options = self.options
-        builder.relax.base.kpoints_distance = Float(0.8)
-        builder.relax.base.pseudo_family = Str(self.pseudo_family_selector.value)
+        if self.run_geo_opt.value:
+            builder.relax.base.pw.code = self.code_group_pw.selected_code
+            with open("parameters/relax.yaml") as file:
+                builder.relax.base.pw.parameters = Dict(
+                    dict=yaml.load(file, Loader=yaml.FullLoader)
+                )
+            builder.relax.base.pw.metadata.options = self.options
+            builder.relax.base.kpoints_distance = Float(0.8)
+            builder.relax.base.pseudo_family = Str(self.pseudo_family_selector.value)
 
-        # builder.bands.pw.code = self.code_group.selected_code
-        # builder.bands.pw.parameters = load_default_parameters()
-        # builder.bands.pw.metadata.options = self.options
-        # builder.bands.pseudo_family = Str(self.pseudo_family_selector.value)
+        # Bands section.
+        if self.run_band_structure.value:
+            with open("parameters/bands.yaml") as file:
+                builder.bands.scf.pw.parameters = Dict(
+                    dict=yaml.load(file, Loader=yaml.FullLoader)
+                )
+            builder.bands.scf.pw.metadata.options = self.options
+            builder.bands.scf.kpoints_distance = Float(0.8)
+            builder.bands.scf.pseudo_family = Str(self.pseudo_family_selector.value)
+            builder.bands.scf.pw.code = self.code_group_pw.selected_code
+
+            with open("parameters/bands.yaml") as file:
+                builder.bands.bands.pw.parameters = Dict(
+                    dict=yaml.load(file, Loader=yaml.FullLoader)
+                )
+            builder.bands.bands.pw.metadata.options = self.options
+            builder.bands.bands.pseudo_family = Str(self.pseudo_family_selector.value)
+            builder.bands.bands.pw.code = self.code_group_pw.selected_code
+
+        # PDOS section.
+        if self.run_pdos.value:
+            pass
+
         self.process = submit(builder)
 
     def reset(self):
