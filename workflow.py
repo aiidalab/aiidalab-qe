@@ -4,14 +4,12 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
-import yaml
 import ipywidgets as ipw
 import traitlets
 from aiida.engine import ProcessState
 from aiida.engine import submit
 from aiidalab_widgets_base import CodeDropdown
 from aiida.orm import ProcessNode
-from aiida.orm import Dict, Float, Str
 from aiida.plugins import DataFactory
 
 from process import ProcessMonitor
@@ -22,6 +20,7 @@ from widgets import ResourceSelectionWidget
 from wizard import WizardApp, WizardAppStep
 
 from apps.quantumespresso.qe_workflow import QeAppWorkChain
+from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
 
 StructureData = DataFactory("structure")
 
@@ -39,7 +38,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     def __init__(self, description=None, **kwargs):
         self.code_group_pw = CodeDropdown(
             input_plugin="quantumespresso.pw",
-            text="Select code",
+            text="Select PW code",
             setup_code_params={
                 "computer": "localhost",
                 "description": "pw.x in AiiDAlab container.",
@@ -48,6 +47,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
                 "remote_abs_path": "/usr/bin/pw.x",
             },
         )
+
         self.code_group_pw.observe(lambda _: self._update_state(), ["selected_code"])
 
         # Setup pseudo potential family selection
@@ -85,21 +85,69 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
 
-        # Geometry optimization.
-        self.run_geo_opt = ipw.Checkbox(
-            value=True,
-            description="Run Geometry Optimization",
-            disabled=False,
-            indent=False,
+        # Spin type.
+        self.spin_type = ipw.Dropdown(
+            options=[t.name for t in SpinType],
+            value="NONE",
+            description="Spin Type:",
         )
+
+        # Electronic type.
+        self.electronic_type = ipw.Dropdown(
+            options=[t.name for t in ElectronicType],
+            value="METAL",
+            description="Electronic Type:",
+        )
+
+        # Geometry optimization.
+        self.run_geo_opt = ipw.Dropdown(
+            options=[t.name for t in RelaxType],
+            value="POSITIONS",
+            description="Geometry Optimization:",
+        )
+
         # Band Structure.
-        self.run_band_structure = ipw.Checkbox(
+        self.run_bands = ipw.Checkbox(
             value=True, description="Run Band Structure", disabled=False, indent=False
         )
         # PDOS.
         self.run_pdos = ipw.Checkbox(
-            value=True, description="Run PDOS", disabled=False, indent=False
+            value=True,
+            description="Run PDOS",
+            disabled=False,
+            indent=False,
         )
+
+        self.code_group_dos = CodeDropdown(
+            input_plugin="quantumespresso.dos",
+            text="Select DOS code",
+            setup_code_params={
+                "computer": "localhost",
+                "description": "dos.x in AiiDAlab container.",
+                "label": "dos",
+                "input_plugin": "quantumespresso.dos",
+                "remote_abs_path": "/usr/bin/dos.x",
+            },
+        )
+
+        self.code_group_projwfc = CodeDropdown(
+            input_plugin="quantumespresso.projwfc",
+            text="Select PROJWFC code",
+            setup_code_params={
+                "computer": "localhost",
+                "description": "projwfc.x in AiiDAlab container.",
+                "label": "projwfc",
+                "input_plugin": "quantumespresso.projwfc",
+                "remote_abs_path": "/usr/bin/projwfc.x",
+            },
+        )
+
+        def code_setup_visibility(value):
+            visibility = "visible" if value["new"] else "hidden"
+            self.code_group_dos.layout.visibility = visibility
+            self.code_group_projwfc.layout.visibility = visibility
+
+        self.run_pdos.observe(code_setup_visibility, names="value")
 
         super().__init__(
             children=[
@@ -109,9 +157,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
                 self.code_group_pw,
                 self.pseudo_family_selector,
                 self.resources,
+                self.electronic_type,
+                self.spin_type,
                 self.run_geo_opt,
-                self.run_band_structure,
-                self.run_pdos,
+                self.run_bands,
+                ipw.HBox(
+                    [
+                        self.run_pdos,
+                        ipw.VBox([self.code_group_dos, self.code_group_projwfc]),
+                    ]
+                ),
                 self.submit_button,
             ],
             **kwargs,
@@ -209,11 +264,23 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     def submit(self, _=None):
         assert self.input_structure is not None
 
-        builder = QeAppWorkChain.get_builder()
+        builder = QeAppWorkChain.get_builder_from_protocol(
+            structure=self.input_structure,
+            pw_code=self.code_group_pw.selected_code,
+            dos_code=self.code_group_dos.selected_code,
+            projwfc_code=self.code_group_projwfc.selected_code,
+            protocol="fast",
+            relax_type=RelaxType[self.run_geo_opt.value],
+            spin_type=SpinType[self.spin_type.value],
+            electronic_type=ElectronicType[self.electronic_type.value],
+        )
 
-        # Input structure.
-        builder.structure = self.input_structure
+        if not self.run_bands.value:
+            builder.pop("bands")
+        if not self.run_pdos.value:
+            builder.pop("pdos")
 
+        """
         # Geometry optimization section.
         if self.run_geo_opt.value:
             builder.relax.base.pw.code = self.code_group_pw.selected_code
@@ -226,7 +293,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             builder.relax.base.pseudo_family = Str(self.pseudo_family_selector.value)
 
         # Bands section.
-        if self.run_band_structure.value:
+        if self.run_bands.value:
             with open("parameters/bands.yaml") as file:
                 builder.bands.scf.pw.parameters = Dict(
                     dict=yaml.load(file, Loader=yaml.FullLoader)
@@ -247,7 +314,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         # PDOS section.
         if self.run_pdos.value:
             pass
-
+        """
         self.process = submit(builder)
 
     def reset(self):
