@@ -4,8 +4,7 @@
 from aiida.common import AttributeDict
 from aiida.engine import WorkChain, ToContext, if_
 from aiida.orm import CalcJobNode, WorkChainNode
-from aiida.orm import Bool
-from aiida.plugins import DataFactory, WorkflowFactory
+from aiida.plugins import WorkflowFactory, DataFactory
 
 
 # AiiDA Quantum ESPRESSO plugin inputs.
@@ -17,6 +16,8 @@ from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
+
+Bool = DataFactory("bool")
 StructureData = DataFactory("structure")
 BandsData = DataFactory("array.bands")
 
@@ -216,16 +217,16 @@ class QeAppWorkChain(WorkChain):
         inputs = AttributeDict(self.exposed_inputs(PdosWorkChain, namespace="pdos"))
         inputs.metadata.call_link_label = "bands"
         inputs.structure = self.ctx.current_structure
-        inputs.base_nscf.pw.parameters = inputs.base_nscf.pw.parameters.get_dict()
+        inputs.nscf.pw.parameters = inputs.nscf.pw.parameters.get_dict()
 
         if self.ctx.current_number_of_bands:
-            inputs.base_nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+            inputs.nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
                 "nbnd", self.ctx.current_number_of_bands
             )
 
         if self.ctx.scf_parent_folder:
-            inputs.pop("base_scf")
-            inputs.base_nscf.pw.parent_folder = self.ctx.scf_parent_folder
+            inputs.pop("scf")
+            inputs.nscf.pw.parent_folder = self.ctx.scf_parent_folder
 
         inputs = prepare_process_inputs(PdosWorkChain, inputs)
         running = self.submit(PdosWorkChain, **inputs)
