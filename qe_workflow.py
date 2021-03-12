@@ -5,6 +5,7 @@ from aiida.common import AttributeDict
 from aiida.engine import WorkChain, ToContext, if_
 from aiida.orm import CalcJobNode, WorkChainNode
 from aiida.plugins import WorkflowFactory, DataFactory
+from aiida.plugins.factories import OrbitalFactory
 
 
 # AiiDA Quantum ESPRESSO plugin inputs.
@@ -18,8 +19,11 @@ PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 
 Bool = DataFactory("bool")
+Dict = DataFactory("dict")
+XyData = DataFactory("array.xy")
 StructureData = DataFactory("structure")
 BandsData = DataFactory("array.bands")
+Orbital = DataFactory("orbital")
 
 
 class QeAppWorkChain(WorkChain):
@@ -67,8 +71,11 @@ class QeAppWorkChain(WorkChain):
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
             message='The PdosWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData)
+        spec.output('band_parameters', valid_type=Dict, required=False)
         spec.output('band_structure', valid_type=BandsData, required=False)
-        spec.expose_outputs(PdosWorkChain, namespace='pdos', namespace_options={'required': False})
+        spec.output('nscf_parameters', valid_type=Dict, required=False)
+        spec.output('dos', valid_type=XyData, required=False)
+        spec.output('projections', valid_type=Orbital, required=False)
         # yapf: enable
 
     @classmethod
@@ -122,6 +129,7 @@ class QeAppWorkChain(WorkChain):
                 dos_code=dos_code,
                 projwfc_code=projwfc_code,
                 structure=structure,
+                protocol=protocol,
                 overrides=overrides.get("pdos", None),
                 **kwargs,
             )
@@ -215,7 +223,7 @@ class QeAppWorkChain(WorkChain):
     def run_pdos(self):
         """Run the `PdosWorkChain`."""
         inputs = AttributeDict(self.exposed_inputs(PdosWorkChain, namespace="pdos"))
-        inputs.metadata.call_link_label = "bands"
+        inputs.metadata.call_link_label = "pdos"
         inputs.structure = self.ctx.current_structure
         inputs.nscf.pw.parameters = inputs.nscf.pw.parameters.get_dict()
 
@@ -249,12 +257,18 @@ class QeAppWorkChain(WorkChain):
         """Add the results to the outputs."""
         self.out("structure", self.ctx.current_structure)
         if "workchain_bands" in self.ctx:
+            self.out(
+                "band_parameters", self.ctx.workchain_bands.outputs.band_parameters
+            )
             self.out("band_structure", self.ctx.workchain_bands.outputs.band_structure)
         if "workchain_pdos" in self.ctx:
-            self.out_many(
-                self.exposed_outputs(
-                    self.ctx.workchain_pdos, PdosWorkChain, namespace="pdos"
-                )
+            self.out(
+                "nscf_parameters",
+                self.ctx.workchain_pdos.outputs.nscf__output_parameters,
+            )
+            self.out("dos", self.ctx.workchain_pdos.outputs.dos__output_dos)
+            self.out(
+                "projections", self.ctx.workchain_pdos.outputs.projwfc__projections
             )
 
     def on_terminated(self):
