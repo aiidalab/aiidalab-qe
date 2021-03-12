@@ -211,6 +211,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def reset(self):
         self.process = None
+        with self.hold_trait_notifications():
+            self.pseudo_family_selector.reset()
+            self.resources.reset()
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):

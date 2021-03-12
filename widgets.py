@@ -291,3 +291,8 @@ class ResourceSelectionWidget(ipw.HBox):
         self.total_num_cpus.value = (
             self.number_of_nodes.value * self.cpus_per_node.value
         )
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.number_of_nodes.value = 1
+            self.cpus_per_node.value = 1

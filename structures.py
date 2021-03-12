@@ -60,12 +60,12 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
     @traitlets.default("state")
     def _default_state(self):
-        return self.State.READY
+        return self.State.INIT
 
     def _update_state(self):
         if self.structure is None:
             if self.confirmed_structure is None:
-                self.state = self.State.READY
+                self.state = self.State.INIT
             else:
                 self.state = self.State.SUCCESS
         else:
@@ -98,6 +98,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
     def confirm(self, _=None):
         self.confirmed_structure = self.structure
+
+    def can_reset(self):
+        return self.confirmed_structure is not None
 
     def reset(self):  # unconfirm
         self.confirmed_structure = None
