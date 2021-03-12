@@ -8,10 +8,10 @@ import aiida
 import traitlets
 import ipywidgets as ipw
 
-from wizard import WizardApp, WizardAppStep
+from aiidalab_widgets_base import WizardAppWidgetStep
 
 
-class StructureSelectionStep(ipw.VBox, WizardAppStep):
+class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     """Integrated widget for the selection of structures from different sources."""
 
     structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
@@ -60,19 +60,19 @@ class StructureSelectionStep(ipw.VBox, WizardAppStep):
 
     @traitlets.default("state")
     def _default_state(self):
-        return WizardApp.State.READY
+        return self.State.READY
 
     def _update_state(self):
         if self.structure is None:
             if self.confirmed_structure is None:
-                self.state = WizardApp.State.READY
+                self.state = self.State.READY
             else:
-                self.state = WizardApp.State.SUCCESS
+                self.state = self.State.SUCCESS
         else:
             if self.confirmed_structure is None:
-                self.state = WizardApp.State.CONFIGURED
+                self.state = self.State.CONFIGURED
             else:
-                self.state = WizardApp.State.SUCCESS
+                self.state = self.State.SUCCESS
 
     @traitlets.observe("structure")
     def _observe_structure(self, change):
@@ -93,8 +93,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppStep):
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             state = change["new"]
-            self.confirm_button.disabled = state != WizardApp.State.CONFIGURED
-            self.manager.disabled = state is WizardApp.State.SUCCESS
+            self.confirm_button.disabled = state != self.State.CONFIGURED
+            self.manager.disabled = state is self.State.SUCCESS
 
     def confirm(self, _=None):
         self.confirmed_structure = self.structure

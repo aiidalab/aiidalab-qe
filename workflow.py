@@ -9,6 +9,7 @@ import traitlets
 from aiida.engine import ProcessState
 from aiida.engine import submit
 from aiidalab_widgets_base import CodeDropdown
+from aiidalab_widgets_base import WizardAppWidgetStep
 from aiida.orm import ProcessNode
 from aiida.orm import StructureData, Float, Str
 from aiida.plugins import WorkflowFactory
@@ -19,13 +20,12 @@ from pseudos import PseudoFamilySelector
 from util import load_default_parameters
 from widgets import NodeViewWidget
 from widgets import ResourceSelectionWidget
-from wizard import WizardApp, WizardAppStep
 
 
 WARNING_ICON = "\u26A0"
 
 
-class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
+class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
 
     input_structure = traitlets.Instance(StructureData, allow_none=True)
@@ -94,7 +94,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         ipw.dlink((self, "disabled"), (self.pseudo_family_selector, "disabled"))
 
         # Initialize widget disabled status based on step state.
-        self.disabled = self.state != WizardApp.State.READY
+        self.disabled = self.state != self.State.READY
 
         super().__init__(
             children=[
@@ -110,25 +110,25 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     def _update_state(self):
         if self.process is None:
             if self.input_structure is None:
-                self.state = WizardApp.State.INIT
+                self.state = self.State.INIT
             elif (
                 self.code_group.selected_code is None
                 or not self.pseudo_family_selector.installed
             ):
-                self.state = WizardApp.State.READY
+                self.state = self.State.READY
             else:
-                self.state = WizardApp.State.CONFIGURED
+                self.state = self.State.CONFIGURED
         else:
-            self.state = WizardApp.State.SUCCESS
+            self.state = self.State.SUCCESS
 
     @traitlets.observe("state")
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             self.disabled = change["new"] not in (
-                WizardApp.State.READY,
-                WizardApp.State.CONFIGURED,
+                self.State.READY,
+                self.State.CONFIGURED,
             )
-            self.submit_button.disabled = change["new"] != WizardApp.State.CONFIGURED
+            self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
     @traitlets.observe("input_structure")
     def _observe_input_structure(self, change):
@@ -186,7 +186,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
-        self.state = WizardApp.State.ACTIVE
+        self.state = self.State.ACTIVE
         self.submit()
 
     def submit(self, _=None):
@@ -213,7 +213,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         self.process = None
 
 
-class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppStep):
+class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
     process = traitlets.Instance(ProcessNode, allow_none=True)
 
@@ -249,7 +249,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppStep):
 
     def _update_state(self):
         if self.process is None:
-            self.state = WizardApp.State.INIT
+            self.state = self.State.INIT
         else:
             process_state = self.process.process_state
             if process_state in (
@@ -257,11 +257,11 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppStep):
                 ProcessState.RUNNING,
                 ProcessState.WAITING,
             ):
-                self.state = WizardApp.State.ACTIVE
+                self.state = self.State.ACTIVE
             elif process_state in (ProcessState.EXCEPTED, ProcessState.KILLED):
-                self.state = WizardApp.State.FAIL
+                self.state = self.State.FAIL
             elif process_state is ProcessState.FINISHED:
-                self.state = WizardApp.State.SUCCESS
+                self.state = self.State.SUCCESS
 
     @traitlets.observe("process")
     def _observe_process(self, change):
