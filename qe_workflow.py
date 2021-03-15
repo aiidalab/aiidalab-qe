@@ -97,6 +97,7 @@ class QeAppWorkChain(WorkChain):
         protocol=None,
         overrides=None,
         relax_type=RelaxType.NONE,
+        pseudo_family=None,
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
@@ -105,11 +106,15 @@ class QeAppWorkChain(WorkChain):
         builder.structure = structure
 
         if relax_type is not RelaxType.NONE:
+            relax_overrides = overrides.get("relax", {})
+            if pseudo_family is not None:
+                relax_overrides.setdefault("base", {})["pseudo_family"] = pseudo_family
+
             relax = PwRelaxWorkChain.get_builder_from_protocol(
                 code=pw_code,
                 structure=structure,
                 protocol=protocol,
-                overrides=overrides.get("relax", None),
+                overrides=relax_overrides,
                 relax_type=relax_type,
                 **kwargs,
             )
@@ -120,11 +125,15 @@ class QeAppWorkChain(WorkChain):
         else:
             builder.pop("relax", None)
 
+        bands_overrides = overrides.get("bands", {})
+        if pseudo_family is not None:
+            bands_overrides.setdefault("scf", {})["pseudo_family"] = pseudo_family
+            bands_overrides.setdefault("bands", {})["pseudo_family"] = pseudo_family
         bands = PwBandsWorkChain.get_builder_from_protocol(
             code=pw_code,
             structure=structure,
             protocol=protocol,
-            overrides=overrides.get("bands", None),
+            overrides=bands_overrides,
             **kwargs,
         )
         bands.pop("relax")
@@ -133,13 +142,17 @@ class QeAppWorkChain(WorkChain):
         builder.bands = bands
 
         if dos_code is not None and projwfc_code is not None:
+            pdos_overrides = overrides.get("pdos", {})
+            if pseudo_family is not None:
+                pdos_overrides.setdefault("scf", {})["pseudo_family"] = pseudo_family
+                pdos_overrides.setdefault("nscf", {})["pseudo_family"] = pseudo_family
             pdos = PdosWorkChain.get_builder_from_protocol(
                 pw_code=pw_code,
                 dos_code=dos_code,
                 projwfc_code=projwfc_code,
                 structure=structure,
                 protocol=protocol,
-                overrides=overrides.get("pdos", None),
+                overrides=pdos_overrides,
                 **kwargs,
             )
             pdos.pop("structure", None)
