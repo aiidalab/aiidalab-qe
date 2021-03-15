@@ -19,6 +19,7 @@ PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 
 Bool = DataFactory("bool")
+Float = DataFactory("float")
 Dict = DataFactory("dict")
 XyData = DataFactory("array.xy")
 StructureData = DataFactory("structure")
@@ -48,6 +49,14 @@ class QeAppWorkChain(WorkChain):
             exclude=('clean_workdir', 'structure'),
             namespace_options={'required': False, 'populate_defaults': False,
             'help': 'Inputs for the `PdosWorkChain`.'})
+        spec.input(
+            'kpoints_distance_override', valid_type=Float, required=False,
+            help='Override for the kpoints distance value of all `PwBaseWorkChains` save for the `nscf` calculations.'
+        )
+        spec.input(
+            'degauss_override', valid_type=Float, required=False,
+            help='Override for the `degauss` value of all `PwBaseWorkChains` save for the `nscf` calculations.'
+        )
         spec.outline(
             cls.setup,
             if_(cls.should_run_relax)(
@@ -138,6 +147,10 @@ class QeAppWorkChain(WorkChain):
             builder.pdos = pdos
 
         builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
+        if "kpoints_distance_override" in overrides:
+            builder.kpoints_distance_override = overrides["kpoints_distance_override"]
+        if "degauss_override" in overrides:
+            builder.degauss_override = overrides["degauss_override"]
 
         return builder
 
@@ -157,6 +170,26 @@ class QeAppWorkChain(WorkChain):
         inputs.metadata.call_link_label = "relax"
         inputs.structure = self.ctx.current_structure
 
+        if "kpoints_distance_override" in self.inputs:
+            inputs.base.kpoints_distance = self.inputs.kpoints_distance_override
+            if "base_scf" in inputs:
+                inputs.base_scf.kpoints_distance = self.inputs.kpoints_distance_override
+
+        if "degauss_override" in self.inputs:
+            inputs.base.pw.parameters = inputs.base.pw.parameters.get_dict()
+            inputs.base.pw.parameters.setdefault("SYSTEM", {})[
+                "degauss"
+            ] = self.inputs.degauss_override.value
+
+            if "base_scf" in inputs:
+                inputs.base_scf_params.pw.parameters = (
+                    inputs.base_scf_params.pw.parameters.get_dict()
+                )
+                inputs.base_scf_params.pw.parameters.setdefault("SYSTEM", {})[
+                    "degauss"
+                ] = self.inputs.degauss_override.value
+
+        inputs = prepare_process_inputs(PwRelaxWorkChain, inputs)
         running = self.submit(PwRelaxWorkChain, **inputs)
 
         self.report(f"launching PwRelaxWorkChain<{running.pk}>")
@@ -193,6 +226,14 @@ class QeAppWorkChain(WorkChain):
             inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
                 "nbnd", self.ctx.current_number_of_bands
             )
+
+        if "kpoints_distance_override" in self.inputs:
+            inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
+
+        if "degauss_override" in self.inputs:
+            inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+                "degauss"
+            ] = self.inputs.degauss_override.value
 
         inputs = prepare_process_inputs(PwBandsWorkChain, inputs)
         running = self.submit(PwBandsWorkChain, **inputs)
@@ -235,6 +276,15 @@ class QeAppWorkChain(WorkChain):
         if self.ctx.scf_parent_folder:
             inputs.pop("scf")
             inputs.nscf.pw.parent_folder = self.ctx.scf_parent_folder
+        else:
+            if "kpoints_distance_override" in self.inputs:
+                inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
+
+            if "degauss_override" in self.inputs:
+                inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
+                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+                    "degauss"
+                ] = self.inputs.degauss_override.value
 
         inputs = prepare_process_inputs(PdosWorkChain, inputs)
         running = self.submit(PdosWorkChain, **inputs)
