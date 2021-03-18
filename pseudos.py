@@ -144,3 +144,6 @@ class PseudoFamilySelector(ipw.VBox):
                 self.pseudo_family_help,
             ]
         )
+
+    def reset(self):
+        self.value = "SSSP_1.1_efficiency"
