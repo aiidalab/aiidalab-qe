@@ -8,14 +8,14 @@ import ipywidgets as ipw
 import traitlets
 from aiida.engine import ProcessState
 from aiida.engine import submit
-from aiidalab_widgets_base import CodeDropdown
-from aiidalab_widgets_base import WizardAppWidgetStep
 from aiida.orm import ProcessNode
 from aiida.orm import StructureData, Float, Str
 from aiida.plugins import WorkflowFactory
+from aiidalab_widgets_base import CodeDropdown
+from aiidalab_widgets_base import ProcessMonitor
+from aiidalab_widgets_base import ProcessNodesTreeWidget
+from aiidalab_widgets_base import WizardAppWidgetStep
 
-from process import ProcessMonitor
-from process import ProcessNodesTreeWidget
 from pseudos import PseudoFamilySelector
 from util import load_default_parameters
 from widgets import NodeViewWidget
@@ -221,9 +221,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     process = traitlets.Instance(ProcessNode, allow_none=True)
 
     def __init__(self, **kwargs):
-        self.process_tree = ProcessNodesTreeWidget(
-            refresh_period=-1,  # managed within this class,
-        )
+        self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink((self, "process"), (self.process_tree, "process"))
 
         self.node_view = NodeViewWidget(
@@ -238,14 +236,19 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
         # Setup process monitor
         self.process_monitor = ProcessMonitor(
-            timeout=0.2,  # run every half second
+            timeout=0.2,
             callbacks=[
-                (self.process_tree.update, 1),
+                self.process_tree.update,
+                self._update_state,
             ],
         )
         ipw.dlink((self, "process"), (self.process_monitor, "process"))
 
         super().__init__([self.process_status], **kwargs)
+
+    def can_reset(self):
+        "Do not allow reset while process is running."
+        return self.state is not self.State.ACTIVE
 
     def reset(self):
         self.process = None

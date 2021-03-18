@@ -65,7 +65,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def _update_state(self):
         if self.structure is None:
             if self.confirmed_structure is None:
-                self.state = self.State.INIT
+                self.state = self.State.READY
             else:
                 self.state = self.State.SUCCESS
         else:
