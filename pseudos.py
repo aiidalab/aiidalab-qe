@@ -126,8 +126,8 @@ class PseudoFamilySelector(ipw.VBox):
     def __init__(self, **kwargs):
         self.pseudo_family_selection = ipw.ToggleButtons(
             options={
-                "SSSP efficiency": "SSSP_1.1_efficiency",
-                "SSSP accuracy": "SSSP_1.1_precision",
+                "SSSP efficiency": "SSSP/1.1/PBE/efficiency",
+                "SSSP accuracy": "SSSP/1.1/PBE/precision",
             },
         )
         ipw.link((self.pseudo_family_selection, "value"), (self, "value"))

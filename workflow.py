@@ -19,12 +19,23 @@ from widgets import NodeViewWidget
 from widgets import ResourceSelectionWidget
 from wizard import WizardApp, WizardAppStep
 
+from IPython.display import clear_output, display
+
 from apps.quantumespresso.qe_workflow import QeAppWorkChain
 from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
 
 StructureData = DataFactory("structure")
 
 WARNING_ICON = "\u26A0"
+
+
+def update_resources(builder, resources):
+    for k, v in builder.items():
+        if isinstance(v, dict):
+            if k == "resources":
+                builder["resources"].update(resources)
+            else:
+                update_resources(v, resources)
 
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
@@ -35,7 +46,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     process = traitlets.Instance(ProcessNode, allow_none=True)
     disabled = traitlets.Bool()
 
-    def __init__(self, description=None, **kwargs):
+    def __init__(self, description=None, pseudo=None, kpoints_distance=None, **kwargs):
         self.code_group_pw = CodeDropdown(
             input_plugin="quantumespresso.pw",
             text="Select PW code",
@@ -49,9 +60,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         )
 
         self.code_group_pw.observe(lambda _: self._update_state(), ["selected_code"])
-
-        # Setup pseudo potential family selection
-        self.pseudo_family_selector = PseudoFamilySelector()
 
         # Setup the compute resources tab
         self.resources = ResourceSelectionWidget()
@@ -68,7 +76,28 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         )
         self.submit_button.on_click(self._on_submit_button_clicked)
 
+        # Setup pseudo potential family selection
+        self.pseudo_family_selector = PseudoFamilySelector()
+
         # Show warning in cofig title when pseudos are not installed:
+        pseudo_output = ipw.Output()
+
+        def _observe_pseudo_modify(value):
+            with pseudo_output:
+                clear_output()
+                if value["new"]:
+                    display(self.pseudo_family_selector)
+
+        self.modify_pseudo = ipw.Checkbox(
+            description="Non-default pseudo",
+            indent=False,
+        )
+        self.modify_pseudo.observe(_observe_pseudo_modify, "value")
+
+        if pseudo:
+            self.modify_pseudo.value = True
+            self.pseudo_family_selector.value = pseudo
+
         def _observe_sssp_installed(change):
             self._observe_state(change=dict(new=self.state))  # trigger refresh
 
@@ -85,6 +114,27 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         # Initialize widget disabled status based on step state.
         self.disabled = self.state != WizardApp.State.READY
 
+        # Modify k-points distance.
+        self.kpoints_distance = ipw.FloatText(
+            value=0.5, description="K-points distance:", disabled=False
+        )
+        kpoints_output = ipw.Output()
+
+        def _observe_kpoints_modify(value):
+            with kpoints_output:
+                clear_output()
+                if value["new"]:
+                    display(self.kpoints_distance)
+
+        self.modify_kpoints_distance = ipw.Checkbox(
+            description="Non-default k-points distance",
+            indent=False,
+        )
+        self.modify_kpoints_distance.observe(_observe_kpoints_modify, "value")
+
+        if kpoints_distance:
+            self.modify_kpoints_distance.value = True
+
         # Spin type.
         self.spin_type = ipw.Dropdown(
             options=[t.name for t in SpinType],
@@ -99,6 +149,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             description="Electronic Type:",
         )
 
+        # Simulation protocol.
+        self.simulation_protocol = ipw.Dropdown(
+            options=["fast", "moderate", "precise"],
+            value="moderate",
+            description="Protocol",
+        )
+
         # Geometry optimization.
         self.run_geo_opt = ipw.Dropdown(
             options=[t.name for t in RelaxType],
@@ -110,11 +167,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         self.run_bands = ipw.Checkbox(
             value=True, description="Run Band Structure", disabled=False, indent=False
         )
+
         # PDOS.
         self.run_pdos = ipw.Checkbox(
-            value=True,
+            value=False,
             description="Run PDOS",
-            disabled=False,
             indent=False,
         )
 
@@ -142,12 +199,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             },
         )
 
-        def code_setup_visibility(value):
-            visibility = "visible" if value["new"] else "hidden"
-            self.code_group_dos.layout.visibility = visibility
-            self.code_group_projwfc.layout.visibility = visibility
+        pdos_code_output = ipw.Output()
 
-        self.run_pdos.observe(code_setup_visibility, names="value")
+        def _code_setup_visibility(value):
+            with pdos_code_output:
+                clear_output()
+                if value["new"]:
+                    display(self.code_group_dos, self.code_group_projwfc)
+
+        self.run_pdos.observe(_code_setup_visibility, names="value")
 
         super().__init__(
             children=[
@@ -155,18 +215,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
                     'Specify the parameters and options for the calculation and then click on "Submit".'
                 ),
                 self.code_group_pw,
-                self.pseudo_family_selector,
+                self.modify_pseudo,
+                pseudo_output,
+                self.modify_kpoints_distance,
+                kpoints_output,
                 self.resources,
+                self.simulation_protocol,
                 self.electronic_type,
                 self.spin_type,
                 self.run_geo_opt,
                 self.run_bands,
-                ipw.HBox(
-                    [
-                        self.run_pdos,
-                        ipw.VBox([self.code_group_dos, self.code_group_projwfc]),
-                    ]
-                ),
+                self.run_pdos,
+                pdos_code_output,
                 self.submit_button,
             ],
             **kwargs,
@@ -199,62 +259,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     def _observe_input_structure(self, change):
         self._update_state()
 
-    @traitlets.validate("process")
-    def _validate_process(self, proposal):
-        # process_node = proposal["value"]
-        # builder = process_node.get_builder_restart()
-        """
-        try:
-            # Check that parameters are consistent with what we would expect for the app.
-            # This ensures that both processes we create with the app and those that are
-            # loaded are consistent.
-            assert process_node.process_label == "PwBandsWorkChain"
-            assert builder.scf.pseudo_family.value == builder.bands.pseudo_family.value
-            assert (
-                dict(load_default_parameters())
-                == dict(builder.scf.pw["parameters"])
-                == dict(builder.bands.pw["parameters"])
-            )
-            assert builder.scf.kpoints_distance == Float(0.8)
-        except AssertionError as error:
-            raise traitlets.TraitError(
-                f"Unable to set process, parameters are inconsistent: {error}"
-            )
-        """
-        return proposal["value"]
-
     @traitlets.observe("process")
     def _observe_process(self, change):
         with self.hold_trait_notifications():
             process_node = change["new"]
             if process_node is not None:
-                # Restore the code parameters
-                # builder = process_node.get_builder_restart()
-                """
-                self.pseudo_family_selector.value = builder.relax.base[
-                    "pseudo_family"
-                ].value
-                try:
-                    self.code_group_pw.selected_code = builder.relax.base["pw"][
-                        "code"
-                    ].full_label
-                except traitlets.TraitError:
-                    # It's not considered a critical issue if the exact code cannot
-                    # be retrieved, however we set it to "None" in the interface to
-                    # indicate that to the user.
-                    self.code_group_pw.selected_code = None
-                """
                 self.input_structure = process_node.inputs.structure
-
-    @property
-    def options(self):
-        return {
-            "max_wallclock_seconds": 3600 * 2,
-            "resources": {
-                "num_machines": self.resources.number_of_nodes.value,
-                "num_mpiprocs_per_machine": self.resources.cpus_per_node.value,
-            },
-        }
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
@@ -269,10 +279,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
             pw_code=self.code_group_pw.selected_code,
             dos_code=self.code_group_dos.selected_code,
             projwfc_code=self.code_group_projwfc.selected_code,
-            protocol="fast",
+            protocol=self.simulation_protocol.value,
             relax_type=RelaxType[self.run_geo_opt.value],
             spin_type=SpinType[self.spin_type.value],
             electronic_type=ElectronicType[self.electronic_type.value],
+            pseudo_family=self.pseudo_family_selector.value
+            if self.modify_pseudo.value
+            else None,
+            kpoints_distance_override=self.kpoints_distance
+            if self.modify_kpoints_distance
+            else None,
         )
 
         if not self.run_bands.value:
@@ -280,41 +296,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         if not self.run_pdos.value:
             builder.pop("pdos")
 
-        """
-        # Geometry optimization section.
-        if self.run_geo_opt.value:
-            builder.relax.base.pw.code = self.code_group_pw.selected_code
-            with open("parameters/relax.yaml") as file:
-                builder.relax.base.pw.parameters = Dict(
-                    dict=yaml.load(file, Loader=yaml.FullLoader)
-                )
-            builder.relax.base.pw.metadata.options = self.options
-            builder.relax.base.kpoints_distance = Float(0.8)
-            builder.relax.base.pseudo_family = Str(self.pseudo_family_selector.value)
+        resources = {
+            "num_machines": self.resources.number_of_nodes.value,
+            "num_mpiprocs_per_machine": self.resources.cpus_per_node.value,
+        }
+        update_resources(builder, resources)
 
-        # Bands section.
-        if self.run_bands.value:
-            with open("parameters/bands.yaml") as file:
-                builder.bands.scf.pw.parameters = Dict(
-                    dict=yaml.load(file, Loader=yaml.FullLoader)
-                )
-            builder.bands.scf.pw.metadata.options = self.options
-            builder.bands.scf.kpoints_distance = Float(0.8)
-            builder.bands.scf.pseudo_family = Str(self.pseudo_family_selector.value)
-            builder.bands.scf.pw.code = self.code_group_pw.selected_code
-
-            with open("parameters/bands.yaml") as file:
-                builder.bands.bands.pw.parameters = Dict(
-                    dict=yaml.load(file, Loader=yaml.FullLoader)
-                )
-            builder.bands.bands.pw.metadata.options = self.options
-            builder.bands.bands.pseudo_family = Str(self.pseudo_family_selector.value)
-            builder.bands.bands.pw.code = self.code_group_pw.selected_code
-
-        # PDOS section.
-        if self.run_pdos.value:
-            pass
-        """
         self.process = submit(builder)
 
     def reset(self):
