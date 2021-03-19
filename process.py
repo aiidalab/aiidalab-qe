@@ -1,86 +1,11 @@
-"""Widgets for the monitoring of processes."""
-import os
+"""Widgets related to process management."""
 from dataclasses import dataclass
 from threading import Thread, Event, Lock
 
 import traitlets
 import ipywidgets as ipw
 from aiida.cmdline.utils.query.calculation import CalculationQueryBuilder
-from aiida.orm import ProcessNode
 from aiida.orm import load_node
-
-
-def get_calc_job_output(process):
-    from aiidalab_widgets_base.process import get_running_calcs
-
-    previous_calc_id = None
-    num_lines = 0
-
-    while not process.is_sealed:
-        calc = None
-        for calc in get_running_calcs(process):
-            if calc.id == previous_calc_id:
-                break
-        else:
-            if calc:
-                previous_calc_id = calc.id
-
-        if calc and "remote_folder" in calc.outputs:
-            f_path = os.path.join(
-                calc.outputs.remote_folder.get_remote_path(),
-                calc.attributes["output_filename"],
-            )
-            if os.path.exists(f_path):
-                with open(f_path) as fobj:
-                    new_lines = fobj.readlines()[num_lines:]
-                    num_lines += len(new_lines)
-                    yield from new_lines
-
-
-class ProgressBarWidget(ipw.VBox):
-    """A bar showing the proggress of a process."""
-
-    process = traitlets.Instance(ProcessNode, allow_none=True)
-
-    def __init__(self, **kwargs):
-        self.correspondance = {
-            None: (0, "warning"),
-            "created": (0, "info"),
-            "running": (1, "info"),
-            "waiting": (1, "info"),
-            "killed": (2, "danger"),
-            "excepted": (2, "danger"),
-            "finished": (2, "success"),
-        }
-        self.bar = ipw.IntProgress(  # pylint: disable=blacklisted-name
-            value=0,
-            min=0,
-            max=2,
-            step=1,
-            bar_style="warning",  # 'success', 'info', 'warning', 'danger' or ''
-            orientation="horizontal",
-            layout=ipw.Layout(width="auto"),
-        )
-        self.state = ipw.HTML(
-            description="Calculation state:",
-            value="",
-            style={"description_width": "100px"},
-        )
-        super().__init__(children=[self.state, self.bar], **kwargs)
-
-    @traitlets.observe("process")
-    def update(self, _=None):
-        """Update the bar."""
-        self.bar.value, self.bar.bar_style = self.correspondance[self.current_state]
-        if self.current_state is None:
-            self.state.value = "N/A"
-        else:
-            self.state.value = self.current_state.capitalize()
-
-    @property
-    def current_state(self):
-        if self.process is not None:
-            return self.process.process_state.value
 
 
 class WorkChainSelector(ipw.HBox):
