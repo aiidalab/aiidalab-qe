@@ -2,8 +2,11 @@
 import ipywidgets as ipw
 from threading import Thread
 from subprocess import run
+from aiida import orm, plugins
 
 import traitlets
+
+SsspFamily = plugins.GroupFactory("pseudo.family.sssp")
 
 
 class Spinner(ipw.HTML):
@@ -60,14 +63,14 @@ class SSSPInstallWidget(ipw.HBox):
     def _refresh_installed(self):
         try:
             self.set_trait("busy", True)
-            proc = run(
-                "verdi data upf listfamilies".split(),
-                capture_output=True,
-                encoding="utf-8",
+            all_pseudo_families = (
+                orm.QueryBuilder().append(SsspFamily, project="label").all(flat=True)
             )
             self.installed = (
-                "SSSP_1.1_efficiency" in proc.stdout
-                and "SSSP_1.1_precision" in proc.stdout
+                "SSSP/1.1/PBE/precision" in all_pseudo_families
+                and "SSSP/1.1/PBE/efficiency" in all_pseudo_families
+                and "SSSP/1.1/PBEsol/precision" in all_pseudo_families
+                and "SSSP/1.1/PBEsol/efficiency" in all_pseudo_families
             )
         finally:
             self.set_trait("busy", False)
@@ -88,12 +91,12 @@ class SSSPInstallWidget(ipw.HBox):
         try:
             self.set_trait("busy", True)
 
-            url_efficiency = f"{self.base_url}/SSSP_efficiency_pseudos.aiida"
-            url_precision = f"{self.base_url}/SSSP_precision_pseudos.aiida"
+            functionals = ["PBE", "PBEsol"]
+            protocols = ["efficiency", "precision"]
 
-            for i, url in enumerate((url_precision, url_efficiency)):
-                run(["verdi", "import", "-n", url])
-
+            for func in functionals:
+                for prot in protocols:
+                    run(["aiida-pseudo", "install", "sssp", "-x", func, "-p", prot])
             self._refresh_installed()
         finally:
             self.set_trait("busy", False)
@@ -121,17 +124,15 @@ class PseudoFamilySelector(ipw.VBox):
     installed = traitlets.Bool()
     disabled = traitlets.Bool()
 
+    functional = traitlets.Unicode(allow_none=True)
+    protocol = traitlets.Unicode(allow_none=True)
+
     value = traitlets.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
-        self.pseudo_family_selection = ipw.ToggleButtons(
-            options={
-                "SSSP efficiency": "SSSP/1.1/PBE/efficiency",
-                "SSSP accuracy": "SSSP/1.1/PBE/precision",
-            },
-        )
-        ipw.link((self.pseudo_family_selection, "value"), (self, "value"))
-        ipw.dlink((self, "disabled"), (self.pseudo_family_selection, "disabled"))
+        self.protocol_selection = ipw.ToggleButtons(options=["efficiency", "precision"])
+        ipw.link((self.protocol_selection, "value"), (self, "protocol"))
+        ipw.dlink((self, "disabled"), (self.protocol_selection, "disabled"))
 
         # Setup pseudofamily potential selection group:
         self.sssp_install_widget = SSSPInstallWidget()
@@ -140,7 +141,18 @@ class PseudoFamilySelector(ipw.VBox):
         super().__init__(
             children=[
                 self.pseudo_family_prompt,
-                ipw.HBox([self.pseudo_family_selection, self.sssp_install_widget]),
+                ipw.HBox([self.protocol_selection, self.sssp_install_widget]),
                 self.pseudo_family_help,
             ]
         )
+
+    @traitlets.observe("functional")
+    def _observe_functional(self, change):
+        self.set_value_trait()
+
+    @traitlets.observe("protocol")
+    def _observe_protocol(self, change):
+        self.set_value_trait()
+
+    def set_value_trait(self):
+        self.value = f"SSSP/1.1/{self.functional}/{self.protocol}"
