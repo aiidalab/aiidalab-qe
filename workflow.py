@@ -8,25 +8,24 @@ import ipywidgets as ipw
 import traitlets
 from aiida.engine import ProcessState
 from aiida.engine import submit
-from aiidalab_widgets_base import CodeDropdown
 from aiida.orm import ProcessNode
 from aiida.plugins import DataFactory
+from aiidalab_widgets_base import CodeDropdown
+from aiidalab_widgets_base import ProcessMonitor
+from aiidalab_widgets_base import ProcessNodesTreeWidget
+from aiidalab_widgets_base import WizardAppWidgetStep
 
-from process import ProcessMonitor
-from process import ProcessNodesTreeWidget
 from pseudos import PseudoFamilySelector
 from widgets import NodeViewWidget
 from widgets import ResourceSelectionWidget
-from wizard import WizardApp, WizardAppStep
 
 from IPython.display import clear_output, display
 
 from apps.quantumespresso.qe_workflow import QeAppWorkChain
 from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
 
-StructureData = DataFactory("structure")
 
-WARNING_ICON = "\u26A0"
+StructureData = DataFactory("structure")
 
 
 def update_resources(builder, resources):
@@ -38,7 +37,7 @@ def update_resources(builder, resources):
                 update_resources(v, resources)
 
 
-class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
+class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
 
     input_structure = traitlets.Instance(StructureData, allow_none=True)
@@ -269,7 +268,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
         ipw.dlink((self, "disabled"), (self.pseudo_family_selector, "disabled"))
 
         # Initialize widget disabled status based on step state.
-        self.disabled = self.state != WizardApp.State.READY
+        self.disabled = self.state != self.State.READY
 
         # Use input parameters.
         if pseudo_family:
@@ -319,28 +318,28 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
 
         # Input structure not specified.
         if self.input_structure is None:
-            return WizardApp.State.INIT
+            return self.State.INIT
 
         # Process is already running.
         if self.process is not None:
-            return WizardApp.State.SUCCESS
+            return self.State.SUCCESS
 
         # Pseudo family is not installed.
         if not self.pseudo_family_selector.installed:
-            return WizardApp.State.READY
+            return self.State.READY
 
         # PW code not selected.
         if self.code_group_pw.selected_code is None:
-            return WizardApp.State.READY
+            return self.State.READY
 
         # PDOS run requested, but codes are not specified.
         if self.run_pdos.value:
             if self.code_group_dos.selected_code is None:
-                return WizardApp.State.READY
+                return self.State.READY
             if self.code_group_projwfc.selected_code is None:
-                return WizardApp.State.READY
+                return self.State.READY
 
-        return WizardApp.State.CONFIGURED
+        return self.State.CONFIGURED
 
     def _update_state(self, _=None):
         self.state = self._get_state()
@@ -349,10 +348,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             self.disabled = change["new"] not in (
-                WizardApp.State.READY,
-                WizardApp.State.CONFIGURED,
+                self.State.READY,
+                self.State.CONFIGURED,
             )
-            self.submit_button.disabled = change["new"] != WizardApp.State.CONFIGURED
+            self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
     @traitlets.observe("input_structure")
     def _observe_input_structure(self, change):
@@ -367,7 +366,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
-        self.state = WizardApp.State.ACTIVE
+        self.state = self.State.ACTIVE
         self.submit()
 
     def submit(self, _=None):
@@ -407,16 +406,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppStep):
 
     def reset(self):
         self.process = None
+        with self.hold_trait_notifications():
+            self.pseudo_family_selector.reset()
+            self.resources.reset()
 
 
-class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppStep):
+class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
     process = traitlets.Instance(ProcessNode, allow_none=True)
 
     def __init__(self, **kwargs):
-        self.process_tree = ProcessNodesTreeWidget(
-            refresh_period=-1,  # managed within this class,
-        )
+        self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink((self, "process"), (self.process_tree, "process"))
 
         self.node_view = NodeViewWidget(
@@ -431,21 +431,26 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppStep):
 
         # Setup process monitor
         self.process_monitor = ProcessMonitor(
-            timeout=0.2,  # run every half second
+            timeout=0.2,
             callbacks=[
-                (self.process_tree.update, 1),
+                self.process_tree.update,
+                self._update_state,
             ],
         )
         ipw.dlink((self, "process"), (self.process_monitor, "process"))
 
         super().__init__([self.process_status], **kwargs)
 
+    def can_reset(self):
+        "Do not allow reset while process is running."
+        return self.state is not self.State.ACTIVE
+
     def reset(self):
         self.process = None
 
     def _update_state(self):
         if self.process is None:
-            self.state = WizardApp.State.INIT
+            self.state = self.State.INIT
         else:
             process_state = self.process.process_state
             if process_state in (
@@ -453,11 +458,11 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppStep):
                 ProcessState.RUNNING,
                 ProcessState.WAITING,
             ):
-                self.state = WizardApp.State.ACTIVE
+                self.state = self.State.ACTIVE
             elif process_state in (ProcessState.EXCEPTED, ProcessState.KILLED):
-                self.state = WizardApp.State.FAIL
+                self.state = self.State.FAIL
             elif process_state is ProcessState.FINISHED:
-                self.state = WizardApp.State.SUCCESS
+                self.state = self.State.SUCCESS
 
     @traitlets.observe("process")
     def _observe_process(self, change):
