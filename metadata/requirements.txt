@@ -1,5 +1,5 @@
 click==7.1.2
 dulwich==0.19.16
-Jinja2==2.11.2
+Jinja2==2.11.3
 jsonschema==3.2.0
 packaging==20.4
