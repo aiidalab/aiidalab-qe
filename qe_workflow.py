@@ -1,11 +1,8 @@
-# pylint: disable=no-member,inconsistent-return-statements,line-too-long,bad-continuation,too-many-arguments
-
 # AiiDA imports.
 from aiida.common import AttributeDict
 from aiida.engine import WorkChain, ToContext, if_
 from aiida.orm import CalcJobNode, WorkChainNode
 from aiida.plugins import WorkflowFactory, DataFactory
-from aiida.plugins.factories import OrbitalFactory
 
 
 # AiiDA Quantum ESPRESSO plugin inputs.
@@ -35,20 +32,21 @@ class QeAppWorkChain(WorkChain):
         """Define the process specification."""
         # yapf: disable
         super().define(spec)
-        spec.input('structure', valid_type=StructureData, help='The inputs structure.')
+        spec.input('structure', valid_type=StructureData,
+                   help='The inputs structure.')
         spec.input('clean_workdir', valid_type=Bool, default=lambda: Bool(False),
-            help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
+                   help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
-            namespace_options={'required': False, 'populate_defaults': False,
-            'help': 'Inputs for the `PwRelaxWorkChain`, if not specified at all, the relaxation step is skipped.'})
+                           namespace_options={'required': False, 'populate_defaults': False,
+                                              'help': 'Inputs for the `PwRelaxWorkChain`, if not specified at all, the relaxation step is skipped.'})
         spec.expose_inputs(PwBandsWorkChain, namespace='bands',
-            exclude=('clean_workdir', 'structure', 'relax'),
-            namespace_options={'required': False, 'populate_defaults': False,
-            'help': 'Inputs for the `PwBandsWorkChain`.'})
+                           exclude=('clean_workdir', 'structure', 'relax'),
+                           namespace_options={'required': False, 'populate_defaults': False,
+                                              'help': 'Inputs for the `PwBandsWorkChain`.'})
         spec.expose_inputs(PdosWorkChain, namespace='pdos',
-            exclude=('clean_workdir', 'structure'),
-            namespace_options={'required': False, 'populate_defaults': False,
-            'help': 'Inputs for the `PdosWorkChain`.'})
+                           exclude=('clean_workdir', 'structure'),
+                           namespace_options={'required': False, 'populate_defaults': False,
+                                              'help': 'Inputs for the `PdosWorkChain`.'})
         spec.input(
             'kpoints_distance_override', valid_type=Float, required=False,
             help='Override for the kpoints distance value of all `PwBaseWorkChains` save for the `nscf` calculations.'
@@ -74,11 +72,11 @@ class QeAppWorkChain(WorkChain):
             cls.results
         )
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RELAX',
-            message='The PwRelaxWorkChain sub process failed')
+                       message='The PwRelaxWorkChain sub process failed')
         spec.exit_code(403, 'ERROR_SUB_PROCESS_FAILED_BANDS',
-            message='The PwBandsWorkChain sub process failed')
+                       message='The PwBandsWorkChain sub process failed')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
-            message='The PdosWorkChain sub process failed')
+                       message='The PdosWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData)
         spec.output('band_parameters', valid_type=Dict, required=False)
         spec.output('band_structure', valid_type=BandsData, required=False)
