@@ -156,3 +156,6 @@ class PseudoFamilySelector(ipw.VBox):
 
     def set_value_trait(self):
         self.value = f"SSSP/1.1/{self.functional}/{self.protocol}"
+
+    def reset(self):
+        self.protocol_selection.value = "efficiency"
