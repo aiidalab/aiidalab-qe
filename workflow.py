@@ -386,7 +386,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             pseudo_family=self.pseudo_family_selector.value
             if self.modify_pseudo.value
             else None,
-            kpoints_distance_override=self.kpoints_distance
+            kpoints_distance_override=self.kpoints_distance.value
             if self.modify_kpoints_distance
             else None,
         )
