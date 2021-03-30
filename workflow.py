@@ -19,8 +19,6 @@ from pseudos import PseudoFamilySelector
 from widgets import NodeViewWidget
 from widgets import ResourceSelectionWidget
 
-from IPython.display import clear_output, display
-
 from apps.quantumespresso.qe_workflow import QeAppWorkChain
 from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
 
@@ -37,179 +35,165 @@ def update_resources(builder, resources):
                 update_resources(v, resources)
 
 
-class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
-    """Step for submission of a bands workchain."""
+class WorkChainConfig(ipw.VBox):
+    def __init__(self, **kwargs):
 
-    input_structure = traitlets.Instance(StructureData, allow_none=True)
-
-    process = traitlets.Instance(ProcessNode, allow_none=True)
-    disabled = traitlets.Bool()
-
-    def __init__(
-        self,
-        description=None,
-        pseudo_family=None,
-        kpoints_distance=None,
-        electronic_type=None,
-        spin_type=None,
-        degauss=None,
-        **kwargs
-    ):
-
-        # Clicking on the 'submit' button will trigger the execution of the
-        # submit() method.
-        self.submit_button = ipw.Button(
-            description="Submit",
-            tooltip="Submit the calculation with the selected parameters.",
-            icon="play",
-            button_style="success",
-            layout=ipw.Layout(width="auto", flex="1 1 auto"),
-            disabled=True,
-        )
-        self.submit_button.on_click(self._on_submit_button_clicked)
-
-        # What to compute.
-
-        # Geometry optimization.
-        self.run_geo_opt = ipw.Checkbox(
-            value=True,
-            description="Run Geometry Optimization",
-            disabled=False,
-            indent=False,
-        )
-
+        self.run_geo_opt = ipw.Checkbox(description="Optimize geometry", value=True)
         self.geo_opt_type = ipw.Dropdown(
-            options=["POSITIONS", "POSITIONS_CELL"],
-            value="POSITIONS",
-            description="Geometry Optimization:",
-            style={"description_width": "initial"},
+            description="Method:", options=["POSITIONS", "POSITIONS_CELL"]
+        )
+        ipw.dlink(
+            (self.run_geo_opt, "value"),
+            (self.geo_opt_type, "disabled"),
+            transform=lambda v: not v,
         )
 
-        def _geo_type_visibility(value):
-            self.geo_opt_type.layout.visibility = (
-                "visible" if value["new"] else "hidden"
-            )
-
-        self.run_geo_opt.observe(_geo_type_visibility, "value")
-
-        # Band Structure.
-        self.run_bands = ipw.Checkbox(
-            value=True, description="Run Band Structure", disabled=False, indent=False
-        )
-        # PDOS.
-        self.run_pdos = ipw.Checkbox(
-            value=False,
-            description="Run PDOS",
-            indent=False,
-        )
+        self.run_bands = ipw.Checkbox(description="Calculate band structure")
+        self.run_pdos = ipw.Checkbox(description="Calculate density of states")
 
         # Simulation protocol.
         self.simulation_protocol = ipw.Dropdown(
-            options=["fast", "moderate", "precise"],
-            value="moderate",
-            description="Protocol",
+            options=["fast", "moderate", "precise"], value="moderate"
         )
 
-        # DFT functional.
-        self.dft_functional = ipw.Dropdown(
-            options=["PBE", "PBEsol"],
-            value="PBE",
-            description="DFT functional",
-            style={"description_width": "initial"},
+        super().__init__(
+            children=[
+                ipw.HTML("Select which steps to run as part of the work chain:"),
+                ipw.HBox(children=[self.run_geo_opt, self.geo_opt_type]),
+                ipw.HBox(children=[self.run_bands]),
+                self.run_pdos,
+                ipw.HBox(
+                    children=[
+                        ipw.HTML("<b>Protocol</b>", layout=ipw.Layout(flex="1 1 auto")),
+                        self.simulation_protocol,
+                    ],
+                    layout=ipw.Layout(vertical_align="bottom"),
+                ),
+                ipw.HTML(
+                    """The "moderate" protocol represents a balanced trade-off between accuracy and speed.
+            Choose the "fast" protocol for a faster calculation with less precision and the "precise" protocol
+            that provides more accuracy but will take longer."""
+                ),
+            ],
+            layout=ipw.Layout(max_width="600px"),
+            **kwargs
         )
+
+
+class OptionsConfig(ipw.VBox):
+    spin_type = traitlets.Instance(SpinType, allow_none=True)
+    electronic_type = traitlets.Instance(ElectronicType, allow_none=True)
+    kpoints_distance = traitlets.Float(allow_none=True)
+    degauss = traitlets.Float(allow_none=True)
+
+    def __init__(self, **kwargs):
 
         # Spin type.
-        self.spin_type = ipw.Dropdown(
+        self._set_spin_automatically = ipw.Checkbox(
+            description="Use default spin type.",
+            indent=False,
+            value=True,
+        )
+        self._spin_type = ipw.Dropdown(
             options=["NONE", "COLLINEAR", "NON_COLLINEAR"],
             value="NONE",
             description="Spin Type:",
         )
+        ipw.dlink(
+            (self._set_spin_automatically, "value"), (self._spin_type, "disabled")
+        )
+        self._set_spin_automatically.observe(self.set_spin_type_trait, "value")
+        self._spin_type.observe(self.set_spin_type_trait, "value")
+        self.set_spin_type_trait()
 
         # Electronic type.
-        self.electronic_type = ipw.Dropdown(
+        self._set_el_type_automatically = ipw.Checkbox(
+            description="Use default electronic type.",
+            indent=False,
+            value=True,
+        )
+        self._electronic_type = ipw.Dropdown(
             options=["METAL", "INSULATOR"],
             value="METAL",
             description="Electronic Type:",
             style={"description_width": "initial"},
         )
-
-        # Pseudo potential family selection.
-        self.modify_pseudo = ipw.Checkbox(
-            description="Choose pseudo",
-            indent=False,
-        )
-
-        pseudo_output = ipw.Output()
-
-        def _observe_pseudo_modify(value):
-            with pseudo_output:
-                clear_output()
-                if value["new"]:
-                    display(self.pseudo_family_selector)
-
-        self.modify_pseudo.observe(_observe_pseudo_modify, "value")
-
-        self.pseudo_family_selector = PseudoFamilySelector()
         ipw.dlink(
-            (self.dft_functional, "value"), (self.pseudo_family_selector, "functional")
+            (self._set_el_type_automatically, "value"),
+            (self._electronic_type, "disabled"),
         )
+        self._set_el_type_automatically.observe(self.set_electronic_type_trait, "value")
+        self._electronic_type.observe(self.set_electronic_type_trait, "value")
+        self.set_electronic_type_trait()
 
-        def _observe_sssp_installed(change):
-            self._observe_state(change=dict(new=self.state))  # trigger refresh
-
-        # Show warning in cofig title when pseudos are not installed:
-        self.pseudo_family_selector.observe(_observe_sssp_installed, "installed")
-        _observe_sssp_installed(change=dict(new=self.pseudo_family_selector.installed))
-
-        # Modify k-points distance.
-        self.kpoints_distance = ipw.FloatText(
-            value=0.5,
+        # K-points distance.
+        self._set_kpoints_distance_automatically = ipw.Checkbox(
+            description="Use default k-points distance.",
+            indent=False,
+            value=True,
+        )
+        self._kpoints_distance = ipw.FloatText(
+            value=0.4,
             step=0.1,
             description="K-points distance:",
             disabled=False,
             style={"description_width": "initial"},
         )
-        kpoints_output = ipw.Output()
-
-        def _observe_kpoints_modify(value):
-            with kpoints_output:
-                clear_output()
-                if value["new"]:
-                    display(self.kpoints_distance)
-
-        self.modify_kpoints_distance = ipw.Checkbox(
-            description="Non-default k-points distance",
-            indent=False,
+        ipw.dlink(
+            (self._set_kpoints_distance_automatically, "value"),
+            (self._kpoints_distance, "disabled"),
         )
-        self.modify_kpoints_distance.observe(_observe_kpoints_modify, "value")
+        self._kpoints_distance.observe(self.set_kpoints_distance_trait, "value")
+        self._set_kpoints_distance_automatically.observe(
+            self.set_kpoints_distance_trait, "value"
+        )
+        self.set_kpoints_distance_trait()
 
         # Modify degauss.
-        self.degauss = ipw.FloatText(
-            value=0.01,
-            step=0.01,
-            description="Gaussian spreading",
-            disabled=False,
-            style={"description_width": "initial"},
+        # degauss = ipw.FloatText(
+        #    value=0.01,
+        #    step=0.01,
+        #    description="Gaussian spreading",
+        #    disabled=False,
+        #    style={"description_width": "initial"},
+        # )
+
+        super().__init__(
+            children=[
+                ipw.HBox([self._set_spin_automatically, self._spin_type]),
+                ipw.HBox([self._set_el_type_automatically, self._electronic_type]),
+                ipw.HBox(
+                    [self._set_kpoints_distance_automatically, self._kpoints_distance]
+                ),
+            ],
+            layout=ipw.Layout(max_width="600px"),
+            **kwargs
         )
-        degauss_output = ipw.Output()
 
-        def _observe_degauss_modify(value):
-            with degauss_output:
-                clear_output()
-                if value["new"]:
-                    display(self.degauss)
+    def set_spin_type_trait(self, _=None):
+        self.spin_type = SpinType[
+            "NONE" if self._set_spin_automatically.value else self._spin_type.value
+        ]
 
-        self.modify_degauss = ipw.Checkbox(
-            description="Non-default Gaussian spreading",
-            indent=False,
+    def set_electronic_type_trait(self, _=None):
+        self.electronic_type = ElectronicType[
+            "METAL"
+            if self._set_el_type_automatically.value
+            else self._electronic_type.value
+        ]
+
+    def set_kpoints_distance_trait(self, _=None):
+        self.kpoints_distance = (
+            None
+            if self._set_kpoints_distance_automatically.value
+            else self._kpoints_distance.value
         )
-        self.modify_degauss.observe(_observe_degauss_modify, "value")
 
-        # Manage compute resources.
-        self.resources = ResourceSelectionWidget()
 
-        # Manage codes.
-        self.code_group_pw = CodeDropdown(
+class CodesConfig(ipw.VBox):
+    def __init__(self, **kwargs):
+
+        self.pw = CodeDropdown(
             input_plugin="quantumespresso.pw",
             description="PW code:",
             setup_code_params={
@@ -220,8 +204,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "remote_abs_path": "/usr/bin/pw.x",
             },
         )
-
-        self.code_group_dos = CodeDropdown(
+        self.dos = CodeDropdown(
             input_plugin="quantumespresso.dos",
             description="DOS code",
             setup_code_params={
@@ -233,7 +216,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             },
         )
 
-        self.code_group_projwfc = CodeDropdown(
+        self.projwfc = CodeDropdown(
             input_plugin="quantumespresso.projwfc",
             description="PROJWFC code",
             setup_code_params={
@@ -244,75 +227,63 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "remote_abs_path": "/usr/bin/projwfc.x",
             },
         )
-
-        self.code_group_pw.observe(self._update_state, "selected_code")
-        self.code_group_dos.observe(self._update_state, "selected_code")
-        self.code_group_projwfc.observe(self._update_state, "selected_code")
-        self.run_pdos.observe(self._update_state, "value")
-
-        code_output = ipw.Output()
-
-        def _code_setup_visibility(value):
-            with code_output:
-                clear_output()
-                display(self.code_group_pw)
-                if value["new"]:
-                    display(self.code_group_dos, self.code_group_projwfc)
-
-        self.run_pdos.observe(_code_setup_visibility, names="value")
-        _code_setup_visibility({"new": None})
-
-        ipw.dlink((self, "disabled"), (self.code_group_pw.dropdown, "disabled"))
-        ipw.dlink((self, "disabled"), (self.resources.number_of_nodes, "disabled"))
-        ipw.dlink((self, "disabled"), (self.resources.cpus_per_node, "disabled"))
-        ipw.dlink((self, "disabled"), (self.pseudo_family_selector, "disabled"))
-
-        # Initialize widget disabled status based on step state.
-        self.disabled = self.state != self.State.READY
-
-        # Use input parameters.
-        if pseudo_family:
-            _, _, functional, protocol = pseudo_family.split("/")
-            self.modify_pseudo.value = True
-            self.dft_functional.value = functional
-            self.pseudo_family_selector.protocol = protocol
-
-        if kpoints_distance:
-            self.modify_kpoints_distance.value = True
-            self.kpoints_distance.value = kpoints_distance
-
-        if electronic_type:
-            self.electronic_type.value = electronic_type
-
-        if spin_type:
-            self.spin_type.value = spin_type
-
-        if degauss:
-            self.modify_degauss.value = True
-            self.degauss.value = degauss
-
         super().__init__(
             children=[
-                ipw.Label("Specify which calculations to run."),
-                ipw.HBox([self.run_geo_opt, self.geo_opt_type]),
-                self.run_bands,
-                self.run_pdos,
-                self.simulation_protocol,
-                self.dft_functional,
-                self.electronic_type,
-                self.spin_type,
-                self.modify_pseudo,
-                pseudo_output,
-                self.modify_kpoints_distance,
-                kpoints_output,
-                self.modify_degauss,
-                degauss_output,
-                self.resources,
-                code_output,
-                self.submit_button,
+                self.pw,
+                self.dos,
+                self.projwfc,
             ],
-            **kwargs,
+            **kwargs
         )
+
+
+class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
+    """Step for submission of a bands workchain."""
+
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
+    process = traitlets.Instance(ProcessNode, allow_none=True)
+    disabled = traitlets.Bool()
+
+    def __init__(self, **kwargs):
+        self.workchain_config = WorkChainConfig()
+        self.resources_config = ResourceSelectionWidget()
+        self.options_config = OptionsConfig()
+        self.pseudo_family_selector = PseudoFamilySelector()
+        self.codes_selector = CodesConfig()
+
+        self.codes_selector.pw.observe(self._update_state, "selected_code")
+        self.codes_selector.dos.observe(self._update_state, "selected_code")
+        self.codes_selector.projwfc.observe(self._update_state, "selected_code")
+        self.workchain_config.run_pdos.observe(self._update_state, "value")
+
+        tab = ipw.Tab(
+            children=[
+                self.workchain_config,
+                self.resources_config,
+                self.options_config,
+                self.pseudo_family_selector,
+                self.codes_selector,
+            ],
+            layout=ipw.Layout(min_height="250px"),
+        )
+
+        tab.set_title(0, "Workchain")
+        tab.set_title(1, "Compute resources")
+        tab.set_title(2, "Advanced options")
+        tab.set_title(3, "Pseudo potentials")
+        tab.set_title(4, "Select codes")
+
+        self.submit_button = ipw.Button(
+            description="Submit",
+            tooltip="Submit the calculation with the selected parameters.",
+            icon="play",
+            button_style="success",
+            layout=ipw.Layout(width="auto", flex="1 1 auto"),
+            disabled=True,
+        )
+
+        self.submit_button.on_click(self._on_submit_button_clicked)
+        super().__init__(children=[tab, self.submit_button])
 
     def _get_state(self):
 
@@ -329,14 +300,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return self.State.READY
 
         # PW code not selected.
-        if self.code_group_pw.selected_code is None:
+        if self.codes_selector.pw.selected_code is None:
             return self.State.READY
 
         # PDOS run requested, but codes are not specified.
-        if self.run_pdos.value:
-            if self.code_group_dos.selected_code is None:
+        if self.workchain_config.run_pdos.value:
+            if self.codes_selector.dos.selected_code is None:
                 return self.State.READY
-            if self.code_group_projwfc.selected_code is None:
+            if self.codes_selector.projwfc.selected_code is None:
                 return self.State.READY
 
         return self.State.CONFIGURED
@@ -370,45 +341,36 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.submit()
 
     def submit(self, _=None):
+
         assert self.input_structure is not None
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            pw_code=self.code_group_pw.selected_code,
-            dos_code=self.code_group_dos.selected_code,
-            projwfc_code=self.code_group_projwfc.selected_code,
-            protocol=self.simulation_protocol.value,
-            relax_type=RelaxType[self.geo_opt_type.value]
-            if self.run_geo_opt.value
+            pw_code=self.codes_selector.pw.selected_code,
+            dos_code=self.codes_selector.dos.selected_code,
+            projwfc_code=self.codes_selector.projwfc.selected_code,
+            protocol=self.workchain_config.simulation_protocol.value,
+            relax_type=RelaxType[self.workchain_config.geo_opt_type.value]
+            if self.workchain_config.run_geo_opt.value
             else RelaxType["NONE"],
-            spin_type=SpinType[self.spin_type.value],
-            electronic_type=ElectronicType[self.electronic_type.value],
-            pseudo_family=self.pseudo_family_selector.value
-            if self.modify_pseudo.value
-            else None,
-            kpoints_distance_override=self.kpoints_distance
-            if self.modify_kpoints_distance
-            else None,
+            pseudo_family=self.pseudo_family_selector.value,
+            spin_type=self.options_config.spin_type,
+            electronic_type=self.options_config.electronic_type,
+            kpoints_distance_override=self.options_config.kpoints_distance,
         )
 
-        if not self.run_bands.value:
+        if not self.workchain_config.run_bands.value:
             builder.pop("bands")
-        if not self.run_pdos.value:
+        if not self.workchain_config.run_pdos.value:
             builder.pop("pdos")
 
         resources = {
-            "num_machines": self.resources.number_of_nodes.value,
-            "num_mpiprocs_per_machine": self.resources.cpus_per_node.value,
+            "num_machines": self.resources_config.number_of_nodes.value,
+            "num_mpiprocs_per_machine": self.resources_config.cpus_per_node.value,
         }
         update_resources(builder, resources)
 
         self.process = submit(builder)
-
-    def reset(self):
-        self.process = None
-        with self.hold_trait_notifications():
-            self.pseudo_family_selector.reset()
-            self.resources.reset()
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
