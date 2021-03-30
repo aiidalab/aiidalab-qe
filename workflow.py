@@ -9,6 +9,7 @@ import traitlets
 from aiida.engine import ProcessState
 from aiida.engine import submit
 from aiida.orm import ProcessNode
+from aiida.orm import load_node
 from aiida.plugins import DataFactory
 from aiidalab_widgets_base import CodeDropdown
 from aiidalab_widgets_base import ProcessMonitor
@@ -345,8 +346,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _setup_builder_parameters_update(self):
         update = self._update_builder_parameters  # alias for code conciseness
-        # Structure
-        self.observe(update, ["input_structure"])
         # Codes
         self.codes_selector.dos.observe(update, ["selected_code"])
         self.codes_selector.projwfc.observe(update, ["selected_code"])
@@ -363,28 +362,64 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_config.run_bands.observe(update, ["value"])
         self.workchain_config.run_pdos.observe(update, ["value"])
 
+    @staticmethod
+    def _serialize_builder_parameters(parameters):
+        parameters = parameters.copy()  # create copy to not modify original dict
+
+        # Codes
+        def _get_uuid(code):
+            return None if code is None else str(code.uuid)
+
+        parameters["dos_code"] = _get_uuid(parameters["dos_code"])
+        parameters["projwfc_code"] = _get_uuid(parameters["projwfc_code"])
+        parameters["pw_code"] = _get_uuid(parameters["pw_code"])
+
+        # Protocol
+        parameters["electronic_type"] = parameters["electronic_type"].value
+        parameters["relax_type"] = parameters["relax_type"].value
+        parameters["spin_type"] = parameters["spin_type"].value
+        return parameters
+
+    @staticmethod
+    def _deserialize_builder_parameters(parameters):
+        parameters = parameters.copy()  # create copy to not modify original dict
+
+        # Codes
+        def _load_code(uuid):
+            return None if uuid is None else load_node(uuid=uuid)
+
+        parameters["dos_code"] = _load_code(parameters["dos_code"])
+        parameters["projwfc_code"] = _load_code(parameters["projwfc_code"])
+        parameters["pw_code"] = _load_code(parameters["pw_code"])
+
+        # Protocol
+        parameters["electronic_type"] = ElectronicType(parameters["electronic_type"])
+        parameters["relax_type"] = RelaxType(parameters["relax_type"])
+        parameters["spin_type"] = SpinType(parameters["spin_type"])
+        return parameters
+
     def _update_builder_parameters(self, _=None):
         self.set_trait(
             "builder_parameters",
-            dict(
-                # Structure
-                structure=self.input_structure,
-                # Codes
-                dos_code=self.codes_selector.dos.selected_code,
-                projwfc_code=self.codes_selector.projwfc.selected_code,
-                pw_code=self.codes_selector.pw.selected_code,
-                # Protocol and additional parameters
-                electronic_type=self.options_config.electronic_type,
-                kpoints_distance_override=self.options_config.kpoints_distance,
-                protocol=self.workchain_config.simulation_protocol.value,
-                pseudo_family=self.pseudo_family_selector.value,
-                relax_type=RelaxType[self.workchain_config.geo_opt_type.value]
-                if self.workchain_config.run_geo_opt.value
-                else RelaxType["NONE"],
-                spin_type=self.options_config.spin_type,
-                # "extra" parameters
-                run_bands=self.workchain_config.run_bands.value,
-                run_pdos=self.workchain_config.run_pdos.value,
+            self._serialize_builder_parameters(
+                dict(
+                    # Codes
+                    dos_code=self.codes_selector.dos.selected_code,
+                    projwfc_code=self.codes_selector.projwfc.selected_code,
+                    pw_code=self.codes_selector.pw.selected_code,
+                    # Protocol and additional parameters
+                    electronic_type=self.options_config.electronic_type,
+                    kpoints_distance_override=self.options_config.kpoints_distance,
+                    protocol=self.workchain_config.simulation_protocol.value,
+                    pseudo_family=self.pseudo_family_selector.value,
+                    relax_type=RelaxType[self.workchain_config.geo_opt_type.value]
+                    if self.workchain_config.run_geo_opt.value
+                    else RelaxType["NONE"],
+                    spin_type=self.options_config.spin_type,
+                    # "extra" parameters
+                    run_bands=self.workchain_config.run_bands.value,
+                    run_pdos=self.workchain_config.run_pdos.value,
+                )
             ),
         )
 
@@ -393,9 +428,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         assert self.input_structure is not None
 
         builder_parameters = self.builder_parameters.copy()
+        builder_parameters_for_extras = builder_parameters.copy()
+
         run_bands = builder_parameters.pop("run_bands")
         run_pdos = builder_parameters.pop("run_pdos")
-        builder = QeAppWorkChain.get_builder_from_protocol(**builder_parameters)
+
+        builder = QeAppWorkChain.get_builder_from_protocol(
+            structure=self.input_structure,
+            **self._deserialize_builder_parameters(builder_parameters)
+        )
 
         if not run_bands:
             builder.pop("bands")
@@ -409,6 +450,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         update_resources(builder, resources)
 
         self.process = submit(builder)
+        self.process.set_extra("builder_parameters", builder_parameters_for_extras)
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
