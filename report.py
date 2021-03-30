@@ -90,6 +90,7 @@ def generate_report_dict(qeapp_wc):
 FUNCTIONAL_REPORT_MAP = {
     "LDA": "local density approximation (LDA)",
     "PBE": "generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE)",
+    "PBEsol": "the revised generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE) for solids",
 }
 
 
