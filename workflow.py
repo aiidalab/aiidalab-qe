@@ -171,24 +171,58 @@ class OptionsConfig(ipw.VBox):
             **kwargs
         )
 
+    _DEFAULT_SPIN_TYPE = "NONE"
+
     def set_spin_type_trait(self, _=None):
         self.spin_type = SpinType[
-            "NONE" if self._set_spin_automatically.value else self._spin_type.value
+            self._DEFAULT_SPIN_TYPE
+            if self._set_spin_automatically.value
+            else self._spin_type.value.upper()
         ]
+
+    @traitlets.observe("spin_type")
+    def _observe_spin_type(self, change):
+        with self.hold_trait_notifications():
+            self._spin_type.value = change["new"].value.upper()
+            self._set_spin_automatically.value = (
+                change["new"] is self._DEFAULT_SPIN_TYPE
+            )
+
+    _DEFAULT_ELECTRONIC_TYPE = "METAL"
 
     def set_electronic_type_trait(self, _=None):
         self.electronic_type = ElectronicType[
-            "METAL"
+            self._DEFAULT_ELECTRONIC_TYPE
             if self._set_el_type_automatically.value
             else self._electronic_type.value
         ]
 
+    @traitlets.observe("electronic_type")
+    def _observe_electronic_type(self, change):
+        with self.hold_trait_notifications():
+            self._electronic_type.value = change["new"].value.upper()
+            self._set_el_type_automatically.value = (
+                change["new"] is self._DEFAULT_ELECTRONIC_TYPE
+            )
+
+    _DEFAULT_KPOINTS_DISTANCE = None
+
     def set_kpoints_distance_trait(self, _=None):
         self.kpoints_distance = (
-            None
+            self._DEFAULT_KPOINTS_DISTANCE
             if self._set_kpoints_distance_automatically.value
             else self._kpoints_distance.value
         )
+
+    @traitlets.observe("kpoints_distance")
+    def _observe_kpoints_distance(self, change):
+        with self.hold_trait_notifications():
+            self._kpoints_distance.value = (
+                0.4 if change["new"] is None else change["new"].value.upper()
+            )
+            self._set_kpoints_distance_automatically.value = (
+                change["new"] is self._DEFAULT_KPOINTS_DISTANCE
+            )
 
 
 class CodesConfig(ipw.VBox):
@@ -244,7 +278,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(ProcessNode, allow_none=True)
     disabled = traitlets.Bool()
-    builder_parameters = traitlets.Dict(read_only=True)  # TODO: accept values
+    builder_parameters = traitlets.Dict()
 
     def __init__(self, **kwargs):
         self.workchain_config = WorkChainConfig()
@@ -338,6 +372,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
+                self.set_trait(
+                    "builder_parameters",
+                    process_node.get_extra("builder_parameters", None),
+                )
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
@@ -422,6 +460,38 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
             ),
         )
+
+    @traitlets.observe("builder_parameters")
+    def _observe_builder_parameters(self, change):
+        bp = self._deserialize_builder_parameters(change["new"])
+
+        with self.hold_trait_notifications():
+            # Codes
+            self.codes_selector.dos.selected_code = bp.get("dos_code")
+            self.codes_selector.projwfc.selected_code = bp.get("projwfc_code")
+            self.codes_selector.pw.selected_code = bp.get("pw_code")
+            # Protocol and additional parameters
+            self.options_config.electronic_type = bp.get(
+                "electronic_type", ElectronicType["METAL"]
+            )
+            self.options_config.kpoints_distance = bp.get("kpoints_distance")
+            self.workchain_config.simulation_protocol.value = bp["protocol"]
+            self.pseudo_family_selector.value = bp["pseudo_family"]
+
+            relax_type = bp.get("relax_type", RelaxType["NONE"])
+            self.workchain_config.geo_opt_type.value = (
+                "POSITIONS"
+                if relax_type is RelaxType["NONE"]
+                else relax_type.value.upper()
+            )
+            self.workchain_config.run_geo_opt.value = (
+                relax_type is not RelaxType["NONE"]
+            )
+
+            self.options_config.spin_type = bp.get("spin_type", SpinType["NONE"])
+            # "extra" parameters
+            self.workchain_config.run_bands.value = bp["run_bands"]
+            self.workchain_config.run_pdos.value = bp["run_pdos"]
 
     def submit(self, _=None):
 
