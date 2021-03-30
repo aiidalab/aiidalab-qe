@@ -6,10 +6,11 @@ Authors:
 """
 import ipywidgets as ipw
 import traitlets
+from aiida.common import NotExistent
 from aiida.engine import ProcessState
 from aiida.engine import submit
 from aiida.orm import ProcessNode
-from aiida.orm import load_node
+from aiida.orm import load_code
 from aiida.plugins import DataFactory
 from aiidalab_widgets_base import CodeDropdown
 from aiidalab_widgets_base import ProcessMonitor
@@ -325,13 +326,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _get_state(self):
 
-        # Input structure not specified.
-        if self.input_structure is None:
-            return self.State.INIT
-
         # Process is already running.
         if self.process is not None:
             return self.State.SUCCESS
+
+        # Input structure not specified.
+        if self.input_structure is None:
+            return self.State.INIT
 
         # Pseudo family is not installed.
         if not self.pseudo_family_selector.installed:
@@ -364,6 +365,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     @traitlets.observe("input_structure")
     def _observe_input_structure(self, change):
+        self.set_trait("builder_parameters", self._default_builder_parameters())
         self._update_state()
 
     @traitlets.observe("process")
@@ -375,10 +377,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 builder_parameters = process_node.get_extra("builder_parameters", None)
                 if builder_parameters is not None:
                     self.set_trait("builder_parameters", builder_parameters)
+            self._update_state()
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
-        self.state = self.State.ACTIVE
         self.submit()
 
     def _setup_builder_parameters_update(self):
@@ -422,8 +424,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         parameters = parameters.copy()  # create copy to not modify original dict
 
         # Codes
-        def _load_code(uuid):
-            return None if uuid is None else load_node(uuid=uuid)
+        def _load_code(code):
+            if code is not None:
+                try:
+                    return load_code(code)
+                except NotExistent as error:
+                    print("error", error)
+                    return None
 
         parameters["dos_code"] = _load_code(parameters["dos_code"])
         parameters["projwfc_code"] = _load_code(parameters["projwfc_code"])
@@ -520,6 +527,31 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.process = submit(builder)
         self.process.set_extra("builder_parameters", builder_parameters_for_extras)
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.process = None
+            self.input_structure = None
+            self.builder_parameters = self._default_builder_parameters()
+
+    @traitlets.default("builder_parameters")
+    def _default_builder_parameters(self):
+        return {
+            # Codes
+            "dos_code": "dos@localhost",
+            "projwfc_code": "projwfc@localhost",
+            "pw_code": "pw@localhost",
+            # Protocol and additional parameters
+            "electronic_type": "metal",
+            "kpoints_distance_override": None,
+            "protocol": "moderate",
+            "pseudo_family": None,
+            "relax_type": "positions",
+            "spin_type": "none",
+            # Extra parameters
+            "run_bands": False,
+            "run_pdos": False,
+        }
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
