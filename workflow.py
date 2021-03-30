@@ -243,6 +243,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(ProcessNode, allow_none=True)
     disabled = traitlets.Bool()
+    builder_parameters = traitlets.Dict(read_only=True)  # TODO: accept values
 
     def __init__(self, **kwargs):
         self.workchain_config = WorkChainConfig()
@@ -255,6 +256,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.codes_selector.dos.observe(self._update_state, "selected_code")
         self.codes_selector.projwfc.observe(self._update_state, "selected_code")
         self.workchain_config.run_pdos.observe(self._update_state, "value")
+
+        self._setup_builder_parameters_update()
 
         tab = ipw.Tab(
             children=[
@@ -340,28 +343,63 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.state = self.State.ACTIVE
         self.submit()
 
+    def _setup_builder_parameters_update(self):
+        update = self._update_builder_parameters  # alias for code conciseness
+        # Structure
+        self.observe(update, ["input_structure"])
+        # Codes
+        self.codes_selector.dos.observe(update, ["selected_code"])
+        self.codes_selector.projwfc.observe(update, ["selected_code"])
+        self.codes_selector.pw.observe(update, ["selected_code"])
+        # Protocol and additional parameters
+        self.options_config.observe(update, ["electronic_type"])
+        self.options_config.observe(update, ["kpoints_distance"])
+        self.options_config.observe(update, ["spin_type"])
+        self.pseudo_family_selector.observe(update, ["value"])
+        self.workchain_config.geo_opt_type.observe(update, ["value"])
+        self.workchain_config.run_geo_opt.observe(update, ["value"])
+        self.workchain_config.simulation_protocol.observe(update, ["value"])
+        # "Extra" parameters
+        self.workchain_config.run_bands.observe(update, ["value"])
+        self.workchain_config.run_pdos.observe(update, ["value"])
+
+    def _update_builder_parameters(self, _=None):
+        self.set_trait(
+            "builder_parameters",
+            dict(
+                # Structure
+                structure=self.input_structure,
+                # Codes
+                dos_code=self.codes_selector.dos.selected_code,
+                projwfc_code=self.codes_selector.projwfc.selected_code,
+                pw_code=self.codes_selector.pw.selected_code,
+                # Protocol and additional parameters
+                electronic_type=self.options_config.electronic_type,
+                kpoints_distance_override=self.options_config.kpoints_distance,
+                protocol=self.workchain_config.simulation_protocol.value,
+                pseudo_family=self.pseudo_family_selector.value,
+                relax_type=RelaxType[self.workchain_config.geo_opt_type.value]
+                if self.workchain_config.run_geo_opt.value
+                else RelaxType["NONE"],
+                spin_type=self.options_config.spin_type,
+                # "extra" parameters
+                run_bands=self.workchain_config.run_bands.value,
+                run_pdos=self.workchain_config.run_pdos.value,
+            ),
+        )
+
     def submit(self, _=None):
 
         assert self.input_structure is not None
 
-        builder = QeAppWorkChain.get_builder_from_protocol(
-            structure=self.input_structure,
-            pw_code=self.codes_selector.pw.selected_code,
-            dos_code=self.codes_selector.dos.selected_code,
-            projwfc_code=self.codes_selector.projwfc.selected_code,
-            protocol=self.workchain_config.simulation_protocol.value,
-            relax_type=RelaxType[self.workchain_config.geo_opt_type.value]
-            if self.workchain_config.run_geo_opt.value
-            else RelaxType["NONE"],
-            pseudo_family=self.pseudo_family_selector.value,
-            spin_type=self.options_config.spin_type,
-            electronic_type=self.options_config.electronic_type,
-            kpoints_distance_override=self.options_config.kpoints_distance,
-        )
+        builder_parameters = self.builder_parameters.copy()
+        run_bands = builder_parameters.pop("run_bands")
+        run_pdos = builder_parameters.pop("run_pdos")
+        builder = QeAppWorkChain.get_builder_from_protocol(**builder_parameters)
 
-        if not self.workchain_config.run_bands.value:
+        if not run_bands:
             builder.pop("bands")
-        if not self.workchain_config.run_pdos.value:
+        if not run_pdos:
             builder.pop("pdos")
 
         resources = {
