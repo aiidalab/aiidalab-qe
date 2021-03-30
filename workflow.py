@@ -143,9 +143,11 @@ class OptionsConfig(ipw.VBox):
             (self._set_kpoints_distance_automatically, "value"),
             (self._kpoints_distance, "disabled"),
         )
+        self._kpoints_distance.observe(self.set_kpoints_distance_trait, "value")
         self._set_kpoints_distance_automatically.observe(
-            self.set_electronic_type_trait, "value"
+            self.set_kpoints_distance_trait, "value"
         )
+        self.set_kpoints_distance_trait()
 
         # Modify degauss.
         # degauss = ipw.FloatText(
