@@ -124,38 +124,70 @@ class PseudoFamilySelector(ipw.VBox):
     installed = traitlets.Bool()
     disabled = traitlets.Bool()
 
-    functional = traitlets.Unicode(allow_none=True)
-    protocol = traitlets.Unicode(allow_none=True)
-
     value = traitlets.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
         self.protocol_selection = ipw.ToggleButtons(options=["efficiency", "precision"])
-        ipw.link((self.protocol_selection, "value"), (self, "protocol"))
-        ipw.dlink((self, "disabled"), (self.protocol_selection, "disabled"))
+        self.protocol_selection.observe(self.set_value_trait, "value")
 
         # Setup pseudofamily potential selection group:
         self.sssp_install_widget = SSSPInstallWidget()
         ipw.dlink((self.sssp_install_widget, "installed"), (self, "installed"))
 
+        # DFT functional.
+        self.dft_functional = ipw.Dropdown(
+            options=["PBE", "PBEsol"],
+            value="PBE",
+            style={"description_width": "initial"},
+        )
+        self.dft_functional.observe(self.set_value_trait, "value")
+
+        self.dft_functional_box = ipw.VBox(
+            children=[
+                ipw.HBox(
+                    children=[
+                        ipw.HTML(
+                            "<b>DFT functional</b>", layout=ipw.Layout(flex="1 1 auto")
+                        ),
+                        self.dft_functional,
+                    ]
+                ),
+                ipw.HTML("""Some explanation for the functional.... """),
+            ],
+            layout=ipw.Layout(max_width="600px"),
+        )
+
+        # Pseudo potential family selection.
+        self.chose_automatically = ipw.Checkbox(
+            description="Chose pseudo automatically",
+            indent=False,
+            value=True,
+        )
+        ipw.dlink(
+            (self.chose_automatically, "value"), (self.protocol_selection, "disabled")
+        )
+        ipw.dlink(
+            (self.chose_automatically, "value"), (self.dft_functional, "disabled")
+        )
+        self.chose_automatically.observe(self.set_value_trait, "value")
+        self.set_value_trait()
+
         super().__init__(
             children=[
+                self.chose_automatically,
+                self.dft_functional_box,
                 self.pseudo_family_prompt,
                 ipw.HBox([self.protocol_selection, self.sssp_install_widget]),
                 self.pseudo_family_help,
             ]
         )
 
-    @traitlets.observe("functional")
-    def _observe_functional(self, change):
-        self.set_value_trait()
-
-    @traitlets.observe("protocol")
-    def _observe_protocol(self, change):
-        self.set_value_trait()
-
-    def set_value_trait(self):
-        self.value = f"SSSP/1.1/{self.functional}/{self.protocol}"
+    def set_value_trait(self, _=None):
+        self.value = (
+            None
+            if self.chose_automatically.value
+            else f"SSSP/1.1/{self.dft_functional.value}/{self.protocol_selection.value}"
+        )
 
     def reset(self):
         self.protocol_selection.value = "efficiency"
