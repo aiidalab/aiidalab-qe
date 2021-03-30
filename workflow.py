@@ -372,10 +372,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                self.set_trait(
-                    "builder_parameters",
-                    process_node.get_extra("builder_parameters", None),
-                )
+                builder_parameters = process_node.get_extra("builder_parameters", None)
+                if builder_parameters is not None:
+                    self.set_trait("builder_parameters", builder_parameters)
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
