@@ -9,6 +9,7 @@ import json
 
 import ipywidgets as ipw
 import nglview
+from aiida.common import NotExistentAttributeError
 from aiida.orm import Node
 from aiidalab_widgets_base import register_viewer_widget
 from ase import Atoms
@@ -209,11 +210,18 @@ class WorkChainViewer(ipw.VBox):
     def __init__(self, node, **kwargs):
         self.node = node
 
-        self.output_structure_view = MinimalStructureViewer(
-            self.node.outputs.structure,
-            configure_view=False,
-            layout=ipw.Layout(width="200px", height="200px"),
-        )
+        try:
+            self.output_structure_view = MinimalStructureViewer(
+                self.node.outputs.structure,
+                configure_view=False,
+                layout=ipw.Layout(width="200px", height="200px"),
+            )
+        except NotExistentAttributeError:
+            self.output_structure_view = ipw.Button(
+                desription="N/A",
+                disabled=True,
+                layout=ipw.Layout(width="200px", height="200px"),
+            )
 
         bands_data = export_bands_data(self.node)
         pdos_data = export_pdos_data(self.node)
@@ -242,8 +250,8 @@ class WorkChainViewer(ipw.VBox):
                 self.title,
                 ipw.HBox(
                     [
-                        self.summary_view,
                         self.output_structure_view,
+                        self.summary_view,
                     ]
                 ),
                 bands_plot_box,
