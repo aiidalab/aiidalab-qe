@@ -8,11 +8,97 @@ Authors:
 import json
 
 import ipywidgets as ipw
+import nglview
+from aiida.orm import Node
 from aiidalab_widgets_base import register_viewer_widget
-from aiidalab_widgets_base import viewer
+from ase import Atoms
 from monty.json import MontyEncoder
 from monty.json import jsanitize
+from traitlets import Instance
+from traitlets import Int
+from traitlets import List
+from traitlets import Unicode
+from traitlets import Union
+from traitlets import default
+from traitlets import observe
+from traitlets import validate
 from widget_bandsplot import BandsPlotWidget
+
+
+class MinimalStructureViewer(ipw.VBox):
+
+    structure = Union([Instance(Atoms), Instance(Node)], allow_none=True)
+    _displayed_structure = Instance(Atoms, allow_none=True, read_only=True)
+
+    background = Unicode()
+    supercell = List(Int)
+
+    def __init__(self, structure, *args, **kwargs):
+
+        self._viewer = nglview.NGLWidget()
+        self._viewer.camera = "orthographic"
+        self._viewer.stage.set_parameters(mouse_preset="pymol")
+        ipw.link((self, "background"), (self._viewer, "background"))
+
+        self.structure = structure
+
+        super().__init__(
+            children=[
+                self._viewer,
+            ],
+            *args,
+            **kwargs,
+        )
+
+    @default("background")
+    def _default_background(self):
+        return "#5f6a6a"
+
+    @default("supercell")
+    def _default_supercell(self):
+        return [1, 1, 1]
+
+    @validate("structure")
+    def _valid_structure(self, change):  # pylint: disable=no-self-use
+        """Update structure."""
+        structure = change["value"]
+
+        if structure is None:
+            return None  # if no structure provided, the rest of the code can be skipped
+
+        if isinstance(structure, Atoms):
+            return structure
+        if isinstance(structure, Node):
+            return structure.get_ase()
+        raise ValueError(
+            "Unsupported type {}, structure must be one of the following types: "
+            "ASE Atoms object, AiiDA CifData or StructureData."
+        )
+
+    @observe("structure")
+    def _update_displayed_structure(self, change):
+        """Update displayed_structure trait after the structure trait has been modified."""
+        # Remove the current structure(s) from the viewer.
+        if change["new"] is not None:
+            self.set_trait("_displayed_structure", change["new"].repeat(self.supercell))
+        else:
+            self.set_trait("_displayed_structure", None)
+
+    @observe("_displayed_structure")
+    def _update_structure_viewer(self, change):
+        """Update the view if displayed_structure trait was modified."""
+        with self.hold_trait_notifications():
+            for (
+                comp_id
+            ) in self._viewer._ngl_component_ids:  # pylint: disable=protected-access
+                self._viewer.remove_component(comp_id)
+            self.selection = list()
+            if change["new"] is not None:
+                self._viewer.add_component(nglview.ASEStructure(change["new"]))
+                self._viewer.clear()
+                self._viewer.stage.set_parameters(clipDist=0)
+                self._viewer.add_representation("unitcell", diffuse="#df0587")
+                self._viewer.add_representation("ball+stick", aspectRatio=3.5)
 
 
 def export_bands_data(work_chain_node):
@@ -123,10 +209,10 @@ class WorkChainViewer(ipw.VBox):
     def __init__(self, node, **kwargs):
         self.node = node
 
-        self.output_structure_view = viewer(
+        self.output_structure_view = MinimalStructureViewer(
             self.node.outputs.structure,
             configure_view=False,
-            layout=ipw.Layout(flex="1 0 auto"),
+            layout=ipw.Layout(width="200px", height="200px"),
         )
 
         bands_data = export_bands_data(self.node)
