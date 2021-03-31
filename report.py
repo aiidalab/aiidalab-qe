@@ -8,26 +8,25 @@ FUNCTIONAL_LINK_MAP = {
 PSEUDO_LINK_MAP = {"SSSP": "https://www.materialscloud.org/discover/sssp/table"}
 
 
-def generate_report_dict(qeapp_wc):
-    """Generate a dictionary for reporting the inputs for the `QeAppWorkChain`"""
+def _generate_report_dict(qeapp_wc):
+    builder_parameters = qeapp_wc.get_extra("builder_parameters", {})
 
-    pseudo_family = qeapp_wc.get_extra("builder_parameters", {}).get(
-        "pseudo_family", None
-    )
-    if pseudo_family is None:
-        raise ValueError(
-            "No `pseudo_family` found in the `builder_parameters` of the extras set on the work chain."
-        )
+    try:
+        pseudo_family = builder_parameters["pseudo_family"]
+        yield "pseudo_family", pseudo_family
 
-    pseudo_family_list = pseudo_family.split("/")
-    pseudo_library = pseudo_family_list[0]
+        pseudo_family_list = pseudo_family.split("/")
+        pseudo_library = pseudo_family_list[0]
+        yield "pseudo_library", pseudo_family_list[0]
 
-    if pseudo_library == "SSSP":
-        pseudo_version = pseudo_family_list[1]
-        functional = pseudo_family_list[2]
-        pseudo_protocol = pseudo_family_list[3]
-    else:
-        raise NotImplementedError
+        if pseudo_library == "SSSP":
+            yield "pseudo_version", pseudo_family_list[1]
+            yield "functional", pseudo_family_list[2]
+            yield "pseudo_protocol", pseudo_family_list[3]
+        else:
+            raise NotImplementedError
+    except (KeyError, AttributeError):
+        pass
 
     energy_cutoffs = None
     scf_kpoints_distance = None
@@ -67,24 +66,19 @@ def generate_report_dict(qeapp_wc):
                 nscf_kpoints_distance = work_chain.inputs.nscf__kpoints_distance.value
             except NotExistentAttributeError:
                 pass
+    yield "energy_cutoffs", energy_cutoffs
+    yield "scf_kpoints_distance", scf_kpoints_distance
+    yield "bands_kpoints_distance", bands_kpoints_distance
+    yield "nscf_kpoints_distance", nscf_kpoints_distance
 
-    report_dict = {
-        "Functional": (functional, FUNCTIONAL_LINK_MAP[functional]),
-        "Pseudopotential library": (
-            f"{pseudo_library} {pseudo_protocol} v{pseudo_version}",
-            f"{PSEUDO_LINK_MAP[pseudo_library]}/{pseudo_protocol}",
-        ),
-        "Plane wave energy cutoff (wave functions)": (energy_cutoffs["ecutwfc"], None),
-        "Plane wave energy cutoff (charge density)": (energy_cutoffs["ecutrho"], None),
-    }
-    if scf_kpoints_distance is not None:
-        report_dict["K-point mesh distance (SCF)"] = (scf_kpoints_distance, None)
-    if nscf_kpoints_distance is not None:
-        report_dict["K-point mesh distance (NSCF)"] = (nscf_kpoints_distance, None)
-    if bands_kpoints_distance is not None:
-        report_dict["K-point mesh distance (Bands)"] = (bands_kpoints_distance, None)
+    yield "relaxed", "relax__base__pw__parameters" in qeapp_wc.inputs
+    yield "bands_computed", "bands__bands__pw__parameters" in qeapp_wc.inputs
+    yield "pdos_computed", "pdos__dos__parameters" in qeapp_wc.inputs
 
-    return report_dict
+
+def generate_report_dict(qeapp_wc):
+    """Generate a dictionary for reporting the inputs for the `QeAppWorkChain`"""
+    return dict(_generate_report_dict(qeapp_wc))
 
 
 FUNCTIONAL_REPORT_MAP = {
