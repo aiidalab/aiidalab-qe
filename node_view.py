@@ -13,6 +13,7 @@ from aiida.common import NotExistentAttributeError
 from aiida.orm import Node
 from aiidalab_widgets_base import register_viewer_widget
 from ase import Atoms
+from jinja2 import Environment
 from monty.json import MontyEncoder
 from monty.json import jsanitize
 from traitlets import Instance
@@ -24,6 +25,8 @@ from traitlets import default
 from traitlets import observe
 from traitlets import validate
 from widget_bandsplot import BandsPlotWidget
+
+from report import generate_report_dict
 
 
 class MinimalStructureViewer(ipw.VBox):
@@ -173,34 +176,53 @@ class VBoxWithCaption(ipw.VBox):
 
 
 class SummaryView(ipw.VBox):
-    def __init__(self, inputs, **kwargs):
-        self.inputs = inputs
+    def __init__(self, wc_node, **kwargs):
+        self.wc_node = wc_node
 
-        def _fmt_truthy(truthy):
-            return "yes" if truthy else "false"
+        def _fmt_yes_no(truthy):
+            return "yes" if truthy else "no"
 
         style = "background-color: #fafafa; line-height: normal"
+        report = generate_report_dict(self.wc_node)
 
-        self.summary_view = ipw.HTML(
-            f"""
+        env = Environment()
+        env.filters.update(
+            {
+                "fmt_yes_no": _fmt_yes_no,
+            }
+        )
+        template = env.from_string(
+            """
             <pre style="{style}">
             <table>
                 <tr>
                     <td>Structure relaxation:</td>
-                    <td>{_fmt_truthy('relax__base__pw__parameters' in inputs)}</td>
+                    <td>{{ relaxed | fmt_yes_no }}</td>
                 </tr>
                 <tr>
                     <td>Bands computed:</td>
-                    <td>{_fmt_truthy('bands__bands__pw__parameters' in inputs)}</td>
+                    <td>{{ bands_computed | fmt_yes_no }}</td>
                 </tr>
                 <tr>
                     <td>Density of State (DoS) computed:</td>
-                    <td>{_fmt_truthy('pdos__dos__parameters' in inputs)}</td>
+                    <td>{{ pdos_computed |fmt_yes_no }}</td>
                 </tr>
+                <tr>
+                    <td>K-point mesh distance (SCF):</td>
+                    <td>{{ scf_kpoints_distance }}</td>
+                </tr>
+                {% if bands_computed %}
+                <tr>
+                    <td>K-point mesh distance (NSCF)</td>
+                    <td>{{ nscf_kpoints_distance }}</td>
+                </tr>
+                {% endif %}
             </table>
             </pre>
             """
         )
+
+        self.summary_view = ipw.HTML(template.render(style=style, **report))
 
         super().__init__(children=[self.summary_view], **kwargs)
 
@@ -243,7 +265,7 @@ class WorkChainViewer(ipw.VBox):
         )
 
         self.title = ipw.HTML(f"<h4>QE App Work Chain (pk: {self.node.pk})</h4>")
-        self.summary_view = SummaryView(node.inputs, layout=ipw.Layout(flex="1 0 auto"))
+        self.summary_view = SummaryView(self.node, layout=ipw.Layout(flex="1 0 auto"))
 
         super().__init__(
             children=[
