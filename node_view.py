@@ -205,11 +205,11 @@ class SummaryView(ipw.VBox):
                     <td>{{ pseudo_family }}</td>
                 </tr>
                 <tr>
-                    <td>Plane wave energy cutoff (wave functions):</td>
+                    <td>Energy cutoff (wave functions):</td>
                     <td>{{ energy_cutoff_wfc }}</td>
                 </tr>
                 <tr>
-                    <td>Plane wave energy cutoff (charge density):</td>
+                    <td>Energy cutoff (charge density):</td>
                     <td>{{ energy_cutoff_rho }}</td>
                 </tr>
                 <tr>
