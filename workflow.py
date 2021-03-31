@@ -4,6 +4,8 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
+from pprint import pformat
+
 import ipywidgets as ipw
 import traitlets
 from aiida.common import NotExistent
@@ -280,6 +282,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     process = traitlets.Instance(ProcessNode, allow_none=True)
     disabled = traitlets.Bool()
     builder_parameters = traitlets.Dict()
+    expert_mode = traitlets.Bool()
 
     def __init__(self, **kwargs):
         self.workchain_config = WorkChainConfig()
@@ -295,22 +298,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self._setup_builder_parameters_update()
 
-        tab = ipw.Tab(
+        self.tab = ipw.Tab(
             children=[
                 self.workchain_config,
                 self.resources_config,
-                self.options_config,
-                self.pseudo_family_selector,
                 self.codes_selector,
             ],
             layout=ipw.Layout(min_height="250px"),
         )
 
-        tab.set_title(0, "Workchain")
-        tab.set_title(1, "Compute resources")
-        tab.set_title(2, "Advanced options")
-        tab.set_title(3, "Pseudo potentials")
-        tab.set_title(4, "Select codes")
+        self.tab.set_title(0, "Workchain")
+        self.tab.set_title(1, "Compute resources")
+        self.tab.set_title(2, "Select codes")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -322,7 +321,54 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.submit_button.on_click(self._on_submit_button_clicked)
-        super().__init__(children=[tab, self.submit_button])
+
+        self.expert_mode_control = ipw.Checkbox(description="Expert mode")
+        ipw.link((self, "expert_mode"), (self.expert_mode_control, "value"))
+
+        self._update_builder_parameters()
+
+        self.builder_parameters_view = ipw.HTML(layout=ipw.Layout(width="auto"))
+        ipw.dlink(
+            (self, "builder_parameters"),
+            (self.builder_parameters_view, "value"),
+            transform=lambda p: '<pre style="line-height: 100%">'
+            + pformat(p, indent=2, width=200)
+            + "</pre>",
+        )
+
+        super().__init__(
+            children=[
+                self.tab,
+                ipw.HBox([self.submit_button, self.expert_mode_control]),
+            ]
+        )
+
+    @traitlets.observe("expert_mode")
+    def _observe_expert_mode(self, change):
+        if change["new"]:
+            self.tab.set_title(0, "Workchain")
+            self.tab.set_title(1, "Compute resources")
+            self.tab.set_title(2, "Advanced options")
+            self.tab.set_title(3, "Pseudo potentials")
+            self.tab.set_title(4, "Select codes")
+            self.tab.set_title(5, "Parameters")
+            self.tab.children = [
+                self.workchain_config,
+                self.resources_config,
+                self.options_config,
+                self.pseudo_family_selector,
+                self.codes_selector,
+                self.builder_parameters_view,
+            ]
+        else:
+            self.tab.set_title(0, "Workchain")
+            self.tab.set_title(1, "Compute resources")
+            self.tab.set_title(2, "Select codes")
+            self.tab.children = [
+                self.workchain_config,
+                self.resources_config,
+                self.codes_selector,
+            ]
 
     def _get_state(self):
 
