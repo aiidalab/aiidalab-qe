@@ -231,6 +231,9 @@ class SummaryView(ipw.VBox):
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
 class WorkChainViewer(ipw.VBox):
     def __init__(self, node, **kwargs):
+        if node.process_label != "QeAppWorkChain":
+            raise KeyError(str(node.node_type))
+
         self.node = node
 
         self.output_structure_view = None
