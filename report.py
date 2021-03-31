@@ -7,12 +7,22 @@ FUNCTIONAL_LINK_MAP = {
 
 PSEUDO_LINK_MAP = {"SSSP": "https://www.materialscloud.org/discover/sssp/table"}
 
+PROTOCOL_PSEUDO_MAP = {
+    "fast": "SSSP/1.1/PBE/efficiency",
+    "moderate": "SSSP/1.1/PBE/efficiency",
+    "precise": "SSSP/1.1/PBE/precision",
+}
+
 
 def _generate_report_dict(qeapp_wc):
     builder_parameters = qeapp_wc.get_extra("builder_parameters", {})
 
     try:
-        pseudo_family = builder_parameters["pseudo_family"]
+        pseudo_family = builder_parameters.get("pseudo_family", None)
+        if pseudo_family is None:
+            protocol = builder_parameters.get("pseudo_family", "moderate")
+            pseudo_family = PROTOCOL_PSEUDO_MAP[protocol]
+
         yield "pseudo_family", pseudo_family
 
         pseudo_family_list = pseudo_family.split("/")
@@ -38,10 +48,8 @@ def _generate_report_dict(qeapp_wc):
         if energy_cutoffs is None:
             try:
                 parameters = work_chain.inputs.base__pw__parameters.get_dict()
-                energy_cutoffs = {
-                    "ecutwfc": parameters["SYSTEM"]["ecutwfc"],
-                    "ecutrho": parameters["SYSTEM"]["ecutrho"],
-                }
+                energy_cutoff_wfc = parameters["SYSTEM"]["ecutwfc"]
+                energy_cutoff_rho = parameters["SYSTEM"]["ecutrho"]
             except NotExistentAttributeError:
                 pass
 
@@ -66,7 +74,9 @@ def _generate_report_dict(qeapp_wc):
                 nscf_kpoints_distance = work_chain.inputs.nscf__kpoints_distance.value
             except NotExistentAttributeError:
                 pass
-    yield "energy_cutoffs", energy_cutoffs
+
+    yield "energy_cutoff_wfc", energy_cutoff_wfc
+    yield "energy_cutoff_rho", energy_cutoff_rho
     yield "scf_kpoints_distance", scf_kpoints_distance
     yield "bands_kpoints_distance", bands_kpoints_distance
     yield "nscf_kpoints_distance", nscf_kpoints_distance

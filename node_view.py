@@ -197,7 +197,7 @@ class SummaryView(ipw.VBox):
             <pre style="{style}">
             <table>
                 <tr>
-                    <td>Structure relaxation:</td>
+                    <td>Structure geometry optimized:</td>
                     <td>{{ relaxed | fmt_yes_no }}</td>
                 </tr>
                 <tr>
@@ -209,10 +209,24 @@ class SummaryView(ipw.VBox):
                     <td>{{ pdos_computed |fmt_yes_no }}</td>
                 </tr>
                 <tr>
+                    <td>Plane wave energy cutoff (wave functions):</td>
+                    <td>{{ energy_cutoff_wfc }}</td>
+                </tr>
+                <tr>
+                    <td>Plane wave energy cutoff (charge density):</td>
+                    <td>{{ energy_cutoff_rho }}</td>
+                </tr>
+                <tr>
                     <td>K-point mesh distance (SCF):</td>
                     <td>{{ scf_kpoints_distance }}</td>
                 </tr>
                 {% if bands_computed %}
+                <tr>
+                    <td>K-point line distance (Bands)</td>
+                    <td>{{ bands_kpoints_distance }}</td>
+                </tr>
+                {% endif %}
+                {% if pdos_computed %}
                 <tr>
                     <td>K-point mesh distance (NSCF)</td>
                     <td>{{ nscf_kpoints_distance }}</td>
