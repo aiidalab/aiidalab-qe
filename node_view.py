@@ -236,7 +236,14 @@ class WorkChainViewer(ipw.VBox):
         self.output_structure_view = None
         self.output_structure_view_box = ipw.HBox(
             children=[ipw.HTML("No structure data available yet.")],
-            layout=ipw.Layout(width="200px", height="200px"),
+            layout=ipw.Layout(
+                flex="1 1 auto",
+                min_width="200px",
+                min_height="200px",
+                max_width="300px",
+                max_height="300px",
+                border="1px solid grey",
+            ),
         )
 
         self.bands_plot = None
@@ -244,11 +251,17 @@ class WorkChainViewer(ipw.VBox):
             children=[ipw.HTML("No bands data available yet.")],
             layout=ipw.Layout(
                 min_height="300px",
+                flex="2 1 auto",
             ),
         )
 
         self.title = ipw.HTML(f"<h4>QE App Work Chain (pk: {self.node.pk})</h4>")
-        self.summary_view = SummaryView(self.node, layout=ipw.Layout(flex="1 0 auto"))
+        self.summary_view = SummaryView(
+            self.node,
+            layout=ipw.Layout(
+                flex="1 1 auto",
+            ),
+        )
 
         self._process_monitor = ProcessMonitor(
             process=self.node, callbacks=[self._update_view]
@@ -257,8 +270,15 @@ class WorkChainViewer(ipw.VBox):
         super().__init__(
             children=[
                 self.title,
-                ipw.HBox([self.output_structure_view_box, self.summary_view]),
-                self.bands_plot_box,
+                ipw.HBox(
+                    [
+                        ipw.VBox(
+                            [self.output_structure_view_box, self.summary_view],
+                            layout=ipw.Layout(flex="1 1 auto"),
+                        ),
+                        self.bands_plot_box,
+                    ],
+                ),
             ],
             **kwargs,
         )
@@ -268,7 +288,7 @@ class WorkChainViewer(ipw.VBox):
             try:
                 self.output_structure_view = MinimalStructureViewer(
                     structure=self.node.outputs.structure,
-                    layout=ipw.Layout(width="198px", height="198px"),
+                    layout=ipw.Layout(flex="1 1 auto"),
                 )
                 self.output_structure_view_box.children = [self.output_structure_view]
             except NotExistentAttributeError:
