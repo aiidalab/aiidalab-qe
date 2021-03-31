@@ -99,7 +99,7 @@ class OptionsConfig(ipw.VBox):
             value=True,
         )
         self._spin_type = ipw.Dropdown(
-            options=["NONE", "COLLINEAR", "NON_COLLINEAR"],
+            options=["NONE", "COLLINEAR"],
             value="NONE",
             description="Spin Type:",
         )
