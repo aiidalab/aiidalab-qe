@@ -201,12 +201,8 @@ class SummaryView(ipw.VBox):
                     <td>{{ relaxed | fmt_yes_no }}</td>
                 </tr>
                 <tr>
-                    <td>Bands computed:</td>
-                    <td>{{ bands_computed | fmt_yes_no }}</td>
-                </tr>
-                <tr>
-                    <td>Density of State (DoS) computed:</td>
-                    <td>{{ pdos_computed |fmt_yes_no }}</td>
+                    <td>Pseudopotential library:</td>
+                    <td>{{ pseudo_family }}</td>
                 </tr>
                 <tr>
                     <td>Plane wave energy cutoff (wave functions):</td>
