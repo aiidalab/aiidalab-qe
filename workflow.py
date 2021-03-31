@@ -53,7 +53,10 @@ class WorkChainConfig(ipw.VBox):
         )
 
         self.run_bands = ipw.Checkbox(description="Calculate band structure")
-        self.run_pdos = ipw.Checkbox(description="Calculate density of states")
+        self.run_pdos = ipw.Checkbox(
+            description="Calculate density of states",
+            layout=ipw.Layout(visibility="hidden"),
+        )
 
         # Simulation protocol.
         self.simulation_protocol = ipw.Dropdown(
