@@ -255,7 +255,10 @@ class WorkChainViewer(ipw.VBox):
             ),
         )
 
-        self.title = ipw.HTML(f"<h4>QE App Work Chain (pk: {self.node.pk})</h4>")
+        structure_formula = self.node.inputs.structure.get_formula()
+        self.title = ipw.HTML(
+            f"<h4>QE App Work Chain (pk: {self.node.pk}) &mdash; {structure_formula} </h4>"
+        )
         self.summary_view = SummaryView(
             self.node,
             layout=ipw.Layout(
