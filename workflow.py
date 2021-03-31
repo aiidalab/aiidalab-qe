@@ -142,11 +142,18 @@ class OptionsConfig(ipw.VBox):
             description="K-points distance:",
             disabled=False,
             style={"description_width": "initial"},
+            layout=ipw.Layout(visibility="hidden"),
         )
-        ipw.dlink(
-            (self._set_kpoints_distance_automatically, "value"),
-            (self._kpoints_distance, "disabled"),
+
+        def _show_hide_kpoints_distance(change):
+            self._kpoints_distance.layout.visibility = (
+                "hidden" if change["new"] else "visible"
+            )
+
+        self._set_kpoints_distance_automatically.observe(
+            _show_hide_kpoints_distance, "value"
         )
+
         self._kpoints_distance.observe(self.set_kpoints_distance_trait, "value")
         self._set_kpoints_distance_automatically.observe(
             self.set_kpoints_distance_trait, "value"
@@ -221,10 +228,9 @@ class OptionsConfig(ipw.VBox):
     def _observe_kpoints_distance(self, change):
         with self.hold_trait_notifications():
             self._kpoints_distance.value = (
-                0.4 if change["new"] is None else change["new"].value.upper()
-            )
-            self._set_kpoints_distance_automatically.value = (
-                change["new"] is self._DEFAULT_KPOINTS_DISTANCE
+                0.4
+                if change["new"] is self._DEFAULT_KPOINTS_DISTANCE
+                else change["new"]
             )
 
 
