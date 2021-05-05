@@ -27,7 +27,7 @@ from traitlets import observe
 from traitlets import validate
 from widget_bandsplot import BandsPlotWidget
 
-from report import generate_report_dict
+from .report import generate_report_dict
 
 
 class MinimalStructureViewer(ipw.VBox):
