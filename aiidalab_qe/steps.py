@@ -19,12 +19,12 @@ from aiidalab_widgets_base import ProcessMonitor
 from aiidalab_widgets_base import ProcessNodesTreeWidget
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from pseudos import PseudoFamilySelector
-from widgets import NodeViewWidget
-from widgets import ResourceSelectionWidget
-
-from apps.quantumespresso.qe_workflow import QeAppWorkChain
 from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
+
+from .pseudos import PseudoFamilySelector
+from .widgets import NodeViewWidget
+from .widgets import ResourceSelectionWidget
+from .workflow import QeAppWorkChain
 
 
 StructureData = DataFactory("structure")
