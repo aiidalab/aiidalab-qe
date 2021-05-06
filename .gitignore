@@ -2,4 +2,5 @@
 *.pyc
 .*.ipynb
 .ipynb*
-metadata/build/
+build/
+dist/*.tar.gz
