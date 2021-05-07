@@ -21,10 +21,10 @@ from aiidalab_widgets_base import WizardAppWidgetStep
 
 from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
 
-from .pseudos import PseudoFamilySelector
-from .widgets import NodeViewWidget
-from .widgets import ResourceSelectionWidget
-from .workchain import QeAppWorkChain
+from aiidalab_qe.pseudos import PseudoFamilySelector
+from aiidalab_qe.widgets import NodeViewWidget
+from aiidalab_qe.widgets import ResourceSelectionWidget
+from aiidalab_qe.workchain import QeAppWorkChain
 
 
 StructureData = DataFactory("structure")
