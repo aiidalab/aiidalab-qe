@@ -24,7 +24,7 @@ from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxTy
 from .pseudos import PseudoFamilySelector
 from .widgets import NodeViewWidget
 from .widgets import ResourceSelectionWidget
-from .workflow import QeAppWorkChain
+from .workchain import QeAppWorkChain
 
 
 StructureData = DataFactory("structure")
