@@ -14,17 +14,16 @@ from aiida.engine import submit
 from aiida.orm import ProcessNode
 from aiida.orm import load_code
 from aiida.plugins import DataFactory
+from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
+from aiidalab_qe_workchain import QeAppWorkChain
 from aiidalab_widgets_base import CodeDropdown
 from aiidalab_widgets_base import ProcessMonitor
 from aiidalab_widgets_base import ProcessNodesTreeWidget
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from pseudos import PseudoFamilySelector
-from widgets import NodeViewWidget
-from widgets import ResourceSelectionWidget
-
-from apps.quantumespresso.qe_workflow import QeAppWorkChain
-from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
+from aiidalab_qe.pseudos import PseudoFamilySelector
+from aiidalab_qe.widgets import NodeViewWidget
+from aiidalab_qe.widgets import ResourceSelectionWidget
 
 
 StructureData = DataFactory("structure")

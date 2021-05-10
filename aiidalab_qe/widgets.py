@@ -22,7 +22,7 @@ from IPython.display import clear_output
 from IPython.display import display
 
 # trigger registration of the viewer widget:
-import node_view  # noqa: F401
+from aiidalab_qe import node_view  # noqa: F401
 
 
 __all__ = [
