@@ -1,0 +1,7 @@
+---
+title: Quantum ESPRESSO
+authors: Carl Simon Adorf, Aliaksandr Yakutovich, Marnik Bercx
+description: Perform Quantum ESPRESSO calculations
+external_url: https://github.com/aiidalab/aiidalab-qe
+documentation_url: https://github.com/aiidalab/aiidalab-qe#readme
+state: development
