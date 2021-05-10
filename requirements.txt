@@ -1,8 +1,0 @@
-aiida-core~=1.0
-aiidalab-widgets-base~=1.0b
-aiida-quantumespresso~=3.2
-ase~=3.18
-fileupload==0.1.5
-nglview~=2.7
-ipywidgets~=7.5
-ipytree==0.1.8
