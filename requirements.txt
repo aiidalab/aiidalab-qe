@@ -1,8 +1,0 @@
-aiida-core~=1.0
-aiida-quantumespresso~=3.2
-aiidalab-widgets-base~=1.0.0b15
-ase~=3.18
-fileupload==0.1.5
-ipytree==0.1.8  # required by AWB
-ipywidgets~=7.5 # required by AWB
-nglview~=2.7  # required by AWB
