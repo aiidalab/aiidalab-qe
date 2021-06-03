@@ -92,6 +92,14 @@ class OptionsConfig(ipw.VBox):
     kpoints_distance = traitlets.Float(allow_none=True)
     degauss = traitlets.Float(allow_none=True)
 
+    materials_title = ipw.HTML("""<div style="padding-top: 0px; padding-bottom: 10px">
+        <h4>Material settings</h4>
+    </div>""")
+
+    _DEFAULT_SPIN_TYPE = "NONE"
+    _DEFAULT_KPOINTS_DISTANCE = 0.15
+    _DEFAULT_ELECTRONIC_TYPE = "METAL"
+
     def __init__(self, **kwargs):
 
         # Spin type.
@@ -139,22 +147,24 @@ class OptionsConfig(ipw.VBox):
             value=True,
         )
         self._kpoints_distance = ipw.FloatText(
-            value=0.4,
+            value=self._DEFAULT_KPOINTS_DISTANCE,
             step=0.1,
             description="K-points distance:",
             disabled=False,
             style={"description_width": "initial"},
-            layout=ipw.Layout(visibility="hidden"),
+        )
+        ipw.dlink(
+            (self._set_kpoints_distance_automatically, "value"), (self._kpoints_distance, "disabled")
         )
 
-        def _show_hide_kpoints_distance(change):
-            self._kpoints_distance.layout.visibility = (
-                "hidden" if change["new"] else "visible"
-            )
+        # def _show_hide_kpoints_distance(change):
+        #     self._kpoints_distance.layout.visibility = (
+        #         "hidden" if change["new"] else "visible"
+        #     )
 
-        self._set_kpoints_distance_automatically.observe(
-            _show_hide_kpoints_distance, "value"
-        )
+        # self._set_kpoints_distance_automatically.observe(
+        #     _show_hide_kpoints_distance, "value"
+        # )
 
         self._kpoints_distance.observe(self.set_kpoints_distance_trait, "value")
         self._set_kpoints_distance_automatically.observe(
@@ -173,17 +183,18 @@ class OptionsConfig(ipw.VBox):
 
         super().__init__(
             children=[
-                ipw.HBox([self._set_spin_automatically, self._spin_type]),
-                ipw.HBox([self._set_el_type_automatically, self._electronic_type]),
+                PseudoFamilySelector(),
                 ipw.HBox(
                     [self._set_kpoints_distance_automatically, self._kpoints_distance]
                 ),
+                self.materials_title,
+                ipw.HBox([self._set_spin_automatically, self._spin_type]),
+                ipw.HBox([self._set_el_type_automatically, self._electronic_type]),
             ],
-            layout=ipw.Layout(max_width="600px"),
+            layout=ipw.Layout(justify_content="space-between"),
             **kwargs
         )
 
-    _DEFAULT_SPIN_TYPE = "NONE"
 
     def set_spin_type_trait(self, _=None):
         self.spin_type = SpinType[
@@ -200,8 +211,6 @@ class OptionsConfig(ipw.VBox):
                 change["new"] is self._DEFAULT_SPIN_TYPE
             )
 
-    _DEFAULT_ELECTRONIC_TYPE = "METAL"
-
     def set_electronic_type_trait(self, _=None):
         self.electronic_type = ElectronicType[
             self._DEFAULT_ELECTRONIC_TYPE
@@ -217,8 +226,6 @@ class OptionsConfig(ipw.VBox):
                 change["new"] is self._DEFAULT_ELECTRONIC_TYPE
             )
 
-    _DEFAULT_KPOINTS_DISTANCE = None
-
     def set_kpoints_distance_trait(self, _=None):
         self.kpoints_distance = (
             self._DEFAULT_KPOINTS_DISTANCE
@@ -226,15 +233,14 @@ class OptionsConfig(ipw.VBox):
             else self._kpoints_distance.value
         )
 
-    @traitlets.observe("kpoints_distance")
-    def _observe_kpoints_distance(self, change):
-        with self.hold_trait_notifications():
-            self._kpoints_distance.value = (
-                0.4
-                if change["new"] is self._DEFAULT_KPOINTS_DISTANCE
-                else change["new"]
-            )
-
+    # @traitlets.observe("kpoints_distance")
+    # def _observe_kpoints_distance(self, change):
+    #     with self.hold_trait_notifications():
+    #         self._kpoints_distance.value = (
+    #             0.4
+    #             if change["new"] is self._DEFAULT_KPOINTS_DISTANCE
+    #             else change["new"]
+    #         )
 
 class CodesConfig(ipw.VBox):
     def __init__(self, **kwargs):
@@ -310,7 +316,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             children=[
                 self.workchain_config,
                 self.resources_config,
-                self.codes_selector,
+                # self.codes_selector,
             ],
             layout=ipw.Layout(min_height="250px"),
         )
@@ -356,26 +362,26 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if change["new"]:
             self.tab.set_title(0, "Workchain")
             self.tab.set_title(1, "Compute resources")
-            self.tab.set_title(2, "Advanced options")
-            self.tab.set_title(3, "Pseudo potentials")
-            self.tab.set_title(4, "Select codes")
-            self.tab.set_title(5, "Parameters")
+            self.tab.set_title(2, "Advanced settings")
+            self.tab.set_title(3, "Select codes")
+            self.tab.set_title(4, "Parameters")
+            # self.tab.set_title(5, "Pseudopotentials")
             self.tab.children = [
                 self.workchain_config,
                 self.resources_config,
                 self.options_config,
-                self.pseudo_family_selector,
+                # self.pseudo_family_selector,
                 self.codes_selector,
                 self.builder_parameters_view,
             ]
         else:
             self.tab.set_title(0, "Workchain")
             self.tab.set_title(1, "Compute resources")
-            self.tab.set_title(2, "Select codes")
+            # self.tab.set_title(2, "Select codes")
             self.tab.children = [
                 self.workchain_config,
                 self.resources_config,
-                self.codes_selector,
+                # self.codes_selector,
             ]
 
     def _get_state(self):
