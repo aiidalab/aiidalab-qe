@@ -240,14 +240,18 @@ class NodeViewWidget(ipw.VBox):
 class ResourceSelectionWidget(ipw.HBox):
     """Widget for the selection of compute (CPU) resources."""
 
+    resource_selection_title = ipw.HTML("""<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Resources</h4>
+    </div>""")
     resource_selection_prompt = ipw.HTML(
         "Select the compute resources for this calculation."
     )
-
     resource_selection_help = ipw.HTML(
-        """<div style="line-height:120%; padding-top:25px;">
-        <p>There is no general rule of thumb on how to select the appropriate number of
-        nodes and cores. In general:</p>
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        In this tab you can select the amount of resources you want to use for the calculation.
+        There is no general rule of thumb on how to select the appropriate number of nodes and cores. In general:
+        </p>
         <ul>
         <li>Increase the number of nodes if you run out of memory for larger structures.</li>
         <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
@@ -279,14 +283,22 @@ class ResourceSelectionWidget(ipw.HBox):
             children=[
                 ipw.VBox(
                     children=[
-                        self.resource_selection_prompt,
-                        self.number_of_nodes,
-                        self.cpus_per_node,
-                        self.total_num_cpus,
-                    ],
-                    layout=ipw.Layout(min_width="310px"),
-                ),
-                self.resource_selection_help,
+                        self.resource_selection_title,
+                        ipw.HBox(
+                            children=[
+                                self.resource_selection_help,
+                                ipw.VBox(
+                                    children=[
+                                        self.number_of_nodes,
+                                        self.cpus_per_node,
+                                        self.total_num_cpus,
+                                    ],
+                                    layout=ipw.Layout(min_width="310px"),
+                                ),
+                            ]
+                        )
+                    ]
+                )
             ]
         )
 

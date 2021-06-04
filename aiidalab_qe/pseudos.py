@@ -188,7 +188,10 @@ class PseudoFamilySelector(ipw.VBox):
         self.pseudo_protocol_box = ipw.VBox(
             children=[
                 self.pseudo_family_prompt,
-                ipw.HBox([self.protocol_selection, self.sssp_install_widget]),
+                ipw.HBox([
+                    self.protocol_selection,
+                    # self.sssp_install_widget
+                ]),
                 self.pseudo_family_help,
             ],
             layout=ipw.Layout(max_width="60%"),
