@@ -240,9 +240,11 @@ class NodeViewWidget(ipw.VBox):
 class ResourceSelectionWidget(ipw.HBox):
     """Widget for the selection of compute (CPU) resources."""
 
-    resource_selection_title = ipw.HTML("""<div style="padding-top: 0px; padding-bottom: 0px">
+    resource_selection_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Resources</h4>
-    </div>""")
+    </div>"""
+    )
     resource_selection_prompt = ipw.HTML(
         "Select the compute resources for this calculation."
     )
@@ -296,7 +298,7 @@ class ResourceSelectionWidget(ipw.HBox):
                                     layout=ipw.Layout(min_width="310px"),
                                 ),
                             ]
-                        )
+                        ),
                     ]
                 )
             ]

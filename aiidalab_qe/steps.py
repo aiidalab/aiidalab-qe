@@ -40,31 +40,37 @@ def update_resources(builder, resources):
 
 class WorkChainConfig(ipw.VBox):
 
-    properties_title = ipw.HTML("""<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Properties</h4>
-    </div>""")
-    properties_help = ipw.HTML("""<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        By default, the work chain will optimize the provided geometry. Uncheck the box if this is not desired.
-        The "POSITIONS" method will only optimize the atomic positions, "POSITIONS_CELL" will also optimize the unit cell of the structure.
-        The band structure work chain will automatically detect the default path in reciprocal space using the 
-        <a href="https://www.materialscloud.org/work/tools/seekpath"> SeeK-path tool</a>.
-    </div>""")
+    properties_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Properties</h4></div>"""
+    )
+    properties_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
+        By default, the work chain will optimize the provided geometry. Uncheck
+        the box if this is not desired.  The "POSITIONS" method will only
+        optimize the atomic positions, "POSITIONS_CELL" will also optimize the
+        unit cell of the structure.  The band structure work chain will
+        automatically detect the default path in reciprocal space using the <a
+        href="https://www.materialscloud.org/work/tools/seekpath"> SeeK-path
+        tool</a>.</div>"""
+    )
 
-    protocol_title = ipw.HTML("""<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Protocol</h4>
-    </div>""")
-    protocol_help = ipw.HTML("""<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
-        The "moderate" protocol represents a balanced trade-off between accuracy and speed. Choose the 
-        "fast" protocol for a faster calculation with less precision and the "precise" protocol that 
-        provides more accuracy but will take longer.
-    </div>""")
+    protocol_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Protocol</h4></div>"""
+    )
+    protocol_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
+        The "moderate" protocol represents a balanced trade-off between
+        accuracy and speed. Choose the "fast" protocol for a faster calculation
+        with less precision and the "precise" protocol that provides more
+        accuracy but will take longer.</div>"""
+    )
 
     def __init__(self, **kwargs):
 
         self.run_geo_opt = ipw.Checkbox(
-            description="Geometry",
-            indent=False,
-            value=True
+            description="Geometry", indent=False, value=True
         )
         self.geo_opt_type = ipw.Dropdown(
             description="Method:",
@@ -105,12 +111,14 @@ class WorkChainConfig(ipw.VBox):
                 self.protocol_title,
                 ipw.HBox(
                     children=[
-                        ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
+                        ipw.HTML(
+                            "Select the protocol:", layout=ipw.Layout(flex="1 1 auto")
+                        ),
                         self.simulation_protocol,
                     ],
                     layout=ipw.Layout(vertical_align="bottom"),
                 ),
-                self.protocol_help
+                self.protocol_help,
             ],
             layout=ipw.Layout(max_width="600px"),
             **kwargs
@@ -123,14 +131,18 @@ class OptionsConfig(ipw.VBox):
     kpoints_distance = traitlets.Float(allow_none=True)
     degauss = traitlets.Float(allow_none=True)
 
-    materials_title = ipw.HTML("""<div style="padding-top: 0px; padding-bottom: 10px">
+    materials_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Material settings</h4>
-    </div>""")
+    </div>"""
+    )
 
-    kpoints_distance_description = ipw.HTML("""<p>
+    kpoints_distance_description = ipw.HTML(
+        """<p>
         Similarly, the <b>protocol</b> also defines the k-points mesh density.
         Untick the box to override the default
-    </p>""")
+    </p>"""
+    )
 
     _DEFAULT_SPIN_TYPE = "NONE"
     _DEFAULT_KPOINTS_DISTANCE = 0.15
@@ -191,7 +203,8 @@ class OptionsConfig(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self._set_kpoints_distance_automatically, "value"), (self._kpoints_distance, "disabled")
+            (self._set_kpoints_distance_automatically, "value"),
+            (self._kpoints_distance, "disabled"),
         )
 
         # def _show_hide_kpoints_distance(change):
@@ -226,19 +239,22 @@ class OptionsConfig(ipw.VBox):
                     [self._set_kpoints_distance_automatically, self._kpoints_distance]
                 ),
                 self.materials_title,
-                ipw.HBox([
-                    # self._set_spin_automatically,
-                    self._spin_type
-                ]),
-                ipw.HBox([
-                    # self._set_el_type_automatically,
-                    self._electronic_type
-                ]),
+                ipw.HBox(
+                    [
+                        # self._set_spin_automatically,
+                        self._spin_type
+                    ]
+                ),
+                ipw.HBox(
+                    [
+                        # self._set_el_type_automatically,
+                        self._electronic_type
+                    ]
+                ),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs
         )
-
 
     def set_spin_type_trait(self, _=None):
         self.spin_type = SpinType[
@@ -260,7 +276,7 @@ class OptionsConfig(ipw.VBox):
         self.electronic_type = ElectronicType[
             # self._DEFAULT_ELECTRONIC_TYPE
             # if self._set_el_type_automatically.value
-            # else 
+            # else
             self._electronic_type.value
         ]
 
@@ -288,17 +304,21 @@ class OptionsConfig(ipw.VBox):
     #             else change["new"]
     #         )
 
+
 class CodesConfig(ipw.VBox):
 
-    codes_title = ipw.HTML("""<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Codes</h4>
-    </div>""")
+    codes_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Codes</h4></div>"""
+    )
 
-    codes_help = ipw.HTML("""<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        Here you can select the codes to use for running the calculations. The codes on the local 
-        machine are installed and selected by default, but you can set new ones for each of the codes 
-        by clicking on "Setup new code".
-    </div>""")
+    codes_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+        Here you can select the codes to use for running the calculations. The
+        codes on the local machine are installed and selected by default, but
+        you can set new ones for each of the codes by clicking on "Setup new
+        code".</div>"""
+    )
 
     def __init__(self, **kwargs):
 
