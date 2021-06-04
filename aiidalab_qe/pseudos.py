@@ -187,7 +187,7 @@ class PseudoFamilySelector(ipw.VBox):
             options=["efficiency", "precision"], layout=ipw.Layout(max_width="80%")
         )
         self.protocol_selection.observe(self.set_value_trait, "value")
-
+ 
         # Setup pseudofamily potential selection group:
         self.sssp_install_widget = SSSPInstallWidget()
         ipw.dlink((self.sssp_install_widget, "installed"), (self, "installed"))
@@ -203,12 +203,7 @@ class PseudoFamilySelector(ipw.VBox):
         self.pseudo_protocol_box = ipw.VBox(
             children=[
                 self.pseudo_family_prompt,
-                ipw.HBox(
-                    [
-                        self.protocol_selection,
-                        # self.sssp_install_widget
-                    ]
-                ),
+                self.protocol_selection,
                 self.pseudo_family_help,
             ],
             layout=ipw.Layout(max_width="60%"),
@@ -240,9 +235,7 @@ class PseudoFamilySelector(ipw.VBox):
         self.show_ui.value = not change.new
 
     def set_text_color(self, change):
-        opacity = 1 if change.new else 0.5
-
-        pattern = r"[\s\S]+opacity:([\S]+);[\S\s]+"
+        opacity = 1.0 if change.new else 0.5
 
         for html in (
             self.pseudo_family_prompt,
@@ -250,7 +243,7 @@ class PseudoFamilySelector(ipw.VBox):
             self.dft_functional_help,
             self.dft_functional_prompt,
         ):
-            old_opacity = re.match(pattern, html.value).groups()[0]
+            old_opacity = re.match(r"[\s\S]+opacity:([\S]+);[\S\s]+", html.value).groups()[0]
             html.value = html.value.replace(
                 f"opacity:{old_opacity};", f"opacity:{opacity};"
             )

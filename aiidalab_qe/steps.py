@@ -51,7 +51,7 @@ class WorkChainConfig(ipw.VBox):
         optimize the atomic positions, "POSITIONS_CELL" will also optimize the
         unit cell of the structure.  The band structure work chain will
         automatically detect the default path in reciprocal space using the <a
-        href="https://www.materialscloud.org/work/tools/seekpath"> SeeK-path
+        href="https://www.materialscloud.org/work/tools/seekpath target="_blank"> SeeK-path
         tool</a>.</div>"""
     )
 
@@ -69,58 +69,41 @@ class WorkChainConfig(ipw.VBox):
 
     def __init__(self, **kwargs):
 
-        self.run_geo_opt = ipw.Checkbox(
-            description="Geometry", indent=False, value=True
-        )
+        self.geo_opt_run = ipw.ToggleButton(value=True, description="Geometry", button_style='info')
         self.geo_opt_type = ipw.Dropdown(
             description="Method:",
             value="POSITIONS_CELL",
             options=["POSITIONS_CELL", "POSITIONS"],
         )
         ipw.dlink(
-            (self.run_geo_opt, "value"),
+            (self.geo_opt_run, "value"),
             (self.geo_opt_type, "disabled"),
             transform=lambda v: not v,
         )
-
-        self.run_bands = ipw.Checkbox(
-            description="Band structure",
-            indent=False,
-        )
-        self.run_pdos = ipw.Checkbox(
+        self.bands_run = ipw.ToggleButton(indent=False, description="Band structure", button_style='info')
+    
+        self.run_pdos = ipw.ToggleButton( 
             description="Calculate density of states",
-            indent=False,
-            layout=ipw.Layout(visibility="hidden"),
         )
-
+        
         # Simulation protocol.
-        self.simulation_protocol = ipw.Dropdown(
-            options=["fast", "moderate", "precise"], value="moderate"
+        self.simulation_protocol = ipw.ToggleButtons(
+            options=["fast", "moderate", "precise"], value="moderate", button_style='info'
         )
-
         super().__init__(
             children=[
                 self.properties_title,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(
-                    children=[self.run_geo_opt, self.geo_opt_type],
+                    children=[self.geo_opt_run, self.geo_opt_type],
                 ),
-                ipw.HBox(children=[self.run_bands]),
+                self.bands_run,
                 self.properties_help,
-                # self.run_pdos,
                 self.protocol_title,
-                ipw.HBox(
-                    children=[
-                        ipw.HTML(
-                            "Select the protocol:", layout=ipw.Layout(flex="1 1 auto")
-                        ),
-                        self.simulation_protocol,
-                    ],
-                    layout=ipw.Layout(vertical_align="bottom"),
-                ),
+                ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
+                self.simulation_protocol,
                 self.protocol_help,
             ],
-            layout=ipw.Layout(max_width="600px"),
             **kwargs
         )
 
@@ -150,42 +133,21 @@ class OptionsConfig(ipw.VBox):
 
     def __init__(self, **kwargs):
 
-        # Spin type.
-        # self._set_spin_automatically = ipw.Checkbox(
-        #     description="Use default spin type.",
-        #     indent=False,
-        #     value=True,
-        # )
         self._spin_type = ipw.Dropdown(
             options=["NONE", "COLLINEAR"],
             value="NONE",
             description="Spin Type:",
             style={"description_width": "initial"},
         )
-        # ipw.dlink(
-        #     (self._set_spin_automatically, "value"), (self._spin_type, "disabled")
-        # )
-        # self._set_spin_automatically.observe(self.set_spin_type_trait, "value")
         self._spin_type.observe(self.set_spin_type_trait, "value")
         self.set_spin_type_trait()
 
-        # Electronic type.
-        # self._set_el_type_automatically = ipw.Checkbox(
-        #     description="Use default electronic type.",
-        #     indent=False,
-        #     value=True,
-        # )
         self._electronic_type = ipw.Dropdown(
             options=["METAL", "INSULATOR"],
             value="METAL",
             description="Electronic Type:",
             style={"description_width": "initial"},
         )
-        # ipw.dlink(
-        #     (self._set_el_type_automatically, "value"),
-        #     (self._electronic_type, "disabled"),
-        # )
-        # self._set_el_type_automatically.observe(self.set_electronic_type_trait, "value")
         self._electronic_type.observe(self.set_electronic_type_trait, "value")
         self.set_electronic_type_trait()
 
@@ -206,15 +168,6 @@ class OptionsConfig(ipw.VBox):
             (self._set_kpoints_distance_automatically, "value"),
             (self._kpoints_distance, "disabled"),
         )
-
-        # def _show_hide_kpoints_distance(change):
-        #     self._kpoints_distance.layout.visibility = (
-        #         "hidden" if change["new"] else "visible"
-        #     )
-
-        # self._set_kpoints_distance_automatically.observe(
-        #     _show_hide_kpoints_distance, "value"
-        # )
 
         self._kpoints_distance.observe(self.set_kpoints_distance_trait, "value")
         self._set_kpoints_distance_automatically.observe(
@@ -239,54 +192,18 @@ class OptionsConfig(ipw.VBox):
                     [self._set_kpoints_distance_automatically, self._kpoints_distance]
                 ),
                 self.materials_title,
-                ipw.HBox(
-                    [
-                        # self._set_spin_automatically,
-                        self._spin_type
-                    ]
-                ),
-                ipw.HBox(
-                    [
-                        # self._set_el_type_automatically,
-                        self._electronic_type
-                    ]
-                ),
+                self._spin_type,
+                self._electronic_type
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs
         )
 
     def set_spin_type_trait(self, _=None):
-        self.spin_type = SpinType[
-            # self._DEFAULT_SPIN_TYPE
-            # if self._set_spin_automatically.value
-            # else
-            self._spin_type.value.upper()
-        ]
-
-    # @traitlets.observe("spin_type")
-    # def _observe_spin_type(self, change):
-    #     with self.hold_trait_notifications():
-    #         self._spin_type.value = change["new"].value.upper()
-    #         self._set_spin_automatically.value = (
-    #             change["new"] is self._DEFAULT_SPIN_TYPE
-    #         )
+        self.spin_type = SpinType[self._spin_type.value.upper()]
 
     def set_electronic_type_trait(self, _=None):
-        self.electronic_type = ElectronicType[
-            # self._DEFAULT_ELECTRONIC_TYPE
-            # if self._set_el_type_automatically.value
-            # else
-            self._electronic_type.value
-        ]
-
-    # @traitlets.observe("electronic_type")
-    # def _observe_electronic_type(self, change):
-    #     with self.hold_trait_notifications():
-    #         self._electronic_type.value = change["new"].value.upper()
-    #         self._set_el_type_automatically.value = (
-    #             change["new"] is self._DEFAULT_ELECTRONIC_TYPE
-    #         )
+        self.electronic_type = ElectronicType[self._electronic_type.value]
 
     def set_kpoints_distance_trait(self, _=None):
         self.kpoints_distance = (
@@ -294,16 +211,6 @@ class OptionsConfig(ipw.VBox):
             if self._set_kpoints_distance_automatically.value
             else self._kpoints_distance.value
         )
-
-    # @traitlets.observe("kpoints_distance")
-    # def _observe_kpoints_distance(self, change):
-    #     with self.hold_trait_notifications():
-    #         self._kpoints_distance.value = (
-    #             0.4
-    #             if change["new"] is self._DEFAULT_KPOINTS_DISTANCE
-    #             else change["new"]
-    #         )
-
 
 class CodesConfig(ipw.VBox):
 
@@ -393,15 +300,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.tab = ipw.Tab(
             children=[
                 self.workchain_config,
-                # self.resources_config,
-                # self.codes_selector,
             ],
             layout=ipw.Layout(min_height="250px"),
         )
 
         self.tab.set_title(0, "Workchain")
-        # self.tab.set_title(1, "Compute resources")
-        # self.tab.set_title(2, "Select codes")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -442,24 +345,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.tab.set_title(1, "Advanced settings")
             self.tab.set_title(2, "Select codes")
             self.tab.set_title(3, "Compute resources")
-            # self.tab.set_title(4, "Parameters")
-            # self.tab.set_title(5, "Pseudopotentials")
             self.tab.children = [
                 self.workchain_config,
                 self.options_config,
-                # self.pseudo_family_selector,
                 self.codes_selector,
                 self.resources_config,
-                # self.builder_parameters_view,
             ]
         else:
             self.tab.set_title(0, "Workchain")
-            # self.tab.set_title(1, "Compute resources")
-            # self.tab.set_title(2, "Select codes")
             self.tab.children = [
                 self.workchain_config,
-                # self.resources_config,
-                # self.codes_selector,
             ]
 
     def _get_state(self):
@@ -533,10 +428,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.options_config.observe(update, ["spin_type"])
         self.pseudo_family_selector.observe(update, ["value"])
         self.workchain_config.geo_opt_type.observe(update, ["value"])
-        self.workchain_config.run_geo_opt.observe(update, ["value"])
+        self.workchain_config.geo_opt_run.observe(update, ["value"])
         self.workchain_config.simulation_protocol.observe(update, ["value"])
         # "Extra" parameters
-        self.workchain_config.run_bands.observe(update, ["value"])
+        self.workchain_config.bands_run.observe(update, ["value"])
         self.workchain_config.run_pdos.observe(update, ["value"])
 
     @staticmethod
@@ -595,11 +490,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     protocol=self.workchain_config.simulation_protocol.value,
                     pseudo_family=self.pseudo_family_selector.value,
                     relax_type=RelaxType[self.workchain_config.geo_opt_type.value]
-                    if self.workchain_config.run_geo_opt.value
+                    if self.workchain_config.geo_opt_run.value
                     else RelaxType["NONE"],
                     spin_type=self.options_config.spin_type,
                     # "extra" parameters
-                    run_bands=self.workchain_config.run_bands.value,
+                    run_bands=self.workchain_config.bands_run.value,
                     run_pdos=self.workchain_config.run_pdos.value,
                 )
             ),
@@ -628,13 +523,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if relax_type is RelaxType["NONE"]
                 else relax_type.value.upper()
             )
-            self.workchain_config.run_geo_opt.value = (
+            self.workchain_config.geo_opt_run.value = (
                 relax_type is not RelaxType["NONE"]
             )
 
             self.options_config.spin_type = bp.get("spin_type", SpinType["NONE"])
             # "extra" parameters
-            self.workchain_config.run_bands.value = bp["run_bands"]
+            self.workchain_config.bands_run.value = bp["run_bands"]
             self.workchain_config.run_pdos.value = bp["run_pdos"]
 
     def submit(self, _=None):
