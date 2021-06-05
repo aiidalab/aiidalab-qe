@@ -5,9 +5,8 @@ Authors:
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
 import aiida
-import traitlets
 import ipywidgets as ipw
-
+import traitlets
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 

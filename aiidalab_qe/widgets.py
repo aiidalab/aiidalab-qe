@@ -6,24 +6,18 @@ Authors:
 """
 
 import base64
-from tempfile import NamedTemporaryFile
-from threading import Event
-from threading import Lock
-from threading import Thread
 from queue import Queue
+from tempfile import NamedTemporaryFile
+from threading import Event, Lock, Thread
 
 import ipywidgets as ipw
 import traitlets
-from aiida.orm import CalcJobNode
-from aiida.orm import Node
-from aiidalab_widgets_base import viewer
-from aiidalab_widgets_base import register_viewer_widget
-from IPython.display import clear_output
-from IPython.display import display
+from aiida.orm import CalcJobNode, Node
+from aiidalab_widgets_base import register_viewer_widget, viewer
+from IPython.display import clear_output, display
 
 # trigger registration of the viewer widget:
 from aiidalab_qe import node_view  # noqa: F401
-
 
 __all__ = [
     "CalcJobOutputFollower",

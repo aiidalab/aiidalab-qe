@@ -9,22 +9,19 @@ from pprint import pformat
 import ipywidgets as ipw
 import traitlets
 from aiida.common import NotExistent
-from aiida.engine import ProcessState
-from aiida.engine import submit
-from aiida.orm import ProcessNode
-from aiida.orm import load_code
+from aiida.engine import ProcessState, submit
+from aiida.orm import ProcessNode, load_code
 from aiida.plugins import DataFactory
-from aiida_quantumespresso.common.types import SpinType, ElectronicType, RelaxType
-from aiidalab_qe_workchain import QeAppWorkChain
-from aiidalab_widgets_base import CodeDropdown
-from aiidalab_widgets_base import ProcessMonitor
-from aiidalab_widgets_base import ProcessNodesTreeWidget
-from aiidalab_widgets_base import WizardAppWidgetStep
-
+from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
+from aiidalab_widgets_base import (
+    CodeDropdown,
+    ProcessMonitor,
+    ProcessNodesTreeWidget,
+    WizardAppWidgetStep,
+)
 from aiidalab_qe.pseudos import PseudoFamilySelector
-from aiidalab_qe.widgets import NodeViewWidget
-from aiidalab_qe.widgets import ResourceSelectionWidget
-
+from aiidalab_qe.widgets import NodeViewWidget, ResourceSelectionWidget
+from aiidalab_qe_workchain import QeAppWorkChain
 
 StructureData = DataFactory("structure")
 
@@ -50,9 +47,9 @@ class WorkChainConfig(ipw.VBox):
         the box if this is not desired.  The "POSITIONS" method will only
         optimize the atomic positions, "POSITIONS_CELL" will also optimize the
         unit cell of the structure.  The band structure work chain will
-        automatically detect the default path in reciprocal space using the <a
-        href="https://www.materialscloud.org/work/tools/seekpath target="_blank"> SeeK-path
-        tool</a>.</div>"""
+        automatically detect the default path in reciprocal space using the
+        <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
+        SeeK-path tool</a>.</div>"""
     )
 
     protocol_title = ipw.HTML(
@@ -66,29 +63,46 @@ class WorkChainConfig(ipw.VBox):
         with less precision and the "precise" protocol that provides more
         accuracy but will take longer.</div>"""
     )
+    button_style_on = "success"
+    button_style_off = "danger"
 
     def __init__(self, **kwargs):
 
-        self.geo_opt_run = ipw.ToggleButton(value=True, description="Geometry", button_style='info')
+        self.geo_opt_run = ipw.ToggleButton(
+            description="Geometry",
+            tooltip="Optimize the geometry of the system.",
+            value=True,
+            button_style=self.button_style_on,
+        )
+        self.geo_opt_run.observe(self.set_geo_button_style, "value")
         self.geo_opt_type = ipw.Dropdown(
             description="Method:",
             value="POSITIONS_CELL",
             options=["POSITIONS_CELL", "POSITIONS"],
         )
+
         ipw.dlink(
             (self.geo_opt_run, "value"),
             (self.geo_opt_type, "disabled"),
             transform=lambda v: not v,
         )
-        self.bands_run = ipw.ToggleButton(indent=False, description="Band structure", button_style='info')
-    
-        self.run_pdos = ipw.ToggleButton( 
+
+        self.bands_run = ipw.ToggleButton(
+            description="Band structure",
+            tooltip="Calculate the electronic band structure.",
+            button_style=self.button_style_off,
+        )
+        self.bands_run.observe(self.set_bands_button_style, "value")
+
+        self.run_pdos = ipw.ToggleButton(
             description="Calculate density of states",
         )
-        
+
         # Simulation protocol.
         self.simulation_protocol = ipw.ToggleButtons(
-            options=["fast", "moderate", "precise"], value="moderate", button_style='info'
+            options=["fast", "moderate", "precise"],
+            value="moderate",
+            button_style="info",
         )
         super().__init__(
             children=[
@@ -106,6 +120,14 @@ class WorkChainConfig(ipw.VBox):
             ],
             **kwargs
         )
+
+    def set_geo_button_style(self, change):
+        button_style = self.button_style_on if change.new else self.button_style_off
+        self.geo_opt_run.button_style = button_style
+
+    def set_bands_button_style(self, change):
+        button_style = self.button_style_on if change.new else self.button_style_off
+        self.bands_run.button_style = button_style
 
 
 class OptionsConfig(ipw.VBox):
@@ -193,7 +215,7 @@ class OptionsConfig(ipw.VBox):
                 ),
                 self.materials_title,
                 self._spin_type,
-                self._electronic_type
+                self._electronic_type,
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs
@@ -211,6 +233,7 @@ class OptionsConfig(ipw.VBox):
             if self._set_kpoints_distance_automatically.value
             else self._kpoints_distance.value
         )
+
 
 class CodesConfig(ipw.VBox):
 
@@ -317,7 +340,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.submit_button.on_click(self._on_submit_button_clicked)
 
-        self.expert_mode_control = ipw.Checkbox(description="Expert mode")
+        self.expert_mode_control = ipw.ToggleButton(
+            description="Expert mode",
+            tooltip="Activate Expert mode for access to advanced settings.",
+            value=True,
+        )
         ipw.link((self, "expert_mode"), (self.expert_mode_control, "value"))
 
         self._update_builder_parameters()
@@ -341,6 +368,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @traitlets.observe("expert_mode")
     def _observe_expert_mode(self, change):
         if change["new"]:
+            self.expert_mode_control.button_style = "info"
             self.tab.set_title(0, "Workchain")
             self.tab.set_title(1, "Advanced settings")
             self.tab.set_title(2, "Select codes")
@@ -352,6 +380,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.resources_config,
             ]
         else:
+            self.expert_mode_control.button_style = ""
             self.tab.set_title(0, "Workchain")
             self.tab.children = [
                 self.workchain_config,
@@ -595,9 +624,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink((self, "process"), (self.process_tree, "process"))
 
-        self.node_view = NodeViewWidget(
-            layout={"width": "auto", "height": "auto", "border": "1px solid black"}
-        )
+        self.node_view = NodeViewWidget(layout={"width": "auto", "height": "auto"})
         ipw.dlink(
             (self.process_tree, "selected_nodes"),
             (self.node_view, "node"),

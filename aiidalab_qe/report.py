@@ -48,7 +48,7 @@ def _generate_report_dict(qeapp_wc):
 
         if energy_cutoff_wfc is None or energy_cutoff_rho is None:
             try:
-                parameters = work_chain.inputs.base__pw__parameters.get_dict()
+                parameters = work_chain.inputs.relax.base.pw.parameters.get_dict()
                 energy_cutoff_wfc = round(parameters["SYSTEM"]["ecutwfc"])
                 energy_cutoff_rho = round(parameters["SYSTEM"]["ecutrho"])
             except NotExistentAttributeError:

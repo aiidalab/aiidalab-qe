@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-import ipywidgets as ipw
-from threading import Thread
-from subprocess import run
-from aiida import orm, plugins
-
 import re
-import traitlets
+from subprocess import run
+from threading import Thread
 
+import ipywidgets as ipw
+import traitlets
+from aiida import orm, plugins
 
 SsspFamily = plugins.GroupFactory("pseudo.family.sssp")
 
@@ -187,7 +186,7 @@ class PseudoFamilySelector(ipw.VBox):
             options=["efficiency", "precision"], layout=ipw.Layout(max_width="80%")
         )
         self.protocol_selection.observe(self.set_value_trait, "value")
- 
+
         # Setup pseudofamily potential selection group:
         self.sssp_install_widget = SSSPInstallWidget()
         ipw.dlink((self.sssp_install_widget, "installed"), (self, "installed"))
@@ -243,7 +242,9 @@ class PseudoFamilySelector(ipw.VBox):
             self.dft_functional_help,
             self.dft_functional_prompt,
         ):
-            old_opacity = re.match(r"[\s\S]+opacity:([\S]+);[\S\s]+", html.value).groups()[0]
+            old_opacity = re.match(
+                r"[\s\S]+opacity:([\S]+);[\S\s]+", html.value
+            ).groups()[0]
             html.value = html.value.replace(
                 f"opacity:{old_opacity};", f"opacity:{opacity};"
             )
