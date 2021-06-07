@@ -246,14 +246,14 @@ class ResourceSelectionWidget(ipw.HBox):
         """<div style="line-height:120%; padding-top:0px">
         <p style="padding-bottom:10px">
         In this tab you can select the amount of resources you want to use for the calculation.
-        There is no general rule of thumb on how to select the appropriate number of nodes and cores. In general:
+        Although specifying the optimal configuration of resources is a complex issue, in general:
         </p>
         <ul>
         <li>Increase the number of nodes if you run out of memory for larger structures.</li>
         <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
         </ul>
-        <p>However, specifying the optimal configuration of resources is a complex issue and
-        simply increasing either cores or nodes may not have the desired effect.</p></div>"""
+        <p>Note that the amount of resources are limited by the machine you are running AiiDAlab on, so do not specify more resources than are available.
+        </p></div>"""
     )
 
     def __init__(self, **kwargs):
