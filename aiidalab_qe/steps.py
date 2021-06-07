@@ -63,7 +63,7 @@ class WorkChainConfig(ipw.VBox):
         with less precision and the "precise" protocol that provides more
         accuracy but will take longer.</div>"""
     )
-    button_style_on = "success"
+    button_style_on = "info"
     button_style_off = "danger"
 
     def __init__(self, **kwargs):
@@ -369,7 +369,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @traitlets.observe("expert_mode")
     def _observe_expert_mode(self, change):
         if change["new"]:
-            self.expert_mode_control.button_style = "success"
+            self.expert_mode_control.button_style = "info"
             self.tab.set_title(0, "Workchain")
             self.tab.set_title(1, "Advanced settings")
             self.tab.set_title(2, "Select codes")
@@ -549,7 +549,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
             relax_type = bp.get("relax_type", RelaxType["NONE"])
             self.workchain_config.geo_opt_type.value = (
-                "POSITIONS"
+                "POSITIONS_CELL"
                 if relax_type is RelaxType["NONE"]
                 else relax_type.value.upper()
             )
@@ -609,7 +609,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "kpoints_distance_override": None,
             "protocol": "moderate",
             "pseudo_family": None,
-            "relax_type": "positions",
+            "relax_type": "positions_cell",
             "spin_type": "none",
             # Extra parameters
             "run_bands": False,

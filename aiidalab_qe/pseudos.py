@@ -152,7 +152,6 @@ class PseudoFamilySelector(ipw.VBox):
     )
 
     installed = traitlets.Bool()
-    enable = traitlets.Bool()
 
     value = traitlets.Unicode(allow_none=True)
 
