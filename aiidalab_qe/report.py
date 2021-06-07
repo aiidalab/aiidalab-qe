@@ -38,16 +38,17 @@ def _generate_report_dict(qeapp_wc):
     except (KeyError, AttributeError):
         pass
 
-    energy_cutoffs = None
+    energy_cutoff_wfc = None
+    energy_cutoff_rho = None
     scf_kpoints_distance = None
     bands_kpoints_distance = None
     nscf_kpoints_distance = None
 
     for work_chain in qeapp_wc.called:
 
-        if energy_cutoffs is None:
+        if energy_cutoff_wfc is None or energy_cutoff_rho is None:
             try:
-                parameters = work_chain.inputs.base__pw__parameters.get_dict()
+                parameters = work_chain.inputs.relax.base.pw.parameters.get_dict()
                 energy_cutoff_wfc = round(parameters["SYSTEM"]["ecutwfc"])
                 energy_cutoff_rho = round(parameters["SYSTEM"]["ecutrho"])
             except NotExistentAttributeError:
@@ -56,23 +57,23 @@ def _generate_report_dict(qeapp_wc):
         if scf_kpoints_distance is None:
             try:
                 scf_kpoints_distance = work_chain.inputs.base__kpoints_distance.value
-            except NotExistentAttributeError:
+            except (AttributeError, NotExistentAttributeError):
                 pass
             try:
                 scf_kpoints_distance = work_chain.inputs.scf__kpoints_distance.value
-            except NotExistentAttributeError:
+            except (AttributeError, NotExistentAttributeError):
                 pass
 
         if bands_kpoints_distance is None:
             try:
                 bands_kpoints_distance = work_chain.inputs.bands_kpoints_distance.value
-            except NotExistentAttributeError:
+            except (AttributeError, NotExistentAttributeError):
                 pass
 
         if nscf_kpoints_distance is None:
             try:
                 nscf_kpoints_distance = work_chain.inputs.nscf__kpoints_distance.value
-            except NotExistentAttributeError:
+            except (AttributeError, NotExistentAttributeError):
                 pass
 
     yield "energy_cutoff_wfc", energy_cutoff_wfc

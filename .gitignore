@@ -1,6 +1,7 @@
 *.egg-info
 *.pyc
 *.tar.gz
+*.code-workspace
 .*.ipynb
 .ipynb*
 build/

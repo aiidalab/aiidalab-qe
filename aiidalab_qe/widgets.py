@@ -6,24 +6,18 @@ Authors:
 """
 
 import base64
-from tempfile import NamedTemporaryFile
-from threading import Event
-from threading import Lock
-from threading import Thread
 from queue import Queue
+from tempfile import NamedTemporaryFile
+from threading import Event, Lock, Thread
 
 import ipywidgets as ipw
 import traitlets
-from aiida.orm import CalcJobNode
-from aiida.orm import Node
-from aiidalab_widgets_base import viewer
-from aiidalab_widgets_base import register_viewer_widget
-from IPython.display import clear_output
-from IPython.display import display
+from aiida.orm import CalcJobNode, Node
+from aiidalab_widgets_base import register_viewer_widget, viewer
+from IPython.display import clear_output, display
 
 # trigger registration of the viewer widget:
 from aiidalab_qe import node_view  # noqa: F401
-
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -240,20 +234,26 @@ class NodeViewWidget(ipw.VBox):
 class ResourceSelectionWidget(ipw.HBox):
     """Widget for the selection of compute (CPU) resources."""
 
+    resource_selection_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Resources</h4>
+    </div>"""
+    )
     resource_selection_prompt = ipw.HTML(
         "Select the compute resources for this calculation."
     )
-
     resource_selection_help = ipw.HTML(
-        """<div style="line-height:120%; padding-top:25px;">
-        <p>There is no general rule of thumb on how to select the appropriate number of
-        nodes and cores. In general:</p>
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        In this tab you can select the amount of resources you want to use for the calculation.
+        Although specifying the optimal configuration of resources is a complex issue, in general:
+        </p>
         <ul>
         <li>Increase the number of nodes if you run out of memory for larger structures.</li>
         <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
         </ul>
-        <p>However, specifying the optimal configuration of resources is a complex issue and
-        simply increasing either cores or nodes may not have the desired effect.</p></div>"""
+        <p>Note that the amount of resources are limited by the machine you are running AiiDAlab on, so do not specify more resources than are available.
+        </p></div>"""
     )
 
     def __init__(self, **kwargs):
@@ -279,14 +279,22 @@ class ResourceSelectionWidget(ipw.HBox):
             children=[
                 ipw.VBox(
                     children=[
-                        self.resource_selection_prompt,
-                        self.number_of_nodes,
-                        self.cpus_per_node,
-                        self.total_num_cpus,
-                    ],
-                    layout=ipw.Layout(min_width="310px"),
-                ),
-                self.resource_selection_help,
+                        self.resource_selection_title,
+                        ipw.HBox(
+                            children=[
+                                self.resource_selection_help,
+                                ipw.VBox(
+                                    children=[
+                                        self.number_of_nodes,
+                                        self.cpus_per_node,
+                                        self.total_num_cpus,
+                                    ],
+                                    layout=ipw.Layout(min_width="310px"),
+                                ),
+                            ]
+                        ),
+                    ]
+                )
             ]
         )
 
