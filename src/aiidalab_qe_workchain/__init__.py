@@ -1,14 +1,12 @@
 # AiiDA imports.
 from aiida.common import AttributeDict
-from aiida.engine import WorkChain, ToContext, if_
+from aiida.engine import ToContext, WorkChain, if_
 from aiida.orm import CalcJobNode, WorkChainNode
-from aiida.plugins import WorkflowFactory, DataFactory
-
+from aiida.plugins import DataFactory, WorkflowFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import RelaxType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
-
 
 # Data objects and work chains.
 PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
@@ -77,7 +75,7 @@ class QeAppWorkChain(WorkChain):
                        message='The PwBandsWorkChain sub process failed')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
-        spec.output('structure', valid_type=StructureData)
+        spec.output('structure', valid_type=StructureData, required=False)
         spec.output('band_parameters', valid_type=Dict, required=False)
         spec.output('band_structure', valid_type=BandsData, required=False)
         spec.output('nscf_parameters', valid_type=Dict, required=False)
@@ -221,6 +219,7 @@ class QeAppWorkChain(WorkChain):
         self.ctx.current_number_of_bands = (
             workchain.outputs.output_parameters.get_attribute("number_of_bands")
         )
+        self.out("structure", self.ctx.current_structure)
 
     def should_run_bands(self):
         """Check if the band structure should be calculated."""
@@ -316,7 +315,6 @@ class QeAppWorkChain(WorkChain):
 
     def results(self):
         """Add the results to the outputs."""
-        self.out("structure", self.ctx.current_structure)
         if "workchain_bands" in self.ctx:
             self.out(
                 "band_parameters", self.ctx.workchain_bands.outputs.band_parameters

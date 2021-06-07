@@ -6,26 +6,15 @@ Authors:
 """
 
 import json
-
 import ipywidgets as ipw
 import nglview
-from aiida.common import NotExistentAttributeError
 from aiida.orm import Node
-from aiidalab_widgets_base import register_viewer_widget
-from aiidalab_widgets_base import ProcessMonitor
+from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
+from aiidalab_widgets_base.viewers import BandsDataViewer, StructureDataViewer
 from ase import Atoms
 from jinja2 import Environment
-from monty.json import MontyEncoder
-from monty.json import jsanitize
-from traitlets import Instance
-from traitlets import Int
-from traitlets import List
-from traitlets import Unicode
-from traitlets import Union
-from traitlets import default
-from traitlets import observe
-from traitlets import validate
-from widget_bandsplot import BandsPlotWidget
+from monty.json import MontyEncoder, jsanitize
+from traitlets import Instance, Int, List, Unicode, Union, default, observe, validate
 
 from aiidalab_qe.report import generate_report_dict
 
@@ -245,79 +234,69 @@ class WorkChainViewer(ipw.VBox):
             raise KeyError(str(node.node_type))
 
         self.node = node
-
-        self.output_structure_view = None
-        self.output_structure_view_box = ipw.HBox(
-            children=[ipw.HTML("No structure data available yet.")],
-            layout=ipw.Layout(
-                flex="1 1 auto",
-                min_width="200px",
-                min_height="200px",
-                max_width="300px",
-                max_height="300px",
-                border="1px solid grey",
-            ),
-        )
-
-        self.bands_plot = None
-        self.bands_plot_box = ipw.HBox(
-            children=[ipw.HTML("No bands data available yet.")],
-            layout=ipw.Layout(
-                min_height="300px",
-                flex="2 1 auto",
-            ),
-        )
+        self.status = []
 
         structure_formula = self.node.inputs.structure.get_formula()
         self.title = ipw.HTML(
-            f"<h4>QE App Work Chain (pk: {self.node.pk}) &mdash; {structure_formula} </h4>"
-        )
-        self.summary_view = SummaryView(
-            self.node,
-            layout=ipw.Layout(
-                flex="1 1 auto",
-            ),
+            f"""
+            <hr style="height:2px;background-color:#2097F3;">
+            <h4>QE App Work Chain (pk: {self.node.pk}) &mdash; {structure_formula} </h4>
+        """
         )
 
-        self._process_monitor = ProcessMonitor(
-            process=self.node, callbacks=[self._update_view]
-        )
+        self.result_titles = [
+            "Workflow Summary",
+        ]
+        self.result_children = [self.get_summary()]
+        self.result_tabs = ipw.Tab()
+        self._update_view(first_run=True)
 
         super().__init__(
             children=[
                 self.title,
-                ipw.HBox(
-                    [
-                        ipw.VBox(
-                            [self.output_structure_view_box, self.summary_view],
-                            layout=ipw.Layout(flex="1 1 auto"),
-                        ),
-                        self.bands_plot_box,
-                    ],
-                ),
+                self.result_tabs,
             ],
             **kwargs,
         )
+        self._process_monitor = ProcessMonitor(
+            process=self.node,
+            callbacks=[
+                self._update_view,
+            ],
+        )
 
-    def _update_view(self):
-        if self.output_structure_view is None:
-            try:
-                self.output_structure_view = MinimalStructureViewer(
-                    structure=self.node.outputs.structure,
-                    layout=ipw.Layout(flex="1 1 auto"),
-                )
-                self.output_structure_view_box.children = [self.output_structure_view]
-            except NotExistentAttributeError:
-                pass
+    def _update_view(self, first_run=False):
 
-        if self.bands_plot is None:
-            bands_data = export_bands_data(self.node)
-            pdos_data = export_pdos_data(self.node)
+        update = False
 
-            if bands_data or pdos_data:
-                self.bands_plot = BandsPlotWidget(
-                    bands=[bands_data] if bands_data else [],
-                    dos=pdos_data,
-                    plot_fermilevel=True,
-                )
-                self.bands_plot_box.children = [self.bands_plot]
+        if "structure" not in self.status:
+            if "structure" in self.node.outputs:
+                self.result_titles.append("Final Geometry")
+                self.result_children.append(self.get_structure())
+                self.status.append("structure")
+                update = True
+
+        if "bands" not in self.status:
+            if "band_structure" in self.node.outputs:
+                self.result_titles.append("Band Structure")
+                self.result_children.append(self.get_bands())
+                self.status.append("bands")
+                update = True
+
+        if first_run or update:
+            index = self.result_tabs.selected_index
+
+            self.result_tabs.children = self.result_children
+            for tab_number, title in enumerate(self.result_titles):
+                self.result_tabs.set_title(tab_number, title)
+
+            self.result_tabs.selected_index = index
+
+    def get_summary(self):
+        return SummaryView(self.node)
+
+    def get_structure(self):
+        return StructureDataViewer(structure=self.node.outputs.structure)
+
+    def get_bands(self):
+        return BandsDataViewer(self.node.outputs.band_structure)

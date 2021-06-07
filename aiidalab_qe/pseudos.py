@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-import ipywidgets as ipw
-from threading import Thread
+import re
 from subprocess import run
-from aiida import orm, plugins
+from threading import Thread
 
+import ipywidgets as ipw
 import traitlets
+from aiida import orm, plugins
 
 SsspFamily = plugins.GroupFactory("pseudo.family.sssp")
 
@@ -108,33 +109,71 @@ class SSSPInstallWidget(ipw.HBox):
 
 class PseudoFamilySelector(ipw.VBox):
 
+    title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 10px">
+        <h4>Accuracy and precision</h4></div>"""
+    )
+
+    description = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+        The exchange-correlation function and pseudopotential library is set by
+        the <b>protocol</b> configured in the "WorkChain" tab. Here you can
+        override the defaults if desired.</div>""",
+        layout=ipw.Layout(max_width="60%"),
+    )
+
     pseudo_family_prompt = ipw.HTML(
-        'Select the <a href="https://www.materialscloud.org/discover/sssp/table/precision" '
-        'target="_blank">pseudopotential library</a> for the calculation.'
+        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;">
+        <b><a href="https://www.materialscloud.org/discover/sssp/table/precision"
+        target="_blank">Standard Solid-state pseudopotential</a> (SSSP) protocol</b></div>"""
     )
 
     pseudo_family_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
+        If you are unsure what to choose, select 'SSSP efficiency', which for
+        most calculations will produce sufficiently accurate results at
+        comparatively small computational cost. If your calculation requires a
+        higher accuracy, select 'SSSP accuracy', which will be computationally
+        more expensive, but will produce even more accurate results.</div>"""
+    )
+
+    dft_functional_prompt = ipw.HTML(
         """
-        <div style="line-height:120%;">If you are unsure what to choose, select 'SSSP efficiency', which for most
-        calculations will produce sufficiently accurate results at comparatively small computational cost. If
-        your calculation requires a higher accuracy, select 'SSSP accuracy', which will be computationally more
-        expensive, but will produce even more accurate results.</div>"""
+        <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;"><b>
+        Exchange-correlation  functional</b></div>"""
+    )
+
+    dft_functional_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; opacity:0.5;">
+        The exchange-correlation energy is calculated based on the charge
+        density using this functional. We currently provide support for two
+        well-established generalised gradient approximation (GGA) functionals:
+        PBE and PBEsol.</div>"""
     )
 
     installed = traitlets.Bool()
-    disabled = traitlets.Bool()
 
     value = traitlets.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
-        self.protocol_selection = ipw.ToggleButtons(options=["efficiency", "precision"])
-        self.protocol_selection.observe(self.set_value_trait, "value")
 
-        # Setup pseudofamily potential selection group:
-        self.sssp_install_widget = SSSPInstallWidget()
-        ipw.dlink((self.sssp_install_widget, "installed"), (self, "installed"))
+        # Enable manual setting of the pseudopotential family
+        self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
+        self.set_pseudo_family = ipw.Checkbox(
+            description="",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="10%"),
+        )
+        self.set_pseudo_family_box = ipw.HBox(
+            [self.set_pseudo_family_prompt, self.set_pseudo_family],
+            layout=ipw.Layout(max_width="20%"),
+        )
+        self.show_ui = ipw.Valid(value=True)
+        self.set_pseudo_family.observe(self.set_show_ui, "value")
+        self.set_pseudo_family.observe(self.set_text_color, "value")
 
-        # DFT functional.
+        # Choose the DFT functional
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
             value="PBE",
@@ -142,52 +181,72 @@ class PseudoFamilySelector(ipw.VBox):
         )
         self.dft_functional.observe(self.set_value_trait, "value")
 
+        self.protocol_selection = ipw.ToggleButtons(
+            options=["efficiency", "precision"], layout=ipw.Layout(max_width="80%")
+        )
+        self.protocol_selection.observe(self.set_value_trait, "value")
+
+        # Setup pseudofamily potential selection group:
+        self.sssp_install_widget = SSSPInstallWidget()
+        ipw.dlink((self.sssp_install_widget, "installed"), (self, "installed"))
+
         self.dft_functional_box = ipw.VBox(
             children=[
-                ipw.HBox(
-                    children=[
-                        ipw.HTML(
-                            "<b>DFT functional</b>", layout=ipw.Layout(flex="1 1 auto")
-                        ),
-                        self.dft_functional,
-                    ]
-                ),
-                ipw.HTML("""Some explanation for the functional.... """),
+                self.dft_functional_prompt,
+                self.dft_functional,
+                self.dft_functional_help,
             ],
-            layout=ipw.Layout(max_width="600px"),
+            layout=ipw.Layout(max_width="40%"),
         )
-
-        # Pseudo potential family selection.
-        self.chose_automatically = ipw.Checkbox(
-            description="Chose pseudo automatically",
-            indent=False,
-            value=True,
+        self.pseudo_protocol_box = ipw.VBox(
+            children=[
+                self.pseudo_family_prompt,
+                self.protocol_selection,
+                self.pseudo_family_help,
+            ],
+            layout=ipw.Layout(max_width="60%"),
         )
-        ipw.dlink(
-            (self.chose_automatically, "value"), (self.protocol_selection, "disabled")
-        )
-        ipw.dlink(
-            (self.chose_automatically, "value"), (self.dft_functional, "disabled")
-        )
-        self.chose_automatically.observe(self.set_value_trait, "value")
+        ipw.dlink((self.show_ui, "value"), (self.protocol_selection, "disabled"))
+        ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
+        self.set_pseudo_family.observe(self.set_value_trait, "value")
         self.set_value_trait()
 
         super().__init__(
             children=[
-                self.chose_automatically,
-                self.dft_functional_box,
-                self.pseudo_family_prompt,
-                ipw.HBox([self.protocol_selection, self.sssp_install_widget]),
-                self.pseudo_family_help,
+                self.title,
+                ipw.HBox(
+                    [self.description, self.set_pseudo_family_box],
+                    layout=ipw.Layout(height="50px", justify_content="space-between"),
+                ),
+                ipw.HBox([self.dft_functional_box, self.pseudo_protocol_box]),
             ]
         )
 
     def set_value_trait(self, _=None):
         self.value = (
             None
-            if self.chose_automatically.value
+            if not self.set_pseudo_family.value
             else f"SSSP/1.1/{self.dft_functional.value}/{self.protocol_selection.value}"
         )
+
+    def set_show_ui(self, change):
+        self.show_ui.value = not change.new
+
+    def set_text_color(self, change):
+        opacity = 1.0 if change.new else 0.5
+
+        for html in (
+            self.pseudo_family_prompt,
+            self.pseudo_family_help,
+            self.dft_functional_help,
+            self.dft_functional_prompt,
+        ):
+            old_opacity = re.match(
+                r"[\s\S]+opacity:([\S]+);[\S\s]+", html.value
+            ).groups()[0]
+            html.value = html.value.replace(
+                f"opacity:{old_opacity};", f"opacity:{opacity};"
+            )
 
     def reset(self):
         self.protocol_selection.value = "efficiency"

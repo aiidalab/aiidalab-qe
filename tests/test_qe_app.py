@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-from selenium.webdriver.common.by import By
 import time
+
+from selenium.webdriver.common.by import By
 
 
 def test_qe_app_take_screenshot(selenium, url):

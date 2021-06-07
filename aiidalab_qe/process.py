@@ -1,9 +1,9 @@
 """Widgets related to process management."""
 from dataclasses import dataclass
-from threading import Thread, Event, Lock
+from threading import Event, Lock, Thread
 
-import traitlets
 import ipywidgets as ipw
+import traitlets
 from aiida.cmdline.utils.query.calculation import CalculationQueryBuilder
 from aiida.orm import load_node
 
@@ -28,10 +28,10 @@ class WorkChainSelector(ipw.HBox):
     FMT_WORKCHAIN = "{wc.pk:6}{wc.ctime:>10}\t{wc.state:<16}\t{wc.formula}"
 
     def __init__(self, **kwargs):
+        self.work_chains_prompt = ipw.HTML("<b>Select workflow or start new:</b>&nbsp;")
         self.work_chains_selector = ipw.Dropdown(
-            description="WorkChain",
-            options=[("New calculation...", self._NO_PROCESS)],
-            layout=ipw.Layout(width="auto", flex="1 1 auto"),
+            options=[("New workflow...", self._NO_PROCESS)],
+            layout=ipw.Layout(min_width="300px", flex="1 1 auto"),
         )
         ipw.dlink(
             (self.work_chains_selector, "value"),
@@ -48,7 +48,11 @@ class WorkChainSelector(ipw.HBox):
         self._update_auto_refresh_thread_state()
 
         super().__init__(
-            children=[self.work_chains_selector, self.refresh_work_chains_button],
+            children=[
+                self.work_chains_prompt,
+                self.work_chains_selector,
+                self.refresh_work_chains_button,
+            ],
             **kwargs,
         )
 
