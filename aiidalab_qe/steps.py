@@ -235,7 +235,7 @@ class OptionsConfig(ipw.VBox):
         )
 
 
-class CodesConfig(ipw.VBox):
+class CodeSettings(ipw.VBox):
 
     codes_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
@@ -311,7 +311,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.resources_config = ResourceSelectionWidget()
         self.options_config = OptionsConfig()
         self.pseudo_family_selector = PseudoFamilySelector()
-        self.codes_selector = CodesConfig()
+        self.codes_selector = CodeSettings()
+        self.set_trait("builder_parameters", self._default_builder_parameters())
 
         self.codes_selector.pw.observe(self._update_state, "selected_code")
         self.codes_selector.dos.observe(self._update_state, "selected_code")
@@ -428,7 +429,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     @traitlets.observe("input_structure")
     def _observe_input_structure(self, change):
-        self.set_trait("builder_parameters", self._default_builder_parameters())
         self._update_state()
 
     @traitlets.observe("process")
