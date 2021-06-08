@@ -5,9 +5,15 @@ from threading import Thread
 
 import ipywidgets as ipw
 import traitlets
+import yaml
 from aiida import orm, plugins
+from importlib_resources import files
+
+from aiidalab_qe import parameters
 
 SsspFamily = plugins.GroupFactory("pseudo.family.sssp")
+
+DEFAULT_PARAMETERS = yaml.safe_load(files(parameters).joinpath("qeapp.yaml").open())
 
 
 class Spinner(ipw.HTML):
@@ -127,7 +133,6 @@ class PseudoFamilySelector(ipw.VBox):
         <b><a href="https://www.materialscloud.org/discover/sssp/table/precision"
         target="_blank">Standard Solid-state pseudopotential</a> (SSSP) protocol</b></div>"""
     )
-
     pseudo_family_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
         If you are unsure what to choose, select 'SSSP efficiency', which for
@@ -142,7 +147,6 @@ class PseudoFamilySelector(ipw.VBox):
         <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;"><b>
         Exchange-correlation  functional</b></div>"""
     )
-
     dft_functional_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; opacity:0.5;">
         The exchange-correlation energy is calculated based on the charge
@@ -150,10 +154,14 @@ class PseudoFamilySelector(ipw.VBox):
         well-established generalised gradient approximation (GGA) functionals:
         PBE and PBEsol.</div>"""
     )
-
     installed = traitlets.Bool()
+    disable = traitlets.Bool()
 
-    value = traitlets.Unicode(allow_none=True)
+    value = traitlets.Unicode(
+        default_value=DEFAULT_PARAMETERS["pseudo_family"],
+    )
+    FUNCTIONAL_DEFAULT = DEFAULT_PARAMETERS["pseudo_family"].split("/")[2]
+    PROTOCOL_DEFAULT = DEFAULT_PARAMETERS["pseudo_family"].split("/")[3]
 
     def __init__(self, **kwargs):
 
@@ -176,13 +184,15 @@ class PseudoFamilySelector(ipw.VBox):
         # Choose the DFT functional
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
-            value="PBE",
+            value=self.FUNCTIONAL_DEFAULT,
             style={"description_width": "initial"},
         )
         self.dft_functional.observe(self.set_value_trait, "value")
 
         self.protocol_selection = ipw.ToggleButtons(
-            options=["efficiency", "precision"], layout=ipw.Layout(max_width="80%")
+            options=["efficiency", "precision"],
+            value=self.PROTOCOL_DEFAULT,
+            layout=ipw.Layout(max_width="80%"),
         )
         self.protocol_selection.observe(self.set_value_trait, "value")
 
@@ -208,7 +218,7 @@ class PseudoFamilySelector(ipw.VBox):
         )
         ipw.dlink((self.show_ui, "value"), (self.protocol_selection, "disabled"))
         ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
-        self.set_pseudo_family.observe(self.set_value_trait, "value")
+
         self.set_value_trait()
 
         super().__init__(
@@ -224,9 +234,7 @@ class PseudoFamilySelector(ipw.VBox):
 
     def set_value_trait(self, _=None):
         self.value = (
-            None
-            if not self.set_pseudo_family.value
-            else f"SSSP/1.1/{self.dft_functional.value}/{self.protocol_selection.value}"
+            f"SSSP/1.1/{self.dft_functional.value}/{self.protocol_selection.value}"
         )
 
     def set_show_ui(self, change):

@@ -8,9 +8,10 @@ from pprint import pformat
 
 import ipywidgets as ipw
 import traitlets
+import yaml
 from aiida.common import NotExistent
 from aiida.engine import ProcessState, submit
-from aiida.orm import ProcessNode, load_code
+from aiida.orm import ProcessNode, WorkChainNode, load_code
 from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiidalab_widgets_base import (
@@ -19,6 +20,9 @@ from aiidalab_widgets_base import (
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
 )
+from importlib_resources import files
+
+from aiidalab_qe import parameters
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.widgets import NodeViewWidget, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
@@ -35,7 +39,10 @@ def update_resources(builder, resources):
                 update_resources(v, resources)
 
 
-class WorkChainConfig(ipw.VBox):
+DEFAULT_PARAMETERS = yaml.safe_load(files(parameters).joinpath("qeapp.yaml").open())
+
+
+class WorkChainSettings(ipw.VBox):
 
     properties_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
@@ -98,8 +105,8 @@ class WorkChainConfig(ipw.VBox):
             description="Calculate density of states",
         )
 
-        # Simulation protocol.
-        self.simulation_protocol = ipw.ToggleButtons(
+        # Work chain protocol.
+        self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
             value="moderate",
             button_style="info",
@@ -115,7 +122,7 @@ class WorkChainConfig(ipw.VBox):
                 self.properties_help,
                 self.protocol_title,
                 ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-                self.simulation_protocol,
+                self.workchain_protocol,
                 self.protocol_help,
             ],
             **kwargs
@@ -130,34 +137,21 @@ class WorkChainConfig(ipw.VBox):
         self.bands_run.button_style = button_style
 
 
-class OptionsConfig(ipw.VBox):
-    spin_type = traitlets.Instance(SpinType, allow_none=True)
-    electronic_type = traitlets.Instance(ElectronicType, allow_none=True)
-    kpoints_distance = traitlets.Float(allow_none=True)
-    degauss = traitlets.Float(allow_none=True)
+class MaterialSettings(ipw.VBox):
 
     materials_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Material settings</h4>
     </div>"""
     )
-
-    kpoints_distance_description = ipw.HTML(
-        """<p>
-        Similarly, the <b>protocol</b> also defines the k-points mesh density.
-        Untick the box to override the default
-    </p>"""
-    )
-
-    _DEFAULT_SPIN_TYPE = "NONE"
-    _DEFAULT_KPOINTS_DISTANCE = 0.15
-    _DEFAULT_ELECTRONIC_TYPE = "METAL"
+    spin_type = traitlets.Instance(SpinType, allow_none=True)
+    electronic_type = traitlets.Instance(ElectronicType, allow_none=True)
 
     def __init__(self, **kwargs):
 
         self._spin_type = ipw.Dropdown(
             options=["NONE", "COLLINEAR"],
-            value="NONE",
+            value=DEFAULT_PARAMETERS["spin_type"].upper(),
             description="Spin Type:",
             style={"description_width": "initial"},
         )
@@ -166,21 +160,52 @@ class OptionsConfig(ipw.VBox):
 
         self._electronic_type = ipw.Dropdown(
             options=["METAL", "INSULATOR"],
-            value="METAL",
+            value=DEFAULT_PARAMETERS["electronic_type"].upper(),
             description="Electronic Type:",
             style={"description_width": "initial"},
         )
         self._electronic_type.observe(self.set_electronic_type_trait, "value")
         self.set_electronic_type_trait()
 
-        # K-points distance.
+        super().__init__(
+            children=[
+                self.materials_title,
+                self._spin_type,
+                self._electronic_type,
+            ],
+            **kwargs
+        )
+
+    def set_spin_type_trait(self, _=None):
+        self.spin_type = SpinType[self._spin_type.value.upper()]
+
+    def set_electronic_type_trait(self, _=None):
+        self.electronic_type = ElectronicType[self._electronic_type.value]
+
+
+class KpointSettings(ipw.VBox):
+
+    # The default of `kpoints_distance` must be linked to the `protocol`
+    kpoints_distance_default = traitlets.Float(default_value=0.15)
+    kpoints_distance = traitlets.Float(allow_none=True)
+    degauss = traitlets.Float(allow_none=True)
+
+    kpoints_distance_description = ipw.HTML(
+        """<p>
+        The k-points mesh density is set by the chosen <b>protocol</b>.
+        Untick the box to override the default.
+    </p>"""
+    )
+
+    def __init__(self, **kwargs):
+
         self._set_kpoints_distance_automatically = ipw.Checkbox(
             description="Use default k-points distance.",
             indent=False,
             value=True,
         )
         self._kpoints_distance = ipw.FloatText(
-            value=self._DEFAULT_KPOINTS_DISTANCE,
+            value=self.kpoints_distance_default,
             step=0.05,
             description="K-points distance:",
             disabled=False,
@@ -197,39 +222,20 @@ class OptionsConfig(ipw.VBox):
         )
         self.set_kpoints_distance_trait()
 
-        # Modify degauss.
-        # degauss = ipw.FloatText(
-        #    value=0.01,
-        #    step=0.01,
-        #    description="Gaussian spreading",
-        #    disabled=False,
-        #    style={"description_width": "initial"},
-        # )
-
         super().__init__(
             children=[
-                PseudoFamilySelector(),
                 self.kpoints_distance_description,
                 ipw.HBox(
                     [self._set_kpoints_distance_automatically, self._kpoints_distance]
                 ),
-                self.materials_title,
-                self._spin_type,
-                self._electronic_type,
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs
         )
 
-    def set_spin_type_trait(self, _=None):
-        self.spin_type = SpinType[self._spin_type.value.upper()]
-
-    def set_electronic_type_trait(self, _=None):
-        self.electronic_type = ElectronicType[self._electronic_type.value]
-
     def set_kpoints_distance_trait(self, _=None):
         self.kpoints_distance = (
-            self._DEFAULT_KPOINTS_DISTANCE
+            self.kpoints_distance_default
             if self._set_kpoints_distance_automatically.value
             else self._kpoints_distance.value
         )
@@ -241,7 +247,6 @@ class CodesConfig(ipw.VBox):
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Codes</h4></div>"""
     )
-
     codes_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
         Here you can select the codes to use for running the calculations. The
@@ -301,28 +306,30 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
 
     input_structure = traitlets.Instance(StructureData, allow_none=True)
-    process = traitlets.Instance(ProcessNode, allow_none=True)
+    process = traitlets.Instance(WorkChainNode, allow_none=True)
     disabled = traitlets.Bool()
     builder_parameters = traitlets.Dict()
     expert_mode = traitlets.Bool()
 
     def __init__(self, **kwargs):
-        self.workchain_config = WorkChainConfig()
-        self.resources_config = ResourceSelectionWidget()
-        self.options_config = OptionsConfig()
+        self.workchain_settings = WorkChainSettings()
+        self.material_settings = MaterialSettings()
+        self.kpoints_settings = KpointSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
         self.codes_selector = CodesConfig()
+        self.resources_config = ResourceSelectionWidget()
+
+        self.set_trait("builder_parameters", self._default_builder_parameters())
+        self._setup_builder_parameters_update()
 
         self.codes_selector.pw.observe(self._update_state, "selected_code")
         self.codes_selector.dos.observe(self._update_state, "selected_code")
         self.codes_selector.projwfc.observe(self._update_state, "selected_code")
-        self.workchain_config.run_pdos.observe(self._update_state, "value")
-
-        self._setup_builder_parameters_update()
+        self.workchain_settings.run_pdos.observe(self._update_state, "value")
 
         self.tab = ipw.Tab(
             children=[
-                self.workchain_config,
+                ipw.VBox(children=[self.workchain_settings, self.material_settings]),
             ],
             layout=ipw.Layout(min_height="250px"),
         )
@@ -375,8 +382,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.tab.set_title(2, "Select codes")
             self.tab.set_title(3, "Compute resources")
             self.tab.children = [
-                self.workchain_config,
-                self.options_config,
+                ipw.VBox(children=[self.workchain_settings, self.material_settings]),
+                ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
                 self.codes_selector,
                 self.resources_config,
             ]
@@ -384,7 +391,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.expert_mode_control.button_style = "danger"
             self.tab.set_title(0, "Workchain")
             self.tab.children = [
-                self.workchain_config,
+                ipw.VBox(children=[self.workchain_settings, self.material_settings]),
             ]
 
     def _get_state(self):
@@ -406,7 +413,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return self.State.READY
 
         # PDOS run requested, but codes are not specified.
-        if self.workchain_config.run_pdos.value:
+        if self.workchain_settings.run_pdos.value:
             if self.codes_selector.dos.selected_code is None:
                 return self.State.READY
             if self.codes_selector.projwfc.selected_code is None:
@@ -447,22 +454,24 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.submit()
 
     def _setup_builder_parameters_update(self):
+        """Set up all ``observe`` calls to monitor changes in user inputs."""
         update = self._update_builder_parameters  # alias for code conciseness
+        # Properties
+        self.workchain_settings.geo_opt_run.observe(update, ["value"])
+        self.workchain_settings.geo_opt_type.observe(update, ["value"])
+        self.workchain_settings.bands_run.observe(update, ["value"])
+        self.workchain_settings.run_pdos.observe(update, ["value"])
         # Codes
         self.codes_selector.dos.observe(update, ["selected_code"])
         self.codes_selector.projwfc.observe(update, ["selected_code"])
         self.codes_selector.pw.observe(update, ["selected_code"])
-        # Protocol and additional parameters
-        self.options_config.observe(update, ["electronic_type"])
-        self.options_config.observe(update, ["kpoints_distance"])
-        self.options_config.observe(update, ["spin_type"])
+        # Material settings
+        self.kpoints_settings.observe(update, ["electronic_type"])
+        self.kpoints_settings.observe(update, ["spin_type"])
+        # Calculation settings
+        self.workchain_settings.workchain_protocol.observe(update, ["value"])
+        self.kpoints_settings.observe(update, ["kpoints_distance"])
         self.pseudo_family_selector.observe(update, ["value"])
-        self.workchain_config.geo_opt_type.observe(update, ["value"])
-        self.workchain_config.geo_opt_run.observe(update, ["value"])
-        self.workchain_config.simulation_protocol.observe(update, ["value"])
-        # "Extra" parameters
-        self.workchain_config.bands_run.observe(update, ["value"])
-        self.workchain_config.run_pdos.observe(update, ["value"])
 
     @staticmethod
     def _serialize_builder_parameters(parameters):
@@ -510,22 +519,23 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "builder_parameters",
             self._serialize_builder_parameters(
                 dict(
+                    # Properties
+                    relax_type=RelaxType[self.workchain_settings.geo_opt_type.value]
+                    if self.workchain_settings.geo_opt_run.value
+                    else RelaxType["NONE"],
+                    run_bands=self.workchain_settings.bands_run.value,
+                    run_pdos=self.workchain_settings.run_pdos.value,
                     # Codes
                     dos_code=self.codes_selector.dos.selected_code,
                     projwfc_code=self.codes_selector.projwfc.selected_code,
                     pw_code=self.codes_selector.pw.selected_code,
-                    # Protocol and additional parameters
-                    electronic_type=self.options_config.electronic_type,
-                    kpoints_distance_override=self.options_config.kpoints_distance,
-                    protocol=self.workchain_config.simulation_protocol.value,
+                    # Material settings
+                    electronic_type=self.kpoints_settings.electronic_type,
+                    spin_type=self.kpoints_settings.spin_type,
+                    # Calculation settings
+                    kpoints_distance_override=self.kpoints_settings.kpoints_distance,
+                    protocol=self.workchain_settings.workchain_protocol.value,
                     pseudo_family=self.pseudo_family_selector.value,
-                    relax_type=RelaxType[self.workchain_config.geo_opt_type.value]
-                    if self.workchain_config.geo_opt_run.value
-                    else RelaxType["NONE"],
-                    spin_type=self.options_config.spin_type,
-                    # "extra" parameters
-                    run_bands=self.workchain_config.bands_run.value,
-                    run_pdos=self.workchain_config.run_pdos.value,
                 )
             ),
         )
@@ -535,39 +545,37 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         bp = self._deserialize_builder_parameters(change["new"])
 
         with self.hold_trait_notifications():
-            # Codes
-            self.codes_selector.dos.selected_code = bp.get("dos_code")
-            self.codes_selector.projwfc.selected_code = bp.get("projwfc_code")
-            self.codes_selector.pw.selected_code = bp.get("pw_code")
-            # Protocol and additional parameters
-            self.options_config.electronic_type = bp.get(
-                "electronic_type", ElectronicType["METAL"]
-            )
-            self.options_config.kpoints_distance = bp.get("kpoints_distance")
-            self.workchain_config.simulation_protocol.value = bp["protocol"]
-            self.pseudo_family_selector.value = bp["pseudo_family"]
-
+            # Properties
             relax_type = bp.get("relax_type", RelaxType["NONE"])
-            self.workchain_config.geo_opt_type.value = (
+            self.workchain_settings.geo_opt_type.value = (
                 "POSITIONS_CELL"
                 if relax_type is RelaxType["NONE"]
                 else relax_type.value.upper()
             )
-            self.workchain_config.geo_opt_run.value = (
+            self.workchain_settings.geo_opt_run.value = (
                 relax_type is not RelaxType["NONE"]
             )
-
-            self.options_config.spin_type = bp.get("spin_type", SpinType["NONE"])
-            # "extra" parameters
-            self.workchain_config.bands_run.value = bp["run_bands"]
-            self.workchain_config.run_pdos.value = bp["run_pdos"]
+            self.workchain_settings.bands_run.value = bp["run_bands"]
+            self.workchain_settings.run_pdos.value = bp["run_pdos"]
+            # Codes
+            self.codes_selector.dos.selected_code = bp.get("dos_code")
+            self.codes_selector.projwfc.selected_code = bp.get("projwfc_code")
+            self.codes_selector.pw.selected_code = bp.get("pw_code")
+            # Material settings
+            self.kpoints_settings.spin_type = bp.get("spin_type", SpinType["NONE"])
+            self.kpoints_settings.electronic_type = bp.get(
+                "electronic_type", ElectronicType["METAL"]
+            )
+            # Calculation settings
+            self.kpoints_settings.kpoints_distance = bp.get("kpoints_distance")
+            self.workchain_settings.workchain_protocol.value = bp["protocol"]
+            self.pseudo_family_selector.value = bp["pseudo_family"]
 
     def submit(self, _=None):
 
         assert self.input_structure is not None
 
         builder_parameters = self.builder_parameters.copy()
-        builder_parameters_for_extras = builder_parameters.copy()
 
         run_bands = builder_parameters.pop("run_bands")
         run_pdos = builder_parameters.pop("run_pdos")
@@ -589,7 +597,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         update_resources(builder, resources)
 
         self.process = submit(builder)
-        self.process.set_extra("builder_parameters", builder_parameters_for_extras)
+        self.process.set_extra("builder_parameters", self.builder_parameters.copy())
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -599,22 +607,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     @traitlets.default("builder_parameters")
     def _default_builder_parameters(self):
-        return {
-            # Codes
-            "dos_code": "dos@localhost",
-            "projwfc_code": "projwfc@localhost",
-            "pw_code": "pw@localhost",
-            # Protocol and additional parameters
-            "electronic_type": "metal",
-            "kpoints_distance_override": None,
-            "protocol": "moderate",
-            "pseudo_family": None,
-            "relax_type": "positions_cell",
-            "spin_type": "none",
-            # Extra parameters
-            "run_bands": False,
-            "run_pdos": False,
-        }
+        return DEFAULT_PARAMETERS
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
