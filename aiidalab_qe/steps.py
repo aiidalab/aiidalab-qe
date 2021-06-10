@@ -8,7 +8,6 @@ from pprint import pformat
 
 import ipywidgets as ipw
 import traitlets
-import yaml
 from aiida.common import NotExistent
 from aiida.engine import ProcessState, submit
 from aiida.orm import ProcessNode, WorkChainNode, load_code
@@ -20,9 +19,8 @@ from aiidalab_widgets_base import (
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
 )
-from importlib_resources import files
 
-from aiidalab_qe import parameters
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.widgets import NodeViewWidget, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
@@ -39,9 +37,6 @@ def update_resources(builder, resources):
                 update_resources(v, resources)
 
 
-DEFAULT_PARAMETERS = yaml.safe_load(files(parameters).joinpath("qeapp.yaml").open())
-
-
 class WorkChainSettings(ipw.VBox):
 
     properties_title = ipw.HTML(
@@ -50,10 +45,9 @@ class WorkChainSettings(ipw.VBox):
     )
     properties_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        By default, the work chain will optimize the provided geometry. Uncheck
-        the box if this is not desired.  The "POSITIONS" method will only
-        optimize the atomic positions, "POSITIONS_CELL" will also optimize the
-        unit cell of the structure.  The band structure work chain will
+        By default, the workflow will optimize the provided geometry. Uncheck
+        the box if this is not desired. You can either optimize the atomic positions
+        and unit cell, or atomic positions only. The band structure workflow will
         automatically detect the default path in reciprocal space using the
         <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
         SeeK-path tool</a>.</div>"""
@@ -85,7 +79,10 @@ class WorkChainSettings(ipw.VBox):
         self.geo_opt_type = ipw.Dropdown(
             description="Method:",
             value="POSITIONS_CELL",
-            options=["POSITIONS_CELL", "POSITIONS"],
+            options=[
+                ("Atomic positions and unit cell", "POSITIONS_CELL"),
+                ("Atomic positions only", "POSITIONS"),
+            ],
         )
 
         ipw.dlink(
@@ -150,16 +147,16 @@ class MaterialSettings(ipw.VBox):
     def __init__(self, **kwargs):
 
         self._spin_type = ipw.Dropdown(
-            options=["NONE", "COLLINEAR"],
+            options=[("Non-magnetic", "NONE"), ("Ferromagnetic", "COLLINEAR")],
             value=DEFAULT_PARAMETERS["spin_type"].upper(),
-            description="Spin Type:",
+            description="Magnetism:",
             style={"description_width": "initial"},
         )
         self._spin_type.observe(self.set_spin_type_trait, "value")
         self.set_spin_type_trait()
 
         self._electronic_type = ipw.Dropdown(
-            options=["METAL", "INSULATOR"],
+            options=[("Metal", "METAL"), ("Insulator", "INSULATOR")],
             value=DEFAULT_PARAMETERS["electronic_type"].upper(),
             description="Electronic Type:",
             style={"description_width": "initial"},
@@ -334,7 +331,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             layout=ipw.Layout(min_height="250px"),
         )
 
-        self.tab.set_title(0, "Workchain")
+        self.tab.set_title(0, "Workflow")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -377,7 +374,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _observe_expert_mode(self, change):
         if change["new"]:
             self.expert_mode_control.button_style = "info"
-            self.tab.set_title(0, "Workchain")
+            self.tab.set_title(0, "Workflow")
             self.tab.set_title(1, "Advanced settings")
             self.tab.set_title(2, "Select codes")
             self.tab.set_title(3, "Compute resources")
@@ -389,7 +386,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ]
         else:
             self.expert_mode_control.button_style = "danger"
-            self.tab.set_title(0, "Workchain")
+            self.tab.set_title(0, "Workflow")
             self.tab.children = [
                 ipw.VBox(children=[self.workchain_settings, self.material_settings]),
             ]

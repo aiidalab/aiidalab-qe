@@ -5,15 +5,11 @@ from threading import Thread
 
 import ipywidgets as ipw
 import traitlets
-import yaml
 from aiida import orm, plugins
-from importlib_resources import files
 
-from aiidalab_qe import parameters
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 SsspFamily = plugins.GroupFactory("pseudo.family.sssp")
-
-DEFAULT_PARAMETERS = yaml.safe_load(files(parameters).joinpath("qeapp.yaml").open())
 
 
 class Spinner(ipw.HTML):
@@ -155,13 +151,11 @@ class PseudoFamilySelector(ipw.VBox):
         PBE and PBEsol.</div>"""
     )
     installed = traitlets.Bool()
-    disable = traitlets.Bool()
+    disabled = traitlets.Bool()
 
     value = traitlets.Unicode(
         default_value=DEFAULT_PARAMETERS["pseudo_family"],
     )
-    FUNCTIONAL_DEFAULT = DEFAULT_PARAMETERS["pseudo_family"].split("/")[2]
-    PROTOCOL_DEFAULT = DEFAULT_PARAMETERS["pseudo_family"].split("/")[3]
 
     def __init__(self, **kwargs):
 
@@ -180,18 +174,19 @@ class PseudoFamilySelector(ipw.VBox):
         self.show_ui = ipw.Valid(value=True)
         self.set_pseudo_family.observe(self.set_show_ui, "value")
         self.set_pseudo_family.observe(self.set_text_color, "value")
+        self.set_pseudo_family.observe(self.set_value_trait, "value")
 
         # Choose the DFT functional
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
-            value=self.FUNCTIONAL_DEFAULT,
+            value=DEFAULT_PARAMETERS["pseudo_family"].split("/")[2],
             style={"description_width": "initial"},
         )
         self.dft_functional.observe(self.set_value_trait, "value")
 
         self.protocol_selection = ipw.ToggleButtons(
             options=["efficiency", "precision"],
-            value=self.PROTOCOL_DEFAULT,
+            value=DEFAULT_PARAMETERS["pseudo_family"].split("/")[3],
             layout=ipw.Layout(max_width="80%"),
         )
         self.protocol_selection.observe(self.set_value_trait, "value")
@@ -234,7 +229,9 @@ class PseudoFamilySelector(ipw.VBox):
 
     def set_value_trait(self, _=None):
         self.value = (
-            f"SSSP/1.1/{self.dft_functional.value}/{self.protocol_selection.value}"
+            DEFAULT_PARAMETERS["pseudo_family"]
+            if not self.set_pseudo_family.value
+            else f"SSSP/1.1/{self.dft_functional.value}/{self.protocol_selection.value}"
         )
 
     def set_show_ui(self, change):
