@@ -238,7 +238,7 @@ class KpointSettings(ipw.VBox):
         )
 
 
-class CodesConfig(ipw.VBox):
+class CodeSettings(ipw.VBox):
 
     codes_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
@@ -313,7 +313,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.material_settings = MaterialSettings()
         self.kpoints_settings = KpointSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
-        self.codes_selector = CodesConfig()
+        self.codes_selector = CodeSettings()
         self.resources_config = ResourceSelectionWidget()
 
         self.set_trait("builder_parameters", self._default_builder_parameters())
