@@ -6,6 +6,7 @@ Authors:
 """
 
 import json
+from importlib import resources
 
 import ipywidgets as ipw
 import nglview
@@ -13,7 +14,6 @@ from aiida.orm import Node
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import BandsDataViewer, StructureDataViewer
 from ase import Atoms
-from importlib_resources import files
 from jinja2 import Environment
 from monty.json import MontyEncoder, jsanitize
 from traitlets import Instance, Int, List, Unicode, Union, default, observe, validate
@@ -184,8 +184,8 @@ class SummaryView(ipw.VBox):
                 "fmt_yes_no": _fmt_yes_no,
             }
         )
-        template = files(static).joinpath("workflow_summary.jinja").read_text()
-        style = files(static).joinpath("style.css").read_text()
+        template = resources.read_text(static, "workflow_summary.jinja")
+        style = resources.read_text(static, "style.css")
         self.summary_view = ipw.HTML(
             env.from_string(template).render(style=style, **report)
         )
