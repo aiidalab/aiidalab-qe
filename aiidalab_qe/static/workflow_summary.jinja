@@ -1,0 +1,85 @@
+<head>
+  <style>
+    {{ style }}
+  </style>
+</head>
+
+<body>
+
+<div class="row">
+  <div class="column">
+    <h3>Workchain settings</h3>
+    <table>
+      <tr>
+        <td>Structure geometry optimized</td>
+        <td>{{ relaxed | fmt_yes_no }}</td>
+      </tr>
+      {% if relaxed %}
+      <tr>
+        <td>Optimization method</td>
+        <td>{{ relax_method }}</td>
+      </tr>
+      {% endif %}
+      <tr>
+        <td>Work chain protocol</td>
+        <td>{{ protocol }}</td>
+      </tr>
+      <tr>
+        <td>Magnetism</td>
+        <td>{{ material_magnetic }}</td>
+      </tr>
+      <tr>
+        <td>Electronic type</td>
+        <td>{{ electronic_type }}</td>
+      </tr>
+
+    </table>
+  </div>
+  <div class="column">
+    <h3>Advanced settings</h3>
+    <table>
+      <tr>
+        <td>Functional</td>
+          <td>
+          <a href="{{ functional_link }}" target="_blank">
+            {{ functional }}
+          </a>
+          </td>
+      </tr>
+      <tr>
+        <td>Pseudopotential library</td>
+        <td>
+          <a href="{{ pseudo_link }}" target="_blank">
+            {{ pseudo_library }} {{ pseudo_protocol }} v{{ pseudo_version }}
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td>Energy cutoff (wave functions)</td>
+        <td>{{ energy_cutoff_wfc }} Ry</td>
+      </tr>
+      <tr>
+        <td>Energy cutoff (charge density)</td>
+        <td>{{ energy_cutoff_rho }} Ry</td>
+      </tr>
+      <tr>
+        <td>K-point mesh distance (SCF)</td>
+        <td>{{ scf_kpoints_distance }} &#8491;<sup>-1</sup></td>
+      </tr>
+      {% if bands_computed %}
+      <tr>
+        <td>K-point line distance (Bands)</td>
+        <td>{{ bands_kpoints_distance }} &#8491;<sup>-1</sup></td>
+      </tr>
+      {% endif %}
+      {% if pdos_computed %}
+      <tr>
+        <td>K-point mesh distance (NSCF)</td>
+        <td>{{ nscf_kpoints_distance }}</td>
+      </tr>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+</body>

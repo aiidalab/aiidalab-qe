@@ -6,6 +6,8 @@ Authors:
 """
 
 import json
+from importlib import resources
+
 import ipywidgets as ipw
 import nglview
 from aiida.orm import Node
@@ -16,6 +18,7 @@ from jinja2 import Environment
 from monty.json import MontyEncoder, jsanitize
 from traitlets import Instance, Int, List, Unicode, Union, default, observe, validate
 
+from aiidalab_qe import static
 from aiidalab_qe.report import generate_report_dict
 
 
@@ -167,12 +170,12 @@ class VBoxWithCaption(ipw.VBox):
 
 class SummaryView(ipw.VBox):
     def __init__(self, wc_node, **kwargs):
+
         self.wc_node = wc_node
 
         def _fmt_yes_no(truthy):
-            return "yes" if truthy else "no"
+            return "Yes" if truthy else "No"
 
-        style = "background-color: #fafafa; line-height: normal"
         report = generate_report_dict(self.wc_node)
 
         env = Environment()
@@ -181,50 +184,16 @@ class SummaryView(ipw.VBox):
                 "fmt_yes_no": _fmt_yes_no,
             }
         )
-        template = env.from_string(
-            """
-            <pre style="{style}">
-            <table>
-                <tr>
-                    <td>Structure geometry optimized:</td>
-                    <td>{{ relaxed | fmt_yes_no }}</td>
-                </tr>
-                <tr>
-                    <td>Pseudopotential library:</td>
-                    <td>{{ pseudo_family }}</td>
-                </tr>
-                <tr>
-                    <td>Energy cutoff (wave functions):</td>
-                    <td>{{ energy_cutoff_wfc }}</td>
-                </tr>
-                <tr>
-                    <td>Energy cutoff (charge density):</td>
-                    <td>{{ energy_cutoff_rho }}</td>
-                </tr>
-                <tr>
-                    <td>K-point mesh distance (SCF):</td>
-                    <td>{{ scf_kpoints_distance }}</td>
-                </tr>
-                {% if bands_computed %}
-                <tr>
-                    <td>K-point line distance (Bands)</td>
-                    <td>{{ bands_kpoints_distance }}</td>
-                </tr>
-                {% endif %}
-                {% if pdos_computed %}
-                <tr>
-                    <td>K-point mesh distance (NSCF)</td>
-                    <td>{{ nscf_kpoints_distance }}</td>
-                </tr>
-                {% endif %}
-            </table>
-            </pre>
-            """
+        template = resources.read_text(static, "workflow_summary.jinja")
+        style = resources.read_text(static, "style.css")
+        self.summary_view = ipw.HTML(
+            env.from_string(template).render(style=style, **report)
         )
-
-        self.summary_view = ipw.HTML(template.render(style=style, **report))
-
-        super().__init__(children=[self.summary_view], **kwargs)
+        super().__init__(
+            children=[self.summary_view],
+            layout=ipw.Layout(min_height="380px"),
+            **kwargs,
+        )
 
 
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
