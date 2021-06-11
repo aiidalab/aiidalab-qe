@@ -401,10 +401,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.input_structure is None:
             return self.State.INIT
 
-        # Pseudo family is not installed.
-        if not self.pseudo_family_selector.installed:
-            return self.State.READY
-
         # PW code not selected.
         if self.codes_selector.pw.selected_code is None:
             return self.State.READY
