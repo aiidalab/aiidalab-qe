@@ -1,11 +1,16 @@
-from aiida.common.exceptions import NotExistentAttributeError
+from aiida.plugins import WorkflowFactory
+
+PwBaseWorkChain = WorkflowFactory("quantumespresso.pw.base")
+
 
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
     "PBEsol": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.100.136406",
 }
 
-PSEUDO_LINK_MAP = {"SSSP": "https://www.materialscloud.org/discover/sssp/table"}
+PSEUDO_LINK_MAP = {
+    "SSSP": "https://www.materialscloud.org/discover/sssp/table/efficiency"
+}
 
 PROTOCOL_PSEUDO_MAP = {
     "fast": "SSSP/1.1/PBE/efficiency",
@@ -13,9 +18,32 @@ PROTOCOL_PSEUDO_MAP = {
     "precise": "SSSP/1.1/PBE/precision",
 }
 
+FUNCTIONAL_REPORT_MAP = {
+    "LDA": "local density approximation (LDA)",
+    "PBE": "generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE)",
+    "PBEsol": "the revised generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE) for solids",
+}
+
 
 def _generate_report_dict(qeapp_wc):
     builder_parameters = qeapp_wc.get_extra("builder_parameters", {})
+
+    # Properties
+    run_relax = builder_parameters["relax_type"] != "none"
+    run_bands = builder_parameters["run_bands"]
+    run_pdos = builder_parameters["run_pdos"]
+
+    yield "relaxed", run_relax
+    yield "relax_method", builder_parameters["relax_type"].upper()
+    yield "bands_computed", run_bands
+    yield "pdos_computed", run_pdos
+
+    # Material settings
+    yield "material_magnetic", builder_parameters["spin_type"].title()
+    yield "electronic_type", builder_parameters["electronic_type"].title()
+
+    # Calculation settings
+    yield "protocol", builder_parameters["protocol"]
 
     try:
         pseudo_family = builder_parameters.get("pseudo_family", None)
@@ -27,16 +55,19 @@ def _generate_report_dict(qeapp_wc):
 
         pseudo_family_list = pseudo_family.split("/")
         pseudo_library = pseudo_family_list[0]
-        yield "pseudo_library", pseudo_family_list[0]
+        yield "pseudo_library", pseudo_library
 
         if pseudo_library == "SSSP":
             yield "pseudo_version", pseudo_family_list[1]
-            yield "functional", pseudo_family_list[2]
+            functional = pseudo_family_list[2]
+            yield "functional", functional
             yield "pseudo_protocol", pseudo_family_list[3]
         else:
             raise NotImplementedError
     except (KeyError, AttributeError):
         pass
+    yield "pseudo_link", PSEUDO_LINK_MAP[pseudo_library]
+    yield "functional_link", FUNCTIONAL_LINK_MAP[functional]
 
     energy_cutoff_wfc = None
     energy_cutoff_rho = None
@@ -44,37 +75,16 @@ def _generate_report_dict(qeapp_wc):
     bands_kpoints_distance = None
     nscf_kpoints_distance = None
 
-    for work_chain in qeapp_wc.called:
+    if run_relax:
+        pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
+        scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
+    if run_bands:
+        pw_parameters = qeapp_wc.inputs.bands.scf.pw.parameters.get_dict()
+        scf_kpoints_distance = qeapp_wc.inputs.bands.scf.kpoints_distance.value
+        bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
 
-        if energy_cutoff_wfc is None or energy_cutoff_rho is None:
-            try:
-                parameters = work_chain.inputs.relax.base.pw.parameters.get_dict()
-                energy_cutoff_wfc = round(parameters["SYSTEM"]["ecutwfc"])
-                energy_cutoff_rho = round(parameters["SYSTEM"]["ecutrho"])
-            except NotExistentAttributeError:
-                pass
-
-        if scf_kpoints_distance is None:
-            try:
-                scf_kpoints_distance = work_chain.inputs.base__kpoints_distance.value
-            except (AttributeError, NotExistentAttributeError):
-                pass
-            try:
-                scf_kpoints_distance = work_chain.inputs.scf__kpoints_distance.value
-            except (AttributeError, NotExistentAttributeError):
-                pass
-
-        if bands_kpoints_distance is None:
-            try:
-                bands_kpoints_distance = work_chain.inputs.bands_kpoints_distance.value
-            except (AttributeError, NotExistentAttributeError):
-                pass
-
-        if nscf_kpoints_distance is None:
-            try:
-                nscf_kpoints_distance = work_chain.inputs.nscf__kpoints_distance.value
-            except (AttributeError, NotExistentAttributeError):
-                pass
+    energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
+    energy_cutoff_rho = round(pw_parameters["SYSTEM"]["ecutrho"])
 
     yield "energy_cutoff_wfc", energy_cutoff_wfc
     yield "energy_cutoff_rho", energy_cutoff_rho
@@ -82,21 +92,10 @@ def _generate_report_dict(qeapp_wc):
     yield "bands_kpoints_distance", bands_kpoints_distance
     yield "nscf_kpoints_distance", nscf_kpoints_distance
 
-    yield "relaxed", "relax__base__pw__parameters" in qeapp_wc.inputs
-    yield "bands_computed", "bands__bands__pw__parameters" in qeapp_wc.inputs
-    yield "pdos_computed", "pdos__dos__parameters" in qeapp_wc.inputs
-
 
 def generate_report_dict(qeapp_wc):
     """Generate a dictionary for reporting the inputs for the `QeAppWorkChain`"""
     return dict(_generate_report_dict(qeapp_wc))
-
-
-FUNCTIONAL_REPORT_MAP = {
-    "LDA": "local density approximation (LDA)",
-    "PBE": "generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE)",
-    "PBEsol": "the revised generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE) for solids",
-}
 
 
 def generate_report_text(report_dict):
