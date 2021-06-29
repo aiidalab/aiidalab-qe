@@ -218,6 +218,18 @@ class WorkChainViewer(ipw.VBox):
         ]
         self.result_children = [self.get_summary()]
         self.result_tabs = ipw.Tab()
+
+        # An ugly fix to the structure appearance problem
+        # https://github.com/aiidalab/aiidalab-qe/issues/69
+        def on_change(change):
+            index = change['new']
+            # Accessing the viewer only if the corresponding tab is present.
+            if self.result_tabs._titles[str(self.result_tabs.selected_index)] == 'Final Geometry':
+                self.struct_view._viewer.handle_resize()
+                self.struct_view._viewer.camera = 'perspective'
+                self.struct_view._viewer.camera = 'orthographic'
+
+        self.result_tabs.observe(on_change, 'selected_index')
         self._update_view(first_run=True)
 
         super().__init__(
@@ -241,7 +253,8 @@ class WorkChainViewer(ipw.VBox):
         if "structure" not in self.status:
             if "structure" in self.node.outputs:
                 self.result_titles.append("Final Geometry")
-                self.result_children.append(self.get_structure())
+                self.struct_view = self.get_structure()
+                self.result_children.append(self.struct_view)
                 self.status.append("structure")
                 update = True
 
