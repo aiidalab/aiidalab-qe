@@ -222,14 +222,14 @@ class WorkChainViewer(ipw.VBox):
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
         def on_change(change):
-            index = change['new']
+            index = change["new"]
             # Accessing the viewer only if the corresponding tab is present.
-            if self.result_tabs._titles[str(self.result_tabs.selected_index)] == 'Final Geometry':
+            if self.result_tabs._titles[str(index)] == "Final Geometry":
                 self.struct_view._viewer.handle_resize()
-                self.struct_view._viewer.camera = 'perspective'
-                self.struct_view._viewer.camera = 'orthographic'
+                self.struct_view._viewer.camera = "perspective"
+                self.struct_view._viewer.camera = "orthographic"
 
-        self.result_tabs.observe(on_change, 'selected_index')
+        self.result_tabs.observe(on_change, "selected_index")
         self._update_view(first_run=True)
 
         super().__init__(
