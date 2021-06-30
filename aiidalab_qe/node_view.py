@@ -226,8 +226,17 @@ class WorkChainViewer(ipw.VBox):
             # Accessing the viewer only if the corresponding tab is present.
             if self.result_tabs._titles[str(index)] == "Final Geometry":
                 self.struct_view._viewer.handle_resize()
-                self.struct_view._viewer.camera = "perspective"
-                self.struct_view._viewer.camera = "orthographic"
+
+                def toggle_camera():
+                    """Toggle camera between perspective and orthographic."""
+                    self.struct_view._viewer.camera = (
+                        "perspective"
+                        if self.struct_view._viewer.camera == "orthographic"
+                        else "orthographic"
+                    )
+
+                toggle_camera()
+                toggle_camera()
 
         self.result_tabs.observe(on_change, "selected_index")
         self._update_view(first_run=True)
