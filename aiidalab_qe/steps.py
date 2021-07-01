@@ -39,15 +39,29 @@ def update_resources(builder, resources):
 
 class WorkChainSettings(ipw.VBox):
 
+    structure_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Structure</h4></div>"""
+    )
+    structure_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+        By default, the workflow will optimize the provided geometry. Select "Structure
+        as is" if this is not desired. You can either optimize the atomic positions ("Full geometry")
+        and unit cell, or atomic positions only ("Atomic positions"). </div>"""
+    )
+    materials_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        Below you can indicate both if the material is magnetic and a metal or insulator. For now only ferromagnetic configurations are possible, since antiferromagnetism is more complicated to study automatically. If you're not sure whether your material is insulating, choose "Metal", since the corresponding settings usually also work quite well for insulators.
+        </div>"""
+    )
+
     properties_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Properties</h4></div>"""
     )
     properties_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        By default, the workflow will optimize the provided geometry. Uncheck
-        the box if this is not desired. You can either optimize the atomic positions
-        and unit cell, or atomic positions only. The band structure workflow will
+        The band structure workflow will
         automatically detect the default path in reciprocal space using the
         <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
         SeeK-path tool</a>.</div>"""
@@ -67,85 +81,20 @@ class WorkChainSettings(ipw.VBox):
     button_style_on = "info"
     button_style_off = "danger"
 
-    def __init__(self, **kwargs):
-
-        self.geo_opt_run = ipw.ToggleButton(
-            description="Geometry",
-            tooltip="Optimize the geometry of the system.",
-            value=True,
-            button_style=self.button_style_on,
-        )
-        self.geo_opt_run.observe(self.set_geo_button_style, "value")
-        self.geo_opt_type = ipw.Dropdown(
-            description="Method:",
-            value="POSITIONS_CELL",
-            options=[
-                ("Atomic positions and unit cell", "POSITIONS_CELL"),
-                ("Atomic positions only", "POSITIONS"),
-            ],
-        )
-
-        ipw.dlink(
-            (self.geo_opt_run, "value"),
-            (self.geo_opt_type, "disabled"),
-            transform=lambda v: not v,
-        )
-
-        self.bands_run = ipw.ToggleButton(
-            description="Band structure",
-            tooltip="Calculate the electronic band structure.",
-            button_style=self.button_style_off,
-        )
-        self.bands_run.observe(self.set_bands_button_style, "value")
-
-        self.run_pdos = ipw.ToggleButton(
-            description="Calculate density of states",
-        )
-
-        # Work chain protocol.
-        self.workchain_protocol = ipw.ToggleButtons(
-            options=["fast", "moderate", "precise"],
-            value="moderate",
-            button_style="info",
-        )
-        super().__init__(
-            children=[
-                self.properties_title,
-                ipw.HTML("Select which properties to calculate:"),
-                ipw.HBox(
-                    children=[self.geo_opt_run, self.geo_opt_type],
-                ),
-                self.bands_run,
-                self.properties_help,
-                self.protocol_title,
-                ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-                self.workchain_protocol,
-                self.protocol_help,
-            ],
-            **kwargs
-        )
-
-    def set_geo_button_style(self, change):
-        button_style = self.button_style_on if change.new else self.button_style_off
-        self.geo_opt_run.button_style = button_style
-
-    def set_bands_button_style(self, change):
-        button_style = self.button_style_on if change.new else self.button_style_off
-        self.bands_run.button_style = button_style
-
-
-class MaterialSettings(ipw.VBox):
-
-    materials_title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 10px">
-        <h4>Material settings</h4>
-    </div>"""
-    )
     spin_type = traitlets.Instance(SpinType, allow_none=True)
     electronic_type = traitlets.Instance(ElectronicType, allow_none=True)
 
     def __init__(self, **kwargs):
 
+        # Work chain protocol.
+        self.geo_opt_type = ipw.ToggleButtons(
+            options=[
+                ("Structure as is", "NONE"),
+                ("Atomic positions", "POSITIONS"),
+                ("Full geometry", "POSITIONS_CELL"),
+            ],
+            value="POSITIONS_CELL",
+        )
         self._spin_type = ipw.Dropdown(
             options=[("Non-magnetic", "NONE"), ("Ferromagnetic", "COLLINEAR")],
             value=DEFAULT_PARAMETERS["spin_type"].upper(),
@@ -164,11 +113,39 @@ class MaterialSettings(ipw.VBox):
         self._electronic_type.observe(self.set_electronic_type_trait, "value")
         self.set_electronic_type_trait()
 
+        self.bands_run = ipw.Checkbox(
+            description="",
+            tooltip="Calculate the electronic band structure.",
+            indent=False,
+            value=True,
+            layout=ipw.Layout(max_width="10%"),
+        )
+
+        self.run_pdos = ipw.Checkbox(
+            description="Calculate density of states",
+        )
+
+        # Work chain protocol.
+        self.workchain_protocol = ipw.ToggleButtons(
+            options=["fast", "moderate", "precise"],
+            value="moderate",
+        )
         super().__init__(
             children=[
-                self.materials_title,
+                self.structure_title,
+                self.structure_help,
+                self.geo_opt_type,
+                self.materials_help,
                 self._spin_type,
                 self._electronic_type,
+                self.properties_title,
+                ipw.HTML("Select which properties to calculate:"),
+                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
+                self.properties_help,
+                self.protocol_title,
+                ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
+                self.workchain_protocol,
+                self.protocol_help,
             ],
             **kwargs
         )
@@ -310,7 +287,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
-        self.material_settings = MaterialSettings()
         self.kpoints_settings = KpointSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
         self.codes_selector = CodeSettings()
@@ -326,7 +302,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.tab = ipw.Tab(
             children=[
-                ipw.VBox(children=[self.workchain_settings, self.material_settings]),
+                self.workchain_settings,
             ],
             layout=ipw.Layout(min_height="250px"),
         )
@@ -379,7 +355,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.tab.set_title(2, "Select codes")
             self.tab.set_title(3, "Compute resources")
             self.tab.children = [
-                ipw.VBox(children=[self.workchain_settings, self.material_settings]),
+                self.workchain_settings,
                 ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
                 self.codes_selector,
                 self.resources_config,
@@ -388,7 +364,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.expert_mode_control.button_style = "danger"
             self.tab.set_title(0, "Workflow")
             self.tab.children = [
-                ipw.VBox(children=[self.workchain_settings, self.material_settings]),
+                self.workchain_settings,
             ]
 
     def _get_state(self):
@@ -450,7 +426,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Set up all ``observe`` calls to monitor changes in user inputs."""
         update = self._update_builder_parameters  # alias for code conciseness
         # Properties
-        self.workchain_settings.geo_opt_run.observe(update, ["value"])
         self.workchain_settings.geo_opt_type.observe(update, ["value"])
         self.workchain_settings.bands_run.observe(update, ["value"])
         self.workchain_settings.run_pdos.observe(update, ["value"])
@@ -459,8 +434,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.codes_selector.projwfc.observe(update, ["selected_code"])
         self.codes_selector.pw.observe(update, ["selected_code"])
         # Material settings
-        self.kpoints_settings.observe(update, ["electronic_type"])
-        self.kpoints_settings.observe(update, ["spin_type"])
+        self.workchain_settings.observe(update, ["electronic_type"])
+        self.workchain_settings.observe(update, ["spin_type"])
         # Calculation settings
         self.workchain_settings.workchain_protocol.observe(update, ["value"])
         self.kpoints_settings.observe(update, ["kpoints_distance"])
@@ -513,9 +488,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._serialize_builder_parameters(
                 dict(
                     # Properties
-                    relax_type=RelaxType[self.workchain_settings.geo_opt_type.value]
-                    if self.workchain_settings.geo_opt_run.value
-                    else RelaxType["NONE"],
+                    relax_type=RelaxType[self.workchain_settings.geo_opt_type.value],
                     run_bands=self.workchain_settings.bands_run.value,
                     run_pdos=self.workchain_settings.run_pdos.value,
                     # Codes
@@ -523,8 +496,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     projwfc_code=self.codes_selector.projwfc.selected_code,
                     pw_code=self.codes_selector.pw.selected_code,
                     # Material settings
-                    electronic_type=self.kpoints_settings.electronic_type,
-                    spin_type=self.kpoints_settings.spin_type,
+                    electronic_type=self.workchain_settings.electronic_type,
+                    spin_type=self.workchain_settings.spin_type,
                     # Calculation settings
                     kpoints_distance_override=self.kpoints_settings.kpoints_distance,
                     protocol=self.workchain_settings.workchain_protocol.value,
@@ -540,14 +513,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             # Properties
             relax_type = bp.get("relax_type", RelaxType["NONE"])
-            self.workchain_settings.geo_opt_type.value = (
-                "POSITIONS_CELL"
-                if relax_type is RelaxType["NONE"]
-                else relax_type.value.upper()
-            )
-            self.workchain_settings.geo_opt_run.value = (
-                relax_type is not RelaxType["NONE"]
-            )
+            self.workchain_settings.geo_opt_type.value = relax_type.value.upper()
             self.workchain_settings.bands_run.value = bp["run_bands"]
             self.workchain_settings.run_pdos.value = bp["run_pdos"]
             # Codes
@@ -555,8 +521,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.codes_selector.projwfc.selected_code = bp.get("projwfc_code")
             self.codes_selector.pw.selected_code = bp.get("pw_code")
             # Material settings
-            self.kpoints_settings.spin_type = bp.get("spin_type", SpinType["NONE"])
-            self.kpoints_settings.electronic_type = bp.get(
+            self.workchain_settings.spin_type = bp.get("spin_type", SpinType["NONE"])
+            self.workchain_settings.electronic_type = bp.get(
                 "electronic_type", ElectronicType["METAL"]
             )
             # Calculation settings
