@@ -143,7 +143,7 @@ class WorkChainSettings(ipw.VBox):
                 self.workchain_protocol,
                 self.protocol_help,
             ],
-            **kwargs
+            **kwargs,
         )
 
     def set_spin_type_trait(self, _=None):
@@ -200,7 +200,7 @@ class KpointSettings(ipw.VBox):
                 ),
             ],
             layout=ipw.Layout(justify_content="space-between"),
-            **kwargs
+            **kwargs,
         )
 
     def set_kpoints_distance_trait(self, _=None):
@@ -244,7 +244,7 @@ class CodeSettings(ipw.VBox):
                 self.codes_help,
                 self.pw,
             ],
-            **kwargs
+            **kwargs,
         )
 
 
@@ -258,6 +258,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     expert_mode = traitlets.Bool()
 
     def __init__(self, **kwargs):
+        self.message_area = ipw.Output()
         self.workchain_settings = WorkChainSettings()
         self.kpoints_settings = KpointSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
@@ -268,6 +269,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._setup_builder_parameters_update()
 
         self.codes_selector.pw.observe(self._update_state, "selected_code")
+        self.codes_selector.pw.observe(self._update_cpus_per_node, "selected_code")
 
         self.tab = ipw.Tab(
             children=[
@@ -309,6 +311,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         super().__init__(
             children=[
+                self.message_area,
                 self.tab,
                 ipw.HBox([self.submit_button, self.expert_mode_control]),
             ]
@@ -351,6 +354,35 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _update_state(self, _=None):
         self.state = self._get_state()
+
+    _ALERT_MESSAGE = """
+        <div class="alert alert-{alert_class} alert-dismissible">
+        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+        {message}
+        </div>"""
+
+    def _show_alert_message(self, message, alert_class="info"):
+        with self.message_area:
+            display(  # noqa
+                ipw.HTML(
+                    self._ALERT_MESSAGE.format(alert_class=alert_class, message=message)
+                )
+            )
+
+    def _update_cpus_per_node(self, change):
+        if change["new"]:
+            selected_computer = change["new"].computer
+            default_mpiprocs_per_machine = selected_computer.metadata[
+                "default_mpiprocs_per_machine"
+            ]
+            previous_value = self.resources_config.cpus_per_node.value
+            if previous_value != default_mpiprocs_per_machine:
+                self.resources_config.cpus_per_node.value = default_mpiprocs_per_machine
+                self._show_alert_message(
+                    "The number cpus per node was automatically adjusted to "
+                    "the numer of cores per node for the selected code."
+                )
 
     @traitlets.observe("state")
     def _observe_state(self, change):
@@ -486,7 +518,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            **self._deserialize_builder_parameters(builder_parameters)
+            **self._deserialize_builder_parameters(builder_parameters),
         )
 
         if not run_bands:
