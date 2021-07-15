@@ -384,8 +384,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if change["new"]:
             current_value = self.resources_config.cpus_per_node.value
             new_value = self._get_default_cpus_per_node()
+            self.resources_config.cpus_per_node.max = new_value
             if current_value != new_value:
-                self.resources_config.cpus_per_node.max = new_value
                 self.resources_config.cpus_per_node.value = new_value
                 self._show_alert_message(
                     "The number cpus per node was automatically adjusted to "

@@ -268,7 +268,7 @@ class ResourceSelectionWidget(ipw.HBox):
             value=1, step=1, min=1, description="# nodes", disabled=False, **extra
         )
         self.cpus_per_node = ipw.BoundedIntText(
-            value=1, step=1, min=1, description="# cpus per node", **extra
+            value=1, step=1, min=1, max=1, description="# cpus per node", **extra
         )
         self.total_num_cpus = ipw.BoundedIntText(
             value=1, step=1, min=1, description="# total cpus", disabled=True, **extra
