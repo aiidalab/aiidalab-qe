@@ -324,7 +324,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             description="Expert mode",
             tooltip="Activate Expert mode for access to advanced settings.",
             value=True,
-            button_style="danger",
         )
         ipw.link((self, "expert_mode"), (self.expert_mode_control, "value"))
 
@@ -349,7 +348,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @traitlets.observe("expert_mode")
     def _observe_expert_mode(self, change):
         if change["new"]:
-            self.expert_mode_control.button_style = "info"
             self.tab.set_title(0, "Workflow")
             self.tab.set_title(1, "Advanced settings")
             self.tab.set_title(2, "Select codes")
@@ -361,7 +359,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.resources_config,
             ]
         else:
-            self.expert_mode_control.button_style = "danger"
             self.tab.set_title(0, "Workflow")
             self.tab.children = [
                 self.workchain_settings,
