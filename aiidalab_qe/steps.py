@@ -253,7 +253,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     # The app will issue a warning to the user if the ratio between the total
     # number of sites and the total number of CPUs is larger than this value:
-    MAX_NUM_SITES_PER_CPU_WARN_THRESHOLD = 5
+    MAX_NUM_SITES_PER_CPU_WARN_THRESHOLD = 6
 
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(WorkChainNode, allow_none=True)
