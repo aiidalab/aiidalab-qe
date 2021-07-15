@@ -245,15 +245,18 @@ class ResourceSelectionWidget(ipw.HBox):
     resource_selection_help = ipw.HTML(
         """<div style="line-height:120%; padding-top:0px">
         <p style="padding-bottom:10px">
-        In this tab you can select the amount of resources you want to use for the calculation.
+        Select the amount of resources you want to use for the calculations.
         Although specifying the optimal configuration of resources is a complex issue, in general:
         </p>
         <ul>
         <li>Increase the number of nodes if you run out of memory for larger structures.</li>
         <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
         </ul>
-        <p>Note that the amount of resources are limited by the machine you are running AiiDAlab on, so do not specify more resources than are available.
-        </p></div>"""
+        <p>Note that the amount of resources is limited by the computer on
+        which you are running the calculations on. The default computer
+        (localhost) is only suitable for single core operations which will be
+        insufficient for larger calculations. Make sure to setup a code for
+        these by clicking on "Setup new code".</p></div>"""
     )
 
     def __init__(self, **kwargs):

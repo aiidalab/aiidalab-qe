@@ -322,13 +322,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if change["new"]:
             self.tab.set_title(0, "Workflow")
             self.tab.set_title(1, "Advanced settings")
-            self.tab.set_title(2, "Select codes")
-            self.tab.set_title(3, "Compute resources")
+            self.tab.set_title(2, "Codes and resources")
             self.tab.children = [
                 self.workchain_settings,
                 ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
-                self.codes_selector,
-                self.resources_config,
+                ipw.VBox(children=[self.codes_selector, self.resources_config]),
             ]
         else:
             self.tab.set_title(0, "Workflow")
