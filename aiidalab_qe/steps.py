@@ -251,6 +251,10 @@ class CodeSettings(ipw.VBox):
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
 
+    # The app will issue a warning to the user if the ratio between the total
+    # number of sites and the total number of CPUs is larger than this value:
+    MAX_NUM_SITES_PER_CPU_WARN_THRESHOLD = 5
+
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(WorkChainNode, allow_none=True)
     disabled = traitlets.Bool()
@@ -322,7 +326,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if change["new"]:
             self.tab.set_title(0, "Workflow")
             self.tab.set_title(1, "Advanced settings")
-            self.tab.set_title(2, "Codes and resources")
+            self.tab.set_title(2, "Codes & Resources")
             self.tab.children = [
                 self.workchain_settings,
                 ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
@@ -368,19 +372,42 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
             )
 
+    def _get_default_cpus_per_node(self):
+        """Determine the default number of cpus per node based on the code configuration."""
+        if self.codes_selector.pw.selected_code:
+            selected_code = self.codes_selector.pw.selected_code
+            return selected_code.computer.metadata["default_mpiprocs_per_machine"]
+        return 1
+
     def _update_cpus_per_node(self, change):
+        """Update the configured cpus per node based on the current code selection."""
         if change["new"]:
-            selected_computer = change["new"].computer
-            default_mpiprocs_per_machine = selected_computer.metadata[
-                "default_mpiprocs_per_machine"
-            ]
-            previous_value = self.resources_config.cpus_per_node.value
-            if previous_value != default_mpiprocs_per_machine:
-                self.resources_config.cpus_per_node.value = default_mpiprocs_per_machine
+            current_value = self.resources_config.cpus_per_node.value
+            new_value = self._get_default_cpus_per_node()
+            if current_value != new_value:
+                self.resources_config.cpus_per_node.max = new_value
+                self.resources_config.cpus_per_node.value = new_value
                 self._show_alert_message(
                     "The number cpus per node was automatically adjusted to "
-                    "the numer of cores per node for the selected code."
+                    f"the number of cores per node for the selected code ({new_value})."
                 )
+                self._check_resources()
+
+    def _check_resources(self):
+        """Check whether the currently selected resources will be sufficient and warn if not."""
+        if self.input_structure:
+            num_sites = len(self.input_structure.sites)
+            num_cpus = self.resources_config.total_num_cpus.value
+            if num_sites // num_cpus > self.MAX_NUM_SITES_PER_CPU_WARN_THRESHOLD:
+                self._show_alert_message(
+                    "The ratio of the number of sites in the selected structure "
+                    f"({num_sites}) and the number of total CPUs available for the "
+                    f"calculations ({num_cpus}) is very large. Consider to increase "
+                    "the number of cores or nodes and select a code running on a "
+                    'larger computer if necessary (see the "Codes & Resources" tab).',
+                    alert_class="warning",
+                )
+                self.expert_mode = True
 
     @traitlets.observe("state")
     def _observe_state(self, change):
@@ -395,6 +422,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _observe_input_structure(self, change):
         self.set_trait("builder_parameters", self._default_builder_parameters())
         self._update_state()
+        self._check_resources()
 
     @traitlets.observe("process")
     def _observe_process(self, change):
