@@ -121,10 +121,6 @@ class WorkChainSettings(ipw.VBox):
             layout=ipw.Layout(max_width="10%"),
         )
 
-        self.run_pdos = ipw.Checkbox(
-            description="Calculate density of states",
-        )
-
         # Work chain protocol.
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
@@ -222,11 +218,11 @@ class CodeSettings(ipw.VBox):
         <h4>Codes</h4></div>"""
     )
     codes_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        Here you can select the codes to use for running the calculations. The
-        codes on the local machine are installed and selected by default, but
-        you can set new ones for each of the codes by clicking on "Setup new
-        code".</div>"""
+        """<div style="line-height: 140%; padding-top: 0px; padding-bottom:
+        10px"> Select the code to use for running the calculations. The codes
+        on the local machine (localhost) are installed by default, but you can
+        configure new ones on potentially more powerful machines by clicking on
+        "Setup new code".</div>"""
     )
 
     def __init__(self, **kwargs):
@@ -242,35 +238,11 @@ class CodeSettings(ipw.VBox):
                 "remote_abs_path": "/usr/bin/pw.x",
             },
         )
-        self.dos = CodeDropdown(
-            input_plugin="quantumespresso.dos",
-            description="dos.x",
-            setup_code_params={
-                "computer": "localhost",
-                "description": "dos.x in AiiDAlab container.",
-                "label": "dos",
-                "input_plugin": "quantumespresso.dos",
-                "remote_abs_path": "/usr/bin/dos.x",
-            },
-        )
-        self.projwfc = CodeDropdown(
-            input_plugin="quantumespresso.projwfc",
-            description="projwfc.x",
-            setup_code_params={
-                "computer": "localhost",
-                "description": "projwfc.x in AiiDAlab container.",
-                "label": "projwfc",
-                "input_plugin": "quantumespresso.projwfc",
-                "remote_abs_path": "/usr/bin/projwfc.x",
-            },
-        )
         super().__init__(
             children=[
                 self.codes_title,
                 self.codes_help,
                 self.pw,
-                self.dos,
-                self.projwfc,
             ],
             **kwargs
         )
@@ -296,9 +268,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._setup_builder_parameters_update()
 
         self.codes_selector.pw.observe(self._update_state, "selected_code")
-        self.codes_selector.dos.observe(self._update_state, "selected_code")
-        self.codes_selector.projwfc.observe(self._update_state, "selected_code")
-        self.workchain_settings.run_pdos.observe(self._update_state, "value")
 
         self.tab = ipw.Tab(
             children=[
@@ -378,13 +347,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.codes_selector.pw.selected_code is None:
             return self.State.READY
 
-        # PDOS run requested, but codes are not specified.
-        if self.workchain_settings.run_pdos.value:
-            if self.codes_selector.dos.selected_code is None:
-                return self.State.READY
-            if self.codes_selector.projwfc.selected_code is None:
-                return self.State.READY
-
         return self.State.CONFIGURED
 
     def _update_state(self, _=None):
@@ -425,10 +387,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # Properties
         self.workchain_settings.geo_opt_type.observe(update, ["value"])
         self.workchain_settings.bands_run.observe(update, ["value"])
-        self.workchain_settings.run_pdos.observe(update, ["value"])
         # Codes
-        self.codes_selector.dos.observe(update, ["selected_code"])
-        self.codes_selector.projwfc.observe(update, ["selected_code"])
         self.codes_selector.pw.observe(update, ["selected_code"])
         # Material settings
         self.workchain_settings.observe(update, ["electronic_type"])
@@ -446,8 +405,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         def _get_uuid(code):
             return None if code is None else str(code.uuid)
 
-        parameters["dos_code"] = _get_uuid(parameters["dos_code"])
-        parameters["projwfc_code"] = _get_uuid(parameters["projwfc_code"])
         parameters["pw_code"] = _get_uuid(parameters["pw_code"])
 
         # Protocol
@@ -469,8 +426,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     print("error", error)
                     return None
 
-        parameters["dos_code"] = _load_code(parameters["dos_code"])
-        parameters["projwfc_code"] = _load_code(parameters["projwfc_code"])
         parameters["pw_code"] = _load_code(parameters["pw_code"])
 
         # Protocol
@@ -487,10 +442,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     # Properties
                     relax_type=RelaxType[self.workchain_settings.geo_opt_type.value],
                     run_bands=self.workchain_settings.bands_run.value,
-                    run_pdos=self.workchain_settings.run_pdos.value,
                     # Codes
-                    dos_code=self.codes_selector.dos.selected_code,
-                    projwfc_code=self.codes_selector.projwfc.selected_code,
                     pw_code=self.codes_selector.pw.selected_code,
                     # Material settings
                     electronic_type=self.workchain_settings.electronic_type,
@@ -512,10 +464,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             relax_type = bp.get("relax_type", RelaxType["NONE"])
             self.workchain_settings.geo_opt_type.value = relax_type.value.upper()
             self.workchain_settings.bands_run.value = bp["run_bands"]
-            self.workchain_settings.run_pdos.value = bp["run_pdos"]
             # Codes
-            self.codes_selector.dos.selected_code = bp.get("dos_code")
-            self.codes_selector.projwfc.selected_code = bp.get("projwfc_code")
             self.codes_selector.pw.selected_code = bp.get("pw_code")
             # Material settings
             self.workchain_settings.spin_type = bp.get("spin_type", SpinType["NONE"])
@@ -534,7 +483,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         builder_parameters = self.builder_parameters.copy()
 
         run_bands = builder_parameters.pop("run_bands")
-        run_pdos = builder_parameters.pop("run_pdos")
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
@@ -543,8 +491,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         if not run_bands:
             builder.pop("bands")
-        if not run_pdos:
-            builder.pop("pdos")
 
         resources = {
             "num_machines": self.resources_config.number_of_nodes.value,
