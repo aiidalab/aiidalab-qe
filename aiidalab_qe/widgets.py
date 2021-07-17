@@ -231,82 +231,39 @@ class NodeViewWidget(ipw.VBox):
                     display(viewer(change["new"]))
 
 
-class ResourceSelectionWidget(ipw.HBox):
-    """Widget for the selection of compute (CPU) resources."""
+class ResourceSelectionWidget(ipw.VBox):
+    """Widget for the selection of compute resources."""
 
-    resource_selection_title = ipw.HTML(
+    title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Resources</h4>
     </div>"""
     )
-    resource_selection_prompt = ipw.HTML(
-        "Select the compute resources for this calculation."
-    )
-    resource_selection_help = ipw.HTML(
+    prompt = ipw.HTML(
         """<div style="line-height:120%; padding-top:0px">
         <p style="padding-bottom:10px">
-        Select the amount of resources you want to use for the calculations.
-        Although specifying the optimal configuration of resources is a complex issue, in general:
-        </p>
-        <ul>
-        <li>Increase the number of nodes if you run out of memory for larger structures.</li>
-        <li>Increase the number of nodes and cores if you want to reduce the total runtime.</li>
-        </ul>
-        <p>Note that the amount of resources is limited by the computer on
-        which you are running the calculations on. The default computer
-        (localhost) is only suitable for single core operations which will be
-        insufficient for larger calculations. Make sure to setup a code for
-        these by clicking on "Setup new code".</p></div>"""
+        Specify the number of MPI tasks for this calculation.
+        In general, larger structures will require a larger number of tasks.
+        </p></div>"""
     )
 
     def __init__(self, **kwargs):
         extra = {
             "style": {"description_width": "150px"},
-            "layout": {"max_width": "200px"},
+            # "layout": {"max_width": "200px"},
+            "layout": {"min_width": "310px"},
         }
-        self.number_of_nodes = ipw.BoundedIntText(
-            value=1, step=1, min=1, description="# nodes", disabled=False, **extra
-        )
-        self.cpus_per_node = ipw.BoundedIntText(
-            value=1, step=1, min=1, max=1, description="# cpus per node", **extra
-        )
-        self.total_num_cpus = ipw.BoundedIntText(
-            value=1, step=1, min=1, description="# total cpus", disabled=True, **extra
-        )
 
-        # Update the total # of CPUs int text:
-        self.number_of_nodes.observe(self._update_total_num_cpus, "value")
-        self.cpus_per_node.observe(self._update_total_num_cpus, "value")
+        self.num_mpi_tasks = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="# MPI tasks", **extra
+        )
 
         super().__init__(
             children=[
-                ipw.VBox(
-                    children=[
-                        self.resource_selection_title,
-                        ipw.HBox(
-                            children=[
-                                self.resource_selection_help,
-                                ipw.VBox(
-                                    children=[
-                                        self.number_of_nodes,
-                                        self.cpus_per_node,
-                                        self.total_num_cpus,
-                                    ],
-                                    layout=ipw.Layout(min_width="310px"),
-                                ),
-                            ]
-                        ),
-                    ]
-                )
+                self.title,
+                ipw.HBox(children=[self.prompt, self.num_mpi_tasks]),
             ]
         )
 
-    def _update_total_num_cpus(self, change):
-        self.total_num_cpus.value = (
-            self.number_of_nodes.value * self.cpus_per_node.value
-        )
-
     def reset(self):
-        with self.hold_trait_notifications():
-            self.number_of_nodes.value = 1
-            self.cpus_per_node.value = 1
+        self.num_mpi_tasks.value = 1
