@@ -252,9 +252,13 @@ class CodeSettings(ipw.VBox):
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
 
-    # The app will issue a warning to the user if the ratio between the total
-    # number of sites and the total number of CPUs is larger than this value:
+    # This number provides a rough estimate for how many MPI tasks are needed
+    # for a given structure.
     NUM_SITES_PER_MPI_TASK_DEFAULT = 6
+
+    # Warn the user if they are trying to run calculations for a large
+    # structure on localhost.
+    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
 
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(WorkChainNode, allow_none=True)
@@ -394,18 +398,33 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _check_resources(self):
         """Check whether the currently selected resources will be sufficient and warn if not."""
         num_mpi_tasks = self.resources_config.num_mpi_tasks.value
-        if self.codes_selector.pw.selected_code and num_mpi_tasks > 1:
-            hostname = self.codes_selector.pw.selected_code.computer.get_hostname()
-            if hostname == "localhost":
-                self._show_alert_message(
-                    "The selected code would be executed on the localhost, but "
-                    "the number of MPI tasks is larger than one. Please review "
-                    "the configuration and consider to select a code that runs "
-                    'on a larger system if necessary (see the "Codes & '
-                    'Resources" tab).',
-                    alert_class="warning",
-                )
-                self.expert_mode = True
+        on_localhost = (
+            self.codes_selector.pw.selected_code.computer.get_hostname() == "localhost"
+        )
+        if self.codes_selector.pw.selected_code and on_localhost and num_mpi_tasks > 1:
+            self._show_alert_message(
+                "The selected code would be executed on the local host, but "
+                "the number of MPI tasks is larger than one. Please review "
+                "the configuration and consider to select a code that runs "
+                'on a larger system if necessary (see the "Codes & '
+                'Resources" tab).',
+                alert_class="warning",
+            )
+            self.expert_mode = True
+        elif (
+            self.input_structure
+            and on_localhost
+            and len(self.input_structure.sites)
+            > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+        ):
+            self._show_alert_message(
+                "The selected code would be executed on the local host, but the "
+                "number of sites of the selected structure is relatively large. "
+                "Consider to select a code that runs on a larger system if "
+                'necessary (see the "Codes & Resources" tab).',
+                alert_class="warning",
+            )
+            self.expert_mode = True
 
     def _get_cpus_per_node(self):
         """Determine the default number of CPUs per node based on the code configuration."""
