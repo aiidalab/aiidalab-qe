@@ -4,6 +4,7 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
+from math import ceil
 from pprint import pformat
 
 import ipywidgets as ipw
@@ -251,9 +252,13 @@ class CodeSettings(ipw.VBox):
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
 
-    # The app will issue a warning to the user if the ratio between the total
-    # number of sites and the total number of CPUs is larger than this value:
-    MAX_NUM_SITES_PER_CPU_WARN_THRESHOLD = 6
+    # This number provides a rough estimate for how many MPI tasks are needed
+    # for a given structure.
+    NUM_SITES_PER_MPI_TASK_DEFAULT = 6
+
+    # Warn the user if they are trying to run calculations for a large
+    # structure on localhost.
+    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
 
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(WorkChainNode, allow_none=True)
@@ -273,7 +278,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._setup_builder_parameters_update()
 
         self.codes_selector.pw.observe(self._update_state, "selected_code")
-        self.codes_selector.pw.observe(self._update_cpus_per_node, "selected_code")
+        self.codes_selector.pw.observe(
+            self._set_num_mpi_tasks_to_default, "selected_code"
+        )
 
         self.tab = ipw.Tab(
             children=[
@@ -361,7 +368,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         <div class="alert alert-{alert_class} alert-dismissible">
         <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
         <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
-        {message}
+        <strong>{message}</strong>
         </div>"""
 
     def _show_alert_message(self, message, alert_class="info"):
@@ -372,42 +379,72 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
             )
 
-    def _get_default_cpus_per_node(self):
-        """Determine the default number of cpus per node based on the code configuration."""
+    def _get_default_num_mpi_tasks(self):
+        """Determine a reasonable value for the number of MPI tasks for the selected structure."""
+        if self.codes_selector.pw.selected_code:
+            num_sites = len(self.input_structure.sites) if self.input_structure else 1
+            num_mpi_tasks = max(
+                1, ceil(num_sites / self.NUM_SITES_PER_MPI_TASK_DEFAULT)
+            )
+            return num_mpi_tasks
+
+        return 1
+
+    def _set_num_mpi_tasks_to_default(self, _=None):
+        """Set the number of MPI tasks to a reasonable value for the selected structure."""
+        self.resources_config.num_mpi_tasks.value = self._get_default_num_mpi_tasks()
+        self._check_resources()
+
+    def _check_resources(self):
+        """Check whether the currently selected resources will be sufficient and warn if not."""
+        num_mpi_tasks = self.resources_config.num_mpi_tasks.value
+        on_localhost = (
+            self.codes_selector.pw.selected_code.computer.get_hostname() == "localhost"
+        )
+        if self.codes_selector.pw.selected_code and on_localhost and num_mpi_tasks > 1:
+            self._show_alert_message(
+                "The selected code would be executed on the local host, but "
+                "the number of MPI tasks is larger than one. Please review "
+                "the configuration and consider to select a code that runs "
+                'on a larger system if necessary (see the "Codes & '
+                'Resources" tab).',
+                alert_class="warning",
+            )
+            self.expert_mode = True
+        elif (
+            self.input_structure
+            and on_localhost
+            and len(self.input_structure.sites)
+            > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+        ):
+            self._show_alert_message(
+                "The selected code would be executed on the local host, but the "
+                "number of sites of the selected structure is relatively large. "
+                "Consider to select a code that runs on a larger system if "
+                'necessary (see the "Codes & Resources" tab).',
+                alert_class="warning",
+            )
+            self.expert_mode = True
+
+    def _get_cpus_per_node(self):
+        """Determine the default number of CPUs per node based on the code configuration."""
         if self.codes_selector.pw.selected_code:
             selected_code = self.codes_selector.pw.selected_code
             return selected_code.computer.metadata["default_mpiprocs_per_machine"]
         return 1
 
-    def _update_cpus_per_node(self, change):
-        """Update the configured cpus per node based on the current code selection."""
-        if change["new"]:
-            current_value = self.resources_config.cpus_per_node.value
-            new_value = self._get_default_cpus_per_node()
-            self.resources_config.cpus_per_node.max = new_value
-            if current_value != new_value:
-                self.resources_config.cpus_per_node.value = new_value
-                self._show_alert_message(
-                    "The number cpus per node was automatically adjusted to "
-                    f"the number of cores per node for the selected code ({new_value})."
-                )
-                self._check_resources()
+    def _determine_resources(self):
+        """Calculate the number of nodes and tasks per node."""
+        cpus_per_node = self._get_cpus_per_node()
+        num_mpi_tasks_selected = self.resources_config.num_mpi_tasks.value
 
-    def _check_resources(self):
-        """Check whether the currently selected resources will be sufficient and warn if not."""
-        if self.input_structure:
-            num_sites = len(self.input_structure.sites)
-            num_cpus = self.resources_config.total_num_cpus.value
-            if num_sites // num_cpus > self.MAX_NUM_SITES_PER_CPU_WARN_THRESHOLD:
-                self._show_alert_message(
-                    "The ratio of the number of sites in the selected structure "
-                    f"({num_sites}) and the number of total CPUs available for the "
-                    f"calculations ({num_cpus}) is very large. Consider to increase "
-                    "the number of cores or nodes and select a code running on a "
-                    'larger computer if necessary (see the "Codes & Resources" tab).',
-                    alert_class="warning",
-                )
-                self.expert_mode = True
+        num_nodes = max(1, ceil(num_mpi_tasks_selected / cpus_per_node))
+        num_mpi_tasks_per_node = ceil(num_mpi_tasks_selected / num_nodes)
+
+        return {
+            "num_machines": num_nodes,
+            "num_mpiprocs_per_machine": num_mpi_tasks_per_node,
+        }
 
     @traitlets.observe("state")
     def _observe_state(self, change):
@@ -422,7 +459,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _observe_input_structure(self, change):
         self.set_trait("builder_parameters", self._default_builder_parameters())
         self._update_state()
-        self._check_resources()
+        self._set_num_mpi_tasks_to_default()
 
     @traitlets.observe("process")
     def _observe_process(self, change):
@@ -550,10 +587,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if not run_bands:
             builder.pop("bands")
 
-        resources = {
-            "num_machines": self.resources_config.number_of_nodes.value,
-            "num_mpiprocs_per_machine": self.resources_config.cpus_per_node.value,
-        }
+        resources = self._determine_resources()
         update_resources(builder, resources)
 
         self.process = submit(builder)
