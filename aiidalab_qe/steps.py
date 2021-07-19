@@ -397,6 +397,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _check_resources(self):
         """Check whether the currently selected resources will be sufficient and warn if not."""
+        if not self.codes_selector.pw.selected_code:
+            return  # No code selected, nothing to do.
+
         num_mpi_tasks = self.resources_config.num_mpi_tasks.value
         on_localhost = (
             self.codes_selector.pw.selected_code.computer.get_hostname() == "localhost"
