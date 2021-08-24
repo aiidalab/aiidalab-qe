@@ -69,6 +69,7 @@ def _generate_report_dict(qeapp_wc):
     yield "pseudo_link", PSEUDO_LINK_MAP[pseudo_library]
     yield "functional_link", FUNCTIONAL_LINK_MAP[functional]
 
+    pw_parameters = None
     energy_cutoff_wfc = None
     energy_cutoff_rho = None
     scf_kpoints_distance = None
@@ -78,13 +79,15 @@ def _generate_report_dict(qeapp_wc):
     if run_relax:
         pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
         scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
+
     if run_bands:
         pw_parameters = qeapp_wc.inputs.bands.scf.pw.parameters.get_dict()
         scf_kpoints_distance = qeapp_wc.inputs.bands.scf.kpoints_distance.value
         bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
 
-    energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
-    energy_cutoff_rho = round(pw_parameters["SYSTEM"]["ecutrho"])
+    if pw_parameters:
+        energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
+        energy_cutoff_rho = round(pw_parameters["SYSTEM"]["ecutrho"])
 
     yield "energy_cutoff_wfc", energy_cutoff_wfc
     yield "energy_cutoff_rho", energy_cutoff_rho
