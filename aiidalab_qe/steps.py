@@ -5,7 +5,6 @@ Authors:
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
 from math import ceil
-from os import cpu_count
 from pprint import pformat
 
 import ipywidgets as ipw
@@ -255,7 +254,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     # This number provides a rough estimate for how many MPI tasks are needed
     # for a given structure.
-    NUM_SITES_PER_MPI_TASK_DEFAULT = 1
+    NUM_SITES_PER_MPI_TASK_DEFAULT = 6
 
     # Warn the user if they are trying to run calculations for a large
     # structure on localhost.
@@ -405,11 +404,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         on_localhost = (
             self.codes_selector.pw.selected_code.computer.get_hostname() == "localhost"
         )
-        if (
-            self.codes_selector.pw.selected_code
-            and on_localhost
-            and num_mpi_tasks > cpu_count() // 2
-        ):
+        if self.codes_selector.pw.selected_code and on_localhost and num_mpi_tasks > 1:
             self._show_alert_message(
                 "The selected code would be executed on the local host, but "
                 "the number of MPI tasks is larger than one. Please review "
