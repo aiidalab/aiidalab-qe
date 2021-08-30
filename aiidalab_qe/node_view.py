@@ -10,6 +10,7 @@ from importlib import resources
 
 import ipywidgets as ipw
 import nglview
+import traitlets
 from aiida.orm import Node
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
@@ -199,48 +200,62 @@ class SummaryView(ipw.VBox):
 
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
 class WorkChainViewer(ipw.VBox):
+
+    _results_shown = traitlets.Set()
+
     def __init__(self, node, **kwargs):
         if node.process_label != "QeAppWorkChain":
             raise KeyError(str(node.node_type))
 
         self.node = node
-        self.status = []
 
-        structure_formula = self.node.inputs.structure.get_formula()
         self.title = ipw.HTML(
             f"""
             <hr style="height:2px;background-color:#2097F3;">
-            <h4>QE App Work Chain (pk: {self.node.pk}) &mdash; {structure_formula} </h4>
+            <h4>QE App Work Chain (pk: {self.node.pk}) &mdash;
+                {self.node.inputs.structure.get_formula()}
+            </h4>
         """
         )
+        self.summary_view = SummaryView(self.node)
+        self.structure_tab = ipw.VBox(
+            [ipw.Label("Structure not available.")],
+            layout=ipw.Layout(min_height="380px"),
+        )
+        self.bands_tab = ipw.VBox(
+            [ipw.Label("Band structure not available.")],
+            layout=ipw.Layout(min_height="380px"),
+        )
 
-        self.result_titles = [
-            "Workflow Summary",
-        ]
-        self.result_children = [self.get_summary()]
-        self.result_tabs = ipw.Tab()
+        self.result_tabs = ipw.Tab(
+            children=[self.summary_view, self.structure_tab, self.bands_tab]
+        )
+
+        self.result_tabs.set_title(0, "Workflow Summary")
+        self.result_tabs.set_title(1, "Final Geometry (n/a)")
+        self.result_tabs.set_title(2, "Band Structure (n/a)")
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
-        def on_change(change):
+        def on_selected_index_change(change):
             index = change["new"]
             # Accessing the viewer only if the corresponding tab is present.
             if self.result_tabs._titles[str(index)] == "Final Geometry":
-                self.struct_view._viewer.handle_resize()
+                self._structure_view._viewer.handle_resize()
 
                 def toggle_camera():
                     """Toggle camera between perspective and orthographic."""
-                    self.struct_view._viewer.camera = (
+                    self._structure_view._viewer.camera = (
                         "perspective"
-                        if self.struct_view._viewer.camera == "orthographic"
+                        if self._structure_view._viewer.camera == "orthographic"
                         else "orthographic"
                     )
 
                 toggle_camera()
                 toggle_camera()
 
-        self.result_tabs.observe(on_change, "selected_index")
-        self._update_view(first_run=True)
+        self.result_tabs.observe(on_selected_index_change, "selected_index")
+        self._update_view()
 
         super().__init__(
             children=[
@@ -256,41 +271,32 @@ class WorkChainViewer(ipw.VBox):
             ],
         )
 
-    def _update_view(self, first_run=False):
+    def _update_view(self):
+        with self.hold_trait_notifications():
+            if (
+                "structure" not in self._results_shown
+                and "structure" in self.node.outputs
+            ):
+                self._show_structure()
+                self._results_shown.add("structure")
 
-        update = False
+            if (
+                "band_structure" not in self._results_shown
+                and "band_structure" in self.node.outputs
+            ):
+                self._show_band_structure()
+                self._results_shown.add("band_structure")
 
-        if "structure" not in self.status:
-            if "structure" in self.node.outputs:
-                self.result_titles.append("Final Geometry")
-                self.struct_view = self.get_structure()
-                self.result_children.append(self.struct_view)
-                self.status.append("structure")
-                update = True
+    def _show_structure(self):
+        self._structure_view = StructureDataViewer(
+            structure=self.node.outputs.structure
+        )
+        self.result_tabs.children[1].children = [self._structure_view]
+        self.result_tabs.set_title(1, "Final Geometry")
 
-        if "bands" not in self.status:
-            if "band_structure" in self.node.outputs:
-                self.result_titles.append("Band Structure")
-                self.result_children.append(self.get_bands())
-                self.status.append("bands")
-                update = True
-
-        if first_run or update:
-            index = self.result_tabs.selected_index
-
-            self.result_tabs.children = self.result_children
-            for tab_number, title in enumerate(self.result_titles):
-                self.result_tabs.set_title(tab_number, title)
-
-            self.result_tabs.selected_index = index
-
-    def get_summary(self):
-        return SummaryView(self.node)
-
-    def get_structure(self):
-        return StructureDataViewer(structure=self.node.outputs.structure)
-
-    def get_bands(self):
-        bands_data = export_bands_data(self.node)
-        if bands_data:
-            return BandsPlotWidget(bands=[bands_data], plot_fermilevel=True)
+    def _show_band_structure(self):
+        self._bands_plot_view = BandsPlotWidget(
+            bands=[export_bands_data(self.node)], plot_fermilevel=True
+        )
+        self.result_tabs.children[2].children = [self._bands_plot_view]
+        self.result_tabs.set_title(2, "Band Structure")
