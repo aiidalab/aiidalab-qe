@@ -133,12 +133,6 @@ class SSSPInstallWidget(ProgressBar):
                 self.value = 1.0
 
             self.bar_style = (
-                "danger"
-                if self.error
-                else {True: "success", False: "primary"}.get(self.installed, "")
-            )
-
-            self.bar_style = (
                 "info"
                 if self.busy
                 else (
