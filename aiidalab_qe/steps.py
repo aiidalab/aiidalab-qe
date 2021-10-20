@@ -23,6 +23,7 @@ from aiidalab_widgets_base import (
 
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
+from aiidalab_qe.sssp import SSSPInstallWidget
 from aiidalab_qe.widgets import NodeViewWidget, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
 
@@ -320,10 +321,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             + "</pre>",
         )
 
+        # The SSSP installation status widget shows the installation status of
+        # the SSSP pseudo potentials and triggers the installation in case that
+        # they are not yet installed. The widget will remain in a "busy" state
+        # in case that the installation was already triggered elsewhere, e.g.,
+        # by the start up scripts.  The submission is blocked while the
+        # potentials are not yet installed.
+        self.sssp_installation_status = SSSPInstallWidget()
+        self.sssp_installation_status.observe(self._update_state, "installed")
+
         super().__init__(
             children=[
                 self.message_area,
                 self.tab,
+                self.sssp_installation_status,
                 ipw.HBox([self.submit_button, self.expert_mode_control]),
             ]
         )
@@ -356,7 +367,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return self.State.INIT
 
         # PW code not selected.
-        if self.codes_selector.pw.selected_code is None:
+        if (
+            self.codes_selector.pw.selected_code is None
+            or not self.sssp_installation_status.installed
+        ):
             return self.State.READY
 
         return self.State.CONFIGURED
