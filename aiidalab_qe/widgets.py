@@ -6,6 +6,7 @@ Authors:
 """
 
 import base64
+import hashlib
 from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
@@ -15,7 +16,7 @@ import ipywidgets as ipw
 import traitlets
 from aiida.orm import CalcJobNode, Node
 from aiidalab_widgets_base import register_viewer_widget, viewer
-from IPython.display import clear_output, display
+from IPython.display import HTML, Javascript, clear_output, display
 
 # trigger registration of the viewer widget:
 from aiidalab_qe import node_view  # noqa: F401
@@ -27,55 +28,55 @@ __all__ = [
 ]
 
 
-class LogOutputWidget(ipw.VBox):
+class RollingOutput(ipw.VBox):
 
-    value = traitlets.Tuple(traitlets.Unicode(), traitlets.Unicode())
+    style = (
+        "background-color: #253239; color: #cdd3df; line-height: normal; custom=test"
+    )
+
+    value = traitlets.Unicode()
+    auto_scroll = traitlets.Bool()
 
     def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):
         self._num_min_lines = num_min_lines
-
-        self._filename = ipw.Text(
-            description="Filename:",
-            placeholder="No file selected.",
-            disabled=True,
-            layout=ipw.Layout(flex="1 1 auto", width="auto"),
-        )
-
         self._output = ipw.HTML(layout=ipw.Layout(min_width="50em"))
-        self._output_container = ipw.VBox(
-            children=[self._output], layout=ipw.Layout(max_height=max_output_height)
-        )
-        self._download_link = ipw.HTML(layout=ipw.Layout(width="auto"))
-
         self._refresh_output()
         super().__init__(
-            children=[
-                self._output_container,
-                ipw.HBox(
-                    children=[self._filename, self._download_link],
-                    layout=ipw.Layout(min_height="25px"),
-                ),
-            ],
-            **kwargs,
+            [self._output],
+            layout=ipw.Layout(max_height=max_output_height, min_width="51em"),
         )
 
     @traitlets.default("value")
     def _default_value(self):
         if self._num_min_lines > 0:
-            return "", "\n" * self._num_min_lines
+            return "\n" * self._num_min_lines
+
+    @traitlets.default("auto_scroll")
+    def _default_auto_scroll(self):
+        return True
+
+    def scroll_to_bottom(self):
+        # Slight hack because it will scroll all widgets with the same class
+        # name and max height to the bottom. That would primarily be an issue in
+        # case that there are two LogOutputWidgets in the DOM. Could probably be
+        # alleviated by adding a custom class.
+        display(
+            Javascript(
+                """
+            Array.from(document.getElementsByClassName('{class_name}'))
+            .filter(el => el.style["max-height"] === "{max_height}")
+            .forEach(el => el.scrollTop = el.scrollHeight)""".format(
+                    class_name="p-Widget p-Panel jupyter-widgets widget-container widget-box widget-vbox",
+                    max_height=self.layout.max_height,
+                )
+            )
+        )
 
     @traitlets.observe("value")
     def _refresh_output(self, _=None):
-        filename, loglines = self.value
-        with self.hold_trait_notifications():
-            self._filename.value = filename
-            self._output.value = self._format_output(loglines)
-
-            payload = base64.b64encode(loglines.encode()).decode()
-            html_download = f'<a download="{filename}" href="data:text/plain;base64,{payload}" target="_blank">Download</a>'
-            self._download_link.value = html_download
-
-    style = "background-color: #253239; color: #cdd3df; line-height: normal"
+        self._output.value = self._format_output(self.value)
+        if self.auto_scroll:
+            self.scroll_to_bottom()
 
     def _format_output(self, text):
         lines = text.splitlines()
@@ -83,15 +84,131 @@ class LogOutputWidget(ipw.VBox):
         # Add empty lines to reach the minimum number of lines.
         lines += [""] * max(0, self._num_min_lines - len(lines))
 
-        # Replace empty lines with single white space to ensure that they are actually shown.
+        # Replace empty lines with single white space to ensure that they are
+        # actually shown.
         lines = [line if len(line) > 0 else " " for line in lines]
-
-        # Replace the first line if there is no output whatsoever
-        if len(text.strip()) == 0 and len(lines) > 0:
-            lines[0] = "[waiting for output]"
 
         text = "\n".join(lines)
         return f"""<pre style="{self.style}">{text}</pre>"""
+
+
+class DownloadButton(ipw.Button):
+    # Adapted from https://stackoverflow.com/a/68683463
+    """A Button widget for downloads with dynamic content."""
+
+    filename = traitlets.Unicode()
+    payload = traitlets.Bytes()
+
+    def __init__(self, **kwargs):
+        super(DownloadButton, self).__init__(**kwargs)
+        self.on_click(self.__on_click)
+
+    @traitlets.default("icon")
+    def _default_icon(self):
+        return "download"
+
+    @traitlets.default("tooltip")
+    def _default_tooltip(self):
+        return "Download"
+
+    def __on_click(self, _):
+        digest = hashlib.md5(self.payload).hexdigest()  # bypass browser cache
+        payload = base64.b64encode(self.payload).decode()
+
+        id = f"dl_{digest}"
+
+        display(
+            HTML(
+                f"""
+            <html>
+            <body>
+            <a id="{id}" download="{self.filename}" href="data:text/plain;base64,{payload}" download>
+            </a>
+
+            <script>
+            (function download() {{
+            document.getElementById('{id}').click();
+            }})()
+            </script>
+
+            </body>
+            </html>
+            """
+            )
+        )
+
+
+class LogOutputWidget(ipw.HBox):
+
+    filename = traitlets.Unicode()
+    value = traitlets.Unicode()
+
+    def __init__(self, placeholder=None, **kwargs):
+        self.placeholder = placeholder
+
+        self._rolling_output = RollingOutput(layout=ipw.Layout(flex="1 1 auto"))
+        ipw.dlink(
+            (self, "value"),
+            (self._rolling_output, "value"),
+            lambda value: value or self.placeholder or "",
+        )
+
+        self._filename_text = ipw.Text(
+            description="Filename:",
+            disabled=True,
+            layout=ipw.Layout(width="auto"),
+        )
+        ipw.dlink((self, "filename"), (self._filename_text, "value"))
+
+        self._btn_download = DownloadButton(
+            layout=ipw.Layout(width="30px", flex="5 1 auto"),
+            disabled=True,
+        )
+        ipw.dlink((self, "filename"), (self._btn_download, "filename"))
+        ipw.dlink(
+            (self, "value"),
+            (self._btn_download, "payload"),
+            transform=lambda value: value.encode("utf-8"),
+        )
+
+        self._btn_scroll_down = ipw.Button(
+            icon="angle-double-down",
+            tooltip="Scroll to bottom",
+            layout=ipw.Layout(width="30px", flex="1 1 auto"),
+            disabled=True,
+        )
+        self._btn_scroll_down.on_click(
+            lambda _: self._rolling_output.scroll_to_bottom()
+        )
+
+        self._btn_auto_scroll = ipw.ToggleButton(
+            icon="magic",
+            tooltip="Auto-scroll with content",
+            value=True,
+            layout=ipw.Layout(flex="1 1 auto", width="30px"),
+        )
+        ipw.link(
+            (self._btn_auto_scroll, "value"), (self._rolling_output, "auto_scroll")
+        )
+
+        self._btns = ipw.VBox(
+            [self._btn_download, self._btn_scroll_down, self._btn_auto_scroll],
+            layout=ipw.Layout(min_width="36px", flex_flow="column"),
+        )
+
+        super().__init__(
+            [ipw.VBox([self._filename_text, self._rolling_output]), self._btns],
+            **kwargs,
+        )
+
+    @traitlets.default("placeholder")
+    def _default_placeholder(self):
+        return "[empty]"
+
+    @traitlets.observe("value")
+    def _observe_value(self, change):
+        self._btn_download.disabled = not change["new"]
+        self._btn_scroll_down.disabled = not change["new"]
 
 
 class CalcJobOutputFollower(traitlets.HasTraits):
@@ -209,10 +326,10 @@ class CalcJobNodeViewerWidget(ipw.VBox):
             [ipw.HTML(f"CalcJob: {self.calcjob}"), self.log_output], **kwargs
         )
 
-    def _observe_output_follower_lineno(self, change):
-        restrict_num_lines = None if self.calcjob.is_sealed else -10
-        new_lines = "\n".join(self.output_follower.output[restrict_num_lines:])
-        self.log_output.value = self.output_follower.filename, new_lines
+    def _observe_output_follower_lineno(self, _):
+        with self.hold_trait_notifications():
+            self.log_output.filename = self.output_follower.filename
+            self.log_output.value = "\n".join(self.output_follower.output)
 
 
 class NodeViewWidget(ipw.VBox):
