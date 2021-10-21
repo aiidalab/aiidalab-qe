@@ -5,7 +5,6 @@ Authors:
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
 from math import ceil
-from pprint import pformat
 
 import ipywidgets as ipw
 import traitlets
@@ -28,6 +27,7 @@ from aiidalab_qe.widgets import NodeViewWidget, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
 
 StructureData = DataFactory("structure")
+Float = DataFactory("float")
 
 
 def update_resources(builder, resources):
@@ -80,41 +80,36 @@ class WorkChainSettings(ipw.VBox):
         with less precision and the "precise" protocol that provides more
         accuracy but will take longer.</div>"""
     )
-    button_style_on = "info"
-    button_style_off = "danger"
-
-    spin_type = traitlets.Instance(SpinType, allow_none=True)
-    electronic_type = traitlets.Instance(ElectronicType, allow_none=True)
 
     def __init__(self, **kwargs):
 
-        # Work chain protocol.
-        self.geo_opt_type = ipw.ToggleButtons(
+        # RelaxType: degrees of freedom in geometry optimization
+        self.relax_type = ipw.ToggleButtons(
             options=[
-                ("Structure as is", "NONE"),
-                ("Atomic positions", "POSITIONS"),
-                ("Full geometry", "POSITIONS_CELL"),
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+                ("Full geometry", "positions_cell"),
             ],
-            value="POSITIONS_CELL",
+            value="positions_cell",
         )
-        self._spin_type = ipw.Dropdown(
-            options=[("Non-magnetic", "NONE"), ("Ferromagnetic", "COLLINEAR")],
-            value=DEFAULT_PARAMETERS["spin_type"].upper(),
+
+        # SpinType: magnetic properties of material
+        self.spin_type = ipw.Dropdown(
+            options=[("Non-magnetic", "none"), ("Ferromagnetic", "collinear")],
+            value=DEFAULT_PARAMETERS["spin_type"],
             description="Magnetism:",
             style={"description_width": "initial"},
         )
-        self._spin_type.observe(self.set_spin_type_trait, "value")
-        self.set_spin_type_trait()
 
-        self._electronic_type = ipw.Dropdown(
-            options=[("Metal", "METAL"), ("Insulator", "INSULATOR")],
-            value=DEFAULT_PARAMETERS["electronic_type"].upper(),
+        # ElectronicType: electronic properties of material
+        self.electronic_type = ipw.Dropdown(
+            options=[("Metal", "metal"), ("Insulator", "insulator")],
+            value=DEFAULT_PARAMETERS["electronic_type"],
             description="Electronic Type:",
             style={"description_width": "initial"},
         )
-        self._electronic_type.observe(self.set_electronic_type_trait, "value")
-        self.set_electronic_type_trait()
 
+        # Checkbox to see if the band structure should be calculated
         self.bands_run = ipw.Checkbox(
             description="",
             tooltip="Calculate the electronic band structure.",
@@ -123,7 +118,7 @@ class WorkChainSettings(ipw.VBox):
             layout=ipw.Layout(max_width="10%"),
         )
 
-        # Work chain protocol.
+        # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
             value="moderate",
@@ -132,10 +127,10 @@ class WorkChainSettings(ipw.VBox):
             children=[
                 self.structure_title,
                 self.structure_help,
-                self.geo_opt_type,
+                self.relax_type,
                 self.materials_help,
-                self._spin_type,
-                self._electronic_type,
+                self.spin_type,
+                self.electronic_type,
                 self.properties_title,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
@@ -148,19 +143,8 @@ class WorkChainSettings(ipw.VBox):
             **kwargs,
         )
 
-    def set_spin_type_trait(self, _=None):
-        self.spin_type = SpinType[self._spin_type.value.upper()]
-
-    def set_electronic_type_trait(self, _=None):
-        self.electronic_type = ElectronicType[self._electronic_type.value]
-
 
 class KpointSettings(ipw.VBox):
-
-    # The default of `kpoints_distance` must be linked to the `protocol`
-    kpoints_distance_default = traitlets.Float(default_value=0.15)
-    kpoints_distance = traitlets.Float(allow_none=True)
-    degauss = traitlets.Float(allow_none=True)
 
     kpoints_distance_description = ipw.HTML(
         """<p>
@@ -169,47 +153,45 @@ class KpointSettings(ipw.VBox):
     </p>"""
     )
 
+    # The default of `kpoints_distance` must be linked to the `protocol`
+    kpoints_distance_default = traitlets.Float(default_value=0.15)
+
     def __init__(self, **kwargs):
 
-        self._set_kpoints_distance_automatically = ipw.Checkbox(
+        self.use_protocol_kpoints = ipw.Checkbox(
             description="Use default k-points distance.",
             indent=False,
             value=True,
         )
-        self._kpoints_distance = ipw.FloatText(
+        self.kpoints_distance = ipw.FloatText(
             value=self.kpoints_distance_default,
             step=0.05,
-            description="K-points distance:",
+            description="K-points distance (1/Å):",
             disabled=False,
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self._set_kpoints_distance_automatically, "value"),
-            (self._kpoints_distance, "disabled"),
+            (self.use_protocol_kpoints, "value"),
+            (self.kpoints_distance, "disabled"),
         )
-
-        self._kpoints_distance.observe(self.set_kpoints_distance_trait, "value")
-        self._set_kpoints_distance_automatically.observe(
-            self.set_kpoints_distance_trait, "value"
-        )
-        self.set_kpoints_distance_trait()
+        self.kpoints_distance.observe(self.set_kpoints_distance, "value")
+        self.use_protocol_kpoints.observe(self.set_kpoints_distance, "value")
+        self.set_kpoints_distance()
 
         super().__init__(
             children=[
                 self.kpoints_distance_description,
-                ipw.HBox(
-                    [self._set_kpoints_distance_automatically, self._kpoints_distance]
-                ),
+                ipw.HBox([self.use_protocol_kpoints, self.kpoints_distance]),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
 
-    def set_kpoints_distance_trait(self, _=None):
-        self.kpoints_distance = (
+    def set_kpoints_distance(self, _=None):
+        self.kpoints_distance.value = (
             self.kpoints_distance_default
-            if self._set_kpoints_distance_automatically.value
-            else self._kpoints_distance.value
+            if self.use_protocol_kpoints.value
+            else self.kpoints_distance.value
         )
 
 
@@ -264,7 +246,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(WorkChainNode, allow_none=True)
     disabled = traitlets.Bool()
-    builder_parameters = traitlets.Dict()
     expert_mode = traitlets.Bool()
 
     def __init__(self, **kwargs):
@@ -275,12 +256,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.codes_selector = CodeSettings()
         self.resources_config = ResourceSelectionWidget()
 
-        self.set_trait("builder_parameters", self._default_builder_parameters())
-        self._setup_builder_parameters_update()
+        self.set_input_parameters(DEFAULT_PARAMETERS)
 
         self.codes_selector.pw.observe(self._update_state, "selected_code")
         self.codes_selector.pw.observe(
             self._set_num_mpi_tasks_to_default, "selected_code"
+        )
+        self.workchain_settings.workchain_protocol.observe(
+            self._observe_kpoints_default, "value"
+        )
+        self.workchain_settings.workchain_protocol.observe(
+            self.kpoints_settings.set_kpoints_distance, "value"
         )
 
         self.tab = ipw.Tab(
@@ -309,17 +295,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             value=True,
         )
         ipw.link((self, "expert_mode"), (self.expert_mode_control, "value"))
-
-        self._update_builder_parameters()
-
-        self.builder_parameters_view = ipw.HTML(layout=ipw.Layout(width="auto"))
-        ipw.dlink(
-            (self, "builder_parameters"),
-            (self.builder_parameters_view, "value"),
-            transform=lambda p: '<pre style="line-height: 100%">'
-            + pformat(p, indent=2, width=200)
-            + "</pre>",
-        )
 
         # The SSSP installation status widget shows the installation status of
         # the SSSP pseudo potentials and triggers the installation in case that
@@ -387,7 +362,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _show_alert_message(self, message, alert_class="info"):
         with self.message_area:
-            display(  # noqa
+            ipw.display(  # noqa
                 ipw.HTML(
                     self._ALERT_MESSAGE.format(alert_class=alert_class, message=message)
                 )
@@ -474,9 +449,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     @traitlets.observe("input_structure")
     def _observe_input_structure(self, change):
-        self.set_trait("builder_parameters", self._default_builder_parameters())
+        self.set_input_parameters(DEFAULT_PARAMETERS)
         self._update_state()
         self._set_num_mpi_tasks_to_default()
+
+    def _observe_kpoints_default(self, change):
+
+        protocol_kpoints_dict = {"fast": 0.5, "moderate": 0.15, "precise": 0.1}
+        self.kpoints_settings.kpoints_distance_default = protocol_kpoints_dict[
+            change["new"]
+        ]
 
     @traitlets.observe("process")
     def _observe_process(self, change):
@@ -486,48 +468,37 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.input_structure = process_node.inputs.structure
                 builder_parameters = process_node.get_extra("builder_parameters", None)
                 if builder_parameters is not None:
-                    self.set_trait("builder_parameters", builder_parameters)
+                    self.set_input_parameters(builder_parameters)
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
         self.submit()
 
-    def _setup_builder_parameters_update(self):
-        """Set up all ``observe`` calls to monitor changes in user inputs."""
-        update = self._update_builder_parameters  # alias for code conciseness
-        # Properties
-        self.workchain_settings.geo_opt_type.observe(update, ["value"])
-        self.workchain_settings.bands_run.observe(update, ["value"])
-        # Codes
-        self.codes_selector.pw.observe(update, ["selected_code"])
-        # Material settings
-        self.workchain_settings.observe(update, ["electronic_type"])
-        self.workchain_settings.observe(update, ["spin_type"])
-        # Calculation settings
-        self.workchain_settings.workchain_protocol.observe(update, ["value"])
-        self.kpoints_settings.observe(update, ["kpoints_distance"])
-        self.pseudo_family_selector.observe(update, ["value"])
+    def get_input_parameters(self):
+        """Get the builder parameters based on the GUI inputs."""
 
-    @staticmethod
-    def _serialize_builder_parameters(parameters):
-        parameters = parameters.copy()  # create copy to not modify original dict
+        parameters = dict(
+            # Work chain settings
+            relax_type=self.workchain_settings.relax_type.value,
+            electronic_type=self.workchain_settings.electronic_type.value,
+            spin_type=self.workchain_settings.spin_type.value,
+            run_bands=self.workchain_settings.bands_run.value,
+            protocol=self.workchain_settings.workchain_protocol.value,
+            # Codes
+            pw_code=self.codes_selector.pw.selected_code.uuid,
+            # Advanced settings
+            pseudo_family=self.pseudo_family_selector.value,
+        )
+        if not self.kpoints_settings.use_protocol_kpoints.value:
+            parameters[
+                "kpoints_distance_override"
+            ] = self.kpoints_settings.kpoints_distance.value
 
-        # Codes
-        def _get_uuid(code):
-            return None if code is None else str(code.uuid)
-
-        parameters["pw_code"] = _get_uuid(parameters["pw_code"])
-
-        # Protocol
-        parameters["electronic_type"] = parameters["electronic_type"].value
-        parameters["relax_type"] = parameters["relax_type"].value
-        parameters["spin_type"] = parameters["spin_type"].value
         return parameters
 
-    @staticmethod
-    def _deserialize_builder_parameters(parameters):
-        parameters = parameters.copy()  # create copy to not modify original dict
+    def set_input_parameters(self, parameters):
+        """Set the inputs in the GUI based on a set of parameters."""
 
         # Codes
         def _load_code(code):
@@ -538,68 +509,47 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     print("error", error)
                     return None
 
-        parameters["pw_code"] = _load_code(parameters["pw_code"])
-
-        # Protocol
-        parameters["electronic_type"] = ElectronicType(parameters["electronic_type"])
-        parameters["relax_type"] = RelaxType(parameters["relax_type"])
-        parameters["spin_type"] = SpinType(parameters["spin_type"])
-        return parameters
-
-    def _update_builder_parameters(self, _=None):
-        self.set_trait(
-            "builder_parameters",
-            self._serialize_builder_parameters(
-                dict(
-                    # Properties
-                    relax_type=RelaxType[self.workchain_settings.geo_opt_type.value],
-                    run_bands=self.workchain_settings.bands_run.value,
-                    # Codes
-                    pw_code=self.codes_selector.pw.selected_code,
-                    # Material settings
-                    electronic_type=self.workchain_settings.electronic_type,
-                    spin_type=self.workchain_settings.spin_type,
-                    # Calculation settings
-                    kpoints_distance_override=self.kpoints_settings.kpoints_distance,
-                    protocol=self.workchain_settings.workchain_protocol.value,
-                    pseudo_family=self.pseudo_family_selector.value,
-                )
-            ),
-        )
-
-    @traitlets.observe("builder_parameters")
-    def _observe_builder_parameters(self, change):
-        bp = self._deserialize_builder_parameters(change["new"])
-
         with self.hold_trait_notifications():
-            # Properties
-            relax_type = bp.get("relax_type", RelaxType["NONE"])
-            self.workchain_settings.geo_opt_type.value = relax_type.value.upper()
-            self.workchain_settings.bands_run.value = bp["run_bands"]
+            # Work chain settings
+            self.workchain_settings.relax_type.value = parameters["relax_type"]
+            self.workchain_settings.spin_type.value = parameters["spin_type"]
+            self.workchain_settings.electronic_type.value = parameters[
+                "electronic_type"
+            ]
+            self.workchain_settings.bands_run.value = parameters["run_bands"]
+            self.workchain_settings.workchain_protocol.value = parameters["protocol"]
             # Codes
-            self.codes_selector.pw.selected_code = bp.get("pw_code")
-            # Material settings
-            self.workchain_settings.spin_type = bp.get("spin_type", SpinType["NONE"])
-            self.workchain_settings.electronic_type = bp.get(
-                "electronic_type", ElectronicType["METAL"]
-            )
-            # Calculation settings
-            self.kpoints_settings.kpoints_distance = bp.get("kpoints_distance")
-            self.workchain_settings.workchain_protocol.value = bp["protocol"]
-            self.pseudo_family_selector.value = bp["pseudo_family"]
+            self.codes_selector.pw.selected_code = _load_code(parameters["pw_code"])
+            # Advanced settings
+            self.pseudo_family_selector.value = parameters["pseudo_family"]
+            if parameters.get("kpoints_distance_override", None) is not None:
+                self.kpoints_settings.kpoints_distance.value = parameters[
+                    "kpoints_distance_override"
+                ]
+                self.kpoints_settings.use_protocol_kpoints.value = False
 
     def submit(self, _=None):
 
         assert self.input_structure is not None
 
-        builder_parameters = self.builder_parameters.copy()
+        parameters = self.get_input_parameters()
 
-        run_bands = builder_parameters.pop("run_bands")
+        run_bands = parameters.pop("run_bands")
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            **self._deserialize_builder_parameters(builder_parameters),
+            pw_code=load_code(parameters["pw_code"]),
+            protocol=parameters["protocol"],
+            pseudo_family=parameters["pseudo_family"],
+            relax_type=RelaxType(parameters["relax_type"]),
+            spin_type=SpinType(parameters["spin_type"]),
+            electronic_type=ElectronicType(parameters["electronic_type"]),
         )
+
+        if "kpoints_distance_override" in parameters:
+            builder.kpoints_distance_override = Float(
+                parameters["kpoints_distance_override"]
+            )
 
         if not run_bands:
             builder.pop("bands")
@@ -608,17 +558,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         update_resources(builder, resources)
 
         self.process = submit(builder)
-        self.process.set_extra("builder_parameters", self.builder_parameters.copy())
+
+        # Set the builder parameters on the work chain
+        self.process.set_extra("builder_parameters", self.get_input_parameters())
 
     def reset(self):
         with self.hold_trait_notifications():
             self.process = None
             self.input_structure = None
-            self.builder_parameters = self._default_builder_parameters()
-
-    @traitlets.default("builder_parameters")
-    def _default_builder_parameters(self):
-        return DEFAULT_PARAMETERS
+            self.set_input_parameters(DEFAULT_PARAMETERS)
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):

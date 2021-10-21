@@ -34,7 +34,7 @@ def _generate_report_dict(qeapp_wc):
     run_pdos = builder_parameters.get("run_pdos", False)
 
     yield "relaxed", run_relax
-    yield "relax_method", builder_parameters["relax_type"].upper()
+    yield "relax_method", builder_parameters["relax_type"].title()
     yield "bands_computed", run_bands
     yield "pdos_computed", run_pdos
 
@@ -74,15 +74,20 @@ def _generate_report_dict(qeapp_wc):
     energy_cutoff_rho = None
     scf_kpoints_distance = None
     bands_kpoints_distance = None
+    try:
+        scf_kpoints_distance = qeapp_wc.inputs.kpoints_distance_override.value
+    except AttributeError:
+        scf_kpoints_distance = None
     nscf_kpoints_distance = None
 
     if run_relax:
         pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
-        scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
-
+        if scf_kpoints_distance is None:
+            scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
     if run_bands:
         pw_parameters = qeapp_wc.inputs.bands.scf.pw.parameters.get_dict()
-        scf_kpoints_distance = qeapp_wc.inputs.bands.scf.kpoints_distance.value
+        if scf_kpoints_distance is None:
+            scf_kpoints_distance = qeapp_wc.inputs.bands.scf.kpoints_distance.value
         bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
 
     if pw_parameters:
