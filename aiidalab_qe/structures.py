@@ -9,6 +9,13 @@ import ipywidgets as ipw
 import traitlets
 from aiidalab_widgets_base import WizardAppWidgetStep
 
+NON_3D_ERROR_MESSAGE = """<div class="alert alert-danger">
+<p><strong><i class="fa fa-bug" aria-hidden="true"></i>
+Structures that do not have three-dimensional periodic
+boundary conditions are currently not supported.
+</strong></p>
+</div>"""
+
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     """Integrated widget for the selection of structures from different sources."""
@@ -20,9 +27,10 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self.manager = manager
 
         if description is None:
-            description = ipw.Label(
-                "Select a structure from one of the following sources and then "
-                'click "Confirm" to go to the next step.'
+            description = ipw.HTML(
+                """
+            <p>Select a structure from one of the following sources and then click "Confirm" to go to the next step. </p><b>Important</b>: Currently only three-dimensional structures are supported.
+            """
             )
         self.description = description
 
@@ -42,6 +50,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             layout=ipw.Layout(width="auto"),
         )
         self.confirm_button.on_click(self.confirm)
+        self.message_area = ipw.HTML()
 
         # Create directional link from the (read-only) 'structure_node' traitlet of the
         # structure manager to our 'structure' traitlet:
@@ -53,6 +62,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.manager,
                 self.structure_name_text,
                 self.confirm_button,
+                self.message_area,
             ],
             **kwargs
         )
@@ -96,7 +106,11 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.manager.disabled = state is self.State.SUCCESS
 
     def confirm(self, _=None):
-        self.confirmed_structure = self.structure
+        if self.structure.pbc != (True, True, True):
+            self.message_area.value = NON_3D_ERROR_MESSAGE
+        else:
+            self.confirmed_structure = self.structure
+            self.message_area.value = ""
 
     def can_reset(self):
         return self.confirmed_structure is not None
