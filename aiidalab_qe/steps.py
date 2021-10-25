@@ -13,6 +13,7 @@ from aiida.engine import ProcessState, submit
 from aiida.orm import ProcessNode, WorkChainNode, load_code
 from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import (
     CodeDropdown,
     ProcessMonitor,
@@ -158,10 +159,10 @@ class KpointSettings(ipw.VBox):
 
     def __init__(self, **kwargs):
 
-        self.use_protocol_kpoints = ipw.Checkbox(
-            description="Use default k-points distance.",
+        self.override_protocol_kpoints = ipw.Checkbox(
+            description="Override default k-points distance.",
             indent=False,
-            value=True,
+            value=False,
         )
         self.kpoints_distance = ipw.FloatText(
             value=self.kpoints_distance_default,
@@ -171,17 +172,18 @@ class KpointSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self.use_protocol_kpoints, "value"),
+            (self.override_protocol_kpoints, "value"),
             (self.kpoints_distance, "disabled"),
+            lambda override: not override,
         )
         self.kpoints_distance.observe(self.set_kpoints_distance, "value")
-        self.use_protocol_kpoints.observe(self.set_kpoints_distance, "value")
-        self.set_kpoints_distance()
+        self.override_protocol_kpoints.observe(self.set_kpoints_distance, "value")
+        self.observe(self.set_kpoints_distance, "kpoints_distance_default")
 
         super().__init__(
             children=[
                 self.kpoints_distance_description,
-                ipw.HBox([self.use_protocol_kpoints, self.kpoints_distance]),
+                ipw.HBox([self.override_protocol_kpoints, self.kpoints_distance]),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
@@ -189,9 +191,9 @@ class KpointSettings(ipw.VBox):
 
     def set_kpoints_distance(self, _=None):
         self.kpoints_distance.value = (
-            self.kpoints_distance_default
-            if self.use_protocol_kpoints.value
-            else self.kpoints_distance.value
+            self.kpoints_distance.value
+            if self.override_protocol_kpoints.value
+            else self.kpoints_distance_default
         )
 
 
@@ -262,11 +264,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.codes_selector.pw.observe(
             self._set_num_mpi_tasks_to_default, "selected_code"
         )
-        self.workchain_settings.workchain_protocol.observe(
-            self._observe_kpoints_default, "value"
-        )
-        self.workchain_settings.workchain_protocol.observe(
-            self.kpoints_settings.set_kpoints_distance, "value"
+        ipw.dlink(
+            (self.workchain_settings.workchain_protocol, "value"),
+            (self.kpoints_settings, "kpoints_distance_default"),
+            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)[
+                "kpoints_distance"
+            ],
         )
 
         self.tab = ipw.Tab(
@@ -453,13 +456,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._update_state()
         self._set_num_mpi_tasks_to_default()
 
-    def _observe_kpoints_default(self, change):
-
-        protocol_kpoints_dict = {"fast": 0.5, "moderate": 0.15, "precise": 0.1}
-        self.kpoints_settings.kpoints_distance_default = protocol_kpoints_dict[
-            change["new"]
-        ]
-
     @traitlets.observe("process")
     def _observe_process(self, change):
         with self.hold_trait_notifications():
@@ -490,7 +486,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
-        if not self.kpoints_settings.use_protocol_kpoints.value:
+        if self.kpoints_settings.override_protocol_kpoints.value:
             parameters[
                 "kpoints_distance_override"
             ] = self.kpoints_settings.kpoints_distance.value
@@ -526,7 +522,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.kpoints_settings.kpoints_distance.value = parameters[
                     "kpoints_distance_override"
                 ]
-                self.kpoints_settings.use_protocol_kpoints.value = False
+                self.kpoints_settings.override_protocol_kpoints.value = True
 
     def submit(self, _=None):
 
