@@ -42,6 +42,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             layout=ipw.Layout(width="auto"),
         )
         self.confirm_button.on_click(self.confirm)
+        self.confirm_button.on_click(self.manager.store_structure)
 
         # Create directional link from the (read-only) 'structure_node' traitlet of the
         # structure manager to our 'structure' traitlet:
