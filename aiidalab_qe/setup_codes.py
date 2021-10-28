@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 from pathlib import Path
 from subprocess import run
 from threading import Thread
@@ -32,9 +31,6 @@ def qe_installed():
 
 
 def install_qe():
-    env = os.environ.copy()
-    env["PATH"] = f"{env['PATH']}:{Path.home().joinpath('.local', 'bin')}"
-
     run(
         [
             "conda",
