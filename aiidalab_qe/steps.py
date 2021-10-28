@@ -23,6 +23,7 @@ from aiidalab_widgets_base import (
 
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
+from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
 from aiidalab_qe.widgets import NodeViewWidget, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
@@ -311,12 +312,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # potentials are not yet installed.
         self.sssp_installation_status = SSSPInstallWidget()
         self.sssp_installation_status.observe(self._update_state, "installed")
+        self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
+
+        # The QE setup widget checks whether there are codes that match specific
+        # expected labels (e.g. "pw-6.7@localhost") and triggers both the
+        # installation of QE into a dedicated conda environment and the setup of
+        # the codes in case that they are not already configured.
+        self.qe_setup_status = QESetupWidget()
+        self.qe_setup_status.observe(self._update_state, "installed")
+        self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
 
         super().__init__(
             children=[
                 self.message_area,
                 self.tab,
                 self.sssp_installation_status,
+                self.qe_setup_status,
                 ipw.HBox([self.submit_button, self.expert_mode_control]),
             ]
         )
@@ -351,6 +362,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # PW code not selected.
         if (
             self.codes_selector.pw.selected_code is None
+            or not self.qe_setup_status.installed
             or not self.sssp_installation_status.installed
         ):
             return self.State.READY
@@ -367,6 +379,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _update_state(self, _=None):
         self.state = self._get_state()
+
+    def _toggle_install_widgets(self, change):
+        if change["new"]:
+            self.children = [
+                child for child in self.children if child is not change["owner"]
+            ]
 
     _ALERT_MESSAGE = """
         <div class="alert alert-{alert_class} alert-dismissible">
