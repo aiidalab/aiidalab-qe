@@ -163,7 +163,7 @@ class QESetupWidget(ProgressBar):
                 self.set_message("installing...")
                 self.value = self.AnimationRate(0.01)
                 with FileLock(FN_LOCKFILE, timeout=120):
-                    self.installed = qe_installed() and codes_are_setup()
+                    self.installed = codes_are_setup()
 
             # Raise error in case that the installation was not successful
             # either in this process or a different one.
