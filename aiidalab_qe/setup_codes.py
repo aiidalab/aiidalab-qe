@@ -78,6 +78,8 @@ def _setup_code(code_name, computer_name="localhost"):
                 f"quantumespresso.{code_name}",
                 "--computer",
                 computer_name,
+                "--prepend-text",
+                f"conda activate {CONDA_ENV_PREFIX}",
                 "--remote-abs-path",
                 CONDA_ENV_PREFIX.joinpath("bin", f"{code_name}.x"),
             ],
