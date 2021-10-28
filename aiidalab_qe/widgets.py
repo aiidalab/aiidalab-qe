@@ -138,6 +138,30 @@ class DownloadButton(ipw.Button):
         )
 
 
+class FilenameDisplayWidget(ipw.Box):
+
+    value = traitlets.Unicode()
+
+    def __init__(self, max_width=None, **kwargs):
+        self.max_width = max_width
+        self._html = ipw.HTML()
+        super().__init__([self._html], **kwargs)
+
+    @traitlets.observe("value")
+    def _observe_filename(self, change):
+        icon = '<i class="fa fa-file-text-o" aria-hidden="true"></i>'
+        width_style = f"width:{self.max_width};" if self.max_width else ""
+        self._html.value = f"""
+        <div style="
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            {width_style}">
+            {icon} {change['new']}
+        </div>
+        """
+
+
 class LogOutputWidget(ipw.HBox):
 
     filename = traitlets.Unicode()
@@ -153,12 +177,14 @@ class LogOutputWidget(ipw.HBox):
             lambda value: value or self.placeholder or "",
         )
 
-        self._filename_text = ipw.Text(
-            description="Filename:",
-            disabled=True,
-            layout=ipw.Layout(width="auto"),
+        self._filename_display = FilenameDisplayWidget(
+            layout=ipw.Layout(width="auto"), max_width="50em"
         )
-        ipw.dlink((self, "filename"), (self._filename_text, "value"))
+        ipw.dlink(
+            (self, "filename"),
+            (self._filename_display, "value"),
+            lambda value: value or "[no filename]",
+        )
 
         self._btn_download = DownloadButton(
             layout=ipw.Layout(width="30px", flex="5 1 auto"),
@@ -197,7 +223,7 @@ class LogOutputWidget(ipw.HBox):
         )
 
         super().__init__(
-            [ipw.VBox([self._filename_text, self._rolling_output]), self._btns],
+            [ipw.VBox([self._filename_display, self._rolling_output]), self._btns],
             **kwargs,
         )
 
