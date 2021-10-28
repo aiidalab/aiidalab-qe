@@ -36,6 +36,8 @@ def install_qe():
             "conda",
             "create",
             "--yes",
+            "--channel",
+            "conda-forge",
             "--prefix",
             str(CONDA_ENV_PREFIX),
             f"qe={QE_VERSION}",
