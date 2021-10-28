@@ -51,12 +51,7 @@ def install_qe():
 
 def _code_is_setup(name):
     try:
-        code = load_code(f"{name}-{QE_VERSION}@localhost")
-        if (
-            Path(code.get_remote_exec_path()).resolve()
-            != CONDA_ENV_PREFIX.joinpath("bin", f"{name}.x").resolve()
-        ):
-            raise RuntimeError(f"Code {code} is already setup, but the paths differs!")
+        load_code(f"{name}-{QE_VERSION}@localhost")
     except NotExistent:
         return False
     else:
