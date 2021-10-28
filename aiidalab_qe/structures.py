@@ -92,7 +92,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             else:
                 self.state = self.State.SUCCESS
         else:
-            if self.confirmed_structure is None:
+            if self.structure.pbc != (True, True, True):
+                self.state = self.State.READY
+            elif self.confirmed_structure is None:
                 self.state = self.State.CONFIGURED
             else:
                 self.state = self.State.SUCCESS
@@ -106,13 +108,10 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.message_area.value = ""
             else:
                 self.structure_name_text.value = str(self.structure.get_formula())
-
                 if self.structure.pbc != (True, True, True):
                     self.message_area.value = NON_3D_ERROR_MESSAGE
-                    self.state = self.State.READY
-                    return
                 else:
-                    struc_dimension = self.get_structure_dimensionality()
+                    struc_dimension = self._get_structure_dimensionality()
                     if struc_dimension != 3:
                         self.message_area.value = NON_3D_WARNING.format(
                             dimension=struc_dimension
@@ -143,7 +142,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def reset(self):  # unconfirm
         self.confirmed_structure = None
 
-    def get_structure_dimensionality(self):
+    def _get_structure_dimensionality(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             return get_dimensionality_larsen(
