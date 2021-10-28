@@ -96,6 +96,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.manager.disabled = state is self.State.SUCCESS
 
     def confirm(self, _=None):
+        self.manager.store_structure()
         self.confirmed_structure = self.structure
 
     def can_reset(self):
