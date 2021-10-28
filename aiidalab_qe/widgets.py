@@ -162,7 +162,7 @@ class FilenameDisplayWidget(ipw.Box):
         """
 
 
-class LogOutputWidget(ipw.HBox):
+class LogOutputWidget(ipw.VBox):
 
     filename = traitlets.Unicode()
     value = traitlets.Unicode()
@@ -178,7 +178,7 @@ class LogOutputWidget(ipw.HBox):
         )
 
         self._filename_display = FilenameDisplayWidget(
-            layout=ipw.Layout(width="auto"), max_width="50em"
+            layout=ipw.Layout(width="auto"), max_width="55em"
         )
         ipw.dlink(
             (self, "filename"),
@@ -223,7 +223,10 @@ class LogOutputWidget(ipw.HBox):
         )
 
         super().__init__(
-            [ipw.VBox([self._filename_display, self._rolling_output]), self._btns],
+            [
+                self._filename_display,
+                ipw.HBox([self._rolling_output, self._btns]),
+            ],
             **kwargs,
         )
 
