@@ -23,28 +23,27 @@ EXPECTED_PSEUDOS = {
 FN_LOCKFILE = Path.home().joinpath(".install-sssp.lock")
 
 
-def pseudos_are_installed():
+def pseudos_to_install():
     qb = QueryBuilder()
-    qb.append(PseudoPotentialFamily, filters={"label": {"like": "SSSP/%"}})
-    labels = {group.label for group, in qb.iterall()}
-    return labels == EXPECTED_PSEUDOS
+    qb.append(
+        PseudoPotentialFamily, filters={"label": {"like": "SSSP/%"}}, project="label"
+    )
+    labels = set(qb.all(flat=True))
+    return EXPECTED_PSEUDOS - labels
 
 
-def _install_pseudos():
+def _install_pseudos(pseudo_set):
     env = os.environ.copy()
     env["PATH"] = f"{env['PATH']}:{Path.home().joinpath('.local', 'bin')}"
 
     def run_(*args, **kwargs):
         return run(*args, env=env, capture_output=True, check=True, **kwargs)
 
-    yield 0.1
-    run_(["aiida-pseudo", "install", "sssp", "-x", "PBE", "-p", "efficiency"])
-    yield 0.25
-    run_(["aiida-pseudo", "install", "sssp", "-x", "PBE", "-p", "precision"])
-    yield 0.5
-    run_(["aiida-pseudo", "install", "sssp", "-x", "PBEsol", "-p", "efficiency"])
-    yield 0.75
-    run_(["aiida-pseudo", "install", "sssp", "-x", "PBEsol", "-p", "precision"])
+    mult = 1 / len(pseudo_set)
+    for i, pseudo in enumerate(pseudo_set):
+        yield mult * i
+        p_family, p_version, p_func, p_type = pseudo.split("/")
+        run_(["aiida-pseudo", "install", p_family.lower(), "-x", p_func, "-p", p_type])
 
 
 class SSSPInstallWidget(ProgressBar):
@@ -76,19 +75,19 @@ class SSSPInstallWidget(ProgressBar):
             self.set_trait("busy", True)
             try:
                 with FileLock(FN_LOCKFILE, timeout=5):
-                    self.installed = pseudos_are_installed()
+                    self.installed = not bool(pseudos_to_install())
                     if not self.installed:
                         self.set_message("installing...")
-                        for progress in _install_pseudos():
+                        for progress in _install_pseudos(pseudos_to_install()):
                             self.value = progress
-                        self.installed = pseudos_are_installed()
+                        self.installed = not bool(pseudos_to_install())
 
             except Timeout:
                 # assume that the installation was triggered by a different process
                 self.set_message("installing...")
                 self.value = self.AnimationRate(0.01)
                 with FileLock(FN_LOCKFILE, timeout=120):
-                    self.installed = pseudos_are_installed()
+                    self.installed = not bool(pseudos_to_install())
 
             # Raise error in case that the installation was not successful
             # either in this process or a different one.
