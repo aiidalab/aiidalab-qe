@@ -418,6 +418,10 @@ class ResourceSelectionWidget(ipw.VBox):
 
 class ProgressBar(ipw.HBox):
     class AnimationRate(float):
+        def __init__(self, rate, max=1.0):
+            self.rate = rate
+            self.max = max
+
         def __eq__(self, other):
             return type(self) == type(other) and super().__eq__(other)
 
@@ -445,11 +449,15 @@ class ProgressBar(ipw.HBox):
         super().__init__([self._label, self._progress_bar], *args, **kwargs)
 
     def _animate(self, refresh_rate=0.01):
+
         v0 = self._progress_bar.value
         t0 = time()
 
         while not self._animate_stop_event.wait(refresh_rate):
-            self._progress_bar.value = (v0 + (time() - t0) * self._animation_rate) % 1.0
+            self._progress_bar.value = min(
+                self._animation_rate.max,
+                (v0 + (time() - t0) * self._animation_rate.rate) % 1.0,
+            )
 
     def _start_animate(self):
         if self._animate_thread is not None:
