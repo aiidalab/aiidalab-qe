@@ -100,7 +100,7 @@ class DownloadButton(ipw.Button):
     payload = traitlets.Bytes()
 
     def __init__(self, **kwargs):
-        super(DownloadButton, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.on_click(self.__on_click)
 
     @traitlets.default("icon")
