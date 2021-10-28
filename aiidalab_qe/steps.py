@@ -252,7 +252,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def __init__(self, **kwargs):
         self.message_area = ipw.Output()
+
         self.workchain_settings = WorkChainSettings()
+        self.workchain_settings.relax_type.observe(self._update_state, "value")
+        self.workchain_settings.bands_run.observe(self._update_state, "value")
+
         self.kpoints_settings = KpointSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
         self.codes_selector = CodeSettings()
@@ -351,7 +355,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ):
             return self.State.READY
 
-        return self.State.CONFIGURED
+        # Final return checks whether we would actually run *any* calculations.
+        return (
+            self.state.CONFIGURED
+            if (
+                self.workchain_settings.relax_type.value != "none"
+                or self.workchain_settings.bands_run.value
+            )
+            else self.state.READY
+        )
 
     def _update_state(self, _=None):
         self.state = self._get_state()
