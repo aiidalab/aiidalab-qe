@@ -4,10 +4,28 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
+import warnings
+
 import aiida
 import ipywidgets as ipw
 import traitlets
 from aiidalab_widgets_base import WizardAppWidgetStep
+from pymatgen.analysis.dimensionality import get_dimensionality_larsen
+from pymatgen.analysis.local_env import CrystalNN
+
+NON_3D_ERROR_MESSAGE = """<div class="alert alert-danger">
+<p><strong><i class="fa fa-exclamation-circle" aria-hidden="true"></i>
+Structures that do not have three-dimensional periodic boundary conditions are currently
+not supported.
+</strong></p>
+</div>"""
+
+NON_3D_WARNING = """<div class="alert alert-warning">
+<p><strong><i class="fa fa-exclamation-circle" aria-hidden="true"></i>
+Warning: {dimension}D structure detected. Note that currently only three-dimensional
+structures are supported.
+</strong></p>
+</div>"""
 
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
@@ -20,9 +38,13 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self.manager = manager
 
         if description is None:
-            description = ipw.Label(
-                "Select a structure from one of the following sources and then "
-                'click "Confirm" to go to the next step.'
+            description = ipw.HTML(
+                """
+                <p>Select a structure from one of the following sources and then click
+                "Confirm" to go to the next step. </p><i class="fa fa-exclamation-circle"
+                aria-hidden="true"></i> Currently only three-dimensional structures are
+                supported.
+                """
             )
         self.description = description
 
@@ -42,6 +64,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             layout=ipw.Layout(width="auto"),
         )
         self.confirm_button.on_click(self.confirm)
+        self.message_area = ipw.HTML()
 
         # Create directional link from the (read-only) 'structure_node' traitlet of the
         # structure manager to our 'structure' traitlet:
@@ -53,6 +76,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.manager,
                 self.structure_name_text,
                 self.confirm_button,
+                self.message_area,
             ],
             **kwargs
         )
@@ -68,7 +92,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             else:
                 self.state = self.State.SUCCESS
         else:
-            if self.confirmed_structure is None:
+            if self.structure.pbc != (True, True, True):
+                self.state = self.State.READY
+            elif self.confirmed_structure is None:
                 self.state = self.State.CONFIGURED
             else:
                 self.state = self.State.SUCCESS
@@ -79,8 +105,19 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             if structure is None:
                 self.structure_name_text.value = ""
+                self.message_area.value = ""
             else:
                 self.structure_name_text.value = str(self.structure.get_formula())
+                if self.structure.pbc != (True, True, True):
+                    self.message_area.value = NON_3D_ERROR_MESSAGE
+                else:
+                    struc_dimension = self._get_structure_dimensionality()
+                    if struc_dimension != 3:
+                        self.message_area.value = NON_3D_WARNING.format(
+                            dimension=struc_dimension
+                        )
+                    else:
+                        self.message_area.value = ""
             self._update_state()
 
     @traitlets.observe("confirmed_structure")
@@ -98,9 +135,17 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def confirm(self, _=None):
         self.manager.store_structure()
         self.confirmed_structure = self.structure
+        self.message_area.value = ""
 
     def can_reset(self):
         return self.confirmed_structure is not None
 
     def reset(self):  # unconfirm
         self.confirmed_structure = None
+
+    def _get_structure_dimensionality(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return get_dimensionality_larsen(
+                CrystalNN().get_bonded_structure(self.structure.get_pymatgen())
+            )
