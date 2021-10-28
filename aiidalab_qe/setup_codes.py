@@ -36,6 +36,7 @@ def install_qe():
             "conda",
             "create",
             "--yes",
+            "--override-channels",
             "--channel",
             "conda-forge",
             "--prefix",
