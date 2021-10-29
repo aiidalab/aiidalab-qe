@@ -220,7 +220,7 @@ class CodeSettings(ipw.VBox):
             setup_code_params={
                 "computer": "localhost",
                 "description": "pw.x in AiiDAlab container.",
-                "label": "pw",
+                "label": "pw-6.7",
                 "input_plugin": "quantumespresso.pw",
                 "remote_abs_path": "/usr/bin/pw.x",
             },
@@ -321,6 +321,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.qe_setup_status = QESetupWidget()
         self.qe_setup_status.observe(self._update_state, "installed")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
+        self.qe_setup_status.observe(self._auto_select_code, "installed")
 
         super().__init__(
             children=[
@@ -385,6 +386,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.children = [
                 child for child in self.children if child is not change["owner"]
             ]
+
+    def _auto_select_code(self, change):
+        print("auto selecting code", change)
+        if change["new"] and not change["old"]:
+            self.codes_selector.pw.refresh()
+            try:
+                print(self.codes_selector.pw.selected_code)
+                print(load_code(parameters["pw_code"]))
+                self.codes_selector.pw.selected_code = load_code(parameters["pw_code"])
+            except NotExistent:
+                pass
 
     _ALERT_MESSAGE = """
         <div class="alert alert-{alert_class} alert-dismissible">
@@ -532,7 +544,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 try:
                     return load_code(code)
                 except NotExistent as error:
-                    print("error", error)
                     return None
 
         with self.hold_trait_notifications():
