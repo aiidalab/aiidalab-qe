@@ -3,40 +3,73 @@
     --lab-background: #d3ecff;
 }
 
-table {
-    font-family: arial, sans-serif;
-    border-collapse: collapse;
-    border:1px solid #bbbbbb;
-    width: 100%;
-}
 h3 {
     margin-top: 0px;
 }
+
+/* Tables */
+
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    border: 1px solid #bbbbbb;
+    width: 100%;
+}
+
 td, tr {
     border-left: 2px solid var(--lab-blue);
     text-align: left;
     padding: 8px;
 }
+
 tr {
     background-color: var(--lab-background);
 }
+
 tr:nth-child(even) {
     background-color: #ffffff;
 }
+
 td:nth-child(even) {
     border-left: 0px;
 }
-/* Create two equal columns that floats next to each other */
-.column {
-  float: left;
-  width: 50%;
-  padding: 10px;
-  height: 300px; /* Should be removed. Only for demonstration */
+
+.row:after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
-/* Clear floats after the columns */
-.row:after {
-  content: "";
-  display: table;
-  clear: both;
+.column {
+    float: left;
+    width: 50%;
+    padding: 10px;
+}
+
+/* Error details */
+
+.error-container {
+    margin: 10px;
+}
+
+.error {
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    padding: .5em .5em 0;
+    width: 750px;
+}
+
+.summary {
+    font-weight: bold;
+    margin: -.5em -.5em 0;
+    padding: .5em
+}
+
+.code-holder {
+    overflow-x: scroll;
+}
+
+.code-holder code {
+    background: inherit;
+    white-space: pre;
 }
