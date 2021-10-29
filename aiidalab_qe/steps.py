@@ -250,9 +250,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     process = traitlets.Instance(WorkChainNode, allow_none=True)
     disabled = traitlets.Bool()
     expert_mode = traitlets.Bool()
+    _submission_blockers = traitlets.List(traitlets.Unicode)
 
     def __init__(self, **kwargs):
         self.message_area = ipw.Output()
+        self._submission_blocker_messages = ipw.HTML()
 
         self.workchain_settings = WorkChainSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
@@ -311,7 +313,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # by the start up scripts.  The submission is blocked while the
         # potentials are not yet installed.
         self.sssp_installation_status = SSSPInstallWidget()
-        self.sssp_installation_status.observe(self._update_state, "installed")
+        self.sssp_installation_status.observe(self._update_state, ["busy", "installed"])
         self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
 
         # The QE setup widget checks whether there are codes that match specific
@@ -319,7 +321,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # installation of QE into a dedicated conda environment and the setup of
         # the codes in case that they are not already configured.
         self.qe_setup_status = QESetupWidget()
-        self.qe_setup_status.observe(self._update_state, "installed")
+        self.qe_setup_status.observe(self._update_state, "busy")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
         self.qe_setup_status.observe(self._auto_select_code, "installed")
 
@@ -329,6 +331,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.tab,
                 self.sssp_installation_status,
                 self.qe_setup_status,
+                self._submission_blocker_messages,
                 ipw.HBox([self.submit_button, self.expert_mode_control]),
             ]
         )
@@ -350,33 +353,70 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.workchain_settings,
             ]
 
-    def _get_state(self):
+    @traitlets.observe("_submission_blockers")
+    def _observe_submission_blockers(self, change):
+        if change["new"]:
+            fmt_list = "\n".join((f"<li>{item}</li>" for item in sorted(change["new"])))
+            self._submission_blocker_messages.value = f"""
+                <div class="alert alert-info">
+                <strong>The submission is blocked, due to the following reason(s):</strong>
+                <ul>{fmt_list}</ul></div>"""
+        else:
+            self._submission_blocker_messages.value = ""
 
+    def _identify_submission_blockers(self):
+        # No input structure specified.
+        if self.input_structure is None:
+            yield "No structure selected."
+
+        # Do not submit while any of the background setup processes are running.
+        if self.qe_setup_status.busy or self.sssp_installation_status.busy:
+            yield "Background setup processes must finish."
+
+        # No code selected (this is ignored while the setup process is running).
+        if (
+            self.codes_selector.pw.selected_code is None
+            and not self.qe_setup_status.busy
+        ):
+            yield (
+                'No code selected. Go to "Expert mode" and then "Codes & '
+                'Resources" to select a code.'
+            )
+
+        # SSSP library not installed
+        if not self.sssp_installation_status.installed:
+            yield "The SSSP library is not installed."
+
+        # Would not actually run anything
+        if not (
+            self.workchain_settings.relax_type.value != "none"
+            or self.workchain_settings.bands_run.value
+        ):
+            yield (
+                "The configured work chain would not actually compute anything. "
+                "Select either a structure relaxation method or the bands "
+                "calculation or both."
+            )
+
+    def _get_state(self):
         # Process is already running.
         if self.process is not None:
             return self.State.SUCCESS
 
         # Input structure not specified.
         if self.input_structure is None:
+            self._submission_blockers = ["No structure selected."]
+            # This blocker is handled differently than the other blockers,
+            # because it is displayed as INIT state.
             return self.State.INIT
 
-        # PW code not selected.
-        if (
-            self.codes_selector.pw.selected_code is None
-            or not self.qe_setup_status.installed
-            or not self.sssp_installation_status.installed
-        ):
+        blockers = list(self._identify_submission_blockers())
+        if any(blockers):
+            self._submission_blockers = blockers
             return self.State.READY
-
-        # Final return checks whether we would actually run *any* calculations.
-        return (
-            self.state.CONFIGURED
-            if (
-                self.workchain_settings.relax_type.value != "none"
-                or self.workchain_settings.bands_run.value
-            )
-            else self.state.READY
-        )
+        else:
+            self._submission_blockers = []
+            return self.state.CONFIGURED
 
     def _update_state(self, _=None):
         self.state = self._get_state()
