@@ -25,7 +25,11 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
-from aiidalab_qe.widgets import NodeViewWidget, ResourceSelectionWidget
+from aiidalab_qe.widgets import (
+    NodeViewWidget,
+    ResourceSelectionWidget,
+    WorkChainReportWidget,
+)
 from aiidalab_qe_workchain import QeAppWorkChain
 
 StructureData = DataFactory("structure")
@@ -651,6 +655,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def __init__(self, **kwargs):
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink((self, "process"), (self.process_tree, "process"))
+        self.work_chain_report = WorkChainReportWidget()
+        ipw.dlink((self, "process"), (self.work_chain_report, "process"))
 
         self.node_view = NodeViewWidget(layout={"width": "auto", "height": "auto"})
         ipw.dlink(
@@ -658,13 +664,16 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             (self.node_view, "node"),
             transform=lambda nodes: nodes[0] if nodes else None,
         )
-        self.process_status = ipw.VBox(children=[self.process_tree, self.node_view])
+        self.process_status = ipw.VBox(
+            children=[self.process_tree, self.work_chain_report, self.node_view]
+        )
 
         # Setup process monitor
         self.process_monitor = ProcessMonitor(
             timeout=0.2,
             callbacks=[
                 self.process_tree.update,
+                self.work_chain_report.update,
                 self._update_state,
             ],
         )

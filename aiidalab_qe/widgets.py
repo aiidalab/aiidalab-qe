@@ -14,7 +14,8 @@ from time import time
 
 import ipywidgets as ipw
 import traitlets
-from aiida.orm import CalcJobNode, Node
+from aiida.cmdline.utils.common import get_workchain_report
+from aiida.orm import CalcJobNode, Node, WorkChainNode
 from aiidalab_widgets_base import register_viewer_widget, viewer
 from IPython.display import HTML, Javascript, clear_output, display
 
@@ -493,3 +494,19 @@ class ProgressBar(ipw.HBox):
         else:
             self._animation_rate = 0
             self._progress_bar.value = change["new"]
+
+
+class WorkChainReportWidget(ipw.VBox):
+
+    process = traitlets.Instance(WorkChainNode, allow_none=True)
+
+    def __init__(self, **kwargs):
+        self._report = ipw.HTML()
+
+        super().__init__([self._report], **kwargs)
+
+    @traitlets.observe("process")
+    def update(self, _=None):
+        """The update function is designed to be used as callback for ProcessMonitor."""
+        report = get_workchain_report(self.process, "REPORT")
+        self._report.value = f"""<pre>{report}</pre>"""
