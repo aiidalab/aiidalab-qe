@@ -418,8 +418,7 @@ class ResourceSelectionWidget(ipw.VBox):
 
 class ProgressBar(ipw.HBox):
     class AnimationRate(float):
-        def __eq__(self, other):
-            return type(self) == type(other) and super().__eq__(other)
+        pass
 
     description = traitlets.Unicode()
     value = traitlets.Union([traitlets.Float(), traitlets.Instance(AnimationRate)])
@@ -445,6 +444,7 @@ class ProgressBar(ipw.HBox):
         super().__init__([self._label, self._progress_bar], *args, **kwargs)
 
     def _animate(self, refresh_rate=0.01):
+
         v0 = self._progress_bar.value
         t0 = time()
 

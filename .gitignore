@@ -6,3 +6,4 @@
 .ipynb*
 build/
 export/
+.do-not-setup-on-localhost
