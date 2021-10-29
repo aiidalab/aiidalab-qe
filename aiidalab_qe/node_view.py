@@ -206,6 +206,9 @@ class SummaryView(ipw.VBox):
 
 
 class WorkChainOutputs(ipw.VBox):
+
+    _busy = traitlets.Bool(read_only=True)
+
     def __init__(self, node, export_dir=None, **kwargs):
         self.export_dir = Path.cwd().joinpath("exports")
 
@@ -214,12 +217,18 @@ class WorkChainOutputs(ipw.VBox):
 
         self.node = node
 
-        download_button = ipw.Button(
-            description="Download calculation files",
-            icon="download",
-            layout=ipw.Layout(width="200px"),
+        self._create_archive_indicator = ipw.HTML(
+            """<button disabled>
+                <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+                    Creating archive...
+            </button>"""
         )
-        download_button.on_click(self._download_archive)
+        self._download_archive_button = ipw.Button(
+            description="Download output",
+            icon="download",
+        )
+        self._download_archive_button.on_click(self._download_archive)
+        self._download_button_container = ipw.Box([self._download_archive_button])
 
         if node.exit_status != 0:
 
@@ -244,7 +253,7 @@ class WorkChainOutputs(ipw.VBox):
         super().__init__(
             children=[
                 ipw.HBox(
-                    children=[title, download_button],
+                    children=[title, self._download_button_container],
                     layout=ipw.Layout(justify_content="space-between", margin="10px"),
                 ),
                 output,
@@ -252,12 +261,25 @@ class WorkChainOutputs(ipw.VBox):
             **kwargs,
         )
 
+    @traitlets.default("_busy")
+    def _default_busy(self):
+        return False
+
+    @traitlets.observe("_busy")
+    def _observe_busy(self, change):
+        self._download_button_container.children = [
+            self._create_archive_indicator
+            if change["new"]
+            else self._download_archive_button
+        ]
+
     def _download_archive(self, _):
 
         fn_archive = self.export_dir.joinpath(str(self.node.uuid)).with_suffix(".zip")
         fn_lockfile = fn_archive.with_suffix(".lock")
 
         try:
+            self.set_trait("_busy", True)
             # Create exports archive directory.
             fn_archive.parent.mkdir(parents=True, exist_ok=True)
             # Try to obtain lock for creating archive...
@@ -273,6 +295,8 @@ class WorkChainOutputs(ipw.VBox):
             # Failed to obtain lock, presuming some other process is working on it.
             with FileLock(fn_lockfile, timeout=20):
                 assert fn_archive.is_file()
+        finally:
+            self.set_trait("_busy", False)
 
         id = f"dl_{self.node.uuid}"
 
