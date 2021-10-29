@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
 from shutil import which
-from subprocess import run, CalledProcessError
+from subprocess import CalledProcessError, run
 from threading import Thread
 
 import ipywidgets as ipw

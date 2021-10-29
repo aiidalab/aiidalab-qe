@@ -388,12 +388,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ]
 
     def _auto_select_code(self, change):
-        print("auto selecting code", change)
         if change["new"] and not change["old"]:
+            parameters = self.get_input_parameters()
             self.codes_selector.pw.refresh()
             try:
-                print(self.codes_selector.pw.selected_code)
-                print(load_code(parameters["pw_code"]))
                 self.codes_selector.pw.selected_code = load_code(parameters["pw_code"])
             except NotExistent:
                 pass
@@ -543,7 +541,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             if code is not None:
                 try:
                     return load_code(code)
-                except NotExistent as error:
+                except NotExistent:
                     return None
 
         with self.hold_trait_notifications():
