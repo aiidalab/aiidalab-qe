@@ -20,6 +20,7 @@ from aiidalab_widgets_base import (
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
 )
+from IPython.display import display
 
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
@@ -445,7 +446,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _show_alert_message(self, message, alert_class="info"):
         with self.message_area:
-            ipw.display(  # noqa
+            display(
                 ipw.HTML(
                     self._ALERT_MESSAGE.format(alert_class=alert_class, message=message)
                 )
