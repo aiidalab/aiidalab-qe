@@ -75,8 +75,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.description,
                 self.manager,
                 self.structure_name_text,
-                self.confirm_button,
                 self.message_area,
+                self.confirm_button,
             ],
             **kwargs
         )
