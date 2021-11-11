@@ -73,19 +73,27 @@ def _generate_report_dict(qeapp_wc):
     energy_cutoff_wfc = None
     energy_cutoff_rho = None
     degauss = None
-    smearing_type = None
+    smearing = None
     scf_kpoints_distance = None
     bands_kpoints_distance = None
-    try: 
-        degauss = qeapp_wc.inputs.degauss_override.value
-    except AttributeError:
-        degauss = None
 
     try:
-        scf_kpoints_distance = qeapp_wc.inputs.degauss_override.value
+        scf_kpoints_distance = qeapp_wc.inputs.kpoints_distance_override.value
     except AttributeError:
         scf_kpoints_distance = None
     nscf_kpoints_distance = None
+
+    try:
+        degauss = qeapp_wc.inputs.degauss_override.value
+    except AttributeError:
+        # read default from protocol
+        degauss = 0.01
+
+    try:
+        smearing = qeapp_wc.inputs.smearing_override.value
+    except AttributeError:
+        # read default from protocol
+        smearing = "cold"
 
     if run_relax:
         pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
@@ -102,13 +110,11 @@ def _generate_report_dict(qeapp_wc):
     if pw_parameters:
         energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
         energy_cutoff_rho = round(pw_parameters["SYSTEM"]["ecutrho"])
-        degauss = pw_parameters["SYSTEM"]["degauss"]
-        smearing_type = pw_parameters["SYSTEM"]["smearing"]
 
     yield "energy_cutoff_wfc", energy_cutoff_wfc
     yield "energy_cutoff_rho", energy_cutoff_rho
     yield "degauss", degauss
-    yield "smearing_type", smearing_type
+    yield "smearing", smearing
     yield "scf_kpoints_distance", scf_kpoints_distance
     yield "bands_kpoints_distance", bands_kpoints_distance
     yield "nscf_kpoints_distance", nscf_kpoints_distance
