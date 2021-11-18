@@ -152,6 +152,7 @@ class KpointSettings(ipw.VBox):
     kpoints_distance_description = ipw.HTML(
         """<p>
         The k-points mesh density is set by the chosen <b>protocol</b>.
+        The value below represents the maximum distance between the k-points in each direction of reciprocal space.
         Untick the box to override the default.
     </p>"""
     )
