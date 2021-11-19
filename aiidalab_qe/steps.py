@@ -121,6 +121,15 @@ class WorkChainSettings(ipw.VBox):
             layout=ipw.Layout(max_width="10%"),
         )
 
+        # Checkbox to see if the PDOS should be calculated
+        self.pdos_run = ipw.Checkbox(
+            description="",
+            tooltip="Calculate the electronic PDOS.",
+            indent=False,
+            value=True,
+            layout=ipw.Layout(max_width="10%"),
+        )
+
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
@@ -137,6 +146,12 @@ class WorkChainSettings(ipw.VBox):
                 self.properties_title,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
+                ipw.HBox(
+                    children=[
+                        ipw.HTML("<b>Projected density of states</b>"),
+                        self.pdos_run,
+                    ]
+                ),
                 self.properties_help,
                 self.protocol_title,
                 ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
@@ -227,11 +242,35 @@ class CodeSettings(ipw.VBox):
                 "remote_abs_path": "/usr/bin/pw.x",
             },
         )
+        self.dos = CodeDropdown(
+            input_plugin="quantumespresso.dos",
+            description="dos.x:",
+            setup_code_params={
+                "computer": "localhost",
+                "description": "dos.x in AiiDAlab container.",
+                "label": "dos-6.7",
+                "input_plugin": "quantumespresso.dos",
+                "remote_abs_path": "/usr/bin/dos.x",
+            },
+        )
+        self.projwfc = CodeDropdown(
+            input_plugin="quantumespresso.projwfc",
+            description="projwfc.x:",
+            setup_code_params={
+                "computer": "localhost",
+                "description": "projwfc.x in AiiDAlab container.",
+                "label": "projwfc-6.7",
+                "input_plugin": "quantumespresso.projwfc",
+                "remote_abs_path": "/usr/bin/projwfc.x",
+            },
+        )
         super().__init__(
             children=[
                 self.codes_title,
                 self.codes_help,
                 self.pw,
+                self.dos,
+                self.projwfc,
             ],
             **kwargs,
         )
@@ -261,6 +300,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_settings = WorkChainSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
         self.workchain_settings.bands_run.observe(self._update_state, "value")
+        self.workchain_settings.pdos_run.observe(self._update_state, "value")
 
         self.kpoints_settings = KpointSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
@@ -273,6 +313,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.codes_selector.pw.observe(
             self._set_num_mpi_tasks_to_default, "selected_code"
         )
+        self.codes_selector.dos.observe(self._update_state, "selected_code")
+        self.codes_selector.projwfc.observe(self._update_state, "selected_code")
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
             (self.kpoints_settings, "kpoints_distance_default"),
@@ -381,7 +423,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             and not self.qe_setup_status.busy
         ):
             yield (
-                'No code selected. Go to "Expert mode" and then "Codes & '
+                'No pw code selected. Go to "Expert mode" and then "Codes & '
+                'Resources" to select a code.'
+            )
+
+        # No code selected for pdos (this is ignored while the setup process is running).
+        if (
+            self.workchain_settings.pdos_run.value
+            and (
+                self.codes_selector.dos.selected_code is None
+                or self.codes_selector.projwfc.selected_code is None
+            )
+            and not self.qe_setup_status.busy
+        ):
+            yield (
+                'No code selected to run PDOS. Go to "Expert mode" and then "Codes & '
                 'Resources" to select a code.'
             )
 
@@ -393,11 +449,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if not (
             self.workchain_settings.relax_type.value != "none"
             or self.workchain_settings.bands_run.value
+            or self.workchain_settings.pdos_run.value
         ):
             yield (
-                "The configured work chain would not actually compute anything. "
-                "Select either a structure relaxation method or the bands "
-                "calculation or both."
+                "Select either a structure relaxation method or at least one of the "
+                "the bands or the PDOS calculations or both."
             )
 
     def _get_state(self):
@@ -431,13 +487,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            self.codes_selector.pw.refresh()
-            try:
-                self.codes_selector.pw.selected_code = load_code(
-                    DEFAULT_PARAMETERS["pw_code"]
-                )
-            except NotExistent:
-                pass
+            for selector, code in [
+                ("pw", "pw_code"),
+                ("dos", "dos_code"),
+                ("projwfc", "projwfc_code"),
+            ]:
+                try:
+                    code_widget = getattr(self.codes_selector, selector)
+                    code_widget.refresh()
+                    code_widget.selected_code = load_code(DEFAULT_PARAMETERS[code])
+                except NotExistent:
+                    pass
 
     _ALERT_MESSAGE = """
         <div class="alert alert-{alert_class} alert-dismissible">
@@ -563,9 +623,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             electronic_type=self.workchain_settings.electronic_type.value,
             spin_type=self.workchain_settings.spin_type.value,
             run_bands=self.workchain_settings.bands_run.value,
+            run_pdos=self.workchain_settings.pdos_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
             # Codes
             pw_code=self.codes_selector.pw.selected_code.uuid,
+            dos_code=self.codes_selector.dos.selected_code.uuid,
+            projwfc_code=self.codes_selector.projwfc.selected_code.uuid,
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
@@ -595,9 +658,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "electronic_type"
             ]
             self.workchain_settings.bands_run.value = parameters["run_bands"]
+            self.workchain_settings.pdos_run.value = parameters["run_pdos"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
             # Codes
             self.codes_selector.pw.selected_code = _load_code(parameters["pw_code"])
+            if parameters["run_pdos"]:
+                self.codes_selector.dos.selected_code = _load_code(
+                    parameters["dos_code"]
+                )
+                self.codes_selector.projwfc.selected_code = _load_code(
+                    parameters["projwfc_code"]
+                )
             # Advanced settings
             self.pseudo_family_selector.value = parameters["pseudo_family"]
             if parameters.get("kpoints_distance_override", None) is not None:
@@ -607,16 +678,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.kpoints_settings.override_protocol_kpoints.value = True
 
     def submit(self, _=None):
-
         assert self.input_structure is not None
-
         parameters = self.get_input_parameters()
-
-        run_bands = parameters.pop("run_bands")
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=load_code(parameters["pw_code"]),
+            dos_code=load_code(parameters["dos_code"]),
+            projwfc_code=load_code(parameters["projwfc_code"]),
             protocol=parameters["protocol"],
             pseudo_family=parameters["pseudo_family"],
             relax_type=RelaxType(parameters["relax_type"]),
@@ -629,8 +698,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 parameters["kpoints_distance_override"]
             )
 
-        if not run_bands:
+        if not parameters.pop("run_bands"):
             builder.pop("bands")
+
+        if not parameters.pop("run_pdos"):
+            builder.pop("pdos")
 
         resources = self._determine_resources()
         update_resources(builder, resources)
