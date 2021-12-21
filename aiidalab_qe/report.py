@@ -83,17 +83,20 @@ def _generate_report_dict(qeapp_wc):
         scf_kpoints_distance = None
     nscf_kpoints_distance = None
 
+    default_params = PwBaseWorkChain.get_protocol_inputs(
+        builder_parameters["protocol"]
+    )["pw"]["parameters"]["SYSTEM"]
     try:
         degauss = qeapp_wc.inputs.degauss_override.value
     except AttributeError:
         # read default from protocol
-        degauss = 0.01
+        degauss = default_params["degauss"]
 
     try:
         smearing = qeapp_wc.inputs.smearing_override.value
     except AttributeError:
         # read default from protocol
-        smearing = "cold"
+        smearing = default_params["smearing"]
 
     if run_relax:
         pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
