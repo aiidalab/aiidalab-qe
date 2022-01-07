@@ -20,6 +20,23 @@ pre-commit install
 ```
 The pre-commit checks should now be automatically executed prior to each commit.
 
+## For maintainers
+
+To create a new release, clone the repository, install development dependencies with `pip install -e '.[dev]'`, and then execute `bumpver update`.
+This will:
+
+  1. Create a tagged release with bumped version and push it to the repository.
+  2. Trigger a GitHub actions workflow that creates a GitHub release.
+
+Additional notes:
+
+  - Use the `--dry` option to preview the release change.
+  - The release tag (e.g. a/b/rc) is determined from the last release.
+    Use the `--tag` option to switch the release tag.
+
+In case that the [`aiidalab_qe_workchain`](src/) is changed, the corresponding dependency entry in [setup.cfg](setup.cfg) must also be changed.
+Unfortunately this is a bit of a chicken and egg problem: the work chain package must be released first (e.g. via a release candidate), and the dependency is then updated for the next proper app release.
+
 ## Acknowledgements
 
 This work is supported by the
