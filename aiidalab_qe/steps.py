@@ -430,10 +430,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            parameters = self.get_input_parameters()
             self.codes_selector.pw.refresh()
             try:
-                self.codes_selector.pw.selected_code = load_code(parameters["pw_code"])
+                self.codes_selector.pw.selected_code = load_code(
+                    DEFAULT_PARAMETERS["pw_code"]
+                )
             except NotExistent:
                 pass
 
