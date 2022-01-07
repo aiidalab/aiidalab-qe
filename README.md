@@ -34,6 +34,9 @@ Additional notes:
   - The release tag (e.g. a/b/rc) is determined from the last release.
     Use the `--tag` option to switch the release tag.
 
+In case that the [`aiidalab_qe_workchain`](src/) is changed, the corresponding dependency entry in [setup.cfg](setup.cfg) must also be changed.
+Unfortunately this is a bit of a chicken and egg problem: the work chain package must be released first (e.g. via a release candidate), and the dependency is then updated for the next proper app release.
+
 ## Acknowledgements
 
 This work is supported by the
