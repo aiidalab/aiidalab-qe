@@ -128,4 +128,3 @@ wget ${base_url}/${pseudo_name}.aiida
 verdi import ${pseudo_name}.aiida
 
 ##EOF
-

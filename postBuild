@@ -9,9 +9,9 @@ reentry scan
 source .local/start-singleuser.sh
 
 echo "source activate kernel" >> ${AIIDA_HOME}/.bashrc
- 
+
 # make aiida demos discoverable by home app
 ln -s ${AIIDALAB_HOME} ${AIIDALAB_APPS}/aiida_demos
 
 # stop postgres properly (makes restart faster)
-psql_stop 
+psql_stop

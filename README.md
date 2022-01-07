@@ -22,7 +22,7 @@ The pre-commit checks should now be automatically executed prior to each commit.
 
 ## Acknowledgements
 
-This work is supported by the 
+This work is supported by the
 [MARVEL National Centre for Competency in Research](<http://nccr-marvel.ch>) funded by the [Swiss National Science Foundation](<http://www.snf.ch/en>),
 the MARKETPLACE project funded by [Horizon 2020](https://ec.europa.eu/programmes/horizon2020/) under the H2020-NMBP-25-2017 call (Grant No. 760173),
 as well as by the [MaX

@@ -26,7 +26,7 @@ function psql_start {
        psql -h localhost -d template1 -c "CREATE DATABASE aiidadb OWNER aiida;"
        psql -h localhost -d template1 -c "GRANT ALL PRIVILEGES ON DATABASE aiidadb to aiida;"
 
-    # else don't 
+    # else don't
     else
 
         # stores return value in $?
@@ -47,4 +47,3 @@ function psql_start {
 function psql_stop {
     $PSQL_STOP_CMD
 }
-
