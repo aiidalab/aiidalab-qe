@@ -1,18 +1,46 @@
+---
 repos:
-  - repo: https://github.com/psf/black
-    rev: 20.8b1
-    hooks:
-      - id: black
-        language_version: python3 # Should be a command that runs python3.6+
 
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: '3.8.4'
-    hooks:
-    - id: flake8
-      args: [--count, --show-source, --statistics]
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v3.4.0
+      hooks:
+          - id: check-json
+          - id: check-yaml
+          - id: end-of-file-fixer
+          - id: trailing-whitespace
+            exclude: miscellaneous/structures/SiO2.xyz
 
-  - repo: https://github.com/pycqa/isort
-    rev: 5.6.4
-    hooks:
-      - id: isort
-        args: ["--profile", "black", "--filter-files"]
+    - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
+      rev: 0.1.0
+      hooks:
+          - id: yamlfmt
+
+    - repo: https://github.com/psf/black
+      rev: 20.8b1
+      hooks:
+          - id: black
+            language_version: python3 # Should be a command that runs python3.6+
+
+    - repo: https://gitlab.com/pycqa/flake8
+      rev: 3.8.4
+      hooks:
+          - id: flake8
+            args: [--count, --show-source, --statistics]
+            additional_dependencies:
+                - flake8-bugbear==21.3.1
+
+    - repo: https://github.com/pycqa/isort
+      rev: 5.9.3
+      hooks:
+          - id: isort
+            args: [--profile, black, --filter-files]
+
+    - repo: https://github.com/asottile/setup-cfg-fmt
+      rev: v1.20.0
+      hooks:
+          - id: setup-cfg-fmt
+
+    - repo: https://github.com/sirosen/check-jsonschema
+      rev: 0.9.0
+      hooks:
+          - id: check-github-workflows

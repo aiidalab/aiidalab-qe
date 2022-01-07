@@ -325,7 +325,7 @@ class CalcJobOutputFollower(traitlets.HasTraits):
                 if calcjob.is_sealed or self._stop_follow_output.wait(delay):
                     # Pushing EOF signals to the pull thread to stop.
                     self._output_queue.put(self._EOF)
-                    break
+                    break  # noqa: B012
 
     def _pull_output(self, calcjob):
         """Pull new log lines from the queue and update traitlets."""

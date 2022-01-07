@@ -1,12 +1,11 @@
 {
   "load_extensions": {
-    "bqplot/extension": true, 
-    "jupyter-js-widgets/extension": true, 
-    "jupyter-matplotlib/extension": true, 
-    "nglview-js-widgets/extension": true, 
-    "appmode/main": true, 
-    "jupyter-threejs/extension": true, 
+    "bqplot/extension": true,
+    "jupyter-js-widgets/extension": true,
+    "jupyter-matplotlib/extension": true,
+    "nglview-js-widgets/extension": true,
+    "appmode/main": true,
+    "jupyter-threejs/extension": true,
     "fileupload/extension": true
   }
 }
-

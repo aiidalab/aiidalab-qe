@@ -1,5 +1,6 @@
+---
 CONTROL:
-  calculation: "vc-relax"
+    calculation: vc-relax
 SYSTEM:
-  ecutwfc: 50.0
-  ecutrho: 200.0
+    ecutwfc: 50.0
+    ecutrho: 200.0

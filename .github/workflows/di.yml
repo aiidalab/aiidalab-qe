@@ -1,39 +1,40 @@
+---
 # Run basic tests for this app on the latest aiidalab-docker image.
 
 name: downstream-integration
 
 on:
-  schedule:
-    - cron: '41 3 * * *'
+    schedule:
+        - cron: 41 3 * * *
 
 jobs:
 
-  test-app:
+    test-app:
 
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
 
-    strategy:
-      matrix:
-        tag: [ latest, stable ]
-        browser: [ chrome, firefox ]
-      fail-fast: false
+        strategy:
+            matrix:
+                tag: [latest, stable]
+                browser: [chrome, firefox]
+            fail-fast: false
 
-    steps:
+        steps:
 
-      - name: Check out app
-        uses: actions/checkout@v2
+            - name: Check out app
+              uses: actions/checkout@v2
 
-      - name: Test app
-        uses: aiidalab/aiidalab-test-app-action@v2
-        with:
-          image: aiidalab/aiidalab-docker-stack:${{ matrix.tag }}
-          browser: ${{ matrix.browser }}
-          name: quantum-espresso
+            - name: Test app
+              uses: aiidalab/aiidalab-test-app-action@v2
+              with:
+                  image: aiidalab/aiidalab-docker-stack:${{ matrix.tag }}
+                  browser: ${{ matrix.browser }}
+                  name: quantum-espresso
 
-      - name: Upload screenshots as artifacts
-        uses: actions/upload-artifact@v2
-        if: ${{ always() }}
-        with:
-          name: Screenshots-${{ matrix.tag }}-${{ matrix.browser }}
-          path: 'screenshots/'
+            - name: Upload screenshots as artifacts
+              uses: actions/upload-artifact@v2
+              if: ${{ always() }}
+              with:
+                  name: Screenshots-${{ matrix.tag }}-${{ matrix.browser }}
+                  path: screenshots/
