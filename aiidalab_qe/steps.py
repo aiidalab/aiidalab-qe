@@ -620,6 +620,23 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             parameters.update(query_parameters)
             self.set_input_parameters(parameters)
 
+    def submit_from_callback(self, url):
+        def parse(value):
+            if value == "True":
+                return True
+            return value
+
+        with self.hold_trait_notifications():
+            query = parse_qs(urlsplit(url).query)
+            if "submit" in query and parse(query.get("submit", None)):
+                try:
+                    self.submit_button.disabled = True
+                    self.submit()
+
+                    # TODO: process info(pk or uuid) as response
+                except Exception:
+                    [print(i) for i in self._identify_submission_blockers()]
+
     def submit(self, _=None):
 
         assert self.input_structure is not None
