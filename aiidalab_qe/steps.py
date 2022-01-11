@@ -5,6 +5,7 @@ Authors:
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
 from math import ceil
+from urllib.parse import parse_qs, urlsplit
 
 import ipywidgets as ipw
 import traitlets
@@ -605,6 +606,19 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     "kpoints_distance_override"
                 ]
                 self.kpoints_settings.override_protocol_kpoints.value = True
+
+    def set_input_parameters_from_callback(self, url):
+        def parse(value):
+            if value == "True":
+                return True
+            return value
+
+        parameters = self.get_input_parameters()
+        with self.hold_trait_notifications():
+            query = parse_qs(urlsplit(url).query)
+            query_parameters = {key: parse(query[key][0]) for key in query.keys()}
+            parameters.update(query_parameters)
+            self.set_input_parameters(parameters)
 
     def submit(self, _=None):
 
