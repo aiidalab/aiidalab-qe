@@ -82,22 +82,27 @@ class WorkChainSelector(ipw.HBox):
         for process in projected[1:]:
             pk = process[0]
             formula = load_node(pk).inputs.structure.get_formula()
-            if 'relax' in load_node(pk).inputs:
-                relax_info = 'structure is relaxed'
+            if "relax" in load_node(pk).inputs:
+                relax_info = "structure is relaxed"
             else:
-                relax_info = 'structure is not relaxed'
-                
-            properties = []    
-            if 'pdos' in load_node(pk).inputs:
-                properties.append('pdos')
-            if 'bands' in load_node(pk).inputs:
-                properties.append('bands')
-                
+                relax_info = "structure is not relaxed"
+
+            properties = []
+            if "pdos" in load_node(pk).inputs:
+                properties.append("pdos")
+            if "bands" in load_node(pk).inputs:
+                properties.append("bands")
+
             if not properties:
-                properties_info = ''
+                properties_info = ""
             else:
                 properties_info = f"properties on {', '.join(properties)}"
-            yield cls.WorkChainData(formula=formula, relax_info=relax_info, properties_info=properties_info, *process)
+            yield cls.WorkChainData(
+                formula=formula,
+                relax_info=relax_info,
+                properties_info=properties_info,
+                *process,
+            )
 
     @traitlets.default("busy")
     def _default_busy(self):
