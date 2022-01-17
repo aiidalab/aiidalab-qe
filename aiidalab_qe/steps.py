@@ -611,6 +611,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         def parse(value):
             if value == "True":
                 return True
+            elif value == "False":
+                return False
             return value
 
         parameters = self.get_input_parameters()
