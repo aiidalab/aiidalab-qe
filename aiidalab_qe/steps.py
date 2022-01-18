@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Widgets for the submission of bands work chains.
 
 Authors:
@@ -200,63 +201,16 @@ class KpointSettings(ipw.VBox):
         )
 
 
-class CodeSettings(ipw.VBox):
+class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
-    codes_title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Codes</h4></div>"""
-    )
-    codes_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 0px; padding-bottom:
-        10px"> Select the code to use for running the calculations. The codes
-        on the local machine (localhost) are installed by default, but you can
-        configure new ones on potentially more powerful machines by clicking on
-        "Setup new code".</div>"""
-    )
-
-    def __init__(self, **kwargs):
-
-        self.pw = CodeDropdown(
-            input_plugin="quantumespresso.pw",
-            description="pw.x:",
-            setup_code_params={
-                "computer": "localhost",
-                "description": "pw.x in AiiDAlab container.",
-                "label": "pw-6.7",
-                "input_plugin": "quantumespresso.pw",
-                "remote_abs_path": "/usr/bin/pw.x",
-            },
-        )
-        super().__init__(
-            children=[
-                self.codes_title,
-                self.codes_help,
-                self.pw,
-            ],
-            **kwargs,
-        )
-
-
-class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
-    """Step for submission of a bands workchain."""
-
-    # This number provides a rough estimate for how many MPI tasks are needed
-    # for a given structure.
-    NUM_SITES_PER_MPI_TASK_DEFAULT = 6
-
-    # Warn the user if they are trying to run calculations for a large
-    # structure on localhost.
-    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
-
-    input_structure = traitlets.Instance(StructureData, allow_none=True)
-    process = traitlets.Instance(WorkChainNode, allow_none=True)
-    disabled = traitlets.Bool()
     expert_mode = traitlets.Bool()
-    _submission_blockers = traitlets.List(traitlets.Unicode)
+    confirmed = traitlets.Bool()
+    previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
+    workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
+    kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
+    pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
 
     def __init__(self, **kwargs):
-        self.message_area = ipw.Output()
-        self._submission_blocker_messages = ipw.HTML()
 
         self.workchain_settings = WorkChainSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
@@ -264,15 +218,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.kpoints_settings = KpointSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
-        self.codes_selector = CodeSettings()
-        self.resources_config = ResourceSelectionWidget()
 
-        self.set_input_parameters(DEFAULT_PARAMETERS)
-
-        self.codes_selector.pw.observe(self._update_state, "selected_code")
-        self.codes_selector.pw.observe(
-            self._set_num_mpi_tasks_to_default, "selected_code"
-        )
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
             (self.kpoints_settings, "kpoints_distance_default"),
@@ -289,6 +235,156 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.tab.set_title(0, "Workflow")
+        self.expert_mode_control = ipw.ToggleButton(
+            description="Expert mode",
+            tooltip="Activate Expert mode for access to advanced settings.",
+            value=True,
+        )
+        ipw.link((self, "expert_mode"), (self.expert_mode_control, "value"))
+
+        self._submission_blocker_messages = ipw.HTML()
+
+        self.confirm_button = ipw.Button(
+            description="Confirm",
+            tooltip="Confirm the currently selected settings and go to the next step.",
+            button_style="success",
+            icon="check-circle",
+            disabled=True,
+            layout=ipw.Layout(width="auto"),
+        )
+        self.confirm_button.on_click(self.confirm)
+
+        super().__init__(
+            children=[
+                self.tab,
+                self.expert_mode_control,
+                self._submission_blocker_messages,
+                self.confirm_button,
+            ],
+            **kwargs,
+        )
+
+    @traitlets.observe("expert_mode")
+    def _observe_expert_mode(self, change):
+        if change["new"]:
+            self.tab.set_title(0, "Workflow")
+            self.tab.set_title(1, "Advanced settings")
+            self.tab.children = [
+                self.workchain_settings,
+                ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
+            ]
+        else:
+            self.tab.set_title(0, "Workflow")
+            self.tab.children = [
+                self.workchain_settings,
+            ]
+
+    @traitlets.observe("previous_step_state")
+    def _observe_previous_step_state(self, change):
+        self._update_state()
+
+    def set_input_parameters(self, parameters):
+        """Set the inputs in the GUI based on a set of parameters."""
+
+        with self.hold_trait_notifications():
+            # Work chain settings
+            self.workchain_settings.relax_type.value = parameters["relax_type"]
+            self.workchain_settings.spin_type.value = parameters["spin_type"]
+            self.workchain_settings.electronic_type.value = parameters[
+                "electronic_type"
+            ]
+            self.workchain_settings.bands_run.value = parameters["run_bands"]
+            self.workchain_settings.workchain_protocol.value = parameters["protocol"]
+
+            # Advanced settings
+            self.pseudo_family_selector.value = parameters["pseudo_family"]
+            if parameters.get("kpoints_distance_override", None) is not None:
+                self.kpoints_settings.kpoints_distance.value = parameters[
+                    "kpoints_distance_override"
+                ]
+                self.kpoints_settings.override_protocol_kpoints.value = True
+
+    def _update_state(self, _=None):
+        if self.previous_step_state == self.State.SUCCESS:
+            self.confirm_button.disabled = False
+            if not (
+                self.workchain_settings.relax_type.value != "none"
+                or self.workchain_settings.bands_run.value
+            ):
+                self.confirm_button.disabled = True
+                self.state = self.State.READY
+                self._submission_blocker_messages.value = """
+                    <div class="alert alert-info">
+                    The configured work chain would not actually compute anything.
+                    Select either a structure relaxation method or the bands
+                    calculation or both.</div>"""
+            else:
+                self.state = self.State.CONFIGURED
+        elif self.previous_step_state == self.State.FAIL:
+            self.state = self.State.FAIL
+        else:
+            self.confirm_button.disabled = True
+            self.state = self.State.INIT
+            self.set_input_parameters(DEFAULT_PARAMETERS)
+
+    def confirm(self, _=None):
+        self.confirm_button.disabled = False
+        self.state = self.State.SUCCESS
+
+    @traitlets.default("state")
+    def _default_state(self):
+        return self.State.INIT
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.input_structure = None
+            self.set_input_parameters(DEFAULT_PARAMETERS)
+
+
+class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
+    """Step for submission of a bands workchain."""
+
+    codes_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Codes</h4></div>"""
+    )
+    codes_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 0px; padding-bottom:
+        10px"> Select the code to use for running the calculations. The codes
+        on the local machine (localhost) are installed by default, but you can
+        configure new ones on potentially more powerful machines by clicking on
+        "Setup new code".</div>"""
+    )
+
+    # This number provides a rough estimate for how many MPI tasks are needed
+    # for a given structure.
+    NUM_SITES_PER_MPI_TASK_DEFAULT = 6
+
+    # Warn the user if they are trying to run calculations for a large
+    # structure on localhost.
+    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
+
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
+    process = traitlets.Instance(WorkChainNode, allow_none=True)
+    previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
+    workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
+    kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
+    pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
+    _submission_blockers = traitlets.List(traitlets.Unicode)
+
+    def __init__(self, **kwargs):
+        self.message_area = ipw.Output()
+        self._submission_blocker_messages = ipw.HTML()
+
+        self.pw_code = CodeDropdown(
+            description="pw.x:", input_plugin="quantumespresso.pw"
+        )
+        self.resources_config = ResourceSelectionWidget()
+
+        self.set_selected_codes(DEFAULT_PARAMETERS)
+
+        self.pw_code.observe(self._update_state, "selected_code")
+        self.pw_code.observe(self._set_num_mpi_tasks_to_default, "selected_code")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -300,13 +396,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.submit_button.on_click(self._on_submit_button_clicked)
-
-        self.expert_mode_control = ipw.ToggleButton(
-            description="Expert mode",
-            tooltip="Activate Expert mode for access to advanced settings.",
-            value=True,
-        )
-        ipw.link((self, "expert_mode"), (self.expert_mode_control, "value"))
 
         # The SSSP installation status widget shows the installation status of
         # the SSSP pseudo potentials and triggers the installation in case that
@@ -329,31 +418,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         super().__init__(
             children=[
+                self.codes_title,
+                self.codes_help,
+                self.pw_code,
+                self.resources_config,
                 self.message_area,
-                self.tab,
                 self.sssp_installation_status,
                 self.qe_setup_status,
                 self._submission_blocker_messages,
-                ipw.HBox([self.submit_button, self.expert_mode_control]),
+                self.submit_button,
             ]
         )
-
-    @traitlets.observe("expert_mode")
-    def _observe_expert_mode(self, change):
-        if change["new"]:
-            self.tab.set_title(0, "Workflow")
-            self.tab.set_title(1, "Advanced settings")
-            self.tab.set_title(2, "Codes & Resources")
-            self.tab.children = [
-                self.workchain_settings,
-                ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
-                ipw.VBox(children=[self.codes_selector, self.resources_config]),
-            ]
-        else:
-            self.tab.set_title(0, "Workflow")
-            self.tab.children = [
-                self.workchain_settings,
-            ]
 
     @traitlets.observe("_submission_blockers")
     def _observe_submission_blockers(self, change):
@@ -367,61 +442,42 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._submission_blocker_messages.value = ""
 
     def _identify_submission_blockers(self):
-        # No input structure specified.
-        if self.input_structure is None:
-            yield "No structure selected."
 
         # Do not submit while any of the background setup processes are running.
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
 
         # No code selected (this is ignored while the setup process is running).
-        if (
-            self.codes_selector.pw.selected_code is None
-            and not self.qe_setup_status.busy
-        ):
-            yield (
-                'No code selected. Go to "Expert mode" and then "Codes & '
-                'Resources" to select a code.'
-            )
+        if self.pw_code.selected_code is None and not self.qe_setup_status.busy:
+            yield "No code selected."
 
         # SSSP library not installed
         if not self.sssp_installation_status.installed:
             yield "The SSSP library is not installed."
 
-        # Would not actually run anything
-        if not (
-            self.workchain_settings.relax_type.value != "none"
-            or self.workchain_settings.bands_run.value
-        ):
-            yield (
-                "The configured work chain would not actually compute anything. "
-                "Select either a structure relaxation method or the bands "
-                "calculation or both."
-            )
+    def _update_state(self, _=None):
+        # If the previous step has failed, this should fail as well.
+        if self.previous_step_state is self.State.FAIL:
+            self.state = self.State.FAIL
+            return
+        # Do not interact with the user if they haven't successfully completed the previous step.
+        elif self.previous_step_state is not self.State.SUCCESS:
+            self.state = self.State.INIT
+            return
 
-    def _get_state(self):
         # Process is already running.
         if self.process is not None:
-            return self.State.SUCCESS
-
-        # Input structure not specified.
-        if self.input_structure is None:
-            self._submission_blockers = ["No structure selected."]
-            # This blocker is handled differently than the other blockers,
-            # because it is displayed as INIT state.
-            return self.State.INIT
+            self.state = self.State.SUCCESS
+            return
 
         blockers = list(self._identify_submission_blockers())
         if any(blockers):
             self._submission_blockers = blockers
-            return self.State.READY
-        else:
-            self._submission_blockers = []
-            return self.state.CONFIGURED
+            self.state = self.State.READY
+            return
 
-    def _update_state(self, _=None):
-        self.state = self._get_state()
+        self._submission_blockers = []
+        self.state = self.state.CONFIGURED
 
     def _toggle_install_widgets(self, change):
         if change["new"]:
@@ -431,11 +487,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            self.codes_selector.pw.refresh()
+            self.pw_code.refresh()
             try:
-                self.codes_selector.pw.selected_code = load_code(
-                    DEFAULT_PARAMETERS["pw_code"]
-                )
+                self.pw_code.selected_code = load_code(DEFAULT_PARAMETERS["pw_code"])
             except NotExistent:
                 pass
 
@@ -456,7 +510,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _get_default_num_mpi_tasks(self):
         """Determine a reasonable value for the number of MPI tasks for the selected structure."""
-        if self.codes_selector.pw.selected_code:
+        if self.pw_code.selected_code:
             num_sites = len(self.input_structure.sites) if self.input_structure else 1
             num_mpi_tasks = max(
                 1, ceil(num_sites / self.NUM_SITES_PER_MPI_TASK_DEFAULT)
@@ -472,23 +526,19 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _check_resources(self):
         """Check whether the currently selected resources will be sufficient and warn if not."""
-        if not self.codes_selector.pw.selected_code:
+        if not self.pw_code.selected_code:
             return  # No code selected, nothing to do.
 
         num_mpi_tasks = self.resources_config.num_mpi_tasks.value
-        on_localhost = (
-            self.codes_selector.pw.selected_code.computer.get_hostname() == "localhost"
-        )
-        if self.codes_selector.pw.selected_code and on_localhost and num_mpi_tasks > 1:
+        on_localhost = self.pw_code.selected_code.computer.get_hostname() == "localhost"
+        if self.pw_code.selected_code and on_localhost and num_mpi_tasks > 1:
             self._show_alert_message(
                 "The selected code would be executed on the local host, but "
                 "the number of MPI tasks is larger than one. Please review "
                 "the configuration and consider to select a code that runs "
-                'on a larger system if necessary (see the "Codes & '
-                'Resources" tab).',
+                "on a larger system if necessary.",
                 alert_class="warning",
             )
-            self.expert_mode = True
         elif (
             self.input_structure
             and on_localhost
@@ -499,15 +549,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "The selected code would be executed on the local host, but the "
                 "number of sites of the selected structure is relatively large. "
                 "Consider to select a code that runs on a larger system if "
-                'necessary (see the "Codes & Resources" tab).',
+                "necessary.",
                 alert_class="warning",
             )
-            self.expert_mode = True
 
     def _get_cpus_per_node(self):
         """Determine the default number of CPUs per node based on the code configuration."""
-        if self.codes_selector.pw.selected_code:
-            selected_code = self.codes_selector.pw.selected_code
+        if self.pw_code.selected_code:
+            selected_code = self.pw_code.selected_code
             return selected_code.computer.metadata["default_mpiprocs_per_machine"]
         return 1
 
@@ -527,15 +576,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @traitlets.observe("state")
     def _observe_state(self, change):
         with self.hold_trait_notifications():
-            self.disabled = change["new"] not in (
-                self.State.READY,
-                self.State.CONFIGURED,
-            )
             self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
-    @traitlets.observe("input_structure")
+    @traitlets.observe("previous_step_state")
     def _observe_input_structure(self, change):
-        self.set_input_parameters(DEFAULT_PARAMETERS)
+        self.set_selected_codes(DEFAULT_PARAMETERS)
         self._update_state()
         self._set_num_mpi_tasks_to_default()
 
@@ -547,7 +592,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.input_structure = process_node.inputs.structure
                 builder_parameters = process_node.get_extra("builder_parameters", None)
                 if builder_parameters is not None:
-                    self.set_input_parameters(builder_parameters)
+                    self.set_selected_codes(builder_parameters)
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
@@ -565,7 +610,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             run_bands=self.workchain_settings.bands_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
             # Codes
-            pw_code=self.codes_selector.pw.selected_code.uuid,
+            pw_code=self.pw_code.selected_code.uuid,
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
@@ -576,7 +621,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         return parameters
 
-    def set_input_parameters(self, parameters):
+    def set_selected_codes(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
 
         # Codes
@@ -588,23 +633,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     return None
 
         with self.hold_trait_notifications():
-            # Work chain settings
-            self.workchain_settings.relax_type.value = parameters["relax_type"]
-            self.workchain_settings.spin_type.value = parameters["spin_type"]
-            self.workchain_settings.electronic_type.value = parameters[
-                "electronic_type"
-            ]
-            self.workchain_settings.bands_run.value = parameters["run_bands"]
-            self.workchain_settings.workchain_protocol.value = parameters["protocol"]
             # Codes
-            self.codes_selector.pw.selected_code = _load_code(parameters["pw_code"])
-            # Advanced settings
-            self.pseudo_family_selector.value = parameters["pseudo_family"]
-            if parameters.get("kpoints_distance_override", None) is not None:
-                self.kpoints_settings.kpoints_distance.value = parameters[
-                    "kpoints_distance_override"
-                ]
-                self.kpoints_settings.override_protocol_kpoints.value = True
+            self.pw_code.selected_code = _load_code(parameters["pw_code"])
 
     def submit(self, _=None):
 
@@ -644,7 +674,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.process = None
             self.input_structure = None
-            self.set_input_parameters(DEFAULT_PARAMETERS)
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
