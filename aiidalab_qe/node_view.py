@@ -428,7 +428,7 @@ class WorkChainViewer(ipw.VBox):
             layout=ipw.Layout(min_height="380px"),
         )
         self.bands_tab = ipw.VBox(
-            [ipw.Label("Band structure not available.")],
+            [ipw.Label("Electronic Structure not available.")],
             layout=ipw.Layout(min_height="380px"),
         )
         self.result_tabs = ipw.Tab(
@@ -437,7 +437,7 @@ class WorkChainViewer(ipw.VBox):
 
         self.result_tabs.set_title(0, "Workflow Summary")
         self.result_tabs.set_title(1, "Final Geometry (n/a)")
-        self.result_tabs.set_title(2, "Band Structure (n/a)")
+        self.result_tabs.set_title(2, "Electronic Structure (n/a)")
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
@@ -498,11 +498,14 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(1, "Final Geometry")
 
     def _show_band_structure(self):
+        data = export_data(self.node)
+        bands_data = data.get("bands", None)
+        dos_data = data.get("dos", None)
         self._bands_plot_view = BandsPlotWidget(
-            bands=[export_bands_data(self.node)], plot_fermilevel=True
+            bands=[bands_data], dos=dos_data, plot_fermilevel=True
         )
         self.result_tabs.children[2].children = [self._bands_plot_view]
-        self.result_tabs.set_title(2, "Band Structure")
+        self.result_tabs.set_title(2, "Electronic Structure")
 
     def _show_workflow_output(self):
         self.workflows_output = WorkChainOutputs(self.node)
