@@ -203,7 +203,6 @@ class KpointSettings(ipw.VBox):
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
-    expert_mode = traitlets.Bool()
     confirmed = traitlets.Bool()
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
@@ -230,17 +229,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.tab = ipw.Tab(
             children=[
                 self.workchain_settings,
+                ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
             ],
             layout=ipw.Layout(min_height="250px"),
         )
 
         self.tab.set_title(0, "Workflow")
-        self.expert_mode_control = ipw.ToggleButton(
-            description="Expert mode",
-            tooltip="Activate Expert mode for access to advanced settings.",
-            value=True,
-        )
-        ipw.link((self, "expert_mode"), (self.expert_mode_control, "value"))
+        self.tab.set_title(1, "Advanced settings")
 
         self._submission_blocker_messages = ipw.HTML()
 
@@ -257,27 +252,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         super().__init__(
             children=[
                 self.tab,
-                self.expert_mode_control,
                 self._submission_blocker_messages,
                 self.confirm_button,
             ],
             **kwargs,
         )
-
-    @traitlets.observe("expert_mode")
-    def _observe_expert_mode(self, change):
-        if change["new"]:
-            self.tab.set_title(0, "Workflow")
-            self.tab.set_title(1, "Advanced settings")
-            self.tab.children = [
-                self.workchain_settings,
-                ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
-            ]
-        else:
-            self.tab.set_title(0, "Workflow")
-            self.tab.children = [
-                self.workchain_settings,
-            ]
 
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
@@ -319,6 +298,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     Select either a structure relaxation method or the bands
                     calculation or both.</div>"""
             else:
+                self._submission_blocker_messages.value = ""
                 self.state = self.State.CONFIGURED
         elif self.previous_step_state == self.State.FAIL:
             self.state = self.State.FAIL
