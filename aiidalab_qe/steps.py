@@ -377,17 +377,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.pw_code = CodeDropdown(
             description="pw.x:", input_plugin="quantumespresso.pw"
         )
-            
+
         self.dos_code = CodeDropdown(
             description="dos.x:",
             input_plugin="quantumespresso.dos",
         )
         self.projwfc_code = CodeDropdown(
             description="projwfc.x:",
-
             input_plugin="quantumespresso.projwfc",
         )
-            
+
         self.resources_config = ResourceSelectionWidget()
 
         self.set_selected_codes(DEFAULT_PARAMETERS)
@@ -395,7 +394,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.pw_code.observe(self._update_state, "selected_code")
         self.dos_code.observe(self._set_num_mpi_tasks_to_default, "selected_code")
         self.projwfc_code.observe(self._update_state, "selected_code")
-
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -461,13 +459,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "Background setup processes must finish."
 
         # No code selected (this is ignored while the setup process is running).
-        if (
-            self.pw_code.selected_code is None
-            and not self.qe_setup_status.busy
-        ):
-            yield (
-                'No pw code selected'
-            )
+        if self.pw_code.selected_code is None and not self.qe_setup_status.busy:
+            yield ("No pw code selected")
 
         # No code selected for pdos (this is ignored while the setup process is running).
         if (
@@ -478,15 +471,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             )
             and not self.qe_setup_status.busy
         ):
-            yield (
-                'No codes selected to run PDOS.'
-            )
-
+            yield ("No codes selected to run PDOS.")
 
         # SSSP library not installed
         if not self.sssp_installation_status.installed:
             yield "The SSSP library is not installed."
-
 
     def _update_state(self, _=None):
         # If the previous step has failed, this should fail as well.
@@ -678,12 +667,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # Codes
             self.pw_code.selected_code = _load_code(parameters["pw_code"])
             if parameters["run_pdos"]:
-                self.dos_code.selected_code = _load_code(
-                    parameters["dos_code"]
-                )
-                self.projwfc_code.selected_code = _load_code(
-                    parameters["projwfc_code"]
-                )
+                self.dos_code.selected_code = _load_code(parameters["dos_code"])
+                self.projwfc_code.selected_code = _load_code(parameters["projwfc_code"])
 
     def submit(self, _=None):
         assert self.input_structure is not None
