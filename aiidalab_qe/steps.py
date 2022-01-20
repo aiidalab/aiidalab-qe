@@ -509,13 +509,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            for selector, code in [
-                ("pw", "pw_code"),
-                ("dos", "dos_code"),
-                ("projwfc", "projwfc_code"),
+            for code in [
+                "pw_code",
+                "dos_code",
+                "projwfc_code",
             ]:
                 try:
-                    code_widget = getattr(self, selector)
+                    code_widget = getattr(self, code)
                     code_widget.refresh()
                     code_widget.selected_code = load_code(DEFAULT_PARAMETERS[code])
                 except NotExistent:
