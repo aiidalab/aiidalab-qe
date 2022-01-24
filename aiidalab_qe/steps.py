@@ -16,7 +16,7 @@ from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import (
-    CodeDropdown,
+    ComputationalResourcesWidget,
     ProcessMonitor,
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
@@ -374,15 +374,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
-        self.pw_code = CodeDropdown(
+        self.pw_code = ComputationalResourcesWidget(
             description="pw.x:", input_plugin="quantumespresso.pw"
         )
 
-        self.dos_code = CodeDropdown(
+        self.dos_code = ComputationalResourcesWidget(
             description="dos.x:",
             input_plugin="quantumespresso.dos",
         )
-        self.projwfc_code = CodeDropdown(
+        self.projwfc_code = ComputationalResourcesWidget(
             description="projwfc.x:",
             input_plugin="quantumespresso.projwfc",
         )
@@ -391,9 +391,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.set_selected_codes(DEFAULT_PARAMETERS)
 
-        self.pw_code.observe(self._update_state, "selected_code")
-        self.dos_code.observe(self._set_num_mpi_tasks_to_default, "selected_code")
-        self.projwfc_code.observe(self._update_state, "selected_code")
+        self.pw_code.observe(self._update_state, "value")
+        self.dos_code.observe(self._set_num_mpi_tasks_to_default, "value")
+        self.projwfc_code.observe(self._update_state, "value")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -459,16 +459,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "Background setup processes must finish."
 
         # No code selected (this is ignored while the setup process is running).
-        if self.pw_code.selected_code is None and not self.qe_setup_status.busy:
+        if self.pw_code.value is None and not self.qe_setup_status.busy:
             yield ("No pw code selected")
 
         # No code selected for pdos (this is ignored while the setup process is running).
         if (
             self.workchain_settings.pdos_run.value
-            and (
-                self.dos_code.selected_code is None
-                or self.projwfc_code.selected_code is None
-            )
+            and (self.dos_code.value is None or self.projwfc_code.value is None)
             and not self.qe_setup_status.busy
         ):
             yield ("No codes selected to run PDOS.")
@@ -517,7 +514,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 try:
                     code_widget = getattr(self, code)
                     code_widget.refresh()
-                    code_widget.selected_code = load_code(DEFAULT_PARAMETERS[code])
+                    code_widget.value = load_code(DEFAULT_PARAMETERS[code])
                 except NotExistent:
                     pass
 
@@ -538,7 +535,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _get_default_num_mpi_tasks(self):
         """Determine a reasonable value for the number of MPI tasks for the selected structure."""
-        if self.pw_code.selected_code:
+        if self.pw_code.value:
             num_sites = len(self.input_structure.sites) if self.input_structure else 1
             num_mpi_tasks = max(
                 1, ceil(num_sites / self.NUM_SITES_PER_MPI_TASK_DEFAULT)
@@ -554,12 +551,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _check_resources(self):
         """Check whether the currently selected resources will be sufficient and warn if not."""
-        if not self.pw_code.selected_code:
+        if not self.pw_code.value:
             return  # No code selected, nothing to do.
 
         num_mpi_tasks = self.resources_config.num_mpi_tasks.value
-        on_localhost = self.pw_code.selected_code.computer.get_hostname() == "localhost"
-        if self.pw_code.selected_code and on_localhost and num_mpi_tasks > 1:
+        on_localhost = self.pw_code.value.computer.get_hostname() == "localhost"
+        if self.pw_code.value and on_localhost and num_mpi_tasks > 1:
             self._show_alert_message(
                 "The selected code would be executed on the local host, but "
                 "the number of MPI tasks is larger than one. Please review "
@@ -583,9 +580,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _get_cpus_per_node(self):
         """Determine the default number of CPUs per node based on the code configuration."""
-        if self.pw_code.selected_code:
-            selected_code = self.pw_code.selected_code
-            return selected_code.computer.metadata["default_mpiprocs_per_machine"]
+        if self.pw_code.value:
+            value = self.pw_code.value
+            return value.computer.metadata["default_mpiprocs_per_machine"]
         return 1
 
     def _determine_resources(self):
@@ -639,9 +636,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             run_pdos=self.workchain_settings.pdos_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
             # Codes
-            pw_code=self.pw_code.selected_code.uuid,
-            dos_code=self.dos_code.selected_code.uuid,
-            projwfc_code=self.projwfc_code.selected_code.uuid,
+            pw_code=self.pw_code.value.uuid,
+            dos_code=self.dos_code.value.uuid,
+            projwfc_code=self.projwfc_code.value.uuid,
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
@@ -665,10 +662,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.selected_code = _load_code(parameters["pw_code"])
+            self.pw_code.value = _load_code(parameters["pw_code"])
             if parameters["run_pdos"]:
-                self.dos_code.selected_code = _load_code(parameters["dos_code"])
-                self.projwfc_code.selected_code = _load_code(parameters["projwfc_code"])
+                self.dos_code.value = _load_code(parameters["dos_code"])
+                self.projwfc_code.value = _load_code(parameters["projwfc_code"])
 
     def submit(self, _=None):
         assert self.input_structure is not None
