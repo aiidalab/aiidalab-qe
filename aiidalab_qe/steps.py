@@ -37,6 +37,7 @@ from aiidalab_qe_workchain import QeAppWorkChain
 StructureData = DataFactory("structure")
 Float = DataFactory("float")
 Dict = DataFactory("dict")
+Str = DataFactory("str")
 
 
 class WorkChainSettings(ipw.VBox):
@@ -291,6 +292,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
+    smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
 
     def __init__(self, **kwargs):
@@ -301,6 +303,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_settings.pdos_run.observe(self._update_state, "value")
 
         self.kpoints_settings = KpointSettings()
+        self.smearing_settings = SmearingSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
 
         ipw.dlink(
@@ -314,7 +317,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.tab = ipw.Tab(
             children=[
                 self.workchain_settings,
-                ipw.VBox(children=[self.pseudo_family_selector, self.kpoints_settings]),
+                ipw.VBox(children=[
+                    self.pseudo_family_selector, 
+                    self.kpoints_settings,
+                    self.smearing_settings
+                ]),
             ],
             layout=ipw.Layout(min_height="250px"),
         )
