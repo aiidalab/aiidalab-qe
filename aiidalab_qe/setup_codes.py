@@ -115,9 +115,19 @@ class QESetupWidget(ipw.VBox):
         )
 
         self._info_toggle_button = ipw.ToggleButton(
-            icon="info-circle", disabled=True, layout=ipw.Layout(width="30px")
+            icon="info-circle",
+            disabled=True,
+            layout=ipw.Layout(width="36px"),
         )
         self._info_toggle_button.observe(self._toggle_error_view, "value")
+
+        self._reinstall_button = ipw.Button(
+            icon="cogs",
+            disabled=True,
+            description="Install codes...",
+            tooltip="Start another installation attempt.",
+        )
+        self._reinstall_button.on_click(self._trigger_reinstall)
 
         self._error_output = ipw.HTML()
 
@@ -149,7 +159,8 @@ class QESetupWidget(ipw.VBox):
             # this file is to not re-try this process on every app start in case
             # that there are issues.
             if FN_DO_NOT_SETUP.exists():
-                self.installed = True
+                self.set_message("Installation previously failed.")
+                self.error = "Installation failed in previous attempt."
                 return
 
             try:
@@ -161,8 +172,11 @@ class QESetupWidget(ipw.VBox):
                     # case then we assume that this is a custom user environment
                     # in which case we also take no further action.
                     self.installed = codes_are_setup() or not conda_installed
-                    if not self.installed:
-
+                    if self.installed:
+                        self.error = ""
+                        self.set_message("Codes are installed.")
+                    else:
+                        self.error = ""
                         self.set_message("installing...")
                         # To setup our own codes, we install QE on the local
                         # host:
@@ -241,13 +255,18 @@ class QESetupWidget(ipw.VBox):
             <hr>
             <p>This means you have to setup QE manually to run it on this host.
             You can safely ignore this message if you do not plan on running
-            QuantumESPRESSO calculations directly on the localhost.</p>
+            QuantumESPRESSO calculations directly on the localhost. Alternatively
+            you could try to make another installation attempt via the button
+            below.</p>
             """
             self._info_toggle_button.disabled = not bool(change["new"])
+            self._reinstall_button.disabled = not change["new"]
+            if not change["new"]:
+                self._info_toggle_button.value = False
 
     def _toggle_error_view(self, change):
         self.children = [self.children[0]] + (
-            [self._error_output] if change["new"] else []
+            [self._error_output, self._reinstall_button] if change["new"] else []
         )
 
     @traitlets.observe("busy")
@@ -272,3 +291,7 @@ class QESetupWidget(ipw.VBox):
                     else {True: "success", False: ""}.get(self.installed, "")
                 )
             )
+
+    def _trigger_reinstall(self, _=None):
+        FN_DO_NOT_SETUP.unlink()
+        self.refresh()
