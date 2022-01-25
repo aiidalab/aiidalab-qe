@@ -47,11 +47,11 @@ class QeAppWorkChain(WorkChain):
                                               'help': 'Inputs for the `PdosWorkChain`.'})
         spec.input(
             'kpoints_distance_override', valid_type=Float, required=False,
-            help='Override for the kpoints distance value of all `PwBaseWorkChains` save for the `nscf` calculations.'
+            help='Override for the kpoints distance value of all `PwBaseWorkChains` except for the `nscf` calculations.'
         )
         spec.input(
             'degauss_override', valid_type=Float, required=False,
-            help='Override for the `degauss` value of all `PwBaseWorkChains` save for the `nscf` calculations.'
+            help='Override for the `degauss` value of all `PwBaseWorkChains` except for the `nscf` calculations.'
         )
         spec.outline(
             cls.setup,
