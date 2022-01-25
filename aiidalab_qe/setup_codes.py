@@ -117,7 +117,7 @@ class QESetupWidget(ipw.VBox):
         self._info_toggle_button = ipw.ToggleButton(
             icon="info-circle",
             disabled=True,
-            layout=ipw.Layout(width="36px", description=""),
+            layout=ipw.Layout(width="36px"),
         )
         self._info_toggle_button.observe(self._toggle_error_view, "value")
 
@@ -265,10 +265,9 @@ class QESetupWidget(ipw.VBox):
                 self._info_toggle_button.value = False
 
     def _toggle_error_view(self, change):
-        with self.hold_trait_notifications():
-            self.children = [self.children[0]] + (
-                [self._error_output, self._reinstall_button] if change["new"] else []
-            )
+        self.children = [self.children[0]] + (
+            [self._error_output, self._reinstall_button] if change["new"] else []
+        )
 
     @traitlets.observe("busy")
     @traitlets.observe("error")
