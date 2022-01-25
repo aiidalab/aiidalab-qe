@@ -89,6 +89,8 @@ def _generate_report_dict(qeapp_wc):
         if scf_kpoints_distance is None:
             scf_kpoints_distance = qeapp_wc.inputs.bands.scf.kpoints_distance.value
         bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
+    if run_pdos:
+        nscf_kpoints_distance = qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
 
     if pw_parameters:
         energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
