@@ -115,15 +115,17 @@ class QESetupWidget(ipw.VBox):
         )
 
         self._info_toggle_button = ipw.ToggleButton(
-            icon="info-circle", disabled=True, layout=ipw.Layout(width="36px", description="")
+            icon="info-circle",
+            disabled=True,
+            layout=ipw.Layout(width="36px", description=""),
         )
         self._info_toggle_button.observe(self._toggle_error_view, "value")
 
         self._reinstall_button = ipw.Button(
-                icon="cogs",
-                disabled=True,
-                description="Install codes...",
-                tooltip="Start another installation attempt.",
+            icon="cogs",
+            disabled=True,
+            description="Install codes...",
+            tooltip="Start another installation attempt.",
         )
         self._reinstall_button.on_click(self._trigger_reinstall)
 
