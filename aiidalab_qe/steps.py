@@ -702,11 +702,25 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.projwfc_code.code_select_dropdown.disabled = True
 
     def submit(self, _=None):
-        def update_builder(buildy, resources, npools=None):
+        def update_builder(buildy, resources, npools):
+            """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
             for k, v in buildy.items():
                 if isinstance(v, (dict, ProcessBuilderNamespace)):
                     if k == "pw" and v["pseudos"]:
                         v["parallelization"] = Dict(dict={"npool": npools})
+                    if k == "projwfc":
+                        v["settings"] = Dict(dict={"cmdline": ["-nk", str(npools)]})
+                    if k == "dos":
+                        v["metadata"]["options"]["resources"] = {
+                            "num_machines": 1,
+                            "num_mpiprocs_per_machine": min(
+                                self.MAX_MPI_PER_POOL,
+                                self.resources_config.num_cpus.value,
+                            ),
+                        }
+                        # Continue to the next item to avoid overriding the resources in the
+                        # recursive `update_builder` call.
+                        continue
                     if k == "resources":
                         buildy["resources"] = resources
                     else:
