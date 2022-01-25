@@ -82,7 +82,7 @@ def _setup_code(code_name, computer_name="localhost"):
                 "--computer",
                 computer_name,
                 "--prepend-text",
-                f"conda activate {CONDA_ENV_PREFIX}",
+                f"conda activate {CONDA_ENV_PREFIX}\nexport OMP_NUM_THREADS=1",
                 "--remote-abs-path",
                 CONDA_ENV_PREFIX.joinpath("bin", f"{code_name}.x"),
             ],

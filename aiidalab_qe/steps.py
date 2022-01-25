@@ -5,12 +5,12 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
-from math import ceil
+import os
 
 import ipywidgets as ipw
 import traitlets
 from aiida.common import NotExistent
-from aiida.engine import ProcessState, submit
+from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
 from aiida.orm import ProcessNode, WorkChainNode, load_code
 from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
@@ -27,20 +27,16 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
-from aiidalab_qe.widgets import NodeViewWidget, ResourceSelectionWidget
+from aiidalab_qe.widgets import (
+    NodeViewWidget,
+    ParallelizationSettings,
+    ResourceSelectionWidget,
+)
 from aiidalab_qe_workchain import QeAppWorkChain
 
 StructureData = DataFactory("structure")
 Float = DataFactory("float")
-
-
-def update_resources(builder, resources):
-    for k, v in builder.items():
-        if isinstance(v, dict):
-            if k == "resources":
-                builder["resources"].update(resources)
-            else:
-                update_resources(v, resources)
+Dict = DataFactory("dict")
 
 
 class WorkChainSettings(ipw.VBox):
@@ -290,6 +286,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "electronic_type"
             ]
             self.workchain_settings.bands_run.value = parameters["run_bands"]
+            self.workchain_settings.pdos_run.value = parameters["run_pdos"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
 
             # Advanced settings
@@ -362,6 +359,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     # structure on localhost.
     RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
 
+    # Put a limit on how many MPI tasks you want to run per k-pool by default
+    MAX_MPI_PER_POOL = 20
+
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(WorkChainNode, allow_none=True)
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
@@ -377,7 +377,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.pw_code = ComputationalResourcesWidget(
             description="pw.x:", input_plugin="quantumespresso.pw"
         )
-
         self.dos_code = ComputationalResourcesWidget(
             description="dos.x:",
             input_plugin="quantumespresso.dos",
@@ -388,11 +387,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.resources_config = ResourceSelectionWidget()
+        self.parallelization = ParallelizationSettings()
 
         self.set_selected_codes(DEFAULT_PARAMETERS)
+        self.set_resource_defaults()
 
         self.pw_code.observe(self._update_state, "value")
-        self.dos_code.observe(self._set_num_mpi_tasks_to_default, "value")
+        self.pw_code.observe(self._update_resources, "value")
+        self.dos_code.observe(self._update_state, "value")
         self.projwfc_code.observe(self._update_state, "value")
 
         self.submit_button = ipw.Button(
@@ -433,6 +435,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.dos_code,
                 self.projwfc_code,
                 self.resources_config,
+                self.parallelization,
                 self.message_area,
                 self.sssp_installation_status,
                 self.qe_setup_status,
@@ -468,11 +471,36 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             and (self.dos_code.value is None or self.projwfc_code.value is None)
             and not self.qe_setup_status.busy
         ):
-            yield ("No codes selected to run PDOS.")
+            yield "Calculating the PDOS requires both dos.x and projwfc.x to be set."
 
         # SSSP library not installed
         if not self.sssp_installation_status.installed:
             yield "The SSSP library is not installed."
+
+        if (
+            self.workchain_settings.pdos_run.value
+            and not any(
+                [
+                    self.pw_code.selected_code is None,
+                    self.dos_code.selected_code is None,
+                    self.projwfc_code.selected_code is None,
+                ]
+            )
+            and len(
+                set(
+                    (
+                        self.pw_code.selected_code.computer.pk,
+                        self.dos_code.selected_code.computer.pk,
+                        self.projwfc_code.selected_code.computer.pk,
+                    )
+                )
+            )
+            != 1
+        ):
+            yield (
+                "All selected codes must be installed on the same computer. This is because the "
+                "PDOS calculations rely on large files that are not retrieved by AiiDA."
+            )
 
     def _update_state(self, _=None):
         # If the previous step has failed, this should fail as well.
@@ -533,33 +561,53 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
             )
 
-    def _get_default_num_mpi_tasks(self):
-        """Determine a reasonable value for the number of MPI tasks for the selected structure."""
-        if self.pw_code.value:
-            num_sites = len(self.input_structure.sites) if self.input_structure else 1
-            num_mpi_tasks = max(
-                1, ceil(num_sites / self.NUM_SITES_PER_MPI_TASK_DEFAULT)
-            )
-            return num_mpi_tasks
+    def _update_resources(self, change):
+        if change["new"] and (
+            change["old"] is None
+            or change["new"].computer.pk != change["old"].computer.pk
+        ):
+            self.set_resource_defaults(change["new"].computer)
 
-        return 1
+    def set_resource_defaults(self, computer=None):
 
-    def _set_num_mpi_tasks_to_default(self, _=None):
-        """Set the number of MPI tasks to a reasonable value for the selected structure."""
-        self.resources_config.num_mpi_tasks.value = self._get_default_num_mpi_tasks()
+        if computer is None or computer.hostname == "localhost":
+            self.resources_config.num_nodes.disabled = True
+            self.resources_config.num_nodes.value = 1
+            self.resources_config.num_cpus.max = os.cpu_count()
+            self.resources_config.num_cpus.value = 1
+            self.resources_config.num_cpus.description = "CPUs"
+            self.parallelization.npools.value = 1
+        else:
+            default_mpiprocs = computer.get_default_mpiprocs_per_machine()
+            self.resources_config.num_nodes.disabled = False
+            self.resources_config.num_cpus.max = default_mpiprocs
+            self.resources_config.num_cpus.value = default_mpiprocs
+            self.resources_config.num_cpus.description = "CPUs/node"
+            self.parallelization.npools.value = self._get_default_parallelization()
+
         self._check_resources()
+
+    def _get_default_parallelization(self):
+        """A _very_ rudimentary approach for obtaining a minimal npools setting."""
+        num_mpiprocs = (
+            self.resources_config.num_nodes.value * self.resources_config.num_cpus.value
+        )
+
+        for i in range(1, num_mpiprocs + 1):
+            if num_mpiprocs % i == 0 and num_mpiprocs // i < self.MAX_MPI_PER_POOL:
+                return i
 
     def _check_resources(self):
         """Check whether the currently selected resources will be sufficient and warn if not."""
         if not self.pw_code.value:
             return  # No code selected, nothing to do.
 
-        num_mpi_tasks = self.resources_config.num_mpi_tasks.value
+        num_cpus = self.resources_config.num_cpus.value
         on_localhost = self.pw_code.value.computer.get_hostname() == "localhost"
-        if self.pw_code.value and on_localhost and num_mpi_tasks > 1:
+        if self.pw_code.value and on_localhost and num_cpus > 1:
             self._show_alert_message(
                 "The selected code would be executed on the local host, but "
-                "the number of MPI tasks is larger than one. Please review "
+                "the number of CPUs is larger than one. Please review "
                 "the configuration and consider to select a code that runs "
                 "on a larger system if necessary.",
                 alert_class="warning",
@@ -578,36 +626,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 alert_class="warning",
             )
 
-    def _get_cpus_per_node(self):
-        """Determine the default number of CPUs per node based on the code configuration."""
-        if self.pw_code.value:
-            value = self.pw_code.value
-            return value.computer.metadata["default_mpiprocs_per_machine"]
-        return 1
-
-    def _determine_resources(self):
-        """Calculate the number of nodes and tasks per node."""
-        cpus_per_node = self._get_cpus_per_node()
-        num_mpi_tasks_selected = self.resources_config.num_mpi_tasks.value
-
-        num_nodes = max(1, ceil(num_mpi_tasks_selected / cpus_per_node))
-        num_mpi_tasks_per_node = ceil(num_mpi_tasks_selected / num_nodes)
-
-        return {
-            "num_machines": num_nodes,
-            "num_mpiprocs_per_machine": num_mpi_tasks_per_node,
-        }
-
     @traitlets.observe("state")
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
     @traitlets.observe("previous_step_state")
-    def _observe_input_structure(self, change):
-        self.set_selected_codes(DEFAULT_PARAMETERS)
+    def _observe_input_structure(self, _):
         self._update_state()
-        self._set_num_mpi_tasks_to_default()
+        self.set_pdos_status()
 
     @traitlets.observe("process")
     def _observe_process(self, change):
@@ -662,12 +689,29 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _load_code(parameters["pw_code"])
-            if parameters["run_pdos"]:
-                self.dos_code.value = _load_code(parameters["dos_code"])
-                self.projwfc_code.value = _load_code(parameters["projwfc_code"])
+            self.pw_code.selected_code = _load_code(parameters["pw_code"])
+            self.dos_code.selected_code = _load_code(parameters["dos_code"])
+            self.projwfc_code.selected_code = _load_code(parameters["projwfc_code"])
+
+    def set_pdos_status(self):
+        if self.workchain_settings.pdos_run.value:
+            self.dos_code.code_select_dropdown.disabled = False
+            self.projwfc_code.code_select_dropdown.disabled = False
+        else:
+            self.dos_code.code_select_dropdown.disabled = True
+            self.projwfc_code.code_select_dropdown.disabled = True
 
     def submit(self, _=None):
+        def update_builder(buildy, resources, npools=None):
+            for k, v in buildy.items():
+                if isinstance(v, (dict, ProcessBuilderNamespace)):
+                    if k == "pw" and v["pseudos"]:
+                        v["parallelization"] = Dict(dict={"npool": npools})
+                    if k == "resources":
+                        buildy["resources"] = resources
+                    else:
+                        update_builder(v, resources, npools)
+
         assert self.input_structure is not None
         parameters = self.get_input_parameters()
 
@@ -694,8 +738,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if not parameters.pop("run_pdos"):
             builder.pop("pdos")
 
-        resources = self._determine_resources()
-        update_resources(builder, resources)
+        resources = {
+            "num_machines": self.resources_config.num_nodes.value,
+            "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
+        }
+
+        update_builder(builder, resources, self.parallelization.npools.value)
 
         self.process = submit(builder)
 
