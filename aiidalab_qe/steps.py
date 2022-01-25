@@ -317,11 +317,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.tab = ipw.Tab(
             children=[
                 self.workchain_settings,
-                ipw.VBox(children=[
-                    self.pseudo_family_selector, 
-                    self.kpoints_settings,
-                    self.smearing_settings
-                ]),
+                ipw.VBox(
+                    children=[
+                        self.pseudo_family_selector,
+                        self.kpoints_settings,
+                        self.smearing_settings,
+                    ]
+                ),
             ],
             layout=ipw.Layout(min_height="250px"),
         )
