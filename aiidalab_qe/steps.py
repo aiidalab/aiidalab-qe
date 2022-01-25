@@ -481,17 +481,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.workchain_settings.pdos_run.value
             and not any(
                 [
-                    self.pw_code.selected_code is None,
-                    self.dos_code.selected_code is None,
-                    self.projwfc_code.selected_code is None,
+                    self.pw_code.value is None,
+                    self.dos_code.value is None,
+                    self.projwfc_code.value is None,
                 ]
             )
             and len(
                 set(
                     (
-                        self.pw_code.selected_code.computer.pk,
-                        self.dos_code.selected_code.computer.pk,
-                        self.projwfc_code.selected_code.computer.pk,
+                        self.pw_code.value.computer.pk,
+                        self.dos_code.value.computer.pk,
+                        self.projwfc_code.value.computer.pk,
                     )
                 )
             )
@@ -689,9 +689,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.selected_code = _load_code(parameters["pw_code"])
-            self.dos_code.selected_code = _load_code(parameters["dos_code"])
-            self.projwfc_code.selected_code = _load_code(parameters["projwfc_code"])
+            self.pw_code.value = _load_code(parameters["pw_code"])
+            self.dos_code.value = _load_code(parameters["dos_code"])
+            self.projwfc_code.value = _load_code(parameters["projwfc_code"])
 
     def set_pdos_status(self):
         if self.workchain_settings.pdos_run.value:
