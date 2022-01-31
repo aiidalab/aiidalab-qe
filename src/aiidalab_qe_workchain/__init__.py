@@ -262,10 +262,9 @@ class QeAppWorkChain(WorkChain):
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_BANDS
 
-        scf = workchain.get_outgoing(
-            WorkChainNode, link_label_filter="scf"
-        ).all_nodes()[0]
+        scf = workchain.get_outgoing(WorkChainNode, link_label_filter="scf").one().node
         self.ctx.scf_parent_folder = scf.outputs.remote_folder
+        self.ctx.current_structure = workchain.outputs.primitive_structure
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""
