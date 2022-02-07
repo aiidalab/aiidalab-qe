@@ -10,24 +10,21 @@ In this way one can install the wheel directly from the GitHub release via a PEP
 
 ## How to update the `aiidalab_qe_workchain` package
 
-If changes to the workchain package cannot be avoided, this is how you can update it:
+Any updates to the workchain that have not been released yet must be installed manually.
 
-1. Develop any fixes or features in conjunction with necessary updates to the workchain package on a dedicated branch.*
-2. Once development is finished merge the branch.
-3. Create a _prerelease_ (e.g. 22.01.0rc0) that contains the update including the revised workchain with: `bumpver --tag rc`.
-4. Update the workchain dependency in [setup.cfg](setup.cfg) to install the revised workchain from the prerelease.
-5. Create the final release (e.g. 22.01.0) with: `bumpver --tag final`.
-6. Update the workchain dependency in [setup.cfg](setup.cfg) to install the revised workchain from the latest final release.†
+```console
+cd src
+pip install  .
+```
 
-_*) This will require a manual installation of the package during the development process and CI tests might fail._
-
-_†) This step is technically optional and will only take effect on the next release._
+Additional notes:
+- Consider to use the editable mode (`pip install -e .`) while actively developing the workchain.
+- CI tests will likely fail for a branch with not yet released workchain updates.
+- A prerelease should be created shortly after merging workchain updates into the default branch to simplify development.
 
 ## Note on alternative approaches for distributing the workchain package
 
-The rather involved approach for updating the package is considered sub-optimal, however alternative (simpler) approaches for distributing and installing the wheel are currently not available or not known.
-
-The following alternatives approaches could be considered (in rough order of preference at the time of writing):
+The following alternatives approaches for the distribution of the workchain wheel could be considered (in rough order of preference at the time of writing):
 
 1. Install the package directly from the app directory (something like: `aiidalab-qe-workchain@file://./src/dist/aiidalab_qe_workchain-1.0-py3-none-any.whl`).
    However this is currently not possible, because it would be difficult to reliably determine the absolute location of the package and non-local URIs are not universally supported
