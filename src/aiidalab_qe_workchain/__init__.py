@@ -86,6 +86,8 @@ class QeAppWorkChain(WorkChain):
         spec.output('nscf_parameters', valid_type=Dict, required=False)
         spec.output('dos', valid_type=XyData, required=False)
         spec.output('projections', valid_type=Orbital, required=False)
+        spec.output('projections_up', valid_type=Orbital, required=False)
+        spec.output('projections_down', valid_type=Orbital, required=False)
         # yapf: enable
 
     @classmethod
@@ -347,15 +349,18 @@ class QeAppWorkChain(WorkChain):
                 "band_parameters", self.ctx.workchain_bands.outputs.band_parameters
             )
             self.out("band_structure", self.ctx.workchain_bands.outputs.band_structure)
+
         if "workchain_pdos" in self.ctx:
             self.out(
                 "nscf_parameters",
                 self.ctx.workchain_pdos.outputs.nscf__output_parameters,
             )
             self.out("dos", self.ctx.workchain_pdos.outputs.dos__output_dos)
-            self.out(
-                "projections", self.ctx.workchain_pdos.outputs.projwfc__projections
-            )
+            if "projections_up" in self.ctx.workchain_pdos.outputs.projwfc:
+                self.out("projections_up", self.ctx.workchain_pdos.outputs.projwfc.projections_up)
+                self.out("projections_down", self.ctx.workchain_pdos.outputs.projwfc.projections_down)
+            else:
+                self.out("projections", self.ctx.workchain_pdos.outputs.projwfc.projections)
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""

@@ -17,7 +17,7 @@ import nglview
 import traitlets
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
-from aiida.orm import CalcJobNode, Node, WorkChainNode
+from aiida.orm import CalcJobNode, Node, WorkChainNode, ProjectionData
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 from ase import Atoms
@@ -123,28 +123,43 @@ def export_bands_data(work_chain_node):
 
 def export_pdos_data(work_chain_node):
     if "dos" in work_chain_node.outputs:
-        fermi_energy = work_chain_node.outputs.nscf_parameters["fermi_energy"]
-        x_label, energy_dos, energy_units = work_chain_node.outputs.dos.get_x()
+        fermi_energy = work_chain_node.outputs.band_parameters["fermi_energy"]
+        _, energy_dos, energy_units = work_chain_node.outputs.dos.get_x()
         tdos_values = {
             f"{n} | {u}": v for n, v, u in work_chain_node.outputs.dos.get_y()
         }
 
         pdos_orbitals = []
 
-        for orbital, pdos, energy in work_chain_node.outputs.projections.get_pdos():
-            orbital_data = orbital.get_orbital_dict()
-            kind_name = orbital_data["kind_name"]
-            orbital_name = orbital.get_name_from_quantum_numbers(
-                orbital_data["angular_momentum"], orbital_data["magnetic_number"]
+        if "projections" in work_chain_node.outputs:
+            projection_list = [(work_chain_node.outputs.projections, None),]
+        else:
+            projection_list = [
+                (work_chain_node.outputs.projections_up, "up"),
+                (work_chain_node.outputs.projections_down, "dn")
+            ]
+            tdos_values['dos | states/eV'] = (
+                tdos_values.pop('dos_spin_up | states/eV') + tdos_values.pop('dos_spin_down | states/eV')
             )
-            pdos_orbitals.append(
-                {
-                    "kind": kind_name,
-                    "orbital": orbital_name,
-                    "energy | eV": energy,
-                    "pdos | states/eV": pdos,
-                }
-            )
+
+        for projections, suffix in projection_list:
+            for orbital, pdos, energy in projections.get_pdos():
+                orbital_data = orbital.get_orbital_dict()
+                kind_name = orbital_data["kind_name"]
+                orbital_name = orbital.get_name_from_quantum_numbers(
+                    orbital_data["angular_momentum"], orbital_data["magnetic_number"]
+                )
+                if suffix is not None:
+                    orbital_name += f"-{suffix}"
+
+                pdos_orbitals.append(
+                    {
+                        "kind": kind_name,
+                        "orbital": orbital_name,
+                        "energy | eV": energy,
+                        "pdos | states/eV": pdos,
+                    }
+                )
 
         data_dict = {
             "fermi_energy": fermi_energy,
@@ -154,19 +169,6 @@ def export_pdos_data(work_chain_node):
 
         # And this is why we shouldn't use special encoders...
         return json.loads(json.dumps(data_dict, cls=MontyEncoder))
-
-        fermi_energy = work_chain_node.outputs.nscf__output_parameters.get_dict()[
-            "fermi_energy"
-        ]
-        (
-            xlabel,
-            energy_dos,
-            energy_units,
-        ) = work_chain_node.outputs.dos__output_dos.get_x()
-        tdos_values = {
-            f"{n} | {u}": v
-            for n, v, u in work_chain_node.outputs.dos__output_dos.get_y()
-        }
 
 
 def export_data(work_chain_node):
