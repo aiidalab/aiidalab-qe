@@ -17,7 +17,7 @@ import nglview
 import traitlets
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
-from aiida.orm import CalcJobNode, Node, WorkChainNode, ProjectionData
+from aiida.orm import CalcJobNode, Node, ProjectionData, WorkChainNode
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 from ase import Atoms
@@ -132,15 +132,17 @@ def export_pdos_data(work_chain_node):
         pdos_orbitals = []
 
         if "projections" in work_chain_node.outputs:
-            projection_list = [(work_chain_node.outputs.projections, None),]
+            projection_list = [
+                (work_chain_node.outputs.projections, None),
+            ]
         else:
             projection_list = [
                 (work_chain_node.outputs.projections_up, "up"),
-                (work_chain_node.outputs.projections_down, "dn")
+                (work_chain_node.outputs.projections_down, "dn"),
             ]
-            tdos_values['dos | states/eV'] = (
-                tdos_values.pop('dos_spin_up | states/eV') + tdos_values.pop('dos_spin_down | states/eV')
-            )
+            tdos_values["dos | states/eV"] = tdos_values.pop(
+                "dos_spin_up | states/eV"
+            ) + tdos_values.pop("dos_spin_down | states/eV")
 
         for projections, suffix in projection_list:
             for orbital, pdos, energy in projections.get_pdos():

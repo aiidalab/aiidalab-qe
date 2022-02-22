@@ -357,10 +357,18 @@ class QeAppWorkChain(WorkChain):
             )
             self.out("dos", self.ctx.workchain_pdos.outputs.dos__output_dos)
             if "projections_up" in self.ctx.workchain_pdos.outputs.projwfc:
-                self.out("projections_up", self.ctx.workchain_pdos.outputs.projwfc.projections_up)
-                self.out("projections_down", self.ctx.workchain_pdos.outputs.projwfc.projections_down)
+                self.out(
+                    "projections_up",
+                    self.ctx.workchain_pdos.outputs.projwfc.projections_up,
+                )
+                self.out(
+                    "projections_down",
+                    self.ctx.workchain_pdos.outputs.projwfc.projections_down,
+                )
             else:
-                self.out("projections", self.ctx.workchain_pdos.outputs.projwfc.projections)
+                self.out(
+                    "projections", self.ctx.workchain_pdos.outputs.projwfc.projections
+                )
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
