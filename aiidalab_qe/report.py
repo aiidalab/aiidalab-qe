@@ -90,6 +90,12 @@ def _generate_report_dict(qeapp_wc):
             scf_kpoints_distance = qeapp_wc.inputs.bands.scf.kpoints_distance.value
         bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
     if run_pdos:
+        scf_kpoints_distance = (
+            scf_kpoints_distance or qeapp_wc.inputs.pdos.scf.kpoints_distance.value
+        )
+        pw_parameters = (
+            pw_parameters or qeapp_wc.inputs.pdos.scf.pw.parameters.get_dict()
+        )
         nscf_kpoints_distance = qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
 
     if pw_parameters:
