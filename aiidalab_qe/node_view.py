@@ -116,12 +116,14 @@ def export_bands_data(work_chain_node):
             )[0]
         )
         data["fermi_level"] = work_chain_node.outputs.band_parameters["fermi_energy"]
-        return jsanitize(data)
+        return [
+            jsanitize(data),
+        ]
 
 
 def export_pdos_data(work_chain_node):
     if "dos" in work_chain_node.outputs:
-        fermi_energy = work_chain_node.outputs.band_parameters["fermi_energy"]
+        fermi_energy = work_chain_node.outputs.nscf_parameters["fermi_energy"]
         x_label, energy_dos, energy_units = work_chain_node.outputs.dos.get_x()
         tdos_values = {
             f"{n} | {u}": v for n, v, u in work_chain_node.outputs.dos.get_y()
@@ -483,12 +485,11 @@ class WorkChainViewer(ipw.VBox):
                 self._show_structure()
                 self._results_shown.add("structure")
 
-            if (
-                "band_structure" not in self._results_shown
-                and "band_structure" in self.node.outputs
+            if "electronic_structure" not in self._results_shown and (
+                "band_structure" in self.node.outputs or "dos" in self.node.outputs
             ):
-                self._show_band_structure()
-                self._results_shown.add("band_structure")
+                self._show_electronic_structure()
+                self._results_shown.add("electronic_structure")
 
     def _show_structure(self):
         self._structure_view = StructureDataViewer(
@@ -497,12 +498,12 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.children[1].children = [self._structure_view]
         self.result_tabs.set_title(1, "Final Geometry")
 
-    def _show_band_structure(self):
+    def _show_electronic_structure(self):
         data = export_data(self.node)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
         self._bands_plot_view = BandsPlotWidget(
-            bands=[bands_data], dos=dos_data, plot_fermilevel=True
+            bands=bands_data, dos=dos_data, plot_fermilevel=True
         )
         self.result_tabs.children[2].children = [self._bands_plot_view]
         self.result_tabs.set_title(2, "Electronic Structure")
