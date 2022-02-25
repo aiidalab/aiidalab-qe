@@ -72,13 +72,31 @@ def _generate_report_dict(qeapp_wc):
     pw_parameters = None
     energy_cutoff_wfc = None
     energy_cutoff_rho = None
+    degauss = None
+    smearing = None
     scf_kpoints_distance = None
     bands_kpoints_distance = None
+
     try:
         scf_kpoints_distance = qeapp_wc.inputs.kpoints_distance_override.value
     except AttributeError:
         scf_kpoints_distance = None
     nscf_kpoints_distance = None
+
+    default_params = PwBaseWorkChain.get_protocol_inputs(
+        builder_parameters["protocol"]
+    )["pw"]["parameters"]["SYSTEM"]
+    try:
+        degauss = qeapp_wc.inputs.degauss_override.value
+    except AttributeError:
+        # read default from protocol
+        degauss = default_params["degauss"]
+
+    try:
+        smearing = qeapp_wc.inputs.smearing_override.value
+    except AttributeError:
+        # read default from protocol
+        smearing = default_params["smearing"]
 
     if run_relax:
         pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
@@ -104,6 +122,8 @@ def _generate_report_dict(qeapp_wc):
 
     yield "energy_cutoff_wfc", energy_cutoff_wfc
     yield "energy_cutoff_rho", energy_cutoff_rho
+    yield "degauss", degauss
+    yield "smearing", smearing
     yield "scf_kpoints_distance", scf_kpoints_distance
     yield "bands_kpoints_distance", bands_kpoints_distance
     yield "nscf_kpoints_distance", nscf_kpoints_distance

@@ -16,6 +16,7 @@ PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 Bool = DataFactory("bool")
 Float = DataFactory("float")
 Dict = DataFactory("dict")
+Str = DataFactory("str")
 XyData = DataFactory("array.xy")
 StructureData = DataFactory("structure")
 BandsData = DataFactory("array.bands")
@@ -52,6 +53,10 @@ class QeAppWorkChain(WorkChain):
         spec.input(
             'degauss_override', valid_type=Float, required=False,
             help='Override for the `degauss` value of all `PwBaseWorkChains` except for the `nscf` calculations.'
+        )
+        spec.input(
+            'smearing_override', valid_type=Str, required=False,
+            help='Override for the `smearing` value of all `PwBaseWorkChains` save for the `nscf` calculations.'
         )
         spec.outline(
             cls.setup,
@@ -160,6 +165,8 @@ class QeAppWorkChain(WorkChain):
             builder.kpoints_distance_override = overrides["kpoints_distance_override"]
         if "degauss_override" in overrides:
             builder.degauss_override = overrides["degauss_override"]
+        if "smearing_override" in overrides:
+            builder.smearing_override = overrides["smearing_override"]
 
         return builder
 
@@ -184,8 +191,8 @@ class QeAppWorkChain(WorkChain):
             if "base_scf" in inputs:
                 inputs.base_scf.kpoints_distance = self.inputs.kpoints_distance_override
 
+        inputs.base.pw.parameters = inputs.base.pw.parameters.get_dict()
         if "degauss_override" in self.inputs:
-            inputs.base.pw.parameters = inputs.base.pw.parameters.get_dict()
             inputs.base.pw.parameters.setdefault("SYSTEM", {})[
                 "degauss"
             ] = self.inputs.degauss_override.value
@@ -197,6 +204,18 @@ class QeAppWorkChain(WorkChain):
                 inputs.base_scf_params.pw.parameters.setdefault("SYSTEM", {})[
                     "degauss"
                 ] = self.inputs.degauss_override.value
+        if "smearing_override" in self.inputs:
+            inputs.base.pw.parameters.setdefault("SYSTEM", {})[
+                "smearing"
+            ] = self.inputs.smearing_override.value
+
+            if "base_scf" in inputs:
+                inputs.base_scf_params.pw.parameters = (
+                    inputs.base_scf_params.pw.parameters.get_dict()
+                )
+                inputs.base_scf_params.pw.parameters.setdefault("SYSTEM", {})[
+                    "smearing"
+                ] = self.inputs.smearing_override.value
 
         inputs = prepare_process_inputs(PwRelaxWorkChain, inputs)
         running = self.submit(PwRelaxWorkChain, **inputs)
@@ -244,6 +263,10 @@ class QeAppWorkChain(WorkChain):
             inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
                 "degauss"
             ] = self.inputs.degauss_override.value
+        if "smearing_override" in self.inputs:
+            inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+                "smearing"
+            ] = self.inputs.smearing_override.value
 
         inputs = prepare_process_inputs(PwBandsWorkChain, inputs)
         running = self.submit(PwBandsWorkChain, **inputs)
@@ -289,11 +312,16 @@ class QeAppWorkChain(WorkChain):
             if "kpoints_distance_override" in self.inputs:
                 inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
 
+            inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
             if "degauss_override" in self.inputs:
-                inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
                 inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
                     "degauss"
                 ] = self.inputs.degauss_override.value
+
+            if "smearing_override" in self.inputs:
+                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+                    "smearing"
+                ] = self.inputs.smearing_override.value
 
         inputs = prepare_process_inputs(PdosWorkChain, inputs)
         running = self.submit(PdosWorkChain, **inputs)
