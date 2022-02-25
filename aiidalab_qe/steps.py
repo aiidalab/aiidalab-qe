@@ -317,13 +317,17 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
             (self.smearing_settings, "degauss_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"]["parameters"]["SYSTEM"]["degauss"],
+            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
+                "parameters"
+            ]["SYSTEM"]["degauss"],
         )
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
             (self.smearing_settings, "smearing_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"]["parameters"]["SYSTEM"]["smearing"],
+            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
+                "parameters"
+            ]["SYSTEM"]["smearing"],
         )
 
         self.tab = ipw.Tab(
