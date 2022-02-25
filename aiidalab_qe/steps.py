@@ -165,7 +165,7 @@ class SmearingSettings(ipw.VBox):
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
-        Untick the box to override the default.
+        Tick the box to override the default.
     </p>"""
     )
 
@@ -239,7 +239,7 @@ class KpointSettings(ipw.VBox):
         """<p>
         The k-points mesh density of the SCF calculation is set by the chosen <b>protocol</b>.
         The value below represents the maximum distance between the k-points in each direction of reciprocal space.
-        Untick the box to override the default.
+        Tick the box to override the default.
     </p>"""
     )
 
