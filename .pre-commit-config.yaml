@@ -41,6 +41,6 @@ repos:
           - id: setup-cfg-fmt
 
     - repo: https://github.com/sirosen/check-jsonschema
-      rev: 0.13.0
+      rev: 0.14.0
       hooks:
           - id: check-github-workflows
