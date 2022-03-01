@@ -26,7 +26,7 @@ See [src/README.md](src/README.md) for instructions on how to update the `aiidal
 
 ## For maintainers
 
-To create a new release, clone the repository, install development dependencies with `pip install -e '.[dev]'`, and then execute `bumpver update`.
+To create a new release, clone the repository, install development dependencies with `pip install '.[dev]'`, and then execute `bumpver update`.
 This will:
 
   1. Create a tagged release with bumped version and push it to the repository.
