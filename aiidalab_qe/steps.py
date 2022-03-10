@@ -427,7 +427,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.set_input_parameters(DEFAULT_PARAMETERS)
 
     def confirm(self, _=None):
-        self.confirm_button.disabled = False
+        self.confirm_button.disabled = True
         self.state = self.State.SUCCESS
 
     @traitlets.default("state")
