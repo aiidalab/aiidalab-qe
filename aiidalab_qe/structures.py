@@ -28,7 +28,7 @@ structures are supported.
 </div>"""
 
 # The Examples list of (name, file) tuple curretly passed to
-# StructureExamplesWidget. 
+# StructureExamplesWidget.
 Examples = [
     ("Silicon (diamond)", "miscellaneous/structures/Si.xyz"),
     ("Silicon oxide", "miscellaneous/structures/SiO2.xyz"),
