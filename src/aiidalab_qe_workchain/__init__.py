@@ -353,9 +353,9 @@ class QeAppWorkChain(WorkChain):
         if "workchain_pdos" in self.ctx:
             self.out(
                 "nscf_parameters",
-                self.ctx.workchain_pdos.outputs.nscf__output_parameters,
+                self.ctx.workchain_pdos.outputs.nscf.output_parameters,
             )
-            self.out("dos", self.ctx.workchain_pdos.outputs.dos__output_dos)
+            self.out("dos", self.ctx.workchain_pdos.outputs.dos.output_dos)
             if "projections_up" in self.ctx.workchain_pdos.outputs.projwfc:
                 self.out(
                     "projections_up",

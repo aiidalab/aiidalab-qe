@@ -123,7 +123,7 @@ def export_bands_data(work_chain_node):
 
 def export_pdos_data(work_chain_node):
     if "dos" in work_chain_node.outputs:
-        fermi_energy = work_chain_node.outputs.band_parameters["fermi_energy"]
+        fermi_energy = work_chain_node.outputs.nscf_parameters["fermi_energy"]
         _, energy_dos, energy_units = work_chain_node.outputs.dos.get_x()
         tdos_values = {
             f"{n} | {u}": v for n, v, u in work_chain_node.outputs.dos.get_y()
@@ -144,7 +144,7 @@ def export_pdos_data(work_chain_node):
                 "dos_spin_up | states/eV"
             ) + tdos_values.pop("dos_spin_down | states/eV")
 
-        for projections, suffix in projection_list:
+        for projections, suffix in projection_list:  # type: ProjectionData, str
             for orbital, pdos, energy in projections.get_pdos():
                 orbital_data = orbital.get_orbital_dict()
                 kind_name = orbital_data["kind_name"]
