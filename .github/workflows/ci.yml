@@ -21,7 +21,9 @@ jobs:
                   python-version: 3.8
 
             - name: Install dependencies
+              # TODO: Remove virtualenv after ci issue described in https://github.com/aiidalab/aiidalab-qe/pull/206#issuecomment-1081661847 fixed
               run: |
+                  python -m pip install virtualenv==20.0.33
                   python -m pip install pre-commit==2.11.1
 
             - name: Run pre-commit
