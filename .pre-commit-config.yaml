@@ -11,7 +11,7 @@ repos:
             exclude: miscellaneous/structures/SiO2.xyz
 
     - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
-      rev: 0.1.0
+      rev: 0.1.1
       hooks:
           - id: yamlfmt
 
@@ -36,11 +36,11 @@ repos:
             args: [--profile, black, --filter-files]
 
     - repo: https://github.com/asottile/setup-cfg-fmt
-      rev: v1.20.0
+      rev: v1.20.1
       hooks:
           - id: setup-cfg-fmt
 
     - repo: https://github.com/sirosen/check-jsonschema
-      rev: 0.14.1
+      rev: 0.14.2
       hooks:
           - id: check-github-workflows
