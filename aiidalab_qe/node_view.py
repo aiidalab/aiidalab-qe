@@ -17,7 +17,7 @@ import nglview
 import traitlets
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
-from aiida.orm import CalcJobNode, Node, WorkChainNode, ProjectionData
+from aiida.orm import CalcJobNode, Node, ProjectionData, WorkChainNode
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 from ase import Atoms
