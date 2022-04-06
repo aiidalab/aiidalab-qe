@@ -27,6 +27,17 @@ structures are supported.
 </strong></p>
 </div>"""
 
+# The Examples list of (name, file) tuple curretly passed to
+# StructureExamplesWidget.
+Examples = [
+    ("Silicon (diamond)", "miscellaneous/structures/Si.xyz"),
+    ("Silicon oxide", "miscellaneous/structures/SiO2.xyz"),
+    ("Diamond", "miscellaneous/structures/diamond.cif"),
+    ("Gallium arsenide", "miscellaneous/structures/GaAs.xyz"),
+    ("Gold (fcc)", "miscellaneous/structures/Au.cif"),
+    ("Cobalt (hcp)", "miscellaneous/structures/Co.cif"),
+]
+
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     """Integrated widget for the selection of structures from different sources."""
