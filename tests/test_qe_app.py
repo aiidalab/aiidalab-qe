@@ -16,11 +16,11 @@ def test_qe_app_select_silicon(selenium, url):
     selenium.set_window_size(1920, 985)
     time.sleep(10)
     selenium.find_element(
-        By.CSS_SELECTOR, ".p-TabBar-tab:nth-child(6) > .p-TabBar-tabLabel"
-    ).click()
-    selenium.find_element(By.XPATH, "//option[@value='Silicon']").click()
-    selenium.get_screenshot_as_file("screenshots/qe-app-select-silicon-selected.png")
+        By.XPATH, '//li[@id="tab-key-17"]'
+    ).click()  # click `From Examples` tab for input structure
+    selenium.find_element(By.XPATH, "//option[@value='Diamond']").click()
+    selenium.get_screenshot_as_file("screenshots/qe-app-select-diamond-selected.png")
     confirm_button = selenium.find_element(By.XPATH, "//button[contains(.,'Confirm')]")
     confirm_button.location_once_scrolled_into_view  # scroll into view
     confirm_button.click()
-    selenium.get_screenshot_as_file("screenshots/qe-app-select-silicon-confirmed.png")
+    selenium.get_screenshot_as_file("screenshots/qe-app-select-diamond-confirmed.png")

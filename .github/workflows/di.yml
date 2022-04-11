@@ -4,6 +4,7 @@
 name: downstream-integration
 
 on:
+    workflow_dispatch:
     schedule:
         - cron: 41 3 * * *
 
