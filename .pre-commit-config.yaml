@@ -2,7 +2,7 @@
 repos:
 
     - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.1.0
+      rev: v4.2.0
       hooks:
           - id: check-json
           - id: check-yaml
@@ -41,6 +41,6 @@ repos:
           - id: setup-cfg-fmt
 
     - repo: https://github.com/sirosen/check-jsonschema
-      rev: 0.14.2
+      rev: 0.14.3
       hooks:
           - id: check-github-workflows
