@@ -11,7 +11,7 @@ repos:
             exclude: miscellaneous/structures/SiO2.xyz
 
     - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
-      rev: 0.1.1
+      rev: 0.2.1
       hooks:
           - id: yamlfmt
 
