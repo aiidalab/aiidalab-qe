@@ -436,7 +436,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.input_structure = None
             self.set_input_parameters(DEFAULT_PARAMETERS)
 
 
