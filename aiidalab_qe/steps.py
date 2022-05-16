@@ -873,7 +873,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain
-            self.process.set_extra("builder_parameters", self.get_input_parameters())
+            self.process.set_extra("builder_parameters", parameters)
 
     def reset(self):
         with self.hold_trait_notifications():
