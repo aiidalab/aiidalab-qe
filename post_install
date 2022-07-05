@@ -1,0 +1,5 @@
+#!/bin/bash
+
+python -m aiidalab_qe install-qe &
+python -m aiidalab_qe install-sssp &
+wait
