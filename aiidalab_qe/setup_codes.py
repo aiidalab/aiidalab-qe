@@ -98,6 +98,64 @@ def setup_codes():
         _setup_code(code_name)
 
 
+def install(force=False):
+    """Install Quantum ESPRESSO and the corresponding AiiDA codes.
+
+    Args:
+        force: Ignore previously failed attempts and install anyways.
+    """
+    # Check for "do not install file" and skip actual check. The purpose of
+    # this file is to not re-try this process on every app start in case that
+    # there are issues.
+    if not force and FN_DO_NOT_SETUP.exists():
+        raise RuntimeError("Installation failed in previous attempt.")
+
+    yield "Checking installation status..."
+
+    conda_installed = which("conda")
+    try:
+        with FileLock(FN_LOCKFILE, timeout=5):
+            # We assume that if the codes are already setup, everything is in
+            # order. Only if they are not present, should we take action,
+            # however we only do so if the environment has a conda binary
+            # present (`which conda`). If that is not the case then we assume
+            # that this is a custom user environment in which case we also take
+            # no further action.
+            if codes_are_setup():
+                return  # Already setup
+
+            if not conda_installed:
+                raise RuntimeError(
+                    "Unable to automatically install Quantum ESPRESSO, conda "
+                    "is not available."
+                )
+
+            if not qe_installed():
+
+                # First, install Quantum ESPRESSO.
+                yield "Installing QE..."
+                try:
+                    install_qe()
+                except CalledProcessError as error:
+                    raise RuntimeError(f"Failed to create conda environment: {error}")
+
+            # After installing QE, we install the corresponding
+            # AiiDA codes:
+            for code_name in CODE_NAMES:
+                if not _code_is_setup(code_name):
+                    yield f"Setting up AiiDA code ({code_name})..."
+                    _setup_code(code_name)
+
+    except Timeout:
+        # Assume that the installation was triggered by a different process.
+        yield "Installation was already started, waiting for it to finish..."
+        with FileLock(FN_LOCKFILE, timeout=120):
+            if not codes_are_setup():
+                raise RuntimeError(
+                    "Installation process did not finish in the expected time."
+                )
+
+
 class QESetupWidget(ipw.VBox):
 
     installed = traitlets.Bool(allow_none=True).tag(readonly=True)
@@ -148,75 +206,13 @@ class QESetupWidget(ipw.VBox):
         self._progress_bar.description = f"{self.prefix}{msg}"
 
     def _refresh_installed(self):
-        AnimationRate = ProgressBar.AnimationRate  # alias
-        conda_installed = which("conda")
-
-        self.set_message("checking installation status...")
         try:
             self.set_trait("busy", True)
 
-            # Check for "do not install file" and skip actual check. The purpose of
-            # this file is to not re-try this process on every app start in case
-            # that there are issues.
-            if FN_DO_NOT_SETUP.exists():
-                self.set_message("Installation previously failed.")
-                self.error = "Installation failed in previous attempt."
-                return
+            for msg in install():
+                self.set_message(msg)
 
-            try:
-                with FileLock(FN_LOCKFILE, timeout=5):
-                    # We assume that if the codes are already setup, everything
-                    # is in order. Only if they are not present, should we take
-                    # action, however we only do so if the environment has a
-                    # conda binary present (`which conda`). If that is not the
-                    # case then we assume that this is a custom user environment
-                    # in which case we also take no further action.
-                    self.installed = codes_are_setup() or not conda_installed
-                    if self.installed:
-                        self.error = ""
-                        self.set_message("Codes are installed.")
-                    else:
-                        self.error = ""
-                        self.set_message("installing...")
-                        # To setup our own codes, we install QE on the local
-                        # host:
-                        if not qe_installed():
-                            self.set_message("Installing QE...")
-                            self._progress_bar.value = AnimationRate(0.05)
-                            try:
-                                install_qe()
-                            except CalledProcessError as error:
-                                raise RuntimeError(
-                                    f"Failed to create conda environment: {error}"
-                                )
-                        self.value = 0.7
-                        # After installing QE, we install the corresponding
-                        # AiiDA codes:
-                        for i, code_name in enumerate(CODE_NAMES):
-                            if not _code_is_setup(code_name):
-                                self.set_message(
-                                    f"Setting up AiiDA code ({code_name})..."
-                                )
-                                self._progress_bar.value = AnimationRate(0.1)
-                                _setup_code(code_name)
-                            self.value = 0.8 + i * 0.1
-                        # After going through the installation procedure, we
-                        # expect both our version of QE to be installed, as well
-                        # as the codes to be setup.
-                        self.installed = qe_installed() and codes_are_setup()
-
-            except Timeout:
-                # assume that the installation was triggered by a different
-                # process
-                self.set_message("installing...")
-                self._progress_bar.value = AnimationRate(0.01)
-                with FileLock(FN_LOCKFILE, timeout=120):
-                    self.installed = codes_are_setup() or not conda_installed
-
-            # Raise error in case that the installation was not successful
-            # either in this process or a different one.
-            if not self.installed:
-                raise RuntimeError("Installation failed for unknown reasons.")
+            self.installed = True
 
         except Exception as error:
             self.set_message("Failed to setup QE on localhost.")
@@ -281,6 +277,10 @@ class QESetupWidget(ipw.VBox):
 
             if self.error or self.installed:
                 self._progress_bar.value = 1.0
+            elif self.busy:
+                self._progress_bar.value = ProgressBar.AnimationRate(1.0)
+            else:
+                self._progress_bar.value = 0
 
             self._progress_bar.bar_style = (
                 "info"

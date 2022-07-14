@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo "Starting installation of QE..."
+python -m aiidalab_qe install-qe & disown
+
+echo "Starting installation of pseudo-potentials..."
+python -m aiidalab_qe install-sssp & disown

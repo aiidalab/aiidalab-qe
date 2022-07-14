@@ -32,7 +32,7 @@ def pseudos_to_install():
     return EXPECTED_PSEUDOS - labels
 
 
-def _install_pseudos(pseudo_set):
+def install_pseudos(pseudo_set):
     env = os.environ.copy()
     env["PATH"] = f"{env['PATH']}:{Path.home().joinpath('.local', 'bin')}"
 
@@ -44,6 +44,27 @@ def _install_pseudos(pseudo_set):
         yield mult * i
         p_family, p_version, p_func, p_type = pseudo.split("/")
         run_(["aiida-pseudo", "install", p_family.lower(), "-x", p_func, "-p", p_type])
+
+
+def install():
+    yield "Checking installation status...", 0.1
+    try:
+        with FileLock(FN_LOCKFILE, timeout=5):
+            if len(pseudos_to_install()) > 0:
+                yield "Installing...", 0.1
+                for progress in install_pseudos(pseudos_to_install()):
+                    yield "Installing...", progress
+
+    except Timeout:
+        # Assume that the installation was triggered by a different process.
+        yield "Installation was already started elsewhere, waiting for it to finish...", ProgressBar.AnimationRate(
+            1.0
+        )
+        with FileLock(FN_LOCKFILE, timeout=120):
+            if len(pseudos_to_install()) > 0:
+                raise RuntimeError(
+                    "Installation process did not finish in the expected time."
+                )
 
 
 class SSSPInstallWidget(ProgressBar):
@@ -70,29 +91,12 @@ class SSSPInstallWidget(ProgressBar):
         self.description = f"{self.prefix}{msg}"
 
     def _refresh_installed(self):
-        self.set_message("checking installation status...")
+        self.set_trait("busy", True)
+
         try:
-            self.set_trait("busy", True)
-            try:
-                with FileLock(FN_LOCKFILE, timeout=5):
-                    self.installed = not bool(pseudos_to_install())
-                    if not self.installed:
-                        self.set_message("installing...")
-                        for progress in _install_pseudos(pseudos_to_install()):
-                            self.value = progress
-                        self.installed = not bool(pseudos_to_install())
-
-            except Timeout:
-                # assume that the installation was triggered by a different process
-                self.set_message("installing...")
-                self.value = self.AnimationRate(0.01)
-                with FileLock(FN_LOCKFILE, timeout=120):
-                    self.installed = not bool(pseudos_to_install())
-
-            # Raise error in case that the installation was not successful
-            # either in this process or a different one.
-            if not self.installed:
-                raise RuntimeError("Installation failed for unknown reasons.")
+            for msg, progress in install():
+                self.set_message(msg)
+                self.value = progress
 
         except Exception as error:
             self.set_trait("error", str(error))
