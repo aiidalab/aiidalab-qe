@@ -36,11 +36,11 @@ repos:
             args: [--profile, black, --filter-files]
 
     - repo: https://github.com/asottile/setup-cfg-fmt
-      rev: v1.20.1
+      rev: v1.20.2
       hooks:
           - id: setup-cfg-fmt
 
     - repo: https://github.com/sirosen/check-jsonschema
-      rev: 0.17.0
+      rev: 0.17.1
       hooks:
           - id: check-github-workflows
