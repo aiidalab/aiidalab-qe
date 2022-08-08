@@ -102,6 +102,7 @@ class SSSPInstallWidget(ProgressBar):
             self.set_trait("error", str(error))
             self.set_message(str(error))
         else:
+            self.installed = True
             self.set_message("OK")
         finally:
             self.set_trait("busy", False)
