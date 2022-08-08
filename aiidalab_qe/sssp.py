@@ -102,7 +102,8 @@ class SSSPInstallWidget(ProgressBar):
             self.set_trait("error", str(error))
             self.set_message(str(error))
         else:
-            self.set_trait("installed", True)
+            # If all the libraries are install by hands `pseudos_to_install()` will be empty list.
+            self.set_trait("installed", not bool(pseudos_to_install()))
             self.set_message("OK")
         finally:
             self.set_trait("busy", False)

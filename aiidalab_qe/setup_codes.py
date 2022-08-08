@@ -212,8 +212,6 @@ class QESetupWidget(ipw.VBox):
             for msg in install():
                 self.set_message(msg)
 
-            self.installed = True
-
         except Exception as error:
             self.set_message("Failed to setup QE on localhost.")
             self.set_trait("error", str(error))
