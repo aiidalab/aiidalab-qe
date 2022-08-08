@@ -219,6 +219,7 @@ class QESetupWidget(ipw.VBox):
             self.set_trait("error", str(error))
             FN_DO_NOT_SETUP.touch()
         else:
+            self.set_trait("installed", True)
             self.set_message("OK")
         finally:
             self.set_trait("busy", False)
