@@ -110,22 +110,20 @@ class WorkChainSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
 
-        # Checkbox to see if the band structure should be calculated
-        self.bands_run = ipw.Checkbox(
-            description="",
+        # ToggleButton to see if the band structure should be calculated
+        self.bands_run = ipw.ToggleButton(
+            description="Band structure",
             tooltip="Calculate the electronic band structure.",
-            indent=False,
-            value=True,
-            layout=ipw.Layout(max_width="10%"),
+            value=False,
+            layout=ipw.Layout(flex="1 1 auto"),
         )
 
-        # Checkbox to see if the PDOS should be calculated
-        self.pdos_run = ipw.Checkbox(
-            description="",
+        # ToggleButton to see if the PDOS should be calculated
+        self.pdos_run = ipw.ToggleButton(
+            description="(P)DOS",
             tooltip="Calculate the electronic PDOS.",
-            indent=False,
-            value=True,
-            layout=ipw.Layout(max_width="10%"),
+            value=False,
+            layout=ipw.Layout(flex="1 1 auto"),
         )
 
         # Work chain protocol
@@ -143,13 +141,7 @@ class WorkChainSettings(ipw.VBox):
                 self.electronic_type,
                 self.properties_title,
                 ipw.HTML("Select which properties to calculate:"),
-                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
-                ipw.HBox(
-                    children=[
-                        ipw.HTML("<b>Projected density of states</b>"),
-                        self.pdos_run,
-                    ]
-                ),
+                ipw.VBox(children=[self.bands_run, self.pdos_run]),
                 self.properties_help,
                 self.protocol_title,
                 ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
