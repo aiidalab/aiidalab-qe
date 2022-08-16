@@ -927,9 +927,12 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 ProcessState.WAITING,
             ):
                 self.state = self.State.ACTIVE
-            elif process_state in (ProcessState.EXCEPTED, ProcessState.KILLED):
+            elif (
+                process_state in (ProcessState.EXCEPTED, ProcessState.KILLED)
+                or self.process.is_failed
+            ):
                 self.state = self.State.FAIL
-            elif process_state is ProcessState.FINISHED:
+            elif self.process.is_finished_ok:
                 self.state = self.State.SUCCESS
 
     @traitlets.observe("process")
