@@ -6,6 +6,7 @@ Authors:
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
 import os
+from pickle import NONE
 
 import ipywidgets as ipw
 import traitlets
@@ -425,21 +426,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
             self.confirm_button.disabled = False
-            if not (
-                self.workchain_settings.relax_type.value != "none"
-                or self.workchain_settings.bands_run.value
-                or self.workchain_settings.pdos_run.value
-            ):
-                self.confirm_button.disabled = True
-                self.state = self.State.READY
-                self._submission_blocker_messages.value = """
-                    <div class="alert alert-info">
-                    The configured work chain would not actually compute anything.
-                    Select either a structure relaxation method or at least one of the
-                    the bands or the PDOS calculations or both.</div>"""
-            else:
-                self._submission_blocker_messages.value = ""
-                self.state = self.State.CONFIGURED
+            self._submission_blocker_messages.value = ""
+            self.state = self.State.CONFIGURED
         elif self.previous_step_state == self.State.FAIL:
             self.state = self.State.FAIL
         else:
@@ -877,6 +865,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder.degauss_override = Float(parameters["degauss_override"])
         if "smearing_override" in parameters:
             builder.smearing_override = Str(parameters["smearing_override"])
+            
+        # skip relax sub-worflow only when RelaxType is NONE and has property calculated.
+        if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (parameters["run_bands"] or parameters["run_pdos"]):
+            builder.pop("relax")
 
         if not parameters.get("run_bands", False):
             builder.pop("bands")
