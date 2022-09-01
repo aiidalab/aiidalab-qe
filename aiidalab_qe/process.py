@@ -90,7 +90,7 @@ class WorkChainSelector(ipw.HBox):
                 properties.append("pdos")
             if "bands" in load_node(pk).inputs:
                 properties.append("bands")
-                
+
             if "relax" not in load_node(pk).inputs:
                 relax_info = "structure is not relaxed"
             if "relax" in load_node(pk).inputs and properties:
@@ -103,7 +103,7 @@ class WorkChainSelector(ipw.HBox):
                 properties_info = ""
             else:
                 properties_info = f"properties on {', '.join(properties)}"
-                
+
             yield cls.WorkChainData(
                 formula=formula,
                 relax_info=relax_info,

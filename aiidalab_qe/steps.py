@@ -864,9 +864,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder.degauss_override = Float(parameters["degauss_override"])
         if "smearing_override" in parameters:
             builder.smearing_override = Str(parameters["smearing_override"])
-            
+
         # skip relax sub-worflow only when RelaxType is NONE and has property calculated.
-        if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (parameters["run_bands"] or parameters["run_pdos"]):
+        if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (
+            parameters["run_bands"] or parameters["run_pdos"]
+        ):
             builder.pop("relax")
 
         if not parameters.get("run_bands", False):
