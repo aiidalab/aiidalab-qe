@@ -6,7 +6,6 @@ Authors:
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
 import os
-from pickle import NONE
 
 import ipywidgets as ipw
 import traitlets
