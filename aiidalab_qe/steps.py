@@ -857,10 +857,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if "smearing_override" in parameters:
             builder.smearing_override = Str(parameters["smearing_override"])
 
-        if not parameters.pop("run_bands"):
+        if not parameters.get("run_bands", False):
             builder.pop("bands")
 
-        if not parameters.pop("run_pdos"):
+        if not parameters.get("run_pdos", False):
             builder.pop("pdos")
 
         resources = {
