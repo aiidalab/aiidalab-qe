@@ -29,9 +29,9 @@ def _generate_report_dict(qeapp_wc):
     builder_parameters = qeapp_wc.get_extra("builder_parameters", {})
 
     # Properties
-    run_relax = builder_parameters["relax_type"] != "none"
-    run_bands = builder_parameters.get("run_bands", False)
-    run_pdos = builder_parameters.get("run_pdos", False)
+    run_relax = builder_parameters.get("relax_type") != "none"
+    run_bands = builder_parameters.get("run_bands")
+    run_pdos = builder_parameters.get("run_pdos")
 
     yield "relaxed", run_relax
     yield "relax_method", builder_parameters["relax_type"].title()
