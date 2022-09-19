@@ -28,7 +28,9 @@ class WorkChainSelector(ipw.HBox):
     FMT_WORKCHAIN = "{wc.pk:6}{wc.ctime:>10}\t{wc.state:<16}\t{wc.formula} \t {wc.relax_info} \t {wc.properties_info}"
 
     def __init__(self, **kwargs):
-        self.work_chains_prompt = ipw.HTML("<b>Select computed workflow or start a new:</b>&nbsp;")
+        self.work_chains_prompt = ipw.HTML(
+            "<b>Select computed workflow or start a new:</b>&nbsp;"
+        )
         self.work_chains_selector = ipw.Dropdown(
             options=[("New workflow...", self._NO_PROCESS)],
             layout=ipw.Layout(min_width="300px", flex="1 1 auto"),
