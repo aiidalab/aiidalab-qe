@@ -25,7 +25,7 @@ class PseudoFamilySelector(ipw.VBox):
     pseudo_family_prompt = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;">
         <b><a href="https://www.materialscloud.org/discover/sssp/table/efficiency"
-        target="_blank">Standard Solid-state pseudopotentials</a> (SSSP)</b></div>"""
+        target="_blank">Standard solid-state pseudopotentials</a> (SSSP)</b></div>"""
     )
     pseudo_family_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
