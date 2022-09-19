@@ -55,8 +55,8 @@ class WorkChainSettings(ipw.VBox):
     )
     materials_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        Below you can indicate both if the material should be treated as an insulator 
-        or a metal (if in doubt, choose "Metal"), 
+        Below you can indicate both if the material should be treated as an insulator
+        or a metal (if in doubt, choose "Metal"),
         and if it should be studied with magnetization/spin polarization,
         switched magnetism ON or OFF (ON is at least twice more costly).
         </div>"""
@@ -168,7 +168,8 @@ class SmearingSettings(ipw.VBox):
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
-        Tick the box to override the default.
+        Tick the box to override the default, not advised unless you master <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
+        target="_blank">HERE</a> for a discussion).
     </p>"""
     )
 
@@ -239,11 +240,10 @@ class SmearingSettings(ipw.VBox):
 class KpointSettings(ipw.VBox):
 
     kpoints_distance_description = ipw.HTML(
-        """<p>
-        The k-points mesh density of the SCF calculation is set by the chosen <b>protocol</b>.
+        """<div>
+        The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
         The value below represents the maximum distance between the k-points in each direction of reciprocal space.
-        Tick the box to override the default.
-    </p>"""
+        Tick the box to override the default, smaller is more accurate and costly. </div>"""
     )
 
     # The default of `kpoints_distance` must be linked to the `protocol`
