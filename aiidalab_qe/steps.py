@@ -58,7 +58,7 @@ class WorkChainSettings(ipw.VBox):
         Below you can indicate both if the material should be treated as an insulator
         or a metal (if in doubt, choose "Metal"),
         and if it should be studied with magnetization/spin polarization,
-        switched magnetism ON or OFF (ON is at least twice more costly).
+        switch magnetism ON or OFF (ON is at least twice more costly).
         </div>"""
     )
 
