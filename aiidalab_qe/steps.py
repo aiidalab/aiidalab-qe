@@ -168,7 +168,7 @@ class SmearingSettings(ipw.VBox):
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
-        Tick the box to override the default, not advised unless you master <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
+        Tick the box to override the default, not advised unless you've mastered <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
         target="_blank">HERE</a> for a discussion).
     </p>"""
     )
