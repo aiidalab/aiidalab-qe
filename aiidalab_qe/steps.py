@@ -82,7 +82,7 @@ class WorkChainSettings(ipw.VBox):
         """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
         The "moderate" protocol represents a trade-off between
         accuracy and speed. Choose the "fast" protocol for a faster calculation
-        with less precision and the "precise" protocol to aim at best accuracy (at the prece of longer/costlier calculations).</div>"""
+        with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
     )
 
     def __init__(self, **kwargs):
@@ -169,7 +169,7 @@ class SmearingSettings(ipw.VBox):
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
         Tick the box to override the default, not advised unless you've mastered <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
-        target="_blank">HERE</a> for a discussion).
+        target="_blank">here</a> for a discussion).
     </p>"""
     )
 

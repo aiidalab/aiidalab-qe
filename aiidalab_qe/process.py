@@ -29,7 +29,7 @@ class WorkChainSelector(ipw.HBox):
 
     def __init__(self, **kwargs):
         self.work_chains_prompt = ipw.HTML(
-            "<b>Select computed workflow or start a new:</b>&nbsp;"
+            "<b>Select computed workflow or start a new one:</b>&nbsp;"
         )
         self.work_chains_selector = ipw.Dropdown(
             options=[("New workflow...", self._NO_PROCESS)],

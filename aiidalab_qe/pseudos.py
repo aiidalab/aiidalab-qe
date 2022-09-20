@@ -43,7 +43,7 @@ class PseudoFamilySelector(ipw.VBox):
     )
     dft_functional_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; opacity:0.5;">
-        The exchange-correlation energy is calculated functional. We currently provide support for two
+        The exchange-correlation energy is calculated using this functional. We currently provide support for two
         well-established generalised gradient approximation (GGA) functionals:
         PBE and PBEsol.</div>"""
     )
