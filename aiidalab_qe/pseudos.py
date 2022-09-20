@@ -16,24 +16,24 @@ class PseudoFamilySelector(ipw.VBox):
 
     description = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The exchange-correlation function and pseudopotential library is set by
-        the <b>protocol</b> configured in the "WorkChain" tab. Here you can
+        The exchange-correlation functional and pseudopotential library is set by
+        the <b>protocol</b> configured in the "Workflow" tab. Here you can
         override the defaults if desired.</div>""",
         layout=ipw.Layout(max_width="60%"),
     )
 
     pseudo_family_prompt = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;">
-        <b><a href="https://www.materialscloud.org/discover/sssp/table/precision"
-        target="_blank">Standard Solid-state pseudopotential</a> (SSSP) protocol</b></div>"""
+        <b><a href="https://www.materialscloud.org/discover/sssp/table/efficiency"
+        target="_blank">Standard solid-state pseudopotentials</a> (SSSP)</b></div>"""
     )
     pseudo_family_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
-        If you are unsure what to choose, select 'SSSP efficiency', which for
+        If you are unsure, select 'SSSP efficiency', which for
         most calculations will produce sufficiently accurate results at
-        comparatively small computational cost. If your calculation requires a
+        comparatively small computational costs. If your calculations require a
         higher accuracy, select 'SSSP accuracy', which will be computationally
-        more expensive, but will produce even more accurate results.</div>"""
+        more expensive.</div>"""
     )
 
     dft_functional_prompt = ipw.HTML(
@@ -43,8 +43,7 @@ class PseudoFamilySelector(ipw.VBox):
     )
     dft_functional_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; opacity:0.5;">
-        The exchange-correlation energy is calculated based on the charge
-        density using this functional. We currently provide support for two
+        The exchange-correlation energy is calculated functional. We currently provide support for two
         well-established generalised gradient approximation (GGA) functionals:
         PBE and PBEsol.</div>"""
     )

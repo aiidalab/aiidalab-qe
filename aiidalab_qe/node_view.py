@@ -421,7 +421,7 @@ class WorkChainViewer(ipw.VBox):
         self.title = ipw.HTML(
             f"""
             <hr style="height:2px;background-color:#2097F3;">
-            <h4>QE App Work Chain (pk: {self.node.pk}) &mdash;
+            <h4>QE App Workflow (pk: {self.node.pk}) &mdash;
                 {self.node.inputs.structure.get_formula()}
             </h4>
             """

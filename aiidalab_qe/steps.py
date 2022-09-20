@@ -48,13 +48,17 @@ class WorkChainSettings(ipw.VBox):
     )
     structure_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-        By default, the workflow will optimize the provided geometry. Select "Structure
-        as is" if this is not desired. You can either optimize the atomic positions ("Full geometry")
-        and unit cell, or atomic positions only ("Atomic positions"). </div>"""
+        You have three options:<br>
+        (1) Structure as is: perform a self consistent calculation using the structure provided as input.<br>
+        (2) Atomic positions: perform a full relaxation of the internal atomic coordinates. <br>
+        (3) Full geometry: perform a full relaxation for both the internal atomic coordinates and the cell vectors. </div>"""
     )
     materials_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        Below you can indicate both if the material is magnetic and a metal or insulator. For now only ferromagnetic configurations are possible, since antiferromagnetism is more complicated to study automatically. If you're not sure whether your material is insulating, choose "Metal", since the corresponding settings usually also work quite well for insulators.
+        Below you can indicate both if the material should be treated as an insulator
+        or a metal (if in doubt, choose "Metal"),
+        and if it should be studied with magnetization/spin polarization,
+        switch magnetism ON or OFF (ON is at least twice more costly).
         </div>"""
     )
 
@@ -76,10 +80,9 @@ class WorkChainSettings(ipw.VBox):
     )
     protocol_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
-        The "moderate" protocol represents a balanced trade-off between
+        The "moderate" protocol represents a trade-off between
         accuracy and speed. Choose the "fast" protocol for a faster calculation
-        with less precision and the "precise" protocol that provides more
-        accuracy but will take longer.</div>"""
+        with less precision and the "precise" protocol to aim at best accuracy (at the prece of longer/costlier calculations).</div>"""
     )
 
     def __init__(self, **kwargs):
@@ -139,8 +142,8 @@ class WorkChainSettings(ipw.VBox):
                 self.structure_help,
                 self.relax_type,
                 self.materials_help,
-                self.spin_type,
                 self.electronic_type,
+                self.spin_type,
                 self.properties_title,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
@@ -165,7 +168,8 @@ class SmearingSettings(ipw.VBox):
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
-        Tick the box to override the default.
+        Tick the box to override the default, not advised unless you've mastered <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
+        target="_blank">HERE</a> for a discussion).
     </p>"""
     )
 
@@ -236,11 +240,10 @@ class SmearingSettings(ipw.VBox):
 class KpointSettings(ipw.VBox):
 
     kpoints_distance_description = ipw.HTML(
-        """<p>
-        The k-points mesh density of the SCF calculation is set by the chosen <b>protocol</b>.
+        """<div>
+        The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
         The value below represents the maximum distance between the k-points in each direction of reciprocal space.
-        Tick the box to override the default.
-    </p>"""
+        Tick the box to override the default, smaller is more accurate and costly. </div>"""
     )
 
     # The default of `kpoints_distance` must be linked to the `protocol`
