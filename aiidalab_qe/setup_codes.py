@@ -19,7 +19,7 @@ __all__ = [
 FN_LOCKFILE = Path.home().joinpath(".install-qe-on-localhost.lock")
 FN_DO_NOT_SETUP = Path.cwd().joinpath(".do-not-setup-on-localhost")
 
-QE_VERSION = "6.7"
+QE_VERSION = "7.0"
 
 CONDA_ENV_PREFIX = Path.home().joinpath(
     ".conda", "envs", f"quantum-espresso-{QE_VERSION}"

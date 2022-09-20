@@ -526,7 +526,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
 
         # The QE setup widget checks whether there are codes that match specific
-        # expected labels (e.g. "pw-6.7@localhost") and triggers both the
+        # expected labels (e.g. "pw-7.0@localhost") and triggers both the
         # installation of QE into a dedicated conda environment and the setup of
         # the codes in case that they are not already configured.
         self.qe_setup_status = QESetupWidget()
