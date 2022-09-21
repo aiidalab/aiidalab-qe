@@ -296,7 +296,15 @@ class CalcJobOutputFollower(traitlets.HasTraits):
 
     def _fetch_output(self, calcjob):
         assert isinstance(calcjob, CalcJobNode)
-        if "remote_folder" in calcjob.outputs:
+        if "retrieved" in calcjob.outputs:
+            try:
+                self.filename = calcjob.attributes["output_filename"]
+                with calcjob.outputs.retrieved.open(self.filename) as f:
+                    return f.read().splitlines()
+            except OSError:
+                return list()
+
+        elif "remote_folder" in calcjob.outputs:
             try:
                 fn_out = calcjob.attributes["output_filename"]
                 self.filename = fn_out

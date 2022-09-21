@@ -34,13 +34,13 @@ def _generate_report_dict(qeapp_wc):
     run_pdos = builder_parameters.get("run_pdos")
 
     yield "relaxed", run_relax
-    yield "relax_method", builder_parameters["relax_type"].title()
+    yield "relax_method", builder_parameters["relax_type"]
     yield "bands_computed", run_bands
     yield "pdos_computed", run_pdos
 
     # Material settings
-    yield "material_magnetic", builder_parameters["spin_type"].title()
-    yield "electronic_type", builder_parameters["electronic_type"].title()
+    yield "material_magnetic", builder_parameters["spin_type"]
+    yield "electronic_type", builder_parameters["electronic_type"]
 
     # Calculation settings
     yield "protocol", builder_parameters["protocol"]
