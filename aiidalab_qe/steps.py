@@ -96,7 +96,7 @@ class WorkChainSettings(ipw.VBox):
             ],
             value="positions_cell",
         )
-        
+
         # SpinType: magnetic properties of material
         self.spin_type = ipw.ToggleButtons(
             options=[("Off", "none"), ("On", "collinear")],
@@ -104,7 +104,7 @@ class WorkChainSettings(ipw.VBox):
             description="Magnetism:",
             style={"description_width": "initial"},
         )
-        
+
         # ElectronicType: electronic properties of material
         self.electronic_type = ipw.ToggleButtons(
             options=[("Metal", "metal"), ("Insulator", "insulator")],
