@@ -58,7 +58,7 @@ class WorkChainSettings(ipw.VBox):
         Below you can indicate both if the material should be treated as an insulator
         or a metal (if in doubt, choose "Metal"),
         and if it should be studied with magnetization/spin polarization,
-        switch magnetism ON or OFF (ON is at least twice more costly).
+        switch magnetism On or Off (On is at least twice more costly).
         </div>"""
     )
 
@@ -98,18 +98,16 @@ class WorkChainSettings(ipw.VBox):
         )
 
         # SpinType: magnetic properties of material
-        self.spin_type = ipw.Dropdown(
-            options=[("Non-magnetic", "none"), ("Ferromagnetic", "collinear")],
+        self.spin_type = ipw.ToggleButtons(
+            options=[("Off", "none"), ("On", "collinear")],
             value=DEFAULT_PARAMETERS["spin_type"],
-            description="Magnetism:",
             style={"description_width": "initial"},
         )
 
         # ElectronicType: electronic properties of material
-        self.electronic_type = ipw.Dropdown(
+        self.electronic_type = ipw.ToggleButtons(
             options=[("Metal", "metal"), ("Insulator", "insulator")],
             value=DEFAULT_PARAMETERS["electronic_type"],
-            description="Electronic Type:",
             style={"description_width": "initial"},
         )
 
@@ -142,8 +140,28 @@ class WorkChainSettings(ipw.VBox):
                 self.structure_help,
                 self.relax_type,
                 self.materials_help,
-                self.electronic_type,
-                self.spin_type,
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Electronic Type:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        self.electronic_type,
+                    ]
+                ),
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Magnetism:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        self.spin_type,
+                    ]
+                ),
                 self.properties_title,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
