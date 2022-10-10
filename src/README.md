@@ -6,7 +6,7 @@ The `src/` directory contains the `aiidalab_qe_workchain` package that must be i
 
 The app distributes its own AiiDA workchain implementation which constitutes an app dependency and must therefore be globally installed so that the AiiDA daemon is able to import it.
 The workchain package is automatically built as a wheel and attached to every app release via the [GitHub actions `Release` workflow](https://github.com/aiidalab/aiidalab-qe/blob/master/.github/workflows/release.yml).
-In this way one can install the wheel directly from the GitHub release via a PEP 508 compliant URL, example: `aiidalab-qe-workchain @ https://github.com/aiidalab/aiidalab-qe/releases/download/v22.01.0/aiidalab_qe_workchain-1.0-py3-none-any.whl`
+In this way one can install the wheel directly from the GitHub release via a PEP 508 compliant URL, example: `aiidalab-qe-workchain @ https://github.com/aiidalab/aiidalab-qe/releases/download/v22.01.0/aiidalab_qe_workchain-22.01.0-py3-none-any.whl`
 
 ## How to update the `aiidalab_qe_workchain` package
 
@@ -26,7 +26,7 @@ Additional notes:
 
 The following alternatives approaches for the distribution of the workchain wheel could be considered (in rough order of preference at the time of writing):
 
-1. Install the package directly from the app directory (something like: `aiidalab-qe-workchain@file://./src/dist/aiidalab_qe_workchain-1.0-py3-none-any.whl`).
+1. Install the package directly from the app directory (something like: `aiidalab-qe-workchain@file://./src/dist/aiidalab_qe_workchain-22.01.0-py3-none-any.whl`).
    However this is currently not possible, because it would be difficult to reliably determine the absolute location of the package and non-local URIs are not universally supported
 2. Distribute the wheel [via GitHub packages](https://github.com/orgs/aiidalab/packages) once [Python packages are supported](https://github.com/github/roadmap/issues/94).
 3. Distribute the workchain as part of its own dedicated package or as part of the [aiida-quantumespresso](https://github.com/aiidateam/aiida-quantumespresso) package.
