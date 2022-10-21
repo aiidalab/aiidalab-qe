@@ -934,10 +934,10 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         return self.state is not self.State.ACTIVE
 
     def reset(self):
-        self.process = None
+        self.process_uuid = None
 
     def _update_state(self):
-        if self.process is None:
+        if self.process_uuid is None:
             self.state = self.State.INIT
         else:
             process = load_node(self.process)
@@ -956,6 +956,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
 
-    @traitlets.observe("process")
+    @traitlets.observe("process_uuid")
     def _observe_process(self, change):
         self._update_state()
