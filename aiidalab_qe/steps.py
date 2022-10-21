@@ -11,7 +11,7 @@ import ipywidgets as ipw
 import traitlets
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
-from aiida.orm import ProcessNode, WorkChainNode, load_code
+from aiida.orm import WorkChainNode, load_code, load_node
 from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
@@ -614,9 +614,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             and len(
                 set(
                     (
-                        self.pw_code.value.computer.pk,
-                        self.dos_code.value.computer.pk,
-                        self.projwfc_code.value.computer.pk,
+                        load_code(self.pw_code.value).computer.pk,
+                        load_code(self.dos_code.value).computer.pk,
+                        load_code(self.projwfc_code.value).computer.pk,
                     )
                 )
             )
@@ -667,7 +667,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 try:
                     code_widget = getattr(self, code)
                     code_widget.refresh()
-                    code_widget.value = load_code(DEFAULT_PARAMETERS[code])
+                    code_widget.value = load_code(DEFAULT_PARAMETERS[code]).uuid
                 except NotExistent:
                     pass
 
@@ -728,7 +728,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return  # No code selected, nothing to do.
 
         num_cpus = self.resources_config.num_cpus.value
-        on_localhost = self.pw_code.value.computer.get_hostname() == "localhost"
+        on_localhost = (
+            load_code(self.pw_code.value).computer.get_hostname() == "localhost"
+        )
         if self.pw_code.value and on_localhost and num_cpus > 1:
             self._show_alert_message(
                 "The selected code would be executed on the local host, but "
@@ -788,9 +790,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             run_pdos=self.workchain_settings.pdos_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
             # Codes
-            pw_code=self.pw_code.value.uuid,
-            dos_code=self.dos_code.value.uuid,
-            projwfc_code=self.projwfc_code.value.uuid,
+            pw_code=self.pw_code.value,
+            dos_code=self.dos_code.value,
+            projwfc_code=self.projwfc_code.value,
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
@@ -817,9 +819,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _load_code(parameters["pw_code"])
-            self.dos_code.value = _load_code(parameters["dos_code"])
-            self.projwfc_code.value = _load_code(parameters["projwfc_code"])
+            self.pw_code.value = _load_code(parameters["pw_code"]).uuid
+            self.dos_code.value = _load_code(parameters["dos_code"]).uuid
+            self.projwfc_code.value = _load_code(parameters["projwfc_code"]).uuid
 
     def set_pdos_status(self):
         if self.workchain_settings.pdos_run.value:
@@ -904,11 +906,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
-    process = traitlets.Instance(ProcessNode, allow_none=True)
+    process_uuid = traitlets.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
         self.process_tree = ProcessNodesTreeWidget()
-        ipw.dlink((self, "process"), (self.process_tree, "process"))
+        ipw.dlink(
+            (self, "process_uuid"),
+            (self.process_tree, "process_uuid"),
+        )
 
         self.node_view = NodeViewWidget(layout={"width": "auto", "height": "auto"})
         ipw.dlink(
@@ -926,7 +931,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 self._update_state,
             ],
         )
-        ipw.dlink((self, "process"), (self.process_monitor, "process"))
+        ipw.dlink((self, "process_uuid"), (self.process_monitor, "process_uuid"))
 
         super().__init__([self.process_status], **kwargs)
 
@@ -935,13 +940,14 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         return self.state is not self.State.ACTIVE
 
     def reset(self):
-        self.process = None
+        self.process_uuid = None
 
     def _update_state(self):
-        if self.process is None:
+        if self.process_uuid is None:
             self.state = self.State.INIT
         else:
-            process_state = self.process.process_state
+            process = load_node(self.process_uuid)
+            process_state = process.process_state
             if process_state in (
                 ProcessState.CREATED,
                 ProcessState.RUNNING,
@@ -950,12 +956,12 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 self.state = self.State.ACTIVE
             elif (
                 process_state in (ProcessState.EXCEPTED, ProcessState.KILLED)
-                or self.process.is_failed
+                or process.is_failed
             ):
                 self.state = self.State.FAIL
-            elif self.process.is_finished_ok:
+            elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
 
-    @traitlets.observe("process")
+    @traitlets.observe("process_uuid")
     def _observe_process(self, change):
         self._update_state()
