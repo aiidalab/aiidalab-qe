@@ -394,4 +394,4 @@ class QeAppWorkChain(WorkChain):
             )
 
 
-__version__ = "22.9.1"
+__version__ = "22.11.0"
