@@ -108,22 +108,26 @@ class MinimalStructureViewer(ipw.VBox):
                 self._viewer.add_representation("ball+stick", aspectRatio=3.5)
 
 
-def export_bands_data(work_chain_node):
+def export_bands_data(work_chain_node, fermi_energy=None):
     if "band_structure" in work_chain_node.outputs:
         data = json.loads(
             work_chain_node.outputs.band_structure._exportcontent(
                 "json", comments=False
             )[0]
         )
-        data["fermi_level"] = work_chain_node.outputs.band_parameters["fermi_energy"]
+        # The fermi energy from band calculation is not robust.
+        data["fermi_level"] = (
+            fermi_energy or work_chain_node.outputs.band_parameters["fermi_energy"]
+        )
         return [
             jsanitize(data),
         ]
+    else:
+        return None
 
 
 def export_pdos_data(work_chain_node):
     if "dos" in work_chain_node.outputs:
-        fermi_energy = work_chain_node.outputs.nscf_parameters["fermi_energy"]
         _, energy_dos, energy_units = work_chain_node.outputs.dos.get_x()
         tdos_values = {
             f"{n} | {u}": v for n, v, u in work_chain_node.outputs.dos.get_y()
@@ -164,7 +168,7 @@ def export_pdos_data(work_chain_node):
                 )
 
         data_dict = {
-            "fermi_energy": fermi_energy,
+            "fermi_energy": work_chain_node.outputs.nscf_parameters["fermi_energy"],
             "tdos": {f"energy | {energy_units}": energy_dos, "values": tdos_values},
             "pdos": pdos_orbitals,
         }
@@ -172,10 +176,19 @@ def export_pdos_data(work_chain_node):
         # And this is why we shouldn't use special encoders...
         return json.loads(json.dumps(data_dict, cls=MontyEncoder))
 
+    else:
+        return None
+
 
 def export_data(work_chain_node):
+    dos = export_pdos_data(work_chain_node)
+    fermi_energy = dos["fermi_energy"] if dos else None
+
+    bands = export_bands_data(work_chain_node, fermi_energy)
+
     return dict(
-        bands=export_bands_data(work_chain_node), dos=export_pdos_data(work_chain_node)
+        bands=bands,
+        dos=dos,
     )
 
 
