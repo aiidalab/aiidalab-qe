@@ -809,18 +809,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Set the inputs in the GUI based on a set of parameters."""
 
         # Codes
-        def _load_code(code):
+        def _get_code_uuid(code):
             if code is not None:
                 try:
-                    return load_code(code)
+                    return load_code(code).uuid
                 except NotExistent:
                     return None
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _load_code(parameters["pw_code"]).uuid
-            self.dos_code.value = _load_code(parameters["dos_code"]).uuid
-            self.projwfc_code.value = _load_code(parameters["projwfc_code"]).uuid
+            self.pw_code.value = _get_code_uuid(parameters["pw_code"])
+            self.dos_code.value = _get_code_uuid(parameters["dos_code"])
+            self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
 
     def set_pdos_status(self):
         if self.workchain_settings.pdos_run.value:
