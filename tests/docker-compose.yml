@@ -1,0 +1,18 @@
+---
+version: '3.4'
+
+services:
+
+    aiidalab:
+        image: aiidalab/full-stack:${TAG:-latest}
+        environment:
+            RMQHOST: messaging
+            TZ: Europe/Zurich
+            DOCKER_STACKS_JUPYTER_CMD: notebook
+            SETUP_DEFAULT_AIIDA_PROFILE: 'true'
+            AIIDALAB_DEFAULT_APPS: ''
+            JUPYTER_TOKEN: ${JUPYTER_TOKEN}
+        volumes:
+            - ..:/home/jovyan/apps/aiidalab-qe
+        ports:
+            - 8998:8888

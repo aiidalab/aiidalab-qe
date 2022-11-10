@@ -1,26 +1,28 @@
-#!/usr/bin/env python
-import time
-
+import requests
 from selenium.webdriver.common.by import By
 
 
-def test_qe_app_take_screenshot(selenium, url):
-    selenium.get(url("http://localhost:8100/apps/apps/quantum-espresso/qe.ipynb"))
-    selenium.set_window_size(1920, 985)
-    time.sleep(10)
-    selenium.get_screenshot_as_file("screenshots/qe-app.png")
+def test_notebook_service_available(notebook_service):
+    url, token = notebook_service
+    response = requests.get(f"{url}/?token={token}")
+    assert response.status_code == 200
 
 
-def test_qe_app_select_silicon(selenium, url):
-    selenium.get(url("http://localhost:8100/apps/apps/quantum-espresso/qe.ipynb"))
-    selenium.set_window_size(1920, 985)
-    time.sleep(10)
-    selenium.find_element(
-        By.XPATH, '//li[@id="tab-key-17"]'
+def test_qe_app_take_screenshot(selenium_driver):
+    driver = selenium_driver("qe.ipynb", wait_time=30.0)
+    driver.set_window_size(1920, 985)
+    driver.get_screenshot_as_file("screenshots/qe-app.png")
+
+
+def test_qe_app_select_silicon(selenium_driver):
+    driver = selenium_driver("qe.ipynb", wait_time=30.0)
+    driver.set_window_size(1920, 985)
+    driver.find_element(
+        By.XPATH, "//*[text()='From Examples']"
     ).click()  # click `From Examples` tab for input structure
-    selenium.find_element(By.XPATH, "//option[@value='Diamond']").click()
-    selenium.get_screenshot_as_file("screenshots/qe-app-select-diamond-selected.png")
-    confirm_button = selenium.find_element(By.XPATH, "//button[contains(.,'Confirm')]")
+    driver.find_element(By.XPATH, "//option[@value='Diamond']").click()
+    driver.get_screenshot_as_file("screenshots/qe-app-select-diamond-selected.png")
+    confirm_button = driver.find_element(By.XPATH, "//button[text()='Confirm']")
     confirm_button.location_once_scrolled_into_view  # scroll into view
     confirm_button.click()
-    selenium.get_screenshot_as_file("screenshots/qe-app-select-diamond-confirmed.png")
+    driver.get_screenshot_as_file("screenshots/qe-app-select-diamond-confirmed.png")
