@@ -728,9 +728,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return  # No code selected, nothing to do.
 
         num_cpus = self.resources_config.num_cpus.value
-        on_localhost = (
-            load_code(self.pw_code.value).computer.get_hostname() == "localhost"
-        )
+        on_localhost = load_node(self.pw_code.value).computer.hostname == "localhost"
         if self.pw_code.value and on_localhost and num_cpus > 1:
             self._show_alert_message(
                 "The selected code would be executed on the local host, but "
