@@ -689,9 +689,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_resources(self, change):
         if change["new"] and (
             change["old"] is None
-            or change["new"].computer.pk != change["old"].computer.pk
+            or load_code(change["new"]).computer.pk
+            != load_code(change["old"]).computer.pk
         ):
-            self.set_resource_defaults(change["new"].computer)
+            self.set_resource_defaults(load_code(change["new"]).computer)
 
     def set_resource_defaults(self, computer=None):
 
