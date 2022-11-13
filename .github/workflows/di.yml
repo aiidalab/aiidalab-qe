@@ -42,7 +42,7 @@ jobs:
 
             - name: Install dependencies for test
               run: |
-                  pip install -U -e .[tests]
+                  pip install -U -r requirements_test.txt
 
             - name: Run pytest
               run: TAG=${{ matrix.tag }} JUPYTER_TOKEN=$(openssl rand -hex 32) pytest --driver ${{ matrix.browser }}
