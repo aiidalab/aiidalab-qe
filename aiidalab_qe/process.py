@@ -96,7 +96,7 @@ class WorkChainSelector(ipw.HBox):
                 relax_type = builder_parameters.get("relax_type")
 
                 if relax_type != "none":
-                    relax_info = "structure is not relaxed"
+                    relax_info = "structure is relaxed"
                 else:
                     relax_info = "static SCF calculation on structure"
             else:

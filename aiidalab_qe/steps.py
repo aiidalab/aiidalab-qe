@@ -865,7 +865,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if "smearing_override" in parameters:
             builder.smearing_override = Str(parameters["smearing_override"])
 
-        # skip relax sub-worflow only when RelaxType is NONE and has property calculated.
+        # skip relax sub-workflow only when RelaxType is NONE and has property calculated.
         if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (
             parameters["run_bands"] or parameters["run_pdos"]
         ):
