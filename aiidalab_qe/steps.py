@@ -905,13 +905,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
-    process_uuid = traitlets.Unicode(allow_none=True)
+    process = traitlets.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink(
-            (self, "process_uuid"),
-            (self.process_tree, "process_uuid"),
+            (self, "process"),
+            (self.process_tree, "value"),
         )
 
         self.node_view = NodeViewWidget(layout={"width": "auto", "height": "auto"})
@@ -930,7 +930,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 self._update_state,
             ],
         )
-        ipw.dlink((self, "process_uuid"), (self.process_monitor, "process_uuid"))
+        ipw.dlink((self, "process"), (self.process_monitor, "value"))
 
         super().__init__([self.process_status], **kwargs)
 
@@ -939,13 +939,13 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         return self.state is not self.State.ACTIVE
 
     def reset(self):
-        self.process_uuid = None
+        self.process = None
 
     def _update_state(self):
-        if self.process_uuid is None:
+        if self.process is None:
             self.state = self.State.INIT
         else:
-            process = load_node(self.process_uuid)
+            process = load_node(self.process)
             process_state = process.process_state
             if process_state in (
                 ProcessState.CREATED,
@@ -961,6 +961,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
 
-    @traitlets.observe("process_uuid")
+    @traitlets.observe("process")
     def _observe_process(self, change):
         self._update_state()
