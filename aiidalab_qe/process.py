@@ -82,23 +82,31 @@ class WorkChainSelector(ipw.HBox):
         )
 
         for process in projected[1:]:
-            pk = process[0]
-            formula = load_node(pk).inputs.structure.get_formula()
-            if "relax" in load_node(pk).inputs:
-                relax_info = "structure is relaxed"
-            else:
-                relax_info = "structure is not relaxed"
+            workchain = load_node(process[0])
+            formula = workchain.inputs.structure.get_formula()
 
             properties = []
-            if "pdos" in load_node(pk).inputs:
+            if "pdos" in workchain.inputs:
                 properties.append("pdos")
-            if "bands" in load_node(pk).inputs:
+            if "bands" in workchain.inputs:
                 properties.append("bands")
+
+            if "relax" in workchain.inputs:
+                builder_parameters = workchain.get_extra("builder_parameters", {})
+                relax_type = builder_parameters.get("relax_type")
+
+                if relax_type != "none":
+                    relax_info = "structure is relaxed"
+                else:
+                    relax_info = "static SCF calculation on structure"
+            else:
+                relax_info = "structure is not relaxed"
 
             if not properties:
                 properties_info = ""
             else:
                 properties_info = f"properties on {', '.join(properties)}"
+
             yield cls.WorkChainData(
                 formula=formula,
                 relax_info=relax_info,

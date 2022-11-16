@@ -108,25 +108,22 @@ class QeAppWorkChain(WorkChain):
         builder = cls.get_builder()
         builder.structure = structure
 
-        if relax_type is not RelaxType.NONE:
-            relax_overrides = overrides.get("relax", {})
-            if pseudo_family is not None:
-                relax_overrides.setdefault("base", {})["pseudo_family"] = pseudo_family
+        relax_overrides = overrides.get("relax", {})
+        if pseudo_family is not None:
+            relax_overrides.setdefault("base", {})["pseudo_family"] = pseudo_family
 
-            relax = PwRelaxWorkChain.get_builder_from_protocol(
-                code=pw_code,
-                structure=structure,
-                protocol=protocol,
-                overrides=relax_overrides,
-                relax_type=relax_type,
-                **kwargs,
-            )
-            relax.pop("structure", None)
-            relax.pop("clean_workdir", None)
-            relax.pop("base_final_scf", None)
-            builder.relax = relax
-        else:
-            builder.pop("relax", None)
+        relax = PwRelaxWorkChain.get_builder_from_protocol(
+            code=pw_code,
+            structure=structure,
+            protocol=protocol,
+            overrides=relax_overrides,
+            relax_type=relax_type,
+            **kwargs,
+        )
+        relax.pop("structure", None)
+        relax.pop("clean_workdir", None)
+        relax.pop("base_final_scf", None)
+        builder.relax = relax
 
         bands_overrides = overrides.get("bands", {})
         if pseudo_family is not None:
@@ -236,11 +233,12 @@ class QeAppWorkChain(WorkChain):
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_RELAX
 
-        self.ctx.current_structure = workchain.outputs.output_structure
-        self.ctx.current_number_of_bands = (
-            workchain.outputs.output_parameters.get_attribute("number_of_bands")
-        )
-        self.out("structure", self.ctx.current_structure)
+        if "output_structure" in workchain.outputs:
+            self.ctx.current_structure = workchain.outputs.output_structure
+            self.ctx.current_number_of_bands = (
+                workchain.outputs.output_parameters.get_attribute("number_of_bands")
+            )
+            self.out("structure", self.ctx.current_structure)
 
     def should_run_bands(self):
         """Check if the band structure should be calculated."""
