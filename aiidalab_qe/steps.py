@@ -34,10 +34,10 @@ from aiidalab_qe.widgets import (
 )
 from aiidalab_qe_workchain import QeAppWorkChain
 
-StructureData = DataFactory("structure")
-Float = DataFactory("float")
-Dict = DataFactory("dict")
-Str = DataFactory("str")
+StructureData = DataFactory("core.structure")
+Float = DataFactory("core.float")
+Dict = DataFactory("core.dict")
+Str = DataFactory("core.str")
 
 
 class WorkChainSettings(ipw.VBox):
@@ -768,7 +768,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                builder_parameters = process_node.get_extra("builder_parameters", None)
+                builder_parameters = process_node.base.extras.get(
+                    "builder_parameters", None
+                )
                 if builder_parameters is not None:
                     self.set_selected_codes(builder_parameters)
             self._update_state()
@@ -895,7 +897,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain
-            self.process.set_extra("builder_parameters", parameters)
+            self.process.base.extras.set("builder_parameters", parameters)
 
     def reset(self):
         with self.hold_trait_notifications():

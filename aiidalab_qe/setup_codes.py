@@ -7,7 +7,7 @@ from threading import Thread
 import ipywidgets as ipw
 import traitlets
 from aiida.common.exceptions import NotExistent
-from aiida.orm import InstalledCode, load_code, load_computer
+from aiida.orm import load_code
 from filelock import FileLock, Timeout
 
 from aiidalab_qe.widgets import ProgressBar
@@ -67,18 +67,29 @@ def _setup_code(code_name, computer_name="localhost"):
     try:
         load_code(f"{code_name}-{QE_VERSION}@localhost")
     except NotExistent:
-        localhost = load_computer(computer_name)
-        code = InstalledCode(
-            computer=localhost,
-            filepath_executable=CONDA_ENV_PREFIX.joinpath(
-                "bin", f"{code_name}.x"
-            ).as_posix(),
-            default_calc_job_plugin=f"quantumespresso.{code_name}",
-            prepend_text=f'eval "$(conda shell.posix hook)"\nconda activate {CONDA_ENV_PREFIX}\nexport OMP_NUM_THREADS=1',
+        run(
+            [
+                "verdi",
+                "code",
+                "create",
+                "core.code.installed",
+                "--non-interactive",
+                "--label",
+                f"{code_name}-{QE_VERSION}",
+                "--description",
+                f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab.",
+                "--default-calc-job-plugin",
+                f"quantumespresso.{code_name}",
+                "--computer",
+                computer_name,
+                "--prepend-text",
+                f'eval "$(conda shell.posix hook)"\nconda activate {CONDA_ENV_PREFIX}\nexport OMP_NUM_THREADS=1',
+                "--filepath-executable",
+                CONDA_ENV_PREFIX.joinpath("bin", f"{code_name}.x"),
+            ],
+            check=True,
+            capture_output=True,
         )
-        code.label = f"{code_name}-{QE_VERSION}"
-        code.description = f"{code_name}.x ({QE_VERSION} setup by AiiDAlab)"
-        code.store()
     else:
         raise RuntimeError(f"Code {code_name} (v{QE_VERSION}) is already setup!")
 
