@@ -50,7 +50,13 @@ jobs:
             - uses: browser-actions/setup-firefox@latest
               with:
                   firefox-version: ${{ matrix.firefox }}
-              run: which firefox
+            - run: which firefox
+
+            - name: Install geckodriver
+              run: |
+                  wget -c https://github.com/mozilla/geckodriver/releases/download/v0.32.0/geckodriver-v0.32.0-linux64.tar.gz
+                  tar xf geckodriver-v0.32.0-linux64.tar.gz -C /usr/local/bin
+                  which geckodriver
 
             - name: Run pytest
               run: |
