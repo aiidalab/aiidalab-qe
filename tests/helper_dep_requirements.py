@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+"""This helper script is for temporarily remove the
+`aiidalab-qe-workchain` package from dependencies list so that
+in the test it will not use the remote released source.
+"""
+
 from configparser import ConfigParser
 
 cf = ConfigParser()
