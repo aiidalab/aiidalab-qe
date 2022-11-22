@@ -13,14 +13,14 @@ PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 
-Bool = DataFactory("bool")
-Float = DataFactory("float")
-Dict = DataFactory("dict")
-Str = DataFactory("str")
-XyData = DataFactory("array.xy")
-StructureData = DataFactory("structure")
-BandsData = DataFactory("array.bands")
-Orbital = DataFactory("orbital")
+Bool = DataFactory("core.bool")
+Float = DataFactory("core.float")
+Dict = DataFactory("core.dict")
+Str = DataFactory("core.str")
+XyData = DataFactory("core.array.xy")
+StructureData = DataFactory("core.structure")
+BandsData = DataFactory("core.array.bands")
+Orbital = DataFactory("core.orbital")
 
 
 class QeAppWorkChain(WorkChain):

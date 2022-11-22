@@ -14,7 +14,7 @@ from time import time
 
 import ipywidgets as ipw
 import traitlets
-from aiida.orm import CalcJobNode, Node
+from aiida.orm import CalcJobNode, Node, load_node
 from aiidalab_widgets_base import register_viewer_widget, viewer
 from IPython.display import HTML, Javascript, clear_output, display
 
@@ -242,7 +242,7 @@ class LogOutputWidget(ipw.VBox):
 
 class CalcJobOutputFollower(traitlets.HasTraits):
 
-    calcjob = traitlets.Instance(CalcJobNode, allow_none=True)
+    calcjob_uuid = traitlets.Unicode(allow_none=True)
     filename = traitlets.Unicode(allow_none=True)
     output = traitlets.List(trait=traitlets.Unicode)
     lineno = traitlets.Int()
@@ -258,14 +258,11 @@ class CalcJobOutputFollower(traitlets.HasTraits):
 
         super().__init__(**kwargs)
 
-    @traitlets.observe("calcjob")
+    @traitlets.observe("calcjob_uuid")
     def _observe_calcjob(self, change):
-        try:
-            if change["old"].pk == change["new"].pk:
-                # Old and new process are identical.
-                return
-        except AttributeError:
-            pass
+        calcjob_uuid = change["new"]
+        if change["old"] == calcjob_uuid:
+            return
 
         with self._lock:
             # Stop following
@@ -283,22 +280,22 @@ class CalcJobOutputFollower(traitlets.HasTraits):
             # (Re/)start following
             if change["new"]:
                 self._follow_output_thread = Thread(
-                    target=self._follow_output, args=(change["new"],)
+                    target=self._follow_output, args=(calcjob_uuid,)
                 )
                 self._follow_output_thread.start()
 
-    def _follow_output(self, calcjob):
+    def _follow_output(self, calcjob_uuid):
         """Monitor calcjob and orchestrate pushing and pulling of output."""
-        self._pull_thread = Thread(target=self._pull_output, args=(calcjob,))
+        self._pull_thread = Thread(target=self._pull_output)
         self._pull_thread.start()
-        self._push_thread = Thread(target=self._push_output, args=(calcjob,))
+        self._push_thread = Thread(target=self._push_output, args=(calcjob_uuid,))
         self._push_thread.start()
 
     def _fetch_output(self, calcjob):
         assert isinstance(calcjob, CalcJobNode)
         if "retrieved" in calcjob.outputs:
             try:
-                self.filename = calcjob.attributes["output_filename"]
+                self.filename = calcjob.base.attributes.get("output_filename")
                 with calcjob.outputs.retrieved.open(self.filename) as f:
                     return f.read().splitlines()
             except OSError:
@@ -306,7 +303,7 @@ class CalcJobOutputFollower(traitlets.HasTraits):
 
         elif "remote_folder" in calcjob.outputs:
             try:
-                fn_out = calcjob.attributes["output_filename"]
+                fn_out = calcjob.base.attributes.get("output_filename")
                 self.filename = fn_out
                 with NamedTemporaryFile() as tmpfile:
                     calcjob.outputs.remote_folder.getfile(fn_out, tmpfile.name)
@@ -318,9 +315,10 @@ class CalcJobOutputFollower(traitlets.HasTraits):
 
     _EOF = None
 
-    def _push_output(self, calcjob, delay=0.2):
+    def _push_output(self, calcjob_uuid, delay=0.2):
         """Push new log lines onto the queue."""
         lineno = 0
+        calcjob = load_node(calcjob_uuid)
         while True:
             try:
                 lines = self._fetch_output(calcjob)
@@ -335,7 +333,7 @@ class CalcJobOutputFollower(traitlets.HasTraits):
                     self._output_queue.put(self._EOF)
                     break  # noqa: B012
 
-    def _pull_output(self, calcjob):
+    def _pull_output(self):
         """Pull new log lines from the queue and update traitlets."""
         while True:
             item = self._output_queue.get()

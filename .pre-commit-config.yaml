@@ -44,3 +44,8 @@ repos:
       rev: 0.19.2
       hooks:
           - id: check-github-workflows
+
+    - repo: https://github.com/kynan/nbstripout
+      rev: 0.5.0
+      hooks:
+          - id: nbstripout

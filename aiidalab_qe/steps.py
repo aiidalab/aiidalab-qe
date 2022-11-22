@@ -11,7 +11,7 @@ import ipywidgets as ipw
 import traitlets
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
-from aiida.orm import ProcessNode, WorkChainNode, load_code
+from aiida.orm import WorkChainNode, load_code, load_node
 from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
@@ -34,10 +34,10 @@ from aiidalab_qe.widgets import (
 )
 from aiidalab_qe_workchain import QeAppWorkChain
 
-StructureData = DataFactory("structure")
-Float = DataFactory("float")
-Dict = DataFactory("dict")
-Str = DataFactory("str")
+StructureData = DataFactory("core.structure")
+Float = DataFactory("core.float")
+Dict = DataFactory("core.dict")
+Str = DataFactory("core.str")
 
 
 class WorkChainSettings(ipw.VBox):
@@ -601,9 +601,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             and len(
                 set(
                     (
-                        self.pw_code.value.computer.pk,
-                        self.dos_code.value.computer.pk,
-                        self.projwfc_code.value.computer.pk,
+                        load_code(self.pw_code.value).computer.pk,
+                        load_code(self.dos_code.value).computer.pk,
+                        load_code(self.projwfc_code.value).computer.pk,
                     )
                 )
             )
@@ -654,7 +654,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 try:
                     code_widget = getattr(self, code)
                     code_widget.refresh()
-                    code_widget.value = load_code(DEFAULT_PARAMETERS[code])
+                    code_widget.value = load_code(DEFAULT_PARAMETERS[code]).uuid
                 except NotExistent:
                     pass
 
@@ -676,9 +676,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_resources(self, change):
         if change["new"] and (
             change["old"] is None
-            or change["new"].computer.pk != change["old"].computer.pk
+            or load_code(change["new"]).computer.pk
+            != load_code(change["old"]).computer.pk
         ):
-            self.set_resource_defaults(change["new"].computer)
+            self.set_resource_defaults(load_code(change["new"]).computer)
 
     def set_resource_defaults(self, computer=None):
 
@@ -715,7 +716,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return  # No code selected, nothing to do.
 
         num_cpus = self.resources_config.num_cpus.value
-        on_localhost = self.pw_code.value.computer.get_hostname() == "localhost"
+        on_localhost = load_node(self.pw_code.value).computer.hostname == "localhost"
         if self.pw_code.value and on_localhost and num_cpus > 1:
             self._show_alert_message(
                 "The selected code would be executed on the local host, but "
@@ -754,7 +755,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                builder_parameters = process_node.get_extra("builder_parameters", None)
+                builder_parameters = process_node.base.extras.get(
+                    "builder_parameters", None
+                )
                 if builder_parameters is not None:
                     self.set_selected_codes(builder_parameters)
             self._update_state()
@@ -775,9 +778,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             run_pdos=self.workchain_settings.pdos_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
             # Codes
-            pw_code=self.pw_code.value.uuid,
-            dos_code=self.dos_code.value.uuid,
-            projwfc_code=self.projwfc_code.value.uuid,
+            pw_code=self.pw_code.value,
+            dos_code=self.dos_code.value,
+            projwfc_code=self.projwfc_code.value,
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
@@ -795,18 +798,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Set the inputs in the GUI based on a set of parameters."""
 
         # Codes
-        def _load_code(code):
+        def _get_code_uuid(code):
             if code is not None:
                 try:
-                    return load_code(code)
+                    return load_code(code).uuid
                 except NotExistent:
                     return None
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _load_code(parameters["pw_code"])
-            self.dos_code.value = _load_code(parameters["dos_code"])
-            self.projwfc_code.value = _load_code(parameters["projwfc_code"])
+            self.pw_code.value = _get_code_uuid(parameters["pw_code"])
+            self.dos_code.value = _get_code_uuid(parameters["dos_code"])
+            self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
 
     def set_pdos_status(self):
         if self.workchain_settings.pdos_run.value:
@@ -887,7 +890,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain
-            self.process.set_extra("builder_parameters", parameters)
+            self.process.base.extras.set("builder_parameters", parameters)
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -897,11 +900,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
-    process = traitlets.Instance(ProcessNode, allow_none=True)
+    process = traitlets.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
         self.process_tree = ProcessNodesTreeWidget()
-        ipw.dlink((self, "process"), (self.process_tree, "process"))
+        ipw.dlink(
+            (self, "process"),
+            (self.process_tree, "value"),
+        )
 
         self.node_view = NodeViewWidget(layout={"width": "auto", "height": "auto"})
         ipw.dlink(
@@ -919,7 +925,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 self._update_state,
             ],
         )
-        ipw.dlink((self, "process"), (self.process_monitor, "process"))
+        ipw.dlink((self, "process"), (self.process_monitor, "value"))
 
         super().__init__([self.process_status], **kwargs)
 
@@ -934,7 +940,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         if self.process is None:
             self.state = self.State.INIT
         else:
-            process_state = self.process.process_state
+            process = load_node(self.process)
+            process_state = process.process_state
             if process_state in (
                 ProcessState.CREATED,
                 ProcessState.RUNNING,
@@ -943,10 +950,10 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 self.state = self.State.ACTIVE
             elif (
                 process_state in (ProcessState.EXCEPTED, ProcessState.KILLED)
-                or self.process.is_failed
+                or process.is_failed
             ):
                 self.state = self.State.FAIL
-            elif self.process.is_finished_ok:
+            elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
 
     @traitlets.observe("process")

@@ -1,3 +1,4 @@
+from aiida.orm import WorkChainNode
 from aiida.plugins import WorkflowFactory
 
 PwBaseWorkChain = WorkflowFactory("quantumespresso.pw.base")
@@ -25,8 +26,8 @@ FUNCTIONAL_REPORT_MAP = {
 }
 
 
-def _generate_report_dict(qeapp_wc):
-    builder_parameters = qeapp_wc.get_extra("builder_parameters", {})
+def _generate_report_dict(qeapp_wc: WorkChainNode):
+    builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
 
     # Properties
     run_relax = builder_parameters.get("relax_type") != "none"

@@ -4,8 +4,8 @@ from threading import Event, Lock, Thread
 
 import ipywidgets as ipw
 import traitlets
-from aiida.cmdline.utils.query.calculation import CalculationQueryBuilder
 from aiida.orm import load_node
+from aiida.tools.query.calculation import CalculationQueryBuilder
 
 
 class WorkChainSelector(ipw.HBox):
