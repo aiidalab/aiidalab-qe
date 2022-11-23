@@ -99,9 +99,10 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
         # read default from protocol
         smearing = default_params["smearing"]
 
-    pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
-    if scf_kpoints_distance is None:
-        scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
+    if run_relax:
+        pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
+        if scf_kpoints_distance is None:
+            scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
 
     if run_bands:
         pw_parameters = qeapp_wc.inputs.bands.scf.pw.parameters.get_dict()
