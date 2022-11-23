@@ -2,3 +2,4 @@ pytest~=6.0
 pytest-docker~=1.0
 pytest-selenium~=4.0
 webdriver-manager~=3.8
+selenium==4.1.0
