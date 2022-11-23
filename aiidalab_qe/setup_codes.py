@@ -67,7 +67,6 @@ def _setup_code(code_name, computer_name="localhost"):
     try:
         load_code(f"{code_name}-{QE_VERSION}@localhost")
     except NotExistent:
-        # TODO replace with API setup after aiida-core 2.1 support
         run(
             [
                 "verdi",

@@ -33,12 +33,6 @@ def notebook_service(docker_ip, docker_services):
 
     install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -U -r /tmp/requirements.txt'"
     command = (
-        f"exec --workdir /home/jovyan/apps/aiidalab-qe/src -T aiidalab {install_command}"
-    )
-    docker_compose.execute(command)
-
-    install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -U -r /tmp/requirements.txt'"
-    command = (
         f"exec --workdir /home/jovyan/apps/aiidalab-qe -T aiidalab {install_command}"
     )
     docker_compose.execute(command)
