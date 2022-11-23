@@ -18,7 +18,7 @@ jobs:
                 tag: [latest]
                 browser: [Chrome, Firefox]
                 python-version: ['3.8', '3.10']
-                firefox: ['84.0']
+                firefox: ['96.0']
             fail-fast: false
 
         runs-on: ubuntu-latest
@@ -47,14 +47,15 @@ jobs:
             - name: Set jupyter token env
               run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
-            - uses: browser-actions/setup-firefox@latest
+            - name: Install Firefox geckodriver
+              uses: browser-actions/setup-firefox@latest
               with:
                   firefox-version: ${{ matrix.firefox }}
 
             - name: Install geckodriver
               run: |
-                  wget -c https://github.com/mozilla/geckodriver/releases/download/v0.29.1/geckodriver-v0.29.1-linux64.tar.gz
-                  tar xf geckodriver-v0.29.1-linux64.tar.gz -C /usr/local/bin
+                  wget -c https://github.com/mozilla/geckodriver/releases/download/v0.30.0/geckodriver-v0.30.0-linux64.tar.gz
+                  tar xf geckodriver-v0.30.0-linux64.tar.gz -C /usr/local/bin
 
             - name: Run pytest
               run: |
