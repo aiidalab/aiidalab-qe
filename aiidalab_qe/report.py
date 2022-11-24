@@ -99,9 +99,14 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
         # read default from protocol
         smearing = default_params["smearing"]
 
-    pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
-    if scf_kpoints_distance is None:
-        scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
+    # The run_relax variable is not same as if statement below.
+    # the "relax" port is poped out to skip the real relaxiation
+    # which is not the case of SCF, we use the relax workchain but with
+    # relax_type set to none as SCF calculation.
+    if "relax" in qeapp_wc.inputs:
+        pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
+        if scf_kpoints_distance is None:
+            scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
 
     if run_bands:
         pw_parameters = qeapp_wc.inputs.bands.scf.pw.parameters.get_dict()
