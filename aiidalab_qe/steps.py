@@ -869,6 +869,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder.smearing_override = Str(parameters["smearing_override"])
 
         # skip relax sub-workflow only when RelaxType is NONE and has property calculated.
+        # we pop the namespace `relax` from build so the subworkchain will never
+        # been touched. Otherwise it will run a unnecessary SCF calculation before the bands/pdos
+        # sub-workchain where the SCF calculation will be run inside.
+        # This potentially increase the complexibility of the logic report widget,
+        # we need to refactoring the QeAppWorkChain and clear the logic here.
         if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (
             parameters["run_bands"] or parameters["run_pdos"]
         ):
