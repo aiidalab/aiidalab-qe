@@ -296,7 +296,7 @@ class CalcJobOutputFollower(traitlets.HasTraits):
         if "retrieved" in calcjob.outputs:
             try:
                 self.filename = calcjob.base.attributes.get("output_filename")
-                with calcjob.outputs.retrieved.open(self.filename) as f:
+                with calcjob.outputs.retrieved.base.repository.open(self.filename) as f:
                     return f.read().splitlines()
             except OSError:
                 return list()
@@ -354,8 +354,8 @@ class CalcJobNodeViewerWidget(ipw.VBox):
         self.output_follower = CalcJobOutputFollower()
         self.log_output = LogOutputWidget()
 
+        self.output_follower.calcjob_uuid = self.calcjob.uuid
         self.output_follower.observe(self._observe_output_follower_lineno, ["lineno"])
-        self.output_follower.calcjob = self.calcjob
 
         super().__init__(
             [ipw.HTML(f"CalcJob: {self.calcjob}"), self.log_output], **kwargs
