@@ -1,5 +1,4 @@
 import os
-import shutil
 from urllib.parse import urljoin
 
 import pytest
@@ -66,7 +65,6 @@ def selenium_driver(selenium, notebook_service):
 @pytest.fixture
 def firefox_options(firefox_options):
     firefox_options.add_argument("--headless")
-    firefox_options.binary = shutil.which("firefox")
     return firefox_options
 
 
