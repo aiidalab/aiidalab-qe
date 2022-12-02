@@ -4,7 +4,7 @@ version: '3.4'
 services:
 
     aiidalab:
-        image: aiidalab/full-stack:${TAG:-latest}
+        image: ghcr.io/aiidalab/full-stack:pr-337
         environment:
             RMQHOST: messaging
             TZ: Europe/Zurich
