@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import requests
@@ -23,12 +24,14 @@ def test_qe_app_select_silicon(selenium_driver, screenshot_dir):
         By.XPATH, "//*[text()='From Examples']"
     ).click()  # click `From Examples` tab for input structure
     driver.find_element(By.XPATH, "//option[@value='Diamond']").click()
+    time.sleep(2)
     driver.get_screenshot_as_file(
         str(Path.joinpath(screenshot_dir, "qe-app-select-diamond-selected.png"))
     )
     confirm_button = driver.find_element(By.XPATH, "//button[text()='Confirm']")
     confirm_button.location_once_scrolled_into_view  # scroll into view
     confirm_button.click()
+    time.sleep(2)
     driver.get_screenshot_as_file(
         str(Path.joinpath(screenshot_dir, "qe-app-select-diamond-confirmed.png"))
     )
