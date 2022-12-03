@@ -2,7 +2,7 @@
 repos:
 
     - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.3.0
+      rev: v4.4.0
       hooks:
           - id: check-json
           - id: check-yaml
@@ -22,7 +22,7 @@ repos:
             language_version: python3 # Should be a command that runs python3.6+
 
     - repo: https://github.com/PyCQA/flake8
-      rev: 5.0.4
+      rev: 6.0.0
       hooks:
           - id: flake8
             args: [--count, --show-source, --statistics]
@@ -41,6 +41,6 @@ repos:
           - id: check-github-workflows
 
     - repo: https://github.com/kynan/nbstripout
-      rev: 0.5.0
+      rev: 0.6.1
       hooks:
           - id: nbstripout
