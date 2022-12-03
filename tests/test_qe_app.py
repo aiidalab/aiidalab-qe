@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import requests
 from selenium.webdriver.common.by import By
 
@@ -12,7 +13,7 @@ def test_notebook_service_available(notebook_service):
 def test_qe_app_take_screenshot(selenium_driver, screenshot_dir):
     driver = selenium_driver("qe.ipynb", wait_time=30.0)
     driver.set_window_size(1920, 985)
-    driver.get_screenshot_as_file(Path.joinpath(screenshot_dir, "qe-app.png"))
+    driver.get_screenshot_as_file(str(Path.joinpath(screenshot_dir, "qe-app.png")))
 
 
 def test_qe_app_select_silicon(selenium_driver, screenshot_dir):
@@ -22,8 +23,12 @@ def test_qe_app_select_silicon(selenium_driver, screenshot_dir):
         By.XPATH, "//*[text()='From Examples']"
     ).click()  # click `From Examples` tab for input structure
     driver.find_element(By.XPATH, "//option[@value='Diamond']").click()
-    driver.get_screenshot_as_file(Path.joinpath(screenshot_dir, "qe-app-select-diamond-selected.png"))
+    driver.get_screenshot_as_file(
+        str(Path.joinpath(screenshot_dir, "qe-app-select-diamond-selected.png"))
+    )
     confirm_button = driver.find_element(By.XPATH, "//button[text()='Confirm']")
     confirm_button.location_once_scrolled_into_view  # scroll into view
     confirm_button.click()
-    driver.get_screenshot_as_file(Path.joinpath(screenshot_dir, "qe-app-select-diamond-confirmed.png"))
+    driver.get_screenshot_as_file(
+        str(Path.joinpath(screenshot_dir, "qe-app-select-diamond-confirmed.png"))
+    )
