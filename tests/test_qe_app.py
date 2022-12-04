@@ -14,7 +14,7 @@ def test_notebook_service_available(notebook_service):
 def test_qe_app_take_screenshot(selenium_driver, screenshot_dir):
     driver = selenium_driver("qe.ipynb", wait_time=30.0)
     driver.set_window_size(1920, 1485)
-    time.sleep(10)
+    time.sleep(15)
     driver.get_screenshot_as_file(str(Path.joinpath(screenshot_dir, "qe-app.png")))
 
 
