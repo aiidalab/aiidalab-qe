@@ -16,6 +16,7 @@ jobs:
         strategy:
             matrix:
                 tag: [latest]
+                image: [aiidalab/full-stack]
                 browser: [Chrome, Firefox]
             fail-fast: false
 
@@ -60,6 +61,7 @@ jobs:
               run: pytest --driver ${{ matrix.browser }}
               env:
                   TAG: ${{ matrix.tag }}
+                  AIIDALAB_IMAGE: ${{ matrix.image }}
 
             - name: Upload screenshots as artifacts
               if: always()
