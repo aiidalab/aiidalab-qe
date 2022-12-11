@@ -25,7 +25,9 @@ def notebook_service(docker_ip, docker_services):
 
     # Directory ~/apps/aiidalab-widgets-base/ is mounted by docker,
     # make it writeable for jovyan user, needed for `pip install`
-    chown_command = "exec -T -u root aiidalab bash -c 'chown -R a+rw /home/jovyan/apps/aiidalab-qe'"
+    chown_command = (
+        "exec -T -u root aiidalab bash -c 'chown -R a+rw /home/jovyan/apps/aiidalab-qe'"
+    )
     docker_compose.execute(chown_command)
 
     install_command = "bash -c 'pip install .'"
