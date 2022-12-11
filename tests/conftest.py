@@ -37,7 +37,7 @@ def aiidalab_exec(docker_compose):
     return execute
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def nb_user(aiidalab_exec):
     return aiidalab_exec("bash -c 'echo \"${NB_USER}\"'").decode().strip()
 
