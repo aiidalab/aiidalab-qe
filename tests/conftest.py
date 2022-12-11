@@ -23,15 +23,16 @@ def notebook_service(docker_ip, docker_services):
 
     docker_compose = docker_services._docker_compose
 
-    # assurance for host user UID other that 1000
-    chown_command = "exec -T -u root aiidalab bash -c 'chown -R jovyan:users /home/jovyan/apps/aiidalab-qe'"
+    # Directory ~/apps/aiidalab-widgets-base/ is mounted by docker,
+    # make it writeable for jovyan user, needed for `pip install`
+    chown_command = "exec -T -u root aiidalab bash -c 'chown -R a+rw /home/jovyan/apps/aiidalab-qe'"
     docker_compose.execute(chown_command)
 
-    install_command = "bash -c 'pip install -U .'"
+    install_command = "bash -c 'pip install .'"
     command = f"exec --workdir /home/jovyan/apps/aiidalab-qe/src -T aiidalab {install_command}"
     docker_compose.execute(command)
 
-    install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -U -r /tmp/requirements.txt'"
+    install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -r /tmp/requirements.txt'"
     command = (
         f"exec --workdir /home/jovyan/apps/aiidalab-qe -T aiidalab {install_command}"
     )
@@ -65,8 +66,11 @@ def selenium_driver(selenium, notebook_service):
 
 @pytest.fixture(scope="session")
 def screenshot_dir():
-    sdir = Path.joinpath(Path.home(), "screenshots")
-    os.mkdir(sdir)
+    sdir = Path.joinpath(Path.cwd(), "screenshots")
+    try:
+        os.mkdir(sdir)
+    except FileExistsError:
+        pass
     return sdir
 
 

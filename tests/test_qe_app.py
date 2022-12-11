@@ -32,7 +32,6 @@ def test_qe_app_select_silicon(selenium_driver, screenshot_dir):
     confirm_button = driver.find_element(By.XPATH, "//button[text()='Confirm']")
     confirm_button.location_once_scrolled_into_view  # scroll into view
     confirm_button.click()
-    time.sleep(2)
     # Test that we have indeed proceeded to the next step
     driver.find_element(By.XPATH, "//span[contains(.,'✓ Step 1')]")
     driver.get_screenshot_as_file(
