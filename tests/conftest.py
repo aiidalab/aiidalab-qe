@@ -43,7 +43,7 @@ def nb_user(aiidalab_exec):
 
 
 @pytest.fixture(scope="session")
-def notebook_service(docker_ip, docker_services, nb_user):
+def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     """Ensure that HTTP service is up and responsive."""
 
     # Directory ~/apps/aiidalab-qe/ is mounted by docker,
