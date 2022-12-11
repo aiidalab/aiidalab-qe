@@ -55,8 +55,7 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     aiidalab_exec("pip install .", workdir=f"{appdir}/src", user=nb_user)
 
     # Install App
-    # install_command = "python tests/helper_dep_requirements.py && pip install -r /tmp/requirements.txt"
-    install_command = "pip install ."
+    install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -r /tmp/requirements.txt'"
     aiidalab_exec(install_command, workdir=appdir, user=nb_user)
 
     # `port_for` takes a container port and returns the corresponding host port
