@@ -51,12 +51,12 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     appdir = f"/home/{nb_user}/apps/aiidalab-qe"
     aiidalab_exec(f"chmod -R a+rw {appdir}", user="root")
 
-    # Install App
-    aiidalab_exec("pip install .", workdir=appdir, user=nb_user)
+    # Install workchains
+    aiidalab_exec("pip install .", workdir=f"{appdir}/src", user=nb_user)
 
-    # Install workchains, we use editable install to make sure
-    # we overwrite the package that was installed above.
-    aiidalab_exec("pip install -e .", workdir=f"{appdir}/src", user=nb_user)
+    # Install App
+    install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -r /tmp/requirements.txt'"
+    aiidalab_exec(install_command, workdir=appdir, user=nb_user)
 
     # `port_for` takes a container port and returns the corresponding host port
     port = docker_services.port_for("aiidalab", 8888)
