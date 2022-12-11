@@ -18,27 +18,45 @@ def is_responsive(url):
 
 
 @pytest.fixture(scope="session")
-def notebook_service(docker_ip, docker_services):
+def docker_compose(docker_services):
+    return docker_services._docker_compose
+
+
+@pytest.fixture(scope="session")
+def aiidalab_exec(docker_compose):
+    def execute(command, user=None, workdir=None, **kwargs):
+        opts = "-T"
+        if user:
+            opts = f"{opts} --user={user}"
+        if workdir:
+            opts = f"{opts} --workdir={workdir}"
+        command = f"exec {opts} aiidalab {command}"
+
+        return docker_compose.execute(command, **kwargs)
+
+    return execute
+
+
+@pytest.fixture
+def nb_user(aiidalab_exec):
+    return aiidalab_exec("bash -c 'echo \"${NB_USER}\"'").decode().strip()
+
+
+@pytest.fixture(scope="session")
+def notebook_service(docker_ip, docker_services, nb_user):
     """Ensure that HTTP service is up and responsive."""
 
-    docker_compose = docker_services._docker_compose
-
-    # Directory ~/apps/aiidalab-widgets-base/ is mounted by docker,
+    # Directory ~/apps/aiidalab-qe/ is mounted by docker,
     # make it writeable for jovyan user, needed for `pip install`
-    chmod_command = (
-        "exec -T -u root aiidalab bash -c 'chmod -R a+rw /home/jovyan/apps/aiidalab-qe'"
-    )
-    docker_compose.execute(chmod_command)
+    appdir = f"/home/{nb_user}/apps/aiidalab-qe"
+    aiidalab_exec(f"chmod -R a+rw {appdir}", user="root")
 
-    install_command = "bash -c 'pip install .'"
-    command = f"exec --workdir /home/jovyan/apps/aiidalab-qe/src -T aiidalab {install_command}"
-    docker_compose.execute(command)
+    # Install workchains
+    aiidalab_exec("pip install .", workdir=f"{appdir}/src", user=nb_user)
 
-    install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -r /tmp/requirements.txt'"
-    command = (
-        f"exec --workdir /home/jovyan/apps/aiidalab-qe -T aiidalab {install_command}"
-    )
-    docker_compose.execute(command)
+    # Install App
+    install_command = "python tests/helper_dep_requirements.py && pip install -r /tmp/requirements.txt"
+    aiidalab_exec(install_command, workdir=appdir, user=nb_user)
 
     # `port_for` takes a container port and returns the corresponding host port
     port = docker_services.port_for("aiidalab", 8888)
