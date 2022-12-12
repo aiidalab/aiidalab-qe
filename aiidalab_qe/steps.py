@@ -487,15 +487,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._submission_blocker_messages = ipw.HTML()
 
         self.pw_code = ComputationalResourcesWidget(
-            description="pw.x:", input_plugin="quantumespresso.pw"
+            description="pw.x:", default_calc_job_plugin="quantumespresso.pw"
         )
         self.dos_code = ComputationalResourcesWidget(
             description="dos.x:",
-            input_plugin="quantumespresso.dos",
+            default_calc_job_plugin="quantumespresso.dos",
         )
         self.projwfc_code = ComputationalResourcesWidget(
             description="projwfc.x:",
-            input_plugin="quantumespresso.projwfc",
+            default_calc_job_plugin="quantumespresso.projwfc",
         )
 
         self.resources_config = ResourceSelectionWidget()
