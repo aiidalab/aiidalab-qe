@@ -25,7 +25,7 @@ def test_qe_app_select_silicon(selenium_driver, screenshot_dir):
         By.XPATH, "//*[text()='From Examples']"
     ).click()  # click `From Examples` tab for input structure
     driver.find_element(By.XPATH, "//option[@value='Diamond']").click()
-    time.sleep(2)
+    time.sleep(10)
     driver.get_screenshot_as_file(
         str(Path.joinpath(screenshot_dir, "qe-app-select-diamond-selected.png"))
     )
