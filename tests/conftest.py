@@ -82,13 +82,13 @@ def selenium_driver(selenium, notebook_service):
         window_height = 600
         selenium.set_window_size(window_width, window_height)
 
-
         selenium.find_element(By.ID, "ipython-main-app")
         selenium.find_element(By.ID, "notebook-container")
 
         return selenium
 
     return _selenium_driver
+
 
 @pytest.fixture
 def final_screenshot(request, screenshot_dir, selenium):
@@ -100,6 +100,7 @@ def final_screenshot(request, screenshot_dir, selenium):
     screenshot_path = Path.joinpath(screenshot_dir, screenshot_name)
     yield
     selenium.get_screenshot_as_file(screenshot_path)
+
 
 @pytest.fixture(scope="session")
 def screenshot_dir():
