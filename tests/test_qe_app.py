@@ -11,14 +11,12 @@ def test_notebook_service_available(notebook_service):
     assert response.status_code == 200
 
 
-def test_qe_app_take_screenshot(selenium_driver, screenshot_dir):
+def test_qe_app_take_screenshot(selenium_driver, final_screenshot):
     driver = selenium_driver("qe.ipynb", wait_time=30.0)
     driver.set_window_size(1920, 1485)
     time.sleep(15)
-    driver.get_screenshot_as_file(str(Path.joinpath(screenshot_dir, "qe-app.png")))
 
-
-def test_qe_app_select_silicon(selenium_driver, screenshot_dir):
+def test_qe_app_select_silicon_and_confirm(selenium_driver, screenshot_dir, final_screenshot):
     driver = selenium_driver("qe.ipynb", wait_time=30.0)
     driver.set_window_size(1920, 1485)
     driver.find_element(
@@ -34,6 +32,3 @@ def test_qe_app_select_silicon(selenium_driver, screenshot_dir):
     confirm_button.click()
     # Test that we have indeed proceeded to the next step
     driver.find_element(By.XPATH, "//span[contains(.,'✓ Step 1')]")
-    driver.get_screenshot_as_file(
-        str(Path.joinpath(screenshot_dir, "qe-app-select-diamond-confirmed.png"))
-    )
