@@ -123,7 +123,7 @@ class PseudoFamilySelector(ipw.VBox):
         self.value = (
             DEFAULT_PARAMETERS["pseudo_family"]
             if not self.set_pseudo_family.value
-            else f"SSSP/1.1/{self.dft_functional.value}/{self.protocol_selection.value}"
+            else f"SSSP/1.2/{self.dft_functional.value}/{self.protocol_selection.value}"
         )
 
     def set_show_ui(self, change):
