@@ -422,6 +422,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.workchain_settings.bands_run.value = parameters["run_bands"]
             self.workchain_settings.pdos_run.value = parameters["run_pdos"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
+            self.workchain_settings.tot_charge.value = parameters["tot_charge"]
 
             # Advanced settings
             self.pseudo_family_selector.value = parameters["pseudo_family"]
