@@ -792,6 +792,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             run_bands=self.workchain_settings.bands_run.value,
             run_pdos=self.workchain_settings.pdos_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
+            tot_charge=self.workchain_settings.tot_charge.value,
             # Codes
             pw_code=self.pw_code.value,
             dos_code=self.dos_code.value,
@@ -873,6 +874,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=SpinType(parameters["spin_type"]),
             electronic_type=ElectronicType(parameters["electronic_type"]),
         )
+        #adding tot_charge to builder
+        builder.relax.base.['pw']['parameters']['SYSTEM']['tot_charge'] = parameters["tot_charge"]
+        builder.bands..base.['pw']['parameters']['SYSTEM']['tot_charge'] = parameters["tot_charge"]
 
         if "kpoints_distance_override" in parameters:
             builder.kpoints_distance_override = Float(
