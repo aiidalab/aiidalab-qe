@@ -108,6 +108,14 @@ class WorkChainSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
 
+        self.tot_charge = ipw.IntSlider(
+            value=0,
+            min=-2,
+            max=2,
+            step=1,
+            description='Total charge',
+        )
+
         # Checkbox to see if the band structure should be calculated
         self.bands_run = ipw.Checkbox(
             description="",
@@ -157,6 +165,17 @@ class WorkChainSettings(ipw.VBox):
                             ),
                         ),
                         self.spin_type,
+                    ]
+                ),
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Total Charge:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        self.tot_charge,
                     ]
                 ),
                 self.properties_title,
