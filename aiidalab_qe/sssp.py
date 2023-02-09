@@ -13,10 +13,10 @@ from filelock import FileLock, Timeout
 from aiidalab_qe.widgets import ProgressBar
 
 EXPECTED_PSEUDOS = {
-    "SSSP/1.1/PBE/efficiency",
-    "SSSP/1.1/PBE/precision",
-    "SSSP/1.1/PBEsol/efficiency",
-    "SSSP/1.1/PBEsol/precision",
+    "SSSP/1.2/PBE/efficiency",
+    "SSSP/1.2/PBE/precision",
+    "SSSP/1.2/PBEsol/efficiency",
+    "SSSP/1.2/PBEsol/precision",
 }
 
 
