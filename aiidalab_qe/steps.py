@@ -113,7 +113,6 @@ class WorkChainSettings(ipw.VBox):
             min=-2,
             max=2,
             step=1,
-            description='Total charge',
         )
 
         # Checkbox to see if the band structure should be calculated
