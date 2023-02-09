@@ -13,10 +13,10 @@ from filelock import FileLock, Timeout
 from aiidalab_qe.widgets import ProgressBar
 
 EXPECTED_PSEUDOS = {
-    "SSSP/1.2/PBE/efficiency",
-    "SSSP/1.2/PBE/precision",
-    "SSSP/1.2/PBEsol/efficiency",
-    "SSSP/1.2/PBEsol/precision",
+    "SSSP/1.1/PBE/efficiency",
+    "SSSP/1.1/PBE/precision",
+    "SSSP/1.1/PBEsol/efficiency",
+    "SSSP/1.1/PBEsol/precision",
 }
 
 
@@ -43,7 +43,7 @@ def install_pseudos(pseudo_set):
     for i, pseudo in enumerate(pseudo_set):
         yield mult * i
         p_family, p_version, p_func, p_type = pseudo.split("/")
-        run_(["aiida-pseudo", "install", p_family.lower(), "-x", p_func, "-p", p_type])
+        run_(["aiida-pseudo", "install", p_family.lower(), "-v", "1.1" ,"-x", p_func, "-p", p_type])
 
 
 def install():
