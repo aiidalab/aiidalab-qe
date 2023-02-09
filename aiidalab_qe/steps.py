@@ -875,8 +875,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             electronic_type=ElectronicType(parameters["electronic_type"]),
         )
         #adding tot_charge to builder
-        builder.relax.base['pw']['parameters']['SYSTEM']['tot_charge'] = parameters["tot_charge"]
-        builder.bands.base['pw']['parameters']['SYSTEM']['tot_charge'] = parameters["tot_charge"]
+        builder.relax.base.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
+        builder.bands.base.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
 
         if "kpoints_distance_override" in parameters:
             builder.kpoints_distance_override = Float(
