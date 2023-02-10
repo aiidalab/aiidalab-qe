@@ -24,7 +24,6 @@ from aiidalab_qe import node_view  # noqa: F401
 __all__ = [
     "CalcJobOutputFollower",
     "LogOutputWidget",
-    "NodeViewWidget",
 ]
 
 
@@ -365,24 +364,7 @@ class CalcJobNodeViewerWidget(ipw.VBox):
         with self.hold_trait_notifications():
             self.log_output.filename = self.output_follower.filename
             self.log_output.value = "\n".join(self.output_follower.output)
-
-
-class NodeViewWidget(ipw.VBox):
-
-    node = traitlets.Instance(Node, allow_none=True)
-
-    def __init__(self, **kwargs):
-        self._output = ipw.Output()
-        super().__init__(children=[self._output], **kwargs)
-
-    @traitlets.observe("node")
-    def _observe_node(self, change):
-        if change["new"] != change["old"]:
-            with self._output:
-                clear_output()
-                if change["new"]:
-                    display(viewer(change["new"]))
-
+            
 
 class ResourceSelectionWidget(ipw.VBox):
     """Widget for the selection of compute resources."""
