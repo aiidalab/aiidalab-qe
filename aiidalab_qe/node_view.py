@@ -500,15 +500,12 @@ class WorkChainOutputs(ipw.VBox):
                 handle.write(retrieved.get_object_content(filename))
 
 
-@register_viewer_widget("process.workflow.workchain.WorkChainNode.")
+@register_viewer_widget("process.workflow.workchain.WorkChainNode.", "QeAppWorkChain")
 class WorkChainViewer(ipw.VBox):
 
     _results_shown = traitlets.Set()
 
     def __init__(self, node, **kwargs):
-        if node.process_label != "QeAppWorkChain":
-            raise KeyError(str(node.node_type))
-
         self.node = node
 
         self.title = ipw.HTML(
