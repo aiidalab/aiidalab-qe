@@ -113,7 +113,10 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
         pw_parameters = qeapp_wc.inputs.bands.scf.pw.parameters.get_dict()
         if scf_kpoints_distance is None:
             scf_kpoints_distance = qeapp_wc.inputs.bands.scf.kpoints_distance.value
-        bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
+        try: 
+            bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
+        except AttributeError:
+            bands_kpoints_distance = builder_parameters["two_dim_koints_path"]
     if run_pdos:
         scf_kpoints_distance = (
             scf_kpoints_distance or qeapp_wc.inputs.pdos.scf.kpoints_distance.value

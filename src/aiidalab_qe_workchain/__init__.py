@@ -5,7 +5,7 @@ from aiida.orm import CalcJobNode, WorkChainNode
 from aiida.plugins import DataFactory, WorkflowFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
-from aiida_quantumespresso.common.types import RelaxType
+from aiida_quantumespresso.common.types import RelaxType, PeriodicityType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 
 # Data objects and work chains.
@@ -101,6 +101,7 @@ class QeAppWorkChain(WorkChain):
         overrides=None,
         relax_type=RelaxType.NONE,
         pseudo_family=None,
+        periodicity=PeriodicityType.XYZ,
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
@@ -118,6 +119,7 @@ class QeAppWorkChain(WorkChain):
             protocol=protocol,
             overrides=relax_overrides,
             relax_type=relax_type,
+            periodicity=periodicity,
             **kwargs,
         )
         relax.pop("structure", None)
@@ -134,6 +136,7 @@ class QeAppWorkChain(WorkChain):
             structure=structure,
             protocol=protocol,
             overrides=bands_overrides,
+            periodicity=periodicity,
             **kwargs,
         )
         bands.pop("relax")
@@ -153,6 +156,7 @@ class QeAppWorkChain(WorkChain):
                 structure=structure,
                 protocol=protocol,
                 overrides=pdos_overrides,
+                periodicity=periodicity,
                 **kwargs,
             )
             pdos.pop("structure", None)
