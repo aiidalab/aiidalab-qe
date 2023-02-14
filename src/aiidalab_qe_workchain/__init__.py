@@ -294,7 +294,7 @@ class QeAppWorkChain(WorkChain):
         try:
             self.ctx.current_structure = workchain.outputs.primitive_structure
         except AttributeError:
-            self.ctx.current_structure = workchain.input.structure
+            self.ctx.current_structure = workchain.inputs.structure
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""
