@@ -9,10 +9,11 @@ import os
 
 import ipywidgets as ipw
 import traitlets
+from numpy import linspace
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
 from aiida.orm import WorkChainNode, load_code, load_node
-from aiida.plugins import DataFactory
+from aiida.plugins import DataFactory         
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType, PeriodicityType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import (
@@ -922,9 +923,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         builder.pdos.nscf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
         
         def one_two_dim_kpoints_path(periodicity, two_dim_koints_path, protocol):
-
-            from aiida.orm import KpointsData
-            from numpy import linspace
+            KpointsData = DataFactory('core.array.kpoints')
+            
             def pairwise(iterable):
             # pairwise('ABCDEFG') --> AB BC CD DE EF FG
                 from itertools import tee
@@ -932,9 +932,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 next(b, None)
                 return zip(a, b)
 
-            selected_paths = {'hexagonal': {'path': [[0.0, 0.0, 0], [0.33333, 0.33333, 0.0], [0.5, 0.5, 0.0]], 'labels': ["G","K","M"]},
-                            'square': {'path': [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [0.5, 0.5, 0.0]], 'labels': ["G","X","M"]},
-                            'rectangular': {'path': [[0.0, 0.0, 0.0], [0.5, 0.0 ,0.0], [0.5, 0.5, 0.0], [0.0, 0.5, 0.0]], 'labels': ["G","X","S","Y"]},
+            selected_paths = {'hexagonal': {'path': [[0.0, 0.0, 0], [0.33333, 0.33333, 0.0], [0.5, 0.5, 0.0], [0.0, 0.0, 0]], 'labels': ["G","K","M"]},
+                            'square': {'path': [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [0.5, 0.5, 0.0], [0.0, 0.0, 0]], 'labels': ["G","X","M"]},
+                            'rectangular': {'path': [[0.0, 0.0, 0.0], [0.5, 0.0 ,0.0], [0.5, 0.5, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0]], 'labels': ["G","X","S","Y"]},
                             }
 
             if protocol == 'fast':
