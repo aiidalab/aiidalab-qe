@@ -12,6 +12,7 @@ from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
+XspectraCoreWorkChain = WorkflowFactory("quantumespresso.xspectra.core")
 
 Bool = DataFactory("core.bool")
 Float = DataFactory("core.float")
@@ -46,6 +47,10 @@ class QeAppWorkChain(WorkChain):
                            exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PdosWorkChain`.'})
+        spec.expose_inputs(XspectraCoreWorkChain, namespace='xspectra',
+                           exclude=('clean_workdir', 'structure'),
+                           namespace_options={'required': False, 'populate_defaults': False,
+                                              'help': 'Inputs for the `XspectraCoreWorkChain`.'})
         spec.input(
             'kpoints_distance_override', valid_type=Float, required=False,
             help='Override for the kpoints distance value of all `PwBaseWorkChains` except for the `nscf` calculations.'
@@ -72,6 +77,10 @@ class QeAppWorkChain(WorkChain):
                 cls.run_pdos,
                 cls.inspect_pdos
             ),
+            if_(cls.should_run_xspectra)(
+                cls.run_xspectra,
+                cls.inspect_xspectra
+            ),
             cls.results
         )
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RELAX',
@@ -80,6 +89,8 @@ class QeAppWorkChain(WorkChain):
                        message='The PwBandsWorkChain sub process failed')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
+        spec.exit_code(405, 'ERROR_SUB_PROCESS_FAILED_XSPECTRA',
+                       message='The XspectraCoreWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData, required=False)
         spec.output('band_parameters', valid_type=Dict, required=False)
         spec.output('band_structure', valid_type=BandsData, required=False)
@@ -97,6 +108,7 @@ class QeAppWorkChain(WorkChain):
         pw_code,
         dos_code=None,
         projwfc_code=None,
+        xspectra_code=None,
         protocol=None,
         overrides=None,
         relax_type=RelaxType.NONE,
@@ -159,6 +171,26 @@ class QeAppWorkChain(WorkChain):
             pdos.pop("clean_workdir", None)
             builder.pdos = pdos
 
+        if xspectra_code is not None:
+            xspectra_overrides = overrides.get("xspectra", {})
+            if pseudo_family is not None:
+                xspectra_overrides.setdefault("scf", {})[
+                    "pseudo_family"
+                ] = pseudo_family
+                xspectra_overrides.setdefault("nscf", {})[
+                    "pseudo_family"
+                ] = pseudo_family
+            xspectra = XspectraCoreWorkChain.get_builder_from_protocol(
+                pw_code=pw_code,
+                xspectra_code=xspectra_code,
+                structure=structure,
+                protocol=protocol,
+                overrides=xspectra_overrides,
+                **kwargs,
+            )
+            xspectra.pop("structure", None)
+            xspectra.pop("clean_workdir", None)
+            builder.xspectra = xspectra
         builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
         if "kpoints_distance_override" in overrides:
             builder.kpoints_distance_override = overrides["kpoints_distance_override"]
@@ -340,6 +372,59 @@ class QeAppWorkChain(WorkChain):
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_PDOS
 
+    def should_run_xspectra(self):
+        """Check if the projected density of states should be calculated."""
+        return "xspectra" in self.inputs
+
+    def run_xspectra(self):
+        """Run the `XspectraCoreWorkChain`."""
+        inputs = AttributeDict(
+            self.exposed_inputs(XspectraCoreWorkChain, namespace="xspectra")
+        )
+        inputs.metadata.call_link_label = "xspectra"
+        inputs.structure = self.ctx.current_structure
+        inputs.nscf.pw.parameters = inputs.nscf.pw.parameters.get_dict()
+
+        if self.ctx.current_number_of_bands:
+            inputs.nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+                "nbnd", self.ctx.current_number_of_bands
+            )
+
+        if self.ctx.scf_parent_folder:
+            inputs.pop("scf")
+            inputs.nscf.pw.parent_folder = self.ctx.scf_parent_folder
+        else:
+            if "kpoints_distance_override" in self.inputs:
+                inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
+
+            inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
+            if "degauss_override" in self.inputs:
+                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+                    "degauss"
+                ] = self.inputs.degauss_override.value
+
+            if "smearing_override" in self.inputs:
+                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+                    "smearing"
+                ] = self.inputs.smearing_override.value
+
+        inputs = prepare_process_inputs(XspectraCoreWorkChain, inputs)
+        running = self.submit(XspectraCoreWorkChain, **inputs)
+
+        self.report(f"launching XspectraCoreWorkChain<{running.pk}>")
+
+        return ToContext(workchain_xspectra=running)
+
+    def inspect_xspectra(self):
+        """Verify that the `XspectraCoreWorkChain` finished successfully."""
+        workchain = self.ctx.workchain_xspectra
+
+        if not workchain.is_finished_ok:
+            self.report(
+                f"XspectraCoreWorkChain failed with exit status {workchain.exit_status}"
+            )
+            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_XSPECTRA
+
     def results(self):
         """Add the results to the outputs."""
         if "workchain_bands" in self.ctx:
@@ -366,6 +451,27 @@ class QeAppWorkChain(WorkChain):
             else:
                 self.out(
                     "projections", self.ctx.workchain_pdos.outputs.projwfc.projections
+                )
+
+        if "workchain_xspectra" in self.ctx:
+            self.out(
+                "nscf_parameters",
+                self.ctx.workchain_xspectra.outputs.nscf.output_parameters,
+            )
+            self.out("dos", self.ctx.workchain_xspectra.outputs.dos.output_dos)
+            if "projections_up" in self.ctx.workchain_xspectra.outputs.projwfc:
+                self.out(
+                    "projections_up",
+                    self.ctx.workchain_xspectra.outputs.projwfc.projections_up,
+                )
+                self.out(
+                    "projections_down",
+                    self.ctx.workchain_xspectra.outputs.projwfc.projections_down,
+                )
+            else:
+                self.out(
+                    "projections",
+                    self.ctx.workchain_xspectra.outputs.projwfc.projections,
                 )
 
     def on_terminated(self):

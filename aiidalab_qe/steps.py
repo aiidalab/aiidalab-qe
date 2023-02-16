@@ -138,7 +138,6 @@ class WorkChainSettings(ipw.VBox):
             layout=ipw.Layout(max_width="10%"),
         )
 
-
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
@@ -606,7 +605,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # No code selected for xspectra (this is ignored while the setup process is running).
         if (
-            self.workchain_settings.xspectra_run.value and self.xspectra_code.value is None
+            self.workchain_settings.xspectra_run.value
+            and self.xspectra_code.value is None
             and not self.qe_setup_status.busy
         ):
             yield "Calculating the XAS requires xspectra.x to be set."
@@ -639,7 +639,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "All selected codes must be installed on the same computer. This is because the "
                 "PDOS calculations rely on large files that are not retrieved by AiiDA."
             )
-        
+
         if (
             self.workchain_settings.xspectra_run.value
             and not any(
