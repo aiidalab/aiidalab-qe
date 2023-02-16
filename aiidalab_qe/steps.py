@@ -129,6 +129,16 @@ class WorkChainSettings(ipw.VBox):
             layout=ipw.Layout(max_width="10%"),
         )
 
+        # Checkbox to see if the XAS should be calculated
+        self.xspectra_run = ipw.Checkbox(
+            description="",
+            tooltip="Calculate the XAS.",
+            indent=False,
+            value=True,
+            layout=ipw.Layout(max_width="10%"),
+        )
+
+
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
@@ -171,6 +181,7 @@ class WorkChainSettings(ipw.VBox):
                         self.pdos_run,
                     ]
                 ),
+                ipw.HBox(children=[ipw.HTML("<b>XAS</b>"), self.xspectra_run]),
                 self.properties_help,
                 self.protocol_title,
                 ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
@@ -322,6 +333,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_settings.relax_type.observe(self._update_state, "value")
         self.workchain_settings.bands_run.observe(self._update_state, "value")
         self.workchain_settings.pdos_run.observe(self._update_state, "value")
+        self.workchain_settings.xspectra_run.observe(self._update_state, "value")
 
         self.kpoints_settings = KpointSettings()
         self.smearing_settings = SmearingSettings()
@@ -406,6 +418,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ]
             self.workchain_settings.bands_run.value = parameters["run_bands"]
             self.workchain_settings.pdos_run.value = parameters["run_pdos"]
+            self.workchain_settings.xspectra_run.value = parameters["run_xspectra"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
 
             # Advanced settings
@@ -497,6 +510,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             description="projwfc.x:",
             default_calc_job_plugin="quantumespresso.projwfc",
         )
+        self.xspectra_code = ComputationalResourcesWidget(
+            description="xspectra.x:",
+            default_calc_job_plugin="quantumespresso.xspectra",
+        )
 
         self.resources_config = ResourceSelectionWidget()
         self.parallelization = ParallelizationSettings()
@@ -508,6 +525,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.pw_code.observe(self._update_resources, "value")
         self.dos_code.observe(self._update_state, "value")
         self.projwfc_code.observe(self._update_state, "value")
+        self.xspectra_code.observe(self._update_state, "value")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -546,6 +564,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.pw_code,
                 self.dos_code,
                 self.projwfc_code,
+                self.xspectra_code,
                 self.resources_config,
                 self.parallelization,
                 self.message_area,
@@ -585,6 +604,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ):
             yield "Calculating the PDOS requires both dos.x and projwfc.x to be set."
 
+        # No code selected for xspectra (this is ignored while the setup process is running).
+        if (
+            self.workchain_settings.xspectra_run.value and self.xspectra_code.value is None
+            and not self.qe_setup_status.busy
+        ):
+            yield "Calculating the XAS requires xspectra.x to be set."
+
         # SSSP library not installed
         if not self.sssp_installation_status.installed:
             yield "The SSSP library is not installed."
@@ -612,6 +638,29 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield (
                 "All selected codes must be installed on the same computer. This is because the "
                 "PDOS calculations rely on large files that are not retrieved by AiiDA."
+            )
+        
+        if (
+            self.workchain_settings.xspectra_run.value
+            and not any(
+                [
+                    self.pw_code.value is None,
+                    self.xspectra_code.value is None,
+                ]
+            )
+            and len(
+                set(
+                    (
+                        load_code(self.pw_code.value).computer.pk,
+                        load_code(self.xspectra_code.value).computer.pk,
+                    )
+                )
+            )
+            != 1
+        ):
+            yield (
+                "All selected codes must be installed on the same computer. This is because the "
+                "XAS calculations rely on large files that are not retrieved by AiiDA."
             )
 
     def _update_state(self, _=None):
@@ -650,6 +699,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "pw_code",
                 "dos_code",
                 "projwfc_code",
+                "xspectra_code",
             ]:
                 try:
                     code_widget = getattr(self, code)
@@ -748,6 +798,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _observe_input_structure(self, _):
         self._update_state()
         self.set_pdos_status()
+        self.set_xspectra_status()
 
     @traitlets.observe("process")
     def _observe_process(self, change):
@@ -776,11 +827,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=self.workchain_settings.spin_type.value,
             run_bands=self.workchain_settings.bands_run.value,
             run_pdos=self.workchain_settings.pdos_run.value,
+            run_xspectra=self.workchain_settings.xspectra_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
             # Codes
             pw_code=self.pw_code.value,
             dos_code=self.dos_code.value,
             projwfc_code=self.projwfc_code.value,
+            xspectra_code=self.xspectra_code.value,
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
@@ -810,6 +863,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.pw_code.value = _get_code_uuid(parameters["pw_code"])
             self.dos_code.value = _get_code_uuid(parameters["dos_code"])
             self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
+            self.xspectra_code.value = _get_code_uuid(parameters["xspectra_code"])
 
     def set_pdos_status(self):
         if self.workchain_settings.pdos_run.value:
@@ -819,9 +873,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.dos_code.code_select_dropdown.disabled = True
             self.projwfc_code.code_select_dropdown.disabled = True
 
+    def set_xspectra_status(self):
+        if self.workchain_settings.xspectra_run.value:
+            self.xspectra_code.code_select_dropdown.disabled = False
+        else:
+            self.xspectra_code.code_select_dropdown.disabled = True
+
     def submit(self, _=None):
         def update_builder(buildy, resources, npools):
             """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
+            # todo, check whether this is also needed for xspectra or not?
             for k, v in buildy.items():
                 if isinstance(v, (dict, ProcessBuilderNamespace)):
                     if k == "pw" and v["pseudos"]:
@@ -852,6 +913,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             pw_code=load_code(parameters["pw_code"]),
             dos_code=load_code(parameters["dos_code"]),
             projwfc_code=load_code(parameters["projwfc_code"]),
+            xspectra_code=load_code(parameters["xspectra_code"]),
             protocol=parameters["protocol"],
             pseudo_family=parameters["pseudo_family"],
             relax_type=RelaxType(parameters["relax_type"]),
@@ -884,6 +946,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         if not parameters.get("run_pdos", False):
             builder.pop("pdos")
+
+        if not parameters.get("run_xspectra", False):
+            builder.pop("xspectra")
 
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
