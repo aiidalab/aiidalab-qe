@@ -5,11 +5,13 @@
 relax_type: positions_cell
 run_bands: false
 run_pdos: false
+run_xspectra: false
 
 ## Codes
 dos_code: dos-7.0@localhost
 projwfc_code: projwfc-7.0@localhost
 pw_code: pw-7.0@localhost
+xspectra_code: xspectra-7.0@localhost
 
 ## Material settings
 spin_type: none

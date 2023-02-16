@@ -25,7 +25,7 @@ CONDA_ENV_PREFIX = Path.home().joinpath(
     ".conda", "envs", f"quantum-espresso-{QE_VERSION}"
 )
 
-CODE_NAMES = ("pw", "projwfc", "dos")
+CODE_NAMES = ("pw", "projwfc", "dos", "xspectra")
 
 
 def qe_installed():
