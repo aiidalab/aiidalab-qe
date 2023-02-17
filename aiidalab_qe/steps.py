@@ -16,11 +16,11 @@ from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import (
+    AiidaNodeViewWidget,
     ComputationalResourcesWidget,
     ProcessMonitor,
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
-    AiidaNodeViewWidget,
 )
 from IPython.display import display
 
@@ -28,10 +28,7 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
-from aiidalab_qe.widgets import (
-    ParallelizationSettings,
-    ResourceSelectionWidget,
-)
+from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")

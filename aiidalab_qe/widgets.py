@@ -14,9 +14,9 @@ from time import time
 
 import ipywidgets as ipw
 import traitlets
-from aiida.orm import CalcJobNode, Node, load_node
-from aiidalab_widgets_base import register_viewer_widget, viewer
-from IPython.display import HTML, Javascript, clear_output, display
+from aiida.orm import CalcJobNode, load_node
+from aiidalab_widgets_base import register_viewer_widget
+from IPython.display import HTML, Javascript, display
 
 # trigger registration of the viewer widget:
 from aiidalab_qe import node_view  # noqa: F401
@@ -364,7 +364,7 @@ class CalcJobNodeViewerWidget(ipw.VBox):
         with self.hold_trait_notifications():
             self.log_output.filename = self.output_follower.filename
             self.log_output.value = "\n".join(self.output_follower.output)
-            
+
 
 class ResourceSelectionWidget(ipw.VBox):
     """Widget for the selection of compute resources."""

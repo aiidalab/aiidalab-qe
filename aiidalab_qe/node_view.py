@@ -19,7 +19,7 @@ import traitlets
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
 from aiida.orm import CalcJobNode, Node, ProjectionData, WorkChainNode
-from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
+from aiidalab_widgets_base import register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 from ase import Atoms
 from filelock import FileLock, Timeout
@@ -500,12 +500,16 @@ class WorkChainOutputs(ipw.VBox):
                 handle.write(retrieved.get_object_content(filename))
 
 
-@register_viewer_widget("process.workflow.workchain.WorkChainNode.", "QeAppWorkChain")
+@register_viewer_widget("process.workflow.workchain.WorkChainNode.")
 class WorkChainViewer(ipw.VBox):
 
     _results_shown = traitlets.Set()
 
     def __init__(self, node, **kwargs):
+        if node.process_label != "QeAppWorkChain":
+            super().__init__()
+            return
+
         self.node = node
 
         self.title = ipw.HTML(
@@ -560,12 +564,6 @@ class WorkChainViewer(ipw.VBox):
         super().__init__(
             children=[self.title, self.result_tabs],
             **kwargs,
-        )
-        self._process_monitor = ProcessMonitor(
-            process=self.node,
-            callbacks=[
-                self._update_view,
-            ],
         )
 
     def _update_view(self):
