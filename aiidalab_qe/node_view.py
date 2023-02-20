@@ -507,7 +507,8 @@ class WorkChainViewer(ipw.VBox):
 
     def __init__(self, node, **kwargs):
         if node.process_label != "QeAppWorkChain":
-            raise KeyError(str(node.node_type))
+            super().__init__()
+            return
 
         self.node = node
 
