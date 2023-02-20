@@ -172,23 +172,35 @@ class QeAppWorkChain(WorkChain):
             builder.pdos = pdos
 
         if xspectra_code is not None:
-            xspectra_overrides = overrides.get("xspectra", {})
-            if pseudo_family is not None:
-                xspectra_overrides.setdefault("scf", {})[
-                    "pseudo_family"
-                ] = pseudo_family
-                xspectra_overrides.setdefault("nscf", {})[
-                    "pseudo_family"
-                ] = pseudo_family
+            # xspectra_overrides = overrides.get("xspectra", {})
+            from aiida import orm
+
+            pseudos = {
+                "Si": orm.load_node(323),
+                "X": orm.load_node(325),
+            }
+            core_wfc_data = orm.load_node(324)
+            structure = orm.load_node(1352)
+            # if pseudo_family is not None:
+            #     xspectra_overrides.setdefault("scf", {})[
+            #         "pseudo_family"
+            #     ] = pseudo_family
+            #     xspectra_overrides.setdefault("nscf", {})[
+            #         "pseudo_family"
+            #     ] = pseudo_family
             xspectra = XspectraCoreWorkChain.get_builder_from_protocol(
                 pw_code=pw_code,
-                xspectra_code=xspectra_code,
+                xs_code=xspectra_code,
                 structure=structure,
                 protocol=protocol,
-                overrides=xspectra_overrides,
-                **kwargs,
+                core_hole_pseudos=pseudos,
+                core_wfc_data=core_wfc_data,
+                # overrides=xspectra_overrides,
+                # **kwargs,
             )
-            xspectra.pop("structure", None)
+            # xspectra.pop("structure", None)
+            print(xspectra)
+            xspectra["xs_plot"]["xspectra"] = xspectra["xs_prod"]["xspectra"]
             xspectra.pop("clean_workdir", None)
             builder.xspectra = xspectra
         builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
@@ -374,6 +386,7 @@ class QeAppWorkChain(WorkChain):
 
     def should_run_xspectra(self):
         """Check if the projected density of states should be calculated."""
+        self.report(f"should_run_xspectra {'xspectra' in self.inputs}")
         return "xspectra" in self.inputs
 
     def run_xspectra(self):
@@ -383,32 +396,27 @@ class QeAppWorkChain(WorkChain):
         )
         inputs.metadata.call_link_label = "xspectra"
         inputs.structure = self.ctx.current_structure
-        inputs.nscf.pw.parameters = inputs.nscf.pw.parameters.get_dict()
 
-        if self.ctx.current_number_of_bands:
-            inputs.nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-                "nbnd", self.ctx.current_number_of_bands
-            )
+        # if self.ctx.scf_parent_folder:
+        # inputs.pop("scf")
+        # inputs.xs_prod.xspectra.parent_folder = self.ctx.scf_parent_folder
+        # else:
+        #     if "kpoints_distance_override" in self.inputs:
+        #         inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
 
-        if self.ctx.scf_parent_folder:
-            inputs.pop("scf")
-            inputs.nscf.pw.parent_folder = self.ctx.scf_parent_folder
-        else:
-            if "kpoints_distance_override" in self.inputs:
-                inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
+        #     inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
+        #     if "degauss_override" in self.inputs:
+        #         inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+        #             "degauss"
+        #         ] = self.inputs.degauss_override.value
 
-            inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
-            if "degauss_override" in self.inputs:
-                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                    "degauss"
-                ] = self.inputs.degauss_override.value
-
-            if "smearing_override" in self.inputs:
-                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                    "smearing"
-                ] = self.inputs.smearing_override.value
-
+        #     if "smearing_override" in self.inputs:
+        #         inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+        #             "smearing"
+        #         ] = self.inputs.smearing_override.value
+        # self.report(f"run_xspectra: {inputs}")
         inputs = prepare_process_inputs(XspectraCoreWorkChain, inputs)
+        # self.report(f"run_xspectra: {inputs}")
         running = self.submit(XspectraCoreWorkChain, **inputs)
 
         self.report(f"launching XspectraCoreWorkChain<{running.pk}>")
