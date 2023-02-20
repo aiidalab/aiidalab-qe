@@ -19,7 +19,7 @@ import traitlets
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
 from aiida.orm import CalcJobNode, Node, ProjectionData, WorkChainNode
-from aiidalab_widgets_base import register_viewer_widget
+from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 from ase import Atoms
 from filelock import FileLock, Timeout
@@ -564,6 +564,12 @@ class WorkChainViewer(ipw.VBox):
         super().__init__(
             children=[self.title, self.result_tabs],
             **kwargs,
+        )
+        self._process_monitor = ProcessMonitor(
+            process=self.node,
+            callbacks=[
+                self._update_view,
+            ],
         )
 
     def _update_view(self):
