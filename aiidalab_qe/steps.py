@@ -9,10 +9,10 @@ import os
 
 import ipywidgets as ipw
 import traitlets
-from numpy import linspace
+import numpy as np
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
-from aiida.orm import WorkChainNode, load_code, load_node
+from aiida.orm import WorkChainNode, load_code, load_node, load_group
 from aiida.plugins import DataFactory         
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType, PeriodicityType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
@@ -110,18 +110,23 @@ class WorkChainSettings(ipw.VBox):
         )
         # tot_charge: total charge of material
         self.tot_charge = ipw.IntSlider(
-            value=0,
+            value=DEFAULT_PARAMETERS["tot_charge"],
             min=-2,
             max=2,
             step=1,
         )
         # PeriodicityType: periodicity type of materials to modify k point mesh
         self.periodicity = ipw.ToggleButtons(
-            options=[("1D", "xy"), ("2D", "xy") , ("3D" , "xyz")],
+            options=[("1D", "x"), ("2D", "xy") , ("3D" , "xyz")],
             value=DEFAULT_PARAMETERS["periodicity"],
             style={"description_width": "initial"},
         )
 
+        self.spin_orbit = ipw.ToggleButtons(
+            options=[("w/o SOC", "wo_soc"), ("SOC", "soc")],
+            value=DEFAULT_PARAMETERS["spin_orbit"],
+            style={"description_width": "initial"},
+        )
 
         # Checkbox to see if the band structure should be calculated
         self.bands_run = ipw.Checkbox(
@@ -132,10 +137,22 @@ class WorkChainSettings(ipw.VBox):
             layout=ipw.Layout(max_width="10%"),
         )
         
-        self.two_dim_koints_path = ipw.Dropdown(
+        self.two_dim_kpoints_path = ipw.Dropdown(
             options=[("Hexagonal", "hexagonal"),("Square", "square"),("Rectangular", "rectangular")],
             value="hexagonal"
         )
+        
+        self.two_dim_kpoints_path_layout = ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "2D k-paths:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        self.two_dim_kpoints_path,
+                    ]
+                )
 
             
         # Checkbox to see if the PDOS should be calculated
@@ -146,12 +163,23 @@ class WorkChainSettings(ipw.VBox):
             value=True,
             layout=ipw.Layout(max_width="10%"),
         )
-
+        def hide_or_show(_=None):
+            if self.periodicity.value == "xy" and self.bands_run.value==True:
+                self.two_dim_kpoints_path.layout.visibility = 'visible'
+                self.two_dim_kpoints_path_layout.layout.visibility = 'visible'
+            else:
+                self.two_dim_kpoints_path.layout.visibility= 'hidden'
+                self.two_dim_kpoints_path_layout.layout.visibility = 'hidden'
+        
+        
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
             value="moderate",
         )
+
+    
+
         super().__init__(
             children=[
                 self.structure_title,
@@ -203,19 +231,20 @@ class WorkChainSettings(ipw.VBox):
                     ]
                 ),
                 self.properties_title,
-                ipw.HTML("Select which properties to calculate:"),
-                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
                 ipw.HBox(
                     children=[
                         ipw.Label(
-                            "2D k-paths:",
+                            "Spin Orbit-Coupling:",
                             layout=ipw.Layout(
                                 justify_content="flex-start", width="120px"
                             ),
                         ),
-                        self.two_dim_koints_path,
+                        self.spin_orbit,
                     ]
                 ),
+                ipw.HTML("Select which properties to calculate:"),
+                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
+                self.two_dim_kpoints_path_layout,
                 ipw.HBox(
                     children=[
                         ipw.HTML("<b>Projected density of states</b>"),
@@ -230,6 +259,8 @@ class WorkChainSettings(ipw.VBox):
             ],
             **kwargs,
         )
+        self.periodicity.observe(hide_or_show, names="value")
+        self.bands_run.observe(hide_or_show, names="value")
 
 
 class SmearingSettings(ipw.VBox):
@@ -458,7 +489,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.workchain_settings.bands_run.value = parameters["run_bands"]
             self.workchain_settings.pdos_run.value = parameters["run_pdos"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
-            #self.workchain_settings.tot_charge.value = parameters["tot_charge"]
+            self.workchain_settings.tot_charge.value = parameters["tot_charge"]
+            self.workchain_settings.spin_orbit.value = parameters["spin_orbit"]
 
             # Advanced settings
             self.pseudo_family_selector.value = parameters["pseudo_family"]
@@ -831,7 +863,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             protocol=self.workchain_settings.workchain_protocol.value,
             tot_charge=self.workchain_settings.tot_charge.value,
             periodicity=self.workchain_settings.periodicity.value,
-            two_dim_koints_path=self.workchain_settings.two_dim_koints_path.value, 
+            two_dim_kpoints_path=self.workchain_settings.two_dim_kpoints_path.value, 
+            spin_orbit=self.workchain_settings.spin_orbit.value,
             # Codes
             pw_code=self.pw_code.value,
             dos_code=self.dos_code.value,
@@ -916,54 +949,79 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         #adding tot_charge to builder
         builder.relax.base.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
-        #builder.relax.base_final_scf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
         builder.bands.bands.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
         builder.bands.scf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
         builder.pdos.scf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
         builder.pdos.nscf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
         
-        def one_two_dim_kpoints_path(periodicity, two_dim_koints_path, protocol):
+        def one_two_dim_kpoints_path(structure, periodicity, two_dim_kpoints_path, bands_kpoints_distance):
+            """
+            Return a KpoinsData object containing the 1D or 2D kpoints path for bandstructure calculations
+
+            """
             KpointsData = DataFactory('core.array.kpoints')
-            
+            kpoints = KpointsData()
+            kpoints.set_cell_from_structure(structure)
+            reciprocal_cell = kpoints.reciprocal_cell
+            #reciprocal cell
+
+            selected_paths = {'hexagonal': {'path': [[0.0, 0.0, 0.0], [0.33333, 0.33333, 0.0], [0.5, 0.5, 0.0], [0.0, 0.0, 0.0]], 'labels': ["\u0393","K","M","\u0393"]},
+                            'square': {'path': [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [0.5, 0.5, 0.0], [0.0, 0.0, 0.0]], 'labels': ["\u0393","X","M","\u0393"]},
+                            'rectangular': {'path': [[0.0, 0.0, 0.0], [0.5, 0.0 ,0.0], [0.5, 0.5, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.0]], 'labels': ["\u0393","X","S","Y","\u0393"]},
+                            
+                            }
+            if two_dim_kpoints_path in ["centered_rectangular", "oblique"]:  #In developing
+                a1 = reciprocal_cell[0]
+                a2 = reciprocal_cell[1]
+                norm_a1 = np.linalg.norm(a1)
+                norm_a2 = np.linalg.norm(a2)
+                cos_gamma = a1.dot(a2)/ (norm_a1 * norm_a2) # Angle between a1 and a2 # Requires tes in case the division by zero , gamma < 90!
+                gamma = np.arccos(cos_gamma)
+                eta = (1 - (norm_a1/norm_a2)*cos_gamma )/(2 * np.power(np.sin(gamma),2))
+                nu = 0.5 - (etha * norm_a2 * cos_gamma)/norm_a1
+                selected_paths["centered_rectangular"]= {'path': [[0.0, 0.0, 0.0], [0.5, 0.0 ,0.0], [1-eta,nu,0], [0.5, 0.5, 0.0], [eta, 1-nu, 0.0], [0.0, 0.0, 0.0]], 'labels': ["\u0393","X","H_1","C","H","\u0393"]}
+                selected_paths["oblique"]= {'path': [[0.0, 0.0, 0.0], [0.5, 0.0 ,0.0], [1-eta,nu,0], [0.5, 0.5, 0.0], [eta, 1-nu, 0.0], [0.0, 0.5, 0.0],[0.0, 0.0, 0.0]], 'labels': ["\u0393","X","H_1","C","H", "Y" ,"\u0393"]}
+
             def pairwise(iterable):
             # pairwise('ABCDEFG') --> AB BC CD DE EF FG
                 from itertools import tee
                 a,b = tee(iterable)
                 next(b, None)
                 return zip(a, b)
-
-            selected_paths = {'hexagonal': {'path': [[0.0, 0.0, 0], [0.33333, 0.33333, 0.0], [0.5, 0.5, 0.0], [0.0, 0.0, 0]], 'labels': ["\u0393","K","M","\u0393"]},
-                            'square': {'path': [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [0.5, 0.5, 0.0], [0.0, 0.0, 0]], 'labels': ["\u0393","X","M","\u0393"]},
-                            'rectangular': {'path': [[0.0, 0.0, 0.0], [0.5, 0.0 ,0.0], [0.5, 0.5, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0]], 'labels': ["\u0393","X","S","Y","\u0393"]},
-                            }
-
-            if protocol == 'fast':
-                points_per_branch = 10
-            elif protocol == 'moderate':
-                points_per_branch = 20
-            elif protocol == 'precise':
-                points_per_branch = 30
-            
-            kpoints = KpointsData()
+            def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distance):
+                scaled_vector_a = np.array(vector_a)
+                scaled_vector_b = np.array(vector_b)
+                reciprocal_vector_a = scaled_vector_a.dot(reciprocal_cell)
+                reciprocal_vector_b = scaled_vector_b.dot(reciprocal_cell)
+                distance = np.linalg.norm(reciprocal_vector_a-reciprocal_vector_b)
+                return round(distance/bands_kpoints_distance.value)
 
             if periodicity == 'x':
-                points = linspace(start = [0,0,0] , stop = [0.5,0,0] , endpoint=True, num=points_per_branch)
+                points = np.linspace(start = [0.0, 0.0, 0.0] , stop = [0.5, 0.0, 0.0] , endpoint=True, num=10)
                 kpoints.set_kpoints(points.tolist())
-                kpoints.labels = [[0,"G"], [points_per_branch-1,"X"]]
+                kpoints.labels = [[0,"\u0393"], [points_per_branch-1,"X"]]
                 return kpoints
+
             elif periodicity == 'xy':
                 points_branch = []
-                branches = pairwise(selected_paths[two_dim_koints_path]['path'])
+                num_per_branch = []
+                path = selected_paths[two_dim_kpoints_path]['path']
+                labels = selected_paths[two_dim_kpoints_path]['labels']
+                branches = pairwise(path)
+
                 for branch in branches:
-                    points = linspace(start=branch[0], stop=branch[1], endpoint=True, num=points_per_branch)
+                    num_points_per_branch = points_per_branch(branch[0], branch[1], reciprocal_cell, bands_kpoints_distance)
+                    points = np.linspace(start=branch[0], stop=branch[1], endpoint=True, num=num_points_per_branch)
                     points_branch.append(points.tolist())
-                temp_points =  [item for sublist in points_branch for item in sublist]
-                kpoints.set_kpoints(temp_points)
-                kpoints.labels = [ [index,value] if index==0 else [(index*points_per_branch)-1,value] for index,value in enumerate (selected_paths[two_dim_koints_path]['labels'])]
+                    num_per_branch.append(num_points_per_branch)
+
+                list_kpoints =  [item for sublist in points_branch for item in sublist]
+                kpoints.set_kpoints(list_kpoints)
+                kpoints.labels = [[index,labels[index]] if index==0 else [list_kpoints.index(value,1),labels[index]] for index,value in enumerate (path) ]
                 return kpoints
         
         if parameters["periodicity"] is not "xyz" and parameters.get("run_bands", True):
-            kpoints = one_two_dim_kpoints_path(periodicity = parameters["periodicity"] , two_dim_koints_path=parameters["two_dim_koints_path"] , protocol=parameters["protocol"])
+            kpoints = one_two_dim_kpoints_path(structure = self.input_structure, periodicity = parameters["periodicity"] , two_dim_kpoints_path=parameters["two_dim_kpoints_path"] , bands_kpoints_distance=builder.bands["bands_kpoints_distance"])
             builder.bands.bands_kpoints = kpoints
             builder.bands.pop("bands_kpoints_distance")
 
@@ -975,6 +1033,38 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder.degauss_override = Float(parameters["degauss_override"])
         if "smearing_override" in parameters:
             builder.smearing_override = Str(parameters["smearing_override"])
+
+        if parameters["spin_orbit"] is "soc":
+            family_fr_pseudo = load_group('PseudoDojo/0.4/PBE/FR/stringent/upf') #It has to be install first
+            fr_pseudo = family_fr_pseudo.get_pseudos(structure=self.input_structure)
+            #
+            #fr_cutoffs = family_fr_pseudo.get_recommended_cutoffs(structure=self.input_structure, stringency='high')    
+            #set SOC
+            builder.bands.bands.pw.parameters['SYSTEM']['noncolin'] = True
+            builder.bands.bands.pw.parameters['SYSTEM']['lspinorb'] = True
+            builder.bands.bands.pw.parameters['SYSTEM']['ecutwfc'] = 90
+            builder.bands.bands.pw.parameters['SYSTEM']['ecutrho'] = 360
+
+            builder.bands.scf.pw.parameters['SYSTEM']['noncolin'] = True
+            builder.bands.scf.pw.parameters['SYSTEM']['lspinorb'] = True
+            builder.bands.scf.pw.parameters['SYSTEM']['ecutwfc'] = 90  
+            builder.bands.scf.pw.parameters['SYSTEM']['ecutrho'] = 360
+
+            builder.pdos.scf.pw.parameters['SYSTEM']['noncolin'] = True
+            builder.pdos.scf.pw.parameters['SYSTEM']['lspinorb'] = True
+            builder.pdos.scf.pw.parameters['SYSTEM']['ecutwfc'] = 90
+            builder.pdos.scf.pw.parameters['SYSTEM']['ecutrho'] = 360
+
+            builder.pdos.nscf.pw.parameters['SYSTEM']['noncolin'] = True
+            builder.pdos.nscf.pw.parameters['SYSTEM']['lspinorb'] = True
+            builder.pdos.nscf.pw.parameters['SYSTEM']['ecutwfc'] = 90
+            builder.pdos.nscf.pw.parameters['SYSTEM']['ecutrho'] = 360
+
+            #Modify pseudos
+            builder.bands.scf.pw.pseudos = fr_pseudo
+            builder.bands.bands.pw.pseudos = fr_pseudo
+            builder.pdos.nscf.pw.pseudos = fr_pseudo
+            builder.pdos.scf.pw.pseudos = fr_pseudo
 
         # skip relax sub-workflow only when RelaxType is NONE and has property calculated.
         # we pop the namespace `relax` from build so the subworkchain will never
@@ -1072,3 +1162,5 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     @traitlets.observe("process")
     def _observe_process(self, change):
         self._update_state()
+
+

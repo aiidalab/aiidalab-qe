@@ -25,7 +25,11 @@ FUNCTIONAL_REPORT_MAP = {
     "PBEsol": "the revised generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE) for solids",
 }
 
-
+PROTOCOL_BANDS_KPOINTS_DISTANCE = {
+    "fast": 0.1,
+    "moderate": 0.025,
+    "precise": 0.015,
+}
 def _generate_report_dict(qeapp_wc: WorkChainNode):
     builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
 
@@ -43,6 +47,11 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
     yield "material_magnetic", builder_parameters["spin_type"]
     yield "electronic_type", builder_parameters["electronic_type"]
     yield "tot_charge", builder_parameters["tot_charge"]
+    yield "periodicity", builder_parameters["periodicity"]
+
+    if builder_parameters["periodicity"] == "xy":
+        yield "kpoint_path" , builder_parameters["two_dim_kpoints_path"]
+
 
     # Calculation settings
     yield "protocol", builder_parameters["protocol"]
@@ -116,7 +125,7 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
         try: 
             bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
         except AttributeError:
-            bands_kpoints_distance = builder_parameters["two_dim_koints_path"]
+            bands_kpoints_distance = PROTOCOL_BANDS_KPOINTS_DISTANCE[builder_parameters["protocol"]]
     if run_pdos:
         scf_kpoints_distance = (
             scf_kpoints_distance or qeapp_wc.inputs.pdos.scf.kpoints_distance.value

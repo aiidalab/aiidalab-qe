@@ -15,7 +15,9 @@ pw_code: pw-7.0@localhost
 spin_type: none
 electronic_type: metal
 
+tot_charge: 0 
 periodicity: xyz
+spin_orbit: wo_soc
 ## Calculation settings
 protocol: moderate
 kpoints_distance_override:

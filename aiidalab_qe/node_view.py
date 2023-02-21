@@ -149,18 +149,24 @@ def _projections_curated(
     The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label."""
     _pdos = {}
 
+    #Setting 
+  
+
     for orbital, pdos, energy in projections.get_pdos():
         orbital_data = orbital.get_orbital_dict()
         kind_name = orbital_data["kind_name"]
         atom_position = [round(i, 2) for i in orbital_data["position"]]
-        orbital_name = orbital.get_name_from_quantum_numbers(
-            orbital_data["angular_momentum"], orbital_data["magnetic_number"]
-        ).lower()
+        try:
+            orbital_name = orbital.get_name_from_quantum_numbers(
+                orbital_data["angular_momentum"], orbital_data["magnetic_number"]
+            ).lower()
+        except AttributeError:
+            orbital_name = "j= {j} l={l} m_j={m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
 
         if curated_tag == "atom":
             curated_tag_var = atom_position
         else:
-            # by orbital label
+            #by orbital label
             curated_tag_var = orbital_name
 
         key = f"{kind_name}-{curated_tag_var}"
@@ -172,7 +178,7 @@ def _projections_curated(
     dos = []
     for label, (energy, pdos) in _pdos.items():
         if spin_type == "down":
-            # invert y-axis
+            #invert y-axis
             pdos = -pdos
             label = f"{label} (↓)"
 
@@ -530,7 +536,8 @@ class WorkChainViewer(ipw.VBox):
         self.bands_tab = ipw.VBox(
             [ipw.Label("Electronic Structure not available.")],
             layout=ipw.Layout(min_height="380px"),
-        )
+        ) 
+             
         self.result_tabs = ipw.Tab(
             children=[self.summary_tab, self.structure_tab, self.bands_tab]
         )
@@ -600,10 +607,18 @@ class WorkChainViewer(ipw.VBox):
         data = export_data(self.node)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
+        self.dos_options = ipw.Dropdown(
+            options=[("Atoms", "atoms"),("Orbitals", "orbitals")],
+            value="atoms"
+        )
         self._bands_plot_view = BandsPlotWidget(
             bands=bands_data, dos=dos_data, plot_fermilevel=True
         )
-        self.result_tabs.children[2].children = [self._bands_plot_view]
+        if dos_data is not None:
+            self.result_tabs.children[2].children = [self.dos_options, self._bands_plot_view]
+        else:
+            self.result_tabs.children[2].children = [self._bands_plot_view]
+
         self.result_tabs.set_title(2, "Electronic Structure")
 
     def _show_workflow_output(self):
@@ -613,3 +628,71 @@ class WorkChainViewer(ipw.VBox):
             self.workflows_summary,
             self.workflows_output,
         ]
+
+
+class DosPlottingOptions(ipw.VBox):
+
+    description = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        Select the style of plotting the projected density of states.
+        </div>"""
+    )
+    def __init__(self, **kwargs):
+        self.dos_atoms_group = ipw.Dropdown(
+            options=[("Atoms", "atoms"), ("Kinds", "kinds")],
+            value="atoms", 
+        )
+        self.dos_plot_group= ipw.Dropdown(
+            options=[("Total", "total"), ("Orbital", "orbital")],
+            value="total", 
+        )
+        self.selected_atoms = ipw.Text(
+            description="Select atoms:",
+            value="",
+            style={"description_width": "initial"},
+        )
+        self.wrong_syntax = ipw.HTML(
+            value="""<i class="fa fa-times" style="color:red;font-size:2em;" ></i> wrong syntax""",
+            layout={"visibility": "hidden"},
+        )
+        self.update_plot_button = ipw.Button(
+            description = "Update Plot",
+            icon="pencil",
+            button_style= 'primary',
+            disabled=False,
+            layout=ipw.Layout(width="auto"),
+        )
+        #self.update_plot_button.on_click()
+        super().__init__(
+                children=[
+                    self.description,
+                    ipw.HBox(
+                        children=[
+                            ipw.Label(
+                                "Group :",
+                                layout=ipw.Layout(
+                                    justify_content="flex-start", width="80px"
+                                ),
+                            ),
+                            self.dos_atoms_group,
+                        ]
+                    ),
+                    ipw.HBox(
+                        children=[
+                            ipw.Label(
+                                "Plot :",
+                                layout=ipw.Layout(
+                                    justify_content="flex-start", width="80px"
+                                ),
+                            ),
+                            self.dos_plot_group,
+                        ]
+                    ),
+                    ipw.HBox([self.selected_atoms, self.wrong_syntax]),
+                    ipw.HBox(
+                        children=[
+                            self.update_plot_button,
+                        ]
+                    ),
+                    ]
+        )

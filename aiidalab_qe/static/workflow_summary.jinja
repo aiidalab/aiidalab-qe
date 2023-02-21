@@ -36,6 +36,16 @@
         <td>Total Charge</td>
         <td>{{ tot_charge }}</td>
       </tr>
+      <tr>
+        <td>Periodicity</td>
+        <td>{{ periodicity }}</td>
+      </tr>
+      {% if kpoint_path %}
+      <tr>
+        <td>2D k-paths</td>
+        <td>{{ kpoint_path }}</td>
+      </tr>
+      {% endif %}
 
     </table>
   </div>
