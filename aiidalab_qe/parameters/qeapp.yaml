@@ -5,6 +5,7 @@
 relax_type: positions_cell
 run_bands: false
 run_pdos: false
+run_xps: false
 
 ## Codes
 dos_code: dos-7.0@localhost

@@ -35,6 +35,7 @@ StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
 Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
+List = DataFactory("core.list")
 
 
 class WorkChainSettings(ipw.VBox):
@@ -125,6 +126,14 @@ class WorkChainSettings(ipw.VBox):
             value=True,
             layout=ipw.Layout(max_width="10%"),
         )
+        # Checkbox to see if the xps should be calculated
+        self.xps_run = ipw.Checkbox(
+            description="",
+            tooltip="Calculate the xps structure.",
+            indent=False,
+            value=True,
+            layout=ipw.Layout(max_width="10%"),
+        )
 
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
@@ -166,6 +175,12 @@ class WorkChainSettings(ipw.VBox):
                     children=[
                         ipw.HTML("<b>Projected density of states</b>"),
                         self.pdos_run,
+                    ]
+                ),
+                ipw.HBox(
+                    children=[
+                        ipw.HTML("<b>X-ray photoelectron spectroscopy</b>"),
+                        self.xps_run,
                     ]
                 ),
                 self.properties_help,
@@ -304,6 +319,176 @@ class KpointSettings(ipw.VBox):
         )
 
 
+class CoreHoleSettings(ipw.VBox):
+
+    title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 2px">
+        <h4>Core Hole Setting</h4></div>"""
+    )
+
+    core_hole_description = ipw.HTML(
+        """<p>
+        The core hole treatment is set by the chosen <b>protocol</b>.
+        Tick the box to override the default.
+    </p>"""
+    )
+    pseudo_description = ipw.HTML(
+        """<p>
+        Ground-state and excited-state pseudopotentials for each absorbing element.
+    </p>"""
+    )
+
+    # The default of `treatment`
+    # must be linked to the `protocol`
+    treatment_default = traitlets.Unicode(default_value="full")
+    es_pseudo_default = traitlets.Unicode(default_value="core_hole")
+    gs_pseudo_default = traitlets.Unicode(default_value="gipaw")
+
+    def __init__(self, **kwargs):
+
+        self.override_protocol_core_hole = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
+        self.treatment = ipw.Dropdown(
+            options=["full", "half", "xch_fixed", "xch_smear"],
+            value=self.treatment_default,
+            description="Core-hole treatment type:",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        self.es_pseudo = ipw.Text(
+            description="excited-state pseudopotentials:",
+            value=self.es_pseudo_default,
+            style={"description_width": "initial"},
+            disabled=False,
+        )
+        self.gs_pseudo = ipw.Text(
+            description="ground-state pseudopotentials:",
+            value=self.gs_pseudo_default,
+            style={"description_width": "initial"},
+            disabled=False,
+        )
+        ipw.dlink(
+            (self.override_protocol_core_hole, "value"),
+            (self.treatment, "disabled"),
+            lambda override: not override,
+        )
+        ipw.dlink(
+            (self.override_protocol_core_hole, "value"),
+            (self.es_pseudo, "disabled"),
+            lambda override: not override,
+        )
+        ipw.dlink(
+            (self.override_protocol_core_hole, "value"),
+            (self.gs_pseudo, "disabled"),
+            lambda override: not override,
+        )
+        self.treatment.observe(self.set_treatment, "value")
+        self.override_protocol_core_hole.observe(self.set_treatment, "value")
+        self.observe(self.set_treatment, "treatment_default")
+
+        self.es_pseudo.observe(self.set_es_pseudo, "value")
+        self.override_protocol_core_hole.observe(self.set_es_pseudo, "value")
+        self.observe(self.set_es_pseudo, "es_pseudo_default")
+
+        self.gs_pseudo.observe(self.set_gs_pseudo, "value")
+        self.override_protocol_core_hole.observe(self.set_gs_pseudo, "value")
+        self.observe(self.set_gs_pseudo, "gs_pseudo_default")
+
+        super().__init__(
+            children=[
+                self.title,
+                self.core_hole_description,
+                ipw.HBox(
+                    [self.override_protocol_core_hole, self.treatment],
+                ),
+                ipw.HBox(
+                    [self.es_pseudo, self.gs_pseudo],
+                ),
+            ],
+            layout=ipw.Layout(justify_content="space-between"),
+            **kwargs,
+        )
+
+    def set_treatment(self, _=None):
+        self.treatment.value = (
+            self.treatment.value
+            if self.override_protocol_core_hole.value
+            else self.treatment_default
+        )
+
+    def set_es_pseudo(self, _=None):
+        self.es_pseudo.value = (
+            self.es_pseudo.value
+            if self.override_protocol_core_hole.value
+            else self.es_pseudo_default
+        )
+
+    def set_gs_pseudo(self, _=None):
+        self.gs_pseudo.value = (
+            self.gs_pseudo.value
+            if self.override_protocol_core_hole.value
+            else self.gs_pseudo_default
+        )
+
+
+class ElementSelectSettings(ipw.VBox):
+
+    title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 2px">
+        <h4>Select Element</h4></div>"""
+    )
+
+    description = ipw.HTML(
+        """<p>
+        The list of elements to be considered for analysis. If no elements list is given, we instead calculate all elements in the structure.
+    </p>"""
+    )
+
+    elements_default = traitlets.Unicode(default_value="")
+
+    def __init__(self, **kwargs):
+
+        self.override_default = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
+        self.elements = ipw.Text(
+            description="Select element:",
+            value=self.elements_default,
+            style={"description_width": "initial"},
+            disabled=False,
+        )
+        ipw.dlink(
+            (self.override_default, "value"),
+            (self.elements, "disabled"),
+            lambda override: not override,
+        )
+        self.elements.observe(self.set_elements, "value")
+        self.override_default.observe(self.set_elements, "value")
+        self.observe(self.set_elements, "elements_default")
+
+        super().__init__(
+            children=[
+                self.title,
+                self.description,
+                ipw.HBox([self.override_default, self.elements]),
+            ],
+            layout=ipw.Layout(justify_content="space-between"),
+            **kwargs,
+        )
+
+    def set_elements(self, _=None):
+        self.elements.value = (
+            self.elements.value
+            if self.override_default.value
+            else self.elements_default
+        )
+
+
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     confirmed = traitlets.Bool()
@@ -311,6 +496,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
+    core_hole_settings = traitlets.Instance(CoreHoleSettings, allow_none=True)
+    element_select_settings = traitlets.Instance(ElementSelectSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
 
     def __init__(self, **kwargs):
@@ -319,9 +506,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_settings.relax_type.observe(self._update_state, "value")
         self.workchain_settings.bands_run.observe(self._update_state, "value")
         self.workchain_settings.pdos_run.observe(self._update_state, "value")
+        self.workchain_settings.xps_run.observe(self._update_state, "value")
 
         self.kpoints_settings = KpointSettings()
         self.smearing_settings = SmearingSettings()
+        self.core_hole_settings = CoreHoleSettings()
+        self.element_select_settings = ElementSelectSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
 
         ipw.dlink(
@@ -358,12 +548,19 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         self.smearing_settings,
                     ]
                 ),
+                ipw.VBox(
+                    children=[
+                        self.core_hole_settings,
+                        self.element_select_settings,
+                    ]
+                ),
             ],
             layout=ipw.Layout(min_height="250px"),
         )
 
         self.tab.set_title(0, "Workflow")
         self.tab.set_title(1, "Advanced settings")
+        self.tab.set_title(2, "Spectroscopy settings")
 
         self._submission_blocker_messages = ipw.HTML()
 
@@ -403,6 +600,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ]
             self.workchain_settings.bands_run.value = parameters["run_bands"]
             self.workchain_settings.pdos_run.value = parameters["run_pdos"]
+            self.workchain_settings.xps_run.value = parameters["run_xps"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
 
             # Advanced settings
@@ -418,6 +616,16 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             if parameters.get("smearing_override", None) is not None:
                 self.smearing_settings.smearing.value = parameters["smearing_override"]
                 self.smearing_settings.override_protocol_smearing.value = True
+            if parameters.get("core_hole_treatment_override", None) is not None:
+                self.core_hole_settings.treatment.value = parameters[
+                    "core_hole_treatment_override"
+                ]
+                self.core_hole_settings.override_protocol_core_hole.value = True
+            if parameters.get("element_select_override", None) is not None:
+                self.element_select_settings.elements.value = parameters[
+                    "element_select_override"
+                ]
+                self.element_select_settings.override_default.value = True
 
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
@@ -476,6 +684,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
+    core_hole_settings = traitlets.Instance(CoreHoleSettings, allow_none=True)
+    element_select_settings = traitlets.Instance(ElementSelectSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode)
 
@@ -773,6 +983,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=self.workchain_settings.spin_type.value,
             run_bands=self.workchain_settings.bands_run.value,
             run_pdos=self.workchain_settings.pdos_run.value,
+            run_xps=self.workchain_settings.xps_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
             # Codes
             pw_code=self.pw_code.value,
@@ -788,7 +999,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.smearing_settings.override_protocol_smearing.value:
             parameters["smearing_override"] = self.smearing_settings.smearing.value
             parameters["degauss_override"] = self.smearing_settings.degauss.value
-
+        if self.core_hole_settings.override_protocol_core_hole.value:
+            parameters[
+                "core_hole_treatment_override"
+            ] = self.core_hole_settings.treatment.value
+        if self.element_select_settings.override_default.value:
+            parameters[
+                "element_select_override"
+            ] = self.element_select_settings.elements.value
         return parameters
 
     def set_selected_codes(self, parameters):
@@ -844,6 +1062,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         assert self.input_structure is not None
         parameters = self.get_input_parameters()
 
+        overrides = {"xps": {}}
+        if "core_hole_treatment_override" in parameters:
+            overrides["xps"]["core_hole_treatment"] = Str(
+                parameters["core_hole_treatment_override"]
+            )
+        if "element_select_override" in parameters:
+            overrides["xps"]["elements_list"] = List(
+                parameters["element_select_override"].split(",")
+            )
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=load_code(parameters["pw_code"]),
@@ -854,6 +1081,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             relax_type=RelaxType(parameters["relax_type"]),
             spin_type=SpinType(parameters["spin_type"]),
             electronic_type=ElectronicType(parameters["electronic_type"]),
+            overrides=overrides,
         )
 
         if "kpoints_distance_override" in parameters:
@@ -864,7 +1092,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder.degauss_override = Float(parameters["degauss_override"])
         if "smearing_override" in parameters:
             builder.smearing_override = Str(parameters["smearing_override"])
-
         # skip relax sub-workflow only when RelaxType is NONE and has property calculated.
         # we pop the namespace `relax` from build so the subworkchain will never
         # been touched. Otherwise it will run a unnecessary SCF calculation before the bands/pdos
@@ -872,7 +1099,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # This potentially increase the complexibility of the logic report widget,
         # we need to refactoring the QeAppWorkChain and clear the logic here.
         if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (
-            parameters["run_bands"] or parameters["run_pdos"]
+            parameters["run_bands"] or parameters["run_pdos"] or parameters["run_xps"]
         ):
             builder.pop("relax")
 
@@ -881,6 +1108,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         if not parameters.get("run_pdos", False):
             builder.pop("pdos")
+
+        if not parameters.get("run_xps", False):
+            builder.pop("xps")
 
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
