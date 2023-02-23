@@ -1,7 +1,7 @@
 # AiiDA imports.
 from aiida.common import AttributeDict
 from aiida.engine import ToContext, WorkChain, if_
-from aiida.orm import CalcJobNode, WorkChainNode
+from aiida.orm import CalcJobNode, QueryBuilder, WorkChainNode
 from aiida.plugins import DataFactory, WorkflowFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
@@ -22,6 +22,15 @@ XyData = DataFactory("core.array.xy")
 StructureData = DataFactory("core.structure")
 BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
+
+
+def get_pseudo(group, element):
+    pseudos = {pseudo.element: pseudo for pseudo in group.nodes}
+    try:
+        pseudo = pseudos[element]
+        return pseudo
+    except KeyError:
+        raise KeyError(f"Pseudo for element {element} is not exist.")
 
 
 class QeAppWorkChain(WorkChain):
@@ -89,7 +98,7 @@ class QeAppWorkChain(WorkChain):
                        message='The PwBandsWorkChain sub process failed')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
-        spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_XPS',
+        spec.exit_code(405, 'ERROR_SUB_PROCESS_FAILED_XPS',
                        message='The XpsWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData, required=False)
         spec.output('band_parameters', valid_type=Dict, required=False)
@@ -99,8 +108,8 @@ class QeAppWorkChain(WorkChain):
         spec.output('projections', valid_type=Orbital, required=False)
         spec.output('projections_up', valid_type=Orbital, required=False)
         spec.output('projections_down', valid_type=Orbital, required=False)
-        spec.output('chemical_shifts', valid_type=Dict, required=False)
-        spec.output('xps_spectra', valid_type=XyData, required=False)
+        spec.output_namespace('chemical_shifts', valid_type=Dict, dynamic=True, required=False)
+        spec.output_namespace('xps_spectra', valid_type=XyData, dynamic=True, required=False)
         # yapf: enable
 
     @classmethod
@@ -117,8 +126,10 @@ class QeAppWorkChain(WorkChain):
         pseudos=None,
         **kwargs,
     ):
+        from aiida.orm import Group
+
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
-        overrides = overrides or {}
+        overrides = overrides.get_dict() if overrides else {}
         builder = cls.get_builder()
         builder.structure = structure
 
@@ -174,17 +185,55 @@ class QeAppWorkChain(WorkChain):
             builder.pdos = pdos
 
         # xps
+        pseudo_set = Group
         xps_overrides = overrides.get("xps", {})
+        # set pseudo for normal elements
+        if pseudo_family is not None:
+            xps_overrides.setdefault("ch_scf", {})["pseudo_family"] = pseudo_family
+        # load pseudo for excited-state and group-state.
+        es_pseudo_family = xps_overrides.pop("es_pseudo", "core_hole")
+        gs_pseudo_family = xps_overrides.pop("gs_pseudo", "gipaw")
+        es_pseudo_family = (
+            QueryBuilder()
+            .append(pseudo_set, filters={"label": es_pseudo_family})
+            .one()[0]
+        )
+        gs_pseudo_family = (
+            QueryBuilder()
+            .append(pseudo_set, filters={"label": gs_pseudo_family})
+            .one()[0]
+        )
+        # set pseudo and core hole treatment for element
+        pseudos = {}
+        core_hole_treatments = {}
+        core_hole_treatment = xps_overrides.pop("core_hole_treatment", "full")
+        elements_list = xps_overrides.pop("elements_list", None)
+        if not elements_list:
+            elements_list = [kind.symbol for kind in structure.kinds]
+        for element in elements_list:
+            pseudos[element] = {
+                "core_hole": get_pseudo(es_pseudo_family, element),
+                "gipaw": get_pseudo(gs_pseudo_family, element),
+            }
+            core_hole_treatments[element] = core_hole_treatment
+        # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
+        structure_preparation_settings = xps_overrides.pop(
+            "structure_preparation_settings", Dict({})
+        )
         xps = XpsWorkChain.get_builder_from_protocol(
             code=pw_code,
             structure=structure,
             pseudos=pseudos,
             protocol=protocol,
+            elements_list=elements_list,
+            core_hole_treatments=core_hole_treatments,
             overrides=xps_overrides,
+            structure_preparation_settings=structure_preparation_settings,
             **kwargs,
         )
+
         xps.pop("relax")
-        xps.pop("structure", None)
+        # xps.pop("structure", None)
         xps.pop("clean_workdir", None)
         builder.xps = xps
 
@@ -378,30 +427,24 @@ class QeAppWorkChain(WorkChain):
         inputs = AttributeDict(self.exposed_inputs(XpsWorkChain, namespace="xps"))
         inputs.metadata.call_link_label = "xps"
         inputs.structure = self.ctx.current_structure
-        inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
+        inputs.ch_scf.pw.parameters = inputs.ch_scf.pw.parameters.get_dict()
 
-        if self.ctx.current_number_of_xps:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-                "nbnd", self.ctx.current_number_of_xps
+        if self.ctx.current_number_of_bands:
+            inputs.ch_scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+                "nbnd", self.ctx.current_number_of_bands
             )
 
         if "kpoints_distance_override" in self.inputs:
-            inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
+            inputs.ch_scf.kpoints_distance = self.inputs.kpoints_distance_override
 
         if "degauss_override" in self.inputs:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+            inputs.ch_scf.pw.parameters.setdefault("SYSTEM", {})[
                 "degauss"
             ] = self.inputs.degauss_override.value
         if "smearing_override" in self.inputs:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
+            inputs.ch_scf.pw.parameters.setdefault("SYSTEM", {})[
                 "smearing"
             ] = self.inputs.smearing_override.value
-        # TODO
-        # if "core_hole_treatment_override" in self.inputs:
-        #     inputs.xps.parameters.setdefault("SYSTEM", {})[
-        #         "core_hole_treatment"
-        #     ] = self.inputs.core_hole_treatment_override.value
-
         inputs = prepare_process_inputs(XpsWorkChain, inputs)
         running = self.submit(XpsWorkChain, **inputs)
 
@@ -417,9 +460,10 @@ class QeAppWorkChain(WorkChain):
             self.report(f"XpsWorkChain failed with exit status {workchain.exit_status}")
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_XPS
 
-        scf = workchain.get_outgoing(WorkChainNode, link_label_filter="scf").one().node
-        self.ctx.scf_parent_folder = scf.outputs.remote_folder
-        self.ctx.current_structure = workchain.outputs.primitive_structure
+        # since there are many ch_scf calculation, we don't need to output the folder and structure.
+        # scf = workchain.get_outgoing(WorkChainNode, link_label_filter="scf").one().node
+        # self.ctx.scf_parent_folder = scf.outputs.remote_folder
+        # self.ctx.current_structure = workchain.outputs.primitive_structure
 
     def results(self):
         """Add the results to the outputs."""
@@ -451,7 +495,7 @@ class QeAppWorkChain(WorkChain):
 
         if "workchain_xps" in self.ctx:
             self.out("chemical_shifts", self.ctx.workchain_xps.outputs.chemical_shifts)
-            self.out("xps_spectra", self.ctx.workchain_xps.outputs.xps_spectra)
+            self.out("xps_spectra", self.ctx.workchain_xps.outputs.final_spectra)
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""

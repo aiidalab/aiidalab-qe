@@ -272,6 +272,28 @@ def export_data(work_chain_node):
     )
 
 
+def export_xps_data(work_chain_node):
+    chemical_shifts = {}
+    if "chemical_shifts" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.chemical_shifts.items():
+            ele = key[:-4]
+            chemical_shifts[ele] = data.get_dict()
+    spectra = {}
+    if "xps_spectra" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.xps_spectra.items():
+            ele = key[:-4]
+            X = data.get_x()[1]
+            Y = data.get_y()
+            array_y = []
+            for y in Y:
+                array_y.append(y[1])
+
+            # The total dos parsed
+            spectra[ele] = {"x": X, "y": array_y}
+
+    return chemical_shifts, spectra
+
+
 class VBoxWithCaption(ipw.VBox):
     def __init__(self, caption, body, *args, **kwargs):
         super().__init__(children=[ipw.HTML(caption), body], *args, **kwargs)
@@ -531,13 +553,23 @@ class WorkChainViewer(ipw.VBox):
             [ipw.Label("Electronic Structure not available.")],
             layout=ipw.Layout(min_height="380px"),
         )
+        self.xps_tab = ipw.VBox(
+            [ipw.Label("XPS not available.")],
+            layout=ipw.Layout(min_height="380px"),
+        )
         self.result_tabs = ipw.Tab(
-            children=[self.summary_tab, self.structure_tab, self.bands_tab]
+            children=[
+                self.summary_tab,
+                self.structure_tab,
+                self.bands_tab,
+                self.xps_tab,
+            ]
         )
 
         self.result_tabs.set_title(0, "Workflow Summary")
         self.result_tabs.set_title(1, "Final Geometry (n/a)")
         self.result_tabs.set_title(2, "Electronic Structure (n/a)")
+        self.result_tabs.set_title(3, "XPS (n/a)")
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
@@ -588,6 +620,11 @@ class WorkChainViewer(ipw.VBox):
             ):
                 self._show_electronic_structure()
                 self._results_shown.add("electronic_structure")
+            if "xps" not in self._results_shown and (
+                "xps_spectra" in self.node.outputs
+            ):
+                self._show_xps()
+                self._results_shown.add("xps")
 
     def _show_structure(self):
         self._structure_view = StructureDataViewer(
@@ -605,6 +642,21 @@ class WorkChainViewer(ipw.VBox):
         )
         self.result_tabs.children[2].children = [self._bands_plot_view]
         self.result_tabs.set_title(2, "Electronic Structure")
+
+    def _show_xps(self):
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        chemical_shifts, spectra = export_xps_data(self.node)
+        output2 = ipw.Output()
+        self.result_tabs.children[3].children = [output2]
+        with output2:
+            for key, data in spectra.items():
+                ele = key[:-4]
+                plt.plot(data["x"], np.array(data["y"])[:-1].T, label=ele)
+            plt.show()
+
+        self.result_tabs.set_title(3, "XPS")
 
     def _show_workflow_output(self):
         self.workflows_output = WorkChainOutputs(self.node)
