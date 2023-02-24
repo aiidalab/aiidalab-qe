@@ -21,9 +21,10 @@ from aiida.common import LinkType
 from aiida.orm import CalcJobNode, Node, ProjectionData, WorkChainNode
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
+from aiidalab_widgets_base.utils import string_range_to_list 
 from ase import Atoms
 from filelock import FileLock, Timeout
-from IPython.display import HTML, display
+from IPython.display import HTML, display, clear_output
 from jinja2 import Environment
 from monty.json import jsanitize
 from traitlets import Instance, Int, List, Unicode, Union, default, observe, validate
@@ -139,42 +140,69 @@ def cmap(label: str) -> str:
 
 def _projections_curated_options(
     projections: ProjectionData,
-    group_tag="kind",
+    group_tag="kinds",
     plot_tag="total",
     spin_type="none",
     line_style="solid",
+    selected_atoms=[],
 ):
     """Collect the data from ProjectionData and parse it as dos list which can be
     understand by bandsplot widget. `curated_tag` is for which tag to be grouped, by atom or by orbital name.
     The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label."""
     _pdos = {}
-
+    list_positions = []
     #Setting 
     for orbital, pdos, energy in projections.get_pdos():
         orbital_data = orbital.get_orbital_dict()
         kind_name = orbital_data["kind_name"]
         atom_position = [round(i, 2) for i in orbital_data["position"]]
+        if atom_position not in list_positions:
+            list_positions.append(atom_position)
         try:
             orbital_name = orbital.get_name_from_quantum_numbers(
                 orbital_data["angular_momentum"], orbital_data["magnetic_number"]
             ).lower()
         except AttributeError:
-            orbital_name = "j= {j} l={l} m_j={m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
+            orbital_name = " j= {j} l={l} m_j={m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
 
-        if group_tag == "atom":
-            curated_tag_var = kind_name + " " + atom_position
-        else:
-            curated_tag_var = kind_name
+        if not selected_atoms:
+            if group_tag == "atoms":
+                atoms_coordinates  = ' '.join(map(str,atom_position))                
+                curated_tag_var = kind_name + " " + atoms_coordinates
+            else:
+                curated_tag_var = kind_name
 
-        if plot_tag == "total"
-            key = f"{curated_tag_var}"
+            if plot_tag == "total":
+                key = f"{curated_tag_var}"
+            else:
+                key = f"{curated_tag_var}-{orbital_name}"
+
+            if key in _pdos:
+                _pdos[key][1] += pdos
+            else:
+                _pdos[key] = [energy, pdos]
         else:
-            key = f"{curated_tag_var}-{orbital_name}"
-   
-        if key in _pdos:
-            _pdos[key][1] += pdos
-        else:
-            _pdos[key] = [energy, pdos]
+            try:
+                index = list_positions.index(atom_position)
+                if index in selected_atoms:
+                    if group_tag == "atoms":
+                        atoms_coordinates  = ' '.join(map(str,atom_position))                
+                        curated_tag_var = kind_name + " " + atoms_coordinates
+                    else:
+                        curated_tag_var = kind_name
+
+                    if plot_tag == "total":
+                        key = f"{curated_tag_var}"
+                    else:
+                        key = f"{curated_tag_var}-{orbital_name}"
+
+                    if key in _pdos:
+                        _pdos[key][1] += pdos
+                    else:
+                        _pdos[key] = [energy, pdos]
+
+            except ValueError:
+                pass
 
     dos = []
     for label, (energy, pdos) in _pdos.items():
@@ -254,7 +282,8 @@ def _projections_curated(
     return dos
 
 
-def export_pdos_data(work_chain_node):
+def export_pdos_data(work_chain_node, group_tag,
+    plot_tag,selected_atoms):
     if "dos" in work_chain_node.outputs:
         _, energy_dos, _ = work_chain_node.outputs.dos.get_x()
         tdos_values = {f"{n}": v for n, v, _ in work_chain_node.outputs.dos.get_y()}
@@ -274,9 +303,10 @@ def export_pdos_data(work_chain_node):
             }
             dos.append(tdos)
 
-            dos += _projections_curated(
-                work_chain_node.outputs.projections, spin_type="none", curated_tag="orbital"
-            )
+            #dos += _projections_curated(
+            #    work_chain_node.outputs.projections, spin_type="none", curated_tag="orbital"
+            #)
+            dos += _projections_curated_options(work_chain_node.outputs.projections , spin_type = "none", group_tag= group_tag, plot_tag=plot_tag, selected_atoms=selected_atoms)
 
         else:
             # The total dos parsed
@@ -323,8 +353,10 @@ def export_pdos_data(work_chain_node):
         return None
 
 
-def export_data(work_chain_node):
-    dos = export_pdos_data(work_chain_node)
+def export_data(work_chain_node , group_tag,
+    plot_tag,selected_atoms):
+    dos = export_pdos_data(work_chain_node, group_tag,
+    plot_tag,selected_atoms)
     fermi_energy = dos["fermi_energy"] if dos else None
 
     bands = export_bands_data(work_chain_node, fermi_energy)
@@ -661,19 +693,18 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(1, "Final Geometry")
     
     def _show_electronic_structure(self):
-        self.dos_options = DosPlottingOptions()
-        group_tag=self.dos_options.dos_atoms_group.value 
-        plot_tag==self.dos_options.dos_plot_group.value
-        data = export_data(self.node)
-        bands_data = data.get("bands", None)
-        dos_data = data.get("dos", None)
-        self._bands_plot_view = BandsPlotWidget(
-            bands=bands_data, dos=dos_data, plot_fermilevel=True
-        )
-        if dos_data is not None:
-            self.result_tabs.children[2].children = [self.dos_options, self._bands_plot_view]
-        else:
-            self.result_tabs.children[2].children = [self._bands_plot_view]
+        self.dos_options = DosPlottingOptions(node=self.node)
+        #data = export_data(self.node,group_tag,plot_tag)
+        #bands_data = data.get("bands", None)
+        #dos_data = data.get("dos", None)
+        #self._bands_plot_view = BandsPlotWidget(
+        #    bands=bands_data, dos=dos_data, plot_fermilevel=True
+        #)
+        #if dos_data is not None:
+        #    self.result_tabs.children[2].children = [self.dos_options, self._bands_plot_view]
+        #else:
+        #    self.result_tabs.children[2].children = [self._bands_plot_view]
+        self.result_tabs.children[2].children = [self.dos_options]
 
         self.result_tabs.set_title(2, "Electronic Structure")
 
@@ -693,7 +724,9 @@ class DosPlottingOptions(ipw.VBox):
         Select the style of plotting the projected density of states.
         </div>"""
     )
-    def __init__(self, **kwargs):
+    def __init__(self, node, **kwargs):
+
+        self.node = node 
         self.dos_atoms_group = ipw.Dropdown(
             options=[("Atoms", "atoms"), ("Kinds", "kinds")],
             value="atoms", 
@@ -718,7 +751,24 @@ class DosPlottingOptions(ipw.VBox):
             disabled=False,
             layout=ipw.Layout(width="auto"),
         )
-        #self.update_plot_button.on_click()
+        self.bands_widget = ipw.Output()
+        
+        def display_bandstructure_widget(_=None):
+            with self.bands_widget:
+                expanded_selection, syntax_ok = string_range_to_list(self.selected_atoms.value, shift=-1)
+                if not syntax_ok:
+                    self.wrong_syntax.layout.visibility = "visible"
+                    clear_output(wait=True)
+                else:
+                    self.wrong_syntax.layout.visibility = "hidden"
+                    data = export_data(self.node,self.dos_atoms_group.value ,self.dos_plot_group.value, expanded_selection)
+                    bands_data = data.get("bands", None)
+                    dos_data = data.get("dos", None)
+                    clear_output(wait=True)
+                    widget_bands = BandsPlotWidget(bands=bands_data, dos=dos_data, plot_fermilevel=True)
+                    display(widget_bands)
+
+        self.update_plot_button.on_click(display_bandstructure_widget)
         super().__init__(
                 children=[
                     self.description,
@@ -750,5 +800,6 @@ class DosPlottingOptions(ipw.VBox):
                             self.update_plot_button,
                         ]
                     ),
+                    self.bands_widget,
                     ]
         )
