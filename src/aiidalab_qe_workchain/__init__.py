@@ -26,11 +26,7 @@ Orbital = DataFactory("core.orbital")
 
 def get_pseudo(group, element):
     pseudos = {pseudo.element: pseudo for pseudo in group.nodes}
-    try:
-        pseudo = pseudos[element]
-        return pseudo
-    except KeyError:
-        raise KeyError(f"Pseudo for element {element} is not exist.")
+    return pseudos.get(element, None)
 
 
 class QeAppWorkChain(WorkChain):
@@ -211,11 +207,15 @@ class QeAppWorkChain(WorkChain):
         if not elements_list:
             elements_list = [kind.symbol for kind in structure.kinds]
         for element in elements_list:
-            pseudos[element] = {
-                "core_hole": get_pseudo(es_pseudo_family, element),
-                "gipaw": get_pseudo(gs_pseudo_family, element),
-            }
+            es_pseudo = get_pseudo(es_pseudo_family, element)
+            gs_pseudo = get_pseudo(gs_pseudo_family, element)
+            if es_pseudo is not None and gs_pseudo is not None:
+                pseudos[element] = {
+                    "core_hole": es_pseudo,
+                    "gipaw": gs_pseudo,
+                }
             core_hole_treatments[element] = core_hole_treatment
+        # TODO correction energy
         # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
         structure_preparation_settings = xps_overrides.pop(
             "structure_preparation_settings", Dict({})

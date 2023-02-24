@@ -351,11 +351,19 @@ class SpectroscopySettings(ipw.VBox):
         The list of elements to be considered for analysis. If no elements list is given, we instead calculate all elements in the structure.
         </div>"""
     )
+    structure_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Structure</h4></div>"""
+    )
     structure_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
         Below you can indicate both if the material should be treated as an molecule
         or a crystal.
         </div>"""
+    )
+    supercell_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Supercell</h4></div>"""
     )
     supercell_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
@@ -363,6 +371,15 @@ class SpectroscopySettings(ipw.VBox):
         structures. The default value of 8.0 angstrom will be used
         if no input is given. Setting this value to 0.0 will
         instruct the CF to not scale up the input structure.
+        </div>"""
+    )
+    correction_energy_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Correction energy</h4></div>"""
+    )
+    correction_energy_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        Correction energy for the core electrons.
         </div>"""
     )
 
@@ -409,6 +426,12 @@ class SpectroscopySettings(ipw.VBox):
             disabled=False,
             style={"description_width": "initial"},
         )
+        self.correction_energy = ipw.Text(
+            description="Correction energies:",
+            value="",
+            style={"description_width": "initial"},
+            disabled=False,
+        )
 
         super().__init__(
             children=[
@@ -435,14 +458,20 @@ class SpectroscopySettings(ipw.VBox):
                 ipw.HBox(
                     [self.elements_list],
                 ),
-                # self.structure_title,
+                self.structure_title,
                 self.structure_help,
                 ipw.HBox(
                     [self.structure_type],
                 ),
+                self.supercell_title,
                 self.supercell_help,
                 ipw.HBox(
                     [self.supercell_min_parameter],
+                ),
+                self.correction_energy_title,
+                self.correction_energy_help,
+                ipw.HBox(
+                    [self.correction_energy],
                 ),
             ],
             **kwargs,
@@ -580,6 +609,9 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.spectroscopy_settings.es_pseudo.value = parameters["es_pseudo"]
             self.spectroscopy_settings.gs_pseudo.value = parameters["gs_pseudo"]
             self.spectroscopy_settings.elements_list.value = parameters["elements_list"]
+            self.spectroscopy_settings.correction_energy.value = parameters[
+                "correction_energy"
+            ]
             self.spectroscopy_settings.structure_type.value = parameters[
                 "structure_type"
             ]
@@ -964,6 +996,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         parameters["es_pseudo"] = self.spectroscopy_settings.es_pseudo.value
         parameters["gs_pseudo"] = self.spectroscopy_settings.gs_pseudo.value
         parameters["elements_list"] = self.spectroscopy_settings.elements_list.value
+        parameters[
+            "correction_energy"
+        ] = self.spectroscopy_settings.correction_energy.value
         parameters["structure_type"] = self.spectroscopy_settings.structure_type.value
         parameters[
             "supercell_min_parameter"
@@ -1031,6 +1066,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         overrides["xps"]["elements_list"] = [
             ele for ele in parameters["elements_list"].split(",") if ele
         ]
+        overrides["xps"]["correction_energy"] = {}
+        for item in parameters["correction_energy"].split(","):
+            if not item:
+                continue
+            element, energy = item.split(":")
+            overrides["xps"]["correction_energy"][element] = energy
         overrides["xps"]["structure_preparation_settings"] = Dict(
             {
                 "is_molecule_input": Bool(parameters["structure_type"] == "molecule"),

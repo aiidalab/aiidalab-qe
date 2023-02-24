@@ -644,18 +644,26 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(2, "Electronic Structure")
 
     def _show_xps(self):
-        import matplotlib.pyplot as plt
-        import numpy as np
+        import plotly.graph_objects as go
 
-        chemical_shifts, spectra = export_xps_data(self.node)
-        output2 = ipw.Output()
-        self.result_tabs.children[3].children = [output2]
-        with output2:
-            for key, data in spectra.items():
-                ele = key[:-4]
-                plt.plot(data["x"], np.array(data["y"])[:-1].T, label=ele)
-            plt.show()
+        _, spectra = export_xps_data(self.node)
+        f = go.FigureWidget(
+            layout=go.Layout(
+                title=dict(text="XPS"),
+                barmode="overlay",
+            )
+        )
+        f.layout.xaxis.title = "Chemical shift"
+        for key, data in spectra.items():
+            i = 0
+            for y in data["y"][:-1]:
+                f.add_scatter(x=data["x"], y=y, fill="tozeroy", name=f"{key}_{i}")
+                i += 1
+            f.add_scatter(
+                x=data["x"], y=data["y"][-1], fill="tozeroy", name=f"{key}_total"
+            )
 
+        self.result_tabs.children[3].children = [f]
         self.result_tabs.set_title(3, "XPS")
 
     def _show_workflow_output(self):
