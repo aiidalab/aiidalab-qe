@@ -137,6 +137,65 @@ def cmap(label: str) -> str:
 
     return "#%06x" % random.randint(0, 0xFFFFFF)
 
+def _projections_curated_options(
+    projections: ProjectionData,
+    group_tag="kind",
+    plot_tag="total",
+    spin_type="none",
+    line_style="solid",
+):
+    """Collect the data from ProjectionData and parse it as dos list which can be
+    understand by bandsplot widget. `curated_tag` is for which tag to be grouped, by atom or by orbital name.
+    The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label."""
+    _pdos = {}
+
+    #Setting 
+    for orbital, pdos, energy in projections.get_pdos():
+        orbital_data = orbital.get_orbital_dict()
+        kind_name = orbital_data["kind_name"]
+        atom_position = [round(i, 2) for i in orbital_data["position"]]
+        try:
+            orbital_name = orbital.get_name_from_quantum_numbers(
+                orbital_data["angular_momentum"], orbital_data["magnetic_number"]
+            ).lower()
+        except AttributeError:
+            orbital_name = "j= {j} l={l} m_j={m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
+
+        if group_tag == "atom":
+            curated_tag_var = kind_name + " " + atom_position
+        else:
+            curated_tag_var = kind_name
+
+        if plot_tag == "total"
+            key = f"{curated_tag_var}"
+        else:
+            key = f"{curated_tag_var}-{orbital_name}"
+   
+        if key in _pdos:
+            _pdos[key][1] += pdos
+        else:
+            _pdos[key] = [energy, pdos]
+
+    dos = []
+    for label, (energy, pdos) in _pdos.items():
+        if spin_type == "down":
+            #invert y-axis
+            pdos = -pdos
+            label = f"{label} (↓)"
+
+        if spin_type == "up":
+            label = f"{label} (↑)"
+
+        orbital_pdos = {
+            "label": label,
+            "x": energy.tolist(),
+            "y": pdos.tolist(),
+            "borderColor": cmap(label),
+            "lineStyle": line_style,
+        }
+        dos.append(orbital_pdos)
+
+    return dos
 
 def _projections_curated(
     projections: ProjectionData,
@@ -150,8 +209,6 @@ def _projections_curated(
     _pdos = {}
 
     #Setting 
-  
-
     for orbital, pdos, energy in projections.get_pdos():
         orbital_data = orbital.get_orbital_dict()
         kind_name = orbital_data["kind_name"]
@@ -218,7 +275,7 @@ def export_pdos_data(work_chain_node):
             dos.append(tdos)
 
             dos += _projections_curated(
-                work_chain_node.outputs.projections, spin_type="none"
+                work_chain_node.outputs.projections, spin_type="none", curated_tag="orbital"
             )
 
         else:
@@ -602,15 +659,14 @@ class WorkChainViewer(ipw.VBox):
         )
         self.result_tabs.children[1].children = [self._structure_view]
         self.result_tabs.set_title(1, "Final Geometry")
-
+    
     def _show_electronic_structure(self):
+        self.dos_options = DosPlottingOptions()
+        group_tag=self.dos_options.dos_atoms_group.value 
+        plot_tag==self.dos_options.dos_plot_group.value
         data = export_data(self.node)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
-        self.dos_options = ipw.Dropdown(
-            options=[("Atoms", "atoms"),("Orbitals", "orbitals")],
-            value="atoms"
-        )
         self._bands_plot_view = BandsPlotWidget(
             bands=bands_data, dos=dos_data, plot_fermilevel=True
         )

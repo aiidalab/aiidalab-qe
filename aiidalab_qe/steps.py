@@ -36,7 +36,7 @@ StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
 Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
-
+KpointsData = DataFactory('core.array.kpoints')
 
 class WorkChainSettings(ipw.VBox):
 
@@ -959,7 +959,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             Return a KpoinsData object containing the 1D or 2D kpoints path for bandstructure calculations
 
             """
-            KpointsData = DataFactory('core.array.kpoints')
             kpoints = KpointsData()
             kpoints.set_cell_from_structure(structure)
             reciprocal_cell = kpoints.reciprocal_cell
