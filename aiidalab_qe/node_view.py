@@ -278,10 +278,15 @@ def export_xps_data(work_chain_node):
         for key, data in work_chain_node.outputs.chemical_shifts.items():
             ele = key[:-4]
             chemical_shifts[ele] = data.get_dict()
-    spectra = {}
-    if "xps_spectra" in work_chain_node.outputs:
-        for key, data in work_chain_node.outputs.xps_spectra.items():
-            ele = key[:-4]
+    binding_energies = {}
+    if "binding_energies" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.binding_energies.items():
+            ele = key[:-3]
+            binding_energies[ele] = data.get_dict()
+    spectra_cls = {}
+    if "xps_spectra_cls" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.xps_spectra_cls.items():
+            ele = key[:-12]
             X = data.get_x()[1]
             Y = data.get_y()
             array_y = []
@@ -289,9 +294,21 @@ def export_xps_data(work_chain_node):
                 array_y.append(y[1])
 
             # The total dos parsed
-            spectra[ele] = {"x": X, "y": array_y}
+            spectra_cls[ele] = {"x": X, "y": array_y}
+    spectra_be = {}
+    if "xps_spectra_be" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.xps_spectra_be.items():
+            ele = key[:-11]
+            X = data.get_x()[1]
+            Y = data.get_y()
+            array_y = []
+            for y in Y:
+                array_y.append(y[1])
 
-    return chemical_shifts, spectra
+            # The total dos parsed
+            spectra_be[ele] = {"x": X, "y": array_y}
+
+    return chemical_shifts, binding_energies, spectra_cls, spectra_be
 
 
 class VBoxWithCaption(ipw.VBox):
@@ -621,7 +638,7 @@ class WorkChainViewer(ipw.VBox):
                 self._show_electronic_structure()
                 self._results_shown.add("electronic_structure")
             if "xps" not in self._results_shown and (
-                "xps_spectra" in self.node.outputs
+                "xps_spectra_cls" in self.node.outputs
             ):
                 self._show_xps()
                 self._results_shown.add("xps")
@@ -646,24 +663,56 @@ class WorkChainViewer(ipw.VBox):
     def _show_xps(self):
         import plotly.graph_objects as go
 
-        _, spectra = export_xps_data(self.node)
-        f = go.FigureWidget(
+        spectra_type = ipw.ToggleButtons(
+            options=[
+                ("Chemical shift", "chemical_shift"),
+                ("Binding energy", "binding_energy"),
+            ],
+            value="chemical_shift",
+        )
+        _, _, spectra_cls, spectra_be = export_xps_data(self.node)
+        g = go.FigureWidget(
             layout=go.Layout(
                 title=dict(text="XPS"),
                 barmode="overlay",
             )
         )
-        f.layout.xaxis.title = "Chemical shift"
-        for key, data in spectra.items():
+        g.layout.xaxis.title = "Chemical shift"
+        for key, data in spectra_cls.items():
             i = 0
             for y in data["y"][:-1]:
-                f.add_scatter(x=data["x"], y=y, fill="tozeroy", name=f"{key}_{i}")
+                g.add_scatter(x=data["x"], y=y, fill="tozeroy", name=f"{key}_{i}")
                 i += 1
-            f.add_scatter(
+            g.add_scatter(
                 x=data["x"], y=data["y"][-1], fill="tozeroy", name=f"{key}_total"
             )
 
-        self.result_tabs.children[3].children = [f]
+        def response(change):
+            X = []
+            Y = []
+            if spectra_type.value == "chemical_shift":
+                spectra = spectra_cls
+                xaxis = "Chemical Shift (eV)"
+            else:
+                spectra = spectra_be
+                xaxis = "Binding Energy (eV)"
+            #
+            for _key, data in spectra.items():
+                for y in data["y"][:-1]:
+                    X.append(data["x"])
+                    Y.append(y)
+                X.append(data["x"])
+                Y.append(data["y"][-1])
+
+            with g.batch_update():
+                for i in range(len(X)):
+                    g.data[i].x = X[i]
+                    g.data[i].y = Y[i]
+                g.layout.barmode = "overlay"
+                g.layout.xaxis.title = xaxis
+
+        spectra_type.observe(response, names="value")
+        self.result_tabs.children[3].children = [spectra_type, g]
         self.result_tabs.set_title(3, "XPS")
 
     def _show_workflow_output(self):

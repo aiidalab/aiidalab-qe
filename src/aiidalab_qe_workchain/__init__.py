@@ -105,7 +105,9 @@ class QeAppWorkChain(WorkChain):
         spec.output('projections_up', valid_type=Orbital, required=False)
         spec.output('projections_down', valid_type=Orbital, required=False)
         spec.output_namespace('chemical_shifts', valid_type=Dict, dynamic=True, required=False)
-        spec.output_namespace('xps_spectra', valid_type=XyData, dynamic=True, required=False)
+        spec.output_namespace('binding_energies', valid_type=Dict, dynamic=True, required=False)
+        spec.output_namespace('xps_spectra_cls', valid_type=XyData, dynamic=True, required=False)
+        spec.output_namespace('xps_spectra_be', valid_type=XyData, dynamic=True, required=False)
         # yapf: enable
 
     @classmethod
@@ -215,7 +217,10 @@ class QeAppWorkChain(WorkChain):
                     "gipaw": gs_pseudo,
                 }
             core_hole_treatments[element] = core_hole_treatment
-        # TODO correction energy
+        # binding energy
+        calc_binding_energy = xps_overrides.pop("calc_binding_energy", False)
+        if calc_binding_energy:
+            correction_energies = xps_overrides.pop("correction_energies", {})
         # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
         structure_preparation_settings = xps_overrides.pop(
             "structure_preparation_settings", Dict({})
@@ -226,6 +231,8 @@ class QeAppWorkChain(WorkChain):
             pseudos=pseudos,
             protocol=protocol,
             elements_list=elements_list,
+            calc_binding_energy=Bool(calc_binding_energy),
+            correction_energies=Dict(correction_energies),
             core_hole_treatments=core_hole_treatments,
             overrides=xps_overrides,
             structure_preparation_settings=structure_preparation_settings,
@@ -495,7 +502,16 @@ class QeAppWorkChain(WorkChain):
 
         if "workchain_xps" in self.ctx:
             self.out("chemical_shifts", self.ctx.workchain_xps.outputs.chemical_shifts)
-            self.out("xps_spectra", self.ctx.workchain_xps.outputs.final_spectra)
+            self.out(
+                "xps_spectra_cls", self.ctx.workchain_xps.outputs.final_spectra_cls
+            )
+            if "binding_energies" in self.ctx.workchain_xps.outputs:
+                self.out(
+                    "binding_energies", self.ctx.workchain_xps.outputs.binding_energies
+                )
+                self.out(
+                    "xps_spectra_be", self.ctx.workchain_xps.outputs.final_spectra_be
+                )
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
