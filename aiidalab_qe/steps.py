@@ -16,6 +16,7 @@ from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import (
+    AiidaNodeViewWidget,
     ComputationalResourcesWidget,
     ProcessMonitor,
     ProcessNodesTreeWidget,
@@ -27,17 +28,15 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
-from aiidalab_qe.widgets import (
-    NodeViewWidget,
-    ParallelizationSettings,
-    ResourceSelectionWidget,
-)
+from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
 Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
+Bool = DataFactory("core.bool")
+List = DataFactory("core.list")
 
 
 class WorkChainSettings(ipw.VBox):
@@ -128,6 +127,14 @@ class WorkChainSettings(ipw.VBox):
             value=True,
             layout=ipw.Layout(max_width="10%"),
         )
+        # Checkbox to see if the xps should be calculated
+        self.xps_run = ipw.Checkbox(
+            description="",
+            tooltip="Calculate the xps structure.",
+            indent=False,
+            value=True,
+            layout=ipw.Layout(max_width="10%"),
+        )
 
         # Checkbox to see if the XAS should be calculated
         self.xspectra_run = ipw.Checkbox(
@@ -180,7 +187,18 @@ class WorkChainSettings(ipw.VBox):
                         self.pdos_run,
                     ]
                 ),
-                ipw.HBox(children=[ipw.HTML("<b>XAS</b>"), self.xspectra_run]),
+                ipw.HBox(
+                    children=[
+                        ipw.HTML("<b>X-ray absorption spectroscopy</b>"),
+                        self.xspectra_run,
+                    ]
+                ),
+                ipw.HBox(
+                    children=[
+                        ipw.HTML("<b>X-ray photoelectron spectroscopy</b>"),
+                        self.xps_run,
+                    ]
+                ),
                 self.properties_help,
                 self.protocol_title,
                 ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
@@ -317,6 +335,175 @@ class KpointSettings(ipw.VBox):
         )
 
 
+class SpectroscopySettings(ipw.VBox):
+
+    core_hole_treatment_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Core hole treatment</h4></div>"""
+    )
+    core_hole_treatment_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+        You have four options:<br>
+        </div>"""
+    )
+
+    pseudo_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Pseudo-potential</h4></div>"""
+    )
+    pseudo_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
+        Ground-state and excited-state pseudopotentials for each absorbing element.
+        </div>"""
+    )
+
+    element_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Select element</h4></div>"""
+    )
+    element_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
+        The list of elements to be considered for analysis. If no elements list is given, we instead calculate all elements in the structure.
+        </div>"""
+    )
+    structure_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Structure</h4></div>"""
+    )
+    structure_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        Below you can indicate both if the material should be treated as an molecule
+        or a crystal.
+        </div>"""
+    )
+    supercell_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Supercell</h4></div>"""
+    )
+    supercell_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        Defining the minimum cell length in angstrom for the resulting supercell, and thus all output
+        structures. The default value of 8.0 angstrom will be used
+        if no input is given. Setting this value to 0.0 will
+        instruct the CF to not scale up the input structure.
+        </div>"""
+    )
+    binding_energy_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Absolute binding energy</h4></div>"""
+    )
+    binding_energy_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        To calculate the absolute binding energy, you need to provide the correction energy for the core electrons.
+        </div>"""
+    )
+
+    def __init__(self, **kwargs):
+
+        # Core hole treatment type
+        self.core_hole_treatment = ipw.ToggleButtons(
+            options=[
+                ("Full", "full"),
+                ("Half", "half"),
+                ("Xch_fixed", "xch_fixed"),
+                ("Xch_smear", "xch_smear"),
+            ],
+            value="full",
+        )
+        self.es_pseudo = ipw.Text(
+            description="excited-state pseudopotentials:",
+            value="core_hole",
+            style={"description_width": "initial"},
+            disabled=False,
+        )
+        self.gs_pseudo = ipw.Text(
+            description="ground-state pseudopotentials:",
+            value="gipaw",
+            style={"description_width": "initial"},
+            disabled=False,
+        )
+        self.elements_list = ipw.Text(
+            description="Select element:",
+            value="",
+            style={"description_width": "initial"},
+            disabled=False,
+        )
+        self.structure_type = ipw.ToggleButtons(
+            options=[
+                ("Molecule", "molecule"),
+                ("Crystal", "crystal"),
+            ],
+            value="crystal",
+        )
+        self.supercell_min_parameter = ipw.FloatText(
+            value=8.0,
+            description="The minimum cell length:",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        self.calc_binding_energy = ipw.Checkbox(
+            description="Calculate binding energy: ",
+            indent=False,
+            value=False,
+        )
+        self.correction_energies = ipw.Text(
+            description="Correction energies:",
+            value="",
+            style={"description_width": "initial"},
+            disabled=False,
+        )
+
+        ipw.dlink(
+            (self.calc_binding_energy, "value"),
+            (self.correction_energies, "disabled"),
+            lambda override: not override,
+        )
+
+        super().__init__(
+            children=[
+                self.core_hole_treatment_title,
+                self.core_hole_treatment_help,
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Core Hole Treatment Type:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        self.core_hole_treatment,
+                    ]
+                ),
+                self.pseudo_title,
+                self.pseudo_help,
+                ipw.HBox(
+                    [self.es_pseudo, self.gs_pseudo],
+                ),
+                self.element_title,
+                self.element_help,
+                ipw.HBox(
+                    [self.elements_list],
+                ),
+                self.structure_title,
+                self.structure_help,
+                ipw.HBox(
+                    [self.structure_type],
+                ),
+                self.supercell_title,
+                self.supercell_help,
+                ipw.HBox(
+                    [self.supercell_min_parameter],
+                ),
+                self.binding_energy_title,
+                self.binding_energy_help,
+                ipw.HBox(
+                    [self.calc_binding_energy, self.correction_energies],
+                ),
+            ],
+            **kwargs,
+        )
+
+
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     confirmed = traitlets.Bool()
@@ -324,6 +511,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
+    spectroscopy_settings = traitlets.Instance(SpectroscopySettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
 
     def __init__(self, **kwargs):
@@ -333,9 +521,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_settings.bands_run.observe(self._update_state, "value")
         self.workchain_settings.pdos_run.observe(self._update_state, "value")
         self.workchain_settings.xspectra_run.observe(self._update_state, "value")
+        self.workchain_settings.xps_run.observe(self._update_state, "value")
 
         self.kpoints_settings = KpointSettings()
         self.smearing_settings = SmearingSettings()
+        self.spectroscopy_settings = SpectroscopySettings()
         self.pseudo_family_selector = PseudoFamilySelector()
 
         ipw.dlink(
@@ -372,12 +562,18 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         self.smearing_settings,
                     ]
                 ),
+                ipw.VBox(
+                    children=[
+                        self.spectroscopy_settings,
+                    ]
+                ),
             ],
             layout=ipw.Layout(min_height="250px"),
         )
 
         self.tab.set_title(0, "Workflow")
         self.tab.set_title(1, "Advanced settings")
+        self.tab.set_title(2, "Spectroscopy settings")
 
         self._submission_blocker_messages = ipw.HTML()
 
@@ -418,6 +614,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.workchain_settings.bands_run.value = parameters["run_bands"]
             self.workchain_settings.pdos_run.value = parameters["run_pdos"]
             self.workchain_settings.xspectra_run.value = parameters["run_xspectra"]
+            self.workchain_settings.xps_run.value = parameters["run_xps"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
 
             # Advanced settings
@@ -433,6 +630,25 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             if parameters.get("smearing_override", None) is not None:
                 self.smearing_settings.smearing.value = parameters["smearing_override"]
                 self.smearing_settings.override_protocol_smearing.value = True
+            # xps
+            self.spectroscopy_settings.core_hole_treatment.value = parameters[
+                "core_hole_treatment"
+            ]
+            self.spectroscopy_settings.es_pseudo.value = parameters["es_pseudo"]
+            self.spectroscopy_settings.gs_pseudo.value = parameters["gs_pseudo"]
+            self.spectroscopy_settings.elements_list.value = parameters["elements_list"]
+            self.spectroscopy_settings.calc_binding_energy.value = parameters[
+                "calc_binding_energy"
+            ]
+            self.spectroscopy_settings.correction_energies.value = parameters[
+                "correction_energies"
+            ]
+            self.spectroscopy_settings.structure_type.value = parameters[
+                "structure_type"
+            ]
+            self.spectroscopy_settings.supercell_min_parameter.value = parameters[
+                "supercell_min_parameter"
+            ]
 
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
@@ -491,6 +707,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
+    spectroscopy_settings = traitlets.Instance(SpectroscopySettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode)
 
@@ -828,6 +1045,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             run_bands=self.workchain_settings.bands_run.value,
             run_pdos=self.workchain_settings.pdos_run.value,
             run_xspectra=self.workchain_settings.xspectra_run.value,
+            run_xps=self.workchain_settings.xps_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
             # Codes
             pw_code=self.pw_code.value,
@@ -844,6 +1062,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.smearing_settings.override_protocol_smearing.value:
             parameters["smearing_override"] = self.smearing_settings.smearing.value
             parameters["degauss_override"] = self.smearing_settings.degauss.value
+        parameters[
+            "core_hole_treatment"
+        ] = self.spectroscopy_settings.core_hole_treatment.value
+        parameters["es_pseudo"] = self.spectroscopy_settings.es_pseudo.value
+        parameters["gs_pseudo"] = self.spectroscopy_settings.gs_pseudo.value
+        parameters["elements_list"] = self.spectroscopy_settings.elements_list.value
+        parameters[
+            "calc_binding_energy"
+        ] = self.spectroscopy_settings.calc_binding_energy.value
+        parameters[
+            "correction_energies"
+        ] = self.spectroscopy_settings.correction_energies.value
+        parameters["structure_type"] = self.spectroscopy_settings.structure_type.value
+        parameters[
+            "supercell_min_parameter"
+        ] = self.spectroscopy_settings.supercell_min_parameter.value
 
         return parameters
 
@@ -908,6 +1142,26 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         assert self.input_structure is not None
         parameters = self.get_input_parameters()
 
+        overrides = {"xps": {}}
+        overrides["xps"]["core_hole_treatment"] = parameters["core_hole_treatment"]
+        overrides["xps"]["es_pseudo"] = parameters["es_pseudo"]
+        overrides["xps"]["gs_pseudo"] = parameters["gs_pseudo"]
+        overrides["xps"]["elements_list"] = [
+            ele for ele in parameters["elements_list"].split(",") if ele
+        ]
+        overrides["xps"]["calc_binding_energy"] = parameters["calc_binding_energy"]
+        overrides["xps"]["correction_energies"] = {}
+        for item in parameters["correction_energies"].split(","):
+            if not item:
+                continue
+            element, energy = item.replace(" ", "").split(":")
+            overrides["xps"]["correction_energies"][element] = float(energy)
+        overrides["xps"]["structure_preparation_settings"] = Dict(
+            {
+                "is_molecule_input": Bool(parameters["structure_type"] == "molecule"),
+                "supercell_min_parameter": Float(parameters["supercell_min_parameter"]),
+            }
+        )
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=load_code(parameters["pw_code"]),
@@ -919,6 +1173,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             relax_type=RelaxType(parameters["relax_type"]),
             spin_type=SpinType(parameters["spin_type"]),
             electronic_type=ElectronicType(parameters["electronic_type"]),
+            overrides=Dict(overrides),
         )
 
         if "kpoints_distance_override" in parameters:
@@ -929,7 +1184,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder.degauss_override = Float(parameters["degauss_override"])
         if "smearing_override" in parameters:
             builder.smearing_override = Str(parameters["smearing_override"])
-
         # skip relax sub-workflow only when RelaxType is NONE and has property calculated.
         # we pop the namespace `relax` from build so the subworkchain will never
         # been touched. Otherwise it will run a unnecessary SCF calculation before the bands/pdos
@@ -937,7 +1191,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # This potentially increase the complexibility of the logic report widget,
         # we need to refactoring the QeAppWorkChain and clear the logic here.
         if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (
-            parameters["run_bands"] or parameters["run_pdos"]
+            parameters["run_bands"] or parameters["run_pdos"] or parameters["run_xps"]
         ):
             builder.pop("relax")
 
@@ -950,13 +1204,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if not parameters.get("run_xspectra", False):
             builder.pop("xspectra")
 
+        if not parameters.get("run_xps", False):
+            builder.pop("xps")
+
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
             "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
         }
 
         update_builder(builder, resources, self.parallelization.npools.value)
-
+        # print(builder)
+        # print(self.pseudo_family_selector.value)
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain
@@ -979,7 +1237,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             (self.process_tree, "value"),
         )
 
-        self.node_view = NodeViewWidget(layout={"width": "auto", "height": "auto"})
+        self.node_view = AiidaNodeViewWidget(layout={"width": "auto", "height": "auto"})
         ipw.dlink(
             (self.process_tree, "selected_nodes"),
             (self.node_view, "node"),

@@ -1,7 +1,7 @@
 # AiiDA imports.
 from aiida.common import AttributeDict
 from aiida.engine import ToContext, WorkChain, if_
-from aiida.orm import CalcJobNode, WorkChainNode
+from aiida.orm import CalcJobNode, QueryBuilder, WorkChainNode
 from aiida.plugins import DataFactory, WorkflowFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
@@ -13,6 +13,7 @@ PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 XspectraCoreWorkChain = WorkflowFactory("quantumespresso.xspectra.core")
+XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
 Bool = DataFactory("core.bool")
 Float = DataFactory("core.float")
@@ -22,6 +23,11 @@ XyData = DataFactory("core.array.xy")
 StructureData = DataFactory("core.structure")
 BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
+
+
+def get_pseudo(group, element):
+    pseudos = {pseudo.element: pseudo for pseudo in group.nodes}
+    return pseudos.get(element, None)
 
 
 class QeAppWorkChain(WorkChain):
@@ -51,6 +57,10 @@ class QeAppWorkChain(WorkChain):
                            exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `XspectraCoreWorkChain`.'})
+        spec.expose_inputs(XpsWorkChain, namespace='xps',
+                           exclude=('clean_workdir', 'structure', 'relax'),
+                           namespace_options={'required': False, 'populate_defaults': False,
+                                              'help': 'Inputs for the `XpsWorkChain`.'})
         spec.input(
             'kpoints_distance_override', valid_type=Float, required=False,
             help='Override for the kpoints distance value of all `PwBaseWorkChains` except for the `nscf` calculations.'
@@ -81,6 +91,10 @@ class QeAppWorkChain(WorkChain):
                 cls.run_xspectra,
                 cls.inspect_xspectra
             ),
+            if_(cls.should_run_xps)(
+                cls.run_xps,
+                cls.inspect_xps
+            ),
             cls.results
         )
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RELAX',
@@ -89,7 +103,9 @@ class QeAppWorkChain(WorkChain):
                        message='The PwBandsWorkChain sub process failed')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
-        spec.exit_code(405, 'ERROR_SUB_PROCESS_FAILED_XSPECTRA',
+        spec.exit_code(405, 'ERROR_SUB_PROCESS_FAILED_XPS',
+                       message='The XpsWorkChain sub process failed')
+        spec.exit_code(406, 'ERROR_SUB_PROCESS_FAILED_XSPECTRA',
                        message='The XspectraCoreWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData, required=False)
         spec.output('band_parameters', valid_type=Dict, required=False)
@@ -99,6 +115,12 @@ class QeAppWorkChain(WorkChain):
         spec.output('projections', valid_type=Orbital, required=False)
         spec.output('projections_up', valid_type=Orbital, required=False)
         spec.output('projections_down', valid_type=Orbital, required=False)
+        spec.output('symmetry_analysis_data', valid_type=Dict, required=False)
+        # for xps
+        spec.output_namespace('chemical_shifts', valid_type=Dict, dynamic=True, required=False)
+        spec.output_namespace('binding_energies', valid_type=Dict, dynamic=True, required=False)
+        spec.output_namespace('xps_spectra_cls', valid_type=XyData, dynamic=True, required=False)
+        spec.output_namespace('xps_spectra_be', valid_type=XyData, dynamic=True, required=False)
         # yapf: enable
 
     @classmethod
@@ -113,10 +135,13 @@ class QeAppWorkChain(WorkChain):
         overrides=None,
         relax_type=RelaxType.NONE,
         pseudo_family=None,
+        pseudos=None,
         **kwargs,
     ):
+        from aiida.orm import Group
+
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
-        overrides = overrides or {}
+        overrides = overrides.get_dict() if overrides else {}
         builder = cls.get_builder()
         builder.structure = structure
 
@@ -170,7 +195,7 @@ class QeAppWorkChain(WorkChain):
             pdos.pop("structure", None)
             pdos.pop("clean_workdir", None)
             builder.pdos = pdos
-
+        # xas
         if xspectra_code is not None:
             # xspectra_overrides = overrides.get("xspectra", {})
             from aiida import orm
@@ -203,6 +228,68 @@ class QeAppWorkChain(WorkChain):
             xspectra["xs_plot"]["xspectra"] = xspectra["xs_prod"]["xspectra"]
             xspectra.pop("clean_workdir", None)
             builder.xspectra = xspectra
+        # xps
+        pseudo_set = Group
+        xps_overrides = overrides.get("xps", {})
+        # set pseudo for normal elements
+        if pseudo_family is not None:
+            xps_overrides.setdefault("ch_scf", {})["pseudo_family"] = pseudo_family
+        # load pseudo for excited-state and group-state.
+        es_pseudo_family = xps_overrides.pop("es_pseudo", "core_hole")
+        gs_pseudo_family = xps_overrides.pop("gs_pseudo", "gipaw")
+        es_pseudo_family = (
+            QueryBuilder()
+            .append(pseudo_set, filters={"label": es_pseudo_family})
+            .one()[0]
+        )
+        gs_pseudo_family = (
+            QueryBuilder()
+            .append(pseudo_set, filters={"label": gs_pseudo_family})
+            .one()[0]
+        )
+        # set pseudo and core hole treatment for element
+        pseudos = {}
+        core_hole_treatments = {}
+        core_hole_treatment = xps_overrides.pop("core_hole_treatment", "full")
+        elements_list = xps_overrides.pop("elements_list", None)
+        if not elements_list:
+            elements_list = [kind.symbol for kind in structure.kinds]
+        for element in elements_list:
+            es_pseudo = get_pseudo(es_pseudo_family, element)
+            gs_pseudo = get_pseudo(gs_pseudo_family, element)
+            if es_pseudo is not None and gs_pseudo is not None:
+                pseudos[element] = {
+                    "core_hole": es_pseudo,
+                    "gipaw": gs_pseudo,
+                }
+            core_hole_treatments[element] = core_hole_treatment
+        # binding energy
+        calc_binding_energy = xps_overrides.pop("calc_binding_energy", False)
+        if calc_binding_energy:
+            correction_energies = xps_overrides.pop("correction_energies", {})
+        # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
+        structure_preparation_settings = xps_overrides.pop(
+            "structure_preparation_settings", Dict({})
+        )
+        xps = XpsWorkChain.get_builder_from_protocol(
+            code=pw_code,
+            structure=structure,
+            pseudos=pseudos,
+            protocol=protocol,
+            elements_list=elements_list,
+            calc_binding_energy=Bool(calc_binding_energy),
+            correction_energies=Dict(correction_energies),
+            core_hole_treatments=core_hole_treatments,
+            overrides=xps_overrides,
+            structure_preparation_settings=structure_preparation_settings,
+            **kwargs,
+        )
+
+        xps.pop("relax")
+        # xps.pop("structure", None)
+        xps.pop("clean_workdir", None)
+        builder.xps = xps
+
         builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
         if "kpoints_distance_override" in overrides:
             builder.kpoints_distance_override = overrides["kpoints_distance_override"]
@@ -433,6 +520,53 @@ class QeAppWorkChain(WorkChain):
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_XSPECTRA
 
+    def should_run_xps(self):
+        """Check if the band structure should be calculated."""
+        return "xps" in self.inputs
+
+    def run_xps(self):
+        """Run the `XpsWorkChain`."""
+        inputs = AttributeDict(self.exposed_inputs(XpsWorkChain, namespace="xps"))
+        inputs.metadata.call_link_label = "xps"
+        inputs.structure = self.ctx.current_structure
+        inputs.ch_scf.pw.parameters = inputs.ch_scf.pw.parameters.get_dict()
+
+        if self.ctx.current_number_of_bands:
+            inputs.ch_scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+                "nbnd", self.ctx.current_number_of_bands
+            )
+
+        if "kpoints_distance_override" in self.inputs:
+            inputs.ch_scf.kpoints_distance = self.inputs.kpoints_distance_override
+
+        if "degauss_override" in self.inputs:
+            inputs.ch_scf.pw.parameters.setdefault("SYSTEM", {})[
+                "degauss"
+            ] = self.inputs.degauss_override.value
+        if "smearing_override" in self.inputs:
+            inputs.ch_scf.pw.parameters.setdefault("SYSTEM", {})[
+                "smearing"
+            ] = self.inputs.smearing_override.value
+        inputs = prepare_process_inputs(XpsWorkChain, inputs)
+        running = self.submit(XpsWorkChain, **inputs)
+
+        self.report(f"launching XpsWorkChain<{running.pk}>")
+
+        return ToContext(workchain_xps=running)
+
+    def inspect_xps(self):
+        """Verify that the `XpsWorkChain` finished successfully."""
+        workchain = self.ctx.workchain_xps
+
+        if not workchain.is_finished_ok:
+            self.report(f"XpsWorkChain failed with exit status {workchain.exit_status}")
+            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_XPS
+
+        # since there are many ch_scf calculation, we don't need to output the folder and structure.
+        # scf = workchain.get_outgoing(WorkChainNode, link_label_filter="scf").one().node
+        # self.ctx.scf_parent_folder = scf.outputs.remote_folder
+        # self.ctx.current_structure = workchain.outputs.primitive_structure
+
     def results(self):
         """Add the results to the outputs."""
         if "workchain_bands" in self.ctx:
@@ -480,6 +614,23 @@ class QeAppWorkChain(WorkChain):
                 self.out(
                     "projections",
                     self.ctx.workchain_xspectra.outputs.projwfc.projections,
+                )
+
+        if "workchain_xps" in self.ctx:
+            self.out("chemical_shifts", self.ctx.workchain_xps.outputs.chemical_shifts)
+            self.out(
+                "xps_spectra_cls", self.ctx.workchain_xps.outputs.final_spectra_cls
+            )
+            self.out(
+                "symmetry_analysis_data",
+                self.ctx.workchain_xps.outputs.symmetry_analysis_data,
+            )
+            if "binding_energies" in self.ctx.workchain_xps.outputs:
+                self.out(
+                    "binding_energies", self.ctx.workchain_xps.outputs.binding_energies
+                )
+                self.out(
+                    "xps_spectra_be", self.ctx.workchain_xps.outputs.final_spectra_be
                 )
 
     def on_terminated(self):

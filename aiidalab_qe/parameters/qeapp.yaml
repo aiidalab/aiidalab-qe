@@ -6,6 +6,7 @@ relax_type: positions_cell
 run_bands: false
 run_pdos: false
 run_xspectra: false
+run_xps: false
 
 ## Codes
 dos_code: dos-7.0@localhost
@@ -21,3 +22,13 @@ electronic_type: metal
 protocol: moderate
 kpoints_distance_override:
 pseudo_family: SSSP/1.2/PBEsol/efficiency
+
+## Spectroscopy settings
+core_hole_treatment: full
+es_pseudo: core_hole
+gs_pseudo: gipaw
+elements_list: ''
+calc_binding_energy: false
+correction_energies: ''
+structure_type: crystal
+supercell_min_parameter: 8.0

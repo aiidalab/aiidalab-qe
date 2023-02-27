@@ -33,11 +33,13 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
     run_relax = builder_parameters.get("relax_type") != "none"
     run_bands = builder_parameters.get("run_bands")
     run_pdos = builder_parameters.get("run_pdos")
+    run_xps = builder_parameters.get("run_xps")
 
     yield "relaxed", run_relax
     yield "relax_method", builder_parameters["relax_type"]
     yield "bands_computed", run_bands
     yield "pdos_computed", run_pdos
+    yield "xps_computed", run_xps
 
     # Material settings
     yield "material_magnetic", builder_parameters["spin_type"]
@@ -121,6 +123,13 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
             pw_parameters or qeapp_wc.inputs.pdos.scf.pw.parameters.get_dict()
         )
         nscf_kpoints_distance = qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
+    if run_xps:
+        scf_kpoints_distance = (
+            scf_kpoints_distance or qeapp_wc.inputs.xps.ch_scf.kpoints_distance.value
+        )
+        pw_parameters = (
+            pw_parameters or qeapp_wc.inputs.xps.ch_scf.pw.parameters.get_dict()
+        )
 
     energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
     energy_cutoff_rho = round(pw_parameters["SYSTEM"]["ecutrho"])

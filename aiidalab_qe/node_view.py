@@ -272,6 +272,91 @@ def export_data(work_chain_node):
     )
 
 
+def export_xps_data(work_chain_node):
+    chemical_shifts = {}
+    symmetry_analysis_data = work_chain_node.outputs.symmetry_analysis_data.get_dict()
+    equivalent_sites_data = symmetry_analysis_data["equivalent_sites_data"]
+    if "chemical_shifts" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.chemical_shifts.items():
+            ele = key[:-4]
+            chemical_shifts[ele] = data.get_dict()
+    binding_energies = {}
+    if "binding_energies" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.binding_energies.items():
+            ele = key[:-3]
+            binding_energies[ele] = data.get_dict()
+    spectra_cls = {}
+    if "xps_spectra_cls" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.xps_spectra_cls.items():
+            ele = key[:-12]
+            X = data.get_x()[1]
+            Y = data.get_y()
+            array_y = []
+            for y in Y:
+                array_y.append(y[1])
+
+            # The total dos parsed
+            spectra_cls[ele] = {"x": X, "y": array_y}
+    spectra_be = {}
+    if "xps_spectra_be" in work_chain_node.outputs:
+        for key, data in work_chain_node.outputs.xps_spectra_be.items():
+            ele = key[:-11]
+            X = data.get_x()[1]
+            Y = data.get_y()
+            array_y = []
+            for y in Y:
+                array_y.append(y[1])
+
+            # The total dos parsed
+            spectra_be[ele] = {"x": X, "y": array_y}
+
+    return (
+        chemical_shifts,
+        binding_energies,
+        spectra_cls,
+        spectra_be,
+        equivalent_sites_data,
+    )
+
+
+def xps_spectra_broadening(
+    points, equivalent_sites_data, gamma=0.3, sigma=0.3, label=""
+):
+    import numpy as np
+    from scipy.special import voigt_profile  # pylint: disable=no-name-in-module
+
+    result_spectra = {}
+    fwhm_voight = gamma / 2 + np.sqrt(gamma**2 / 4 + sigma**2)
+    for element, point in points.items():
+        result_spectra[element] = {}
+        final_spectra_y_arrays = []
+        total_multiplicity = sum(
+            [equivalent_sites_data[site]["multiplicity"] for site in point]
+        )
+        max_core_level_shift = max(point.values())
+        min_core_level_shift = min(point.values())
+        # Energy range for the Broadening function
+        x_energy_range = np.linspace(
+            min_core_level_shift - fwhm_voight - 1.5,
+            max_core_level_shift + fwhm_voight + 1.5,
+            500,
+        )
+        for site in point:
+            # Weight for the spectra of every atom
+            intensity = equivalent_sites_data[site]["multiplicity"]
+            relative_peak_position = point[site]
+            y = (
+                intensity
+                * voigt_profile(x_energy_range - relative_peak_position, sigma, gamma)
+                / total_multiplicity
+            )
+            result_spectra[element][site] = [x_energy_range, y]
+            final_spectra_y_arrays.append(y)
+        total = sum(final_spectra_y_arrays)
+        result_spectra[element]["total"] = [x_energy_range, total]
+    return result_spectra
+
+
 class VBoxWithCaption(ipw.VBox):
     def __init__(self, caption, body, *args, **kwargs):
         super().__init__(children=[ipw.HTML(caption), body], *args, **kwargs)
@@ -507,7 +592,8 @@ class WorkChainViewer(ipw.VBox):
 
     def __init__(self, node, **kwargs):
         if node.process_label != "QeAppWorkChain":
-            raise KeyError(str(node.node_type))
+            super().__init__()
+            return
 
         self.node = node
 
@@ -530,13 +616,23 @@ class WorkChainViewer(ipw.VBox):
             [ipw.Label("Electronic Structure not available.")],
             layout=ipw.Layout(min_height="380px"),
         )
+        self.xps_tab = ipw.VBox(
+            [ipw.Label("XPS not available.")],
+            layout=ipw.Layout(min_height="380px"),
+        )
         self.result_tabs = ipw.Tab(
-            children=[self.summary_tab, self.structure_tab, self.bands_tab]
+            children=[
+                self.summary_tab,
+                self.structure_tab,
+                self.bands_tab,
+                self.xps_tab,
+            ]
         )
 
         self.result_tabs.set_title(0, "Workflow Summary")
         self.result_tabs.set_title(1, "Final Geometry (n/a)")
         self.result_tabs.set_title(2, "Electronic Structure (n/a)")
+        self.result_tabs.set_title(3, "XPS (n/a)")
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
@@ -587,6 +683,11 @@ class WorkChainViewer(ipw.VBox):
             ):
                 self._show_electronic_structure()
                 self._results_shown.add("electronic_structure")
+            if "xps" not in self._results_shown and (
+                "xps_spectra_cls" in self.node.outputs
+            ):
+                self._show_xps()
+                self._results_shown.add("xps")
 
     def _show_structure(self):
         self._structure_view = StructureDataViewer(
@@ -604,6 +705,107 @@ class WorkChainViewer(ipw.VBox):
         )
         self.result_tabs.children[2].children = [self._bands_plot_view]
         self.result_tabs.set_title(2, "Electronic Structure")
+
+    def _show_xps(self):
+        import plotly.graph_objects as go
+
+        spectra_type = ipw.ToggleButtons(
+            options=[
+                ("Chemical shift", "chemical_shift"),
+                ("Binding energy", "binding_energy"),
+            ],
+            value="chemical_shift",
+        )
+        gamma = ipw.FloatSlider(
+            value=0.3,
+            min=0.1,
+            max=1,
+            description="Gamma",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        sigma = ipw.FloatSlider(
+            value=0.3,
+            min=0.1,
+            max=1,
+            description="Sigma",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        fill = ipw.Checkbox(
+            description="Fill",
+            value=True,
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        paras = ipw.HBox(
+            children=[
+                gamma,
+                sigma,
+                fill,
+            ]
+        )
+        # get data
+        (
+            chemical_shifts,
+            binding_energies,
+            spectra_cls,
+            spectra_be,
+            equivalent_sites_data,
+        ) = export_xps_data(self.node)
+        # init figure
+        g = go.FigureWidget(
+            layout=go.Layout(
+                title=dict(text="XPS"),
+                barmode="overlay",
+            )
+        )
+        g.layout.xaxis.title = "Chemical shift"
+        g.layout.xaxis.autorange = "reversed"
+        #
+        spectra = xps_spectra_broadening(
+            chemical_shifts, equivalent_sites_data, gamma=gamma.value, sigma=sigma.value
+        )
+        for element, data in spectra.items():
+            # print(element, data)
+            for site, d in data.items():
+                g.add_scatter(x=d[0], y=d[1], fill="tozeroy", name=f"{element}_{site}")
+
+        def response(change):
+            X = []
+            Y = []
+            if spectra_type.value == "chemical_shift":
+                points = chemical_shifts
+                xaxis = "Chemical Shift (eV)"
+            else:
+                points = binding_energies
+                xaxis = "Binding Energy (eV)"
+            #
+            spectra = xps_spectra_broadening(
+                points, equivalent_sites_data, gamma=gamma.value, sigma=sigma.value
+            )
+            for _key, data in spectra.items():
+                for _site, d in data.items():
+                    X.append(d[0])
+                    Y.append(d[1])
+
+            with g.batch_update():
+                for i in range(len(X)):
+                    g.data[i].x = X[i]
+                    g.data[i].y = Y[i]
+                    if fill.value:
+                        g.data[i].fill = "tozeroy"
+                    else:
+                        g.data[i].fill = None
+                g.layout.barmode = "overlay"
+                g.layout.xaxis.title = xaxis
+
+        spectra_type.observe(response, names="value")
+        gamma.observe(response, names="value")
+        sigma.observe(response, names="value")
+        fill.observe(response, names="value")
+        self.result_tabs.children[3].children = [spectra_type, paras, g]
+        self.result_tabs.set_title(3, "XPS")
 
     def _show_workflow_output(self):
         self.workflows_output = WorkChainOutputs(self.node)
