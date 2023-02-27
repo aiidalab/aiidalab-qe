@@ -12,7 +12,7 @@ from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
-XspectraCoreWorkChain = WorkflowFactory("quantumespresso.xspectra.core")
+XspectraCrystalWorkChain = WorkflowFactory("quantumespresso.xspectra.core")
 XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
 Bool = DataFactory("core.bool")
@@ -53,10 +53,10 @@ class QeAppWorkChain(WorkChain):
                            exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PdosWorkChain`.'})
-        spec.expose_inputs(XspectraCoreWorkChain, namespace='xspectra',
+        spec.expose_inputs(XspectraCrystalWorkChain, namespace='xspectra',
                            exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
-                                              'help': 'Inputs for the `XspectraCoreWorkChain`.'})
+                                              'help': 'Inputs for the `XspectraCrystalWorkChain`.'})
         spec.expose_inputs(XpsWorkChain, namespace='xps',
                            exclude=('clean_workdir', 'structure', 'relax'),
                            namespace_options={'required': False, 'populate_defaults': False,
@@ -106,7 +106,7 @@ class QeAppWorkChain(WorkChain):
         spec.exit_code(405, 'ERROR_SUB_PROCESS_FAILED_XPS',
                        message='The XpsWorkChain sub process failed')
         spec.exit_code(406, 'ERROR_SUB_PROCESS_FAILED_XSPECTRA',
-                       message='The XspectraCoreWorkChain sub process failed')
+                       message='The XspectraCrystalWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData, required=False)
         spec.output('band_parameters', valid_type=Dict, required=False)
         spec.output('band_structure', valid_type=BandsData, required=False)
@@ -195,39 +195,6 @@ class QeAppWorkChain(WorkChain):
             pdos.pop("structure", None)
             pdos.pop("clean_workdir", None)
             builder.pdos = pdos
-        # xas
-        if xspectra_code is not None:
-            # xspectra_overrides = overrides.get("xspectra", {})
-            from aiida import orm
-
-            pseudos = {
-                "Si": orm.load_node(323),
-                "X": orm.load_node(325),
-            }
-            core_wfc_data = orm.load_node(324)
-            structure = orm.load_node(1352)
-            # if pseudo_family is not None:
-            #     xspectra_overrides.setdefault("scf", {})[
-            #         "pseudo_family"
-            #     ] = pseudo_family
-            #     xspectra_overrides.setdefault("nscf", {})[
-            #         "pseudo_family"
-            #     ] = pseudo_family
-            xspectra = XspectraCoreWorkChain.get_builder_from_protocol(
-                pw_code=pw_code,
-                xs_code=xspectra_code,
-                structure=structure,
-                protocol=protocol,
-                core_hole_pseudos=pseudos,
-                core_wfc_data=core_wfc_data,
-                # overrides=xspectra_overrides,
-                # **kwargs,
-            )
-            # xspectra.pop("structure", None)
-            print(xspectra)
-            xspectra["xs_plot"]["xspectra"] = xspectra["xs_prod"]["xspectra"]
-            xspectra.pop("clean_workdir", None)
-            builder.xspectra = xspectra
         # xps
         pseudo_set = Group
         xps_overrides = overrides.get("xps", {})
@@ -289,6 +256,26 @@ class QeAppWorkChain(WorkChain):
         # xps.pop("structure", None)
         xps.pop("clean_workdir", None)
         builder.xps = xps
+
+        # xas
+        if xspectra_code is not None:
+            # xspectra_overrides = overrides.get("xspectra", {})
+            xspectra = XspectraCrystalWorkChain.get_builder_from_protocol(
+                pw_code=pw_code,
+                xs_code=xspectra_code,
+                structure=structure,
+                pseudos=pseudos,
+                protocol=protocol,
+                core_hole_pseudos=pseudos,
+                # core_wfc_data=core_wfc_data,
+                # overrides=xspectra_overrides,
+                # **kwargs,
+            )
+            # xspectra.pop("structure", None)
+            print(xspectra)
+            xspectra["xs_plot"]["xspectra"] = xspectra["xs_prod"]["xspectra"]
+            xspectra.pop("clean_workdir", None)
+            builder.xspectra = xspectra
 
         builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
         if "kpoints_distance_override" in overrides:
@@ -477,9 +464,9 @@ class QeAppWorkChain(WorkChain):
         return "xspectra" in self.inputs
 
     def run_xspectra(self):
-        """Run the `XspectraCoreWorkChain`."""
+        """Run the `XspectraCrystalWorkChain`."""
         inputs = AttributeDict(
-            self.exposed_inputs(XspectraCoreWorkChain, namespace="xspectra")
+            self.exposed_inputs(XspectraCrystalWorkChain, namespace="xspectra")
         )
         inputs.metadata.call_link_label = "xspectra"
         inputs.structure = self.ctx.current_structure
@@ -502,21 +489,21 @@ class QeAppWorkChain(WorkChain):
         #             "smearing"
         #         ] = self.inputs.smearing_override.value
         # self.report(f"run_xspectra: {inputs}")
-        inputs = prepare_process_inputs(XspectraCoreWorkChain, inputs)
+        inputs = prepare_process_inputs(XspectraCrystalWorkChain, inputs)
         # self.report(f"run_xspectra: {inputs}")
-        running = self.submit(XspectraCoreWorkChain, **inputs)
+        running = self.submit(XspectraCrystalWorkChain, **inputs)
 
-        self.report(f"launching XspectraCoreWorkChain<{running.pk}>")
+        self.report(f"launching XspectraCrystalWorkChain<{running.pk}>")
 
         return ToContext(workchain_xspectra=running)
 
     def inspect_xspectra(self):
-        """Verify that the `XspectraCoreWorkChain` finished successfully."""
+        """Verify that the `XspectraCrystalWorkChain` finished successfully."""
         workchain = self.ctx.workchain_xspectra
 
         if not workchain.is_finished_ok:
             self.report(
-                f"XspectraCoreWorkChain failed with exit status {workchain.exit_status}"
+                f"XspectraCrystalWorkChain failed with exit status {workchain.exit_status}"
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_XSPECTRA
 
