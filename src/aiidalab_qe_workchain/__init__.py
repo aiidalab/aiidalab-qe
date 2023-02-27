@@ -104,6 +104,8 @@ class QeAppWorkChain(WorkChain):
         spec.output('projections', valid_type=Orbital, required=False)
         spec.output('projections_up', valid_type=Orbital, required=False)
         spec.output('projections_down', valid_type=Orbital, required=False)
+        spec.output('symmetry_analysis_data', valid_type=Dict, required=False)
+        # for xps
         spec.output_namespace('chemical_shifts', valid_type=Dict, dynamic=True, required=False)
         spec.output_namespace('binding_energies', valid_type=Dict, dynamic=True, required=False)
         spec.output_namespace('xps_spectra_cls', valid_type=XyData, dynamic=True, required=False)
@@ -504,6 +506,10 @@ class QeAppWorkChain(WorkChain):
             self.out("chemical_shifts", self.ctx.workchain_xps.outputs.chemical_shifts)
             self.out(
                 "xps_spectra_cls", self.ctx.workchain_xps.outputs.final_spectra_cls
+            )
+            self.out(
+                "symmetry_analysis_data",
+                self.ctx.workchain_xps.outputs.symmetry_analysis_data,
             )
             if "binding_energies" in self.ctx.workchain_xps.outputs:
                 self.out(

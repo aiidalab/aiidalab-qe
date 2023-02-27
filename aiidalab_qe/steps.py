@@ -1143,8 +1143,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
         update_builder(builder, resources, self.parallelization.npools.value)
-        print(builder)
-        print(self.pseudo_family_selector.value)
+        # print(builder)
+        # print(self.pseudo_family_selector.value)
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain

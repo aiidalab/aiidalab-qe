@@ -274,6 +274,8 @@ def export_data(work_chain_node):
 
 def export_xps_data(work_chain_node):
     chemical_shifts = {}
+    symmetry_analysis_data = work_chain_node.outputs.symmetry_analysis_data.get_dict()
+    equivalent_sites_data = symmetry_analysis_data["equivalent_sites_data"]
     if "chemical_shifts" in work_chain_node.outputs:
         for key, data in work_chain_node.outputs.chemical_shifts.items():
             ele = key[:-4]
@@ -308,7 +310,51 @@ def export_xps_data(work_chain_node):
             # The total dos parsed
             spectra_be[ele] = {"x": X, "y": array_y}
 
-    return chemical_shifts, binding_energies, spectra_cls, spectra_be
+    return (
+        chemical_shifts,
+        binding_energies,
+        spectra_cls,
+        spectra_be,
+        equivalent_sites_data,
+    )
+
+
+def xps_spectra_broadening(
+    points, equivalent_sites_data, gamma=0.3, sigma=0.3, label=""
+):
+    import numpy as np
+    from scipy.special import voigt_profile  # pylint: disable=no-name-in-module
+
+    result_spectra = {}
+    fwhm_voight = gamma / 2 + np.sqrt(gamma**2 / 4 + sigma**2)
+    for element, point in points.items():
+        result_spectra[element] = {}
+        final_spectra_y_arrays = []
+        total_multiplicity = sum(
+            [equivalent_sites_data[site]["multiplicity"] for site in point]
+        )
+        max_core_level_shift = max(point.values())
+        min_core_level_shift = min(point.values())
+        # Energy range for the Broadening function
+        x_energy_range = np.linspace(
+            min_core_level_shift - fwhm_voight - 1.5,
+            max_core_level_shift + fwhm_voight + 1.5,
+            500,
+        )
+        for site in point:
+            # Weight for the spectra of every atom
+            intensity = equivalent_sites_data[site]["multiplicity"]
+            relative_peak_position = point[site]
+            y = (
+                intensity
+                * voigt_profile(x_energy_range - relative_peak_position, sigma, gamma)
+                / total_multiplicity
+            )
+            result_spectra[element][site] = [x_energy_range, y]
+            final_spectra_y_arrays.append(y)
+        total = sum(final_spectra_y_arrays)
+        result_spectra[element]["total"] = [x_energy_range, total]
+    return result_spectra
 
 
 class VBoxWithCaption(ipw.VBox):
@@ -670,7 +716,44 @@ class WorkChainViewer(ipw.VBox):
             ],
             value="chemical_shift",
         )
-        _, _, spectra_cls, spectra_be = export_xps_data(self.node)
+        gamma = ipw.FloatSlider(
+            value=0.3,
+            min=0.1,
+            max=1,
+            description="Gamma",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        sigma = ipw.FloatSlider(
+            value=0.3,
+            min=0.1,
+            max=1,
+            description="Sigma",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        fill = ipw.Checkbox(
+            description="Fill",
+            value=True,
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        paras = ipw.HBox(
+            children=[
+                gamma,
+                sigma,
+                fill,
+            ]
+        )
+        # get data
+        (
+            chemical_shifts,
+            binding_energies,
+            spectra_cls,
+            spectra_be,
+            equivalent_sites_data,
+        ) = export_xps_data(self.node)
+        # init figure
         g = go.FigureWidget(
             layout=go.Layout(
                 title=dict(text="XPS"),
@@ -678,41 +761,50 @@ class WorkChainViewer(ipw.VBox):
             )
         )
         g.layout.xaxis.title = "Chemical shift"
-        for key, data in spectra_cls.items():
-            i = 0
-            for y in data["y"][:-1]:
-                g.add_scatter(x=data["x"], y=y, fill="tozeroy", name=f"{key}_{i}")
-                i += 1
-            g.add_scatter(
-                x=data["x"], y=data["y"][-1], fill="tozeroy", name=f"{key}_total"
-            )
+        g.layout.xaxis.autorange = "reversed"
+        #
+        spectra = xps_spectra_broadening(
+            chemical_shifts, equivalent_sites_data, gamma=gamma.value, sigma=sigma.value
+        )
+        for element, data in spectra.items():
+            # print(element, data)
+            for site, d in data.items():
+                g.add_scatter(x=d[0], y=d[1], fill="tozeroy", name=f"{element}_{site}")
 
         def response(change):
             X = []
             Y = []
             if spectra_type.value == "chemical_shift":
-                spectra = spectra_cls
+                points = chemical_shifts
                 xaxis = "Chemical Shift (eV)"
             else:
-                spectra = spectra_be
+                points = binding_energies
                 xaxis = "Binding Energy (eV)"
             #
+            spectra = xps_spectra_broadening(
+                points, equivalent_sites_data, gamma=gamma.value, sigma=sigma.value
+            )
             for _key, data in spectra.items():
-                for y in data["y"][:-1]:
-                    X.append(data["x"])
-                    Y.append(y)
-                X.append(data["x"])
-                Y.append(data["y"][-1])
+                for _site, d in data.items():
+                    X.append(d[0])
+                    Y.append(d[1])
 
             with g.batch_update():
                 for i in range(len(X)):
                     g.data[i].x = X[i]
                     g.data[i].y = Y[i]
+                    if fill.value:
+                        g.data[i].fill = "tozeroy"
+                    else:
+                        g.data[i].fill = None
                 g.layout.barmode = "overlay"
                 g.layout.xaxis.title = xaxis
 
         spectra_type.observe(response, names="value")
-        self.result_tabs.children[3].children = [spectra_type, g]
+        gamma.observe(response, names="value")
+        sigma.observe(response, names="value")
+        fill.observe(response, names="value")
+        self.result_tabs.children[3].children = [spectra_type, paras, g]
         self.result_tabs.set_title(3, "XPS")
 
     def _show_workflow_output(self):
