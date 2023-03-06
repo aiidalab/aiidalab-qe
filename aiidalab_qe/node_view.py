@@ -140,12 +140,12 @@ def cmap(label: str) -> str:
 
 def _projections_curated(
     projections: ProjectionData,
-    dos_type="atom",
+    dos_group="atom",
     spin_type="none",
     line_style="solid",
 ):
     """Collect the data from ProjectionData and parse it as dos list which can be
-    understand by bandsplot widget. `dos_type` is for which tag to be grouped, by atom or by orbital name.
+    understand by bandsplot widget. `dos_group` is for which tag to be grouped, by atom or by orbital name.
     The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label."""
     _pdos = {}
 
@@ -157,15 +157,15 @@ def _projections_curated(
             orbital_data["angular_momentum"], orbital_data["magnetic_number"]
         ).lower()
 
-        if dos_type == "atom":
-            dos_type_var = atom_position
-        elif dos_type == "orbital":
+        if dos_group == "atom":
+            dos_group_var = atom_position
+        elif dos_group == "orbital":
             # by orbital label
-            dos_type_var = orbital_name
+            dos_group_var = orbital_name
         else:
-            raise Exception(f"Unknow dos type: {dos_type}!")
+            raise Exception(f"Unknow dos type: {dos_group}!")
 
-        key = f"{kind_name}-{dos_type_var}"
+        key = f"{kind_name}-{dos_group_var}"
         if key in _pdos:
             _pdos[key][1] += pdos
         else:
@@ -193,7 +193,7 @@ def _projections_curated(
     return dos
 
 
-def export_pdos_data(work_chain_node, dos_type="atom"):
+def export_pdos_data(work_chain_node, dos_group="atom"):
     if "dos" in work_chain_node.outputs:
         _, energy_dos, _ = work_chain_node.outputs.dos.get_x()
         tdos_values = {f"{n}": v for n, v, _ in work_chain_node.outputs.dos.get_y()}
@@ -214,7 +214,9 @@ def export_pdos_data(work_chain_node, dos_type="atom"):
             dos.append(tdos)
 
             dos += _projections_curated(
-                work_chain_node.outputs.projections, dos_type=dos_type, spin_type="none"
+                work_chain_node.outputs.projections,
+                dos_group=dos_group,
+                spin_type="none",
             )
 
         else:
@@ -242,14 +244,14 @@ def export_pdos_data(work_chain_node, dos_type="atom"):
             # spin-up (↑)
             dos += _projections_curated(
                 work_chain_node.outputs.projections_up,
-                dos_type=dos_type,
+                dos_group=dos_group,
                 spin_type="up",
             )
 
             # spin-dn (↓)
             dos += _projections_curated(
                 work_chain_node.outputs.projections_down,
-                dos_type=dos_type,
+                dos_group=dos_group,
                 spin_type="down",
                 line_style="dash",
             )
@@ -265,8 +267,8 @@ def export_pdos_data(work_chain_node, dos_type="atom"):
         return None
 
 
-def export_data(work_chain_node, dos_type="atom"):
-    dos = export_pdos_data(work_chain_node, dos_type=dos_type)
+def export_data(work_chain_node, dos_group="atom"):
+    dos = export_pdos_data(work_chain_node, dos_group=dos_group)
     fermi_energy = dos["fermi_energy"] if dos else None
 
     bands = export_bands_data(work_chain_node, fermi_energy)
@@ -602,7 +604,7 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(1, "Final Geometry")
 
     def _show_electronic_structure(self):
-        dos_type = ipw.ToggleButtons(
+        dos_group = ipw.ToggleButtons(
             options=[
                 ("Atom", "atom"),
                 ("Orbital", "orbital"),
@@ -633,7 +635,36 @@ class WorkChainViewer(ipw.VBox):
                 E_max,
             ]
         )
-        data = export_data(self.node, dos_type=dos_type.value)
+        settings = ipw.VBox(
+            children=[
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "DOS grouped by:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        dos_group,
+                    ]
+                ),
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Energy range (eV):",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        energy_range,
+                    ]
+                ),
+                plot_fermilevel,
+            ],
+            layout={"margin": "0 0 30px 30px"},
+        )
+        #
+        data = export_data(self.node, dos_group=dos_group.value)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
         _bands_plot_view = BandsPlotWidget(
@@ -644,7 +675,7 @@ class WorkChainViewer(ipw.VBox):
         )
 
         def response(change):
-            data = export_data(self.node, dos_type=dos_type.value)
+            data = export_data(self.node, dos_group=dos_group.value)
             bands_data = data.get("bands", None)
             dos_data = data.get("dos", None)
             _bands_plot_view = BandsPlotWidget(
@@ -654,31 +685,17 @@ class WorkChainViewer(ipw.VBox):
                 energy_range={"ymin": E_min.value, "ymax": E_max.value},
             )
             self.result_tabs.children[2].children = [
-                ipw.VBox(
-                    children=[
-                        dos_type,
-                        plot_fermilevel,
-                        energy_range,
-                    ],
-                    layout={"margin": "0 0 0 50px"},
-                ),
+                settings,
                 _bands_plot_view,
             ]
 
-        dos_type.observe(response, names="value")
+        dos_group.observe(response, names="value")
         plot_fermilevel.observe(response, names="value")
         E_min.observe(response, names="value")
         E_max.observe(response, names="value")
         #
         self.result_tabs.children[2].children = [
-            ipw.VBox(
-                children=[
-                    dos_type,
-                    plot_fermilevel,
-                    energy_range,
-                ],
-                layout={"margin": "0 0 30px 30px"},
-            ),
+            settings,
             _bands_plot_view,
         ]
         self.result_tabs.set_title(2, "Electronic Structure")
