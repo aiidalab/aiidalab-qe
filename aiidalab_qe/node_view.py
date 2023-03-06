@@ -140,12 +140,12 @@ def cmap(label: str) -> str:
 
 def _projections_curated(
     projections: ProjectionData,
-    curated_tag="atom",
+    dos_type="atom",
     spin_type="none",
     line_style="solid",
 ):
     """Collect the data from ProjectionData and parse it as dos list which can be
-    understand by bandsplot widget. `curated_tag` is for which tag to be grouped, by atom or by orbital name.
+    understand by bandsplot widget. `dos_type` is for which tag to be grouped, by atom or by orbital name.
     The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label."""
     _pdos = {}
 
@@ -157,13 +157,15 @@ def _projections_curated(
             orbital_data["angular_momentum"], orbital_data["magnetic_number"]
         ).lower()
 
-        if curated_tag == "atom":
-            curated_tag_var = atom_position
-        else:
+        if dos_type == "atom":
+            dos_type_var = atom_position
+        elif dos_type == "orbital":
             # by orbital label
-            curated_tag_var = orbital_name
+            dos_type_var = orbital_name
+        else:
+            raise Exception(f"Unknow dos type: {dos_type}!")
 
-        key = f"{kind_name}-{curated_tag_var}"
+        key = f"{kind_name}-{dos_type_var}"
         if key in _pdos:
             _pdos[key][1] += pdos
         else:
@@ -191,7 +193,7 @@ def _projections_curated(
     return dos
 
 
-def export_pdos_data(work_chain_node):
+def export_pdos_data(work_chain_node, dos_type="atom"):
     if "dos" in work_chain_node.outputs:
         _, energy_dos, _ = work_chain_node.outputs.dos.get_x()
         tdos_values = {f"{n}": v for n, v, _ in work_chain_node.outputs.dos.get_y()}
@@ -212,7 +214,7 @@ def export_pdos_data(work_chain_node):
             dos.append(tdos)
 
             dos += _projections_curated(
-                work_chain_node.outputs.projections, spin_type="none"
+                work_chain_node.outputs.projections, dos_type=dos_type, spin_type="none"
             )
 
         else:
@@ -239,12 +241,15 @@ def export_pdos_data(work_chain_node):
 
             # spin-up (↑)
             dos += _projections_curated(
-                work_chain_node.outputs.projections_up, spin_type="up"
+                work_chain_node.outputs.projections_up,
+                dos_type=dos_type,
+                spin_type="up",
             )
 
             # spin-dn (↓)
             dos += _projections_curated(
                 work_chain_node.outputs.projections_down,
+                dos_type=dos_type,
                 spin_type="down",
                 line_style="dash",
             )
@@ -260,8 +265,8 @@ def export_pdos_data(work_chain_node):
         return None
 
 
-def export_data(work_chain_node):
-    dos = export_pdos_data(work_chain_node)
+def export_data(work_chain_node, dos_type="atom"):
+    dos = export_pdos_data(work_chain_node, dos_type=dos_type)
     fermi_energy = dos["fermi_energy"] if dos else None
 
     bands = export_bands_data(work_chain_node, fermi_energy)
@@ -597,13 +602,85 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(1, "Final Geometry")
 
     def _show_electronic_structure(self):
-        data = export_data(self.node)
+        dos_type = ipw.ToggleButtons(
+            options=[
+                ("Atom", "atom"),
+                ("Orbital", "orbital"),
+            ],
+            value="atom",
+        )
+        plot_fermilevel = ipw.Checkbox(
+            description="Plot fermilevel",
+            value=True,
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        E_min = ipw.FloatText(
+            value=-10.0,
+            description="E_min",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        E_max = ipw.FloatText(
+            value=10.0,
+            description="E_max",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        energy_range = ipw.HBox(
+            children=[
+                E_min,
+                E_max,
+            ]
+        )
+        data = export_data(self.node, dos_type=dos_type.value)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
-        self._bands_plot_view = BandsPlotWidget(
-            bands=bands_data, dos=dos_data, plot_fermilevel=True
+        _bands_plot_view = BandsPlotWidget(
+            bands=bands_data,
+            dos=dos_data,
+            plot_fermilevel=plot_fermilevel.value,
+            energy_range={"ymin": E_min.value, "ymax": E_max.value},
         )
-        self.result_tabs.children[2].children = [self._bands_plot_view]
+
+        def response(change):
+            data = export_data(self.node, dos_type=dos_type.value)
+            bands_data = data.get("bands", None)
+            dos_data = data.get("dos", None)
+            _bands_plot_view = BandsPlotWidget(
+                bands=bands_data,
+                dos=dos_data,
+                plot_fermilevel=plot_fermilevel.value,
+                energy_range={"ymin": E_min.value, "ymax": E_max.value},
+            )
+            self.result_tabs.children[2].children = [
+                ipw.VBox(
+                    children=[
+                        dos_type,
+                        plot_fermilevel,
+                        energy_range,
+                    ],
+                    layout={"margin": "0 0 0 50px"},
+                ),
+                _bands_plot_view,
+            ]
+
+        dos_type.observe(response, names="value")
+        plot_fermilevel.observe(response, names="value")
+        E_min.observe(response, names="value")
+        E_max.observe(response, names="value")
+        #
+        self.result_tabs.children[2].children = [
+            ipw.VBox(
+                children=[
+                    dos_type,
+                    plot_fermilevel,
+                    energy_range,
+                ],
+                layout={"margin": "0 0 30px 30px"},
+            ),
+            _bands_plot_view,
+        ]
         self.result_tabs.set_title(2, "Electronic Structure")
 
     def _show_workflow_output(self):
