@@ -611,30 +611,6 @@ class WorkChainViewer(ipw.VBox):
             ],
             value="atom",
         )
-        plot_fermilevel = ipw.Checkbox(
-            description="Plot fermilevel",
-            value=True,
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        E_min = ipw.FloatText(
-            value=-10.0,
-            description="E_min",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        E_max = ipw.FloatText(
-            value=10.0,
-            description="E_max",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        energy_range = ipw.HBox(
-            children=[
-                E_min,
-                E_max,
-            ]
-        )
         settings = ipw.VBox(
             children=[
                 ipw.HBox(
@@ -648,18 +624,6 @@ class WorkChainViewer(ipw.VBox):
                         dos_group,
                     ]
                 ),
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Energy range (eV):",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        energy_range,
-                    ]
-                ),
-                plot_fermilevel,
             ],
             layout={"margin": "0 0 30px 30px"},
         )
@@ -670,8 +634,6 @@ class WorkChainViewer(ipw.VBox):
         _bands_plot_view = BandsPlotWidget(
             bands=bands_data,
             dos=dos_data,
-            plot_fermilevel=plot_fermilevel.value,
-            energy_range={"ymin": E_min.value, "ymax": E_max.value},
         )
 
         def response(change):
@@ -681,8 +643,6 @@ class WorkChainViewer(ipw.VBox):
             _bands_plot_view = BandsPlotWidget(
                 bands=bands_data,
                 dos=dos_data,
-                plot_fermilevel=plot_fermilevel.value,
-                energy_range={"ymin": E_min.value, "ymax": E_max.value},
             )
             self.result_tabs.children[2].children = [
                 settings,
@@ -690,9 +650,6 @@ class WorkChainViewer(ipw.VBox):
             ]
 
         dos_group.observe(response, names="value")
-        plot_fermilevel.observe(response, names="value")
-        E_min.observe(response, names="value")
-        E_max.observe(response, names="value")
         #
         self.result_tabs.children[2].children = [
             settings,
