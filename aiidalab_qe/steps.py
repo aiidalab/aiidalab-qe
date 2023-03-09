@@ -1010,7 +1010,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
                 for branch in branches:
                     num_points_per_branch = points_per_branch(branch[0], branch[1], reciprocal_cell, bands_kpoints_distance)
-                    points = np.linspace(start=branch[0], stop=branch[1], endpoint=True, num=num_points_per_branch)
+                    if branch[1] == [1.0, 0.0, 0.0]:
+                        points = np.linspace(start=branch[0], stop=branch[1], endpoint=True, num=num_points_per_branch)
+                    else:
+                        points = np.linspace(start=branch[0], stop=branch[1], num=num_points_per_branch)
                     points_branch.append(points.tolist())
                     num_per_branch.append(num_points_per_branch)
 
@@ -1064,6 +1067,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder.bands.bands.pw.pseudos = fr_pseudo
             builder.pdos.nscf.pw.pseudos = fr_pseudo
             builder.pdos.scf.pw.pseudos = fr_pseudo
+
+            #Increase wall time for bands calculations with SOC
+            builder.bands.bands.pw.metadata.options.max_wallclock_seconds = 82800
 
         # skip relax sub-workflow only when RelaxType is NONE and has property calculated.
         # we pop the namespace `relax` from build so the subworkchain will never
