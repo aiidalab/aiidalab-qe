@@ -172,7 +172,6 @@ class QeAppWorkChain(WorkChain):
     def setup(self):
         """Perform the initial setup of the work chain."""
         self.ctx.current_structure = self.inputs.structure
-        self.ctx.current_number_of_bands = None
         self.ctx.scf_parent_folder = None
 
     def should_run_relax(self):
@@ -235,9 +234,6 @@ class QeAppWorkChain(WorkChain):
 
         if "output_structure" in workchain.outputs:
             self.ctx.current_structure = workchain.outputs.output_structure
-            self.ctx.current_number_of_bands = (
-                workchain.outputs.output_parameters.get_attribute("number_of_bands")
-            )
             self.out("structure", self.ctx.current_structure)
 
     def should_run_bands(self):
@@ -250,11 +246,6 @@ class QeAppWorkChain(WorkChain):
         inputs.metadata.call_link_label = "bands"
         inputs.structure = self.ctx.current_structure
         inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
-
-        if self.ctx.current_number_of_bands:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-                "nbnd", self.ctx.current_number_of_bands
-            )
 
         if "kpoints_distance_override" in self.inputs:
             inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
@@ -299,11 +290,6 @@ class QeAppWorkChain(WorkChain):
         inputs.metadata.call_link_label = "pdos"
         inputs.structure = self.ctx.current_structure
         inputs.nscf.pw.parameters = inputs.nscf.pw.parameters.get_dict()
-
-        if self.ctx.current_number_of_bands:
-            inputs.nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-                "nbnd", self.ctx.current_number_of_bands
-            )
 
         if self.ctx.scf_parent_folder:
             inputs.pop("scf")
