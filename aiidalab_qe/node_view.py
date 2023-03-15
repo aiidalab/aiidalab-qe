@@ -140,12 +140,12 @@ def cmap(label: str) -> str:
 
 def _projections_curated(
     projections: ProjectionData,
-    dos_group="atom",
+    group_dos_by="atom",
     spin_type="none",
     line_style="solid",
 ):
     """Collect the data from ProjectionData and parse it as dos list which can be
-    understand by bandsplot widget. `dos_group` is for which tag to be grouped, by atom or by orbital name.
+    understand by bandsplot widget. `group_dos_by` is for which tag to be grouped, by atom or by orbital name.
     The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label."""
     _pdos = {}
 
@@ -157,15 +157,18 @@ def _projections_curated(
             orbital_data["angular_momentum"], orbital_data["magnetic_number"]
         ).lower()
 
-        if dos_group == "atom":
+        if group_dos_by == "atom":
             dos_group_name = atom_position
-        elif dos_group == "orbital":
+        elif group_dos_by == "angular":
             # by orbital label
-            dos_group_var = orbital_name
+            dos_group_name = orbital_name[0]
+        elif group_dos_by == "angular_magnetic":
+            # by orbital label
+            dos_group_name = orbital_name
         else:
-            raise Exception(f"Unknow dos type: {dos_group}!")
+            raise Exception(f"Unknow dos type: {group_dos_by}!")
 
-        key = f"{kind_name}-{dos_group_var}"
+        key = f"{kind_name}-{dos_group_name}"
         if key in _pdos:
             _pdos[key][1] += pdos
         else:
@@ -193,7 +196,7 @@ def _projections_curated(
     return dos
 
 
-def export_pdos_data(work_chain_node, dos_group="atom"):
+def export_pdos_data(work_chain_node, group_dos_by="atom"):
     if "dos" in work_chain_node.outputs:
         _, energy_dos, _ = work_chain_node.outputs.dos.get_x()
         tdos_values = {f"{n}": v for n, v, _ in work_chain_node.outputs.dos.get_y()}
@@ -215,7 +218,7 @@ def export_pdos_data(work_chain_node, dos_group="atom"):
 
             dos += _projections_curated(
                 work_chain_node.outputs.projections,
-                dos_group=dos_group,
+                group_dos_by=group_dos_by,
                 spin_type="none",
             )
 
@@ -244,14 +247,14 @@ def export_pdos_data(work_chain_node, dos_group="atom"):
             # spin-up (↑)
             dos += _projections_curated(
                 work_chain_node.outputs.projections_up,
-                dos_group=dos_group,
+                group_dos_by=group_dos_by,
                 spin_type="up",
             )
 
             # spin-dn (↓)
             dos += _projections_curated(
                 work_chain_node.outputs.projections_down,
-                dos_group=dos_group,
+                group_dos_by=group_dos_by,
                 spin_type="down",
                 line_style="dash",
             )
@@ -267,8 +270,8 @@ def export_pdos_data(work_chain_node, dos_group="atom"):
         return None
 
 
-def export_data(work_chain_node, dos_group="atom"):
-    dos = export_pdos_data(work_chain_node, dos_group=dos_group)
+def export_data(work_chain_node, group_dos_by="atom"):
+    dos = export_pdos_data(work_chain_node, group_dos_by=group_dos_by)
     fermi_energy = dos["fermi_energy"] if dos else None
 
     bands = export_bands_data(work_chain_node, fermi_energy)
@@ -604,10 +607,10 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(1, "Final Geometry")
 
     def _show_electronic_structure(self):
-        dos_group = ipw.ToggleButtons(
+        group_dos_by = ipw.ToggleButtons(
             options=[
                 ("Atom", "atom"),
-                ("Orbital", "orbital"),
+                ("Orbital", "angular"),
             ],
             value="atom",
         )
@@ -621,14 +624,14 @@ class WorkChainViewer(ipw.VBox):
                                 justify_content="flex-start", width="120px"
                             ),
                         ),
-                        dos_group,
+                        group_dos_by,
                     ]
                 ),
             ],
             layout={"margin": "0 0 30px 30px"},
         )
         #
-        data = export_data(self.node, dos_group=dos_group.value)
+        data = export_data(self.node, group_dos_by=group_dos_by.value)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
         _bands_plot_view = BandsPlotWidget(
@@ -637,7 +640,7 @@ class WorkChainViewer(ipw.VBox):
         )
 
         def response(change):
-            data = export_data(self.node, dos_group=dos_group.value)
+            data = export_data(self.node, group_dos_by=group_dos_by.value)
             bands_data = data.get("bands", None)
             dos_data = data.get("dos", None)
             _bands_plot_view = BandsPlotWidget(
@@ -649,8 +652,8 @@ class WorkChainViewer(ipw.VBox):
                 _bands_plot_view,
             ]
 
-        dos_group.observe(response, names="value")
-        #
+        group_dos_by.observe(response, names="value")
+        # update the electronic structure tab
         self.result_tabs.children[2].children = [
             settings,
             _bands_plot_view,
