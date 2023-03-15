@@ -158,7 +158,7 @@ def _projections_curated(
         ).lower()
 
         if dos_group == "atom":
-            dos_group_var = atom_position
+            dos_group_name = atom_position
         elif dos_group == "orbital":
             # by orbital label
             dos_group_var = orbital_name
