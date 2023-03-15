@@ -12,7 +12,7 @@ import typing
 from importlib import resources
 from pathlib import Path
 from tempfile import TemporaryDirectory
-
+import numpy as np
 import ipywidgets as ipw
 import nglview
 import traitlets
@@ -140,18 +140,26 @@ def cmap(label: str) -> str:
 
 def _projections_curated_options(
     projections: ProjectionData,
-    group_tag="kinds",
-    plot_tag="total",
+    group_tag,
+    plot_tag,
+    selected_atoms,
     spin_type="none",
     line_style="solid",
-    selected_atoms=[],
+    
 ):
     """Collect the data from ProjectionData and parse it as dos list which can be
     understand by bandsplot widget. `curated_tag` is for which tag to be grouped, by atom or by orbital name.
     The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label."""
     _pdos = {}
     list_positions = []
-    #Setting 
+    #Setting
+    dict_html = {
+        "pz": "p<sub>z</sub>", "px":"p<sub>x</sub>", "py": "p<sub>y</sub>", 
+        "dz2": "d<sub>z<sup>2</sup></sub>","dxy": "d<sub>xy</sub>", "dxz": "d<sub>xz</sub>", "dyz": "d<sub>yz</sub>", "dx2-y2": "d<sub>x<sup>2</sup>-y<sup>2</sup></sub>",
+        0.5: "<sup>+1</sup>/<sub>2</sub>", -0.5: "<sup>-1</sup>/<sub>2</sub>", 
+        1.5: "<sup>+3</sup>/<sub>2</sub>", -1.5: "<sup>-3</sup>/<sub>2</sub>",
+        2.5: "<sup>+5</sup>/<sub>2</sub>", -2.5: "<sup>-5</sup>/<sub>2</sub>", 
+        } 
     for orbital, pdos, energy in projections.get_pdos():
         orbital_data = orbital.get_orbital_dict()
         kind_name = orbital_data["kind_name"]
@@ -162,44 +170,85 @@ def _projections_curated_options(
             orbital_name = orbital.get_name_from_quantum_numbers(
                 orbital_data["angular_momentum"], orbital_data["magnetic_number"]
             ).lower()
+            if orbital_name in dict_html:
+                orbital_name_plotly = dict_html[orbital_name]
+            else:
+                orbital_name_plotly = orbital_name
+
         except AttributeError:
-            orbital_name = " j= {j} l={l} m_j={m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
-
+            orbital_name = "j {j} l {l} m_j{m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
+            orbital_name_plotly = "j={j} <em>l</em>={l} m<sub>j</sub>={m_j}".format(j = dict_html[orbital_data["total_angular_momentum"]], l = orbital_data["angular_momentum"], m_j = dict_html[orbital_data["magnetic_number"]])
+            #<span class="emphasized">i</span>
         if not selected_atoms:
-            if group_tag == "atoms":
-                atoms_coordinates  = ' '.join(map(str,atom_position))                
-                curated_tag_var = kind_name + " " + atoms_coordinates
-            else:
-                curated_tag_var = kind_name
+            # if group_tag == "atoms":
+            #     atoms_coordinates  = ' '.join(map(str,atom_position))                
+            #     curated_tag_var = kind_name + " " + atoms_coordinates
+            # else:
+            #     curated_tag_var = kind_name
 
-            if plot_tag == "total":
-                key = f"{curated_tag_var}"
-            else:
-                key = f"{curated_tag_var}-{orbital_name}"
+            # if plot_tag == "total":
+            #     key = f"{curated_tag_var}"
+            # else:
+            #     key = f"{curated_tag_var}-{orbital_name}"
 
-            if key in _pdos:
-                _pdos[key][1] += pdos
+            # if key in _pdos:
+            #     _pdos[key][1] += pdos
+            # else:
+            #     _pdos[key] = [energy, pdos]
+            if (group_tag == 'atoms' and plot_tag == 'total'):
+                key = r'{var}'.format(var=atom_position)
+            elif (group_tag == 'kinds' and plot_tag == 'total'):
+                key = r'{var1}'.format(var1=kind_name)
+            elif (group_tag == 'atoms' and plot_tag == 'orbital'):
+                key = r'{var1}<br>{var2}-{var3}'.format(var1=atom_position,var2=kind_name,var3=orbital_name_plotly)
+            elif (group_tag == 'kinds' and plot_tag == 'orbital'):
+                key = r'{var1}-{var2}'.format(var1=kind_name,var2=orbital_name_plotly)
             else:
-                _pdos[key] = [energy, pdos]
+                key=None
+            
+            if key:
+                if key in _pdos:
+                    _pdos[key][1] += pdos
+                else:
+                    _pdos[key] = [energy, pdos]
+
         else:
             try:
                 index = list_positions.index(atom_position)
                 if index in selected_atoms:
-                    if group_tag == "atoms":
-                        atoms_coordinates  = ' '.join(map(str,atom_position))                
-                        curated_tag_var = kind_name + " " + atoms_coordinates
-                    else:
-                        curated_tag_var = kind_name
+                    # if group_tag == "atoms":
+                    #     atoms_coordinates  = ' '.join(map(str,atom_position))                
+                    #     curated_tag_var = kind_name + " " + atoms_coordinates
+                    # else:
+                    #     curated_tag_var = kind_name
 
-                    if plot_tag == "total":
-                        key = f"{curated_tag_var}"
-                    else:
-                        key = f"{curated_tag_var}-{orbital_name}"
+                    # if plot_tag == "total":
+                    #     key = f"{curated_tag_var}"
+                    # else:
+                    #     key = f"{curated_tag_var}-{orbital_name}"
 
-                    if key in _pdos:
-                        _pdos[key][1] += pdos
+                    # if key in _pdos:
+                    #     _pdos[key][1] += pdos
+                    # else:
+                    #     _pdos[key] = [energy, pdos]
+                    if (group_tag == 'atoms' and plot_tag == 'total'):
+                        key = r'{var}'.format(var=atom_position)
+                    elif (group_tag == 'kinds' and plot_tag == 'total'):
+                        key = r'{var1}'.format(var1=kind_name)
+                    elif (group_tag == 'atoms' and plot_tag == 'orbital'):
+                        key = r'{var1}<br>{var2}-{var3}'.format(var1=atom_position,var2=kind_name,var3=orbital_name_plotly)
+                    elif (group_tag == 'kinds' and plot_tag == 'orbital'):
+                        key = r'{var1}-{var2}'.format(var1=kind_name,var2=orbital_name_plotly)
                     else:
-                        _pdos[key] = [energy, pdos]
+                        key=None
+                        
+                    if key:
+
+                        if key in _pdos:
+                            _pdos[key][1] += pdos
+                        else:
+                            _pdos[key] = [energy, pdos]
+
 
             except ValueError:
                 pass
@@ -246,7 +295,7 @@ def _projections_curated(
                 orbital_data["angular_momentum"], orbital_data["magnetic_number"]
             ).lower()
         except AttributeError:
-            orbital_name = "j= {j} l={l} m_j={m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
+            orbital_name = "j={j} l={l} m_j={m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
 
         if curated_tag == "atom":
             curated_tag_var = atom_position
@@ -331,16 +380,17 @@ def export_pdos_data(work_chain_node, group_tag,
             dos += [tdos_up, tdos_down]
 
             # spin-up (↑)
-            dos += _projections_curated(
-                work_chain_node.outputs.projections_up, spin_type="up"
+            dos += _projections_curated_options(
+                work_chain_node.outputs.projections_up, spin_type="up" , group_tag= group_tag, plot_tag=plot_tag, selected_atoms=selected_atoms
             )
 
             # spin-dn (↓)
-            dos += _projections_curated(
+            dos += _projections_curated_options(
                 work_chain_node.outputs.projections_down,
                 spin_type="down",
                 line_style="dash",
-            )
+                group_tag= group_tag, plot_tag=plot_tag, selected_atoms=selected_atoms)
+            
 
         data_dict = {
             "fermi_energy": work_chain_node.outputs.nscf_parameters["fermi_energy"],
@@ -751,6 +801,14 @@ class DosPlottingOptions(ipw.VBox):
             disabled=False,
             layout=ipw.Layout(width="auto"),
         )
+        self.download_button = ipw.Button(
+            description = "Download Data",
+            icon="download",
+            button_style= 'primary',
+         
+            disabled=False,
+            layout=ipw.Layout(width="auto", visibility="hidden"),
+        )
         self.bands_widget = ipw.Output()
         
         def display_bandstructure_widget(_=None):
@@ -765,8 +823,11 @@ class DosPlottingOptions(ipw.VBox):
                     bands_data = data.get("bands", None)
                     dos_data = data.get("dos", None)
                     clear_output(wait=True)
-                    widget_bands = BandsPlotWidget(bands=bands_data, dos=dos_data, plot_fermilevel=True)
-                    display(widget_bands)
+                    #widget_bands = BandsPlotWidget(bands=bands_data, dos=dos_data, plot_fermilevel=True)
+                    widget_bands = results_plot(bands_data,dos_data)
+                    #display(widget_bands)
+                    widget_bands.show()
+                    self.download_button.layout.visibility = "visible"
 
         self.update_plot_button.on_click(display_bandstructure_widget)
         super().__init__(
@@ -798,8 +859,228 @@ class DosPlottingOptions(ipw.VBox):
                     ipw.HBox(
                         children=[
                             self.update_plot_button,
+                            self.download_button,
                         ]
                     ),
                     self.bands_widget,
                     ]
         )
+
+
+
+def results_plot(bands_data, pdos_data ):
+    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
+    
+    fermi_energy = pdos_data["fermi_energy"] if pdos_data else 0
+
+    def bands_labeling(bands):
+        """Function to return two list containing the labels and values (kpoint) for plotting
+            params: bands: dictionary from export_bands_data function
+            output: label (list of str), label_values (list of float)
+        """
+        my_paths = bands[0].get('paths')
+        test = bands[0].get('path')
+        #path = bands.get('path')
+        #if len(path) < len(my_paths):
+        #    branch = len(path)+1
+        #else:
+        #    branch = len(my_paths)
+        my_labels = []
+        for path in my_paths: #Remove duplicates
+            label_a = [path['from'],path['x'][0]]
+            label_b = [path['to'],path['x'][-1]]
+            if label_a not in my_labels:      
+                my_labels.append(label_a)
+            if label_b not in my_labels:
+                my_labels.append(label_b)
+            
+        my_clean_labels = [] #Format
+        for i in my_labels:
+            if my_clean_labels:
+                if i not in my_clean_labels:
+                    if my_clean_labels[-1][-1] == i[1]:
+                        my_clean_labels[-1][0] = my_clean_labels[-1][0]+"|"+i[0]
+                    else:
+                        my_clean_labels.append(i)
+            else:
+                my_clean_labels.append(i)
+            
+        labels = [label[0] for label in my_clean_labels]
+        labels_values = [label[1] for label in my_clean_labels]
+        return labels,labels_values
+    
+    if bands_data:
+
+        paths = bands_data[0].get('paths')
+        labels, labels_values = bands_labeling(bands_data)
+        slider_bands = go.layout.xaxis.Rangeslider(
+            thickness=0.08,
+            range=[0, paths[-1]['x'][-1]],
+            )
+
+        bandxaxis = go.layout.XAxis(
+            title="k-points",
+            range=[0, paths[-1]['x'][-1]],
+            showgrid=True,
+            showline=True,
+            tickmode = 'array',
+            rangeslider=slider_bands,
+            fixedrange = False,
+            tickvals = labels_values,
+            ticktext= labels,
+            showticklabels=True,
+            linecolor="#111111",
+            mirror=True,
+            linewidth=2,
+            type="linear",
+        )
+
+        bandyaxis = go.layout.YAxis(
+            title="Electronic Bands(eV)",
+            side="left",
+            showgrid=True,
+            showline=True,
+            zeroline=True,
+            fixedrange = False,
+            mirror="ticks",
+            ticks="inside",
+            linewidth=2,
+            linecolor="#111111",
+            tickwidth=2,
+            zerolinewidth=2
+        )
+
+    
+    if pdos_data and bands_data:
+
+        dosyaxis = go.layout.YAxis(
+            #title="Density of states (eV)",
+            showgrid=True,
+            showline=True,
+            side = "right",
+            #position=0.0,
+            mirror="ticks",
+            ticks="inside",
+            linewidth=2,
+            tickwidth=2,
+            linecolor="#111111",
+            zerolinewidth=2
+        )
+
+        dosxaxis = go.layout.XAxis(
+            #title="Density of states",
+            showgrid=True,
+            showline=True,
+            linecolor="#111111",
+            mirror="ticks",
+            ticks="inside",
+            linewidth=2,
+            tickwidth=2
+        )
+        
+        fig = make_subplots(rows=1, cols=2, shared_yaxes=True,column_widths=[0.7, 0.3], horizontal_spacing=0.04)
+        for band in paths:
+            for bands in band['values']:
+                bands_np = np.array(bands)
+                fig.add_trace(
+                    go.Scatter(
+                    x=band['x'],
+                    y=bands_np - fermi_energy,#-bands_data[0].get('fermi_level'), #substract Fermi Energy
+                    mode="lines",
+                    line=dict(color="#111111", shape='spline',smoothing=1.3),
+                    showlegend=False
+                    ),row=1, col=1,)
+        
+        for trace in pdos_data['dos']:
+            if trace['label'] == "Total DOS":
+                my_fill='tozerox'
+            else:
+                my_fill=None
+            
+            new_label = trace['label']
+
+            dos_np = np.array(trace['x'])
+            fig.add_trace(
+                go.Scatter(x=trace['y'], y=dos_np - fermi_energy,  fill=my_fill, name=new_label, line=dict(color=trace['borderColor'], 
+                                            shape='spline',smoothing=1.3) ),
+                row=1, col=2, 
+                )
+        for i in labels_values:
+            fig.add_vline(x = i,line=dict(color="#111111", width=1) , row=1, col=1, )
+        fig.update_xaxes(patch=bandxaxis,  row=1, col=1)
+        fig.update_yaxes(patch=bandyaxis, title_standoff = 10, row=1, col=1,)
+        fig.update_xaxes(patch=dosxaxis, row=1, col=2,)
+        fig.update_yaxes(patch=dosyaxis, row=1, col=2,)
+
+        fig.add_hline(y=-fermi_energy , line=dict(color="#111111", width=1,  dash='dot'), row=1, col= 1)
+        fig.add_hline(y=-fermi_energy,  line=dict(color="#111111", width=1,  dash='dot'), row=1, col= 2)
+        fig.update_layout( height=600, width=900, plot_bgcolor='white', legend=dict(
+            #yanchor="top",
+            #y=0.99,
+            xanchor="left",
+            x=1.05,
+        ))
+
+
+    elif bands_data and not pdos_data:
+        fig = go.Figure()
+        for band in paths:
+            for bands in band['values']:
+                bands_np = np.array(bands)
+                fig.add_trace(
+                    go.Scatter(
+                    x=band['x'],
+                    y=bands_np-fermi_energy, #substract Fermi Energy
+                    mode="lines",
+                    line=dict(color="#111111", shape='spline',smoothing=1.3),
+                    showlegend=False
+                    ))
+        for i in labels_values:
+            fig.add_vline(x = i,line=dict(color="#111111", width=1))
+        fig.add_hline(y=-fermi_energy , line=dict(color="#111111", width=1,  dash='dot'))
+        fig.update_layout(height=600, width=950, plot_bgcolor='white', xaxis = bandxaxis , yaxis=bandyaxis)
+    
+    elif pdos_data and not bands_data:
+        fig = go.Figure()
+        dosyaxis = go.layout.YAxis(
+            #title="Density of states (eV)",
+            showgrid=True,
+            showline=True,
+            side = "left",
+            mirror="ticks",
+            ticks="inside",
+            linewidth=2,
+            tickwidth=2,
+            linecolor="#111111",
+            zerolinewidth=2
+        )
+
+        dosxaxis = go.layout.XAxis(
+            title="Density of states (eV)",
+            showgrid=True,
+            showline=True,
+            linecolor="#111111",
+            mirror="ticks",
+            ticks="inside",
+            linewidth=2,
+            tickwidth=2
+        )
+        for trace in pdos_data['dos']:
+            if trace['label'] == "Total DOS":
+                my_fill='tozeroy'
+            else:
+                my_fill=None
+            
+            dos_np = np.array(trace['x'])
+            fig.add_trace(
+                go.Scatter(x=dos_np-fermi_energy , y=trace['y'] , fill=my_fill, name=trace['label'], line=dict(color=trace['borderColor'], 
+                                            shape='spline',smoothing=1.0) ))
+            fig.add_vline(x=-fermi_energy , line=dict(color="#111111", width=1,  dash='dot'))
+            fig.update_layout(height=600, width=950, plot_bgcolor='white', xaxis = dosxaxis , yaxis=dosyaxis)
+    
+    else:
+        fig = None
+    
+    return go.FigureWidget(fig)
+    #return fig
