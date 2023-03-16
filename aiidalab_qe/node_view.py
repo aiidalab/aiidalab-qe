@@ -29,7 +29,7 @@ from jinja2 import Environment
 from monty.json import jsanitize
 from traitlets import Instance, Int, List, Unicode, Union, default, observe, validate
 from widget_bandsplot import BandsPlotWidget
-
+from plotly_resampler import FigureWidgetResampler
 from aiidalab_qe import static
 from aiidalab_qe.report import generate_report_dict
 
@@ -156,6 +156,8 @@ def _projections_curated_options(
     dict_html = {
         "pz": "p<sub>z</sub>", "px":"p<sub>x</sub>", "py": "p<sub>y</sub>", 
         "dz2": "d<sub>z<sup>2</sup></sub>","dxy": "d<sub>xy</sub>", "dxz": "d<sub>xz</sub>", "dyz": "d<sub>yz</sub>", "dx2-y2": "d<sub>x<sup>2</sup>-y<sup>2</sup></sub>",
+        "fz3": "f<sub>z<sup>3</sup></sub>", "fxz2": "f<sub>xz<sup>2</sup></sub>", "fyz2": "f<sub>yz<sup>2</sup></sub>", "fxyz": "f<sub>xzy</sub>", 
+        "fx(x2-3y2)": "f<sub>x(x<sup>2</sup>-3y<sup>2</sup>)</sub>", "fy(3x2-y2)": "f<sub>y(3x<sup>2</sup>-y<sup>2</sup>)</sub>", "fy(x2-z2)": "f<sub>y(x<sup>2</sup>-z<sup>2</sup>)</sub>",
         0.5: "<sup>+1</sup>/<sub>2</sub>", -0.5: "<sup>-1</sup>/<sub>2</sub>", 
         1.5: "<sup>+3</sup>/<sub>2</sub>", -1.5: "<sup>-3</sup>/<sub>2</sub>",
         2.5: "<sup>+5</sup>/<sub>2</sub>", -2.5: "<sup>-5</sup>/<sub>2</sub>", 
@@ -776,6 +778,9 @@ class DosPlottingOptions(ipw.VBox):
     )
     def __init__(self, node, **kwargs):
 
+        self.export_dir = Path.cwd().joinpath("exports")
+        self.dos_data = None
+        self.bands_data = None
         self.node = node 
         self.dos_atoms_group = ipw.Dropdown(
             options=[("Atoms", "atoms"), ("Kinds", "kinds")],
@@ -820,14 +825,18 @@ class DosPlottingOptions(ipw.VBox):
                 else:
                     self.wrong_syntax.layout.visibility = "hidden"
                     data = export_data(self.node,self.dos_atoms_group.value ,self.dos_plot_group.value, expanded_selection)
-                    bands_data = data.get("bands", None)
-                    dos_data = data.get("dos", None)
+                    self.bands_data = data.get("bands", None)
+                    self.dos_data = data.get("dos", None)
                     clear_output(wait=True)
                     #widget_bands = BandsPlotWidget(bands=bands_data, dos=dos_data, plot_fermilevel=True)
-                    widget_bands = results_plot(bands_data,dos_data)
+                    widget_bands = results_plot(self.bands_data,self.dos_data)
                     #display(widget_bands)
                     widget_bands.show()
                     self.download_button.layout.visibility = "visible"
+        
+        #def _download_data(_=None):
+
+
 
         self.update_plot_button.on_click(display_bandstructure_widget)
         super().__init__(
@@ -1083,4 +1092,5 @@ def results_plot(bands_data, pdos_data ):
         fig = None
     
     return go.FigureWidget(fig)
+    #return FigureWidgetResampler(fig)
     #return fig
