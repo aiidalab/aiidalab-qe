@@ -946,12 +946,14 @@ def results_plot(bands_data, pdos_data ):
         )
 
         bandyaxis = go.layout.YAxis(
-            title="Electronic Bands(eV)",
+            #title="Electronic Bands(eV)",
+            title = dict(text="Electronic Bands (eV)", standoff=1),
             side="left",
             showgrid=True,
             showline=True,
             zeroline=True,
             fixedrange = False,
+            automargin = True,
             mirror="ticks",
             ticks="inside",
             linewidth=2,
@@ -964,7 +966,7 @@ def results_plot(bands_data, pdos_data ):
     if pdos_data and bands_data:
 
         dosyaxis = go.layout.YAxis(
-            #title="Density of states (eV)",
+            #title="Density of states (eV)", #FigureWidget modifies the title position in the meantime lets put it
             showgrid=True,
             showline=True,
             side = "right",
@@ -978,7 +980,8 @@ def results_plot(bands_data, pdos_data ):
         )
 
         dosxaxis = go.layout.XAxis(
-            #title="Density of states",
+            title="Density of states",
+            side = "bottom",
             showgrid=True,
             showline=True,
             linecolor="#111111",
@@ -988,14 +991,14 @@ def results_plot(bands_data, pdos_data ):
             tickwidth=2
         )
         
-        fig = make_subplots(rows=1, cols=2, shared_yaxes=True,column_widths=[0.7, 0.3], horizontal_spacing=0.04)
+        fig = make_subplots(rows=1, cols=2, shared_yaxes=True,column_widths=[0.7, 0.3], horizontal_spacing=0.02)
         for band in paths:
             for bands in band['values']:
                 bands_np = np.array(bands)
                 fig.add_trace(
                     go.Scatter(
                     x=band['x'],
-                    y=bands_np - fermi_energy,#-bands_data[0].get('fermi_level'), #substract Fermi Energy
+                    y=bands_np - fermi_energy,##substract Fermi Energy
                     mode="lines",
                     line=dict(color="#111111", shape='spline',smoothing=1.3),
                     showlegend=False
@@ -1017,18 +1020,18 @@ def results_plot(bands_data, pdos_data ):
                 )
         for i in labels_values:
             fig.add_vline(x = i,line=dict(color="#111111", width=1) , row=1, col=1, )
-        fig.update_xaxes(patch=bandxaxis,  row=1, col=1)
-        fig.update_yaxes(patch=bandyaxis, title_standoff = 10, row=1, col=1,)
+        fig.update_xaxes(patch=bandxaxis,  row=1, col=1,)
+        fig.update_yaxes(patch=bandyaxis, row=1, col=1,)
         fig.update_xaxes(patch=dosxaxis, row=1, col=2,)
-        fig.update_yaxes(patch=dosyaxis, row=1, col=2,)
+        fig.update_yaxes(patch=dosyaxis, row=1, col=2, showticklabels=False )
 
-        fig.add_hline(y=-fermi_energy , line=dict(color="#111111", width=1,  dash='dot'), row=1, col= 1)
-        fig.add_hline(y=-fermi_energy,  line=dict(color="#111111", width=1,  dash='dot'), row=1, col= 2)
-        fig.update_layout( height=600, width=900, plot_bgcolor='white', legend=dict(
+        fig.add_hline(y=0 , line=dict(color="#111111", width=1,  dash='dot'), row=1, col= 1)
+        fig.add_hline(y=0,  line=dict(color="#111111", width=1,  dash='dot'), row=1, col= 2)
+        fig.update_layout( height=600, width=850, plot_bgcolor='white',legend=dict(
             #yanchor="top",
             #y=0.99,
             xanchor="left",
-            x=1.05,
+            x=1.04,
         ))
 
 
@@ -1047,7 +1050,8 @@ def results_plot(bands_data, pdos_data ):
                     ))
         for i in labels_values:
             fig.add_vline(x = i,line=dict(color="#111111", width=1))
-        fig.add_hline(y=-fermi_energy , line=dict(color="#111111", width=1,  dash='dot'))
+        if fermi_energy != 0:
+            fig.add_hline(y=0 , line=dict(color="#111111", width=1,  dash='dot'))
         fig.update_layout(height=600, width=950, plot_bgcolor='white', xaxis = bandxaxis , yaxis=bandyaxis)
     
     elif pdos_data and not bands_data:
@@ -1085,12 +1089,12 @@ def results_plot(bands_data, pdos_data ):
             fig.add_trace(
                 go.Scatter(x=dos_np-fermi_energy , y=trace['y'] , fill=my_fill, name=trace['label'], line=dict(color=trace['borderColor'], 
                                             shape='spline',smoothing=1.0) ))
-            fig.add_vline(x=-fermi_energy , line=dict(color="#111111", width=1,  dash='dot'))
+            fig.add_vline(x=0 , line=dict(color="#111111", width=1,  dash='dot'))
             fig.update_layout(height=600, width=950, plot_bgcolor='white', xaxis = dosxaxis , yaxis=dosyaxis)
     
     else:
         fig = None
     
-    return go.FigureWidget(fig)
-    #return FigureWidgetResampler(fig)
-    #return fig
+    #return go.FigureWidget(fig)
+    #return FigureWidgetResampler(go.FigureWidget(fig)) (For future ; check with h_ygi)
+    return fig
