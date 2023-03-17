@@ -4,7 +4,7 @@ Authors:
 
     * Carl Simon Adorf <simon.adorf@epfl.ch>
 """
-
+import base64
 import json
 import random
 import shutil
@@ -179,7 +179,7 @@ def _projections_curated_options(
 
         except AttributeError:
             orbital_name = "j {j} l {l} m_j{m_j}".format(j = orbital_data["total_angular_momentum"], l = orbital_data["angular_momentum"], m_j = orbital_data["magnetic_number"])
-            orbital_name_plotly = "j={j} <em>l</em>={l} m<sub>j</sub>={m_j}".format(j = dict_html[orbital_data["total_angular_momentum"]], l = orbital_data["angular_momentum"], m_j = dict_html[orbital_data["magnetic_number"]])
+            orbital_name_plotly = "j={j} <i>l</i>={l} m<sub>j</sub>={m_j}".format(j = dict_html[orbital_data["total_angular_momentum"]], l = orbital_data["angular_momentum"], m_j = dict_html[orbital_data["magnetic_number"]])
             #<span class="emphasized">i</span>
         if not selected_atoms:
             # if group_tag == "atoms":
@@ -816,6 +816,19 @@ class DosPlottingOptions(ipw.VBox):
         )
         self.bands_widget = ipw.Output()
         
+        def download_data(_=None):
+            file_name_bands = "bands_data.json"
+            file_name_dos = "dos_data.json"
+            if self.bands_data:
+                json_str = json.dumps(self.bands_data)
+                b64_str = base64.b64encode(json_str.encode()).decode()
+                self._download(payload=b64_str,filename=file_name_bands)
+            if self.dos_data:
+                json_str = json.dumps(self.dos_data)
+                b64_str = base64.b64encode(json_str.encode()).decode()
+                self._download(payload=b64_str,filename=file_name_dos)
+
+
         def display_bandstructure_widget(_=None):
             with self.bands_widget:
                 expanded_selection, syntax_ok = string_range_to_list(self.selected_atoms.value, shift=-1)
@@ -834,11 +847,10 @@ class DosPlottingOptions(ipw.VBox):
                     widget_bands.show()
                     self.download_button.layout.visibility = "visible"
         
-        #def _download_data(_=None):
-
-
 
         self.update_plot_button.on_click(display_bandstructure_widget)
+        self.download_button.on_click(download_data)
+
         super().__init__(
                 children=[
                     self.description,
@@ -874,7 +886,26 @@ class DosPlottingOptions(ipw.VBox):
                     self.bands_widget,
                     ]
         )
+    @staticmethod
+    def _download(payload, filename):
+        """Download payload as a file named as filename."""
+        from IPython.display import Javascript
 
+
+
+        javas = Javascript(
+            """
+            var link = document.createElement('a');
+            link.href = 'data:text/json;charset=utf-8;base64,{payload}'
+            link.download = "{filename}"
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            """.format(
+                payload=payload, filename=filename
+            )
+        )
+        display(javas)
 
 
 def results_plot(bands_data, pdos_data ):

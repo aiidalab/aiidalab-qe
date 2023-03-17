@@ -138,7 +138,7 @@ class WorkChainSettings(ipw.VBox):
         )
         
         self.two_dim_kpoints_path = ipw.Dropdown(
-            options=[("Hexagonal", "hexagonal"),("Square", "square"),("Rectangular", "rectangular")],
+            options=[("Hexagonal", "hexagonal"),("Square", "square"),("Rectangular", "rectangular") , ("Centered Rectangular", "centered_rectangular") , ("Oblique", "oblique")],
             value="hexagonal"
         )
         
