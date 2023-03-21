@@ -18,4 +18,4 @@ electronic_type: metal
 ## Calculation settings
 protocol: moderate
 kpoints_distance_override:
-pseudo_family: SSSP/1.1/PBEsol/efficiency
+pseudo_family: SSSP/1.2/PBEsol/efficiency

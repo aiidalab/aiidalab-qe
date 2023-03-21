@@ -14,9 +14,9 @@ PSEUDO_LINK_MAP = {
 }
 
 PROTOCOL_PSEUDO_MAP = {
-    "fast": "SSSP/1.1/PBE/efficiency",
-    "moderate": "SSSP/1.1/PBE/efficiency",
-    "precise": "SSSP/1.1/PBE/precision",
+    "fast": "SSSP/1.2/PBE/efficiency",
+    "moderate": "SSSP/1.2/PBE/efficiency",
+    "precise": "SSSP/1.2/PBE/precision",
 }
 
 FUNCTIONAL_REPORT_MAP = {

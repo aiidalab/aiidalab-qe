@@ -16,6 +16,7 @@ from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import (
+    AiidaNodeViewWidget,
     ComputationalResourcesWidget,
     ProcessMonitor,
     ProcessNodesTreeWidget,
@@ -27,11 +28,7 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
-from aiidalab_qe.widgets import (
-    NodeViewWidget,
-    ParallelizationSettings,
-    ResourceSelectionWidget,
-)
+from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")
@@ -487,15 +484,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._submission_blocker_messages = ipw.HTML()
 
         self.pw_code = ComputationalResourcesWidget(
-            description="pw.x:", input_plugin="quantumespresso.pw"
+            description="pw.x:", default_calc_job_plugin="quantumespresso.pw"
         )
         self.dos_code = ComputationalResourcesWidget(
             description="dos.x:",
-            input_plugin="quantumespresso.dos",
+            default_calc_job_plugin="quantumespresso.dos",
         )
         self.projwfc_code = ComputationalResourcesWidget(
             description="projwfc.x:",
-            input_plugin="quantumespresso.projwfc",
+            default_calc_job_plugin="quantumespresso.projwfc",
         )
 
         self.resources_config = ResourceSelectionWidget()
@@ -914,7 +911,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             (self.process_tree, "value"),
         )
 
-        self.node_view = NodeViewWidget(layout={"width": "auto", "height": "auto"})
+        self.node_view = AiidaNodeViewWidget(layout={"width": "auto", "height": "auto"})
         ipw.dlink(
             (self.process_tree, "selected_nodes"),
             (self.node_view, "node"),
