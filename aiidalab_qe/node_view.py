@@ -162,7 +162,7 @@ def _projections_curated(
         elif group_dos_by == "angular":
             # by orbital label
             dos_group_name = orbital_name[0]
-        elif group_dos_by == "angular_magnetic":
+        elif group_dos_by == "angular_and_magnetic":
             # by orbital label
             dos_group_name = orbital_name
         else:
