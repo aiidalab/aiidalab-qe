@@ -977,7 +977,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 cos_gamma = a1.dot(a2)/ (norm_a1 * norm_a2) # Angle between a1 and a2 # Requires tes in case the division by zero , gamma < 90!
                 gamma = np.arccos(cos_gamma)
                 eta = (1 - (norm_a1/norm_a2)*cos_gamma )/(2 * np.power(np.sin(gamma),2))
-                nu = 0.5 - (etha * norm_a2 * cos_gamma)/norm_a1
+                nu = 0.5 - (eta * norm_a2 * cos_gamma)/norm_a1
                 selected_paths["centered_rectangular"]= {'path': [[0.0, 0.0, 0.0], [0.5, 0.0 ,0.0], [1-eta,nu,0], [0.5, 0.5, 0.0], [eta, 1-nu, 0.0], [1.0, 0.0, 0.0]], 'labels': ["\u0393","X","H_1","C","H","\u0393"]}
                 selected_paths["oblique"]= {'path': [[0.0, 0.0, 0.0], [0.5, 0.0 ,0.0], [1-eta,nu,0], [0.5, 0.5, 0.0], [eta, 1-nu, 0.0], [0.0, 0.5, 0.0],[1.0, 0.0, 0.0]], 'labels': ["\u0393","X","H_1","C","H", "Y" ,"\u0393"]}
 

@@ -1023,6 +1023,8 @@ def results_plot(bands_data, pdos_data ):
         )
         
         fig = make_subplots(rows=1, cols=2, shared_yaxes=True,column_widths=[0.7, 0.3], horizontal_spacing=0.02)
+        #fig_subplot = make_subplots(rows=1, cols=2, shared_yaxes=True,column_widths=[0.7, 0.3], horizontal_spacing=0.02)
+        fig = FigureWidgetResampler(fig_subplot)
         for band in paths:
             for bands in band['values']:
                 bands_np = np.array(bands)
@@ -1034,6 +1036,12 @@ def results_plot(bands_data, pdos_data ):
                     line=dict(color="#111111", shape='spline',smoothing=1.3),
                     showlegend=False
                     ),row=1, col=1,)
+                # fig.add_trace(
+                #     go.Scatter(mode="lines",
+                #     line=dict(color="#111111", shape='spline',smoothing=1.3),
+                #     showlegend=False,
+                #     ),hf_x=band['x'],
+                #     hf_y=bands_np - fermi_energy,row=1, col=1,)
         
         for trace in pdos_data['dos']:
             if trace['label'] == "Total DOS":
@@ -1049,6 +1057,11 @@ def results_plot(bands_data, pdos_data ):
                                             shape='spline',smoothing=1.3) ),
                 row=1, col=2, 
                 )
+            # fig.add_trace(
+            #     go.Scatter(fill=my_fill, name=new_label, line=dict(color=trace['borderColor'], 
+            #                                 shape='spline',smoothing=1.3) ), hf_x=trace['y'], hf_y=dos_np - fermi_energy, 
+            #     row=1, col=2, 
+            #     )
         for i in labels_values:
             fig.add_vline(x = i,line=dict(color="#111111", width=1) , row=1, col=1, )
         fig.update_xaxes(patch=bandxaxis,  row=1, col=1,)
