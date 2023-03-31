@@ -878,12 +878,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         # Updating tot_charge of the builder
-        builder.relax.base.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
-        builder.bands.bands.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
-        builder.bands.scf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
-        builder.pdos.scf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
-        builder.pdos.nscf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
-
+        builder.relax.base.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+            "tot_charge"
+        ]
+        builder.bands.bands.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+            "tot_charge"
+        ]
+        builder.bands.scf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+            "tot_charge"
+        ]
+        builder.pdos.scf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+            "tot_charge"
+        ]
+        builder.pdos.nscf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+            "tot_charge"
+        ]
 
         if "kpoints_distance_override" in parameters:
             builder.kpoints_distance_override = Float(
