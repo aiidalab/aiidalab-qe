@@ -19,3 +19,5 @@ electronic_type: metal
 protocol: moderate
 kpoints_distance_override:
 pseudo_family: SSSP/1.2/PBEsol/efficiency
+
+tot_charge: 0

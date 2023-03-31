@@ -108,6 +108,14 @@ class WorkChainSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
 
+        # tot_charge: total charge of the simulations
+        self.tot_charge = ipw.IntSlider(
+            value=DEFAULT_PARAMETERS["tot_charge"],
+            min=-2,
+            max=2,
+            step=1,
+        )
+
         # Checkbox to see if the band structure should be calculated
         self.bands_run = ipw.Checkbox(
             description="",
@@ -157,6 +165,17 @@ class WorkChainSettings(ipw.VBox):
                             ),
                         ),
                         self.spin_type,
+                    ]
+                ),
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Total charge:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        self.tot_charge,
                     ]
                 ),
                 self.properties_title,
@@ -404,6 +423,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.workchain_settings.bands_run.value = parameters["run_bands"]
             self.workchain_settings.pdos_run.value = parameters["run_pdos"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
+            self.workchain_settings.tot_charge.value = parameters["tot_charge"]
 
             # Advanced settings
             self.pseudo_family_selector.value = parameters["pseudo_family"]
@@ -774,6 +794,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             run_bands=self.workchain_settings.bands_run.value,
             run_pdos=self.workchain_settings.pdos_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
+            tot_charge=self.workchain_settings.total_charge.value,
             # Codes
             pw_code=self.pw_code.value,
             dos_code=self.dos_code.value,
@@ -855,6 +876,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=SpinType(parameters["spin_type"]),
             electronic_type=ElectronicType(parameters["electronic_type"]),
         )
+
+        # Updating tot_charge of the builder
+        builder.relax.base.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
+        builder.bands.bands.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
+        builder.bands.scf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
+        builder.pdos.scf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
+        builder.pdos.nscf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
+
 
         if "kpoints_distance_override" in parameters:
             builder.kpoints_distance_override = Float(
