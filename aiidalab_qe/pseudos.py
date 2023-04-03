@@ -8,7 +8,6 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 
 class PseudoFamilySelector(ipw.VBox):
-
     title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Accuracy and precision</h4></div>"""
@@ -54,7 +53,6 @@ class PseudoFamilySelector(ipw.VBox):
     )
 
     def __init__(self, **kwargs):
-
         # Enable manual setting of the pseudopotential family
         self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
         self.set_pseudo_family = ipw.Checkbox(

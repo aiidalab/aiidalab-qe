@@ -132,7 +132,6 @@ def install(force=False):
                 )
 
             if not qe_installed():
-
                 # First, install Quantum ESPRESSO.
                 yield "Installing QE..."
                 try:
@@ -158,7 +157,6 @@ def install(force=False):
 
 
 class QESetupWidget(ipw.VBox):
-
     installed = traitlets.Bool(allow_none=True).tag(readonly=True)
     busy = traitlets.Bool().tag(readonly=True)
     error = traitlets.Unicode().tag(readonly=True)

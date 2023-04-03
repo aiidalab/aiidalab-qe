@@ -28,7 +28,6 @@ __all__ = [
 
 
 class RollingOutput(ipw.VBox):
-
     style = (
         "background-color: #253239; color: #cdd3df; line-height: normal; custom=test"
     )
@@ -138,7 +137,6 @@ class DownloadButton(ipw.Button):
 
 
 class FilenameDisplayWidget(ipw.Box):
-
     value = traitlets.Unicode()
 
     def __init__(self, max_width=None, **kwargs):
@@ -162,7 +160,6 @@ class FilenameDisplayWidget(ipw.Box):
 
 
 class LogOutputWidget(ipw.VBox):
-
     filename = traitlets.Unicode()
     value = traitlets.Unicode()
 
@@ -240,7 +237,6 @@ class LogOutputWidget(ipw.VBox):
 
 
 class CalcJobOutputFollower(traitlets.HasTraits):
-
     calcjob_uuid = traitlets.Unicode(allow_none=True)
     filename = traitlets.Unicode(allow_none=True)
     output = traitlets.List(trait=traitlets.Unicode)
@@ -473,7 +469,6 @@ class ProgressBar(ipw.HBox):
         super().__init__([self._label, self._progress_bar], *args, **kwargs)
 
     def _animate(self, refresh_rate=0.01):
-
         v0 = self._progress_bar.value
         t0 = time()
 
