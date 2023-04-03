@@ -954,6 +954,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         builder.pdos.scf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
         builder.pdos.nscf.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
         
+        builder.bands.bands.pw.metadata.options.max_wallclock_seconds = 82800
+
+        
         def one_two_dim_kpoints_path(structure, periodicity, two_dim_kpoints_path, bands_kpoints_distance):
             """
             Return a KpoinsData object containing the 1D or 2D kpoints path for bandstructure calculations
