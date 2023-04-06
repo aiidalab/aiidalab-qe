@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.usefixtures("aiida_profile_clean")
 def test_get_input_parameters():
     from aiidalab_qe.pseudos import PseudoFamilySelector
@@ -9,7 +10,7 @@ def test_get_input_parameters():
         SubmitQeAppWorkChainStep,
         WorkChainSettings,
     )
-    
+
     submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
 
     submit_step.workchain_settings = WorkChainSettings()

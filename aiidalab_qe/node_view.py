@@ -38,7 +38,7 @@ class MinimalStructureViewer(ipw.VBox):
     _displayed_structure = Instance(Atoms, allow_none=True, read_only=True)
 
     background = Unicode()
-    supercell = List(Int)
+    supercell = List(Int())
 
     def __init__(self, structure, *args, **kwargs):
         self._viewer = nglview.NGLWidget()

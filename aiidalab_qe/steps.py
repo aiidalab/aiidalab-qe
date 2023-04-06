@@ -109,7 +109,6 @@ class WorkChainSettings(ipw.VBox):
         # Checkbox to see if the band structure should be calculated
         self.bands_run = ipw.Checkbox(
             description="",
-            tooltip="Calculate the electronic band structure.",
             indent=False,
             value=True,
             layout=ipw.Layout(max_width="10%"),
@@ -118,7 +117,6 @@ class WorkChainSettings(ipw.VBox):
         # Checkbox to see if the PDOS should be calculated
         self.pdos_run = ipw.Checkbox(
             description="",
-            tooltip="Calculate the electronic PDOS.",
             indent=False,
             value=True,
             layout=ipw.Layout(max_width="10%"),
@@ -469,7 +467,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
-    _submission_blockers = traitlets.List(traitlets.Unicode)
+    _submission_blockers = traitlets.List(traitlets.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
         self.message_area = ipw.Output()
