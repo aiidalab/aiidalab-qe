@@ -56,9 +56,6 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     appdir = f"/home/{nb_user}/apps/aiidalab-qe"
     aiidalab_exec(f"chmod -R a+rw {appdir}", user="root")
 
-    # Install workchains
-    aiidalab_exec("pip install .", workdir=f"{appdir}/src", user=nb_user)
-
     # Install App
     install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -r /tmp/requirements.txt'"
     aiidalab_exec(install_command, workdir=appdir, user=nb_user)
