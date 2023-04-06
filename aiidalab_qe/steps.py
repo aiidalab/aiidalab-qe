@@ -196,6 +196,66 @@ class WorkChainSettings(ipw.VBox):
             **kwargs,
         )
 
+class PwAdvancedSettings(ipw.VBox):
+
+    title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 10px">
+        <h4>Pw Advanced Settings</h4></div>"""
+    )
+    pw_advanced_settings = ipw.HTML(
+        """Select the advanced settings for the <b>pw.x</b> code."""
+    )
+    #set here defaul values for the advanced settings
+    tot_charge_default = 0
+
+    def __init__(self, **kwargs):
+        self.override_pw_advanced_settings = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
+        self.override_tot_charge = ipw.Checkbox(
+            description ="",
+            indent=False,
+            value=False,
+        )
+        
+        self.tot_charge = ipw.IntSlider(
+            value=0,
+            min=-2,
+            max=2,
+            step=1,
+            disabled=False,
+            description="Total charge:",
+            style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self.override_pw_advanced_settings, "value"),
+            (self.override_tot_charge, "disabled"),
+            lambda override: not override,
+        )
+        ipw.dlink(
+            (self.override_tot_charge, "value"),
+            (self.tot_charge, "disabled"),
+            lambda override: not override,
+        )
+        self.tot_charge.observe(self.set_pw_settings, "value")
+        self.override_pw_advanced_settings.observe(self.set_pw_settings, "value")
+        super().__init__(
+            children=[
+                self.title,
+                ipw.HBox([self.pw_advanced_settings, self.override_pw_advanced_settings,],layout=ipw.Layout(justify_content="space-between"),),
+                ipw.HBox([self.tot_charge, self.override_tot_charge], layout=ipw.Layout(justify_content="space-between")),
+            ],
+            **kwargs,
+        )
+    def set_pw_settings(self, _=None):
+        self.tot_charge.value = (
+            self.tot_charge.value 
+            if self.pw_advanced_settings.value and self.override_tot_charge.value
+            else self.tot_charge_default
+        )
+
 
 class SmearingSettings(ipw.VBox):
 
@@ -330,6 +390,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
+    pw_advanced_settings = traitlets.Instance(PwAdvancedSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
 
     def __init__(self, **kwargs):
@@ -341,6 +402,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.kpoints_settings = KpointSettings()
         self.smearing_settings = SmearingSettings()
+        self.pw_advanced_settings = PwAdvancedSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
 
         ipw.dlink(
@@ -372,6 +434,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.workchain_settings,
                 ipw.VBox(
                     children=[
+                        self.pw_advanced_settings,
                         self.pseudo_family_selector,
                         self.kpoints_settings,
                         self.smearing_settings,
@@ -495,6 +558,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
+    pw_advanced_settings = traitlets.Instance(PwAdvancedSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode)
@@ -802,6 +866,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
+        #Should we make this logic in the class of advanced settings?
+        if self.pw_advanced_settings.override_protocol_settings.value:
+            parameters["override"] = {"pw": {"parameters": {"SYSTEM": {}}},}
+            if self.pw_advanced_settings.override_tot_charge.value:
+                parameters["override"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.pw_advanced_settings.total_charge.value
+        else:
+            parameters["override"] = None
+
         if self.kpoints_settings.override_protocol_kpoints.value:
             parameters[
                 "kpoints_distance_override"
@@ -871,6 +943,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             dos_code=load_code(parameters["dos_code"]),
             projwfc_code=load_code(parameters["projwfc_code"]),
             protocol=parameters["protocol"],
+            overrides=parameters["override"],
             pseudo_family=parameters["pseudo_family"],
             relax_type=RelaxType(parameters["relax_type"]),
             spin_type=SpinType(parameters["spin_type"]),
@@ -878,21 +951,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         # Updating tot_charge of the builder
-        builder.relax.base.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
-            "tot_charge"
-        ]
-        builder.bands.bands.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
-            "tot_charge"
-        ]
-        builder.bands.scf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
-            "tot_charge"
-        ]
-        builder.pdos.scf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
-            "tot_charge"
-        ]
-        builder.pdos.nscf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
-            "tot_charge"
-        ]
+        # builder.relax.base.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+        #     "tot_charge"
+        # ]
+        # builder.bands.bands.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+        #     "tot_charge"
+        # ]
+        # builder.bands.scf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+        #     "tot_charge"
+        # ]
+        # builder.pdos.scf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+        #     "tot_charge"
+        # ]
+        # builder.pdos.nscf.pw.parameters["SYSTEM"]["tot_charge"] = parameters[
+        #     "tot_charge"
+        # ]
 
         if "kpoints_distance_override" in parameters:
             builder.kpoints_distance_override = Float(
