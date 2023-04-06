@@ -32,11 +32,6 @@
         <td>Electronic type</td>
         <td>{{ electronic_type }}</td>
       </tr>
-      <tr>
-        <td>Total Charge</td>
-        <td>{{ tot_charge }}</td>
-      </tr>
-
     </table>
   </div>
   <div class="column">
@@ -89,6 +84,10 @@
         <td>K-point mesh distance (NSCF)</td>
         <td>{{ nscf_kpoints_distance }} &#8491;<sup>-1</sup></td>
       </tr>
+      {% endif %}
+      {% if tot_charge %}
+        <td>Total Charge</td>
+        <td>{{ tot_charge }}</td>
       {% endif %}
     </table>
   </div>

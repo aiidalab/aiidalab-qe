@@ -42,7 +42,9 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
     # Material settings
     yield "material_magnetic", builder_parameters["spin_type"]
     yield "electronic_type", builder_parameters["electronic_type"]
-    yield "tot_charge", builder_parameters["tot_charge"]
+   
+    #Advanced settings
+    yield "tot_charge", builder_parameters.get("tot_charge", None)
 
     # Calculation settings
     yield "protocol", builder_parameters["protocol"]
