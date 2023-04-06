@@ -14,10 +14,15 @@ from time import time
 from copy import deepcopy
 import ipywidgets as ipw
 import traitlets
+import traitlets as tl
+import ase
 from aiida.orm import CalcJobNode, load_node
-from aiidalab_widgets_base.utils import list_to_string_range, string_range_to_list
+from aiidalab_widgets_base.utils import list_to_string_range, string_range_to_list, StatusHTML
 from aiidalab_widgets_base import register_viewer_widget
 from IPython.display import HTML, Javascript, display
+
+#defects
+from shakenbreak.distortions import distort, local_mc_rattle
 
 # trigger registration of the viewer widget:
 from aiidalab_qe import node_view  # noqa: F401
@@ -523,7 +528,6 @@ class ProgressBar(ipw.HBox):
         else:
             self._animation_rate = 0
             self._progress_bar.value = change["new"]
-
 
 class AddingTagsEditor(ipw.VBox):
     """Editor for adding tags to atoms."""

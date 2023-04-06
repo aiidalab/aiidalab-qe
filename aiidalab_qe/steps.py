@@ -12,7 +12,7 @@ import traitlets
 import numpy as np
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
-from aiida.orm import WorkChainNode, load_code, load_node, load_group
+from aiida.orm import WorkChainNode, load_code, load_node, load_group, Data
 from aiida.plugins import DataFactory         
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType, PeriodicityType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
@@ -22,8 +22,9 @@ from aiidalab_widgets_base import (
     ProcessMonitor,
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
+    StructureManagerWidget,
 )
-from IPython.display import display
+from IPython.display import display, clear_output
 
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
@@ -38,7 +39,9 @@ Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
 KpointsData = DataFactory('core.array.kpoints')
 
-class WorkChainSettings(ipw.VBox):
+class WorkChainSettings(ipw.VBox, WizardAppWidgetStep):
+    confirmed_structure = traitlets.Instance(StructureData, allow_none=True)
+    #confirmed_structure_labels = traitlets.List(allow_none=True)
 
     structure_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
@@ -85,6 +88,33 @@ class WorkChainSettings(ipw.VBox):
 
     def __init__(self, **kwargs):
 
+        
+        def create_magnetization_widgets(input_structure):
+            if input_structure is None:
+                labels = []
+            else:
+                labels = input_structure.get_kind_names()
+            widgets_list = []
+            for label in labels:
+                hbox = ipw.HBox()
+                float_widget = ipw.BoundedFloatText(description=label, value=0, min=-1, max=1, step=0.01,)
+                hbox.children = [float_widget]
+                widgets_list.append(hbox)
+            vbox = ipw.VBox([ipw.HTML("Define magnetization")] + widgets_list)
+            return vbox 
+
+        magnetization_widget = create_magnetization_widgets(self.confirmed_structure)
+
+        self.magnetization_widget_out = ipw.Output()
+        def toggle_magnetization_widgets(change):
+            if change['new'] == 'collinear':
+                with self.magnetization_widget_out:
+                    clear_output()
+                    display(magnetization_widget)
+            else:
+                with self.magnetization_widget_out:
+                    clear_output()
+        
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type = ipw.ToggleButtons(
             options=[
@@ -136,6 +166,14 @@ class WorkChainSettings(ipw.VBox):
             value=True,
             layout=ipw.Layout(max_width="10%"),
         )
+
+        self.hubbard = ipw.Checkbox(
+            description="",
+            tooltip="Use Hubbard DFT+U.",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="10%"),
+        )
         
         self.two_dim_kpoints_path = ipw.Dropdown(
             options=[("Hexagonal", "hexagonal"),("Square", "square"),("Rectangular", "rectangular") , ("Centered Rectangular", "centered_rectangular") , ("Oblique", "oblique")],
@@ -170,16 +208,13 @@ class WorkChainSettings(ipw.VBox):
             else:
                 self.two_dim_kpoints_path.layout.visibility= 'hidden'
                 self.two_dim_kpoints_path_layout.layout.visibility = 'hidden'
-        
-        
+
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
             value="moderate",
         )
-
-    
-
+        
         super().__init__(
             children=[
                 self.structure_title,
@@ -208,6 +243,7 @@ class WorkChainSettings(ipw.VBox):
                         self.spin_type,
                     ]
                 ),
+                self.magnetization_widget_out,
                 ipw.HBox(
                     children=[
                         ipw.Label(
@@ -243,6 +279,7 @@ class WorkChainSettings(ipw.VBox):
                     ]
                 ),
                 ipw.HTML("Select which properties to calculate:"),
+                ipw.HBox(children=[ipw.HTML("<b>Hubbard (DFT+U)</b>"), self.hubbard]),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
                 self.two_dim_kpoints_path_layout,
                 ipw.HBox(
@@ -261,7 +298,31 @@ class WorkChainSettings(ipw.VBox):
         )
         self.periodicity.observe(hide_or_show, names="value")
         self.bands_run.observe(hide_or_show, names="value")
+        self.spin_type.observe(toggle_magnetization_widgets, names='value')
+        
 
+                
+    def update_magnetization_widgets(self, change):
+        # update magnetization widgets based on new confirmed_structure
+        new_structure = change['new']
+        new_labels = [] if new_structure is None else new_structure.get_kind_names()
+        for i, label in enumerate(new_labels):
+            self.magnetization_widget.children[i].children[0].description = label
+
+        # update displayed magnetization widgets
+        with self.magnetization_widget_out:
+            clear_output()
+            display(self.magnetization_widget)
+
+        # @traitlets.observe("confirmed_structure")
+        # def _observe_confirmed_structure(self, change):
+        #     if isinstance(change["new"], StructureData):
+        #         self.confirmed_structure = change["new"]
+        #         magnetization_widget = create_magnetization_widgets(self.confirmed_structure)
+        #         if self.spin_type.value == 'collinear':
+        #             with self.magnetization_widget_out:
+        #                 clear_output()
+        #                 display(magnetization_widget)
 
 class SmearingSettings(ipw.VBox):
 
@@ -335,7 +396,6 @@ class SmearingSettings(ipw.VBox):
             if self.override_protocol_smearing.value
             else self.smearing_default
         )
-
 
 class KpointSettings(ipw.VBox):
 
@@ -999,9 +1059,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 return round(distance/bands_kpoints_distance.value)
 
             if periodicity == 'x':
-                points = np.linspace(start = [0.0, 0.0, 0.0] , stop = [0.5, 0.0, 0.0] , endpoint=True, num=10)
+                num_points_per_branch = points_per_branch([0.0, 0.0, 0.0], [0.5, 0.0, 0.0], reciprocal_cell, bands_kpoints_distance)
+                points = np.linspace(start = [0.0, 0.0, 0.0] , stop = [0.5, 0.0, 0.0] , endpoint=True, num=num_points_per_branch)
                 kpoints.set_kpoints(points.tolist())
-                kpoints.labels = [[0,"\u0393"], [points_per_branch-1,"X"]]
+                kpoints.labels = [[0,"\u0393"], [num_points_per_branch,"X"]]
                 return kpoints
 
             elif periodicity == 'xy':

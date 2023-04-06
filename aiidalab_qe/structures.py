@@ -44,6 +44,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
     structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
+    confirmed_structure_labels = traitlets.List([])
 
     def __init__(self, manager, description=None, **kwargs):
         self.manager = manager
@@ -146,6 +147,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def confirm(self, _=None):
         self.manager.store_structure()
         self.confirmed_structure = self.structure
+        self.confirmed_structure_labels = self.confirmed_structure.get_kind_names()
         self.message_area.value = ""
 
     def can_reset(self):

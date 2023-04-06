@@ -1024,7 +1024,7 @@ def results_plot(bands_data, pdos_data ):
         
         fig = make_subplots(rows=1, cols=2, shared_yaxes=True,column_widths=[0.7, 0.3], horizontal_spacing=0.02)
         #fig_subplot = make_subplots(rows=1, cols=2, shared_yaxes=True,column_widths=[0.7, 0.3], horizontal_spacing=0.02)
-        fig = FigureWidgetResampler(fig_subplot)
+        #fig = FigureWidgetResampler(fig_subplot)
         for band in paths:
             for bands in band['values']:
                 bands_np = np.array(bands)
