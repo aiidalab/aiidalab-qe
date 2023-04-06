@@ -805,6 +805,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.projwfc_code.code_select_dropdown.disabled = True
 
     def submit(self, _=None):
+        """Submit the work chain with the current inputs."""
+        builder, parameters = self._create_builder()
+        with self.hold_trait_notifications():
+            self.process = submit(builder)
+            # Set the builder parameters on the work chain
+            self.process.base.extras.set("builder_parameters", parameters)
+
+    def _create_builder(self):
+        """Create the builder for the `QeAppWorkChain` submit."""
+
         def update_builder(buildy, resources, npools):
             """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
             for k, v in buildy.items():
@@ -877,10 +887,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         update_builder(builder, resources, self.parallelization.npools.value)
 
-        with self.hold_trait_notifications():
-            self.process = submit(builder)
-            # Set the builder parameters on the work chain
-            self.process.base.extras.set("builder_parameters", parameters)
+        # TODO: the builder and parameters needs to be decoupled
+        return builder, parameters
 
     def reset(self):
         with self.hold_trait_notifications():
