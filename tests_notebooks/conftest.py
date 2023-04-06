@@ -18,6 +18,11 @@ def is_responsive(url):
 
 
 @pytest.fixture(scope="session")
+def docker_compose_file(pytestconfig):
+    return str(Path(pytestconfig.rootdir) / "tests_notebooks" / "docker-compose.yml")
+
+
+@pytest.fixture(scope="session")
 def docker_compose(docker_services):
     return docker_services._docker_compose
 
@@ -50,6 +55,9 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     # make it writeable for jovyan user, needed for `pip install`
     appdir = f"/home/{nb_user}/apps/aiidalab-qe"
     aiidalab_exec(f"chmod -R a+rw {appdir}", user="root")
+
+    # Install workchains
+    aiidalab_exec("pip install .", workdir=f"{appdir}/src", user=nb_user)
 
     # Install App
     install_command = "bash -c 'python tests/helper_dep_requirements.py && pip install -r /tmp/requirements.txt'"

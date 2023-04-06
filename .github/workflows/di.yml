@@ -58,7 +58,7 @@ jobs:
               if: matrix.browser == 'Firefox'
 
             - name: Run pytest
-              run: pytest --driver ${{ matrix.browser }}
+              run: pytest --driver ${{ matrix.browser }} tests_notebooks
               env:
                   TAG: ${{ matrix.tag }}
                   AIIDALAB_IMAGE: ${{ matrix.image }}
