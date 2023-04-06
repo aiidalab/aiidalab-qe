@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.usefixtures("aiida_profile_clean")
-def test_get_input_parameters():
+def test_get_input_parameters(data_regression):
     from aiidalab_qe.pseudos import PseudoFamilySelector
     from aiidalab_qe.steps import (
         KpointSettings,
@@ -21,4 +21,4 @@ def test_get_input_parameters():
     parameters = submit_step.get_input_parameters()
 
     # Check and validate the parameters
-    assert "relax_type" in parameters
+    data_regression.check(parameters)

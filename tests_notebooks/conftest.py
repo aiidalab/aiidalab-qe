@@ -84,7 +84,6 @@ def selenium_driver(selenium, notebook_service):
 
         selenium.find_element(By.ID, "ipython-main-app")
         selenium.find_element(By.ID, "notebook-container")
-        selenium.find_element(By.CLASS_NAME, "jupyter-widgets-view")
         WebDriverWait(selenium, 100).until(
             EC.invisibility_of_element((By.ID, "appmode-busy"))
         )

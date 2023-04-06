@@ -1,0 +1,11 @@
+---
+dos_code:
+electronic_type: metal
+projwfc_code:
+protocol: moderate
+pseudo_family: SSSP/1.2/PBEsol/efficiency
+pw_code:
+relax_type: positions_cell
+run_bands: true
+run_pdos: true
+spin_type: none
