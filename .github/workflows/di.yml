@@ -37,8 +37,8 @@ jobs:
                       **/pyproject.toml
                       **/requirements*.txt
 
-            - name: Install dependencies for test
-              run: pip install -U -r requirements_test.txt
+            - name: Install package
+              run: pip install -e .[dev]
 
             - name: Set jupyter token env
               run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
