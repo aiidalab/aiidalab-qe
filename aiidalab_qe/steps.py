@@ -177,16 +177,15 @@ class WorkChainSettings(ipw.VBox):
             **kwargs,
         )
 
+
 class PwAdvancedSettings(ipw.VBox):
 
     title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Pw Advanced Settings</h4></div>"""
     )
-    description = ipw.HTML(
-        """Select the advanced settings for the <b>pw.x</b> code."""
-    )
-    #set here defaul values for the advanced settings
+    description = ipw.HTML("""Select the advanced settings for the <b>pw.x</b> code.""")
+    # set here defaul values for the advanced settings
     tot_charge_default = 0
 
     def __init__(self, **kwargs):
@@ -196,11 +195,11 @@ class PwAdvancedSettings(ipw.VBox):
             value=False,
         )
         self.override_tot_charge = ipw.Checkbox(
-            description ="",
+            description="",
             indent=False,
             value=False,
         )
-        
+
         self.tot_charge = ipw.IntSlider(
             value=0,
             min=-2,
@@ -225,15 +224,26 @@ class PwAdvancedSettings(ipw.VBox):
         super().__init__(
             children=[
                 self.title,
-                ipw.HBox([self.description, self.override_pw_advanced_settings,],layout=ipw.Layout(justify_content="space-between"),),
-                ipw.HBox([self.tot_charge, self.override_tot_charge], layout=ipw.Layout(justify_content="space-between")),
+                ipw.HBox(
+                    [
+                        self.description,
+                        self.override_pw_advanced_settings,
+                    ],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
+                ipw.HBox(
+                    [self.tot_charge, self.override_tot_charge],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
             ],
             **kwargs,
         )
+
     def set_pw_settings(self, _=None):
         self.tot_charge.value = (
-            self.tot_charge.value 
-            if self.override_pw_advanced_settings.value and self.override_tot_charge.value
+            self.tot_charge.value
+            if self.override_pw_advanced_settings.value
+            and self.override_tot_charge.value
             else self.tot_charge_default
         )
 
@@ -838,7 +848,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             run_bands=self.workchain_settings.bands_run.value,
             run_pdos=self.workchain_settings.pdos_run.value,
             protocol=self.workchain_settings.workchain_protocol.value,
-            
             # Codes
             pw_code=self.pw_code.value,
             dos_code=self.dos_code.value,
@@ -846,14 +855,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
-        #Should we make this logic in the class of advanced settings?
+        # Should we make this logic in the class of advanced settings?
         if self.pw_advanced_settings.override_pw_advanced_settings.value:
-            pw_base = {"pw": {"parameters": {"SYSTEM": {}}},}
+            pw_base = {
+                "pw": {"parameters": {"SYSTEM": {}}},
+            }
 
             if self.pw_advanced_settings.override_tot_charge.value:
-                pw_base["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.pw_advanced_settings.tot_charge.value
-                parameters["tot_charge"] = self.pw_advanced_settings.tot_charge.value # This to be placed in the builder and also for report
-  
+                pw_base["pw"]["parameters"]["SYSTEM"][
+                    "tot_charge"
+                ] = self.pw_advanced_settings.tot_charge.value
+                parameters[
+                    "tot_charge"
+                ] = (
+                    self.pw_advanced_settings.tot_charge.value
+                )  # This to be placed in the builder and also for report
+
             parameters["override"] = {
                 "relax": {
                     "base": pw_base,
@@ -871,7 +888,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     "scf": pw_base,
                     "nscf": pw_base,
                 },
-                        
             }
         else:
             parameters["override"] = None
