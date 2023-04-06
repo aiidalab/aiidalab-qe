@@ -471,7 +471,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode)
 
-    def __init__(self, **kwargs):
+    def __init__(self, qe_auto_setup=True, **kwargs):
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
@@ -523,7 +523,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # expected labels (e.g. "pw-7.0@localhost") and triggers both the
         # installation of QE into a dedicated conda environment and the setup of
         # the codes in case that they are not already configured.
-        self.qe_setup_status = QESetupWidget()
+        self.qe_setup_status = QESetupWidget(auto_start=qe_auto_setup)
         self.qe_setup_status.observe(self._update_state, "busy")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
         self.qe_setup_status.observe(self._auto_select_code, "installed")
