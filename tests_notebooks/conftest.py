@@ -4,8 +4,10 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
+import selenium.webdriver.support.expected_conditions as EC
 from requests.exceptions import ConnectionError
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
 
 
 def is_responsive(url):
@@ -82,6 +84,10 @@ def selenium_driver(selenium, notebook_service):
 
         selenium.find_element(By.ID, "ipython-main-app")
         selenium.find_element(By.ID, "notebook-container")
+        selenium.find_element(By.CLASS_NAME, "jupyter-widgets-view")
+        WebDriverWait(selenium, 20).until(
+            EC.invisibility_of_element((By.ID, "appmode-busy"))
+        )
 
         return selenium
 
