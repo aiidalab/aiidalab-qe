@@ -367,6 +367,25 @@ def xps_spectra_broadening(
     return result_spectra
 
 
+def export_xas_spectra(work_chain_node):
+    import numpy as np
+
+    # symmetry_analysis_data = work_chain_node.outputs.symmetry_analysis_data.get_dict()
+    # equivalent_sites_data = symmetry_analysis_data["equivalent_sites_data"]
+
+    xas_spectra = {}
+    for key, data in work_chain_node.outputs.xas_spectra.items():
+        x = data.get_x()[1]
+        y = data.get_y()[0][1]
+        xas_spectrum = np.column_stack((x, y))
+        xas_spectra[key] = xas_spectrum
+
+    return xas_spectra
+
+
+# def get_xas_for_element(work_chain_node, element):
+
+
 class VBoxWithCaption(ipw.VBox):
     def __init__(self, caption, body, *args, **kwargs):
         super().__init__(children=[ipw.HTML(caption), body], *args, **kwargs)
@@ -630,12 +649,17 @@ class WorkChainViewer(ipw.VBox):
             [ipw.Label("XPS not available.")],
             layout=ipw.Layout(min_height="380px"),
         )
+        self.xas_tab = ipw.VBox(
+            [ipw.Label("XAS not available.")],
+            layout=ipw.Layout(min_height="380px"),
+        )
         self.result_tabs = ipw.Tab(
             children=[
                 self.summary_tab,
                 self.structure_tab,
                 self.bands_tab,
                 self.xps_tab,
+                self.xas_tab,
             ]
         )
 
@@ -643,6 +667,7 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(1, "Final Geometry (n/a)")
         self.result_tabs.set_title(2, "Electronic Structure (n/a)")
         self.result_tabs.set_title(3, "XPS (n/a)")
+        self.result_tabs.set_title(4, "XAS (n/a)")
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
@@ -698,6 +723,11 @@ class WorkChainViewer(ipw.VBox):
             ):
                 self._show_xps()
                 self._results_shown.add("xps")
+            if "xas" not in self._results_shown and (
+                "xas_spectra" in self.node.outputs
+            ):
+                self._show_xas()
+                self._results_shown.add("xas")
 
     def _show_structure(self):
         self._structure_view = StructureDataViewer(
@@ -860,6 +890,37 @@ class WorkChainViewer(ipw.VBox):
         fill.observe(response, names="value")
         self.result_tabs.children[3].children = [spectra_type, paras, g]
         self.result_tabs.set_title(3, "XPS")
+
+    def _show_xas(self):
+        import plotly.graph_objects as go
+
+        spectra = export_xas_spectra(self.node)
+        spectrum_select = ipw.Dropdown(
+            description="Select spectrum to plot",
+            disabled=False,
+            value=None,
+            options=[key for key in spectra.keys()],
+        )
+
+        g = go.FigureWidget(layout=go.Layout(title=dict(text="XAS")))
+
+        g.layout.xaxis.title = "Energy (eV)"
+
+        def response(change):
+
+            spectra = export_xas_spectra(self.node)
+            chosen_spectrum = spectrum_select.value
+            spectrum = spectra[chosen_spectrum]
+
+            g.update(
+                data=[
+                    {"x": spectrum[:, 0], "y": spectrum[:, 1], "name": chosen_spectrum}
+                ]
+            )
+
+        spectrum_select.observe(response, names="value")
+        self.result_tabs.children[4].children = [g, spectrum_select]
+        self.result_tabs.set_title(4, "XAS")
 
     def _show_workflow_output(self):
         self.workflows_output = WorkChainOutputs(self.node)

@@ -1,7 +1,7 @@
 # AiiDA imports.
 from aiida.common import AttributeDict
 from aiida.engine import ToContext, WorkChain, if_
-from aiida.orm import CalcJobNode, QueryBuilder, WorkChainNode
+from aiida.orm import CalcJobNode, QueryBuilder, WorkChainNode, load_group
 from aiida.plugins import DataFactory, WorkflowFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
@@ -12,7 +12,7 @@ from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
-XspectraCrystalWorkChain = WorkflowFactory("quantumespresso.xspectra.core")
+XspectraCrystalWorkChain = WorkflowFactory("quantumespresso.xspectra.crystal")
 XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
 Bool = DataFactory("core.bool")
@@ -54,7 +54,7 @@ class QeAppWorkChain(WorkChain):
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PdosWorkChain`.'})
         spec.expose_inputs(XspectraCrystalWorkChain, namespace='xspectra',
-                           exclude=('clean_workdir', 'structure'),
+                           exclude=('clean_workdir', 'structure', 'relax'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `XspectraCrystalWorkChain`.'})
         spec.expose_inputs(XpsWorkChain, namespace='xps',
@@ -121,6 +121,8 @@ class QeAppWorkChain(WorkChain):
         spec.output_namespace('binding_energies', valid_type=Dict, dynamic=True, required=False)
         spec.output_namespace('xps_spectra_cls', valid_type=XyData, dynamic=True, required=False)
         spec.output_namespace('xps_spectra_be', valid_type=XyData, dynamic=True, required=False)
+        # for xas
+        spec.output_namespace('xas_spectra', valid_type=XyData, dynamic=True)
         # yapf: enable
 
     @classmethod
@@ -259,7 +261,20 @@ class QeAppWorkChain(WorkChain):
 
         # xas
         if xspectra_code is not None:
-            # xspectra_overrides = overrides.get("xspectra", {})
+            xspectra_overrides = overrides.get("xas", {})
+            core_wfc_data_group_name = overrides.get("xas", {}).get(
+                "core_wfc_data", None
+            )
+            core_wfc_data_group = load_group(core_wfc_data_group_name)
+            core_wfc_data = {
+                element: core_wfc_data_group.nodes[0] for element in elements_list
+            }
+            xspectra_core_overrides = xspectra_overrides.get("core", {})
+            if pseudo_family is not None:
+                xspectra_core_overrides.setdefault("scf", {})[
+                    "pseudo_family"
+                ] = pseudo_family
+                xspectra_overrides["core"] = xspectra_core_overrides
             xspectra = XspectraCrystalWorkChain.get_builder_from_protocol(
                 pw_code=pw_code,
                 xs_code=xspectra_code,
@@ -267,14 +282,15 @@ class QeAppWorkChain(WorkChain):
                 pseudos=pseudos,
                 protocol=protocol,
                 core_hole_pseudos=pseudos,
-                # core_wfc_data=core_wfc_data,
-                # overrides=xspectra_overrides,
-                # **kwargs,
+                core_hole_treatments=core_hole_treatments,
+                core_wfc_data=core_wfc_data,
+                overrides=xspectra_overrides,
+                **kwargs,
             )
             # xspectra.pop("structure", None)
             print(xspectra)
-            xspectra["xs_plot"]["xspectra"] = xspectra["xs_prod"]["xspectra"]
             xspectra.pop("clean_workdir", None)
+            xspectra.pop("relax", None)
             builder.xspectra = xspectra
 
         builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
@@ -471,24 +487,20 @@ class QeAppWorkChain(WorkChain):
         inputs.metadata.call_link_label = "xspectra"
         inputs.structure = self.ctx.current_structure
 
-        # if self.ctx.scf_parent_folder:
-        # inputs.pop("scf")
-        # inputs.xs_prod.xspectra.parent_folder = self.ctx.scf_parent_folder
-        # else:
-        #     if "kpoints_distance_override" in self.inputs:
-        #         inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
+        if "kpoints_distance_override" in self.inputs:
+            inputs.core.scf.kpoints_distance = self.inputs.kpoints_distance_override
 
-        #     inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
-        #     if "degauss_override" in self.inputs:
-        #         inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-        #             "degauss"
-        #         ] = self.inputs.degauss_override.value
+        # inputs.core.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
+        if "degauss_override" in self.inputs:
+            inputs.core.scf.pw.parameters.setdefault("SYSTEM", {})[
+                "degauss"
+            ] = self.inputs.degauss_override.value
 
-        #     if "smearing_override" in self.inputs:
-        #         inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-        #             "smearing"
-        #         ] = self.inputs.smearing_override.value
-        # self.report(f"run_xspectra: {inputs}")
+        if "smearing_override" in self.inputs:
+            inputs.core.scf.pw.parameters.setdefault("SYSTEM", {})[
+                "smearing"
+            ] = self.inputs.smearing_override.value
+
         inputs = prepare_process_inputs(XspectraCrystalWorkChain, inputs)
         # self.report(f"run_xspectra: {inputs}")
         running = self.submit(XspectraCrystalWorkChain, **inputs)
@@ -582,27 +594,6 @@ class QeAppWorkChain(WorkChain):
                     "projections", self.ctx.workchain_pdos.outputs.projwfc.projections
                 )
 
-        if "workchain_xspectra" in self.ctx:
-            self.out(
-                "nscf_parameters",
-                self.ctx.workchain_xspectra.outputs.nscf.output_parameters,
-            )
-            self.out("dos", self.ctx.workchain_xspectra.outputs.dos.output_dos)
-            if "projections_up" in self.ctx.workchain_xspectra.outputs.projwfc:
-                self.out(
-                    "projections_up",
-                    self.ctx.workchain_xspectra.outputs.projwfc.projections_up,
-                )
-                self.out(
-                    "projections_down",
-                    self.ctx.workchain_xspectra.outputs.projwfc.projections_down,
-                )
-            else:
-                self.out(
-                    "projections",
-                    self.ctx.workchain_xspectra.outputs.projwfc.projections,
-                )
-
         if "workchain_xps" in self.ctx:
             self.out("chemical_shifts", self.ctx.workchain_xps.outputs.chemical_shifts)
             self.out(
@@ -619,6 +610,9 @@ class QeAppWorkChain(WorkChain):
                 self.out(
                     "xps_spectra_be", self.ctx.workchain_xps.outputs.final_spectra_be
                 )
+
+        if "workchain_xspectra" in self.ctx:
+            self.out("xas_spectra", self.ctx.workchain_xspectra.outputs.final_spectra)
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""

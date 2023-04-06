@@ -422,6 +422,12 @@ class SpectroscopySettings(ipw.VBox):
             style={"description_width": "initial"},
             disabled=False,
         )
+        self.core_wfc_data = ipw.Text(
+            description="core wavefunction data",
+            value="core_wfc_data",
+            style={"description_width": "initial"},
+            disabled=False,
+        )
         self.elements_list = ipw.Text(
             description="Select element:",
             value="",
@@ -477,7 +483,7 @@ class SpectroscopySettings(ipw.VBox):
                 self.pseudo_title,
                 self.pseudo_help,
                 ipw.HBox(
-                    [self.es_pseudo, self.gs_pseudo],
+                    [self.es_pseudo, self.gs_pseudo, self.core_wfc_data],
                 ),
                 self.element_title,
                 self.element_help,
@@ -1078,6 +1084,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         parameters[
             "supercell_min_parameter"
         ] = self.spectroscopy_settings.supercell_min_parameter.value
+        parameters["core_wfc_data"] = self.spectroscopy_settings.core_wfc_data.value
 
         return parameters
 
@@ -1156,12 +1163,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 continue
             element, energy = item.replace(" ", "").split(":")
             overrides["xps"]["correction_energies"][element] = float(energy)
-        overrides["xps"]["structure_preparation_settings"] = Dict(
-            {
-                "is_molecule_input": Bool(parameters["structure_type"] == "molecule"),
-                "supercell_min_parameter": Float(parameters["supercell_min_parameter"]),
-            }
-        )
+        overrides["xps"]["structure_preparation_settings"] = {
+            "is_molecule_input": Bool(parameters["structure_type"] == "molecule"),
+            "supercell_min_parameter": Float(parameters["supercell_min_parameter"]),
+        }
+        overrides["xas"] = {"core_wfc_data": parameters["core_wfc_data"]}
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=load_code(parameters["pw_code"]),
