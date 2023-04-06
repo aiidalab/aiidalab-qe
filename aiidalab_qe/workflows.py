@@ -390,6 +390,3 @@ class QeAppWorkChain(WorkChain):
             self.report(
                 f"cleaned remote folders of calculations: {' '.join(map(str, cleaned_calcs))}"
             )
-
-
-__version__ = "23.4.1"

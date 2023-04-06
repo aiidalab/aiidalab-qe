@@ -29,7 +29,7 @@ from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
 from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
-from aiidalab_qe_workchain import QeAppWorkChain
+from aiidalab_qe.workflows import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
