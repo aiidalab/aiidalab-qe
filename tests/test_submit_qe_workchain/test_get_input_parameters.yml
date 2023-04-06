@@ -1,10 +1,10 @@
 ---
-dos_code:
+dos_code: dos@localhost
 electronic_type: metal
-projwfc_code:
+projwfc_code: projwfc@localhost
 protocol: moderate
 pseudo_family: SSSP/1.2/PBEsol/efficiency
-pw_code:
+pw_code: pw@localhost
 relax_type: positions_cell
 run_bands: true
 run_pdos: true
