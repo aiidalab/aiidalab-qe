@@ -9,7 +9,6 @@ from aiida.tools.query.calculation import CalculationQueryBuilder
 
 
 class WorkChainSelector(ipw.HBox):
-
     # The PK of a 'aiida.workflows:quantumespresso.pw.bands' WorkChainNode.
     value = traitlets.Int(allow_none=True)
 

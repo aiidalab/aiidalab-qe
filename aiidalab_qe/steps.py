@@ -38,7 +38,6 @@ Str = DataFactory("core.str")
 
 
 class WorkChainSettings(ipw.VBox):
-
     structure_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Structure</h4></div>"""
@@ -83,7 +82,6 @@ class WorkChainSettings(ipw.VBox):
     )
 
     def __init__(self, **kwargs):
-
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type = ipw.ToggleButtons(
             options=[
@@ -179,7 +177,6 @@ class WorkChainSettings(ipw.VBox):
 
 
 class SmearingSettings(ipw.VBox):
-
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
@@ -194,7 +191,6 @@ class SmearingSettings(ipw.VBox):
     smearing_default = traitlets.Unicode(default_value="cold")
 
     def __init__(self, **kwargs):
-
         self.override_protocol_smearing = ipw.Checkbox(
             description="Override",
             indent=False,
@@ -253,7 +249,6 @@ class SmearingSettings(ipw.VBox):
 
 
 class KpointSettings(ipw.VBox):
-
     kpoints_distance_description = ipw.HTML(
         """<div>
         The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
@@ -265,7 +260,6 @@ class KpointSettings(ipw.VBox):
     kpoints_distance_default = traitlets.Float(default_value=0.15)
 
     def __init__(self, **kwargs):
-
         self.override_protocol_kpoints = ipw.Checkbox(
             description="Override",
             indent=False,
@@ -305,7 +299,6 @@ class KpointSettings(ipw.VBox):
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
-
     confirmed = traitlets.Bool()
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
@@ -314,7 +307,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
 
     def __init__(self, **kwargs):
-
         self.workchain_settings = WorkChainSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
         self.workchain_settings.bands_run.observe(self._update_state, "value")
@@ -565,7 +557,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._submission_blocker_messages.value = ""
 
     def _identify_submission_blockers(self):
-
         # Do not submit while any of the background setup processes are running.
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
@@ -679,7 +670,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.set_resource_defaults(load_code(change["new"]).computer)
 
     def set_resource_defaults(self, computer=None):
-
         if computer is None or computer.hostname == "localhost":
             self.resources_config.num_nodes.disabled = True
             self.resources_config.num_nodes.value = 1
@@ -901,7 +891,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
-
     process = traitlets.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):

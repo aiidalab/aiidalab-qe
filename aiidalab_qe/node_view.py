@@ -34,7 +34,6 @@ from aiidalab_qe.report import generate_report_dict
 
 
 class MinimalStructureViewer(ipw.VBox):
-
     structure = Union([Instance(Atoms), Instance(Node)], allow_none=True)
     _displayed_structure = Instance(Atoms, allow_none=True, read_only=True)
 
@@ -42,7 +41,6 @@ class MinimalStructureViewer(ipw.VBox):
     supercell = List(Int)
 
     def __init__(self, structure, *args, **kwargs):
-
         self._viewer = nglview.NGLWidget()
         self._viewer.camera = "orthographic"
         self._viewer.stage.set_parameters(mouse_preset="pymol")
@@ -146,7 +144,8 @@ def _projections_curated(
 ):
     """Collect the data from ProjectionData and parse it as dos list which can be
     understand by bandsplot widget. `group_dos_by` is for which tag to be grouped, by atom or by orbital name.
-    The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label."""
+    The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label.
+    """
     _pdos = {}
 
     for orbital, pdos, energy in projections.get_pdos():
@@ -289,7 +288,6 @@ class VBoxWithCaption(ipw.VBox):
 
 class SummaryView(ipw.VBox):
     def __init__(self, wc_node, **kwargs):
-
         self.wc_node = wc_node
 
         def _fmt_yes_no(truthy):
@@ -315,7 +313,6 @@ class SummaryView(ipw.VBox):
 
 
 class WorkChainOutputs(ipw.VBox):
-
     _busy = traitlets.Bool(read_only=True)
 
     def __init__(self, node, export_dir=None, **kwargs):
@@ -340,7 +337,6 @@ class WorkChainOutputs(ipw.VBox):
         self._download_button_container = ipw.Box([self._download_archive_button])
 
         if node.exit_status != 0:
-
             title = ipw.HTML(
                 f"<h4>Workflow failed with exit status [{ node.exit_status }]</h4>"
             )
@@ -383,7 +379,6 @@ class WorkChainOutputs(ipw.VBox):
         ]
 
     def _download_archive(self, _):
-
         fn_archive = self.export_dir.joinpath(str(self.node.uuid)).with_suffix(".zip")
         fn_lockfile = fn_archive.with_suffix(".lock")
 
@@ -496,7 +491,6 @@ class WorkChainOutputs(ipw.VBox):
         pseudo_folder.mkdir(exist_ok=True)
 
         for _, pseudo in calcjob.inputs.pseudos.items():
-
             pseudo_path = pseudo_folder / pseudo.filename
 
             with pseudo_path.open("w") as handle:
@@ -512,7 +506,6 @@ class WorkChainOutputs(ipw.VBox):
 
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
 class WorkChainViewer(ipw.VBox):
-
     _results_shown = traitlets.Set()
 
     def __init__(self, node, **kwargs):
