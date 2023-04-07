@@ -58,6 +58,9 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     appdir = f"/home/{nb_user}/apps/aiidalab-qe"
     aiidalab_exec(f"chmod -R a+rw {appdir}", user="root")
 
+    # install aiidalab-qe
+    aiidalab_exec("pip install -U .", workdir=appdir)
+
     # `port_for` takes a container port and returns the corresponding host port
     port = docker_services.port_for("aiidalab", 8888)
     url = f"http://{docker_ip}:{port}"
