@@ -266,9 +266,15 @@ class QeAppWorkChain(WorkChain):
                 "core_wfc_data", None
             )
             core_wfc_data_group = load_group(core_wfc_data_group_name)
-            core_wfc_data = {
-                element: core_wfc_data_group.nodes[0] for element in elements_list
-            }
+            # set the label for the core-wavefunction data nodes as
+            # "<element>_core.dat" so that the WorkChain can load multiple
+            # files as needed
+            core_wfc_data = {}
+            for node in core_wfc_data_group.nodes:
+                element = node.label.split("_")[0]
+                if element in elements_list:
+                    core_wfc_data[element] = node
+
             xspectra_core_overrides = xspectra_overrides.get("core", {})
             if pseudo_family is not None:
                 xspectra_core_overrides.setdefault("scf", {})[
