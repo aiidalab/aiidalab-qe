@@ -10,7 +10,8 @@ FUNCTIONAL_LINK_MAP = {
 }
 
 PSEUDO_LINK_MAP = {
-    "SSSP": "https://www.materialscloud.org/discover/sssp/table/efficiency"
+    "SSSP": "https://www.materialscloud.org/discover/sssp/table/efficiency",
+    "PseudoDojo": "http://www.pseudo-dojo.org/",
 }
 
 PROTOCOL_PSEUDO_MAP = {
@@ -63,6 +64,11 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
             functional = pseudo_family_list[2]
             yield "functional", functional
             yield "pseudo_protocol", pseudo_family_list[3]
+        elif pseudo_library == "PseudoDojo":
+            yield "pseudo_version", pseudo_family_list[1]
+            functional = pseudo_family_list[2]
+            yield "functional", functional
+            yield "pseudo_protocol", pseudo_family_list[4]
         else:
             raise NotImplementedError
     except (KeyError, AttributeError):
