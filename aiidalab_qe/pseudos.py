@@ -32,7 +32,8 @@ class PseudoFamilySelector(ipw.VBox):
         most calculations will produce sufficiently accurate results at
         comparatively small computational costs. If your calculations require a
         higher accuracy, select 'SSSP accuracy', which will be computationally
-        more expensive. Standard solid-state pseudopotentials</a> (SSSP)</div>"""
+        more expensive. SSSP is the standard solid-state pseudopotentials.
+        The PseudoDojo used here has the SR relativistic type and the standard accuracy.</div>"""
     )
 
     dft_functional_prompt = ipw.HTML(
