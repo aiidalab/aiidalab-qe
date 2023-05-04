@@ -4,7 +4,7 @@ import re
 import ipywidgets as ipw
 import traitlets
 
-from aiidalab_qe.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 
 
 class PseudoFamilySelector(ipw.VBox):

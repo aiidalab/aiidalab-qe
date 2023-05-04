@@ -29,8 +29,8 @@ from monty.json import jsanitize
 from traitlets import Instance, Int, List, Unicode, Union, default, observe, validate
 from widget_bandsplot import BandsPlotWidget
 
-from aiidalab_qe import static
-from aiidalab_qe.report import generate_report_dict
+from aiidalab_qe.app import static
+from aiidalab_qe.app.report import generate_report_dict
 
 
 class MinimalStructureViewer(ipw.VBox):

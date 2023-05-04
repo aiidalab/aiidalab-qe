@@ -19,7 +19,7 @@ from aiidalab_widgets_base import register_viewer_widget
 from IPython.display import HTML, Javascript, display
 
 # trigger registration of the viewer widget:
-from aiidalab_qe import node_view  # noqa: F401
+from aiidalab_qe.app import node_view  # noqa: F401
 
 __all__ = [
     "CalcJobOutputFollower",
