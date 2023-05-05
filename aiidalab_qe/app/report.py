@@ -66,7 +66,7 @@ def _generate_report_dict(builder_parameters: dict):
         yield "smearing", builder_parameters["smearing"]
 
 
-def _generate_report_html(builder_parameters: dict):
+def _generate_report_html(report):
     """Read from the bulider parameters and generate a html for reporting
     the inputs for the `QeAppWorkChain`.
     """
@@ -88,16 +88,15 @@ def _generate_report_html(builder_parameters: dict):
     template = resources.read_text(static, "workflow_summary.jinja")
     style = resources.read_text(static, "style.css")
 
-    report = dict(_generate_report_dict(builder_parameters))
-
     return env.from_string(template).render(style=style, **report)
 
 
 def generate_report_html(qeapp_wc):
     """Generate a html for reporting the inputs for the `QeAppWorkChain`"""
     builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
+    report = dict(_generate_report_dict(builder_parameters))
 
-    return _generate_report_html(builder_parameters)
+    return _generate_report_html(report)
 
 
 def generate_report_text(report_dict):

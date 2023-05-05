@@ -1,90 +1,41 @@
 import pytest
 
 
-@pytest.fixture()
-def workchain_settings_generator():
-    """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.steps import WorkChainSettings
+def test_reload_selected_code(submit_step_widget_generator):
+    """Test set_selected_codes method."""
+    from aiidalab_qe.app.steps import SubmitQeAppWorkChainStep
 
-    def _workchain_settings_generator(**kwargs):
-        workchain_settings = WorkChainSettings()
-        workchain_settings._update_settings(**kwargs)
-        return workchain_settings
+    submit_step = submit_step_widget_generator()
 
-    return _workchain_settings_generator
+    builder = submit_step._create_builder()
+    extra_parameters = submit_step._create_extra_report_parameters()
+    builder_parameters = submit_step._extract_report_parameters(
+        builder, extra_parameters
+    )
 
+    new_submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
+    new_submit_step.set_selected_codes(parameters=builder_parameters)
 
-@pytest.fixture()
-def smearing_settings_generator():
-    """Return a function that generates a smearing settings dictionary."""
-    from aiidalab_qe.app.steps import SmearingSettings
-
-    def _smearing_settings_generator(**kwargs):
-        smearing_settings = SmearingSettings()
-        smearing_settings._update_settings(**kwargs)
-        print("smearing", smearing_settings.smearing.value)
-        return smearing_settings
-
-    return _smearing_settings_generator
-
-
-@pytest.fixture()
-def kpoints_settings_generator():
-    """Return a function that generates a kpoints settings dictionary."""
-    from aiidalab_qe.app.steps import KpointSettings
-
-    def _kpoints_settings_generator(**kwargs):
-        kpoints_settings = KpointSettings()
-        kpoints_settings._update_settings(**kwargs)
-        return kpoints_settings
-
-    return _kpoints_settings_generator
+    assert new_submit_step.pw_code.value == submit_step.pw_code.value
+    assert new_submit_step.dos_code.value == submit_step.dos_code.value
+    assert new_submit_step.projwfc_code.value == submit_step.projwfc_code.value
 
 
 @pytest.mark.usefixtures("sssp")
 def test_create_builder_default(
     data_regression,
-    pw_code,
-    dos_code,
-    projwfc_code,
-    structure_data_object,
-    workchain_settings_generator,
-    smearing_settings_generator,
-    kpoints_settings_generator,
+    submit_step_widget_generator,
 ):
     """ "Test the creation of the workchain builder.
 
     metal, non-magnetic
     """
-    from aiidalab_qe.app.pseudos import PseudoFamilySelector
     from aiidalab_qe.app.report import _generate_report_html
-    from aiidalab_qe.app.steps import SubmitQeAppWorkChainStep
 
-    # XXX: combine the following three lines into one fixture call
-    submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    submit_step.input_structure = structure_data_object
-    submit_step.pseudo_family_selector = PseudoFamilySelector()
+    submit_step = submit_step_widget_generator()
 
-    # XXX: Codes, may also be set in the step constructor
-    submit_step.pw_code.value = pw_code.uuid
-    submit_step.dos_code.value = dos_code.uuid
-    submit_step.projwfc_code.value = projwfc_code.uuid
-
-    # Settings
-    submit_step.workchain_settings = workchain_settings_generator(
-        relax_type="positions_cell",
-        spin_type="none",
-        electronic_type="metal",
-        bands_run=True,
-        pdos_run=True,
-        workchain_protocol="moderate",
-    )
-    submit_step.kpoints_settings = kpoints_settings_generator(kpoints_distance=0.12)
-    submit_step.smearing_settings = smearing_settings_generator(
-        smearing="methfessel-paxton", degauss=0.015, override_protocol_smearing=True
-    )
-
-    builder, extra_parameters = submit_step._create_builder()
+    builder = submit_step._create_builder()
+    extra_parameters = submit_step._create_extra_report_parameters()
 
     # check and validate the builder
     got = builder_to_readable_dict(builder)
@@ -106,47 +57,20 @@ def test_create_builder_default(
 @pytest.mark.usefixtures("sssp")
 def test_create_builder_insulator(
     data_regression,
-    pw_code,
-    dos_code,
-    projwfc_code,
-    structure_data_object,
-    workchain_settings_generator,
-    smearing_settings_generator,
-    kpoints_settings_generator,
+    submit_step_widget_generator,
 ):
     """ "Test the creation of the workchain builder.
 
     insulator, non-magnetic, no smearing
     the occupation type is set to fixed, smearing and degauss should not be set"""
-    from aiidalab_qe.app.pseudos import PseudoFamilySelector
     from aiidalab_qe.app.report import _generate_report_html
-    from aiidalab_qe.app.steps import SubmitQeAppWorkChainStep
 
-    # XXX: combine the following three lines into one fixture call
-    submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    submit_step.input_structure = structure_data_object
-    submit_step.pseudo_family_selector = PseudoFamilySelector()
-
-    # XXX: Codes, may also be set in the step constructor
-    submit_step.pw_code.value = pw_code.uuid
-    submit_step.dos_code.value = dos_code.uuid
-    submit_step.projwfc_code.value = projwfc_code.uuid
-
-    # Settings
-    submit_step.workchain_settings = workchain_settings_generator(
-        relax_type="positions_cell",
-        spin_type="none",
+    submit_step = submit_step_widget_generator(
         electronic_type="insulator",
-        bands_run=True,
-        pdos_run=True,
-        workchain_protocol="moderate",
     )
-    submit_step.kpoints_settings = kpoints_settings_generator(kpoints_distance=0.12)
-    submit_step.smearing_settings = smearing_settings_generator(
-        smearing="methfessel-paxton", degauss=0.015, override_protocol_smearing=True
-    )  # override but has not effect
 
-    builder, extra_parameters = submit_step._create_builder()
+    builder = submit_step._create_builder()
+    extra_parameters = submit_step._create_extra_report_parameters()
 
     # check and validate the builder
     got = builder_to_readable_dict(builder)

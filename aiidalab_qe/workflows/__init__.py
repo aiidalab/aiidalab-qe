@@ -106,12 +106,7 @@ class QeAppWorkChain(WorkChain):
         builder = cls.get_builder()
 
         # Set the structure.
-        if isinstance(structure, StructureData):
-            builder.structure = structure
-        else:
-            raise TypeError(
-                f"the `structure` must be of type `StructureData`, get {structure} of type {type(structure)}."
-            )
+        builder.structure = structure
 
         # relax workchain settings
         relax_overrides = overrides.get("relax", {})
@@ -125,7 +120,7 @@ class QeAppWorkChain(WorkChain):
             **kwargs,
         )
 
-        # pop the inputs that are exclueded from the expose_inputs
+        # pop the inputs that are excluded from the expose_inputs
         relax.pop("structure", None)
         relax.pop("clean_workdir", None)
         relax.pop("base_final_scf", None)  # never run a final scf
@@ -141,7 +136,7 @@ class QeAppWorkChain(WorkChain):
             overrides=bands_overrides,
             **kwargs,
         )
-        # pop the inputs that are exclueded from the expose_inputs
+        # pop the inputs that are excluded from the expose_inputs
         bands.pop("relax")
         bands.pop("structure", None)
         bands.pop("clean_workdir", None)

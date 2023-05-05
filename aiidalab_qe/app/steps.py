@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import typing as t
+from dataclasses import dataclass
 
 import ipywidgets as ipw
 import traitlets
@@ -43,6 +44,21 @@ PROTOCOL_PSEUDO_MAP = {
     "moderate": "SSSP/1.2/PBE/efficiency",
     "precise": "SSSP/1.2/PBE/precision",
 }
+
+
+# The static input parameters for the QE App WorkChain
+# The dataclass does not include codes and structure which will be set
+# from widgets separately.
+# Relax type, electronic type, spin type, are str because they are used also
+# for serialized input of extras attributes of the workchain
+@dataclass(frozen=True)
+class QeWorkChainParameters:
+    protocol: str
+    relax_type: str
+    properties: t.List[str]
+    spin_type: str
+    electronic_type: str
+    overrides: t.Dict[str, t.Any]
 
 
 class WorkChainSettings(ipw.VBox):
@@ -822,7 +838,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
-        builder, extra_parameters = self._create_builder()
+        builder = self._create_builder()
+        extra_parameters = self._create_extra_report_parameters()
+
         with self.hold_trait_notifications():
             self.process = submit(builder)
 
@@ -832,14 +850,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             )
             self.process.base.extras.set("builder_parameters", builder_parameters)
 
-    def _create_builder(self) -> tuple[ProcessBuilderNamespace, dict[str, t.Any]]:
-        """Create the builder for the `QeAppWorkChain` submit.
-
-        This method will also create a dictionary of the parameters that were not
-        readably represented in the builder, which will be used to the report. It is stored
-        in the `extra_report_parameters`.
-        """
-
+    def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
+        """Get the parameters of the `QeWorkChain` from widgets."""
         # create the override parameters for sub PwBaseWorkChain
         pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
         for key in ["base", "scf", "nscf", "band"]:
@@ -870,7 +882,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     "degauss"
                 ] = self.smearing_settings.degauss.value
 
-        parameters_overrides = {
+        overrides = {
             "relax": {
                 "base": pw_overrides["base"],
             },
@@ -894,10 +906,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         run_pdos = self.workchain_settings.pdos_run.value
         protocol = self.workchain_settings.workchain_protocol.value
 
-        pw_code = self.pw_code.value
-        dos_code = self.dos_code.value
-        projwfc_code = self.projwfc_code.value
-
         properties = []
 
         if run_bands:
@@ -910,17 +918,34 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # We will using caching anyway so this won't be a problem
             properties.append("relax")
 
+        return QeWorkChainParameters(
+            protocol=protocol,
+            relax_type=relax_type,
+            properties=properties,
+            spin_type=spin_type,
+            electronic_type=electronic_type,
+            overrides=overrides,
+        )
+
+    def _create_builder(self) -> ProcessBuilderNamespace:
+        """Create the builder for the `QeAppWorkChain` submit."""
+        pw_code = self.pw_code.value
+        dos_code = self.dos_code.value
+        projwfc_code = self.projwfc_code.value
+
+        parameters = self._get_qe_workchain_parameters()
+
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=load_code(pw_code),
             dos_code=load_code(dos_code),
             projwfc_code=load_code(projwfc_code),
-            protocol=protocol,
-            relax_type=RelaxType(relax_type),
-            properties=properties,
-            spin_type=SpinType(spin_type),
-            electronic_type=ElectronicType(electronic_type),
-            overrides=parameters_overrides,
+            protocol=parameters.protocol,
+            relax_type=RelaxType(parameters.relax_type),
+            properties=parameters.properties,
+            spin_type=SpinType(parameters.spin_type),
+            electronic_type=ElectronicType(parameters.electronic_type),
+            overrides=parameters.overrides,
             # clean_workdir=self.clean_workdir.value, # XXX: widget not implemented yet
         )
 
@@ -933,43 +958,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # XXX: update is not required, but can be pass the override to the builder
         self._update_builder(builder, resources, npool, self.MAX_MPI_PER_POOL)
 
-        # Construct the extra report parameters needed for the report
-        extra_report_parameters = {
-            "relax_type": relax_type,
-            "electronic_type": electronic_type,
-            "spin_type": spin_type,
-            "protocol": protocol,
-        }
-
-        # update pseudo family information to extra_report_parameters
-        if self.pseudo_family_selector.override_protocol_pseudo_family.value:
-            # If the pseudo family is overridden, use that
-            pseudo_family = self.pseudo_family_selector.value
-        else:
-            # otherwise extract the information from protocol
-            pseudo_family = PROTOCOL_PSEUDO_MAP[protocol]
-
-        pseudo_family_info = pseudo_family.split("/")
-        extra_report_parameters.update(
-            {
-                "pseudo_family": pseudo_family,
-                "pseudo_library": pseudo_family_info[0],
-                "pseudo_version": pseudo_family_info[1],
-                "functional": pseudo_family_info[2],
-                "pseudo_protocol": pseudo_family_info[3],
-            }
-        )
-
-        # store codes info into extra_report_parameters for loading the process
-        extra_report_parameters.update(
-            {
-                "pw_code": pw_code,
-                "dos_code": dos_code,
-                "projwfc_code": projwfc_code,
-            }
-        )
-
-        return builder, extra_report_parameters
+        return builder
 
     def _update_builder(self, buildy, resources, npools, max_mpi_per_pool):
         """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
@@ -996,6 +985,55 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     buildy["resources"] = resources
                 else:
                     self._update_builder(v, resources, npools, max_mpi_per_pool)
+
+    def _create_extra_report_parameters(self) -> dict[str, t.Any]:
+        """This method will also create a dictionary of the parameters that were not
+        readably represented in the builder, which will be used to the report.
+        It is stored in the `extra_report_parameters`.
+        """
+        qe_workchain_parameters = self._get_qe_workchain_parameters()
+
+        # Construct the extra report parameters needed for the report
+        extra_report_parameters = {
+            "relax_type": qe_workchain_parameters.relax_type,
+            "electronic_type": qe_workchain_parameters.electronic_type,
+            "spin_type": qe_workchain_parameters.spin_type,
+            "protocol": qe_workchain_parameters.protocol,
+        }
+
+        # update pseudo family information to extra_report_parameters
+        if self.pseudo_family_selector.override_protocol_pseudo_family.value:
+            # If the pseudo family is overridden, use that
+            pseudo_family = self.pseudo_family_selector.value
+        else:
+            # otherwise extract the information from protocol
+            pseudo_family = PROTOCOL_PSEUDO_MAP[qe_workchain_parameters.protocol]
+
+        pseudo_family_info = pseudo_family.split("/")
+        extra_report_parameters.update(
+            {
+                "pseudo_family": pseudo_family,
+                "pseudo_library": pseudo_family_info[0],
+                "pseudo_version": pseudo_family_info[1],
+                "functional": pseudo_family_info[2],
+                "pseudo_protocol": pseudo_family_info[3],
+            }
+        )
+
+        # store codes info into extra_report_parameters for loading the process
+        pw_code = self.pw_code.value
+        dos_code = self.dos_code.value
+        projwfc_code = self.projwfc_code.value
+
+        extra_report_parameters.update(
+            {
+                "pw_code": pw_code,
+                "dos_code": dos_code,
+                "projwfc_code": projwfc_code,
+            }
+        )
+
+        return extra_report_parameters
 
     @staticmethod
     def _extract_report_parameters(

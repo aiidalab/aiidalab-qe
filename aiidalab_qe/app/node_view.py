@@ -28,6 +28,9 @@ from traitlets import Instance, Int, List, Unicode, Union, default, observe, val
 from widget_bandsplot import BandsPlotWidget
 
 from aiidalab_qe.app import static
+from aiidalab_qe.app.legacy_report import (
+    generate_report_html as generate_report_html_legacy,
+)
 from aiidalab_qe.app.report import generate_report_html
 
 
@@ -286,9 +289,18 @@ class VBoxWithCaption(ipw.VBox):
 
 class SummaryView(ipw.VBox):
     def __init__(self, wc_node, **kwargs):
+        from packaging import version
+
         self.wc_node = wc_node
 
-        report_html = generate_report_html(wc_node)
+        qeapp_version = wc_node.base.attributes.get("version", {}).get("plugin", None)
+        # if version.parse(qeapp_version) < version.parse("23.10.0"):
+        if qeapp_version is None or version.parse(qeapp_version) < version.parse(
+            "23.4.1"
+        ):  # XXX: use above line when 23.10.0a0 is released
+            report_html = generate_report_html_legacy(wc_node)
+        else:
+            report_html = generate_report_html(wc_node)
 
         self.summary_view = ipw.HTML(report_html)
         super().__init__(
