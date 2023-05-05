@@ -25,11 +25,11 @@ from aiidalab_widgets_base import (
 )
 from IPython.display import display
 
-from aiidalab_qe.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.pseudos import PseudoFamilySelector
-from aiidalab_qe.setup_codes import QESetupWidget
-from aiidalab_qe.sssp import SSSPInstallWidget
-from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.app.pseudos import PseudoFamilySelector
+from aiidalab_qe.app.setup_codes import QESetupWidget
+from aiidalab_qe.app.sssp import SSSPInstallWidget
+from aiidalab_qe.app.widgets import ParallelizationSettings, ResourceSelectionWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")
@@ -557,7 +557,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # in case that the installation was already triggered elsewhere, e.g.,
         # by the start up scripts.  The submission is blocked while the
         # potentials are not yet installed.
-        self.sssp_installation_status = SSSPInstallWidget()
+        self.sssp_installation_status = SSSPInstallWidget(auto_start=qe_auto_setup)
         self.sssp_installation_status.observe(self._update_state, ["busy", "installed"])
         self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
 

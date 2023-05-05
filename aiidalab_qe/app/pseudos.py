@@ -55,20 +55,20 @@ class PseudoFamilySelector(ipw.VBox):
     def __init__(self, **kwargs):
         # Enable manual setting of the pseudopotential family
         self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
-        self.set_pseudo_family = ipw.Checkbox(
+        self.override_protocol_pseudo_family = ipw.Checkbox(
             description="",
             indent=False,
             value=False,
             layout=ipw.Layout(max_width="10%"),
         )
         self.set_pseudo_family_box = ipw.HBox(
-            [self.set_pseudo_family_prompt, self.set_pseudo_family],
+            [self.set_pseudo_family_prompt, self.override_protocol_pseudo_family],
             layout=ipw.Layout(max_width="20%"),
         )
         self.show_ui = ipw.Valid(value=True)
-        self.set_pseudo_family.observe(self.set_show_ui, "value")
-        self.set_pseudo_family.observe(self.set_text_color, "value")
-        self.set_pseudo_family.observe(self.set_value_trait, "value")
+        self.override_protocol_pseudo_family.observe(self.set_show_ui, "value")
+        self.override_protocol_pseudo_family.observe(self.set_text_color, "value")
+        self.override_protocol_pseudo_family.observe(self.set_value_trait, "value")
 
         # Choose the DFT functional
         self.dft_functional = ipw.Dropdown(
@@ -120,7 +120,7 @@ class PseudoFamilySelector(ipw.VBox):
     def set_value_trait(self, _=None):
         self.value = (
             DEFAULT_PARAMETERS["pseudo_family"]
-            if not self.set_pseudo_family.value
+            if not self.override_protocol_pseudo_family.value
             else f"SSSP/1.2/{self.dft_functional.value}/{self.protocol_selection.value}"
         )
 

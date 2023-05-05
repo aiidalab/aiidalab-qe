@@ -74,7 +74,7 @@ def _generate_report_html(builder_parameters: dict):
 
     from jinja2 import Environment
 
-    from aiidalab_qe import static
+    from aiidalab_qe.app import static
 
     def _fmt_yes_no(truthy):
         return "Yes" if truthy else "No"
