@@ -20,10 +20,6 @@ pre-commit install
 ```
 The pre-commit checks should now be automatically executed prior to each commit.
 
-### Work chain updates
-
-See [src/README.md](src/README.md) for instructions on how to update the `aiidalab_qe_workchain`.
-
 ## For maintainers
 
 To create a new release, clone the repository, install development dependencies with `pip install '.[dev]'`, and then execute `bumpver update`.
@@ -37,8 +33,6 @@ Additional notes:
   - Use the `--dry` option to preview the release change.
   - The release tag (e.g. a/b/rc) is determined from the last release.
     Use the `--tag` option to switch the release tag.
-
-See [above](#for-developers) for notes on how to release updates to the [`aiidalab_qe_workchain`](src/).
 
 ## Acknowledgements
 
