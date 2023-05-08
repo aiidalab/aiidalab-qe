@@ -204,7 +204,6 @@ def submit_step_widget_generator(
         submit_step.input_structure = structure_data_object
         submit_step.pseudo_family_selector = PseudoFamilySelector()
 
-        # XXX: Codes, may also be set in the step constructor
         submit_step.pw_code.value = pw_code.uuid
         submit_step.dos_code.value = dos_code.uuid
         submit_step.projwfc_code.value = projwfc_code.uuid

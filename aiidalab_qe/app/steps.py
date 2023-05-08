@@ -38,7 +38,6 @@ Float = DataFactory("core.float")
 Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
 
-# XXX: this should be able to be read from protocol dynamically
 PROTOCOL_PSEUDO_MAP = {
     "fast": "SSSP/1.2/PBE/efficiency",
     "moderate": "SSSP/1.2/PBE/efficiency",
@@ -199,7 +198,6 @@ class WorkChainSettings(ipw.VBox):
 
     def _update_settings(self, **kwargs):
         """Update the settings based on the given dict."""
-        # XXX: This can be more elegant by define a dict of the settings widegts
         for key in [
             "relax_type",
             "spin_type",
@@ -227,7 +225,6 @@ class SmearingSettings(ipw.VBox):
     smearing_default = traitlets.Unicode(default_value="cold")
 
     def __init__(self, **kwargs):
-        # XXX: rename to `override`
         self.override_protocol_smearing = ipw.Checkbox(
             description="Override",
             indent=False,
@@ -889,7 +886,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "bands": {
                 "scf": pw_overrides["scf"],
                 "bands": pw_overrides["band"],
-                # XXX: double check with @marnik. we didn't override pw for bands but only for scf
             },
             "pdos": {
                 "scf": pw_overrides["scf"],
@@ -914,8 +910,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             properties.append("pdos")
 
         if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
-            # XXX: clear the logic here
-            # We will using caching anyway so this won't be a problem
             properties.append("relax")
 
         return QeWorkChainParameters(
@@ -946,7 +940,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=SpinType(parameters.spin_type),
             electronic_type=ElectronicType(parameters.electronic_type),
             overrides=parameters.overrides,
-            # clean_workdir=self.clean_workdir.value, # XXX: widget not implemented yet
         )
 
         resources = {
@@ -955,15 +948,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
         npool = self.parallelization.npools.value
-        # XXX: update is not required, but can be pass the override to the builder
         self._update_builder(builder, resources, npool, self.MAX_MPI_PER_POOL)
 
         return builder
 
     def _update_builder(self, buildy, resources, npools, max_mpi_per_pool):
         """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
-        # XXX: refactor this function to be more local
-
         for k, v in buildy.items():
             if isinstance(v, (dict, ProcessBuilderNamespace)):
                 if k == "pw" and v["pseudos"]:

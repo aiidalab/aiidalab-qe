@@ -74,9 +74,6 @@ class QeAppWorkChain(WorkChain):
                        message='The PwBandsWorkChain sub process failed')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
-        # XXX: the output can be made namespace, but this lead to changing code of how
-        # which will then break the workchain run by previous version of the app.
-        # That means we need to consider the backward compatibility.
         spec.output('structure', valid_type=StructureData, required=False)
         spec.output('band_parameters', valid_type=orm.Dict, required=False)
         spec.output('band_structure', valid_type=BandsData, required=False)
@@ -294,7 +291,6 @@ class QeAppWorkChain(WorkChain):
 
     def results(self):
         """Add the results to the outputs."""
-        # XXX: add as namespace in each inspect method
         if "workchain_bands" in self.ctx:
             self.out(
                 "band_parameters", self.ctx.workchain_bands.outputs.band_parameters

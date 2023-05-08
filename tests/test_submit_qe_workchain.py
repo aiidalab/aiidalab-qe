@@ -40,8 +40,7 @@ def test_create_builder_default(
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
-    # XXX: Instead of using data_regression whole builder, the test can be more explicit
-    # such as checking all the scf are the same and regressing only the scf.
+    # regression test
     data_regression.check(got)
 
     # test the report can be properly generated from the builder without errors
