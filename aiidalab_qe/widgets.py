@@ -19,7 +19,10 @@ import ase
 from aiida.orm import CalcJobNode, load_node
 from aiidalab_widgets_base.utils import list_to_string_range, string_range_to_list, StatusHTML
 from aiidalab_widgets_base import register_viewer_widget
+from aiidalab_widgets_base.structures import _register_structure
 from IPython.display import HTML, Javascript, display
+from pymatgen.io.ase import AseAtomsAdaptor
+import numpy as np
 
 #defects
 from shakenbreak.distortions import distort, local_mc_rattle
@@ -627,3 +630,225 @@ class AddingTagsEditor(ipw.VBox):
         self.structure = deepcopy(new_structure)
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
+
+
+
+class DistorsionStructureEditor(ipw.VBox):
+
+    structure = tl.Instance(ase.Atoms, allow_none=True)
+    selection = tl.List(tl.Int)
+
+    def __init__(self,title=""):
+        self.title = title
+        self._status_message = StatusHTML()
+        self.num_nearest_neighbours = ipw.IntText(
+            description="Num. neighbours atoms:",
+            value = 8,
+            step = 1,
+            style={"description_width": "initial"},
+            layout={"width": "initial"},
+
+        )
+        self.defect_position = ipw.Text(
+            description="Defect atom:", layout={"width": "initial"}
+        )
+        #Only select one atom! 
+        self.btn_defect_position = ipw.Button(
+            description="From selection", layout={"width": "initial"},
+        )
+        #Center of the selection
+        self.btn_defect_position_vac = ipw.Button(
+            description="From selection", layout={"width": "initial"},
+        )
+        self.vacancy_coords = ipw.Text(
+            description="Vacancy coords:", layout={"width": "initial"}, style={"description_width": "initial"},
+        )
+        self.btn_defect_position.on_click(self._defect_position)
+        self.btn_defect_position_vac.on_click(self._defect_position_vac)
+        self.distortion_factor = ipw.BoundedFloatText(
+            value=1.0,
+            min= 0.2,
+            max = 1.8,
+            step = 0.1,
+            description = "Distortion Factor:",
+            style={"description_width": "initial"},
+            layout={"width": "initial"},
+        )
+        self.btn_apply_bond_distortion = ipw.Button(
+            description = "Apply Bond Distortion",
+            button_style= 'primary',
+            disabled=False,
+            layout={"width": "initial"},
+        )
+        self.btn_apply_bond_distortion.on_click(self._apply_bond_distortion)
+        self.selected_atoms = ipw.Text(
+            description="Select atoms:",
+            value="",
+            style={"description_width": "initial"},
+        )
+        self.btn_selected_atoms = ipw.Button(
+            description="From selection", layout={"width": "initial"},
+        )
+        self.btn_selected_atoms.on_click(self._selected_atoms)
+        self.wrong_syntax = ipw.HTML(
+            value="""<i class="fa fa-times" style="color:red;font-size:2em;" ></i> wrong syntax""",
+            layout={"visibility": "hidden"},
+        )
+        self.radial_cutoff = ipw.FloatText(
+            description="Radial cutoff distance (Å):",
+            value=3,
+            style={"description_width": "initial"},
+            layout={"width": "initial"},
+        )
+        self.btn_apply_random_distortion = ipw.Button(
+            description = "Apply Random Displacement",
+            button_style= 'primary',
+            disabled=False,
+            layout={"width": "initial"},
+        )
+        self.btn_apply_random_distortion.on_click(self._apply_random_distortion)
+        super().__init__(
+            children=[
+                ipw.HTML("<b>Define defect position:</b>",
+            
+                ),
+                ipw.HBox(
+                    [self.defect_position,self.btn_defect_position,self.vacancy_coords,self.btn_defect_position_vac]
+                ),
+                ipw.HTML("<b>Bond distortion around defect:</b>",
+            
+                ),
+                ipw.HBox(
+                    [
+                        self.num_nearest_neighbours,self.distortion_factor, 
+                    ]
+                ),
+                ipw.HTML("<b>Random displacements to all atoms or selected ones:</b>",
+            
+                ),
+                ipw.HBox([
+                    self.selected_atoms,
+                    self.btn_selected_atoms,
+                    self.wrong_syntax,
+                    self.radial_cutoff,
+                ]
+            
+                ),
+                ipw.HBox(
+                    [
+                        self.btn_apply_bond_distortion,
+                        self.btn_apply_random_distortion,
+                    ]
+                ),
+                self._status_message,
+
+            ]
+        )
+
+    def sel2com(self):
+        """Get center of mass of the selection."""
+        if self.selection:
+            com = np.average(self.structure[self.selection].get_scaled_positions(), axis=0)
+        else:
+            com = [0, 0, 0]
+
+        return com
+
+    def str2vec(self, string):
+        return np.array(list(map(float, string.split())))
+
+    def vec2str(self, vector):
+        return (
+            str(round(vector[0], 2))
+            + " "
+            + str(round(vector[1], 2))
+            + " "
+            + str(round(vector[2], 2))
+        )
+
+    def _defect_position_vac(self, _=None):
+        """Define vaccancy coordinates."""
+        self.vacancy_coords.value = self.vec2str(self.sel2com())
+
+    def _defect_position(self, _=None):
+        """Define vaccancy coordinates.""" 
+        if len(self.selection) != 1:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select one atom first.</strong>
+            </div>
+            """
+        else:
+            self.defect_position.value = list_to_string_range(self.selection)
+
+    def _selected_atoms(self, _=None):
+        """Selected atoms to displace."""
+        self.selected_atoms.value = list_to_string_range(self.selection)
+
+    @_register_structure
+    def _apply_bond_distortion(self, _=None , atoms=None):
+        if not self.defect_position.value and not self.vacancy_coords.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select the position of the defect or vacancy.</strong>
+            </div>
+            """
+        else:
+            if self.defect_position.value == '':
+                site_index = None
+            else:
+                site_index = int(self.defect_position.value)
+            if self.vacancy_coords.value == '':
+                frac_coords = None
+            else:
+                frac_coords = self.str2vec(self.vacancy_coords.value)
+            pymatgen_ase = AseAtomsAdaptor()
+            pymatgen_structure= pymatgen_ase.get_structure(atoms)
+            struc_distorted = distort(
+                structure=pymatgen_structure,
+                num_nearest_neighbours=self.num_nearest_neighbours.value,
+                site_index=site_index,
+                distortion_factor=self.distortion_factor.value,
+                frac_coords=frac_coords,
+            )
+            atoms = pymatgen_ase.get_atoms(struc_distorted['distorted_structure'])
+            self.structure = atoms
+
+    @_register_structure  
+    def _apply_random_distortion(self, _=None , atoms=None):
+        if not self.defect_position.value and not self.vacancy_coords.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select the position of the defect or vacancy.</strong>
+            </div>
+            """
+        else:
+            if self.defect_position.value == '':
+                site_index = None
+            else:
+                site_index = int(self.defect_position.value)
+            if self.vacancy_coords.value == '':
+                frac_coords = None
+            else:
+                frac_coords = self.str2vec(self.vacancy_coords.value)
+
+            active_atoms, syntax_ok = string_range_to_list(self.selected_atoms.value)
+            if not active_atoms:
+                active_atoms = None
+            if not syntax_ok:
+                self.wrong_syntax.layout.visibility = "visible"
+            else:
+                self.wrong_syntax.layout.visibility = "hidden"
+            
+                pymatgen_ase=AseAtomsAdaptor()
+                pymatgen_structure= pymatgen_ase.get_structure(atoms)
+                struc_distorted=local_mc_rattle(
+                    structure=pymatgen_structure,
+                    site_index=site_index,
+                    frac_coords=frac_coords,
+                    active_atoms = active_atoms,
+                    nbr_cutoff=self.radial_cutoff.value,
+
+                )
+                atoms = pymatgen_ase.get_atoms(struc_distorted)
+                self.structure = atoms

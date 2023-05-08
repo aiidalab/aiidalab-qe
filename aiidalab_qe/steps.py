@@ -39,10 +39,12 @@ Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
 KpointsData = DataFactory('core.array.kpoints')
 
-class WorkChainSettings(ipw.VBox, WizardAppWidgetStep):
-    confirmed_structure = traitlets.Instance(StructureData, allow_none=True)
-    #confirmed_structure_labels = traitlets.List(allow_none=True)
+class WorkChainSettings(ipw.VBox):
 
+    #previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
+    input_structure_labels = traitlets.List([])
+    
     structure_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Structure</h4></div>"""
@@ -88,33 +90,13 @@ class WorkChainSettings(ipw.VBox, WizardAppWidgetStep):
 
     def __init__(self, **kwargs):
 
-        
-        def create_magnetization_widgets(input_structure):
-            if input_structure is None:
-                labels = []
-            else:
-                labels = input_structure.get_kind_names()
-            widgets_list = []
-            for label in labels:
-                hbox = ipw.HBox()
-                float_widget = ipw.BoundedFloatText(description=label, value=0, min=-1, max=1, step=0.01,)
-                hbox.children = [float_widget]
-                widgets_list.append(hbox)
-            vbox = ipw.VBox([ipw.HTML("Define magnetization")] + widgets_list)
-            return vbox 
-
-        magnetization_widget = create_magnetization_widgets(self.confirmed_structure)
-
+        self.input_structure = StructureData()
+        self.magnetization_widget = self.create_magnetization_widgets()
         self.magnetization_widget_out = ipw.Output()
-        def toggle_magnetization_widgets(change):
-            if change['new'] == 'collinear':
-                with self.magnetization_widget_out:
-                    clear_output()
-                    display(magnetization_widget)
-            else:
-                with self.magnetization_widget_out:
-                    clear_output()
-        
+
+        self.hubbard_parameters = self.create_hubbard_parameters()
+        self.hubbard_parameters_out = ipw.Output()
+
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type = ipw.ToggleButtons(
             options=[
@@ -279,7 +261,8 @@ class WorkChainSettings(ipw.VBox, WizardAppWidgetStep):
                     ]
                 ),
                 ipw.HTML("Select which properties to calculate:"),
-                ipw.HBox(children=[ipw.HTML("<b>Hubbard (DFT+U)</b>"), self.hubbard]),
+                ipw.HBox(children=[ipw.HTML("<b>Hubbard (DFT+U)</b>"), self.hubbard,]),
+                self.hubbard_parameters_out,
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
                 self.two_dim_kpoints_path_layout,
                 ipw.HBox(
@@ -298,31 +281,66 @@ class WorkChainSettings(ipw.VBox, WizardAppWidgetStep):
         )
         self.periodicity.observe(hide_or_show, names="value")
         self.bands_run.observe(hide_or_show, names="value")
-        self.spin_type.observe(toggle_magnetization_widgets, names='value')
+        self.spin_type.observe(self.toggle_magnetization_widgets, names='value')
+        self.hubbard.observe(self.toggle_hubbard_widgets, names='value')
+        #self.update_magnetization_widgets({'new': self.previous_step_state})
+        #self.input_structure_labels.orbserve(self.update_magnetization_widgets, names='value')
+    
+    def create_hubbard_parameters(self):
+        widgets_list = []
+        for label in self.input_structure_labels:
+            hbox = ipw.HBox()
+            float_widget = ipw.FloatText(description=label, min=0, max=10, step=0.1, value=0.0)
+            hbox.children = [float_widget]
+            widgets_list.append(hbox)
+        hubbard_widget = ipw.VBox([ipw.HTML("Define U value")] + widgets_list)
+        return hubbard_widget
+    
+    def toggle_hubbard_widgets(self, change):
+        if change['new'] == True:
+            with self.hubbard_parameters_out:
+                clear_output()
+                display(self.hubbard_parameters)
+        else:
+            with self.hubbard_parameters_out:
+                clear_output()
         
+    def update_hubbard_widgets(self, change):
+        self.input_structure_labels = self.input_structure.get_kind_names()
+        self.hubbard_parameters = self.create_hubbard_parameters()
+        if self.hubbard.value == True:
+            with self.hubbard_parameters_out:
+                clear_output()
+                display(self.hubbard_parameters)
+ 
+    def create_magnetization_widgets(self):
+        widgets_list = []
+        #for label in self.input_structure.get_kind_names():
+        for label in self.input_structure_labels:
+            hbox = ipw.HBox()
+            float_widget = ipw.FloatText(description=label, min=-1, max=1, step=0.1, value=0.0)
+            hbox.children = [float_widget]
+            widgets_list.append(hbox)
+        magnetization_widget = ipw.VBox([ipw.HTML("Define magnetization")] + widgets_list)
+        return magnetization_widget
 
-                
+    def toggle_magnetization_widgets(self, change):
+            if change['new'] == 'collinear':
+                with self.magnetization_widget_out:
+                    clear_output()
+                    display(self.magnetization_widget)
+            else:
+                with self.magnetization_widget_out:
+                    clear_output()
+    
+ 
     def update_magnetization_widgets(self, change):
-        # update magnetization widgets based on new confirmed_structure
-        new_structure = change['new']
-        new_labels = [] if new_structure is None else new_structure.get_kind_names()
-        for i, label in enumerate(new_labels):
-            self.magnetization_widget.children[i].children[0].description = label
-
-        # update displayed magnetization widgets
-        with self.magnetization_widget_out:
-            clear_output()
-            display(self.magnetization_widget)
-
-        # @traitlets.observe("confirmed_structure")
-        # def _observe_confirmed_structure(self, change):
-        #     if isinstance(change["new"], StructureData):
-        #         self.confirmed_structure = change["new"]
-        #         magnetization_widget = create_magnetization_widgets(self.confirmed_structure)
-        #         if self.spin_type.value == 'collinear':
-        #             with self.magnetization_widget_out:
-        #                 clear_output()
-        #                 display(magnetization_widget)
+        self.input_structure_labels = self.input_structure.get_kind_names()
+        self.magnetization_widget = self.create_magnetization_widgets()
+        if self.spin_type.value == 'collinear':
+            with self.magnetization_widget_out:
+                clear_output()
+                display(self.magnetization_widget)
 
 class SmearingSettings(ipw.VBox):
 
@@ -457,6 +475,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
 
@@ -468,6 +487,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.kpoints_settings = KpointSettings()
         self.smearing_settings = SmearingSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
+        #self.workchain_settings.input_structure = StructureData()
+
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
@@ -531,6 +552,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ],
             **kwargs,
         )
+
+    @traitlets.observe("input_structure")
+    def _update_input_structure(self, change):
+        if self.input_structure is not None:
+            self.workchain_settings.input_structure = change["new"]
+            self.workchain_settings.update_magnetization_widgets(change["new"])
+            self.workchain_settings.update_hubbard_widgets(change["new"])
 
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
@@ -939,6 +967,29 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.smearing_settings.override_protocol_smearing.value:
             parameters["smearing_override"] = self.smearing_settings.smearing.value
             parameters["degauss_override"] = self.smearing_settings.degauss.value
+        
+        if self.workchain_settings.spin_type.value == "collinear":
+            starting_magnetization_widget = self.workchain_settings.magnetization_widget
+            kind_names = self.input_structure.get_kind_names()
+            starting_magnetization = {}
+            for i in range(1, len(starting_magnetization_widget.children)):
+                starting_magnetization[kind_names[i-1]] = starting_magnetization_widget.children[i].children[0].value
+
+            parameters["starting_magnetization"] = starting_magnetization
+        else:
+            parameters["starting_magnetization"] = None
+
+        if self.workchain_settings.hubbard.value == True:
+            hubbard_parameters = self.workchain_settings.hubbard_parameters
+            kind_names = self.input_structure.get_kind_names()
+            hubbard_dict = {}
+            for i in range(1, len(hubbard_parameters.children)):
+                hubbard_dict[kind_names[i-1]] = hubbard_parameters.children[i].children[0].value
+            parameters["hubbard_dict"] = hubbard_dict
+        else:
+            parameters["hubbard_dict"] = None
+        
+
 
         return parameters
 
@@ -1006,6 +1057,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=SpinType(parameters["spin_type"]),
             electronic_type=ElectronicType(parameters["electronic_type"]),
             periodicity=PeriodicityType(parameters["periodicity"]),
+            initial_magnetic_moments=parameters["starting_magnetization"],
+
         )
         #adding tot_charge to builder
         builder.relax.base.pw.parameters['SYSTEM']['tot_charge'] = parameters["tot_charge"]
@@ -1016,7 +1069,23 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         
         builder.bands.bands.pw.metadata.options.max_wallclock_seconds = 82800
 
-        
+        if parameters['hubbard_dict'] is not None:
+            builder.relax.base.pw.parameters['SYSTEM']['hubbard_u'] = parameters["hubbard_dict"]
+            builder.bands.bands.pw.parameters['SYSTEM']['hubbard_u'] = parameters["hubbard_dict"]
+            builder.bands.scf.pw.parameters['SYSTEM']['hubbard_u'] = parameters["hubbard_dict"]
+            builder.pdos.scf.pw.parameters['SYSTEM']['hubbard_u'] = parameters["hubbard_dict"]
+            builder.pdos.nscf.pw.parameters['SYSTEM']['hubbard_u'] = parameters["hubbard_dict"]
+            builder.relax.base.pw.parameters['SYSTEM']['lda_plus_u'] = True
+            builder.bands.bands.pw.parameters['SYSTEM']['lda_plus_u'] = True
+            builder.bands.scf.pw.parameters['SYSTEM']['lda_plus_u'] = True
+            builder.pdos.scf.pw.parameters['SYSTEM']['lda_plus_u'] = True
+            builder.pdos.nscf.pw.parameters['SYSTEM']['lda_plus_u'] = True
+            builder.relax.base.pw.parameters['SYSTEM']['U_projection_type'] = 'ortho-atomic'
+            builder.bands.bands.pw.parameters['SYSTEM']['U_projection_type'] = 'ortho-atomic'
+            builder.bands.scf.pw.parameters['SYSTEM']['U_projection_type'] = 'ortho-atomic'
+            builder.pdos.scf.pw.parameters['SYSTEM']['U_projection_type'] = 'ortho-atomic'
+            builder.pdos.nscf.pw.parameters['SYSTEM']['U_projection_type'] = 'ortho-atomic'
+
         def one_two_dim_kpoints_path(structure, periodicity, two_dim_kpoints_path, bands_kpoints_distance):
             """
             Return a KpoinsData object containing the 1D or 2D kpoints path for bandstructure calculations
