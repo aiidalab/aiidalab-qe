@@ -58,6 +58,10 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     appdir = f"/home/{nb_user}/apps/aiidalab-qe"
     aiidalab_exec(f"chmod -R a+rw {appdir}", user="root")
 
+    # This is a temporary fix for dependencies
+    # otherwise `pip install -U .` will fail because of pybtex v0.22 installed.
+    aiidalab_exec("pip install pybtex==0.24", workdir=appdir)
+
     # install aiidalab-qe
     aiidalab_exec("pip install -U .", workdir=appdir)
 

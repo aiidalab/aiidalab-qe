@@ -1,0 +1,25 @@
+Update dependencies
+
+Remove are XXX by fixes or create OP
+
+mild dependencies
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# interactive rebase in progress; onto 2029267
+# Last commands done (6 commands done):
+#    pick a4663f0 r-xing
+#    pick 40bc59f Update dependencies
+# Next commands to do (2 remaining commands):
+#    pick f8520fd add coverage badge
+#    pick ac26b19 Fix bands-scf issue and bump aiida-quantumespresso version to 4.3.0
+# You are currently rebasing branch 'refac/builder-chore-decouple-override-settings' on '2029267'.
+#
+# Changes to be committed:
+#	modified:   aiidalab_qe/app/steps.py
+#	modified:   aiidalab_qe/workflows/__init__.py
+#	deleted:    requirements_test.txt
+#	modified:   tests/conftest.py
+#	modified:   tests/test_submit_qe_workchain.py
+#
