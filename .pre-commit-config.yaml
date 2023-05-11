@@ -47,3 +47,12 @@ repos:
       rev: 0.6.1
       hooks:
           - id: nbstripout
+
+    - repo: https://github.com/nbQA-dev/nbQA
+      rev: 1.7.0
+      hooks:
+          - id: nbqa-pyupgrade
+            args: [--py38-plus]
+          - id: nbqa-isort
+            args: [--profile=black]
+          - id: nbqa-black
