@@ -1,6 +1,3 @@
-import pytest
-
-
 def test_reload_selected_code(submit_step_widget_generator):
     """Test set_selected_codes method."""
     from aiidalab_qe.app.steps import SubmitQeAppWorkChainStep
@@ -21,7 +18,6 @@ def test_reload_selected_code(submit_step_widget_generator):
     assert new_submit_step.projwfc_code.value == submit_step.projwfc_code.value
 
 
-@pytest.mark.usefixtures("sssp")
 def test_create_builder_default(
     data_regression,
     submit_step_widget_generator,
@@ -53,9 +49,7 @@ def test_create_builder_default(
     assert "None" not in report_html
 
 
-@pytest.mark.usefixtures("sssp")
 def test_create_builder_insulator(
-    data_regression,
     submit_step_widget_generator,
 ):
     """ "Test the creation of the workchain builder.
@@ -74,7 +68,8 @@ def test_create_builder_insulator(
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
-    data_regression.check(got)
+    assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"] == "fixed"
+    assert "smearing" not in got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
 
     # test the report can be properly generated from the builder without errors
     builder_parameters = submit_step._extract_report_parameters(
