@@ -52,7 +52,6 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
     if builder_parameters["periodicity"] == "xy":
         yield "kpoint_path" , builder_parameters["two_dim_kpoints_path"]
 
-
     # Calculation settings
     yield "protocol", builder_parameters["protocol"]
 
@@ -195,3 +194,77 @@ def generate_report_text(report_dict):
     report_string += "."
 
     return report_string
+
+
+def get_hubbard_occupations_list(qeapp_wc: WorkChainNode) -> list:
+    """Get the occupations dictionary for the Hubbard U calculation.
+
+    :param qeapp_wc: `QeAppWorkChain` instance.
+    :returns: list of dictionaries of Hubbard occupations.
+    """
+    builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {}) # To know from where to get the occupations! 
+    workchain = qeapp_wc.called[-1]
+    
+    initial_pattern = 'HUBBARD OCCUPATIONS'
+    end_pattern = 'Number of occupied Hubbard levels ='
+    list_string = []
+    with workchain.called[0].outputs.retrieved.base.repository.open('aiida.out', 'r') as file:
+        file_contents = file.readlines()
+        i = 0
+        while i < len(file_contents):
+            if initial_pattern in file_contents[i]:
+                i += 1
+                text = ''
+                while i < len(file_contents) and end_pattern not in file_contents[i]:
+                    text += file_contents[i]
+                    i += 1
+                if text:
+                    list_string.append(text)
+            else:
+                i += 1
+          
+    last_text = list_string[-1]
+    lines = last_text.splitlines()
+
+    eigenvalues_up = []
+    eigenvalues_down = []
+    occupation_matrix_up = []
+    occupation_matrix_down = []
+    magnetic_moment = [] # magneton/bohr 
+    atom_index = []
+    trace_occupation = []
+    spin_flag = None
+
+    for index, line in enumerate(lines):
+        if 'Tr[ns' in line:
+            line_temp = line.split()
+            trace_occupation.append([line_temp[-3], line_temp[-2],line_temp[-1]])
+        elif 'ATOM' in line:
+            atom_index.append(line.split()[-2])
+        elif 'Atomic magnetic moment' in line:
+            magnetic_moment.append(line.split()[-1])
+            #atom_index.append(line.split()[-3])
+        elif 'SPIN  1' in line:
+            spin_flag = 'up'
+        elif 'SPIN  2' in line:
+            spin_flag = 'down'
+        elif 'eigenvalues:' in line:
+            eigenvalues = lines[index+1]
+            if spin_flag == 'up':
+                eigenvalues_up.append(eigenvalues)
+            elif spin_flag == 'down':
+                eigenvalues_down.append(eigenvalues)
+        elif 'occupation matrix ns' in line:
+            matrix_lines = len(lines[index+1].split())
+            occupation_matrix = lines[index+1: index+matrix_lines+1]
+            if spin_flag == 'up':
+                occupation_matrix_up.append(occupation_matrix)
+            elif spin_flag == 'down':
+                occupation_matrix_down.append(occupation_matrix)
+                
+    keys = ['atom_index', 'magnetic_moment', 'eigenvalues_up', 'eigenvalues_down', 'occupation_matrix_up', 'occupation_matrix_down', 'trace_occupation']
+    tuple_list = list(zip(atom_index, magnetic_moment, eigenvalues_up, eigenvalues_down, occupation_matrix_up, occupation_matrix_down, trace_occupation))
+    occupations = [dict(zip(keys, values)) for values in tuple_list]
+
+    return occupations
+

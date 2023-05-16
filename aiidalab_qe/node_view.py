@@ -31,7 +31,7 @@ from traitlets import Instance, Int, List, Unicode, Union, default, observe, val
 from widget_bandsplot import BandsPlotWidget
 from plotly_resampler import FigureWidgetResampler
 from aiidalab_qe import static
-from aiidalab_qe.report import generate_report_dict
+from aiidalab_qe.report import generate_report_dict, get_hubbard_occupations_list
 
 
 class MinimalStructureViewer(ipw.VBox):
@@ -678,14 +678,32 @@ class WorkChainViewer(ipw.VBox):
             [ipw.Label("Electronic Structure not available.")],
             layout=ipw.Layout(min_height="380px"),
         ) 
-             
-        self.result_tabs = ipw.Tab(
-            children=[self.summary_tab, self.structure_tab, self.bands_tab]
-        )
+        #Check if you have a DFT+U calculation
+        dict_parameters = self.node.base.extras.get('builder_parameters')
+        self.hubbard_cond = dict_parameters.get('hubbard_dict', None)
 
-        self.result_tabs.set_title(0, "Workflow Summary")
-        self.result_tabs.set_title(1, "Final Geometry (n/a)")
-        self.result_tabs.set_title(2, "Electronic Structure (n/a)")
+        if self.hubbard_cond is not None:
+            
+            self.hubbard_tab = ipw.VBox(
+                [ipw.Label("Hubbard occupations not available.")],
+                layout=ipw.Layout(min_height="380px"),
+            )
+            self.result_tabs = ipw.Tab(
+                children=[self.summary_tab, self.structure_tab, self.bands_tab, self.hubbard_tab]
+            )
+
+            self.result_tabs.set_title(0, "Workflow Summary")
+            self.result_tabs.set_title(1, "Final Geometry (n/a)")
+            self.result_tabs.set_title(2, "Electronic Structure (n/a)")
+            self.result_tabs.set_title(3, "DFT+U (n/a)")
+        else:
+            self.result_tabs = ipw.Tab(
+                children=[self.summary_tab, self.structure_tab, self.bands_tab]
+            )
+
+            self.result_tabs.set_title(0, "Workflow Summary")
+            self.result_tabs.set_title(1, "Final Geometry (n/a)")
+            self.result_tabs.set_title(2, "Electronic Structure (n/a)")
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
@@ -724,6 +742,8 @@ class WorkChainViewer(ipw.VBox):
         with self.hold_trait_notifications():
             if self.node.is_finished:
                 self._show_workflow_output()
+                if self.hubbard_cond is not None:
+                    self._show_hubbard_occupations()
             if (
                 "structure" not in self._results_shown
                 and "structure" in self.node.outputs
@@ -736,6 +756,7 @@ class WorkChainViewer(ipw.VBox):
             ):
                 self._show_electronic_structure()
                 self._results_shown.add("electronic_structure")
+            
 
     def _show_structure(self):
         self._structure_view = StructureDataViewer(
@@ -767,6 +788,64 @@ class WorkChainViewer(ipw.VBox):
             self.workflows_summary,
             self.workflows_output,
         ]
+
+    def _show_hubbard_occupations(self):
+        self.hubbard_summary = HubbardView(self.node)
+        self.result_tabs.children[3].children = [self.hubbard_summary]
+        self.result_tabs.set_title(3, "DFT+U")
+
+
+class HubbardView(ipw.VBox):
+    def __init__(self, node, **kwargs):
+
+        self.node = node
+        self.data_occupations = get_hubbard_occupations_list(self.node) 
+        self.hubbard_keys = self._get_hubbard_keys()
+        self.hubbard_options = self._get_options_dict()
+        self.select_kind = ipw.Dropdown(options= self.hubbard_keys, description='Kind:')
+        self.select_index = ipw.Dropdown(options= self.hubbard_options[self.select_kind.value], description='Atom:')
+        self.env = Environment()
+        self.template = resources.read_text(static, "hubbard_occupation.jinja")
+        self.style = resources.read_text(static, "style.css")
+        self.hubbard_occupation = ipw.HTML(
+            self.env.from_string(self.template).render(style=self.style, **self._select_dict()))
+
+        super().__init__(
+            children = [
+                ipw.HBox([self.select_kind, self.select_index]),
+                self.hubbard_occupation, 
+            ],
+        ),
+        self.select_kind.observe(self._update_index, names='value')
+        self.select_index.observe(self._update_hubbard_occupation, names='value')
+
+    def _update_index(self, change):
+        self.select_index.options = self.hubbard_options[change['new']]
+
+    def _select_dict(self):
+        data = next((d for d in self.data_occupations if d.get('atom_index') == self.select_index.value ), {})
+        return data
+
+    def _update_hubbard_occupation(self, change):
+        data = next((d for d in self.data_occupations if d.get('atom_index') == change["new"] ), None)
+        self.hubbard_occupation.value = self.env.from_string(self.template).render(style=self.style, **data)
+
+    def _get_hubbard_keys(self):
+        dict_parameters = self.node.base.extras.get('builder_parameters')
+        hubbard_dict = dict_parameters.get('hubbard_dict', None)
+        return list(hubbard_dict['hubbard_u'].keys())
+
+    def _get_options_dict(self):
+        list_indixes = []
+        sites = self.node.inputs.structure.sites
+        for kind in self.hubbard_keys:
+            list_temp = [str(index + 1) for index, site in enumerate(sites) if site.kind_name == kind]
+            list_indixes.append(list_temp)
+        options_dict = dict(zip(self.hubbard_keys, list_indixes))
+        return options_dict
+
+
+
 
 
 class DosPlottingOptions(ipw.VBox):

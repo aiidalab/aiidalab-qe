@@ -1,0 +1,55 @@
+<head>
+  <style>
+    {{ style }}
+  </style>
+</head>
+
+<body>
+  <div class="row">
+    <h3>Hubbard Occupations</h3>
+    <h5 style="text-align:center;">Atom Data</h5>
+    <p style="text-align:center;">
+    Index: {{ atom_index }}, Magnetic Moment: {{ magnetic_moment }} , Trace Occupation: Up: {{ trace_occupation[0] }} , Down: {{ trace_occupation[1] }}, Total: {{ trace_occupation[2] }}
+    </p>
+    <div class="column">
+        <table>
+          <tr>
+            <th> Eigenvalues Spin Up </th>
+          </tr>
+                <tr>
+                <td> {{ eigenvalues_up }} </td>
+                </tr>
+          <tr>
+            <th> Occupation ns matrix Up </th>
+          </tr>
+            <tr>
+                <td>
+                    {% for row in occupation_matrix_down %}
+                    {{ row }}<br>
+                    {% endfor %}
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="column">
+            <table>
+            <tr>
+                <th> Eigenvalues Spin Down </th>
+            </tr>
+                <tr>
+                <td> {{ eigenvalues_down }} </td>
+                </tr>
+            <tr>
+                <th> Occupation ns matrix Down </th>
+            </tr>
+                <tr>
+                    <td>
+                    {% for row in occupation_matrix_down %}
+                    {{ row }}<br>
+                    {% endfor %}
+                    </td>
+                </tr>
+            </table>
+    </div>
+  </div>  
+</body>

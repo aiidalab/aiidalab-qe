@@ -20,8 +20,9 @@ from aiida.orm import CalcJobNode, load_node
 from aiidalab_widgets_base.utils import list_to_string_range, string_range_to_list, StatusHTML
 from aiidalab_widgets_base import register_viewer_widget
 from aiidalab_widgets_base.structures import _register_structure
-from IPython.display import HTML, Javascript, display
+from IPython.display import HTML, Javascript, display, clear_output
 from pymatgen.io.ase import AseAtomsAdaptor
+from pymatgen.core.periodic_table import Element
 import numpy as np
 
 #defects
@@ -389,6 +390,28 @@ class ResourceSelectionWidget(ipw.VBox):
         Specify the resources to use for the pw.x calculation.
         </p></div>"""
     )
+    
+    prompt_dos = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the resources to use for the dos.x calculation.
+        </p></div>"""
+    )
+
+    prompt_dos = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the resources to use for the dos.x calculation.
+        </p></div>"""
+    )
+
+    prompt_projwfc = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the resources to use for the projwfc.x calculation.
+        </p></div>"""
+    )
+
 
     def __init__(self, **kwargs):
         extra = {
@@ -402,6 +425,23 @@ class ResourceSelectionWidget(ipw.VBox):
             value=1, step=1, min=1, description="CPUs", **extra
         )
 
+        self.num_cpus_dos = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="CPUs", **extra
+        )
+
+        self.num_cpus_projwfc = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="CPUs", **extra
+        )
+
+        self.num_nodes_dos = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=1000, description="Nodes", **extra
+        )
+
+        self.num_nodes_projwfc = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=1000, description="Nodes", **extra
+        )
+        self._disable_dos(True)
+        self._disable_projwfc(True)
         super().__init__(
             children=[
                 self.title,
@@ -409,8 +449,40 @@ class ResourceSelectionWidget(ipw.VBox):
                     children=[self.prompt, self.num_nodes, self.num_cpus],
                     layout=ipw.Layout(justify_content="space-between"),
                 ),
+                ipw.HBox(
+                    children=[self.prompt_dos, self.num_nodes_dos, self.num_cpus_dos],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
+                ipw.HBox(
+                    children=[self.prompt_projwfc, self.num_nodes_projwfc, self.num_cpus_projwfc],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
             ]
         )
+
+    def _disable_dos(self, condition: bool):
+        self.num_nodes_dos.disabled = condition
+        self.num_cpus_dos.disabled = condition
+
+    def _disable_projwfc(self, condition: bool):
+        self.num_nodes_projwfc.disabled = condition
+        self.num_cpus_projwfc.disabled = condition
+    
+    def _configure_dos(self, default_mpiprocs):
+        self.num_cpus_dos.value = default_mpiprocs
+        self.num_nodes_dos.max = default_mpiprocs
+        if default_mpiprocs > 1:
+            self.num_cpus_dos.description = "CPUs/node"
+        else:
+            self.num_cpus_dos.description = "CPUs"
+ 
+    def _configure_projwfc(self, default_mpiprocs):
+        self.num_cpus_projwfc.value = default_mpiprocs
+        self.num_nodes_projwfc.max = default_mpiprocs
+        if default_mpiprocs > 1:
+            self.num_cpus_projwfc.description = "CPUs/node"
+        else:
+            self.num_cpus_projwfc.description = "CPUs"
 
     def reset(self):
         self.num_nodes.value = 1
@@ -852,3 +924,170 @@ class DistorsionStructureEditor(ipw.VBox):
                 )
                 atoms = pymatgen_ase.get_atoms(struc_distorted)
                 self.structure = atoms
+
+
+ 
+class HubbardWidget(ipw.VBox):
+    
+    def __init__(self, input_structure=None):
+
+        self.input_structure = input_structure
+        self.hubbard = ipw.Checkbox(
+            description="",
+            tooltip="Use Hubbard DFT+U.",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="10%"),
+        )
+        self.eigenvalues_label = ipw.Checkbox(description="Define eigenvalues",
+                        tooltip="Define eigenvalues",
+                        indent=False,
+                        value=False,
+                        layout=ipw.Layout(max_width="30%"),)
+        self.hubbard_widget = self.create_hubbard_widget()
+        self.hubbard_widget_out = ipw.Output()
+        self.eigen_values_widget = self.create_eigenvalues_widget()
+        self.eigen_values_widget_out = ipw.Output()
+    
+        super().__init__(
+            children= [
+                ipw.HBox(children=[ipw.HTML("<b>Hubbard (DFT+U)</b>"), self.hubbard, ]),
+                self.hubbard_widget_out, 
+                self.eigen_values_widget_out,
+                ])
+        self.hubbard.observe(self.toggle_hubbard_widgets, names='value')
+        self.eigenvalues_label.observe(self.toggle_eigenvalues_widgets, names='value')
+
+    def create_hubbard_widget(self):
+        if self.input_structure is None:
+            self.input_labels = []
+        else:
+            self.input_labels = self.input_structure.get_kind_names()
+        widgets_list = []
+        for label in self.input_labels:
+            hbox_container = ipw.HBox()
+            float_widget = ipw.BoundedFloatText(description=label, min=0, max=10, step=0.1, value=0.0)
+            hbox_container.children = [float_widget]
+            widgets_list.append(hbox_container)
+        hubbard_widget = ipw.VBox([ipw.HTML("Define U value")] + widgets_list + [self.eigenvalues_label])
+        return hubbard_widget
+    
+    def create_eigenvalues_widget(self):
+
+        if self.input_structure is None:
+            self.input_kinds_eigenvalues = []
+        else:
+            list_of_kinds = [[index+1, value.name, Element(value.symbol)]for index,value  in enumerate(self.input_structure.kinds)]
+            self.input_kinds_eigenvalues = [x for x in list_of_kinds if x[2].is_transition_metal or x[2].is_lanthanoid]
+            
+        kind_list = []
+        for kind in self.input_kinds_eigenvalues:
+            if kind[2].is_transition_metal:
+                num_states = 5
+            if kind[2].is_lanthanoid:
+                num_states = 7
+            if kind[2].is_transition_metal or kind[2].is_lanthanoid:
+                widgets_list_up = []
+                widgets_list_down = []
+                for i in range(num_states):
+                    eigenvalues_up = ipw.Dropdown(description= f"{i+1}", options=['-1', '0', '1'], layout=ipw.Layout(width='150px'))
+                    eigenvalues_down = ipw.Dropdown(description= f"{i+1}", options=['-1', '0', '1'], layout=ipw.Layout(width='150px'))
+                    widgets_list_up.append(eigenvalues_up)
+                    widgets_list_down.append(eigenvalues_down)
+
+                row_up = ipw.HBox(children= [ipw.Label("Up:",layout=ipw.Layout(justify_content="flex-start", width="40px"),)] + widgets_list_up,)
+                row_down = ipw.HBox(children= [ipw.Label("Down:",layout=ipw.Layout(justify_content="flex-start", width="40px"),)] + widgets_list_down,)
+                eigenvalues_container = ipw.VBox(children=[row_up, row_down])
+                kind_container = ipw.HBox(children=[ipw.Label(kind[1],layout=ipw.Layout(justify_content="flex-start", width="40px"),), eigenvalues_container])
+                kind_list.append(kind_container)
+        occup_kinds_widget = ipw.VBox(kind_list)
+
+        return occup_kinds_widget
+                               
+    def update_widgets(self):
+        self.input_labels = self.input_structure.get_kind_names()
+        self.hubbard_widget = self.create_hubbard_widget()
+        if self.hubbard.value == True:
+            with self.hubbard_widget_out:
+                clear_output()
+                display(self.hubbard_widget)
+        self.eigen_values_widget = self.create_eigenvalues_widget()
+        if self.eigenvalues_label.value == True:
+            with self.eigen_values_widget_out:
+                clear_output()
+                display(self.eigen_values_widget)
+                
+    def update_hubbard_widgets(self, change):
+        self.input_labels = self.input_structure.get_kind_names()
+        self.hubbard_widget = self.create_hubbard_widget()
+        if self.hubbard.value == True:
+            with self.hubbard_widget_out:
+                clear_output()
+                display(self.hubbard_widget)
+
+    def toggle_hubbard_widgets(self, change):
+        if change['new'] == True:
+            with self.hubbard_widget_out:
+                clear_output()
+                display(self.hubbard_widget)
+            if self.eigenvalues_label.value == True:
+                with self.eigen_values_widget_out:
+                    clear_output()
+                    display(self.eigen_values_widget)
+        else:
+            with self.hubbard_widget_out:
+                clear_output()
+            with self.eigen_values_widget_out:
+                clear_output()
+
+    def toggle_eigenvalues_widgets(self, change):
+        if change['new'] == True:
+            with self.eigen_values_widget_out:
+                clear_output()
+                display(self.eigen_values_widget)
+        else:
+            with self.eigen_values_widget_out:
+                clear_output()
+            
+
+    def _get_hubbard_u(self):
+        hubbard_u = {}
+        for index, label in enumerate(self.input_labels):
+            value_hubbard = self.hubbard_widget.children[index+1].children[0].value
+            if value_hubbard != 0:
+                hubbard_u[label] = self.hubbard_widget.children[index+1].children[0].value
+        return hubbard_u
+    
+    def _get_starting_ns_eigenvalue(self) -> list:
+        starting_ns_eigenvalue = []
+        for index, kind in enumerate(self.input_kinds_eigenvalues):
+            if kind[2].is_transition_metal or kind[2].is_lanthanoid:
+                if kind[2].is_transition_metal:
+                    num_states = 5
+                else:
+                    num_states = 7
+                for i in range(2): #up and down
+                    spin = self.eigen_values_widget.children[index].children[1].children[i]
+                    for j in range(num_states):
+                        value_eigenvalue = int(spin.children[j+1].value)
+                        if value_eigenvalue != -1:
+                            #starting_ns_eigenvalue.append([j+1, i+1, kind[0], value_eigenvalue])
+                            starting_ns_eigenvalue.append([j+1, i+1, kind[1], value_eigenvalue])
+
+        return starting_ns_eigenvalue
+          
+    @property
+    def hubbard_dict(self) -> dict:
+        if self.hubbard.value == True:
+            hubbard_dict = {"hubbard_u": self._get_hubbard_u() , "lda_plus_u": True, "U_projection_type": "ortho-atomic"}
+        else:
+            hubbard_dict = {}
+        return hubbard_dict
+    
+    @property
+    def eigenvalues_dict(self) -> dict:
+        if self.eigenvalues_label.value == True:
+            eigenvalues_dict = {"starting_ns_eigenvalue": self._get_starting_ns_eigenvalue()}
+        else:
+            eigenvalues_dict = {}
+        return eigenvalues_dict
