@@ -26,14 +26,13 @@ jobs:
             - name: Install pypa/build
               run: python -m pip install build
 
-            - name: Build a  binary wheel for the aiidalab_qe_workchain module
+            - name: Build a  binary wheel for the aiidalab_qe module
               run: >-
                   python -m
                   build
                   --sdist
                   --wheel
                   --outdir dist/
-                  src/
 
             - name: Upload distribution artifact
               uses: actions/upload-artifact@v2
