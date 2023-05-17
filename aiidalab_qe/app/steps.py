@@ -847,6 +847,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             )
             self.process.base.extras.set("builder_parameters", builder_parameters)
 
+        self._update_state()
+
     def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
         """Get the parameters of the `QeWorkChain` from widgets."""
         # create the override parameters for sub PwBaseWorkChain
