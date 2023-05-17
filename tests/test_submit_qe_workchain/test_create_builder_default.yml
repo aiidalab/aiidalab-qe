@@ -1,0 +1,152 @@
+bands:
+  bands:
+    pw:
+      parallelization:
+        npool: 1
+      parameters:
+        CONTROL:
+          calculation: bands
+          etot_conv_thr: 2.0e-05
+          forc_conv_thr: 0.0001
+          restart_mode: from_scratch
+          tprnfor: true
+          tstress: true
+        ELECTRONS:
+          conv_thr: 4.0e-10
+          diago_full_acc: true
+          diagonalization: paro
+          electron_maxstep: 80
+          mixing_beta: 0.4
+          startingpot: file
+        SYSTEM:
+          degauss: 0.01
+          ecutrho: 240.0
+          ecutwfc: 30.0
+          nosym: false
+          occupations: smearing
+          smearing: cold
+  bands_kpoints_distance: 0.025
+  nbands_factor: 3.0
+  scf:
+    kpoints_distance: 0.12
+    kpoints_force_parity: false
+    pw:
+      parallelization:
+        npool: 1
+      parameters:
+        CONTROL:
+          calculation: scf
+          etot_conv_thr: 2.0e-05
+          forc_conv_thr: 0.0001
+          tprnfor: true
+          tstress: true
+        ELECTRONS:
+          conv_thr: 4.0e-10
+          electron_maxstep: 80
+          mixing_beta: 0.4
+        SYSTEM:
+          degauss: 0.015
+          ecutrho: 240.0
+          ecutwfc: 30.0
+          nosym: false
+          occupations: smearing
+          smearing: methfessel-paxton
+clean_workdir: false
+pdos:
+  dos:
+    parameters:
+      DOS:
+        DeltaE: 0.02
+  nscf:
+    kpoints_distance: 0.1
+    kpoints_force_parity: false
+    pw:
+      parallelization:
+        npool: 1
+      parameters:
+        CONTROL:
+          calculation: nscf
+          etot_conv_thr: 2.0e-05
+          forc_conv_thr: 0.0001
+          restart_mode: from_scratch
+          tprnfor: true
+          tstress: true
+        ELECTRONS:
+          conv_thr: 4.0e-10
+          electron_maxstep: 80
+          mixing_beta: 0.4
+        SYSTEM:
+          ecutrho: 240.0
+          ecutwfc: 30.0
+          nosym: true
+          occupations: tetrahedra
+  projwfc:
+    parameters:
+      PROJWFC:
+        DeltaE: 0.02
+    settings:
+      cmdline:
+      - -nk
+      - '1'
+  scf:
+    kpoints_distance: 0.12
+    kpoints_force_parity: false
+    pw:
+      parallelization:
+        npool: 1
+      parameters:
+        CONTROL:
+          calculation: scf
+          etot_conv_thr: 2.0e-05
+          forc_conv_thr: 0.0001
+          restart_mode: from_scratch
+          tprnfor: true
+          tstress: true
+        ELECTRONS:
+          conv_thr: 4.0e-10
+          electron_maxstep: 80
+          mixing_beta: 0.4
+        SYSTEM:
+          degauss: 0.015
+          ecutrho: 240.0
+          ecutwfc: 30.0
+          nosym: false
+          occupations: smearing
+          smearing: methfessel-paxton
+properties:
+- bands
+- pdos
+- relax
+relax:
+  base:
+    kpoints_distance: 0.12
+    kpoints_force_parity: false
+    pw:
+      parallelization:
+        npool: 1
+      parameters:
+        CELL:
+          cell_dofree: all
+          press_conv_thr: 0.5
+        CONTROL:
+          calculation: vc-relax
+          etot_conv_thr: 2.0e-05
+          forc_conv_thr: 0.0001
+          tprnfor: true
+          tstress: true
+        ELECTRONS:
+          conv_thr: 4.0e-10
+          electron_maxstep: 80
+          mixing_beta: 0.4
+        SYSTEM:
+          degauss: 0.015
+          ecutrho: 240.0
+          ecutwfc: 30.0
+          nosym: false
+          occupations: smearing
+          smearing: methfessel-paxton
+  base_final_scf:
+    pw: {}
+  max_meta_convergence_iterations: 5
+  meta_convergence: true
+  volume_convergence: 0.02

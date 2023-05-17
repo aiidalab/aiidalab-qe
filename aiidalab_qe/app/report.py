@@ -1,9 +1,3 @@
-from aiida.orm import WorkChainNode
-from aiida.plugins import WorkflowFactory
-
-PwBaseWorkChain = WorkflowFactory("quantumespresso.pw.base")
-
-
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
     "PBEsol": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.100.136406",
@@ -26,18 +20,16 @@ FUNCTIONAL_REPORT_MAP = {
 }
 
 
-def _generate_report_dict(qeapp_wc: WorkChainNode):
-    builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
-
-    # Properties
-    run_relax = builder_parameters.get("relax_type") != "none"
-    run_bands = builder_parameters.get("run_bands")
-    run_pdos = builder_parameters.get("run_pdos")
-
-    yield "relaxed", run_relax
+def _generate_report_dict(builder_parameters: dict):
+    """Read from the bulider parameters and generate a dictionacry
+    for reporting the inputs for the `QeAppWorkChain` with proper name corresponding
+    to the template.
+    """
+    # Workflow logic
     yield "relax_method", builder_parameters["relax_type"]
-    yield "bands_computed", run_bands
-    yield "pdos_computed", run_pdos
+    yield "relaxed", builder_parameters["run_relax"]
+    yield "bands_computed", builder_parameters["run_bands"]
+    yield "pdos_computed", builder_parameters["run_pdos"]
 
     # Material settings
     yield "material_magnetic", builder_parameters["spin_type"]
@@ -46,97 +38,65 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
     # Calculation settings
     yield "protocol", builder_parameters["protocol"]
 
-    try:
-        pseudo_family = builder_parameters.get("pseudo_family", None)
-        if pseudo_family is None:
-            protocol = builder_parameters.get("pseudo_family", "moderate")
-            pseudo_family = PROTOCOL_PSEUDO_MAP[protocol]
+    # Pseudopotential settings
+    yield "pseudo_family", builder_parameters["pseudo_family"]
+    yield "pseudo_version", builder_parameters["pseudo_version"]
+    yield "pseudo_protocol", builder_parameters["pseudo_protocol"]
 
-        yield "pseudo_family", pseudo_family
+    pseudo_library = builder_parameters["pseudo_library"]
+    functional = builder_parameters["functional"]
+    yield "pseudo_library", pseudo_library
+    yield "functional", functional
 
-        pseudo_family_list = pseudo_family.split("/")
-        pseudo_library = pseudo_family_list[0]
-        yield "pseudo_library", pseudo_library
-
-        if pseudo_library == "SSSP":
-            yield "pseudo_version", pseudo_family_list[1]
-            functional = pseudo_family_list[2]
-            yield "functional", functional
-            yield "pseudo_protocol", pseudo_family_list[3]
-        else:
-            raise NotImplementedError
-    except (KeyError, AttributeError):
-        pass
     yield "pseudo_link", PSEUDO_LINK_MAP[pseudo_library]
     yield "functional_link", FUNCTIONAL_LINK_MAP[functional]
 
-    pw_parameters = None
-    energy_cutoff_wfc = None
-    energy_cutoff_rho = None
-    degauss = None
-    smearing = None
-    scf_kpoints_distance = None
-    bands_kpoints_distance = None
+    # Detail calculation parameters
+    yield "energy_cutoff_wfc", builder_parameters["energy_cutoff_wfc"]
+    yield "energy_cutoff_rho", builder_parameters["energy_cutoff_rho"]
+    yield "scf_kpoints_distance", builder_parameters["scf_kpoints_distance"]
+    yield "bands_kpoints_distance", builder_parameters["bands_kpoints_distance"]
+    yield "nscf_kpoints_distance", builder_parameters["nscf_kpoints_distance"]
 
-    try:
-        scf_kpoints_distance = qeapp_wc.inputs.kpoints_distance_override.value
-    except AttributeError:
-        scf_kpoints_distance = None
-    nscf_kpoints_distance = None
+    occupation = builder_parameters["occupation"]
+    yield "occupation_type", occupation
 
-    default_params = PwBaseWorkChain.get_protocol_inputs(
-        builder_parameters["protocol"]
-    )["pw"]["parameters"]["SYSTEM"]
-    try:
-        degauss = qeapp_wc.inputs.degauss_override.value
-    except AttributeError:
-        # read default from protocol
-        degauss = default_params["degauss"]
-
-    try:
-        smearing = qeapp_wc.inputs.smearing_override.value
-    except AttributeError:
-        # read default from protocol
-        smearing = default_params["smearing"]
-
-    # The run_relax variable is not same as if statement below.
-    # the "relax" port is poped out to skip the real relaxiation
-    # which is not the case of SCF, we use the relax workchain but with
-    # relax_type set to none as SCF calculation.
-    if "relax" in qeapp_wc.inputs:
-        pw_parameters = qeapp_wc.inputs.relax.base.pw.parameters.get_dict()
-        if scf_kpoints_distance is None:
-            scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
-
-    if run_bands:
-        pw_parameters = qeapp_wc.inputs.bands.scf.pw.parameters.get_dict()
-        if scf_kpoints_distance is None:
-            scf_kpoints_distance = qeapp_wc.inputs.bands.scf.kpoints_distance.value
-        bands_kpoints_distance = qeapp_wc.inputs.bands.bands_kpoints_distance.value
-    if run_pdos:
-        scf_kpoints_distance = (
-            scf_kpoints_distance or qeapp_wc.inputs.pdos.scf.kpoints_distance.value
-        )
-        pw_parameters = (
-            pw_parameters or qeapp_wc.inputs.pdos.scf.pw.parameters.get_dict()
-        )
-        nscf_kpoints_distance = qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
-
-    energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
-    energy_cutoff_rho = round(pw_parameters["SYSTEM"]["ecutrho"])
-
-    yield "energy_cutoff_wfc", energy_cutoff_wfc
-    yield "energy_cutoff_rho", energy_cutoff_rho
-    yield "degauss", degauss
-    yield "smearing", smearing
-    yield "scf_kpoints_distance", scf_kpoints_distance
-    yield "bands_kpoints_distance", bands_kpoints_distance
-    yield "nscf_kpoints_distance", nscf_kpoints_distance
+    if occupation == "smearing":
+        yield "degauss", builder_parameters["degauss"]
+        yield "smearing", builder_parameters["smearing"]
 
 
-def generate_report_dict(qeapp_wc):
-    """Generate a dictionary for reporting the inputs for the `QeAppWorkChain`"""
-    return dict(_generate_report_dict(qeapp_wc))
+def _generate_report_html(report):
+    """Read from the bulider parameters and generate a html for reporting
+    the inputs for the `QeAppWorkChain`.
+    """
+    from importlib import resources
+
+    from jinja2 import Environment
+
+    from aiidalab_qe.app import static
+
+    def _fmt_yes_no(truthy):
+        return "Yes" if truthy else "No"
+
+    env = Environment()
+    env.filters.update(
+        {
+            "fmt_yes_no": _fmt_yes_no,
+        }
+    )
+    template = resources.read_text(static, "workflow_summary.jinja")
+    style = resources.read_text(static, "style.css")
+
+    return env.from_string(template).render(style=style, **report)
+
+
+def generate_report_html(qeapp_wc):
+    """Generate a html for reporting the inputs for the `QeAppWorkChain`"""
+    builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
+    report = dict(_generate_report_dict(builder_parameters))
+
+    return _generate_report_html(report)
 
 
 def generate_report_text(report_dict):

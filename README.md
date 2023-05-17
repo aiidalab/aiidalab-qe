@@ -1,5 +1,7 @@
 # AiiDAlab Quantum ESPRESSO application
 
+[![codecov](https://codecov.io/gh/aiidalab/aiidalab-qe/branch/master/graph/badge.svg)](https://codecov.io/gh/aiidalab/aiidalab-qe)
+
 ## About
 
 This is a early-development implementation of an AiiDAlab application for Quantum ESPRESSO workflow.

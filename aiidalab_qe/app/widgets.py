@@ -1,8 +1,6 @@
 """Widgets for the QE app.
 
-Authors:
-
-    * Carl Simon Adorf <simon.adorf@epfl.ch>
+Authors: AiiDAlab team
 """
 
 import base64

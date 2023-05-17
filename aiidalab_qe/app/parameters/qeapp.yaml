@@ -1,5 +1,6 @@
 ---
-# Default builder parameters for the QeAppWorkChain
+# Default parameters for the QeAppWorkChain widgets initialization
+# The builder is not directly effected by this file.
 
 ## Properties
 relax_type: positions_cell

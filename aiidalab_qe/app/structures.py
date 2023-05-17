@@ -1,8 +1,6 @@
 """Widgets for the upload and selection of structure data.
 
-Authors:
-
-    * Carl Simon Adorf <simon.adorf@epfl.ch>
+Authors: AiiDAlab team
 """
 import warnings
 

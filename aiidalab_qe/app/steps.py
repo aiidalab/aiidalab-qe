@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """Widgets for the submission of bands work chains.
 
-Authors:
-
-    * Carl Simon Adorf <simon.adorf@epfl.ch>
+Authors: AiiDAlab team
 """
+from __future__ import annotations
+
 import os
+import typing as t
+from dataclasses import dataclass
 
 import ipywidgets as ipw
 import traitlets
@@ -35,6 +37,27 @@ StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
 Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
+
+PROTOCOL_PSEUDO_MAP = {
+    "fast": "SSSP/1.2/PBE/efficiency",
+    "moderate": "SSSP/1.2/PBE/efficiency",
+    "precise": "SSSP/1.2/PBE/precision",
+}
+
+
+# The static input parameters for the QE App WorkChain
+# The dataclass does not include codes and structure which will be set
+# from widgets separately.
+# Relax type, electronic type, spin type, are str because they are used also
+# for serialized input of extras attributes of the workchain
+@dataclass(frozen=True)
+class QeWorkChainParameters:
+    protocol: str
+    relax_type: str
+    properties: t.List[str]
+    spin_type: str
+    electronic_type: str
+    overrides: t.Dict[str, t.Any]
 
 
 class WorkChainSettings(ipw.VBox):
@@ -109,7 +132,6 @@ class WorkChainSettings(ipw.VBox):
         # Checkbox to see if the band structure should be calculated
         self.bands_run = ipw.Checkbox(
             description="",
-            tooltip="Calculate the electronic band structure.",
             indent=False,
             value=True,
             layout=ipw.Layout(max_width="10%"),
@@ -118,7 +140,6 @@ class WorkChainSettings(ipw.VBox):
         # Checkbox to see if the PDOS should be calculated
         self.pdos_run = ipw.Checkbox(
             description="",
-            tooltip="Calculate the electronic PDOS.",
             indent=False,
             value=True,
             layout=ipw.Layout(max_width="10%"),
@@ -174,6 +195,19 @@ class WorkChainSettings(ipw.VBox):
             ],
             **kwargs,
         )
+
+    def _update_settings(self, **kwargs):
+        """Update the settings based on the given dict."""
+        for key in [
+            "relax_type",
+            "spin_type",
+            "electronic_type",
+            "bands_run",
+            "pdos_run",
+            "workchain_protocol",
+        ]:
+            if key in kwargs:
+                getattr(self, key).value = kwargs[key]
 
 
 class SmearingSettings(ipw.VBox):
@@ -247,6 +281,19 @@ class SmearingSettings(ipw.VBox):
             else self.smearing_default
         )
 
+    def _update_settings(self, **kwargs):
+        """Update the smearing and degauss values by the given keyword arguments
+        This is the same as the `set_smearing` method but without the observer.
+        Therefore the override checkbox is not updated and defaults to True"""
+        self.override_protocol_smearing.value = True
+
+        with self.hold_trait_notifications():
+            if "smearing" in kwargs:
+                self.smearing.value = kwargs["smearing"]
+
+            if "degauss" in kwargs:
+                self.degauss.value = kwargs["degauss"]
+
 
 class KpointSettings(ipw.VBox):
     kpoints_distance_description = ipw.HTML(
@@ -296,6 +343,14 @@ class KpointSettings(ipw.VBox):
             if self.override_protocol_kpoints.value
             else self.kpoints_distance_default
         )
+
+    def _update_settings(self, **kwargs):
+        """Update the kpoints_distance value by the given keyword arguments.
+        This is the same as the `set_kpoints_distance` method but without the observer.
+        """
+        self.override_protocol_kpoints.value = True
+        if "kpoints_distance" in kwargs:
+            self.kpoints_distance.value = kwargs["kpoints_distance"]
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -469,9 +524,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
-    _submission_blockers = traitlets.List(traitlets.Unicode)
+    _submission_blockers = traitlets.List(traitlets.Unicode())
 
-    def __init__(self, **kwargs):
+    def __init__(self, qe_auto_setup=True, **kwargs):
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
@@ -515,7 +570,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # in case that the installation was already triggered elsewhere, e.g.,
         # by the start up scripts.  The submission is blocked while the
         # potentials are not yet installed.
-        self.sssp_installation_status = SSSPInstallWidget()
+        self.sssp_installation_status = SSSPInstallWidget(auto_start=qe_auto_setup)
         self.sssp_installation_status.observe(self._update_state, ["busy", "installed"])
         self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
 
@@ -523,7 +578,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # expected labels (e.g. "pw-7.0@localhost") and triggers both the
         # installation of QE into a dedicated conda environment and the setup of
         # the codes in case that they are not already configured.
-        self.qe_setup_status = QESetupWidget()
+        self.qe_setup_status = QESetupWidget(auto_start=qe_auto_setup)
         self.qe_setup_status.observe(self._update_state, "busy")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
         self.qe_setup_status.observe(self._auto_select_code, "installed")
@@ -753,34 +808,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.submit_button.disabled = True
         self.submit()
 
-    def get_input_parameters(self):
-        """Get the builder parameters based on the GUI inputs."""
-
-        parameters = dict(
-            # Work chain settings
-            relax_type=self.workchain_settings.relax_type.value,
-            electronic_type=self.workchain_settings.electronic_type.value,
-            spin_type=self.workchain_settings.spin_type.value,
-            run_bands=self.workchain_settings.bands_run.value,
-            run_pdos=self.workchain_settings.pdos_run.value,
-            protocol=self.workchain_settings.workchain_protocol.value,
-            # Codes
-            pw_code=self.pw_code.value,
-            dos_code=self.dos_code.value,
-            projwfc_code=self.projwfc_code.value,
-            # Advanced settings
-            pseudo_family=self.pseudo_family_selector.value,
-        )
-        if self.kpoints_settings.override_protocol_kpoints.value:
-            parameters[
-                "kpoints_distance_override"
-            ] = self.kpoints_settings.kpoints_distance.value
-        if self.smearing_settings.override_protocol_smearing.value:
-            parameters["smearing_override"] = self.smearing_settings.smearing.value
-            parameters["degauss_override"] = self.smearing_settings.degauss.value
-
-        return parameters
-
     def set_selected_codes(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
 
@@ -807,82 +834,252 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.projwfc_code.code_select_dropdown.disabled = True
 
     def submit(self, _=None):
-        def update_builder(buildy, resources, npools):
-            """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
-            for k, v in buildy.items():
-                if isinstance(v, (dict, ProcessBuilderNamespace)):
-                    if k == "pw" and v["pseudos"]:
-                        v["parallelization"] = Dict(dict={"npool": npools})
-                    if k == "projwfc":
-                        v["settings"] = Dict(dict={"cmdline": ["-nk", str(npools)]})
-                    if k == "dos":
-                        v["metadata"]["options"]["resources"] = {
-                            "num_machines": 1,
-                            "num_mpiprocs_per_machine": min(
-                                self.MAX_MPI_PER_POOL,
-                                self.resources_config.num_cpus.value,
-                            ),
-                        }
-                        # Continue to the next item to avoid overriding the resources in the
-                        # recursive `update_builder` call.
-                        continue
-                    if k == "resources":
-                        buildy["resources"] = resources
-                    else:
-                        update_builder(v, resources, npools)
+        """Submit the work chain with the current inputs."""
+        builder = self._create_builder()
+        extra_parameters = self._create_extra_report_parameters()
 
-        assert self.input_structure is not None
-        parameters = self.get_input_parameters()
+        with self.hold_trait_notifications():
+            self.process = submit(builder)
+
+            # Set the builder parameters on the work chain
+            builder_parameters = self._extract_report_parameters(
+                builder, extra_parameters
+            )
+            self.process.base.extras.set("builder_parameters", builder_parameters)
+
+    def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
+        """Get the parameters of the `QeWorkChain` from widgets."""
+        # create the override parameters for sub PwBaseWorkChain
+        pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
+        for key in ["base", "scf", "nscf", "band"]:
+            if self.pseudo_family_selector.override_protocol_pseudo_family.value:
+                pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
+
+        for key in ["base", "scf"]:
+            if self.kpoints_settings.override_protocol_kpoints.value:
+                pw_overrides[key][
+                    "kpoints_distance"
+                ] = self.kpoints_settings.kpoints_distance.value
+
+            if (
+                self.smearing_settings.override_protocol_smearing.value
+                and self.workchain_settings.electronic_type.value == "metal"
+            ):
+                # smearing type setting
+                pw_overrides[key].setdefault("pw", {}).setdefault(
+                    "parameters", {}
+                ).setdefault("SYSTEM", {})[
+                    "smearing"
+                ] = self.smearing_settings.smearing.value
+
+                # smearing degauss setting
+                pw_overrides[key].setdefault("pw", {}).setdefault(
+                    "parameters", {}
+                ).setdefault("SYSTEM", {})[
+                    "degauss"
+                ] = self.smearing_settings.degauss.value
+
+        overrides = {
+            "relax": {
+                "base": pw_overrides["base"],
+            },
+            "bands": {
+                "scf": pw_overrides["scf"],
+                "bands": pw_overrides["band"],
+            },
+            "pdos": {
+                "scf": pw_overrides["scf"],
+                "nscf": pw_overrides["nscf"],
+            },
+        }
+
+        # Work chain settings
+        relax_type = self.workchain_settings.relax_type.value
+        electronic_type = self.workchain_settings.electronic_type.value
+        spin_type = self.workchain_settings.spin_type.value
+
+        run_bands = self.workchain_settings.bands_run.value
+        run_pdos = self.workchain_settings.pdos_run.value
+        protocol = self.workchain_settings.workchain_protocol.value
+
+        properties = []
+
+        if run_bands:
+            properties.append("bands")
+        if run_pdos:
+            properties.append("pdos")
+
+        if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
+            properties.append("relax")
+
+        return QeWorkChainParameters(
+            protocol=protocol,
+            relax_type=relax_type,
+            properties=properties,
+            spin_type=spin_type,
+            electronic_type=electronic_type,
+            overrides=overrides,
+        )
+
+    def _create_builder(self) -> ProcessBuilderNamespace:
+        """Create the builder for the `QeAppWorkChain` submit."""
+        pw_code = self.pw_code.value
+        dos_code = self.dos_code.value
+        projwfc_code = self.projwfc_code.value
+
+        parameters = self._get_qe_workchain_parameters()
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            pw_code=load_code(parameters["pw_code"]),
-            dos_code=load_code(parameters["dos_code"]),
-            projwfc_code=load_code(parameters["projwfc_code"]),
-            protocol=parameters["protocol"],
-            pseudo_family=parameters["pseudo_family"],
-            relax_type=RelaxType(parameters["relax_type"]),
-            spin_type=SpinType(parameters["spin_type"]),
-            electronic_type=ElectronicType(parameters["electronic_type"]),
+            pw_code=load_code(pw_code),
+            dos_code=load_code(dos_code),
+            projwfc_code=load_code(projwfc_code),
+            protocol=parameters.protocol,
+            relax_type=RelaxType(parameters.relax_type),
+            properties=parameters.properties,
+            spin_type=SpinType(parameters.spin_type),
+            electronic_type=ElectronicType(parameters.electronic_type),
+            overrides=parameters.overrides,
         )
-
-        if "kpoints_distance_override" in parameters:
-            builder.kpoints_distance_override = Float(
-                parameters["kpoints_distance_override"]
-            )
-        if "degauss_override" in parameters:
-            builder.degauss_override = Float(parameters["degauss_override"])
-        if "smearing_override" in parameters:
-            builder.smearing_override = Str(parameters["smearing_override"])
-
-        # skip relax sub-workflow only when RelaxType is NONE and has property calculated.
-        # we pop the namespace `relax` from build so the subworkchain will never
-        # been touched. Otherwise it will run a unnecessary SCF calculation before the bands/pdos
-        # sub-workchain where the SCF calculation will be run inside.
-        # This potentially increase the complexibility of the logic report widget,
-        # we need to refactoring the QeAppWorkChain and clear the logic here.
-        if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (
-            parameters["run_bands"] or parameters["run_pdos"]
-        ):
-            builder.pop("relax")
-
-        if not parameters.get("run_bands", False):
-            builder.pop("bands")
-
-        if not parameters.get("run_pdos", False):
-            builder.pop("pdos")
 
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
             "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
         }
 
-        update_builder(builder, resources, self.parallelization.npools.value)
+        npool = self.parallelization.npools.value
+        self._update_builder(builder, resources, npool, self.MAX_MPI_PER_POOL)
 
-        with self.hold_trait_notifications():
-            self.process = submit(builder)
-            # Set the builder parameters on the work chain
-            self.process.base.extras.set("builder_parameters", parameters)
+        return builder
+
+    def _update_builder(self, buildy, resources, npools, max_mpi_per_pool):
+        """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
+        for k, v in buildy.items():
+            if isinstance(v, (dict, ProcessBuilderNamespace)):
+                if k == "pw" and v["pseudos"]:
+                    v["parallelization"] = Dict(dict={"npool": npools})
+                if k == "projwfc":
+                    v["settings"] = Dict(dict={"cmdline": ["-nk", str(npools)]})
+                if k == "dos":
+                    v["metadata"]["options"]["resources"] = {
+                        "num_machines": 1,
+                        "num_mpiprocs_per_machine": min(
+                            max_mpi_per_pool,
+                            resources["num_mpiprocs_per_machine"],
+                        ),
+                    }
+                    # Continue to the next item to avoid overriding the resources in the
+                    # recursive `update_builder` call.
+                    continue
+                if k == "resources":
+                    buildy["resources"] = resources
+                else:
+                    self._update_builder(v, resources, npools, max_mpi_per_pool)
+
+    def _create_extra_report_parameters(self) -> dict[str, t.Any]:
+        """This method will also create a dictionary of the parameters that were not
+        readably represented in the builder, which will be used to the report.
+        It is stored in the `extra_report_parameters`.
+        """
+        qe_workchain_parameters = self._get_qe_workchain_parameters()
+
+        # Construct the extra report parameters needed for the report
+        extra_report_parameters = {
+            "relax_type": qe_workchain_parameters.relax_type,
+            "electronic_type": qe_workchain_parameters.electronic_type,
+            "spin_type": qe_workchain_parameters.spin_type,
+            "protocol": qe_workchain_parameters.protocol,
+        }
+
+        # update pseudo family information to extra_report_parameters
+        if self.pseudo_family_selector.override_protocol_pseudo_family.value:
+            # If the pseudo family is overridden, use that
+            pseudo_family = self.pseudo_family_selector.value
+        else:
+            # otherwise extract the information from protocol
+            pseudo_family = PROTOCOL_PSEUDO_MAP[qe_workchain_parameters.protocol]
+
+        pseudo_family_info = pseudo_family.split("/")
+        extra_report_parameters.update(
+            {
+                "pseudo_family": pseudo_family,
+                "pseudo_library": pseudo_family_info[0],
+                "pseudo_version": pseudo_family_info[1],
+                "functional": pseudo_family_info[2],
+                "pseudo_protocol": pseudo_family_info[3],
+            }
+        )
+
+        # store codes info into extra_report_parameters for loading the process
+        pw_code = self.pw_code.value
+        dos_code = self.dos_code.value
+        projwfc_code = self.projwfc_code.value
+
+        extra_report_parameters.update(
+            {
+                "pw_code": pw_code,
+                "dos_code": dos_code,
+                "projwfc_code": projwfc_code,
+            }
+        )
+
+        return extra_report_parameters
+
+    @staticmethod
+    def _extract_report_parameters(
+        builder, extra_report_parameters
+    ) -> dict[str, t.Any]:
+        """Extract (recover) the parameters for report from the builder.
+
+        There are some parameters that are not stored in the builder, but can be extracted
+        directly from the widgets, such as the ``pseudo_family`` and ``relax_type``.
+        """
+        parameters = {
+            "run_relax": "relax" in builder.properties,
+            "run_bands": "bands" in builder.properties,
+            "run_pdos": "pdos" in builder.properties,
+        }
+
+        # Extract the pw calculation parameters from the builder
+
+        # energy_cutoff is same for all pw calculations when pseudopotentials are fixed
+        # as well as the smearing settings (semaring and degauss) and scf kpoints distance
+        # read from the first pw calculation of relax workflow.
+        # It is safe then to extract these parameters from the first pw calculation, since the
+        # builder is anyway set with subworkchain inputs even it is not run which controlled by
+        # the properties inputs.
+        energy_cutoff_wfc = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
+        energy_cutoff_rho = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+        occupation = builder.relax.base["pw"]["parameters"]["SYSTEM"]["occupations"]
+        scf_kpoints_distance = builder.relax.base.kpoints_distance.value
+
+        parameters.update(
+            {
+                "energy_cutoff_wfc": energy_cutoff_wfc,
+                "energy_cutoff_rho": energy_cutoff_rho,
+                "occupation": occupation,
+                "scf_kpoints_distance": scf_kpoints_distance,
+            }
+        )
+
+        if occupation == "smearing":
+            parameters["degauss"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ]
+            parameters["smearing"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
+                "smearing"
+            ]
+
+        parameters[
+            "bands_kpoints_distance"
+        ] = builder.bands.bands_kpoints_distance.value
+        parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
+
+        # parameters from extra_report_parameters
+        for k, v in extra_report_parameters.items():
+            parameters.update({k: v})
+
+        return parameters
 
     def reset(self):
         with self.hold_trait_notifications():

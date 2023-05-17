@@ -1,26 +1,29 @@
 # AiiDA imports.
+from aiida import orm
 from aiida.common import AttributeDict
 from aiida.engine import ToContext, WorkChain, if_
-from aiida.orm import CalcJobNode, WorkChainNode
-from aiida.plugins import DataFactory, WorkflowFactory
+from aiida.plugins import DataFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import RelaxType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
+from aiida_quantumespresso.workflows.pdos import PdosWorkChain
+from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
 
-# Data objects and work chains.
-PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
-PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
-PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
-
-Bool = DataFactory("core.bool")
-Float = DataFactory("core.float")
-Dict = DataFactory("core.dict")
-Str = DataFactory("core.str")
 XyData = DataFactory("core.array.xy")
 StructureData = DataFactory("core.structure")
 BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
+
+PROPERTIES_LIST = ["relax", "bands", "pdos"]
+
+
+def validate_properties(value, _):
+    """Validate the properties input."""
+    for property_ in value:
+        if property_ not in PROPERTIES_LIST:
+            return f"Property {property_} is not supported."
 
 
 class QeAppWorkChain(WorkChain):
@@ -33,8 +36,11 @@ class QeAppWorkChain(WorkChain):
         super().define(spec)
         spec.input('structure', valid_type=StructureData,
                    help='The inputs structure.')
-        spec.input('clean_workdir', valid_type=Bool, default=lambda: Bool(False),
+        spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
+        spec.input('properties', valid_type=orm.List, default=lambda: orm.List(),
+                   help='The properties to calculate, used to control the logic of QeAppWorkChain.',
+                   validator=validate_properties)
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PwRelaxWorkChain`, if not specified at all, the relaxation step is skipped.'})
@@ -46,18 +52,6 @@ class QeAppWorkChain(WorkChain):
                            exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PdosWorkChain`.'})
-        spec.input(
-            'kpoints_distance_override', valid_type=Float, required=False,
-            help='Override for the kpoints distance value of all `PwBaseWorkChains` except for the `nscf` calculations.'
-        )
-        spec.input(
-            'degauss_override', valid_type=Float, required=False,
-            help='Override for the `degauss` value of all `PwBaseWorkChains` except for the `nscf` calculations.'
-        )
-        spec.input(
-            'smearing_override', valid_type=Str, required=False,
-            help='Override for the `smearing` value of all `PwBaseWorkChains` save for the `nscf` calculations.'
-        )
         spec.outline(
             cls.setup,
             if_(cls.should_run_relax)(
@@ -81,9 +75,9 @@ class QeAppWorkChain(WorkChain):
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData, required=False)
-        spec.output('band_parameters', valid_type=Dict, required=False)
+        spec.output('band_parameters', valid_type=orm.Dict, required=False)
         spec.output('band_structure', valid_type=BandsData, required=False)
-        spec.output('nscf_parameters', valid_type=Dict, required=False)
+        spec.output('nscf_parameters', valid_type=orm.Dict, required=False)
         spec.output('dos', valid_type=XyData, required=False)
         spec.output('projections', valid_type=Orbital, required=False)
         spec.output('projections_up', valid_type=Orbital, required=False)
@@ -99,18 +93,20 @@ class QeAppWorkChain(WorkChain):
         projwfc_code=None,
         protocol=None,
         overrides=None,
+        properties=None,
         relax_type=RelaxType.NONE,
-        pseudo_family=None,
+        clean_workdir=False,
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
         overrides = overrides or {}
         builder = cls.get_builder()
+
+        # Set the structure.
         builder.structure = structure
 
+        # relax workchain settings
         relax_overrides = overrides.get("relax", {})
-        if pseudo_family is not None:
-            relax_overrides.setdefault("base", {})["pseudo_family"] = pseudo_family
 
         relax = PwRelaxWorkChain.get_builder_from_protocol(
             code=pw_code,
@@ -120,15 +116,16 @@ class QeAppWorkChain(WorkChain):
             relax_type=relax_type,
             **kwargs,
         )
+
+        # pop the inputs that are excluded from the expose_inputs
         relax.pop("structure", None)
         relax.pop("clean_workdir", None)
-        relax.pop("base_final_scf", None)
+        relax.pop("base_final_scf", None)  # never run a final scf
+
         builder.relax = relax
 
+        # bands workchain settings
         bands_overrides = overrides.get("bands", {})
-        if pseudo_family is not None:
-            bands_overrides.setdefault("scf", {})["pseudo_family"] = pseudo_family
-            bands_overrides.setdefault("bands", {})["pseudo_family"] = pseudo_family
         bands = PwBandsWorkChain.get_builder_from_protocol(
             code=pw_code,
             structure=structure,
@@ -136,16 +133,15 @@ class QeAppWorkChain(WorkChain):
             overrides=bands_overrides,
             **kwargs,
         )
+        # pop the inputs that are excluded from the expose_inputs
         bands.pop("relax")
         bands.pop("structure", None)
         bands.pop("clean_workdir", None)
         builder.bands = bands
 
+        # pdos workchain settings
         if dos_code is not None and projwfc_code is not None:
             pdos_overrides = overrides.get("pdos", {})
-            if pseudo_family is not None:
-                pdos_overrides.setdefault("scf", {})["pseudo_family"] = pseudo_family
-                pdos_overrides.setdefault("nscf", {})["pseudo_family"] = pseudo_family
             pdos = PdosWorkChain.get_builder_from_protocol(
                 pw_code=pw_code,
                 dos_code=dos_code,
@@ -155,66 +151,41 @@ class QeAppWorkChain(WorkChain):
                 overrides=pdos_overrides,
                 **kwargs,
             )
+            # pop the inputs that are exclueded from the expose_inputs
             pdos.pop("structure", None)
             pdos.pop("clean_workdir", None)
             builder.pdos = pdos
 
-        builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
-        if "kpoints_distance_override" in overrides:
-            builder.kpoints_distance_override = overrides["kpoints_distance_override"]
-        if "degauss_override" in overrides:
-            builder.degauss_override = overrides["degauss_override"]
-        if "smearing_override" in overrides:
-            builder.smearing_override = overrides["smearing_override"]
+        if properties is None:
+            properties = []
+        builder.properties = orm.List(list=properties)
+
+        builder.clean_workdir = orm.Bool(clean_workdir)
 
         return builder
 
     def setup(self):
-        """Perform the initial setup of the work chain."""
+        """Perform the initial setup of the work chain, setup the input structure
+        and the logic to determine which sub workchains to run.
+        """
         self.ctx.current_structure = self.inputs.structure
         self.ctx.current_number_of_bands = None
         self.ctx.scf_parent_folder = None
 
+        # logic based on the properties input
+        self.ctx.run_relax = "relax" in self.inputs.properties
+        self.ctx.run_bands = "bands" in self.inputs.properties
+        self.ctx.run_pdos = "pdos" in self.inputs.properties
+
     def should_run_relax(self):
         """Check if the geometry of the input structure should be optimized."""
-        return "relax" in self.inputs
+        return self.ctx.run_relax
 
     def run_relax(self):
         """Run the `PwRelaxWorkChain`."""
         inputs = AttributeDict(self.exposed_inputs(PwRelaxWorkChain, namespace="relax"))
         inputs.metadata.call_link_label = "relax"
         inputs.structure = self.ctx.current_structure
-
-        if "kpoints_distance_override" in self.inputs:
-            inputs.base.kpoints_distance = self.inputs.kpoints_distance_override
-            if "base_scf" in inputs:
-                inputs.base_scf.kpoints_distance = self.inputs.kpoints_distance_override
-
-        inputs.base.pw.parameters = inputs.base.pw.parameters.get_dict()
-        if "degauss_override" in self.inputs:
-            inputs.base.pw.parameters.setdefault("SYSTEM", {})[
-                "degauss"
-            ] = self.inputs.degauss_override.value
-
-            if "base_scf" in inputs:
-                inputs.base_scf_params.pw.parameters = (
-                    inputs.base_scf_params.pw.parameters.get_dict()
-                )
-                inputs.base_scf_params.pw.parameters.setdefault("SYSTEM", {})[
-                    "degauss"
-                ] = self.inputs.degauss_override.value
-        if "smearing_override" in self.inputs:
-            inputs.base.pw.parameters.setdefault("SYSTEM", {})[
-                "smearing"
-            ] = self.inputs.smearing_override.value
-
-            if "base_scf" in inputs:
-                inputs.base_scf_params.pw.parameters = (
-                    inputs.base_scf_params.pw.parameters.get_dict()
-                )
-                inputs.base_scf_params.pw.parameters.setdefault("SYSTEM", {})[
-                    "smearing"
-                ] = self.inputs.smearing_override.value
 
         inputs = prepare_process_inputs(PwRelaxWorkChain, inputs)
         running = self.submit(PwRelaxWorkChain, **inputs)
@@ -242,7 +213,7 @@ class QeAppWorkChain(WorkChain):
 
     def should_run_bands(self):
         """Check if the band structure should be calculated."""
-        return "bands" in self.inputs
+        return self.ctx.run_bands
 
     def run_bands(self):
         """Run the `PwBandsWorkChain`."""
@@ -255,18 +226,6 @@ class QeAppWorkChain(WorkChain):
             inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
                 "nbnd", self.ctx.current_number_of_bands
             )
-
-        if "kpoints_distance_override" in self.inputs:
-            inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
-
-        if "degauss_override" in self.inputs:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                "degauss"
-            ] = self.inputs.degauss_override.value
-        if "smearing_override" in self.inputs:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                "smearing"
-            ] = self.inputs.smearing_override.value
 
         inputs = prepare_process_inputs(PwBandsWorkChain, inputs)
         running = self.submit(PwBandsWorkChain, **inputs)
@@ -285,13 +244,17 @@ class QeAppWorkChain(WorkChain):
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_BANDS
 
-        scf = workchain.get_outgoing(WorkChainNode, link_label_filter="scf").one().node
+        scf = (
+            workchain.get_outgoing(orm.WorkChainNode, link_label_filter="scf")
+            .one()
+            .node
+        )
         self.ctx.scf_parent_folder = scf.outputs.remote_folder
         self.ctx.current_structure = workchain.outputs.primitive_structure
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""
-        return "pdos" in self.inputs
+        return self.ctx.run_pdos
 
     def run_pdos(self):
         """Run the `PdosWorkChain`."""
@@ -308,20 +271,6 @@ class QeAppWorkChain(WorkChain):
         if self.ctx.scf_parent_folder:
             inputs.pop("scf")
             inputs.nscf.pw.parent_folder = self.ctx.scf_parent_folder
-        else:
-            if "kpoints_distance_override" in self.inputs:
-                inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
-
-            inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
-            if "degauss_override" in self.inputs:
-                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                    "degauss"
-                ] = self.inputs.degauss_override.value
-
-            if "smearing_override" in self.inputs:
-                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                    "smearing"
-                ] = self.inputs.smearing_override.value
 
         inputs = prepare_process_inputs(PdosWorkChain, inputs)
         running = self.submit(PdosWorkChain, **inputs)
@@ -379,7 +328,7 @@ class QeAppWorkChain(WorkChain):
         cleaned_calcs = []
 
         for called_descendant in self.node.called_descendants:
-            if isinstance(called_descendant, CalcJobNode):
+            if isinstance(called_descendant, orm.CalcJobNode):
                 try:
                     called_descendant.outputs.remote_folder._clean()  # pylint: disable=protected-access
                     cleaned_calcs.append(called_descendant.pk)

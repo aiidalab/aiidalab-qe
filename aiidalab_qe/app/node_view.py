@@ -1,8 +1,6 @@
 """Results view widgets (MOVE TO OTHER MODULE!)
 
-Authors:
-
-    * Carl Simon Adorf <simon.adorf@epfl.ch>
+Authors: AiiDAlab team
 """
 
 import json
@@ -30,7 +28,7 @@ from traitlets import Instance, Int, List, Unicode, Union, default, observe, val
 from widget_bandsplot import BandsPlotWidget
 
 from aiidalab_qe.app import static
-from aiidalab_qe.app.report import generate_report_dict
+from aiidalab_qe.app.report import generate_report_html
 
 
 class MinimalStructureViewer(ipw.VBox):
@@ -38,7 +36,7 @@ class MinimalStructureViewer(ipw.VBox):
     _displayed_structure = Instance(Atoms, allow_none=True, read_only=True)
 
     background = Unicode()
-    supercell = List(Int)
+    supercell = List(Int())
 
     def __init__(self, structure, *args, **kwargs):
         self._viewer = nglview.NGLWidget()
@@ -288,24 +286,9 @@ class VBoxWithCaption(ipw.VBox):
 
 class SummaryView(ipw.VBox):
     def __init__(self, wc_node, **kwargs):
-        self.wc_node = wc_node
+        report_html = generate_report_html(wc_node)
 
-        def _fmt_yes_no(truthy):
-            return "Yes" if truthy else "No"
-
-        report = generate_report_dict(self.wc_node)
-
-        env = Environment()
-        env.filters.update(
-            {
-                "fmt_yes_no": _fmt_yes_no,
-            }
-        )
-        template = resources.read_text(static, "workflow_summary.jinja")
-        style = resources.read_text(static, "style.css")
-        self.summary_view = ipw.HTML(
-            env.from_string(template).render(style=style, **report)
-        )
+        self.summary_view = ipw.HTML(report_html)
         super().__init__(
             children=[self.summary_view],
             **kwargs,
