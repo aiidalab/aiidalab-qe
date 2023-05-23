@@ -211,7 +211,6 @@ class WorkChainSettings(ipw.VBox):
 
 
 class PwAdvancedSettings(ipw.VBox):
-
     title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Pw Advanced Settings</h4></div>"""
@@ -933,7 +932,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             if self.pw_advanced_settings.override_pw_advanced_settings.value:
                 pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
                 if self.pw_advanced_settings.override_tot_charge.value:
-                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.pw_advanced_settings.tot_charge.value
+                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
+                        "tot_charge"
+                    ] = self.pw_advanced_settings.tot_charge.value
 
         for key in ["base", "scf"]:
             if self.kpoints_settings.override_protocol_kpoints.value:
@@ -1103,7 +1104,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             }
         )
 
-
         return extra_report_parameters
 
     @staticmethod
@@ -1157,7 +1157,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
 
         if builder.relax.base["pw"]["parameters"]["SYSTEM"]["tot_charge"]:
-            parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"]["tot_charge"]
+            parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
+                "tot_charge"
+            ]
 
         # parameters from extra_report_parameters
         for k, v in extra_report_parameters.items():
