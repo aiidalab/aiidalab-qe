@@ -597,6 +597,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
+    pw_advanced_settings = traitlets.Instance(PwAdvancedSettings, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
@@ -1098,6 +1099,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             }
         )
 
+
         return extra_report_parameters
 
     @staticmethod
@@ -1149,6 +1151,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "bands_kpoints_distance"
         ] = builder.bands.bands_kpoints_distance.value
         parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
+
+        
 
         # parameters from extra_report_parameters
         for k, v in extra_report_parameters.items():
