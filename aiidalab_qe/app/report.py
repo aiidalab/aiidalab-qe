@@ -64,6 +64,8 @@ def _generate_report_dict(builder_parameters: dict):
     if occupation == "smearing":
         yield "degauss", builder_parameters["degauss"]
         yield "smearing", builder_parameters["smearing"]
+    
+    yield "tot_charge", builder_parameters.get("tot_charge", None)
 
 
 def _generate_report_html(report):

@@ -930,6 +930,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         for key in ["base", "scf", "nscf", "band"]:
             if self.pseudo_family_selector.override_protocol_pseudo_family.value:
                 pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
+            if self.pw_advanced_settings.override_pw_advanced_settings.value:
+                pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
+                if self.pw_advanced_settings.override_tot_charge.value:
+                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.pw_advanced_settings.tot_charge.value
 
         for key in ["base", "scf"]:
             if self.kpoints_settings.override_protocol_kpoints.value:
@@ -1152,7 +1156,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ] = builder.bands.bands_kpoints_distance.value
         parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
 
-        
+        if builder.relax.base["pw"]["parameters"]["SYSTEM"]["tot_charge"]:
+            parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"]["tot_charge"]
 
         # parameters from extra_report_parameters
         for k, v in extra_report_parameters.items():
