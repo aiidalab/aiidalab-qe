@@ -213,6 +213,7 @@ def submit_step_widget_generator(
         smearing="methfessel-paxton",
         degauss=0.015,
         override_protocol_smearing=True,
+        tot_charge=0.0,
     ):
         submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
         submit_step.input_structure = structure_data_object
@@ -242,7 +243,7 @@ def submit_step_widget_generator(
 
         # Advanced settings
         submit_step.pw_advanced_settings = workchain_pwadvanced_settings_generator(
-            tot_charge=0.0,
+            tot_charge=tot_charge,
         )
 
         return submit_step
