@@ -22,6 +22,12 @@ pre-commit install
 ```
 The pre-commit checks should now be automatically executed prior to each commit.
 
+To run unit tests for app development, you need to run `pytest` from `aiida-core-services` conda environment, e.g. with:
+```
+conda activate aiida-core-services
+pytest -sv tests
+```
+
 ## For maintainers
 
 To create a new release, clone the repository, install development dependencies with `pip install '.[dev]'`, and then execute `bumpver update`.
