@@ -148,6 +148,19 @@ def workchain_settings_generator():
 
 
 @pytest.fixture()
+def workchain_pwadvanced_settings_generator():
+    """Return a function that generates a pwadvanced_settings dictionary."""
+    from aiidalab_qe.app.steps import PwAdvancedSettings
+
+    def _workchain_pwadvanced_settings_generator(**kwargs):
+        pwadvanced_settings = PwAdvancedSettings()
+        pwadvanced_settings._update_settings(**kwargs)
+        return pwadvanced_settings
+
+    return _workchain_pwadvanced_settings_generator
+
+
+@pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
     from aiidalab_qe.app.steps import SmearingSettings
@@ -183,6 +196,7 @@ def submit_step_widget_generator(
     workchain_settings_generator,
     smearing_settings_generator,
     kpoints_settings_generator,
+    workchain_pwadvanced_settings_generator,
 ):
     """Return a function that generates a submit step widget."""
     from aiidalab_qe.app.pseudos import PseudoFamilySelector
@@ -224,6 +238,11 @@ def submit_step_widget_generator(
             smearing=smearing,
             degauss=degauss,
             override_protocol_smearing=override_protocol_smearing,
+        )
+
+        # Advanced settings
+        submit_step.pw_advanced_settings = workchain_pwadvanced_settings_generator(
+            tot_charge=0.0,
         )
 
         return submit_step

@@ -278,6 +278,16 @@ class PwAdvancedSettings(ipw.VBox):
             else self.tot_charge_default
         )
 
+    def _update_settings(self, **kwargs):
+        """Update the override_pw_advanced_settings and override_tot_charge and override_tot_charge values by the given keyword arguments
+        Therefore the override checkbox is not updated and defaults to True"""
+        self.override_pw_advanced_settings.value = True
+        self.override_tot_charge.value = True
+
+        with self.hold_trait_notifications():
+            if "tot_charge" in kwargs:
+                self.tot_charge.value = kwargs["tot_charge"]
+
 
 class SmearingSettings(ipw.VBox):
     smearing_description = ipw.HTML(
