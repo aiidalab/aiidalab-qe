@@ -22,7 +22,7 @@ pre-commit install
 ```
 The pre-commit checks should now be automatically executed prior to each commit.
 
-To run unit tests for app development, you need to run `pytest` from `aiida-core-services` conda environment, e.g. with:
+To run unit tests in the AiiDAlab container, you need to run `pytest` from within the `aiida-core-services` conda environment:
 ```
 conda activate aiida-core-services
 pytest -sv tests
