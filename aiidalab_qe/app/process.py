@@ -1,4 +1,5 @@
 """Widgets related to process management."""
+import abc
 from dataclasses import make_dataclass
 
 import ipywidgets as ipw
@@ -8,6 +9,16 @@ from aiida.tools.query.calculation import CalculationQueryBuilder
 
 
 class WorkChainSelector(ipw.HBox):
+    """A widget to select a WorkChainNode of a given process label.
+
+    To use it, subclass it and set the `process_label` attribute to the desired.
+
+    If you want to display additional information about the work chain, set the
+    `extra_fields` attribute to a list of tuples, where each tuple contains the
+    name of the field and the type of the field. The field names must match the
+    names of the output keys of the `parse_extra_info` method.
+    """
+
     # The PK of a 'aiida.workflows:quantumespresso.pw.bands' WorkChainNode.
     value = tl.Int(allow_none=True)
 
@@ -22,7 +33,7 @@ class WorkChainSelector(ipw.HBox):
     FMT_WORKCHAIN = "{wc.pk:6}{wc.ctime:>10}\t{wc.state:<16}"
 
     BASE_FIELDS = [("pk", int), ("ctime", str), ("state", str)]
-    EXTRA_FIELDS = None
+    extra_fields = None
 
     def __init__(self, process_label, **kwargs):
         self.process_label = process_label
@@ -39,9 +50,11 @@ class WorkChainSelector(ipw.HBox):
             transform=lambda pk: None if pk is self._NO_PROCESS else pk,
         )
 
-        if self.EXTRA_FIELDS is not None:
-            fmt_extra = "".join([f"{{wc.{field[0]}}}" for field in self.EXTRA_FIELDS])
-            self.FMT_WORKCHAIN += "\t" + fmt_extra
+        if self.extra_fields is not None:
+            fmt_extra = "".join([f"{{wc.{field[0]}}}" for field in self.extra_fields])
+            self.fmt_workchain = self.FMT_WORKCHAIN + "\t" + fmt_extra
+        else:
+            self.fmt_workchain = self.FMT_WORKCHAIN
 
         self.refresh_work_chains_button = ipw.Button(description="Refresh")
         self.refresh_work_chains_button.on_click(self.refresh_work_chains)
@@ -56,6 +69,10 @@ class WorkChainSelector(ipw.HBox):
         )
 
         self.refresh_work_chains()
+
+    @abc.abstractmethod
+    def parse_extra_info(self, pk: int):
+        """Parse extra information about the work chain."""
 
     def find_work_chains(self):
         builder = CalculationQueryBuilder()
@@ -75,11 +92,11 @@ class WorkChainSelector(ipw.HBox):
         for result in projected[1:]:
             process_info = dict(zip(projections, result))
 
-            if self.EXTRA_FIELDS is not None:
+            if self.extra_fields is not None:
                 pk = process_info["pk"]
                 extra_info = self.parse_extra_info(pk)
 
-                yield make_dataclass("WorkChain", self.BASE_FIELDS + self.EXTRA_FIELDS)(
+                yield make_dataclass("WorkChain", self.BASE_FIELDS + self.extra_fields)(
                     **process_info, **extra_info
                 )
             else:
@@ -107,7 +124,7 @@ class WorkChainSelector(ipw.HBox):
                 self.work_chains_selector.options = [
                     ("New workflow...", self._NO_PROCESS)
                 ] + [
-                    (self.FMT_WORKCHAIN.format(wc=wc), wc.pk)
+                    (self.fmt_workchain.format(wc=wc), wc.pk)
                     for wc in self.find_work_chains()
                 ]
 
@@ -134,8 +151,12 @@ class QeAppWorkChainSelector(WorkChainSelector):
     def __init__(self, **kwargs):
         super().__init__(process_label="QeAppWorkChain", **kwargs)
 
-    def parse_extra_info(self, uuid):
-        workchain = orm.load_node(uuid)
+    def parse_extra_info(self, pk: int):
+        """Parse extra information about the work chain.
+
+        :param pk: the UUID of the work chain to parse
+        :return: the parsed extra information"""
+        workchain = orm.load_node(pk)
         formula = workchain.inputs.structure.get_formula()
 
         properties = []
