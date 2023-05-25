@@ -1,5 +1,4 @@
 """Widgets related to process management."""
-import abc
 from dataclasses import make_dataclass
 
 import ipywidgets as ipw
@@ -30,7 +29,7 @@ class WorkChainSelector(ipw.HBox):
     # use `None` as setting the widget's value to None will lead to "no selection".
     _NO_PROCESS = object()
 
-    FMT_WORKCHAIN = "{wc.pk:6}{wc.ctime:>10}\t{wc.state:<16}"
+    BASE_FMT_WORKCHAIN = "{wc.pk:6}{wc.ctime:>10}\t{wc.state:<16}"
 
     BASE_FIELDS = [("pk", int), ("ctime", str), ("state", str)]
     extra_fields = None
@@ -52,9 +51,9 @@ class WorkChainSelector(ipw.HBox):
 
         if self.extra_fields is not None:
             fmt_extra = "".join([f"{{wc.{field[0]}}}" for field in self.extra_fields])
-            self.fmt_workchain = self.FMT_WORKCHAIN + "\t" + fmt_extra
+            self.fmt_workchain = self.BASE_FMT_WORKCHAIN + "\t" + fmt_extra
         else:
-            self.fmt_workchain = self.FMT_WORKCHAIN
+            self.fmt_workchain = self.BASE_FMT_WORKCHAIN
 
         self.refresh_work_chains_button = ipw.Button(description="Refresh")
         self.refresh_work_chains_button.on_click(self.refresh_work_chains)
@@ -70,9 +69,9 @@ class WorkChainSelector(ipw.HBox):
 
         self.refresh_work_chains()
 
-    @abc.abstractmethod
-    def parse_extra_info(self, pk: int):
+    def parse_extra_info(self, pk: int) -> dict:
         """Parse extra information about the work chain."""
+        return dict()
 
     def find_work_chains(self):
         builder = CalculationQueryBuilder()
@@ -146,12 +145,12 @@ class WorkChainSelector(ipw.HBox):
 
 
 class QeAppWorkChainSelector(WorkChainSelector):
-    EXTRA_FIELDS = [("formula", str), ("relax_info", str), ("properties_info", str)]
+    extra_fields = [("formula", str), ("relax_info", str), ("properties_info", str)]
 
     def __init__(self, **kwargs):
         super().__init__(process_label="QeAppWorkChain", **kwargs)
 
-    def parse_extra_info(self, pk: int):
+    def parse_extra_info(self, pk: int) -> dict:
         """Parse extra information about the work chain.
 
         :param pk: the UUID of the work chain to parse
