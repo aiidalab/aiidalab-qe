@@ -232,18 +232,18 @@ def submit_step_widget_generator(
             pdos_run=pdo_run,
             workchain_protocol=workchain_protocol,
         )
-        submit_step.kpoints_settings = kpoints_settings_generator(
-            kpoints_distance=kpoints_distance
-        )
-        submit_step.smearing_settings = smearing_settings_generator(
-            smearing=smearing,
-            degauss=degauss,
-            override_protocol_smearing=override_protocol_smearing,
-        )
-
         # Advanced settings
         submit_step.advanced_settings = workchain_advanced_settings_generator(
             tot_charge=tot_charge,
+        )
+
+        submit_step.advanced_settings.kpoints_settings = kpoints_settings_generator(
+            kpoints_distance=kpoints_distance
+        )
+        submit_step.advanced_settings.smearing_settings = smearing_settings_generator(
+            smearing=smearing,
+            degauss=degauss,
+            override_protocol_smearing=override_protocol_smearing,
         )
 
         return submit_step
