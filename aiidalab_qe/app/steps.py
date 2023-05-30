@@ -210,7 +210,7 @@ class WorkChainSettings(ipw.VBox):
                 getattr(self, key).value = kwargs[key]
 
 
-class PwAdvancedSettings(ipw.VBox):
+class AdvancedSettings(ipw.VBox):
     title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Pw Advanced Settings</h4></div>"""
@@ -220,7 +220,7 @@ class PwAdvancedSettings(ipw.VBox):
     tot_charge_default = 0
 
     def __init__(self, **kwargs):
-        self.override_pw_advanced_settings = ipw.Checkbox(
+        self.override = ipw.Checkbox(
             description="Override",
             indent=False,
             value=False,
@@ -231,17 +231,17 @@ class PwAdvancedSettings(ipw.VBox):
             value=False,
         )
 
-        self.tot_charge = ipw.IntSlider(
+        self.tot_charge = ipw.BoundedFloatText(
             value=0,
-            min=-2,
-            max=2,
-            step=1,
+            min=-3,
+            max=3,
+            step=0.01,
             disabled=False,
             description="Total charge:",
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self.override_pw_advanced_settings, "value"),
+            (self.override, "value"),
             (self.override_tot_charge, "disabled"),
             lambda override: not override,
         )
@@ -251,14 +251,14 @@ class PwAdvancedSettings(ipw.VBox):
             lambda override: not override,
         )
         self.tot_charge.observe(self.set_pw_settings, "value")
-        self.override_pw_advanced_settings.observe(self.set_pw_settings, "value")
+        self.override.observe(self.set_pw_settings, "value")
         super().__init__(
             children=[
                 self.title,
                 ipw.HBox(
                     [
                         self.description,
-                        self.override_pw_advanced_settings,
+                        self.override,
                     ],
                     layout=ipw.Layout(justify_content="space-between"),
                 ),
@@ -273,15 +273,14 @@ class PwAdvancedSettings(ipw.VBox):
     def set_pw_settings(self, _=None):
         self.tot_charge.value = (
             self.tot_charge.value
-            if self.override_pw_advanced_settings.value
-            and self.override_tot_charge.value
+            if self.override.value and self.override_tot_charge.value
             else self.tot_charge_default
         )
 
     def _update_settings(self, **kwargs):
-        """Update the override_pw_advanced_settings and override_tot_charge and override_tot_charge values by the given keyword arguments
+        """Update the override and override_tot_charge and override_tot_charge values by the given keyword arguments
         Therefore the override checkbox is not updated and defaults to True"""
-        self.override_pw_advanced_settings.value = True
+        self.override.value = True
         self.override_tot_charge.value = True
 
         with self.hold_trait_notifications():
@@ -439,7 +438,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
-    pw_advanced_settings = traitlets.Instance(PwAdvancedSettings, allow_none=True)
+    pw_advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
 
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
@@ -450,7 +449,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.kpoints_settings = KpointSettings()
         self.smearing_settings = SmearingSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
-        self.pw_advanced_settings = PwAdvancedSettings()
+        self.pw_advanced_settings = AdvancedSettings()
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
@@ -606,7 +605,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
-    pw_advanced_settings = traitlets.Instance(PwAdvancedSettings, allow_none=True)
+    pw_advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
@@ -939,7 +938,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         for key in ["base", "scf", "nscf", "band"]:
             if self.pseudo_family_selector.override_protocol_pseudo_family.value:
                 pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
-            if self.pw_advanced_settings.override_pw_advanced_settings.value:
+            if self.pw_advanced_settings.override.value:
                 pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
                 if self.pw_advanced_settings.override_tot_charge.value:
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
