@@ -213,7 +213,7 @@ class WorkChainSettings(ipw.VBox):
 class AdvancedSettings(ipw.VBox):
     title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
-        <h4>Pw Advanced Settings</h4></div>"""
+        <h4>Advanced Settings</h4></div>"""
     )
     description = ipw.HTML("""Select the advanced settings for the <b>pw.x</b> code.""")
     # set here defaul values for the advanced settings
@@ -226,7 +226,7 @@ class AdvancedSettings(ipw.VBox):
             value=False,
         )
         self.override_tot_charge = ipw.Checkbox(
-            description="",
+            description="Override",
             indent=False,
             value=False,
         )
@@ -241,10 +241,24 @@ class AdvancedSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self.override, "value"),
-            (self.override_tot_charge, "disabled"),
+            (self.override_tot_charge, "value"),
+            (self.tot_charge, "disabled"),
             lambda override: not override,
         )
+        self.smearing_settings = SmearingSettings()
+        self.kpoints_settings = KpointSettings()
+
+        self.list_overrides = [
+            self.override_tot_charge,
+            self.smearing_settings.override_protocol_smearing,
+            self.kpoints_settings.override_protocol_kpoints,
+        ]
+        for override in self.list_overrides:
+            ipw.dlink(
+                (self.override, "value"),
+                (override, "disabled"),
+                lambda override: not override,
+            )
         ipw.dlink(
             (self.override_tot_charge, "value"),
             (self.tot_charge, "disabled"),
@@ -260,13 +274,17 @@ class AdvancedSettings(ipw.VBox):
                         self.description,
                         self.override,
                     ],
-                    layout=ipw.Layout(justify_content="space-between"),
                 ),
                 ipw.HBox(
-                    [self.tot_charge, self.override_tot_charge],
-                    layout=ipw.Layout(justify_content="space-between"),
+                    [
+                        self.override_tot_charge,
+                        self.tot_charge,
+                    ],
                 ),
+                self.smearing_settings,
+                self.kpoints_settings,
             ],
+            layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
 
@@ -435,8 +453,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     confirmed = traitlets.Bool()
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
-    kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
-    smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
 
@@ -446,14 +462,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_settings.bands_run.observe(self._update_state, "value")
         self.workchain_settings.pdos_run.observe(self._update_state, "value")
 
-        self.kpoints_settings = KpointSettings()
-        self.smearing_settings = SmearingSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
         self.advanced_settings = AdvancedSettings()
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
-            (self.kpoints_settings, "kpoints_distance_default"),
+            (self.advanced_settings.kpoints_settings, "kpoints_distance_default"),
             lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)[
                 "kpoints_distance"
             ],
@@ -461,7 +475,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
-            (self.smearing_settings, "degauss_default"),
+            (self.advanced_settings.smearing_settings, "degauss_default"),
             lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
                 "parameters"
             ]["SYSTEM"]["degauss"],
@@ -469,7 +483,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
-            (self.smearing_settings, "smearing_default"),
+            (self.advanced_settings.smearing_settings, "smearing_default"),
             lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
                 "parameters"
             ]["SYSTEM"]["smearing"],
@@ -482,8 +496,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     children=[
                         self.advanced_settings,
                         self.pseudo_family_selector,
-                        self.kpoints_settings,
-                        self.smearing_settings,
                     ]
                 ),
             ],
@@ -536,16 +548,26 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # Advanced settings
             self.pseudo_family_selector.value = parameters["pseudo_family"]
             if parameters.get("kpoints_distance_override", None) is not None:
-                self.kpoints_settings.kpoints_distance.value = parameters[
-                    "kpoints_distance_override"
-                ]
-                self.kpoints_settings.override_protocol_kpoints.value = True
+                self.advanced_settings.kpoints_settings.kpoints_distance.value = (
+                    parameters["kpoints_distance_override"]
+                )
+                self.advanced_settings.kpoints_settings.override_protocol_kpoints.value = (
+                    True
+                )
             if parameters.get("degauss_override", None) is not None:
-                self.smearing_settings.degauss.value = parameters["degauss_override"]
-                self.smearing_settings.override_protocol_smearing.value = True
+                self.advanced_settings.smearing_settings.degauss.value = parameters[
+                    "degauss_override"
+                ]
+                self.advanced_settings.smearing_settings.override_protocol_smearing.value = (
+                    True
+                )
             if parameters.get("smearing_override", None) is not None:
-                self.smearing_settings.smearing.value = parameters["smearing_override"]
-                self.smearing_settings.override_protocol_smearing.value = True
+                self.advanced_settings.smearing_settings.smearing.value = parameters[
+                    "smearing_override"
+                ]
+                self.advanced_settings.smearing_settings.override_protocol_smearing.value = (
+                    True
+                )
 
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
@@ -602,8 +624,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     process = traitlets.Instance(WorkChainNode, allow_none=True)
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
-    kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
-    smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode())
@@ -944,30 +964,32 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                         "tot_charge"
                     ] = self.advanced_settings.tot_charge.value
+                if key in ["base", "scf"]:
+                    if (
+                        self.advanced_settings.kpoints_settings.override_protocol_kpoints.value
+                    ):
+                        pw_overrides[key][
+                            "kpoints_distance"
+                        ] = (
+                            self.advanced_settings.kpoints_settings.kpoints_distance.value
+                        )
+                    if (
+                        self.advanced_settings.smearing_settings.override_protocol_smearing.value
+                        and self.workchain_settings.electronic_type.value == "metal"
+                    ):
+                        # smearing type setting
+                        pw_overrides[key].setdefault("pw", {}).setdefault(
+                            "parameters", {}
+                        ).setdefault("SYSTEM", {})[
+                            "smearing"
+                        ] = self.advanced_settings.smearing_settings.smearing.value
 
-        for key in ["base", "scf"]:
-            if self.kpoints_settings.override_protocol_kpoints.value:
-                pw_overrides[key][
-                    "kpoints_distance"
-                ] = self.kpoints_settings.kpoints_distance.value
-
-            if (
-                self.smearing_settings.override_protocol_smearing.value
-                and self.workchain_settings.electronic_type.value == "metal"
-            ):
-                # smearing type setting
-                pw_overrides[key].setdefault("pw", {}).setdefault(
-                    "parameters", {}
-                ).setdefault("SYSTEM", {})[
-                    "smearing"
-                ] = self.smearing_settings.smearing.value
-
-                # smearing degauss setting
-                pw_overrides[key].setdefault("pw", {}).setdefault(
-                    "parameters", {}
-                ).setdefault("SYSTEM", {})[
-                    "degauss"
-                ] = self.smearing_settings.degauss.value
+                        # smearing degauss setting
+                        pw_overrides[key].setdefault("pw", {}).setdefault(
+                            "parameters", {}
+                        ).setdefault("SYSTEM", {})[
+                            "degauss"
+                        ] = self.advanced_settings.smearing_settings.degauss.value
 
         overrides = {
             "relax": {
