@@ -148,16 +148,16 @@ def workchain_settings_generator():
 
 
 @pytest.fixture()
-def workchain_pwadvanced_settings_generator():
-    """Return a function that generates a pwadvanced_settings dictionary."""
-    from aiidalab_qe.app.steps import PwAdvancedSettings
+def workchain_advanced_settings_generator():
+    """Return a function that generates a advanced_settings dictionary."""
+    from aiidalab_qe.app.steps import AdvancedSettings
 
-    def _workchain_pwadvanced_settings_generator(**kwargs):
-        pwadvanced_settings = PwAdvancedSettings()
-        pwadvanced_settings._update_settings(**kwargs)
-        return pwadvanced_settings
+    def _workchain_advanced_settings_generator(**kwargs):
+        advanced_settings = AdvancedSettings()
+        advanced_settings._update_settings(**kwargs)
+        return advanced_settings
 
-    return _workchain_pwadvanced_settings_generator
+    return _workchain_advanced_settings_generator
 
 
 @pytest.fixture()
@@ -196,7 +196,7 @@ def submit_step_widget_generator(
     workchain_settings_generator,
     smearing_settings_generator,
     kpoints_settings_generator,
-    workchain_pwadvanced_settings_generator,
+    workchain_advanced_settings_generator,
 ):
     """Return a function that generates a submit step widget."""
     from aiidalab_qe.app.pseudos import PseudoFamilySelector
@@ -242,7 +242,7 @@ def submit_step_widget_generator(
         )
 
         # Advanced settings
-        submit_step.pw_advanced_settings = workchain_pwadvanced_settings_generator(
+        submit_step.advanced_settings = workchain_advanced_settings_generator(
             tot_charge=tot_charge,
         )
 

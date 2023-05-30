@@ -438,7 +438,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
-    pw_advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
+    advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
 
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
@@ -449,7 +449,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.kpoints_settings = KpointSettings()
         self.smearing_settings = SmearingSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
-        self.pw_advanced_settings = AdvancedSettings()
+        self.advanced_settings = AdvancedSettings()
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
@@ -480,7 +480,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.workchain_settings,
                 ipw.VBox(
                     children=[
-                        self.pw_advanced_settings,
+                        self.advanced_settings,
                         self.pseudo_family_selector,
                         self.kpoints_settings,
                         self.smearing_settings,
@@ -605,7 +605,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
-    pw_advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
+    advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
@@ -938,12 +938,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         for key in ["base", "scf", "nscf", "band"]:
             if self.pseudo_family_selector.override_protocol_pseudo_family.value:
                 pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
-            if self.pw_advanced_settings.override.value:
+            if self.advanced_settings.override.value:
                 pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
-                if self.pw_advanced_settings.override_tot_charge.value:
+                if self.advanced_settings.override_tot_charge.value:
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                         "tot_charge"
-                    ] = self.pw_advanced_settings.tot_charge.value
+                    ] = self.advanced_settings.tot_charge.value
 
         for key in ["base", "scf"]:
             if self.kpoints_settings.override_protocol_kpoints.value:
