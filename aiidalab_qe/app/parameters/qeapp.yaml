@@ -8,9 +8,9 @@ run_bands: false
 run_pdos: false
 
 ## Codes
-dos_code: dos-7.0@localhost
-projwfc_code: projwfc-7.0@localhost
-pw_code: pw-7.0@localhost
+dos_code: dos-7.2@localhost
+projwfc_code: projwfc-7.2@localhost
+pw_code: pw-7.2@localhost
 
 ## Material settings
 spin_type: none
