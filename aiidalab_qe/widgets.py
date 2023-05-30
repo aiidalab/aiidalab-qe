@@ -7,25 +7,31 @@ Authors:
 
 import base64
 import hashlib
+from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import time
-from copy import deepcopy
+
+import ase
 import ipywidgets as ipw
+import numpy as np
+import spglib
 import traitlets
 import traitlets as tl
-import ase
 from aiida.orm import CalcJobNode, load_node
-from aiidalab_widgets_base.utils import list_to_string_range, string_range_to_list, StatusHTML
 from aiidalab_widgets_base import register_viewer_widget
 from aiidalab_widgets_base.structures import _register_structure
-from IPython.display import HTML, Javascript, display, clear_output
-from pymatgen.io.ase import AseAtomsAdaptor
+from aiidalab_widgets_base.utils import (
+    StatusHTML,
+    list_to_string_range,
+    string_range_to_list,
+)
+from IPython.display import HTML, Javascript, clear_output, display
 from pymatgen.core.periodic_table import Element
-import numpy as np
+from pymatgen.io.ase import AseAtomsAdaptor
 
-#defects
+# defects
 from shakenbreak.distortions import distort, local_mc_rattle
 
 # trigger registration of the viewer widget:
@@ -390,7 +396,7 @@ class ResourceSelectionWidget(ipw.VBox):
         Specify the resources to use for the pw.x calculation.
         </p></div>"""
     )
-    
+
     prompt_dos = ipw.HTML(
         """<div style="line-height:120%; padding-top:0px">
         <p style="padding-bottom:10px">
@@ -411,7 +417,6 @@ class ResourceSelectionWidget(ipw.VBox):
         Specify the resources to use for the projwfc.x calculation.
         </p></div>"""
     )
-
 
     def __init__(self, **kwargs):
         extra = {
@@ -454,7 +459,11 @@ class ResourceSelectionWidget(ipw.VBox):
                     layout=ipw.Layout(justify_content="space-between"),
                 ),
                 ipw.HBox(
-                    children=[self.prompt_projwfc, self.num_nodes_projwfc, self.num_cpus_projwfc],
+                    children=[
+                        self.prompt_projwfc,
+                        self.num_nodes_projwfc,
+                        self.num_cpus_projwfc,
+                    ],
                     layout=ipw.Layout(justify_content="space-between"),
                 ),
             ]
@@ -467,7 +476,7 @@ class ResourceSelectionWidget(ipw.VBox):
     def _disable_projwfc(self, condition: bool):
         self.num_nodes_projwfc.disabled = condition
         self.num_cpus_projwfc.disabled = condition
-    
+
     def _configure_dos(self, default_mpiprocs):
         self.num_cpus_dos.value = default_mpiprocs
         self.num_nodes_dos.max = default_mpiprocs
@@ -475,7 +484,7 @@ class ResourceSelectionWidget(ipw.VBox):
             self.num_cpus_dos.description = "CPUs/node"
         else:
             self.num_cpus_dos.description = "CPUs"
- 
+
     def _configure_projwfc(self, default_mpiprocs):
         self.num_cpus_projwfc.value = default_mpiprocs
         self.num_nodes_projwfc.max = default_mpiprocs
@@ -604,6 +613,7 @@ class ProgressBar(ipw.HBox):
             self._animation_rate = 0
             self._progress_bar.value = change["new"]
 
+
 class AddingTagsEditor(ipw.VBox):
     """Editor for adding tags to atoms."""
 
@@ -704,51 +714,53 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = deepcopy(self.selection)
 
 
-
 class DistorsionStructureEditor(ipw.VBox):
 
     structure = tl.Instance(ase.Atoms, allow_none=True)
     selection = tl.List(tl.Int)
 
-    def __init__(self,title=""):
+    def __init__(self, title=""):
         self.title = title
         self._status_message = StatusHTML()
         self.num_nearest_neighbours = ipw.IntText(
             description="Num. neighbours atoms:",
-            value = 8,
-            step = 1,
+            value=8,
+            step=1,
             style={"description_width": "initial"},
             layout={"width": "initial"},
-
         )
         self.defect_position = ipw.Text(
             description="Defect atom:", layout={"width": "initial"}
         )
-        #Only select one atom! 
+        # Only select one atom!
         self.btn_defect_position = ipw.Button(
-            description="From selection", layout={"width": "initial"},
+            description="From selection",
+            layout={"width": "initial"},
         )
-        #Center of the selection
+        # Center of the selection
         self.btn_defect_position_vac = ipw.Button(
-            description="From selection", layout={"width": "initial"},
+            description="From selection",
+            layout={"width": "initial"},
         )
         self.vacancy_coords = ipw.Text(
-            description="Vacancy coords:", layout={"width": "initial"}, style={"description_width": "initial"},
+            description="Vacancy coords:",
+            layout={"width": "initial"},
+            style={"description_width": "initial"},
         )
         self.btn_defect_position.on_click(self._defect_position)
         self.btn_defect_position_vac.on_click(self._defect_position_vac)
         self.distortion_factor = ipw.BoundedFloatText(
             value=1.0,
-            min= 0.2,
-            max = 1.8,
-            step = 0.1,
-            description = "Distortion Factor:",
+            min=0.2,
+            max=1.8,
+            step=0.1,
+            description="Distortion Factor:",
             style={"description_width": "initial"},
             layout={"width": "initial"},
         )
         self.btn_apply_bond_distortion = ipw.Button(
-            description = "Apply Bond Distortion",
-            button_style= 'primary',
+            description="Apply Bond Distortion",
+            button_style="primary",
             disabled=False,
             layout={"width": "initial"},
         )
@@ -759,7 +771,8 @@ class DistorsionStructureEditor(ipw.VBox):
             style={"description_width": "initial"},
         )
         self.btn_selected_atoms = ipw.Button(
-            description="From selection", layout={"width": "initial"},
+            description="From selection",
+            layout={"width": "initial"},
         )
         self.btn_selected_atoms.on_click(self._selected_atoms)
         self.wrong_syntax = ipw.HTML(
@@ -773,38 +786,44 @@ class DistorsionStructureEditor(ipw.VBox):
             layout={"width": "initial"},
         )
         self.btn_apply_random_distortion = ipw.Button(
-            description = "Apply Random Displacement",
-            button_style= 'primary',
+            description="Apply Random Displacement",
+            button_style="primary",
             disabled=False,
             layout={"width": "initial"},
         )
         self.btn_apply_random_distortion.on_click(self._apply_random_distortion)
         super().__init__(
             children=[
-                ipw.HTML("<b>Define defect position:</b>",
-            
-                ),
-                ipw.HBox(
-                    [self.defect_position,self.btn_defect_position,self.vacancy_coords,self.btn_defect_position_vac]
-                ),
-                ipw.HTML("<b>Bond distortion around defect:</b>",
-            
+                ipw.HTML(
+                    "<b>Define defect position:</b>",
                 ),
                 ipw.HBox(
                     [
-                        self.num_nearest_neighbours,self.distortion_factor, 
+                        self.defect_position,
+                        self.btn_defect_position,
+                        self.vacancy_coords,
+                        self.btn_defect_position_vac,
                     ]
                 ),
-                ipw.HTML("<b>Random displacements to all atoms or selected ones:</b>",
-            
+                ipw.HTML(
+                    "<b>Bond distortion around defect:</b>",
                 ),
-                ipw.HBox([
-                    self.selected_atoms,
-                    self.btn_selected_atoms,
-                    self.wrong_syntax,
-                    self.radial_cutoff,
-                ]
-            
+                ipw.HBox(
+                    [
+                        self.num_nearest_neighbours,
+                        self.distortion_factor,
+                    ]
+                ),
+                ipw.HTML(
+                    "<b>Random displacements to all atoms or selected ones:</b>",
+                ),
+                ipw.HBox(
+                    [
+                        self.selected_atoms,
+                        self.btn_selected_atoms,
+                        self.wrong_syntax,
+                        self.radial_cutoff,
+                    ]
                 ),
                 ipw.HBox(
                     [
@@ -813,14 +832,15 @@ class DistorsionStructureEditor(ipw.VBox):
                     ]
                 ),
                 self._status_message,
-
             ]
         )
 
     def sel2com(self):
         """Get center of mass of the selection."""
         if self.selection:
-            com = np.average(self.structure[self.selection].get_scaled_positions(), axis=0)
+            com = np.average(
+                self.structure[self.selection].get_scaled_positions(), axis=0
+            )
         else:
             com = [0, 0, 0]
 
@@ -843,7 +863,7 @@ class DistorsionStructureEditor(ipw.VBox):
         self.vacancy_coords.value = self.vec2str(self.sel2com())
 
     def _defect_position(self, _=None):
-        """Define vaccancy coordinates.""" 
+        """Define vaccancy coordinates."""
         if len(self.selection) != 1:
             self._status_message.message = """
             <div class="alert alert-info">
@@ -858,7 +878,7 @@ class DistorsionStructureEditor(ipw.VBox):
         self.selected_atoms.value = list_to_string_range(self.selection)
 
     @_register_structure
-    def _apply_bond_distortion(self, _=None , atoms=None):
+    def _apply_bond_distortion(self, _=None, atoms=None):
         if not self.defect_position.value and not self.vacancy_coords.value:
             self._status_message.message = """
             <div class="alert alert-info">
@@ -866,16 +886,16 @@ class DistorsionStructureEditor(ipw.VBox):
             </div>
             """
         else:
-            if self.defect_position.value == '':
+            if self.defect_position.value == "":
                 site_index = None
             else:
                 site_index = int(self.defect_position.value)
-            if self.vacancy_coords.value == '':
+            if self.vacancy_coords.value == "":
                 frac_coords = None
             else:
                 frac_coords = self.str2vec(self.vacancy_coords.value)
             pymatgen_ase = AseAtomsAdaptor()
-            pymatgen_structure= pymatgen_ase.get_structure(atoms)
+            pymatgen_structure = pymatgen_ase.get_structure(atoms)
             struc_distorted = distort(
                 structure=pymatgen_structure,
                 num_nearest_neighbours=self.num_nearest_neighbours.value,
@@ -883,11 +903,11 @@ class DistorsionStructureEditor(ipw.VBox):
                 distortion_factor=self.distortion_factor.value,
                 frac_coords=frac_coords,
             )
-            atoms = pymatgen_ase.get_atoms(struc_distorted['distorted_structure'])
+            atoms = pymatgen_ase.get_atoms(struc_distorted["distorted_structure"])
             self.structure = atoms
 
-    @_register_structure  
-    def _apply_random_distortion(self, _=None , atoms=None):
+    @_register_structure
+    def _apply_random_distortion(self, _=None, atoms=None):
         if not self.defect_position.value and not self.vacancy_coords.value:
             self._status_message.message = """
             <div class="alert alert-info">
@@ -895,11 +915,11 @@ class DistorsionStructureEditor(ipw.VBox):
             </div>
             """
         else:
-            if self.defect_position.value == '':
+            if self.defect_position.value == "":
                 site_index = None
             else:
                 site_index = int(self.defect_position.value)
-            if self.vacancy_coords.value == '':
+            if self.vacancy_coords.value == "":
                 frac_coords = None
             else:
                 frac_coords = self.str2vec(self.vacancy_coords.value)
@@ -911,24 +931,21 @@ class DistorsionStructureEditor(ipw.VBox):
                 self.wrong_syntax.layout.visibility = "visible"
             else:
                 self.wrong_syntax.layout.visibility = "hidden"
-            
-                pymatgen_ase=AseAtomsAdaptor()
-                pymatgen_structure= pymatgen_ase.get_structure(atoms)
-                struc_distorted=local_mc_rattle(
+
+                pymatgen_ase = AseAtomsAdaptor()
+                pymatgen_structure = pymatgen_ase.get_structure(atoms)
+                struc_distorted = local_mc_rattle(
                     structure=pymatgen_structure,
                     site_index=site_index,
                     frac_coords=frac_coords,
-                    active_atoms = active_atoms,
+                    active_atoms=active_atoms,
                     nbr_cutoff=self.radial_cutoff.value,
-
                 )
                 atoms = pymatgen_ase.get_atoms(struc_distorted)
                 self.structure = atoms
 
 
- 
 class HubbardWidget(ipw.VBox):
-    
     def __init__(self, input_structure=None):
 
         self.input_structure = input_structure
@@ -939,24 +956,32 @@ class HubbardWidget(ipw.VBox):
             value=False,
             layout=ipw.Layout(max_width="10%"),
         )
-        self.eigenvalues_label = ipw.Checkbox(description="Define eigenvalues",
-                        tooltip="Define eigenvalues",
-                        indent=False,
-                        value=False,
-                        layout=ipw.Layout(max_width="30%"),)
+        self.eigenvalues_label = ipw.Checkbox(
+            description="Define eigenvalues",
+            tooltip="Define eigenvalues",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="30%"),
+        )
         self.hubbard_widget = self.create_hubbard_widget()
         self.hubbard_widget_out = ipw.Output()
         self.eigen_values_widget = self.create_eigenvalues_widget()
         self.eigen_values_widget_out = ipw.Output()
-    
+
         super().__init__(
-            children= [
-                ipw.HBox(children=[ipw.HTML("<b>Hubbard (DFT+U)</b>"), self.hubbard, ]),
-                self.hubbard_widget_out, 
+            children=[
+                ipw.HBox(
+                    children=[
+                        ipw.HTML("<b>Hubbard (DFT+U)</b>"),
+                        self.hubbard,
+                    ]
+                ),
+                self.hubbard_widget_out,
                 self.eigen_values_widget_out,
-                ])
-        self.hubbard.observe(self.toggle_hubbard_widgets, names='value')
-        self.eigenvalues_label.observe(self.toggle_eigenvalues_widgets, names='value')
+            ]
+        )
+        self.hubbard.observe(self.toggle_hubbard_widgets, names="value")
+        self.eigenvalues_label.observe(self.toggle_eigenvalues_widgets, names="value")
 
     def create_hubbard_widget(self):
         if self.input_structure is None:
@@ -966,20 +991,31 @@ class HubbardWidget(ipw.VBox):
         widgets_list = []
         for label in self.input_labels:
             hbox_container = ipw.HBox()
-            float_widget = ipw.BoundedFloatText(description=label, min=0, max=10, step=0.1, value=0.0)
+            float_widget = ipw.BoundedFloatText(
+                description=label, min=0, max=10, step=0.1, value=0.0
+            )
             hbox_container.children = [float_widget]
             widgets_list.append(hbox_container)
-        hubbard_widget = ipw.VBox([ipw.HTML("Define U value")] + widgets_list + [self.eigenvalues_label])
+        hubbard_widget = ipw.VBox(
+            [ipw.HTML("Define U value")] + widgets_list + [self.eigenvalues_label]
+        )
         return hubbard_widget
-    
+
     def create_eigenvalues_widget(self):
 
         if self.input_structure is None:
             self.input_kinds_eigenvalues = []
         else:
-            list_of_kinds = [[index+1, value.name, Element(value.symbol)]for index,value  in enumerate(self.input_structure.kinds)]
-            self.input_kinds_eigenvalues = [x for x in list_of_kinds if x[2].is_transition_metal or x[2].is_lanthanoid]
-            
+            list_of_kinds = [
+                [index + 1, value.name, Element(value.symbol)]
+                for index, value in enumerate(self.input_structure.kinds)
+            ]
+            self.input_kinds_eigenvalues = [
+                x
+                for x in list_of_kinds
+                if x[2].is_transition_metal or x[2].is_lanthanoid
+            ]
+
         kind_list = []
         for kind in self.input_kinds_eigenvalues:
             if kind[2].is_transition_metal:
@@ -990,47 +1026,85 @@ class HubbardWidget(ipw.VBox):
                 widgets_list_up = []
                 widgets_list_down = []
                 for i in range(num_states):
-                    eigenvalues_up = ipw.Dropdown(description= f"{i+1}", options=['-1', '0', '1'], layout=ipw.Layout(width='150px'))
-                    eigenvalues_down = ipw.Dropdown(description= f"{i+1}", options=['-1', '0', '1'], layout=ipw.Layout(width='150px'))
+                    eigenvalues_up = ipw.Dropdown(
+                        description=f"{i+1}",
+                        options=["-1", "0", "1"],
+                        layout=ipw.Layout(width="150px"),
+                    )
+                    eigenvalues_down = ipw.Dropdown(
+                        description=f"{i+1}",
+                        options=["-1", "0", "1"],
+                        layout=ipw.Layout(width="150px"),
+                    )
                     widgets_list_up.append(eigenvalues_up)
                     widgets_list_down.append(eigenvalues_down)
 
-                row_up = ipw.HBox(children= [ipw.Label("Up:",layout=ipw.Layout(justify_content="flex-start", width="40px"),)] + widgets_list_up,)
-                row_down = ipw.HBox(children= [ipw.Label("Down:",layout=ipw.Layout(justify_content="flex-start", width="40px"),)] + widgets_list_down,)
+                row_up = ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Up:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="40px"
+                            ),
+                        )
+                    ]
+                    + widgets_list_up,
+                )
+                row_down = ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Down:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="40px"
+                            ),
+                        )
+                    ]
+                    + widgets_list_down,
+                )
                 eigenvalues_container = ipw.VBox(children=[row_up, row_down])
-                kind_container = ipw.HBox(children=[ipw.Label(kind[1],layout=ipw.Layout(justify_content="flex-start", width="40px"),), eigenvalues_container])
+                kind_container = ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            kind[1],
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="40px"
+                            ),
+                        ),
+                        eigenvalues_container,
+                    ]
+                )
                 kind_list.append(kind_container)
         occup_kinds_widget = ipw.VBox(kind_list)
 
         return occup_kinds_widget
-                               
+
     def update_widgets(self):
         self.input_labels = self.input_structure.get_kind_names()
         self.hubbard_widget = self.create_hubbard_widget()
-        if self.hubbard.value == True:
+        if self.hubbard.value:
             with self.hubbard_widget_out:
                 clear_output()
                 display(self.hubbard_widget)
         self.eigen_values_widget = self.create_eigenvalues_widget()
-        if self.eigenvalues_label.value == True:
+        if self.eigenvalues_label.value:
             with self.eigen_values_widget_out:
                 clear_output()
                 display(self.eigen_values_widget)
-                
+
     def update_hubbard_widgets(self, change):
         self.input_labels = self.input_structure.get_kind_names()
         self.hubbard_widget = self.create_hubbard_widget()
-        if self.hubbard.value == True:
+        if self.hubbard.value:
             with self.hubbard_widget_out:
                 clear_output()
                 display(self.hubbard_widget)
 
     def toggle_hubbard_widgets(self, change):
-        if change['new'] == True:
+        if change["new"]:
             with self.hubbard_widget_out:
                 clear_output()
                 display(self.hubbard_widget)
-            if self.eigenvalues_label.value == True:
+            if self.eigenvalues_label.value:
                 with self.eigen_values_widget_out:
                     clear_output()
                     display(self.eigen_values_widget)
@@ -1041,23 +1115,24 @@ class HubbardWidget(ipw.VBox):
                 clear_output()
 
     def toggle_eigenvalues_widgets(self, change):
-        if change['new'] == True:
+        if change["new"]:
             with self.eigen_values_widget_out:
                 clear_output()
                 display(self.eigen_values_widget)
         else:
             with self.eigen_values_widget_out:
                 clear_output()
-            
 
     def _get_hubbard_u(self):
         hubbard_u = {}
         for index, label in enumerate(self.input_labels):
-            value_hubbard = self.hubbard_widget.children[index+1].children[0].value
+            value_hubbard = self.hubbard_widget.children[index + 1].children[0].value
             if value_hubbard != 0:
-                hubbard_u[label] = self.hubbard_widget.children[index+1].children[0].value
+                hubbard_u[label] = (
+                    self.hubbard_widget.children[index + 1].children[0].value
+                )
         return hubbard_u
-    
+
     def _get_starting_ns_eigenvalue(self) -> list:
         starting_ns_eigenvalue = []
         for index, kind in enumerate(self.input_kinds_eigenvalues):
@@ -1066,28 +1141,223 @@ class HubbardWidget(ipw.VBox):
                     num_states = 5
                 else:
                     num_states = 7
-                for i in range(2): #up and down
-                    spin = self.eigen_values_widget.children[index].children[1].children[i]
+                for i in range(2):  # up and down
+                    spin = (
+                        self.eigen_values_widget.children[index].children[1].children[i]
+                    )
                     for j in range(num_states):
-                        value_eigenvalue = int(spin.children[j+1].value)
+                        value_eigenvalue = int(spin.children[j + 1].value)
                         if value_eigenvalue != -1:
-                            #starting_ns_eigenvalue.append([j+1, i+1, kind[0], value_eigenvalue])
-                            starting_ns_eigenvalue.append([j+1, i+1, kind[1], value_eigenvalue])
+                            # starting_ns_eigenvalue.append([j+1, i+1, kind[0], value_eigenvalue])
+                            starting_ns_eigenvalue.append(
+                                [j + 1, i + 1, kind[1], value_eigenvalue]
+                            )
 
         return starting_ns_eigenvalue
-          
+
     @property
     def hubbard_dict(self) -> dict:
-        if self.hubbard.value == True:
-            hubbard_dict = {"hubbard_u": self._get_hubbard_u() , "lda_plus_u": True, "U_projection_type": "ortho-atomic"}
+        if self.hubbard.value:
+            hubbard_dict = {
+                "hubbard_u": self._get_hubbard_u(),
+                "lda_plus_u": True,
+                "U_projection_type": "ortho-atomic",
+            }
         else:
             hubbard_dict = {}
         return hubbard_dict
-    
+
     @property
     def eigenvalues_dict(self) -> dict:
-        if self.eigenvalues_label.value == True:
-            eigenvalues_dict = {"starting_ns_eigenvalue": self._get_starting_ns_eigenvalue()}
+        if self.eigenvalues_label.value:
+            eigenvalues_dict = {
+                "starting_ns_eigenvalue": self._get_starting_ns_eigenvalue()
+            }
         else:
             eigenvalues_dict = {}
         return eigenvalues_dict
+
+
+class BasicCellEditor(ipw.VBox):
+    """Widget that allows for the basic cell editing."""
+
+    structure = tl.Instance(ase.Atoms, allow_none=True)
+
+    def __init__(self, title="Cell transform"):
+        self.title = title
+        self._status_message = StatusHTML()
+
+        # cell transfor opration widget
+        primitive_cell = ipw.Button(
+            description="Convert to primitive cell",
+            layout={"width": "initial"},
+        )
+        primitive_cell.on_click(self._to_primitive_cell)
+
+        conventional_cell = ipw.Button(
+            description="Convert to conventional cell",
+            layout={"width": "initial"},
+        )
+        conventional_cell.on_click(self._to_conventional_cell)
+        # change PR 372
+        cell_parameters = (
+            self.structure.get_cell_lengths_and_angles()
+            if self.structure
+            else [1, 0, 0, 0, 0, 0]
+        )
+        self.cell_parameters = ipw.HBox(
+            [
+                ipw.VBox(
+                    [
+                        ipw.HTML(
+                            description=["a(Å)", "b(Å)", "c(Å)", "α", "β", "γ"][i],
+                            layout={"width": "30px"},
+                        ),
+                        ipw.FloatText(
+                            value=cell_parameters[i], layout={"width": "100px"}
+                        ),
+                    ]
+                )
+                for i in range(6)
+            ]
+        )
+        #
+        self.cell_transformation = ipw.VBox(
+            [
+                ipw.HBox(
+                    [
+                        ipw.IntText(value=1 if i == j else 0, layout={"width": "60px"})
+                        for j in range(3)
+                    ]
+                    + [ipw.FloatText(value=0, layout={"width": "60px"})]
+                )
+                for i in range(3)
+            ]
+        )
+        apply_cell_parameters = ipw.Button(description="Apply cell parameters")
+        apply_cell_parameters.on_click(self.apply_cell_parameters)
+        apply_cell_transformation = ipw.Button(description="Apply transformation")
+        apply_cell_transformation.on_click(self.apply_cell_transformation)
+        # change ends
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    [
+                        primitive_cell,
+                        conventional_cell,
+                    ],
+                ),
+                self._status_message,
+                ipw.VBox(  # Change here
+                    [
+                        ipw.HTML(
+                            "<b>Cell parameters:</b>",
+                            layout={"margin": "20px 0px 10px 0px"},
+                        ),
+                        self.cell_parameters,
+                        apply_cell_parameters,
+                    ],
+                    layout={"margin": "0px 0px 0px 20px"},
+                ),
+                ipw.VBox(
+                    [
+                        ipw.HTML(
+                            "<b>Cell Transformation:</b>",
+                            layout={"margin": "20px 0px 10px 0px"},
+                        ),
+                        self.cell_transformation,
+                        apply_cell_transformation,
+                    ],
+                    layout={"margin": "0px 0px 0px 20px"},
+                ),  # change here
+            ],
+        )
+
+    @_register_structure
+    def _to_primitive_cell(self, _=None, atoms=None):
+        atoms = self._to_standard_cell(atoms, to_primitive=True)
+
+        self.structure = atoms
+
+    @_register_structure
+    def _to_conventional_cell(self, _=None, atoms=None):
+        atoms = self._to_standard_cell(atoms, to_primitive=False)
+
+        self.structure = atoms
+
+    @staticmethod
+    def _to_standard_cell(
+        structure: ase.Atoms, to_primitive=False, no_idealize=False, symprec=1e-5
+    ):
+        """The `standardize_cell` method from spglib and apply to ase.Atoms"""
+        lattice = structure.get_cell()
+        positions = structure.get_scaled_positions()
+        numbers = structure.get_atomic_numbers()
+
+        cell = (lattice, positions, numbers)
+
+        # operation
+        lattice, positions, numbers = spglib.standardize_cell(
+            cell, to_primitive=to_primitive, no_idealize=no_idealize, symprec=symprec
+        )
+
+        return ase.Atoms(
+            cell=lattice,
+            scaled_positions=positions,
+            numbers=numbers,
+            pbc=[True, True, True],
+        )
+
+    @tl.observe("structure")  # change here
+    def _observe_structure(self, change):
+        """Update cell after the structure has been modified."""
+        if change["new"] is not None:
+            cell_parameters = change["new"].get_cell_lengths_and_angles()
+            for i in range(6):
+                self.cell_parameters.children[i].children[1].value = round(
+                    cell_parameters[i], 4
+                )
+        else:
+            for i in range(6):
+                self.cell_parameters.children[i].children[1].value = 0
+
+    @_register_structure
+    def apply_cell_parameters(self, _=None, atoms=None):
+        from ase.cell import Cell
+
+        # only update structure when atoms is not None.
+        cell_parameters = [
+            self.cell_parameters.children[i].children[1].value for i in range(6)
+        ]
+        if atoms is not None:
+            atoms.cell = Cell.fromcellpar(cell_parameters)
+            self.structure = atoms
+
+    @_register_structure
+    def apply_cell_transformation(self, _=None, atoms=None):
+        from ase.build import make_supercell
+
+        # only update structure when atoms is not None.
+        if atoms is not None:
+            mat = np.zeros((3, 3))
+            translate = np.zeros(3)
+            for i in range(3):
+                translate[i] = self.cell_transformation.children[i].children[3].value
+                for j in range(3):
+                    mat[i][j] = self.cell_transformation.children[i].children[j].value
+            # transformation matrix may not work due to singularity, or
+            # the number of generated atoms is not correct
+            try:
+                atoms = make_supercell(atoms, mat)
+            except Exception as e:
+                self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>The transformation matrix is wrong! {}</strong>
+            </div>
+            """.format(
+                    e
+                )
+                return
+            # translate
+            atoms.translate(-atoms.cell.array.dot(translate))
+            self.structure = atoms  # change here
