@@ -5,19 +5,33 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
+from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import time
 
+# for AddTagsEditor
+import ase
 import ipywidgets as ipw
+import numpy as np
 import traitlets
+from aiida import orm, plugins
 from aiida.orm import CalcJobNode, load_node
 from aiidalab_widgets_base import register_viewer_widget
+from aiidalab_widgets_base.structures import _register_structure
+from aiidalab_widgets_base.utils import (
+    StatusHTML,
+    list_to_string_range,
+    string_range_to_list,
+)
 from IPython.display import HTML, Javascript, display
 
 # trigger registration of the viewer widget:
 from aiidalab_qe.app import node_view  # noqa: F401
+
+StructureData = plugins.DataFactory("core.structure")
+
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -515,3 +529,141 @@ class ProgressBar(ipw.HBox):
         else:
             self._animation_rate = 0
             self._progress_bar.value = change["new"]
+
+
+class AddingTagsEditor(ipw.VBox):
+    """Editor for adding tags to atoms."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    selection = traitlets.List(traitlets.Int, allow_none=True)
+    input_selection = traitlets.List(traitlets.Int, allow_none=True)
+    structure_node = traitlets.Instance(orm.Data, allow_none=True, read_only=True)
+
+    def __init__(self, title=""):
+        self.title = title
+        self._status_message = StatusHTML()
+        self.atom_selection = ipw.Text(
+            description="Define kind", value="", layout={"width": "initial"}
+        )
+        self.from_selection = ipw.Button(description="From selection")
+        self.from_selection.on_click(self._from_selection)
+        self.tag = ipw.BoundedIntText(
+            description="Tag", value=1, min=0, max=4, layout={"width": "initial"}
+        )
+        self.add_tags = ipw.Button(
+            description="Update tags",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+
+        self.clear_tags = ipw.Button(
+            description="Clear tags",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+        self.clear_all_tags = ipw.Button(
+            description="Clear all tags",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+        self.periodicity = ipw.RadioButtons(
+            options=[
+                "xyz",
+                "xy",
+                "x",
+            ],
+            value="xyz",
+            description="Periodicty: ",
+        )
+        self.select_periodicity = ipw.Button(
+            description="Select",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+        self.add_tags.on_click(self._add_tags)
+        self.clear_tags.on_click(self._clear_tags)
+        self.clear_all_tags.on_click(self._clear_all_tags)
+        self.select_periodicity.on_click(self._select_periodicity)
+        super().__init__(
+            children=[
+                ipw.HTML(
+                    "<b>Adding a tag to atoms</b>",
+                ),
+                ipw.HBox([self.atom_selection, self.from_selection, self.tag]),
+                ipw.HBox([self.add_tags, self.clear_tags, self.clear_all_tags]),
+                ipw.HTML(
+                    "<b>Define periodicity</b>",
+                ),
+                self.periodicity,
+                self.select_periodicity,
+                self._status_message,
+            ]
+        )
+
+    def _from_selection(self, _=None):
+        """Set the atom selection from the current selection."""
+        self.atom_selection.value = list_to_string_range(self.selection)
+
+    def _add_tags(self, _=None):
+        """Add tags to the selected atoms."""
+        if not self.atom_selection.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select atoms first.</strong>
+            </div>
+            """
+        else:
+            selection = string_range_to_list(self.atom_selection.value)
+            new_structure = deepcopy(self.structure)
+            if new_structure.get_tags() == []:
+                new_tags = np.zeros(len(new_structure))
+            else:
+                new_tags = new_structure.get_tags()
+            new_tags[selection] = self.tag.value
+            new_structure.set_tags(new_tags)
+            self.structure = None
+            self.structure = deepcopy(new_structure)
+            self.input_selection = None
+            self.input_selection = deepcopy(self.selection)
+
+    def _clear_tags(self, _=None):
+        """Clear tags from selected atoms."""
+        if not self.atom_selection.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select atoms first.</strong>
+            </div>
+            """
+        else:
+            selection = string_range_to_list(self.atom_selection.value)
+            new_structure = deepcopy(self.structure)
+            new_tags = new_structure.get_tags()
+            new_tags[selection] = 0
+            new_structure.set_tags(new_tags)
+            self.structure = None
+            self.structure = deepcopy(new_structure)
+            self.input_selection = None
+            self.input_selection = deepcopy(self.selection)
+
+    def _clear_all_tags(self, _=None):
+        """Clear all tags."""
+        new_structure = deepcopy(self.structure)
+        new_tags = np.zeros(len(new_structure))
+        new_structure.set_tags(new_tags)
+        self.structure = None
+        self.structure = deepcopy(new_structure)
+        self.input_selection = None
+        self.input_selection = deepcopy(self.selection)
+
+    @_register_structure
+    def _select_periodicity(self, _=None, atoms=None):
+        """Select periodicity."""
+        periodicity_options = {
+            "xyz": (True, True, True),
+            "xy": (True, True, False),
+            "x": (True, False, False),
+        }
+        new_structure = deepcopy(self.structure)
+        new_structure.pbc = periodicity_options[self.periodicity.value]
+        self.structure = None
+        self.structure = deepcopy(new_structure)

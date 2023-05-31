@@ -101,9 +101,10 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             else:
                 self.state = self.State.SUCCESS
         else:
-            if self.structure.pbc != (True, True, True):
-                self.state = self.State.READY
-            elif self.confirmed_structure is None:
+            # if self.structure.pbc != (True, True, True):
+            #    self.state = self.State.READY
+            # elif self.confirmed_structure is None:
+            if self.confirmed_structure is None:
                 self.state = self.State.CONFIGURED
             else:
                 self.state = self.State.SUCCESS
@@ -117,16 +118,16 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.message_area.value = ""
             else:
                 self.structure_name_text.value = str(self.structure.get_formula())
-                if self.structure.pbc != (True, True, True):
-                    self.message_area.value = NON_3D_ERROR_MESSAGE
-                else:
-                    struc_dimension = self._get_structure_dimensionality()
-                    if struc_dimension != 3:
-                        self.message_area.value = NON_3D_WARNING.format(
-                            dimension=struc_dimension
-                        )
-                    else:
-                        self.message_area.value = ""
+                # if self.structure.pbc != (True, True, True):
+                #    self.message_area.value = NON_3D_ERROR_MESSAGE
+                # else:
+                #    struc_dimension = self._get_structure_dimensionality()
+                #    if struc_dimension != 3:
+                #        self.message_area.value = NON_3D_WARNING.format(
+                #            dimension=struc_dimension
+                #        )
+                #    else:
+                #        self.message_area.value = ""
             self._update_state()
 
     @traitlets.observe("confirmed_structure")
