@@ -148,16 +148,16 @@ def workchain_settings_generator():
 
 
 @pytest.fixture()
-def workchain_advanced_settings_generator():
-    """Return a function that generates a advanced_settings dictionary."""
-    from aiidalab_qe.app.steps import AdvancedSettings
+def tot_charge_generator():
+    """Return a function that generates a tot_charge dictionary."""
+    from aiidalab_qe.app.steps import TotalCharge
 
-    def _workchain_advanced_settings_generator(**kwargs):
-        advanced_settings = AdvancedSettings()
-        advanced_settings._update_settings(**kwargs)
-        return advanced_settings
+    def _tot_charge_generator(**kwargs):
+        tot_charge = TotalCharge()
+        tot_charge._update_settings(**kwargs)
+        return tot_charge
 
-    return _workchain_advanced_settings_generator
+    return _tot_charge_generator
 
 
 @pytest.fixture()
@@ -196,11 +196,12 @@ def submit_step_widget_generator(
     workchain_settings_generator,
     smearing_settings_generator,
     kpoints_settings_generator,
-    workchain_advanced_settings_generator,
+    tot_charge_generator,
+    # workchain_advanced_settings_generator,
 ):
     """Return a function that generates a submit step widget."""
     from aiidalab_qe.app.pseudos import PseudoFamilySelector
-    from aiidalab_qe.app.steps import SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.steps import AdvancedSettings, SubmitQeAppWorkChainStep
 
     def _submit_step_widget_generator(
         relax_type="positions_cell",
@@ -233,17 +234,20 @@ def submit_step_widget_generator(
             workchain_protocol=workchain_protocol,
         )
         # Advanced settings
-        submit_step.advanced_settings = workchain_advanced_settings_generator(
+        submit_step.advanced_settings = AdvancedSettings()
+        submit_step.advanced_settings.override.value = True
+
+        submit_step.advanced_settings.tot_charge = tot_charge_generator(
             tot_charge=tot_charge,
         )
 
-        submit_step.advanced_settings.kpoints_settings = kpoints_settings_generator(
+        submit_step.advanced_settings.kpoints = kpoints_settings_generator(
             kpoints_distance=kpoints_distance
         )
-        submit_step.advanced_settings.smearing_settings = smearing_settings_generator(
+        submit_step.advanced_settings.smearing = smearing_settings_generator(
             smearing=smearing,
             degauss=degauss,
-            override_protocol_smearing=override_protocol_smearing,
+            override=override_protocol_smearing,
         )
 
         return submit_step

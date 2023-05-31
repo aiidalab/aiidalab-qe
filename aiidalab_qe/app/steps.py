@@ -216,42 +216,21 @@ class AdvancedSettings(ipw.VBox):
         <h4>Advanced Settings</h4></div>"""
     )
     description = ipw.HTML("""Select the advanced settings for the <b>pw.x</b> code.""")
-    # set here defaul values for the advanced settings
-    tot_charge_default = 0
 
+    # set here defaul values for the advanced settings
     def __init__(self, **kwargs):
         self.override = ipw.Checkbox(
             description="Override",
             indent=False,
             value=False,
         )
-        self.override_tot_charge = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-
-        self.tot_charge = ipw.BoundedFloatText(
-            value=0,
-            min=-3,
-            max=3,
-            step=0.01,
-            disabled=False,
-            description="Total charge:",
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self.override_tot_charge, "value"),
-            (self.tot_charge, "disabled"),
-            lambda override: not override,
-        )
-        self.smearing_settings = SmearingSettings()
-        self.kpoints_settings = KpointSettings()
-
+        self.smearing = SmearingSettings()
+        self.kpoints = KpointSettings()
+        self.tot_charge = TotalCharge()
         self.list_overrides = [
-            self.override_tot_charge,
-            self.smearing_settings.override_protocol_smearing,
-            self.kpoints_settings.override_protocol_kpoints,
+            self.smearing.override,
+            self.kpoints.override,
+            self.tot_charge.override,
         ]
         for override in self.list_overrides:
             ipw.dlink(
@@ -259,13 +238,7 @@ class AdvancedSettings(ipw.VBox):
                 (override, "disabled"),
                 lambda override: not override,
             )
-        ipw.dlink(
-            (self.override_tot_charge, "value"),
-            (self.tot_charge, "disabled"),
-            lambda override: not override,
-        )
-        self.tot_charge.observe(self.set_pw_settings, "value")
-        self.override.observe(self.set_pw_settings, "value")
+        self.override.observe(self.set_advanced_settings, "value")
         super().__init__(
             children=[
                 self.title,
@@ -275,35 +248,85 @@ class AdvancedSettings(ipw.VBox):
                         self.override,
                     ],
                 ),
-                ipw.HBox(
-                    [
-                        self.override_tot_charge,
-                        self.tot_charge,
-                    ],
-                ),
-                self.smearing_settings,
-                self.kpoints_settings,
+                self.tot_charge,
+                self.smearing,
+                self.kpoints,
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
 
-    def set_pw_settings(self, _=None):
-        self.tot_charge.value = (
-            self.tot_charge.value
-            if self.override.value and self.override_tot_charge.value
-            else self.tot_charge_default
+    def set_advanced_settings(self, _=None):
+        self.smearing.reset()
+        self.kpoints.reset()
+        self.tot_charge.reset()
+
+    # def _update_settings(self, **kwargs):
+    #     """Update the override and override_tot_charge and override_tot_charge values by the given keyword arguments
+    #     Therefore the override checkbox is not updated and defaults to True"""
+    #     self.override.value = True
+    #     self.override_tot_charge.value = True
+
+    #     with self.hold_trait_notifications():
+    #         if "tot_charge" in kwargs:
+    #             self.tot_charge.value = kwargs["tot_charge"]
+
+
+class TotalCharge(ipw.VBox):
+    tot_charge_default = traitlets.Float(default_value=0.0)
+
+    def __init__(self, **kwargs):
+        self.override = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
+        self.charge = ipw.BoundedFloatText(
+            value=0,
+            min=-3,
+            max=3,
+            step=0.01,
+            disabled=False,
+            description="Total charge:",
+            style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self.override, "value"),
+            (self.charge, "disabled"),
+            lambda override: not override,
+        )
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    [
+                        self.override,
+                        self.charge,
+                    ],
+                ),
+            ],
+            layout=ipw.Layout(justify_content="space-between"),
+            **kwargs,
+        )
+        self.charge.observe(self.set_tot_charge, "value")
+        self.override.observe(self.set_tot_charge, "value")
+
+    def set_tot_charge(self, _=None):
+        self.charge.value = (
+            self.charge.value if self.override.value else self.tot_charge_default
         )
 
     def _update_settings(self, **kwargs):
         """Update the override and override_tot_charge and override_tot_charge values by the given keyword arguments
         Therefore the override checkbox is not updated and defaults to True"""
         self.override.value = True
-        self.override_tot_charge.value = True
-
         with self.hold_trait_notifications():
             if "tot_charge" in kwargs:
-                self.tot_charge.value = kwargs["tot_charge"]
+                self.charge.value = kwargs["tot_charge"]
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.charge.value = self.tot_charge_default
+            self.override.value = False
 
 
 class SmearingSettings(ipw.VBox):
@@ -321,7 +344,7 @@ class SmearingSettings(ipw.VBox):
     smearing_default = traitlets.Unicode(default_value="cold")
 
     def __init__(self, **kwargs):
-        self.override_protocol_smearing = ipw.Checkbox(
+        self.override = ipw.Checkbox(
             description="Override",
             indent=False,
             value=False,
@@ -341,25 +364,23 @@ class SmearingSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self.override_protocol_smearing, "value"),
+            (self.override, "value"),
             (self.degauss, "disabled"),
             lambda override: not override,
         )
         ipw.dlink(
-            (self.override_protocol_smearing, "value"),
+            (self.override, "value"),
             (self.smearing, "disabled"),
             lambda override: not override,
         )
         self.degauss.observe(self.set_smearing, "value")
         self.smearing.observe(self.set_smearing, "value")
-        self.override_protocol_smearing.observe(self.set_smearing, "value")
+        self.override.observe(self.set_smearing, "value")
 
         super().__init__(
             children=[
                 self.smearing_description,
-                ipw.HBox(
-                    [self.override_protocol_smearing, self.smearing, self.degauss]
-                ),
+                ipw.HBox([self.override, self.smearing, self.degauss]),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
@@ -367,21 +388,17 @@ class SmearingSettings(ipw.VBox):
 
     def set_smearing(self, _=None):
         self.degauss.value = (
-            self.degauss.value
-            if self.override_protocol_smearing.value
-            else self.degauss_default
+            self.degauss.value if self.override.value else self.degauss_default
         )
         self.smearing.value = (
-            self.smearing.value
-            if self.override_protocol_smearing.value
-            else self.smearing_default
+            self.smearing.value if self.override.value else self.smearing_default
         )
 
     def _update_settings(self, **kwargs):
         """Update the smearing and degauss values by the given keyword arguments
         This is the same as the `set_smearing` method but without the observer.
         Therefore the override checkbox is not updated and defaults to True"""
-        self.override_protocol_smearing.value = True
+        self.override.value = True
 
         with self.hold_trait_notifications():
             if "smearing" in kwargs:
@@ -389,6 +406,12 @@ class SmearingSettings(ipw.VBox):
 
             if "degauss" in kwargs:
                 self.degauss.value = kwargs["degauss"]
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.degauss.value = self.degauss_default
+            self.smearing.value = self.smearing_default
+            self.override.value = False
 
 
 class KpointSettings(ipw.VBox):
@@ -403,12 +426,12 @@ class KpointSettings(ipw.VBox):
     kpoints_distance_default = traitlets.Float(default_value=0.15)
 
     def __init__(self, **kwargs):
-        self.override_protocol_kpoints = ipw.Checkbox(
+        self.override = ipw.Checkbox(
             description="Override",
             indent=False,
             value=False,
         )
-        self.kpoints_distance = ipw.FloatText(
+        self.distance = ipw.FloatText(
             value=self.kpoints_distance_default,
             step=0.05,
             description="K-points distance (1/Å):",
@@ -416,27 +439,27 @@ class KpointSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self.override_protocol_kpoints, "value"),
-            (self.kpoints_distance, "disabled"),
+            (self.override, "value"),
+            (self.distance, "disabled"),
             lambda override: not override,
         )
-        self.kpoints_distance.observe(self.set_kpoints_distance, "value")
-        self.override_protocol_kpoints.observe(self.set_kpoints_distance, "value")
+        self.distance.observe(self.set_kpoints_distance, "value")
+        self.override.observe(self.set_kpoints_distance, "value")
         self.observe(self.set_kpoints_distance, "kpoints_distance_default")
 
         super().__init__(
             children=[
                 self.kpoints_distance_description,
-                ipw.HBox([self.override_protocol_kpoints, self.kpoints_distance]),
+                ipw.HBox([self.override, self.distance]),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
 
     def set_kpoints_distance(self, _=None):
-        self.kpoints_distance.value = (
-            self.kpoints_distance.value
-            if self.override_protocol_kpoints.value
+        self.distance.value = (
+            self.distance.value
+            if self.override.value
             else self.kpoints_distance_default
         )
 
@@ -444,9 +467,14 @@ class KpointSettings(ipw.VBox):
         """Update the kpoints_distance value by the given keyword arguments.
         This is the same as the `set_kpoints_distance` method but without the observer.
         """
-        self.override_protocol_kpoints.value = True
+        self.override.value = True
         if "kpoints_distance" in kwargs:
-            self.kpoints_distance.value = kwargs["kpoints_distance"]
+            self.distance.value = kwargs["kpoints_distance"]
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.distance.value = self.kpoints_distance_default
+            self.override.value = False
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -467,7 +495,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings.kpoints_settings, "kpoints_distance_default"),
+            (self.advanced_settings.kpoints, "kpoints_distance_default"),
             lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)[
                 "kpoints_distance"
             ],
@@ -475,7 +503,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings.smearing_settings, "degauss_default"),
+            (self.advanced_settings.smearing, "degauss_default"),
             lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
                 "parameters"
             ]["SYSTEM"]["degauss"],
@@ -483,7 +511,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings.smearing_settings, "smearing_default"),
+            (self.advanced_settings.smearing, "smearing_default"),
             lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
                 "parameters"
             ]["SYSTEM"]["smearing"],
@@ -548,26 +576,20 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # Advanced settings
             self.pseudo_family_selector.value = parameters["pseudo_family"]
             if parameters.get("kpoints_distance_override", None) is not None:
-                self.advanced_settings.kpoints_settings.kpoints_distance.value = (
-                    parameters["kpoints_distance_override"]
-                )
-                self.advanced_settings.kpoints_settings.override_protocol_kpoints.value = (
-                    True
-                )
+                self.advanced_settings.kpoints.distance.value = parameters[
+                    "kpoints_distance_override"
+                ]
+                self.advanced_settings.kpoints.override.value = True
             if parameters.get("degauss_override", None) is not None:
-                self.advanced_settings.smearing_settings.degauss.value = parameters[
+                self.advanced_settings.smearing.degauss.value = parameters[
                     "degauss_override"
                 ]
-                self.advanced_settings.smearing_settings.override_protocol_smearing.value = (
-                    True
-                )
+                self.advanced_settings.smearing.override.value = True
             if parameters.get("smearing_override", None) is not None:
-                self.advanced_settings.smearing_settings.smearing.value = parameters[
+                self.advanced_settings.smearing.smearing.value = parameters[
                     "smearing_override"
                 ]
-                self.advanced_settings.smearing_settings.override_protocol_smearing.value = (
-                    True
-                )
+                self.advanced_settings.smearing.override.value = True
 
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
@@ -960,21 +982,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
             if self.advanced_settings.override.value:
                 pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
-                if self.advanced_settings.override_tot_charge.value:
+                if self.advanced_settings.tot_charge.override.value:
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                         "tot_charge"
-                    ] = self.advanced_settings.tot_charge.value
+                    ] = self.advanced_settings.tot_charge.charge.value
                 if key in ["base", "scf"]:
-                    if (
-                        self.advanced_settings.kpoints_settings.override_protocol_kpoints.value
-                    ):
+                    if self.advanced_settings.kpoints.override.value:
                         pw_overrides[key][
                             "kpoints_distance"
-                        ] = (
-                            self.advanced_settings.kpoints_settings.kpoints_distance.value
-                        )
+                        ] = self.advanced_settings.kpoints.distance.value
                     if (
-                        self.advanced_settings.smearing_settings.override_protocol_smearing.value
+                        self.advanced_settings.smearing.override.value
                         and self.workchain_settings.electronic_type.value == "metal"
                     ):
                         # smearing type setting
@@ -982,14 +1000,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                             "parameters", {}
                         ).setdefault("SYSTEM", {})[
                             "smearing"
-                        ] = self.advanced_settings.smearing_settings.smearing.value
+                        ] = self.advanced_settings.smearing.smearing.value
 
                         # smearing degauss setting
                         pw_overrides[key].setdefault("pw", {}).setdefault(
                             "parameters", {}
                         ).setdefault("SYSTEM", {})[
                             "degauss"
-                        ] = self.advanced_settings.smearing_settings.degauss.value
+                        ] = self.advanced_settings.smearing.degauss.value
 
         overrides = {
             "relax": {
