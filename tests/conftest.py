@@ -148,6 +148,19 @@ def workchain_settings_generator():
 
 
 @pytest.fixture()
+def tot_charge_generator():
+    """Return a function that generates a tot_charge dictionary."""
+    from aiidalab_qe.app.steps import TotalCharge
+
+    def _tot_charge_generator(**kwargs):
+        tot_charge = TotalCharge()
+        tot_charge._update_settings(**kwargs)
+        return tot_charge
+
+    return _tot_charge_generator
+
+
+@pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
     from aiidalab_qe.app.steps import SmearingSettings
@@ -183,10 +196,11 @@ def submit_step_widget_generator(
     workchain_settings_generator,
     smearing_settings_generator,
     kpoints_settings_generator,
+    tot_charge_generator,
 ):
     """Return a function that generates a submit step widget."""
     from aiidalab_qe.app.pseudos import PseudoFamilySelector
-    from aiidalab_qe.app.steps import SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.steps import AdvancedSettings, SubmitQeAppWorkChainStep
 
     def _submit_step_widget_generator(
         relax_type="positions_cell",
@@ -199,6 +213,7 @@ def submit_step_widget_generator(
         smearing="methfessel-paxton",
         degauss=0.015,
         override_protocol_smearing=True,
+        tot_charge=0.0,
     ):
         submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
         submit_step.input_structure = structure_data_object
@@ -217,13 +232,21 @@ def submit_step_widget_generator(
             pdos_run=pdo_run,
             workchain_protocol=workchain_protocol,
         )
-        submit_step.kpoints_settings = kpoints_settings_generator(
+        # Advanced settings
+        submit_step.advanced_settings = AdvancedSettings()
+        submit_step.advanced_settings.override.value = True
+
+        submit_step.advanced_settings.tot_charge = tot_charge_generator(
+            tot_charge=tot_charge,
+        )
+
+        submit_step.advanced_settings.kpoints = kpoints_settings_generator(
             kpoints_distance=kpoints_distance
         )
-        submit_step.smearing_settings = smearing_settings_generator(
+        submit_step.advanced_settings.smearing = smearing_settings_generator(
             smearing=smearing,
             degauss=degauss,
-            override_protocol_smearing=override_protocol_smearing,
+            override=override_protocol_smearing,
         )
 
         return submit_step
