@@ -10,6 +10,8 @@ Welcome to Quantum Espresso App's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   tutorials/index
+   report_issue
 
 
 Indices and tables
