@@ -217,7 +217,6 @@ class AdvancedSettings(ipw.VBox):
     )
     description = ipw.HTML("""Select the advanced settings for the <b>pw.x</b> code.""")
 
-    # set here defaul values for the advanced settings
     def __init__(self, **kwargs):
         self.override = ipw.Checkbox(
             description="Override",
@@ -1191,11 +1190,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ] = builder.bands.bands_kpoints_distance.value
         parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
 
-        tot_charge = builder.relax.base["pw"]["parameters"]["SYSTEM"]["tot_charge"]
-        if tot_charge:
-            parameters["tot_charge"] = tot_charge
-        else:
-            parameters["tot_charge"] = 0.0
+        parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
+            "tot_charge", 0.0
+        )
 
         # parameters from extra_report_parameters
         for k, v in extra_report_parameters.items():
