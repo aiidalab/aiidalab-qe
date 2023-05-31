@@ -986,16 +986,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         and self.workchain_settings.electronic_type.value == "metal"
                     ):
                         # smearing type setting
-                        pw_overrides[key].setdefault("pw", {}).setdefault(
-                            "parameters", {}
-                        ).setdefault("SYSTEM", {})[
+                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                             "smearing"
                         ] = self.advanced_settings.smearing.smearing.value
 
                         # smearing degauss setting
-                        pw_overrides[key].setdefault("pw", {}).setdefault(
-                            "parameters", {}
-                        ).setdefault("SYSTEM", {})[
+                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                             "degauss"
                         ] = self.advanced_settings.smearing.degauss.value
 
@@ -1195,10 +1191,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ] = builder.bands.bands_kpoints_distance.value
         parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
 
-        if builder.relax.base["pw"]["parameters"]["SYSTEM"]["tot_charge"]:
-            parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
-                "tot_charge"
-            ]
+        tot_charge = builder.relax.base["pw"]["parameters"]["SYSTEM"]["tot_charge"]
+        if tot_charge:
+            parameters["tot_charge"] = tot_charge
+        else:
+            parameters["tot_charge"] = 0.0
 
         # parameters from extra_report_parameters
         for k, v in extra_report_parameters.items():
