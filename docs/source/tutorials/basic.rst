@@ -1,7 +1,7 @@
 .. _basic:
 
 =======================================
-Run calculation
+Run calculation on local computer
 =======================================
 
 Goal: running a band structure calculation on Silicon using the AiiDAlab machine. Get the band structure and PDOS.

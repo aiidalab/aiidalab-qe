@@ -1,25 +1,11 @@
 .. _setup_computer_code:
 
-===================================
-Run calculation on remote computer
-===================================
-This time, the goal is to submit a band structure calculation of magnetic cobalt on a remote machine (i.e., on a different computational resource). The instruction in collapsible text is for CSCS machine.
+============================
+Setup remote computer/code
+============================
 
+The instruction in collapsible text is for CSCS machine.
 
-Step 1
-------
-Again use the "From examples" structure importer and select cobalt.
-
-Step 2
-------
-
-Turn on the `Magnetism` option.
-
-For protocol, please select "fast" (or select the "precise" protocol if you have enough resource to test).
-
-
-Step 3 Choose computational resources
--------------------------------------
 Now you need set up a new computer (e.g., the CSCS Daint or Eiger machine if you have acount on it) and the codes on this newly setup computer (i.e., you need to tell AiiDA where the executables are, which modules to load etc.).
 
 .. note::
@@ -56,7 +42,7 @@ Click the button `Setup computer`, then add one line in the `Prepend text` to sp
 ```
 You can find further parameters in the screenshot below.
 
-.. figure:: /_static/images/step1_select_structure.png
+.. figure:: /_static/images/setup_computer.png
    :width: 12cm
 
 
@@ -77,7 +63,7 @@ Click the button `test computer`, then wait 1 minute: you will see this log mess
 
 In the field `Select computer`, please select the computer you just setup, in this case `daint-mc`. Check all other options, and then click the button `Setup code` to setup the `pw.x` code.
 
-.. figure:: /_static/images/setup_computer.png
+.. figure:: /_static/images/setup_code.png
    :width: 12cm
 
 Similarly, setup the `dos.x` and `projwfc.x` codes, needed by the app to compute DOS and PDOS. You can skip the computer setup step, since it needs to be done only once per comouter, and go to `Set up a code in AiiDA` directly to setup the remaining codes.
@@ -87,15 +73,6 @@ After you finishing the codes setup, you can launch a new calculation with the n
 - pw-7.0@daint-mc
 - dos-7.0@daint-mc
 - projwfc-7.0@daint-mc
-
-.. figure:: /_static/images/setup_code.png
-   :width: 12cm
-
-In the end, click the `Submit` button.
-
-
-Step 4 Check the status and results.
--------------------------------------
 
 .. figure:: /_static/images/select_new_code.png
    :width: 12cm
