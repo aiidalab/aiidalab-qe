@@ -197,7 +197,6 @@ def submit_step_widget_generator(
     smearing_settings_generator,
     kpoints_settings_generator,
     tot_charge_generator,
-    # workchain_advanced_settings_generator,
 ):
     """Return a function that generates a submit step widget."""
     from aiidalab_qe.app.pseudos import PseudoFamilySelector
