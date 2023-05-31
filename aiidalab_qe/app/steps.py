@@ -261,16 +261,6 @@ class AdvancedSettings(ipw.VBox):
         self.kpoints.reset()
         self.tot_charge.reset()
 
-    # def _update_settings(self, **kwargs):
-    #     """Update the override and override_tot_charge and override_tot_charge values by the given keyword arguments
-    #     Therefore the override checkbox is not updated and defaults to True"""
-    #     self.override.value = True
-    #     self.override_tot_charge.value = True
-
-    #     with self.hold_trait_notifications():
-    #         if "tot_charge" in kwargs:
-    #             self.tot_charge.value = kwargs["tot_charge"]
-
 
 class TotalCharge(ipw.VBox):
     tot_charge_default = traitlets.Float(default_value=0.0)
