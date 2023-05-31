@@ -11,6 +11,7 @@ Welcome to Quantum Espresso App's documentation!
    :caption: Contents:
 
    tutorials/index
+   howto/index
    report_issue
 
 
