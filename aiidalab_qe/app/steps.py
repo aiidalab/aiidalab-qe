@@ -30,7 +30,11 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.pseudos import PseudoFamilySelector
 from aiidalab_qe.app.setup_codes import QESetupWidget
 from aiidalab_qe.app.sssp import SSSPInstallWidget
-from aiidalab_qe.app.widgets import ParallelizationSettings, ResourceSelectionWidget
+from aiidalab_qe.app.widgets import (
+    HubbardWidget,
+    ParallelizationSettings,
+    ResourceSelectionWidget,
+)
 from aiidalab_qe.workflows import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")
@@ -107,6 +111,7 @@ class WorkChainSettings(ipw.VBox):
 
     def __init__(self, **kwargs):
         # RelaxType: degrees of freedom in geometry optimization
+        self.hubbard_widget = HubbardWidget()
         self.relax_type = ipw.ToggleButtons(
             options=[
                 ("Structure as is", "none"),
@@ -127,6 +132,11 @@ class WorkChainSettings(ipw.VBox):
         self.electronic_type = ipw.ToggleButtons(
             options=[("Metal", "metal"), ("Insulator", "insulator")],
             value=DEFAULT_PARAMETERS["electronic_type"],
+            style={"description_width": "initial"},
+        )
+        self.spin_orbit = ipw.ToggleButtons(
+            options=[("w/o SOC", "wo_soc"), ("SOC", "soc")],
+            value="wo_soc",
             style={"description_width": "initial"},
         )
 
@@ -180,6 +190,18 @@ class WorkChainSettings(ipw.VBox):
                     ]
                 ),
                 self.properties_title,
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Spin Orbit-Coupling:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        self.spin_orbit,
+                    ]
+                ),
+                self.hubbard_widget,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
                 ipw.HBox(
@@ -627,6 +649,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_input_structure(self, change):
         if self.input_structure is not None:
             self.advanced_settings.magnetization._update_widget(change)
+            self.workchain_settings.hubbard_widget.update_widgets(change)
 
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
