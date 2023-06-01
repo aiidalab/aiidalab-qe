@@ -66,6 +66,7 @@ def _generate_report_dict(builder_parameters: dict):
         yield "smearing", builder_parameters["smearing"]
 
     yield "tot_charge", builder_parameters["tot_charge"]
+    yield "initial_magnetic_moments", builder_parameters["initial_magnetic_moments"]
 
 
 def _generate_report_html(report):
