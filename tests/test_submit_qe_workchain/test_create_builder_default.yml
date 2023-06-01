@@ -25,6 +25,7 @@ bands:
           nosym: false
           occupations: smearing
           smearing: cold
+          tot_charge: 0.0
   bands_kpoints_distance: 0.025
   nbands_factor: 3.0
   scf:
@@ -51,6 +52,7 @@ bands:
           nosym: false
           occupations: smearing
           smearing: methfessel-paxton
+          tot_charge: 0.0
 clean_workdir: false
 pdos:
   dos:
@@ -80,6 +82,7 @@ pdos:
           ecutwfc: 30.0
           nosym: true
           occupations: tetrahedra
+          tot_charge: 0.0
   projwfc:
     parameters:
       PROJWFC:
@@ -113,6 +116,7 @@ pdos:
           nosym: false
           occupations: smearing
           smearing: methfessel-paxton
+          tot_charge: 0.0
 properties:
 - bands
 - pdos
@@ -145,6 +149,7 @@ relax:
           nosym: false
           occupations: smearing
           smearing: methfessel-paxton
+          tot_charge: 0.0
   base_final_scf:
     pw: {}
   max_meta_convergence_iterations: 5

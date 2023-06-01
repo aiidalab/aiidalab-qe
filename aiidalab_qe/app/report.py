@@ -65,6 +65,8 @@ def _generate_report_dict(builder_parameters: dict):
         yield "degauss", builder_parameters["degauss"]
         yield "smearing", builder_parameters["smearing"]
 
+    yield "tot_charge", builder_parameters["tot_charge"]
+
 
 def _generate_report_html(report):
     """Read from the bulider parameters and generate a html for reporting
