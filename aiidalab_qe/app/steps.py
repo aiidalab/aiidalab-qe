@@ -108,10 +108,12 @@ class WorkChainSettings(ipw.VBox):
         accuracy and speed. Choose the "fast" protocol for a faster calculation
         with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
     )
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
         # RelaxType: degrees of freedom in geometry optimization
         self.hubbard_widget = HubbardWidget()
+        self.input_structure = StructureData()
         self.relax_type = ipw.ToggleButtons(
             options=[
                 ("Structure as is", "none"),
@@ -134,6 +136,20 @@ class WorkChainSettings(ipw.VBox):
             value=DEFAULT_PARAMETERS["electronic_type"],
             style={"description_width": "initial"},
         )
+
+        self.two_dim_kpoints_path = ipw.Dropdown(
+            description="Select path:",
+            options=[
+                ("Hexagonal", "hexagonal"),
+                ("Square", "square"),
+                ("Rectangular", "rectangular"),
+                ("Centered Rectangular", "centered_rectangular"),
+                ("Oblique", "oblique"),
+            ],
+            value="hexagonal",
+        )
+        self.two_dim_kpoints_path_out = ipw.Output()
+
         self.spin_orbit = ipw.ToggleButtons(
             options=[("w/o SOC", "wo_soc"), ("SOC", "soc")],
             value="wo_soc",
@@ -204,6 +220,7 @@ class WorkChainSettings(ipw.VBox):
                 self.hubbard_widget,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
+                self.two_dim_kpoints_path_out,
                 ipw.HBox(
                     children=[
                         ipw.HTML("<b>Projected density of states</b>"),
@@ -218,6 +235,26 @@ class WorkChainSettings(ipw.VBox):
             ],
             **kwargs,
         )
+        self.bands_run.observe(self._show_2d_paths, names="value")
+
+    def _show_2d_paths(self, change):
+        if self.input_structure.pbc == (True, True, False) and change["new"]:
+            with self.two_dim_kpoints_path_out:
+                clear_output()
+                display(self.two_dim_kpoints_path)
+        else:
+            with self.two_dim_kpoints_path_out:
+                clear_output()
+
+    def _update_input_structure(self, change):
+        self.input_structure = change["new"]
+        # if self.input_structure.pbc == (True, True, False):
+        #     with self.two_dim_kpoints_path_out:
+        #         clear_output()
+        #         display(self.two_dim_kpoints_path)
+        # else:
+        #     with self.two_dim_kpoints_path_out:
+        #         clear_output()
 
     def _update_settings(self, **kwargs):
         """Update the settings based on the given dict."""
@@ -650,6 +687,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.input_structure is not None:
             self.advanced_settings.magnetization._update_widget(change)
             self.workchain_settings.hubbard_widget.update_widgets(change)
+            self.workchain_settings._update_input_structure(change)
 
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
