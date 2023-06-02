@@ -31,6 +31,9 @@ extensions = [
     "sphinx_panels",
 ]
 
+# The pydata-sphinx-theme already loads the bootstrap css.
+panels_add_bootstrap_css = False
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -45,6 +48,7 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
+html_theme = 'pydata_sphinx_theme'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
