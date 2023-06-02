@@ -1,4 +1,4 @@
-.. _setup_computer_code:
+.. _how_to_setup_computer_code:
 
 ============================
 Setup remote computer/code

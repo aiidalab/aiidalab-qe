@@ -1,4 +1,4 @@
-.. _setup_computer_code:
+.. _run_calculation_on_remote_computer:
 
 ===================================
 Run calculation on remote computer

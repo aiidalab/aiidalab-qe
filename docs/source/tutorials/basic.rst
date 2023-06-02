@@ -1,4 +1,4 @@
-.. _basic:
+.. _run_calculation_on_local_computer:
 
 =======================================
 Run calculation on local computer
