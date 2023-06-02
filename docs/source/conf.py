@@ -12,14 +12,32 @@
 #
 # import os
 # import sys
+import time
 # sys.path.insert(0, os.path.abspath('.'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'Quantum Espresso App'
-copyright = "2023, ''"
-author = "''"
+copyright_first_year = "2023"
+copyright_owners = "The AiiDAlab Team"
+
+current_year = str(time.localtime().tm_year)
+copyright_year_string = (
+    current_year
+    if current_year == copyright_first_year
+    else f"{copyright_first_year}-{current_year}"
+)
+copyright = "{}, {}. All rights reserved".format(
+    copyright_year_string, copyright_owners
+)
+
+# If true, sectionauthor and moduleauthor directives will be shown in the
+# output. They are ignored by default.
+show_authors = True
+
+# The name of the Pygments (syntax highlighting) style to use.
+pygments_style = "sphinx"
 
 
 # -- General configuration ---------------------------------------------------
@@ -36,6 +54,13 @@ panels_add_bootstrap_css = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+# The suffix of source filenames.
+source_suffix = ".rst"
+
+# The master toctree document.
+# ~ master_doc = 'index'
+master_doc = "index"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -58,3 +83,6 @@ html_logo = "_static/images/aiidalab_qe_logo.png"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# If true, links to the reST sources are added to the pages.
+html_show_sourcelink = False
