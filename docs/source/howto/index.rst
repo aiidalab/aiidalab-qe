@@ -9,4 +9,4 @@ How-to guides
    :caption: Contents:
 
    setup_computer_code
-   optimade
+   import_structure
