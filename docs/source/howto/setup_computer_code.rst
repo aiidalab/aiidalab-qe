@@ -16,7 +16,8 @@ Now you need set up a new computer (e.g., the CSCS Daint or Eiger machine if you
 **Setup new code**
 - Click the button `Setup new code`.
 - In the `Domain` field, please select `daint.cscs.ch`.
-- Click `Detailed Setup`, then it will show three steps.
+- Click `Detailed Setup`, then it will show three steps:
+
     - password-less SSH
     - computer in AiiDA
     - code in AiiDA

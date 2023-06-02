@@ -35,6 +35,7 @@ Step 2 Configure workflow
 Set the input parameters
 
 - There are three relax types:
+
     - Structure as is
     - Atomic positions
     - Full geometry
