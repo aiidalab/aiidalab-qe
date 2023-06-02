@@ -7,8 +7,7 @@ Welcome to Quantum Espresso App's documentation!
 ================================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
 
    installation/index
    tutorials/index
