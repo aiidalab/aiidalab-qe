@@ -8,8 +8,6 @@ Installation Guide
    :maxdepth: 1
    :caption: Contents:
 
-   marvel
-   qmobile
    docker
 
 ***************
@@ -19,8 +17,10 @@ Access AiiDAlab
 As a user, you have three options to access AiiDAlab:
 
  1. Log into one of the `open AiiDAlab servers <https://www.aiidalab.net/deployments/>`_.
- 2. Run the AiiDAlab docker container directly :ref:`on your local machine <installation:docker>`.
+ 2. Run the AiiDAlab docker container directly :ref:`on your local machine <docker>`.
  3. Download the `Quantum Mobile Virtual Machine <https://quantum-mobile.readthedocs.io/>`_, open a terminal and run ``aiidalab``.
+
+.. _install_qeapp:
 
 ********************************
 Install the Quantum-Espresso App
