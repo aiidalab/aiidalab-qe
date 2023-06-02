@@ -1,8 +1,20 @@
-.. _docker:
+.. _access_aiidalab:
 
 ===============
-AiiDAlab launch
+Access AiiDAlab
 ===============
+
+As a user, you have three options to access AiiDAlab:
+
+ 1. Log into one of the `open AiiDAlab servers <https://www.aiidalab.net/deployments/>`_.
+ 2. Run the AiiDAlab docker container directly :ref:`on your local machine <aiidalab_launch>`.
+ 3. Download the `Quantum Mobile Virtual Machine <https://quantum-mobile.readthedocs.io/>`_, open a terminal and run ``aiidalab``.
+
+.. _aiidalab_launch:
+
+***************
+AiiDAlab launch
+***************
 
 To run AiiDAlab on your own workstation or laptop you can either
 
