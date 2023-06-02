@@ -49,7 +49,7 @@ You can install new apps either using the graphical user interface via the :fa:`
 
        Simply open AiiDAlab in the browser and click on the :fa:`puzzle-piece` icon in the top navigation bar.
 
-       .. image:: ../_static/nav-bar-app-store.png
+       .. image:: ../_static/images/nav-bar-app-store.png
 
        This will open the app store page in a new window or tab.
 
@@ -59,12 +59,12 @@ You can install new apps either using the graphical user interface via the :fa:`
 
        Optionally, select one or multiple categories to filter by:
 
-       .. image:: ../_static/app-management-app-store.png
+       .. image:: ../_static/images/app-management-app-store.png
 
        Then scroll down until you find the app you would like to install.
        An app that is not installed yet, will be presented like this:
 
-       .. image:: ../_static/app-management-app-not-installed.png
+       .. image:: ../_static/images/app-management-app-not-installed.png
 
        Clicking on the **Install** button will install the app and its dependencies.
 
@@ -78,7 +78,7 @@ You can install new apps either using the graphical user interface via the :fa:`
        The current process for installing the app and its dependencies will be displayed via a terminal widget.
        Wait until the process has completed:
 
-       .. image:: ../_static/app-management-app-installation-completed.png
+       .. image:: ../_static/images/app-management-app-installation-completed.png
 
        ---
 
@@ -86,7 +86,7 @@ You can install new apps either using the graphical user interface via the :fa:`
 
        The newly installed app should now show up on the start page.
 
-       .. image:: ../_static/app-management-start-page.png
+       .. image:: ../_static/images/app-management-start-page.png
 
        Each app banner also shows an indicator about whether there is an update available (see screenshot above).
        To *update the app*, click on **Manage App** and then on the **Update** buttons.
@@ -102,7 +102,7 @@ You can install new apps either using the graphical user interface via the :fa:`
 
        Open the :fa:`terminal` by clicking on the corresponding icon in the nav bar.
 
-        .. image:: ../_static/nav-bar-terminal.png
+        .. image:: ../_static/images/nav-bar-terminal.png
 
        ---
 
@@ -133,7 +133,7 @@ Upgrade (or downgrade) an app
 
        On the home app start page, simply look for the app you would like to upgrade.
 
-       .. image:: ../_static/app-management-start-page-upgrade-available.png
+       .. image:: ../_static/images/app-management-start-page-upgrade-available.png
 
        Click on the **Manage App** button to open the app manager.
 
@@ -143,7 +143,7 @@ Upgrade (or downgrade) an app
 
        The green :fa:`arrow-circle-up` **Update** button indicates that there is a newer version of the app available.
 
-       .. image:: ../_static/app-management-upgrade-available.png
+       .. image:: ../_static/images/app-management-upgrade-available.png
 
        Click on the :fa:`arrow-circle-up` **Update** button to upgrade the app.
 
@@ -184,7 +184,7 @@ Uninstalling an app works similar to upgrading or downgrading an app via the **M
 
        On the home app start page, simply look for the app you would like to uninstall.
 
-       .. image:: ../_static/app-management-start-page.png
+       .. image:: ../_static/images/app-management-start-page.png
 
        Click on the **Manage App** button to open the app manager.
 
@@ -194,7 +194,7 @@ Uninstalling an app works similar to upgrading or downgrading an app via the **M
 
        The app manager allows you to uninstall the app or to install a different version.
 
-       .. image:: ../_static/app-management-app-installed.png
+       .. image:: ../_static/images/app-management-app-installed.png
 
        Click on the :fa:`trash` **Uninstall** button to uninstall the app.
 
