@@ -8,7 +8,7 @@ Tutorials
 
     Before you get started, make sure that you have:
 
-    * installed the `QeApp` :ref:`(see instructions) <installation:installation>`
+    * installed the `QeApp` :ref:`(see instructions) <install_qeapp>`
 
 
 .. toctree::
