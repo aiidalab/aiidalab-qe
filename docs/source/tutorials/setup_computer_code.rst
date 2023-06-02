@@ -6,12 +6,12 @@ Run calculation on remote computer
 This time, the goal is to submit a band structure calculation of magnetic cobalt on a remote machine (i.e., on a different computational resource). The instruction in collapsible text is for CSCS machine.
 
 
-Step 1
-------
+Step 1 Select a structure
+--------------------------
 Again use the "From examples" structure importer and select cobalt.
 
-Step 2
-------
+Step 2 Configure workflow
+--------------------------
 
 Turn on the `Magnetism` option.
 
