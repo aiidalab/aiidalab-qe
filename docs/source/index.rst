@@ -15,6 +15,18 @@ Welcome to Quantum Espresso App's documentation!
    report_issue
 
 
+How to cite
+===========
+
+Citation(s)
+
+
+Acknowledgements
+================
+
+Acknowledgements(s)
+
+
 Indices and tables
 ==================
 
