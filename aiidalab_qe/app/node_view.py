@@ -2,7 +2,7 @@
 
 Authors: AiiDAlab team
 """
-
+import base64
 import json
 import random
 import shutil
@@ -755,3 +755,386 @@ class HubbardView(ipw.VBox):
             list_indixes.append(list_temp)
         options_dict = dict(zip(self.hubbard_keys, list_indixes))
         return options_dict
+
+
+class BandDosPlotsWidget(ipw.VBox):
+    description = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        Select the style of plotting the projected density of states.
+        </div>"""
+    )
+
+    def __init__(self, node, **kwargs):
+        self.export_dir = Path.cwd().joinpath("exports")
+        self.dos_data = self._get_dos_data()
+        self.bands_data = self._get_bands_data()
+        self.fermi_energy = self._get_fermi_energy()
+        self.node = node
+        self.dos_atoms_group = ipw.Dropdown(
+            options=[("Atoms", "atoms"), ("Kinds", "kinds")],
+            value="atoms",
+        )
+        self.dos_plot_group = ipw.Dropdown(
+            options=[("Total", "total"), ("Orbital", "orbital")],
+            value="total",
+        )
+        self.selected_atoms = ipw.Text(
+            description="Select atoms:",
+            value="",
+            style={"description_width": "initial"},
+        )
+        self.wrong_syntax = ipw.HTML(
+            value="""<i class="fa fa-times" style="color:red;font-size:2em;" ></i> wrong syntax""",
+            layout={"visibility": "hidden"},
+        )
+        self.update_plot_button = ipw.Button(
+            description="Update Plot",
+            icon="pencil",
+            button_style="primary",
+            disabled=False,
+            layout=ipw.Layout(width="auto"),
+        )
+        self.download_button = ipw.Button(
+            description="Download Data",
+            icon="download",
+            button_style="primary",
+            disabled=False,
+            layout=ipw.Layout(width="auto", visibility="hidden"),
+        )
+        self.bands_widget = ipw.Output()
+
+        def download_data(_=None):
+            file_name_bands = "bands_data.json"
+            file_name_dos = "dos_data.json"
+            if self.bands_data:
+                json_str = json.dumps(self.bands_data)
+                b64_str = base64.b64encode(json_str.encode()).decode()
+                self._download(payload=b64_str, filename=file_name_bands)
+            if self.dos_data:
+                json_str = json.dumps(self.dos_data)
+                b64_str = base64.b64encode(json_str.encode()).decode()
+                self._download(payload=b64_str, filename=file_name_dos)
+
+        self.download_button.on_click(download_data)
+
+        super().__init__(
+            children=[
+                self.description,
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Group :",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="80px"
+                            ),
+                        ),
+                        self.dos_atoms_group,
+                    ]
+                ),
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Plot :",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="80px"
+                            ),
+                        ),
+                        self.dos_plot_group,
+                    ]
+                ),
+                ipw.HBox([self.selected_atoms, self.wrong_syntax]),
+                ipw.HBox(
+                    children=[
+                        self.update_plot_button,
+                        self.download_button,
+                    ]
+                ),
+                self.bands_widget,
+            ]
+        )
+
+    @staticmethod
+    def _download(payload, filename):
+        """Download payload as a file named as filename."""
+        from IPython.display import Javascript
+
+        javas = Javascript(
+            """
+            var link = document.createElement('a');
+            link.href = 'data:text/json;charset=utf-8;base64,{payload}'
+            link.download = "{filename}"
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            """.format(
+                payload=payload, filename=filename
+            )
+        )
+        display(javas)
+
+    def _get_dos_data(self):
+        if "pdos" in self.node.inputs.properties.get():
+            dos = get_pdos_data(
+                self.node,
+                group_tag=self.dos_atoms_group.value,
+                plot_tag=self.dos_plot_group.value,
+                selected_atoms=self.selected_atoms.value,
+            )
+            return dos
+        else:
+            return None
+
+    def _get_fermi_energy(self):
+        fermi_energy = self.dos["fermi_energy"] if self.dos else None
+        return fermi_energy
+
+    def _get_bands_data(self):
+        if "bands" in self.node.inputs.properties.get():
+            bands = export_bands_data(self.node, self.fermi_energy)
+            return bands
+        else:
+            return None
+
+    def bands_labeling(bands):
+        """Function to return two list containing the labels and values (kpoint) for plotting
+        params: bands: dictionary from export_bands_data function
+        output: label (list of str), label_values (list of float)
+        """
+        my_paths = bands[0].get("paths")
+        my_labels = []
+        for path in my_paths:  # Remove duplicates
+            label_a = [path["from"], path["x"][0]]
+            label_b = [path["to"], path["x"][-1]]
+            if label_a not in my_labels:
+                my_labels.append(label_a)
+            if label_b not in my_labels:
+                my_labels.append(label_b)
+
+        my_clean_labels = []  # Format
+        for i in my_labels:
+            if my_clean_labels:
+                if i not in my_clean_labels:
+                    if my_clean_labels[-1][-1] == i[1]:
+                        my_clean_labels[-1][0] = my_clean_labels[-1][0] + "|" + i[0]
+                    else:
+                        my_clean_labels.append(i)
+            else:
+                my_clean_labels.append(i)
+
+        labels = [label[0] for label in my_clean_labels]
+        labels_values = [label[1] for label in my_clean_labels]
+        return labels, labels_values
+
+
+def get_pdos_data(work_chain_node, group_tag, plot_tag, selected_atoms):
+    if "dos" in work_chain_node.outputs:
+        _, energy_dos, _ = work_chain_node.outputs.dos.get_x()
+        tdos_values = {f"{n}": v for n, v, _ in work_chain_node.outputs.dos.get_y()}
+
+        dos = []
+
+        if "projections" in work_chain_node.outputs:
+            # The total dos parsed
+            tdos = {
+                "label": "Total DOS",
+                "x": energy_dos.tolist(),
+                "y": tdos_values.get("dos").tolist(),
+                "borderColor": "#8A8A8A",  # dark gray
+                "backgroundColor": "#999999",  # light gray
+                "backgroundAlpha": "40%",
+                "lineStyle": "solid",
+            }
+            dos.append(tdos)
+
+            dos += _projections_curated_options(
+                work_chain_node.outputs.projections,
+                spin_type="none",
+                group_tag=group_tag,
+                plot_tag=plot_tag,
+                selected_atoms=selected_atoms,
+            )
+
+        else:
+            # The total dos parsed
+            tdos_up = {
+                "label": "Total DOS (↑)",
+                "x": energy_dos.tolist(),
+                "y": tdos_values.get("dos_spin_up").tolist(),
+                "borderColor": "#8A8A8A",  # dark gray
+                "backgroundColor": "#999999",  # light gray
+                "backgroundAlpha": "40%",
+                "lineStyle": "solid",
+            }
+            tdos_down = {
+                "label": "Total DOS (↓)",
+                "x": energy_dos.tolist(),
+                "y": (-tdos_values.get("dos_spin_down")).tolist(),  # minus
+                "borderColor": "#8A8A8A",  # dark gray
+                "backgroundColor": "#999999",  # light gray
+                "backgroundAlpha": "40%",
+                "lineStyle": "dash",
+            }
+            dos += [tdos_up, tdos_down]
+
+            # spin-up (↑)
+            dos += _projections_curated_options(
+                work_chain_node.outputs.projections_up,
+                spin_type="up",
+                group_tag=group_tag,
+                plot_tag=plot_tag,
+                selected_atoms=selected_atoms,
+            )
+
+            # spin-dn (↓)
+            dos += _projections_curated_options(
+                work_chain_node.outputs.projections_down,
+                spin_type="down",
+                line_style="dash",
+                group_tag=group_tag,
+                plot_tag=plot_tag,
+                selected_atoms=selected_atoms,
+            )
+
+        data_dict = {
+            "fermi_energy": work_chain_node.outputs.nscf_parameters["fermi_energy"],
+            "dos": dos,
+        }
+
+        return json.loads(json.dumps(data_dict))
+
+    else:
+        return None
+
+
+def _projections_curated_options(
+    projections: ProjectionData,
+    group_tag,
+    plot_tag,
+    selected_atoms,
+    spin_type="none",
+    line_style="solid",
+):
+    """Collect the data from ProjectionData and parse it as dos list which can be
+    understand by bandsplot widget. `curated_tag` is for which tag to be grouped, by atom or by orbital name.
+    The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label.
+    """
+    _pdos = {}
+    list_positions = []
+    # Setting
+    dict_html = {
+        "pz": "p<sub>z</sub>",
+        "px": "p<sub>x</sub>",
+        "py": "p<sub>y</sub>",
+        "dz2": "d<sub>z<sup>2</sup></sub>",
+        "dxy": "d<sub>xy</sub>",
+        "dxz": "d<sub>xz</sub>",
+        "dyz": "d<sub>yz</sub>",
+        "dx2-y2": "d<sub>x<sup>2</sup>-y<sup>2</sup></sub>",
+        "fz3": "f<sub>z<sup>3</sup></sub>",
+        "fxz2": "f<sub>xz<sup>2</sup></sub>",
+        "fyz2": "f<sub>yz<sup>2</sup></sub>",
+        "fxyz": "f<sub>xzy</sub>",
+        "fx(x2-3y2)": "f<sub>x(x<sup>2</sup>-3y<sup>2</sup>)</sub>",
+        "fy(3x2-y2)": "f<sub>y(3x<sup>2</sup>-y<sup>2</sup>)</sub>",
+        "fy(x2-z2)": "f<sub>y(x<sup>2</sup>-z<sup>2</sup>)</sub>",
+        0.5: "<sup>+1</sup>/<sub>2</sub>",
+        -0.5: "<sup>-1</sup>/<sub>2</sub>",
+        1.5: "<sup>+3</sup>/<sub>2</sub>",
+        -1.5: "<sup>-3</sup>/<sub>2</sub>",
+        2.5: "<sup>+5</sup>/<sub>2</sub>",
+        -2.5: "<sup>-5</sup>/<sub>2</sub>",
+    }
+    for orbital, pdos, energy in projections.get_pdos():
+        orbital_data = orbital.get_orbital_dict()
+        kind_name = orbital_data["kind_name"]
+        atom_position = [round(i, 2) for i in orbital_data["position"]]
+        if atom_position not in list_positions:
+            list_positions.append(atom_position)
+        try:
+            orbital_name = orbital.get_name_from_quantum_numbers(
+                orbital_data["angular_momentum"], orbital_data["magnetic_number"]
+            ).lower()
+            if orbital_name in dict_html:
+                orbital_name_plotly = dict_html[orbital_name]
+            else:
+                orbital_name_plotly = orbital_name
+
+        except AttributeError:
+            orbital_name = "j {j} l {l} m_j{m_j}".format(
+                j=orbital_data["total_angular_momentum"],
+                l=orbital_data["angular_momentum"],
+                m_j=orbital_data["magnetic_number"],
+            )
+            orbital_name_plotly = "j={j} <i>l</i>={l} m<sub>j</sub>={m_j}".format(
+                j=dict_html[orbital_data["total_angular_momentum"]],
+                l=orbital_data["angular_momentum"],
+                m_j=dict_html[orbital_data["magnetic_number"]],
+            )
+        if not selected_atoms:
+            if group_tag == "atoms" and plot_tag == "total":
+                key = r"{var}".format(var=atom_position)
+            elif group_tag == "kinds" and plot_tag == "total":
+                key = r"{var1}".format(var1=kind_name)
+            elif group_tag == "atoms" and plot_tag == "orbital":
+                key = r"{var1}<br>{var2}-{var3}".format(
+                    var1=atom_position, var2=kind_name, var3=orbital_name_plotly
+                )
+            elif group_tag == "kinds" and plot_tag == "orbital":
+                key = r"{var1}-{var2}".format(var1=kind_name, var2=orbital_name_plotly)
+            else:
+                key = None
+
+            if key:
+                if key in _pdos:
+                    _pdos[key][1] += pdos
+                else:
+                    _pdos[key] = [energy, pdos]
+
+        else:
+            try:
+                index = list_positions.index(atom_position)
+                if index in selected_atoms:
+                    if group_tag == "atoms" and plot_tag == "total":
+                        key = r"{var}".format(var=atom_position)
+                    elif group_tag == "kinds" and plot_tag == "total":
+                        key = r"{var1}".format(var1=kind_name)
+                    elif group_tag == "atoms" and plot_tag == "orbital":
+                        key = r"{var1}<br>{var2}-{var3}".format(
+                            var1=atom_position, var2=kind_name, var3=orbital_name_plotly
+                        )
+                    elif group_tag == "kinds" and plot_tag == "orbital":
+                        key = r"{var1}-{var2}".format(
+                            var1=kind_name, var2=orbital_name_plotly
+                        )
+                    else:
+                        key = None
+
+                    if key:
+                        if key in _pdos:
+                            _pdos[key][1] += pdos
+                        else:
+                            _pdos[key] = [energy, pdos]
+
+            except ValueError:
+                pass
+
+    dos = []
+    for label, (energy, pdos) in _pdos.items():
+        if spin_type == "down":
+            # invert y-axis
+            pdos = -pdos
+            label = f"{label} (↓)"
+
+        if spin_type == "up":
+            label = f"{label} (↑)"
+
+        orbital_pdos = {
+            "label": label,
+            "x": energy.tolist(),
+            "y": pdos.tolist(),
+            "borderColor": cmap(label),
+            "lineStyle": line_style,
+        }
+        dos.append(orbital_pdos)
+
+    return dos
