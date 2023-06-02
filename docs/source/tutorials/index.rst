@@ -15,5 +15,5 @@ Tutorials
    :maxdepth: 2
    :caption: Contents:
 
-   basic
-   setup_computer_code
+   basic_run_on_local_computer
+   advance_run_on_remote_computer
