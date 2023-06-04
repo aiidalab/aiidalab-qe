@@ -13,12 +13,13 @@
 # import os
 # import sys
 import time
+
 # sys.path.insert(0, os.path.abspath('.'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'Quantum ESPRESSO App'
+project = "Quantum ESPRESSO App"
 copyright_first_year = "2023"
 copyright_owners = "The AiiDAlab Team"
 
@@ -53,7 +54,7 @@ extensions = [
 panels_add_bootstrap_css = False
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # The suffix of source filenames.
 source_suffix = ".rst"
@@ -73,7 +74,7 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'pydata_sphinx_theme'
+html_theme = "pydata_sphinx_theme"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
@@ -82,7 +83,7 @@ html_logo = "_static/images/aiidalab_qe_logo.png"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # If true, links to the reST sources are added to the pages.
 html_show_sourcelink = False
