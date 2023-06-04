@@ -1,6 +1,5 @@
 .. _uninstall:
 
-=================
 Uninstall the app
 =================
 

@@ -1,8 +1,7 @@
 .. _run_calculation_on_local_computer:
 
-=======================================
 Run calculation on local computer
-=======================================
+=================================
 
 Goal: running a band structure calculation on Silicon using the AiiDAlab machine. Get the band structure and PDOS.
 
@@ -10,7 +9,7 @@ Goal: running a band structure calculation on Silicon using the AiiDAlab machine
 As shown at the top of the page, there will be four steps to carry out a QE calculation.
 
 Step 1 Select a structure
---------------------------
+-------------------------
 
 You can select a structure from four sources.
 
@@ -30,7 +29,7 @@ In the end, click the `Confirm` button.
 
 
 Step 2 Configure workflow
---------------------------
+-------------------------
 
 Set the input parameters
 
@@ -57,8 +56,7 @@ In the end, click the `Confirm` button.
 
 
 Step 3 Choose computational resources.
----------------------------------------
-
+--------------------------------------
 
 **Codes**
 
@@ -84,11 +82,8 @@ Click the `Submit` button and the calcuation is launched.
 
     There is no need to wait for the computation to finish: you can go head and submit a new calculation in parallel.
 
-
-
-
 Step 4 Check the status and results.
--------------------------------------
+------------------------------------
 
 The job may take ~3 minutes. While waiting, you can also check the job information by clicking the Workchain item in the tree view.
 

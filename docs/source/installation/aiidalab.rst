@@ -1,6 +1,5 @@
 .. _access_aiidalab:
 
-===============
 Access AiiDAlab
 ===============
 
@@ -12,7 +11,6 @@ There are three options for accessing AiiDAlab:
 
 .. _aiidalab_launch:
 
-***************
 AiiDAlab launch
 ***************
 

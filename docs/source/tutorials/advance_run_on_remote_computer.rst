@@ -1,17 +1,18 @@
 .. _run_calculation_on_remote_computer:
 
-===================================
 Run calculation on remote computer
-===================================
+==================================
+
 This time, the goal is to submit a band structure calculation of magnetic cobalt on a remote machine (i.e., on a different computational resource). The instruction in collapsible text is for CSCS machine.
 
 
 Step 1 Select a structure
---------------------------
+-------------------------
+
 Again use the "From examples" structure importer and select cobalt.
 
 Step 2 Configure workflow
---------------------------
+-------------------------
 
 Turn on the `Magnetism` option.
 
@@ -20,6 +21,7 @@ For protocol, please select "fast" (or select the "precise" protocol if you have
 
 Step 3 Choose computational resources
 -------------------------------------
+
 Now you need set up a new computer (e.g., the CSCS Daint or Eiger machine if you have acount on it) and the codes on this newly setup computer (i.e., you need to tell AiiDA where the executables are, which modules to load etc.).
 
 .. note::
@@ -96,7 +98,7 @@ In the end, click the `Submit` button.
 
 
 Step 4 Check the status and results.
--------------------------------------
+------------------------------------
 
 .. figure:: /_static/images/select_new_code.png
    :width: 12cm
