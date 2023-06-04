@@ -62,7 +62,7 @@ AiiDAlab launch is a thinly wrapper docker image which takes care of all the pre
 
 #. Follow the instructions on screen to open AiiDAlab in the browser
 
-.. note::
+.. tip::
 
    For more detailed help, run
 
