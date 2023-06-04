@@ -1,7 +1,9 @@
 .. _upgrade:
 
-Upgrade the app
-===============
+Upgrade or uninstall the app
+============================
+
+Upgrading or uninstalling the Quantum ESPRESSO app can be achieved via the App Manager tool or the built-in terminal.
 
 .. tabbed:: App Manager
 
@@ -17,9 +19,9 @@ Upgrade the app
 
        ---
 
-       **Step 2: Upgrade the app**
+       **Step 2: Upgrade or uninstall the app**
 
-       The green :fa:`arrow-circle-up` **Update** button indicates that a newer version is available. Click it to upgrade the app.
+       A green :fa:`arrow-circle-up` **Update** button indicates that a newer version is available. Click it to upgrade the app. Alternatively, you may choose to uninstall the app by clicking on the red :fa:`trash` **Uninstall** button.
 
        .. image:: ../_static/images/app-management-upgrade-available.png
 
@@ -48,5 +50,17 @@ Upgrade the app
        .. code-block:: console
 
           $ aiidalab install quantum-espresso==v22.01.0
+
+       ---
+
+       You can uninstall the app from the built-in terminal with
+
+       .. code-block:: console
+
+          $ aiidalab uninstall quantum-espresso
+
+       Again, you will be prompted to confirm the operation.
+
+
 
 .. _PEP 440 version specifiers: https://www.python.org/dev/peps/pep-0440/#version-specifiers
