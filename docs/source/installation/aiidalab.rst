@@ -3,29 +3,44 @@
 Access AiiDAlab
 ===============
 
-There are three options for accessing AiiDAlab:
+You have three options for accessing AiiDAlab:
 
-1. Log into one of the `open AiiDAlab servers <https://www.aiidalab.net/deployments/>`_
-2. Run ``aiidalab`` from the `Quantum Mobile Virtual Machine <https://quantum-mobile.readthedocs.io/>`_ terminal
-3. Run the AiiDAlab docker container locally using :ref:`aiidalab-launch <aiidalab_launch>` (see below)
+#. Log into one of the `open AiiDAlab servers <https://www.aiidalab.net/deployments/>`_
+#. Run ``aiidalab`` from the `Quantum Mobile Virtual Machine <https://quantum-mobile.readthedocs.io/>`_ terminal
+#. Run the AiiDAlab :ref:`Docker <docker-pre>` container locally (see below)
+
+.. _docker-pre:
+
+Docker
+******
+
+AiiDAlab is available as a Docker container - a self-contained pre-configured environment including all the necessary software. To run the container, you must first install `Docker`_ on your workstation or laptop.
+
+.. note::
+
+   On Linux, you need to have `root` privileges to do the `post-installation steps for Docker Engine <https://docs.docker.com/engine/install/linux-postinstall/>`_.
+
+Once Docker is installed, you have two options to launch the container:
+
+#. Execute the following from terminal:
+
+   .. code-block:: console
+
+      docker run -p 8888:8888 aiidalab/full-stack
+
+#.  or use the :ref:`aiidalab-launch <aiidalab_launch>` tool (**recommended**)
+
 
 .. _aiidalab_launch:
 
 AiiDAlab launch
 ***************
 
-To run AiiDAlab on your own workstation or laptop you can either
+.. important::
 
- - (**recommended**) Use the `aiidalab-launch <https://github.com/aiidalab/aiidalab-launch#aiidalab-launch>`_ tool which is a thin docker wrapper, or
- - run the image directly with: ``docker run -p 8888:8888 aiidalab/full-stack``.
+   The following steps require a local installation of `Docker`_.
 
-To use **AiiDAlab launch** you will have to
-
-#. `Install Docker on your workstation or laptop. <https://docs.docker.com/get-docker/>`_
-
-   .. note::
-
-      If you are using Linux, you need to have `root` privileges to do `post-installation steps for the Docker Engine <https://docs.docker.com/engine/install/linux-postinstall/>`_.
+AiiDAlab launch is a thinly wrapper docker image which takes care of all the prerequisites to run the AiiDAlab docker image. To use AiiDAlab launch you will have to
 
 #. Install AiiDAlab launch with `pipx <https://pypa.github.io/pipx/installation/>`_ (**recommended**):
 
@@ -33,7 +48,11 @@ To use **AiiDAlab launch** you will have to
 
       pipx install aiidalab-launch
 
-   Or directly with pip (``pip install aiidalab-launch``).
+   or directly with pip
+
+   .. code-block:: console
+
+      pip install aiidalab-launch
 
 #. Start AiiDAlab with
 
@@ -41,14 +60,20 @@ To use **AiiDAlab launch** you will have to
 
        aiidalab-launch start
 
-#. Follow the instructions on screen to open AiiDAlab in the browser.
+#. Follow the instructions on screen to open AiiDAlab in the browser
 
-See ``aiidalab-launch --help`` for detailed help.
+.. note::
+
+   For more detailed help, run
+
+   .. code-block:: console
+
+      aiidalab-launch help
 
 Instance Management
 ^^^^^^^^^^^^^^^^^^^
 
-You can inspect the status of all configured AiiDAlab profiles with:
+You can inspect the status of all configured AiiDAlab profiles with
 
 .. code-block:: console
 
@@ -57,5 +82,10 @@ You can inspect the status of all configured AiiDAlab profiles with:
 Profile Management
 ^^^^^^^^^^^^^^^^^^
 
-The tool allows to manage multiple profiles, e.g., with different home directories or ports.
-See ``aiidalab-launch profiles --help`` for more information.
+You can manage multiple profiles in AiiDAlab launch, e.g., with different home directories or ports. For more information, run
+
+.. code-block:: console
+
+   aiidalab-launch profiles --help
+
+.. _Docker: <https://docs.docker.com/get-docker>
