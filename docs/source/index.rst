@@ -1,12 +1,12 @@
-.. Quantum Espresso App documentation master file, created by
+.. Quantum ESPRESSO App documentation master file, created by
    sphinx-quickstart on Tue May 30 14:26:09 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to the Quantum Espresso App documentation!
+Welcome to the Quantum ESPRESSO App documentation!
 ==================================================
 
-The Quantum Espresso app is an AiiDAlab web-based graphical user interface allowing users to conduct and streamline many of Quantum Espresso's calculations by leverage AiiDA's powerful workflows implemented in the AiiDA Quantum Espresso plugin. The following links will walk you through the necessary steps to access AiiDAlab, install the Quantum Espresso app, configure your environment, and run basic examples of some of its built-in features.
+The Quantum ESPRESSO app is an AiiDAlab web-based graphical user interface allowing users to conduct and streamline many of Quantum ESPRESSO's calculations by leverage AiiDA's powerful workflows implemented in the AiiDA Quantum ESPRESSO plugin. The following links will walk you through the necessary steps to access AiiDAlab, install the Quantum ESPRESSO app, configure your environment, and run basic examples of some of its built-in features.
 
 .. toctree::
    :maxdepth: 1
