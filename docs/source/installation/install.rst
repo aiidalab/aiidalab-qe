@@ -6,9 +6,9 @@ Install the QE app
 AiiDAlab offers two options for installing the Quantum ESPRESSO app:
 
 
-#. Via its built-in :fa:`terminal` **Terminal**
-
 #. Via its :fa:`puzzle-piece` **App Store**
+
+#. Via its built-in :fa:`terminal` **Terminal**
 
 .. tip::
 
@@ -17,26 +17,6 @@ AiiDAlab offers two options for installing the Quantum ESPRESSO app:
    .. code-block::
 
       aiidalab-launch exec -- aiidalab install quantum-espresso
-
-.. tabbed:: Terminal
-
-    .. panels::
-       :container: container-lg pb-3
-       :column: col-lg-12 p-2
-
-       **Step 1: Open the Terminal**
-
-       Open the built-in terminal by clicking on the :fa:`terminal` icon in the nav bar.
-
-        .. image:: ../_static/images/nav-bar-terminal.png
-
-       ---
-
-       **Step 2: Install the app with the aiidalab command line tool**
-
-       .. code-block:: console
-
-          $ aiidalab install quantum-espresso
 
 .. tabbed:: App Store
 
@@ -92,5 +72,26 @@ AiiDAlab offers two options for installing the Quantum ESPRESSO app:
        When the installation process is finished, the newly installed app will show up on the start page. Launch the app by clicking on the Quantum ESPRESSO logo.
 
        .. image:: ../_static/images/app-management-start-page.png
+
+
+.. tabbed:: Terminal
+
+    .. panels::
+       :container: container-lg pb-3
+       :column: col-lg-12 p-2
+
+       **Step 1: Open the Terminal**
+
+       Open the built-in terminal by clicking on the :fa:`terminal` icon in the nav bar.
+
+        .. image:: ../_static/images/nav-bar-terminal.png
+
+       ---
+
+       **Step 2: Install the app with the aiidalab command line tool**
+
+       .. code-block:: console
+
+          $ aiidalab install quantum-espresso
 
 .. _AiiDAlab app store: https://aiidalab.github.io/aiidalab-registry
