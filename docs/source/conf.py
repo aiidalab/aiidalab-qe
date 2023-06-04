@@ -18,7 +18,7 @@ import time
 
 # -- Project information -----------------------------------------------------
 
-project = 'Quantum Espresso App'
+project = 'Quantum ESPRESSO App'
 copyright_first_year = "2023"
 copyright_owners = "The AiiDAlab Team"
 
