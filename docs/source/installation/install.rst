@@ -1,8 +1,7 @@
 .. _install:
 
-===============
-Install the app
-===============
+Install the QE app
+==================
 
 AiiDAlab provides for the distribution of a collection of notebooks in the form of apps through the `AiiDAlab app store`_.
 These apps can be installed, updated, and removed either via the command line using the ``aiidalab`` command, or via the App store.
