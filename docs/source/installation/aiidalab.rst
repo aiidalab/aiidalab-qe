@@ -28,7 +28,7 @@ Once Docker is installed, you have two options to launch the container:
 
       docker run -p 8888:8888 aiidalab/full-stack
 
-#.  or use the :ref:`aiidalab-launch <aiidalab_launch>` tool (**recommended**)
+#.  Use the :ref:`aiidalab-launch <aiidalab_launch>` tool (**recommended**)
 
 
 .. _aiidalab_launch:
@@ -40,7 +40,7 @@ AiiDAlab launch
 
    The following steps require a local installation of `Docker`_.
 
-AiiDAlab launch is a thinly wrapper docker image which takes care of all the prerequisites to run the AiiDAlab docker image. To use AiiDAlab launch you will have to
+AiiDAlab launch is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image. To use AiiDAlab launch you will have to
 
 #. Install AiiDAlab launch with `pipx <https://pypa.github.io/pipx/installation/>`_ (**recommended**):
 
@@ -60,7 +60,7 @@ AiiDAlab launch is a thinly wrapper docker image which takes care of all the pre
 
        aiidalab-launch start
 
-#. Follow the instructions on screen to open AiiDAlab in the browser
+#. Follow the instructions on the screen to open AiiDAlab in the browser
 
 .. tip::
 
@@ -68,16 +68,7 @@ AiiDAlab launch is a thinly wrapper docker image which takes care of all the pre
 
    .. code-block:: console
 
-      aiidalab-launch help
-
-Instance Management
-^^^^^^^^^^^^^^^^^^^
-
-You can inspect the status of all configured AiiDAlab profiles with
-
-.. code-block:: console
-
-   aiidalab-launch status
+      aiidalab-launch --help
 
 Profile Management
 ^^^^^^^^^^^^^^^^^^
@@ -87,5 +78,11 @@ You can manage multiple profiles in AiiDAlab launch, e.g., with different home d
 .. code-block:: console
 
    aiidalab-launch profiles --help
+
+You can inspect the status of all configured AiiDAlab profiles with
+
+.. code-block:: console
+
+   aiidalab-launch status
 
 .. _Docker: <https://docs.docker.com/get-docker>
