@@ -11,5 +11,4 @@ To use the Quantum ESPRESSO app, you will need to first access AiiDAlab. There, 
    aiidalab
    install
    configure
-   upgrade
-   uninstall
+   upgrade_uninstall
