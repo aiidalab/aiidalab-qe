@@ -1168,12 +1168,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             if self.workchain_settings.spin_orbit.value == "soc":
                 family_fr_pseudo = load_group("PseudoDojo/0.4/PBE/FR/stringent/upf")
                 fr_pseudo = family_fr_pseudo.get_pseudos(structure=self.input_structure)
-                if key in ["scf", "bands", "nscf"]:
+                if key in ["scf", "band", "nscf"]:
                     pw_overrides[key]["pw"]["pseudos"] = fr_pseudo
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = 90
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["ecutrho"] = 360
+
+                if key == "band":
+                    pw_overrides[key]["pw"]["metada"]["options"][
+                        "max_wallclock_seconds"
+                    ] = 82800
 
             if self.workchain_settings.bands_run and self.input_structure.pbc != (
                 True,
