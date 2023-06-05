@@ -806,6 +806,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.pw_code.observe(self._update_resources, "value")
         self.dos_code.observe(self._update_state, "value")
         self.projwfc_code.observe(self._update_state, "value")
+        self.projwfc_code.observe(self._update_projwfc_resources, "value")
+        self.dos_code.observe(self._update_dos_resources, "value")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -977,6 +979,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             != load_code(change["old"]).computer.pk
         ):
             self.set_resource_defaults(load_code(change["new"]).computer)
+
+    def _update_dos_resources(self, change):
+        if change["new"] and (
+            change["old"] is None
+            or load_code(change["new"]).computer.pk
+            != load_code(change["old"]).computer.pk
+        ):
+            self._set_dos_resources(load_code(change["new"]).computer)
+
+    def _update_projwfc_resources(self, change):
+        if change["new"] and (
+            change["old"] is None
+            or load_code(change["new"]).computer.pk
+            != load_code(change["old"]).computer.pk
+        ):
+            self._set_projwfc_resources(load_code(change["new"]).computer)
 
     def set_resource_defaults(self, computer=None):
         if computer is None or computer.hostname == "localhost":
