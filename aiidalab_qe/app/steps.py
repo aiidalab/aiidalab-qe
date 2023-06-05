@@ -688,7 +688,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
         self._update_state()
-        self.set_pdos_status()
 
     def set_input_parameters(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
