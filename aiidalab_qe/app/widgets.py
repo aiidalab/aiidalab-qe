@@ -396,6 +396,20 @@ class ResourceSelectionWidget(ipw.VBox):
         </p></div>"""
     )
 
+    prompt_dos = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the resources to use for the dos.x calculation.
+        </p></div>"""
+    )
+
+    prompt_projwfc = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the resources to use for the projwfc.x calculation.
+        </p></div>"""
+    )
+
     def __init__(self, **kwargs):
         extra = {
             "style": {"description_width": "150px"},
@@ -408,6 +422,25 @@ class ResourceSelectionWidget(ipw.VBox):
             value=1, step=1, min=1, description="CPUs", **extra
         )
 
+        self.num_cpus_dos = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="CPUs", **extra
+        )
+
+        self.num_cpus_projwfc = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="CPUs", **extra
+        )
+
+        self.num_nodes_dos = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=1000, description="Nodes", **extra
+        )
+
+        self.num_nodes_projwfc = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=1000, description="Nodes", **extra
+        )
+
+        self._disable_dos(True)
+        self._disable_projwfc(True)
+
         super().__init__(
             children=[
                 self.title,
@@ -415,8 +448,44 @@ class ResourceSelectionWidget(ipw.VBox):
                     children=[self.prompt, self.num_nodes, self.num_cpus],
                     layout=ipw.Layout(justify_content="space-between"),
                 ),
+                ipw.HBox(
+                    children=[self.prompt_dos, self.num_nodes_dos, self.num_cpus_dos],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
+                ipw.HBox(
+                    children=[
+                        self.prompt_projwfc,
+                        self.num_nodes_projwfc,
+                        self.num_cpus_projwfc,
+                    ],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
             ]
         )
+
+    def _disable_dos(self, condition: bool):
+        self.num_nodes_dos.disabled = condition
+        self.num_cpus_dos.disabled = condition
+
+    def _disable_projwfc(self, condition: bool):
+        self.num_nodes_projwfc.disabled = condition
+        self.num_cpus_projwfc.disabled = condition
+
+    def _configure_dos(self, default_mpiprocs):
+        self.num_cpus_dos.value = default_mpiprocs
+        self.num_nodes_dos.max = default_mpiprocs
+        if default_mpiprocs > 1:
+            self.num_cpus_dos.description = "CPUs/node"
+        else:
+            self.num_cpus_dos.description = "CPUs"
+
+    def _configure_projwfc(self, default_mpiprocs):
+        self.num_cpus_projwfc.value = default_mpiprocs
+        self.num_nodes_projwfc.max = default_mpiprocs
+        if default_mpiprocs > 1:
+            self.num_cpus_projwfc.description = "CPUs/node"
+        else:
+            self.num_cpus_projwfc.description = "CPUs"
 
     def reset(self):
         self.num_nodes.value = 1

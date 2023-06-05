@@ -688,6 +688,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
         self._update_state()
+        self.set_pdos_status()
 
     def set_input_parameters(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
@@ -996,6 +997,24 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self._check_resources()
 
+    def _set_dos_resources(self, computer=None):
+        if computer is None or computer.hostname == "localhost":
+            self.resources_config._disable_dos(True)
+            self.resources_config._configure_dos(1)
+        else:
+            default_mpiprocs = computer.get_default_mpiprocs_per_machine()
+            self.resources_config._disable_dos(False)
+            self.resources_config._configure_dos(default_mpiprocs)
+
+    def _set_projwfc_resources(self, computer=None):
+        if computer is None or computer.hostname == "localhost":
+            self.resources_config._disable_projwfc(True)
+            self.resources_config._configure_projwfc(1)
+        else:
+            default_mpiprocs = computer.get_default_mpiprocs_per_machine()
+            self.resources_config._disable_projwfc(False)
+            self.resources_config._configure_projwfc(default_mpiprocs)
+
     def _get_default_parallelization(self):
         """A _very_ rudimentary approach for obtaining a minimal npools setting."""
         num_mpiprocs = (
@@ -1083,6 +1102,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.workchain_settings.pdos_run.value:
             self.dos_code.code_select_dropdown.disabled = False
             self.projwfc_code.code_select_dropdown.disabled = False
+            if self.workchain_settings.hubbard_widget.hubbard.value:
+                self._set_dos_resources()
+                self._set_projwfc_resources()
+            else:
+                self.dos_code.code_select_dropdown.disabled = True
+                self.projwfc_code.code_select_dropdown.disabled = True
+                self.resources_config._disable_dos(True)
+                self.resources_config._disable_projwfc(True)
         else:
             self.dos_code.code_select_dropdown.disabled = True
             self.projwfc_code.code_select_dropdown.disabled = True
@@ -1422,12 +1449,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     v["parallelization"] = Dict(dict={"npool": npools})
                 if k == "projwfc":
                     v["settings"] = Dict(dict={"cmdline": ["-nk", str(npools)]})
+                    if self.workchain_settings.hubbard_widget.hubbard.value:
+                        v["metadata"]["options"]["resources"] = {
+                            "num_machines": self.resources_config.num_nodes_projwfc.value,
+                            "num_mpiprocs_per_machine": min(
+                                max_mpi_per_pool,
+                                self.resources_config.num_cpus_projwfc.value,
+                            ),
+                        }
                 if k == "dos":
                     v["metadata"]["options"]["resources"] = {
-                        "num_machines": 1,
+                        "num_machines": self.resources_config.num_nodes_dos.value,
                         "num_mpiprocs_per_machine": min(
                             max_mpi_per_pool,
-                            resources["num_mpiprocs_per_machine"],
+                            self.resources_config.num_cpus_dos.value,
+                            # resources["num_mpiprocs_per_machine"],
                         ),
                     }
                     # Continue to the next item to avoid overriding the resources in the
