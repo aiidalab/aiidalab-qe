@@ -1176,7 +1176,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["ecutrho"] = 360
 
                 if key == "band":
-                    pw_overrides[key]["pw"]["metada"]["options"][
+                    pw_overrides[key]["pw"]["metadata"]["options"][
                         "max_wallclock_seconds"
                     ] = 82800
 
