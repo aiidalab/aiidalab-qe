@@ -992,7 +992,7 @@ class BandDosPlotsWidget(ipw.VBox):
             fig.add_vline(x=0, line=dict(color="#111111", width=1, dash="dot"))
             fig.update_layout(
                 height=600,
-                width=950,
+                width=850,
                 plot_bgcolor="white",
                 xaxis=self.dos_xaxis,
                 yaxis=self.dos_yaxis,
@@ -1222,30 +1222,33 @@ class BandDosPlotsWidget(ipw.VBox):
         params: bands: dictionary from export_bands_data function
         output: label (list of str), label_values (list of float)
         """
-        my_paths = bands[0].get("paths")
-        my_labels = []
-        for path in my_paths:  # Remove duplicates
-            label_a = [path["from"], path["x"][0]]
-            label_b = [path["to"], path["x"][-1]]
-            if label_a not in my_labels:
-                my_labels.append(label_a)
-            if label_b not in my_labels:
-                my_labels.append(label_b)
+        if bands:
+            my_paths = bands[0].get("paths")
+            my_labels = []
+            for path in my_paths:  # Remove duplicates
+                label_a = [path["from"], path["x"][0]]
+                label_b = [path["to"], path["x"][-1]]
+                if label_a not in my_labels:
+                    my_labels.append(label_a)
+                if label_b not in my_labels:
+                    my_labels.append(label_b)
 
-        my_clean_labels = []  # Format
-        for i in my_labels:
-            if my_clean_labels:
-                if i not in my_clean_labels:
-                    if my_clean_labels[-1][-1] == i[1]:
-                        my_clean_labels[-1][0] = my_clean_labels[-1][0] + "|" + i[0]
-                    else:
-                        my_clean_labels.append(i)
-            else:
-                my_clean_labels.append(i)
+            my_clean_labels = []  # Format
+            for i in my_labels:
+                if my_clean_labels:
+                    if i not in my_clean_labels:
+                        if my_clean_labels[-1][-1] == i[1]:
+                            my_clean_labels[-1][0] = my_clean_labels[-1][0] + "|" + i[0]
+                        else:
+                            my_clean_labels.append(i)
+                else:
+                    my_clean_labels.append(i)
 
-        labels = [label[0] for label in my_clean_labels]
-        labels_values = [label[1] for label in my_clean_labels]
-        return [labels, labels_values]
+            labels = [label[0] for label in my_clean_labels]
+            labels_values = [label[1] for label in my_clean_labels]
+            return [labels, labels_values]
+        else:
+            return None
 
 
 def get_pdos_data(work_chain_node, group_tag, plot_tag, selected_atoms):
