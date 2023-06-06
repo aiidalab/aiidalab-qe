@@ -10,10 +10,11 @@ import typing as t
 from dataclasses import dataclass
 
 import ipywidgets as ipw
+import numpy as np
 import traitlets
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
-from aiida.orm import WorkChainNode, load_code, load_node
+from aiida.orm import WorkChainNode, load_code, load_group, load_node
 from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
@@ -24,19 +25,24 @@ from aiidalab_widgets_base import (
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
 )
-from IPython.display import display
+from IPython.display import clear_output, display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.pseudos import PseudoFamilySelector
 from aiidalab_qe.app.setup_codes import QESetupWidget
 from aiidalab_qe.app.sssp import SSSPInstallWidget
-from aiidalab_qe.app.widgets import ParallelizationSettings, ResourceSelectionWidget
+from aiidalab_qe.app.widgets import (
+    HubbardWidget,
+    ParallelizationSettings,
+    ResourceSelectionWidget,
+)
 from aiidalab_qe.workflows import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
 Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
+KpointsData = DataFactory("core.array.kpoints")
 
 PROTOCOL_PSEUDO_MAP = {
     "fast": "SSSP/1.2/PBE/efficiency",
@@ -58,6 +64,8 @@ class QeWorkChainParameters:
     spin_type: str
     electronic_type: str
     overrides: t.Dict[str, t.Any]
+    initial_magnetic_moments: t.Dict[str, float]
+    periodicity: str
 
 
 class WorkChainSettings(ipw.VBox):
@@ -103,9 +111,12 @@ class WorkChainSettings(ipw.VBox):
         accuracy and speed. Choose the "fast" protocol for a faster calculation
         with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
     )
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
         # RelaxType: degrees of freedom in geometry optimization
+        self.hubbard_widget = HubbardWidget()
+        self.input_structure = StructureData()
         self.relax_type = ipw.ToggleButtons(
             options=[
                 ("Structure as is", "none"),
@@ -126,6 +137,25 @@ class WorkChainSettings(ipw.VBox):
         self.electronic_type = ipw.ToggleButtons(
             options=[("Metal", "metal"), ("Insulator", "insulator")],
             value=DEFAULT_PARAMETERS["electronic_type"],
+            style={"description_width": "initial"},
+        )
+
+        self.two_dim_kpoints_path = ipw.Dropdown(
+            description="Select path:",
+            options=[
+                ("Hexagonal", "hexagonal"),
+                ("Square", "square"),
+                ("Rectangular", "rectangular"),
+                ("Centered Rectangular", "centered_rectangular"),
+                ("Oblique", "oblique"),
+            ],
+            value="hexagonal",
+        )
+        self.two_dim_kpoints_path_out = ipw.Output()
+
+        self.spin_orbit = ipw.ToggleButtons(
+            options=[("w/o SOC", "wo_soc"), ("SOC", "soc")],
+            value="wo_soc",
             style={"description_width": "initial"},
         )
 
@@ -179,8 +209,21 @@ class WorkChainSettings(ipw.VBox):
                     ]
                 ),
                 self.properties_title,
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Spin Orbit-Coupling:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        self.spin_orbit,
+                    ]
+                ),
+                self.hubbard_widget,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
+                self.two_dim_kpoints_path_out,
                 ipw.HBox(
                     children=[
                         ipw.HTML("<b>Projected density of states</b>"),
@@ -195,6 +238,19 @@ class WorkChainSettings(ipw.VBox):
             ],
             **kwargs,
         )
+        self.bands_run.observe(self._show_2d_paths, names="value")
+
+    def _show_2d_paths(self, change):
+        if self.input_structure.pbc == (True, True, False) and change["new"]:
+            with self.two_dim_kpoints_path_out:
+                clear_output()
+                display(self.two_dim_kpoints_path)
+        else:
+            with self.two_dim_kpoints_path_out:
+                clear_output()
+
+    def _update_input_structure(self, change):
+        self.input_structure = change["new"]
 
     def _update_settings(self, **kwargs):
         """Update the settings based on the given dict."""
@@ -226,10 +282,12 @@ class AdvancedSettings(ipw.VBox):
         self.smearing = SmearingSettings()
         self.kpoints = KpointSettings()
         self.tot_charge = TotalCharge()
+        self.magnetization = MagnetizationSettings()
         self.list_overrides = [
             self.smearing.override,
             self.kpoints.override,
             self.tot_charge.override,
+            self.magnetization.override,
         ]
         for override in self.list_overrides:
             ipw.dlink(
@@ -248,6 +306,7 @@ class AdvancedSettings(ipw.VBox):
                     ],
                 ),
                 self.tot_charge,
+                self.magnetization,
                 self.smearing,
                 self.kpoints,
             ],
@@ -259,6 +318,7 @@ class AdvancedSettings(ipw.VBox):
         self.smearing.reset()
         self.kpoints.reset()
         self.tot_charge.reset()
+        self.magnetization.reset()
 
 
 class TotalCharge(ipw.VBox):
@@ -316,6 +376,79 @@ class TotalCharge(ipw.VBox):
         with self.hold_trait_notifications():
             self.charge.value = self.tot_charge_default
             self.override.value = False
+
+
+class MagnetizationSettings(ipw.VBox):
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
+    input_structure_labels = traitlets.List([])
+
+    def __init__(self, **kwargs):
+        self.input_structure = StructureData()
+        self.kinds = self.create_kinds_widgets()
+        self.kinds_widget_out = ipw.Output()
+        self.override = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    [
+                        self.override,
+                        self.kinds_widget_out,
+                    ],
+                ),
+            ],
+            layout=ipw.Layout(justify_content="space-between"),
+            **kwargs,
+        )
+        self.override.observe(self._disable_kings_widgets, "value")
+
+    def _disable_kings_widgets(self, _=None):
+        for i in range(1, len(self.kinds.children)):
+            self.kinds.children[i].children[0].disabled = not self.override.value
+
+    def reset(self):
+        self.override.value = False
+        for i in range(1, len(self.kinds.children)):
+            self.kinds.children[i].children[0].value = 0.0
+
+    def create_kinds_widgets(self):
+        widgets_list = []
+        for label in self.input_structure_labels:
+            hbox = ipw.HBox()
+            float_widget = ipw.BoundedFloatText(
+                description=label,
+                min=-1,
+                max=1,
+                step=0.1,
+                value=0.0,
+                disabled=True,
+            )
+            hbox.children = [float_widget]
+            widgets_list.append(hbox)
+        kinds_widget = ipw.VBox([ipw.HTML("Define magnetization")] + widgets_list)
+        return kinds_widget
+
+    def update_kinds_widgets(self, change):
+        self.input_structure_labels = self.input_structure.get_kind_names()
+        self.kinds = self.create_kinds_widgets()
+        with self.kinds_widget_out:
+            clear_output()
+            display(self.kinds)
+
+    def _update_widget(self, change):
+        self.input_structure = change["new"]
+        self.update_kinds_widgets(change)
+
+    def get_magnetization(self):
+        magnetization = {}
+        for i in range(1, len(self.kinds.children)):
+            magnetization[self.input_structure_labels[i - 1]] = (
+                self.kinds.children[i].children[0].value
+            )
+        return magnetization
 
 
 class SmearingSettings(ipw.VBox):
@@ -472,6 +605,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
@@ -543,6 +677,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ],
             **kwargs,
         )
+
+    @traitlets.observe("input_structure")
+    def _update_input_structure(self, change):
+        if self.input_structure is not None:
+            self.advanced_settings.magnetization._update_widget(change)
+            self.workchain_settings.hubbard_widget.update_widgets(change)
+            self.workchain_settings._update_input_structure(change)
 
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
@@ -665,6 +806,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.pw_code.observe(self._update_resources, "value")
         self.dos_code.observe(self._update_state, "value")
         self.projwfc_code.observe(self._update_state, "value")
+        self.projwfc_code.observe(self._update_projwfc_resources, "value")
+        self.dos_code.observe(self._update_dos_resources, "value")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -837,6 +980,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ):
             self.set_resource_defaults(load_code(change["new"]).computer)
 
+    def _update_dos_resources(self, change):
+        if change["new"] and (
+            change["old"] is None
+            or load_code(change["new"]).computer.pk
+            != load_code(change["old"]).computer.pk
+        ):
+            self._set_dos_resources(load_code(change["new"]).computer)
+
+    def _update_projwfc_resources(self, change):
+        if change["new"] and (
+            change["old"] is None
+            or load_code(change["new"]).computer.pk
+            != load_code(change["old"]).computer.pk
+        ):
+            self._set_projwfc_resources(load_code(change["new"]).computer)
+
     def set_resource_defaults(self, computer=None):
         if computer is None or computer.hostname == "localhost":
             self.resources_config.num_nodes.disabled = True
@@ -854,6 +1013,24 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.parallelization.npools.value = self._get_default_parallelization()
 
         self._check_resources()
+
+    def _set_dos_resources(self, computer=None):
+        if computer is None or computer.hostname == "localhost":
+            self.resources_config._disable_dos(True)
+            self.resources_config._configure_dos(1)
+        else:
+            default_mpiprocs = computer.get_default_mpiprocs_per_machine()
+            self.resources_config._disable_dos(False)
+            self.resources_config._configure_dos(default_mpiprocs)
+
+    def _set_projwfc_resources(self, computer=None):
+        if computer is None or computer.hostname == "localhost":
+            self.resources_config._disable_projwfc(True)
+            self.resources_config._configure_projwfc(1)
+        else:
+            default_mpiprocs = computer.get_default_mpiprocs_per_machine()
+            self.resources_config._disable_projwfc(False)
+            self.resources_config._configure_projwfc(default_mpiprocs)
 
     def _get_default_parallelization(self):
         """A _very_ rudimentary approach for obtaining a minimal npools setting."""
@@ -964,17 +1141,62 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
         """Get the parameters of the `QeWorkChain` from widgets."""
+        # create the the starting magnetization as None (Default)
+        starting_magnetization = None
         # create the override parameters for sub PwBaseWorkChain
         pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
         for key in ["base", "scf", "nscf", "band"]:
+            pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
             if self.pseudo_family_selector.override_protocol_pseudo_family.value:
                 pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
+            if self.workchain_settings.hubbard_widget.hubbard.value:
+                pw_overrides[key]["pw"]["parameters"]["SYSTEM"].update(
+                    self.workchain_settings.hubbard_widget.hubbard_dict
+                )
+                if self.workchain_settings.hubbard_widget.eigenvalues_label.value:
+                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"].update(
+                        self.workchain_settings.hubbard_widget.eigenvalues_dict
+                    )
+            if self.workchain_settings.spin_orbit.value == "soc":
+                family_fr_pseudo = load_group("PseudoDojo/0.4/PBE/FR/stringent/upf")
+                fr_pseudo = family_fr_pseudo.get_pseudos(structure=self.input_structure)
+                if key in ["scf", "band", "nscf"]:
+                    pw_overrides[key]["pw"]["pseudos"] = fr_pseudo
+                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
+                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
+                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = 90
+                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["ecutrho"] = 360
+
+                if key in ["band"]:
+                    pw_overrides[key]["pw"]["metadata"] = {
+                        "options": {"max_wallclock_seconds": 82800}
+                    }
+
+            if self.workchain_settings.bands_run and self.input_structure.pbc != (
+                True,
+                True,
+                True,
+            ):
+                kpoints = self.one_two_dim_kpoints_path(
+                    self.input_structure,
+                    self.workchain_settings.two_dim_kpoints_path.value,
+                    self.advanced_settings.kpoints.distance.value,
+                )
+                pw_overrides["band"]["kpoints"] = kpoints
+
             if self.advanced_settings.override.value:
-                pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
                 if self.advanced_settings.tot_charge.override.value:
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                         "tot_charge"
                     ] = self.advanced_settings.tot_charge.charge.value
+                if (
+                    self.advanced_settings.magnetization.override.value
+                    and self.workchain_settings.spin_type.value == "collinear"
+                ):
+                    starting_magnetization = (
+                        self.advanced_settings.magnetization.get_magnetization()
+                    )
+
                 if key in ["base", "scf"]:
                     if self.advanced_settings.kpoints.override.value:
                         pw_overrides[key][
@@ -1017,6 +1239,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         run_pdos = self.workchain_settings.pdos_run.value
         protocol = self.workchain_settings.workchain_protocol.value
 
+        # Periodicity
+        periodicity_options = {
+            (True, True, True): "xyz",
+            (True, True, False): "xy",
+            (True, False, False): "x",
+        }
+
+        periodicity = periodicity_options[self.input_structure.pbc]
+
         properties = []
 
         if run_bands:
@@ -1034,6 +1265,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=spin_type,
             electronic_type=electronic_type,
             overrides=overrides,
+            initial_magnetic_moments=starting_magnetization,
+            periodicity=periodicity,
         )
 
     def _create_builder(self) -> ProcessBuilderNamespace:
@@ -1055,7 +1288,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=SpinType(parameters.spin_type),
             electronic_type=ElectronicType(parameters.electronic_type),
             overrides=parameters.overrides,
+            initial_magnetic_moments=parameters.initial_magnetic_moments,
         )
+        if parameters.periodicity in ["x", "xy"]:
+            builder.bands.pop("bands_kpoints_distance")
+            builder.bands.update(
+                {"bands_kpoints": parameters.overrides["bands"]["bands"]["kpoints"]}
+            )
 
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
@@ -1067,6 +1306,155 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         return builder
 
+    def one_two_dim_kpoints_path(
+        self, structure, two_dim_kpoints_path, bands_kpoints_distance
+    ):
+        """
+        Return a KpoinsData object containing the 1D or 2D kpoints path for bandstructure calculations
+
+        """
+        kpoints = KpointsData()
+        kpoints.set_cell_from_structure(structure)
+        reciprocal_cell = kpoints.reciprocal_cell
+        # reciprocal cell
+
+        selected_paths = {
+            "hexagonal": {
+                "path": [
+                    [0.0, 0.0, 0.0],
+                    [0.33333, 0.33333, 0.0],
+                    [0.5, 0.5, 0.0],
+                    [1.0, 0.0, 0.0],
+                ],
+                "labels": ["\u0393", "K", "M", "\u0393"],
+            },
+            "square": {
+                "path": [
+                    [0.0, 0.0, 0.0],
+                    [0.5, 0.0, 0.0],
+                    [0.5, 0.5, 0.0],
+                    [1.0, 0.0, 0.0],
+                ],
+                "labels": ["\u0393", "X", "M", "\u0393"],
+            },
+            "rectangular": {
+                "path": [
+                    [0.0, 0.0, 0.0],
+                    [0.5, 0.0, 0.0],
+                    [0.5, 0.5, 0.0],
+                    [0.0, 0.5, 0.0],
+                    [1.0, 0.0, 0.0],
+                ],
+                "labels": ["\u0393", "X", "S", "Y", "\u0393"],
+            },
+        }
+        if two_dim_kpoints_path in ["centered_rectangular", "oblique"]:
+            a1 = reciprocal_cell[0]
+            a2 = reciprocal_cell[1]
+            norm_a1 = np.linalg.norm(a1)
+            norm_a2 = np.linalg.norm(a2)
+            cos_gamma = a1.dot(a2) / (
+                norm_a1 * norm_a2
+            )  # Angle between a1 and a2 # Requires tes in case the division by zero , gamma < 90!
+            gamma = np.arccos(cos_gamma)
+            eta = (1 - (norm_a1 / norm_a2) * cos_gamma) / (
+                2 * np.power(np.sin(gamma), 2)
+            )
+            nu = 0.5 - (eta * norm_a2 * cos_gamma) / norm_a1
+            selected_paths["centered_rectangular"] = {
+                "path": [
+                    [0.0, 0.0, 0.0],
+                    [0.5, 0.0, 0.0],
+                    [1 - eta, nu, 0],
+                    [0.5, 0.5, 0.0],
+                    [eta, 1 - nu, 0.0],
+                    [1.0, 0.0, 0.0],
+                ],
+                "labels": ["\u0393", "X", "H_1", "C", "H", "\u0393"],
+            }
+            selected_paths["oblique"] = {
+                "path": [
+                    [0.0, 0.0, 0.0],
+                    [0.5, 0.0, 0.0],
+                    [1 - eta, nu, 0],
+                    [0.5, 0.5, 0.0],
+                    [eta, 1 - nu, 0.0],
+                    [0.0, 0.5, 0.0],
+                    [1.0, 0.0, 0.0],
+                ],
+                "labels": ["\u0393", "X", "H_1", "C", "H", "Y", "\u0393"],
+            }
+
+        def pairwise(iterable):
+            # pairwise('ABCDEFG') --> AB BC CD DE EF FG
+            from itertools import tee
+
+            a, b = tee(iterable)
+            next(b, None)
+            return zip(a, b)
+
+        def points_per_branch(
+            vector_a, vector_b, reciprocal_cell, bands_kpoints_distance
+        ):
+            scaled_vector_a = np.array(vector_a)
+            scaled_vector_b = np.array(vector_b)
+            reciprocal_vector_a = scaled_vector_a.dot(reciprocal_cell)
+            reciprocal_vector_b = scaled_vector_b.dot(reciprocal_cell)
+            distance = np.linalg.norm(reciprocal_vector_a - reciprocal_vector_b)
+            return round(distance / bands_kpoints_distance)
+
+        if structure.pbc == (True, False, False):
+            num_points_per_branch = points_per_branch(
+                [0.0, 0.0, 0.0],
+                [0.5, 0.0, 0.0],
+                reciprocal_cell,
+                bands_kpoints_distance,
+            )
+            points = np.linspace(
+                start=[0.0, 0.0, 0.0],
+                stop=[0.5, 0.0, 0.0],
+                endpoint=True,
+                num=num_points_per_branch,
+            )
+            kpoints.set_kpoints(points.tolist())
+            kpoints.labels = [[0, "\u0393"], [len(points) - 1, "X"]]
+            return kpoints
+
+        elif structure.pbc == (True, True, False):
+            points_branch = []
+            num_per_branch = []
+            path = selected_paths[two_dim_kpoints_path]["path"]
+            labels = selected_paths[two_dim_kpoints_path]["labels"]
+            branches = pairwise(path)
+
+            for branch in branches:
+                num_points_per_branch = points_per_branch(
+                    branch[0], branch[1], reciprocal_cell, bands_kpoints_distance
+                )
+                if branch[1] == [1.0, 0.0, 0.0]:
+                    points = np.linspace(
+                        start=branch[0],
+                        stop=branch[1],
+                        endpoint=True,
+                        num=num_points_per_branch,
+                    )
+                else:
+                    points = np.linspace(
+                        start=branch[0], stop=branch[1], num=num_points_per_branch
+                    )
+                points_branch.append(points.tolist())
+                num_per_branch.append(num_points_per_branch)
+
+            list_kpoints = [item for sublist in points_branch for item in sublist]
+            kpoints.set_kpoints(list_kpoints)
+            kpoints.labels = [
+                [index, labels[index]]
+                if index == 0
+                else [list_kpoints.index(value, 1), labels[index]]
+                for index, value in enumerate(path)
+            ]
+            return kpoints
+
     def _update_builder(self, buildy, resources, npools, max_mpi_per_pool):
         """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
         for k, v in buildy.items():
@@ -1075,12 +1463,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     v["parallelization"] = Dict(dict={"npool": npools})
                 if k == "projwfc":
                     v["settings"] = Dict(dict={"cmdline": ["-nk", str(npools)]})
-                if k == "dos":
                     v["metadata"]["options"]["resources"] = {
-                        "num_machines": 1,
+                        "num_machines": self.resources_config.num_nodes_projwfc.value,
                         "num_mpiprocs_per_machine": min(
                             max_mpi_per_pool,
-                            resources["num_mpiprocs_per_machine"],
+                            self.resources_config.num_cpus_projwfc.value,
+                        ),
+                    }
+                if k == "dos":
+                    v["metadata"]["options"]["resources"] = {
+                        "num_machines": self.resources_config.num_nodes_dos.value,
+                        "num_mpiprocs_per_machine": min(
+                            max_mpi_per_pool,
+                            self.resources_config.num_cpus_dos.value,
+                            # resources["num_mpiprocs_per_machine"],
                         ),
                     }
                     # Continue to the next item to avoid overriding the resources in the
@@ -1104,6 +1500,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "electronic_type": qe_workchain_parameters.electronic_type,
             "spin_type": qe_workchain_parameters.spin_type,
             "protocol": qe_workchain_parameters.protocol,
+            "initial_magnetic_moments": qe_workchain_parameters.initial_magnetic_moments,
+            "periodicity": qe_workchain_parameters.periodicity,
         }
 
         # update pseudo family information to extra_report_parameters
@@ -1190,9 +1588,32 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ] = builder.bands.bands_kpoints_distance.value
         parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
 
+        # Tot_Charge
         parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
             "tot_charge", 0.0
         )
+
+        # Spin Orbit
+        spin_orbit = builder.bands.scf["pw"]["parameters"]["SYSTEM"].get(
+            "lspinorb", False
+        )
+        if spin_orbit:
+            parameters["spin_orbit"] = "Yes"
+        else:
+            parameters["spin_orbit"] = "No"
+
+        # Hubbard
+        hubbard = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
+            "lda_plus_u", False
+        )
+        if hubbard:
+            parameters["hubbard"] = "Yes"
+            parameters["hubbard_dict"] = builder.relax.base["pw"]["parameters"][
+                "SYSTEM"
+            ].get("hubbard_u", False)
+        else:
+            parameters["hubbard"] = "No"
+            parameters["hubbard_dict"] = None
 
         # parameters from extra_report_parameters
         for k, v in extra_report_parameters.items():

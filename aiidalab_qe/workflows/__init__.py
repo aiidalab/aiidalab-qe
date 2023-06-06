@@ -250,7 +250,10 @@ class QeAppWorkChain(WorkChain):
             .node
         )
         self.ctx.scf_parent_folder = scf.outputs.remote_folder
-        self.ctx.current_structure = workchain.outputs.primitive_structure
+        try:
+            self.ctx.current_structure = workchain.outputs.primitive_structure
+        except AttributeError:
+            self.ctx.current_structure = workchain.inputs.structure
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""

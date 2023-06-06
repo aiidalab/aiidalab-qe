@@ -45,8 +45,12 @@ def test_create_builder_default(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # None in report_html means that the report not properly generated
-    assert "None" not in report_html
+    # None in report_html means that the report not properly generated expect in initial_magnetic_moments
+    # assert "None" not in report_html
+    assert (
+        report_html.count("None") <= 1
+        or builder_parameters("initial_magnetic_moments") is not None
+    )
 
 
 def test_create_builder_insulator(
@@ -77,8 +81,12 @@ def test_create_builder_insulator(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # None in report_html means that the report not properly generated
-    assert "None" not in report_html
+    # None in report_html means that the report not properly generated except in initial_magnetic_moments
+    # assert "None" not in report_html
+    assert (
+        report_html.count("None") <= 1
+        or builder_parameters("initial_magnetic_moments") is not None
+    )
 
 
 def builder_to_readable_dict(builder):
