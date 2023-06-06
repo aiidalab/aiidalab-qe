@@ -19,6 +19,8 @@ EXPECTED_PSEUDOS = {
     "SSSP/1.2/PBEsol/precision",
     "PseudoDojo/0.4/PBE/SR/standard/upf",
     "PseudoDojo/0.4/PBEsol/SR/standard/upf",
+    "PseudoDojo/0.4/PBE/SR/stringent/upf",
+    "PseudoDojo/0.4/PBEsol/SR/stringent/upf",
 }
 
 
