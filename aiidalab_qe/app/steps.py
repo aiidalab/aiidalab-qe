@@ -1119,14 +1119,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.workchain_settings.pdos_run.value:
             self.dos_code.code_select_dropdown.disabled = False
             self.projwfc_code.code_select_dropdown.disabled = False
-            if self.workchain_settings.hubbard_widget.hubbard.value:
-                self._set_dos_resources()
-                self._set_projwfc_resources()
-            else:
-                self.dos_code.code_select_dropdown.disabled = True
-                self.projwfc_code.code_select_dropdown.disabled = True
-                self.resources_config._disable_dos(True)
-                self.resources_config._disable_projwfc(True)
         else:
             self.dos_code.code_select_dropdown.disabled = True
             self.projwfc_code.code_select_dropdown.disabled = True
@@ -1174,6 +1166,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = 90
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"]["ecutrho"] = 360
+
+                if key in ["band"]:
+                    pw_overrides[key]["pw"]["metadata"] = {
+                        "options": {"max_wallclock_seconds": 82800}
+                    }
 
             if self.workchain_settings.bands_run and self.input_structure.pbc != (
                 True,
@@ -1466,14 +1463,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     v["parallelization"] = Dict(dict={"npool": npools})
                 if k == "projwfc":
                     v["settings"] = Dict(dict={"cmdline": ["-nk", str(npools)]})
-                    if self.workchain_settings.hubbard_widget.hubbard.value:
-                        v["metadata"]["options"]["resources"] = {
-                            "num_machines": self.resources_config.num_nodes_projwfc.value,
-                            "num_mpiprocs_per_machine": min(
-                                max_mpi_per_pool,
-                                self.resources_config.num_cpus_projwfc.value,
-                            ),
-                        }
+                    v["metadata"]["options"]["resources"] = {
+                        "num_machines": self.resources_config.num_nodes_projwfc.value,
+                        "num_mpiprocs_per_machine": min(
+                            max_mpi_per_pool,
+                            self.resources_config.num_cpus_projwfc.value,
+                        ),
+                    }
                 if k == "dos":
                     v["metadata"]["options"]["resources"] = {
                         "num_machines": self.resources_config.num_nodes_dos.value,
