@@ -31,9 +31,9 @@ class PseudoFamilySelector(ipw.VBox):
         If you are unsure, select 'SSSP efficiency', which for
         most calculations will produce sufficiently accurate results at
         comparatively small computational costs. If your calculations require a
-        higher accuracy, select 'SSSP accuracy', which will be computationally
+        higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
         more expensive. SSSP is the standard solid-state pseudopotentials.
-        The PseudoDojo used here has the SR relativistic type and the standard accuracy.</div>"""
+        The PseudoDojo used here has the SR relativistic type.</div>"""
     )
 
     dft_functional_prompt = ipw.HTML(
