@@ -84,8 +84,15 @@ class PseudoFamilySelector(ipw.VBox):
             pseudo_family_type += (
                 " " + DEFAULT_PARAMETERS["pseudo_family"].split("/")[-1]
             )
+        elif pseudo_family_type.upper() == "PSEUDODOJO":
+            pseudo_family_type = "PseudoDojo " + pseudo_family_type.split("_")[-2]
         self.protocol_selection = ipw.ToggleButtons(
-            options=["SSSP efficiency", "SSSP precision", "PseudoDojo"],
+            options=[
+                "SSSP efficiency",
+                "SSSP precision",
+                "PseudoDojo standard",
+                "PseudoDojo stringent",
+            ],
             value=pseudo_family_type,
             layout=ipw.Layout(max_width="100%"),
         )
@@ -125,12 +132,14 @@ class PseudoFamilySelector(ipw.VBox):
 
     def set_value_trait(self, _=None):
         if self.set_pseudo_family.value:
-            if self.protocol_selection.value == "PseudoDojo":
-                pseudo_family = (
-                    f"PseudoDojo/0.4/{self.dft_functional.value}/SR/standard/upf"
-                )
+            if "PseudoDojo" in self.protocol_selection.value:
+                pseudo_family = f"PseudoDojo/0.4/{self.dft_functional.value}/SR/{self.protocol_selection.value.split()[1]}/upf"
+            elif "SSSP" in self.protocol_selection.value:
+                pseudo_family = f"SSSP/1.2/{self.dft_functional.value}/{self.protocol_selection.value.split()[1]}"
             else:
-                pseudo_family = f"SSSP/1.2/{self.dft_functional.value}/{self.protocol_selection.value}"
+                raise ValueError(
+                    f"Unknown pseudo family {self.set_pseudo_family.value}"
+                )
             self.value = pseudo_family
         else:
             self.value = DEFAULT_PARAMETERS["pseudo_family"]
