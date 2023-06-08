@@ -94,7 +94,7 @@ class PseudoFamilySelector(ipw.VBox):
                 "PseudoDojo stringent",
             ],
             value=pseudo_family_type,
-            layout=ipw.Layout(max_width="100%"),
+            layout=ipw.Layout(max_width="80%"),
         )
         self.protocol_selection.observe(self.set_value_trait, "value")
 
