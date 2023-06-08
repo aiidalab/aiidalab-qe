@@ -10,7 +10,7 @@ from aiida.orm import QueryBuilder
 from aiida_pseudo.groups.family import PseudoPotentialFamily
 from filelock import FileLock, Timeout
 
-from aiidalab_qe.widgets import ProgressBar
+from aiidalab_qe.app.widgets import ProgressBar
 
 EXPECTED_PSEUDOS = {
     "SSSP/1.2/PBE/efficiency",

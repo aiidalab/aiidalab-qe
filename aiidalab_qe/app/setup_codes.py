@@ -10,7 +10,7 @@ from aiida.common.exceptions import NotExistent
 from aiida.orm import load_code
 from filelock import FileLock, Timeout
 
-from aiidalab_qe.widgets import ProgressBar
+from aiidalab_qe.app.widgets import ProgressBar
 
 __all__ = [
     "QESetupWidget",
@@ -19,7 +19,7 @@ __all__ = [
 FN_LOCKFILE = Path.home().joinpath(".install-qe-on-localhost.lock")
 FN_DO_NOT_SETUP = Path.cwd().joinpath(".do-not-setup-on-localhost")
 
-QE_VERSION = "7.0"
+QE_VERSION = "7.2"
 
 CONDA_ENV_PREFIX = Path.home().joinpath(
     ".conda", "envs", f"quantum-espresso-{QE_VERSION}"

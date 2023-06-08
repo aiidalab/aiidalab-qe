@@ -1,5 +1,7 @@
 # AiiDAlab Quantum ESPRESSO application
 
+[![codecov](https://codecov.io/gh/aiidalab/aiidalab-qe/branch/master/graph/badge.svg)](https://codecov.io/gh/aiidalab/aiidalab-qe)
+
 ## About
 
 This is a early-development implementation of an AiiDAlab application for Quantum ESPRESSO workflow.
@@ -20,9 +22,11 @@ pre-commit install
 ```
 The pre-commit checks should now be automatically executed prior to each commit.
 
-### Work chain updates
-
-See [src/README.md](src/README.md) for instructions on how to update the `aiidalab_qe_workchain`.
+To run unit tests in the AiiDAlab container, you need to run `pytest` from within the `aiida-core-services` conda environment:
+```
+conda activate aiida-core-services
+pytest -sv tests
+```
 
 ## For maintainers
 
@@ -37,8 +41,6 @@ Additional notes:
   - Use the `--dry` option to preview the release change.
   - The release tag (e.g. a/b/rc) is determined from the last release.
     Use the `--tag` option to switch the release tag.
-
-See [above](#for-developers) for notes on how to release updates to the [`aiidalab_qe_workchain`](src/).
 
 ## Acknowledgements
 

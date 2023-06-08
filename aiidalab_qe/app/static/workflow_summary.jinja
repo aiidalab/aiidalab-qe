@@ -63,6 +63,11 @@
         <td>{{ energy_cutoff_rho }} Ry</td>
       </tr>
       <tr>
+        <td>Occupation type (SCF)</td>
+        <td>{{ occupation_type }}</td>
+      </tr>
+      {% if occupation_type == "smearing" %}
+      <tr>
         <td>Smearing width (degauss)</td>
         <td>{{ degauss }} Ry</td>
       </tr>
@@ -70,6 +75,7 @@
         <td>Smearing type</td>
         <td>{{ smearing }}</td>
       </tr>
+      {% endif %}
       <tr>
         <td>K-point mesh distance (SCF)</td>
         <td>{{ scf_kpoints_distance }} &#8491;<sup>-1</sup></td>
@@ -86,6 +92,10 @@
         <td>{{ nscf_kpoints_distance }} &#8491;<sup>-1</sup></td>
       </tr>
       {% endif %}
+      <tr>
+        <td>Total Charge</td>
+        <td>{{ tot_charge }}</td>
+      </tr>
     </table>
   </div>
 </div>
