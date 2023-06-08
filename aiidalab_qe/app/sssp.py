@@ -55,34 +55,31 @@ def install_pseudos(pseudo_set):
         yield mult * i
         if pseudo.startswith("SSSP"):
             p_family, p_version, p_func, p_type = pseudo.split("/")
-            run_(
-                [
-                    "aiida-pseudo",
-                    "install",
-                    p_family.lower(),
-                    "-x",
-                    p_func,
-                    "-p",
-                    p_type,
-                ]
-            )
+            cmds = [
+                "aiida-pseudo",
+                "install",
+                p_family.lower(),
+                "-x",
+                p_func,
+                "-p",
+                p_type,
+            ]
         elif pseudo.startswith("PseudoDojo"):
             p_family, p_version, p_func, p_rel, p_type, p_format = pseudo.split("/")
-            run_(
-                [
-                    "aiida-pseudo",
-                    "install",
-                    "pseudo-dojo",
-                    "-x",
-                    p_func,
-                    "-r",
-                    p_rel,
-                    "-p",
-                    p_type,
-                    "-f",
-                    p_format,
-                ]
-            )
+            cmds = [
+                "aiida-pseudo",
+                "install",
+                "pseudo-dojo",
+                "-x",
+                p_func,
+                "-r",
+                p_rel,
+                "-p",
+                p_type,
+                "-f",
+                p_format,
+            ]
+        run_(cmds)
 
 
 def install():

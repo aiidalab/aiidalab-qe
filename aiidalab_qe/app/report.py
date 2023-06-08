@@ -40,20 +40,14 @@ def _generate_report_dict(builder_parameters: dict):
     yield "protocol", builder_parameters["protocol"]
 
     # Pseudopotential settings
-    pseudo_family = builder_parameters["pseudo_family"]
-    yield "pseudo_family", pseudo_family
-    pseudo_family_list = pseudo_family.split("/")
-    pseudo_library = pseudo_family_list[0]
+    yield "pseudo_family", builder_parameters["pseudo_family"]
+    yield "pseudo_version", builder_parameters["pseudo_version"]
+    yield "pseudo_protocol", builder_parameters["pseudo_protocol"]
+
+    pseudo_library = builder_parameters["pseudo_library"]
+    functional = builder_parameters["functional"]
     yield "pseudo_library", pseudo_library
-    yield "pseudo_version", pseudo_family_list[1]
-    functional = pseudo_family_list[2]
     yield "functional", functional
-    if pseudo_library == "SSSP":
-        yield "pseudo_protocol", pseudo_family_list[3]
-    elif pseudo_library == "PseudoDojo":
-        yield "pseudo_protocol", pseudo_family_list[4]
-    else:
-        raise NotImplementedError
 
     yield "pseudo_link", PSEUDO_LINK_MAP[pseudo_library]
     yield "functional_link", FUNCTIONAL_LINK_MAP[functional]

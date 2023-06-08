@@ -1114,9 +1114,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # otherwise extract the information from protocol
             pseudo_family = PROTOCOL_PSEUDO_MAP[qe_workchain_parameters.protocol]
 
+        pseudo_family_info = pseudo_family.split("/")
+        if pseudo_family_info[0] == "SSSP":
+            pseudo_protocol = pseudo_family_info[3]
+        elif pseudo_family_info[0] == "PseudoDojo":
+            pseudo_protocol = pseudo_family_info[4]
         extra_report_parameters.update(
             {
                 "pseudo_family": pseudo_family,
+                "pseudo_library": pseudo_family_info[0],
+                "pseudo_version": pseudo_family_info[1],
+                "functional": pseudo_family_info[2],
+                "pseudo_protocol": pseudo_protocol,
             }
         )
 
