@@ -79,13 +79,6 @@ html_theme = "pydata_sphinx_theme"
 # of the sidebar.
 html_logo = "_static/images/aiidalab_qe_logo.png"
 
-html_context = {
-    "github_user": "aiidalab",
-    "github_repo": "aiidalab-qe",
-    "github_version": "main",
-    "doc_path": "docs/source",
-}
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
