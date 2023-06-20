@@ -17,6 +17,10 @@ EXPECTED_PSEUDOS = {
     "SSSP/1.2/PBE/precision",
     "SSSP/1.2/PBEsol/efficiency",
     "SSSP/1.2/PBEsol/precision",
+    "PseudoDojo/0.4/PBE/SR/standard/upf",
+    "PseudoDojo/0.4/PBEsol/SR/standard/upf",
+    "PseudoDojo/0.4/PBE/SR/stringent/upf",
+    "PseudoDojo/0.4/PBEsol/SR/stringent/upf",
 }
 
 
@@ -26,7 +30,14 @@ FN_LOCKFILE = Path.home().joinpath(".install-sssp.lock")
 def pseudos_to_install():
     qb = QueryBuilder()
     qb.append(
-        PseudoPotentialFamily, filters={"label": {"like": "SSSP/%"}}, project="label"
+        PseudoPotentialFamily,
+        filters={
+            "or": [
+                {"label": {"like": "SSSP/%"}},
+                {"label": {"like": "PseudoDojo/%"}},
+            ]
+        },
+        project="label",
     )
     labels = set(qb.all(flat=True))
     return EXPECTED_PSEUDOS - labels
@@ -42,8 +53,33 @@ def install_pseudos(pseudo_set):
     mult = 1 / len(pseudo_set)
     for i, pseudo in enumerate(pseudo_set):
         yield mult * i
-        p_family, p_version, p_func, p_type = pseudo.split("/")
-        run_(["aiida-pseudo", "install", p_family.lower(), "-x", p_func, "-p", p_type])
+        if pseudo.startswith("SSSP"):
+            p_family, p_version, p_func, p_type = pseudo.split("/")
+            cmds = [
+                "aiida-pseudo",
+                "install",
+                p_family.lower(),
+                "-x",
+                p_func,
+                "-p",
+                p_type,
+            ]
+        elif pseudo.startswith("PseudoDojo"):
+            p_family, p_version, p_func, p_rel, p_type, p_format = pseudo.split("/")
+            cmds = [
+                "aiida-pseudo",
+                "install",
+                "pseudo-dojo",
+                "-x",
+                p_func,
+                "-r",
+                p_rel,
+                "-p",
+                p_type,
+                "-f",
+                p_format,
+            ]
+        run_(cmds)
 
 
 def install():
@@ -74,7 +110,7 @@ class SSSPInstallWidget(ProgressBar):
     error = traitlets.Unicode().tag(readonly=True)
 
     def __init__(self, prefix=None, hide_by_default=True, auto_start=True, **kwargs):
-        self.prefix = prefix or "SSSP pseudo potentials: "
+        self.prefix = prefix or "Pseudo potentials: "
         self.hide_by_default = hide_by_default
 
         super().__init__(
