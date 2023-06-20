@@ -12,4 +12,3 @@ The following links will guide you through the necessary steps to access AiiDAla
    aiidalab
    install
    configure
-   upgrade_uninstall
