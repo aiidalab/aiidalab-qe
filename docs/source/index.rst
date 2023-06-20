@@ -1,8 +1,8 @@
 :sd_hide_title:
 
-==================================================
-Welcome to the Quantum ESPRESSO App documentation!
-==================================================
+============
+Welcome Page
+============
 
 .. grid::
 
