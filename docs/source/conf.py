@@ -46,7 +46,7 @@ pygments_style = "sphinx"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx_panels",
+    "sphinx_design",
 ]
 
 # The pydata-sphinx-theme already loads the bootstrap css.
@@ -77,7 +77,7 @@ html_theme = "pydata_sphinx_theme"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "_static/images/aiidalab_qe_logo.png"
+html_logo = "_static/images/full_logo.svg"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

@@ -1,9 +1,10 @@
 .. _installation:
 
+==================
 Installation Guide
 ==================
 
-To use the Quantum ESPRESSO app, you will need to first access AiiDAlab. There, you will install the Quantum ESPRESSO app and configure the environment for AiiDA. The following links will go over each of these steps.
+The following links will guide you through the necessary steps to access AiiDAlab, install the Quantum ESPRESSO app, and configure your environment.
 
 .. toctree::
    :maxdepth: 1
