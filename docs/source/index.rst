@@ -119,4 +119,3 @@ Acknowledgements
 Acknowledgements(s)
 
 .. _Quantum ESPRESSO: https://www.quantum-espresso.org/
-.. _AiiDA: https://www.aiida.net
