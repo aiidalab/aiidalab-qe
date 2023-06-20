@@ -26,7 +26,7 @@ Once Docker is installed, you have two options to launch the container:
 
    .. code-block:: console
 
-      docker run -p 8888:8888 aiidalab/full-stack
+      docker run -p 8888:8888 aiidalab/aiidalab-docker-stack/qe
 
 #.  Use the :ref:`aiidalab-launch <aiidalab_launch>` tool (**recommended**)
 
