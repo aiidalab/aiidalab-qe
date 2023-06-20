@@ -132,15 +132,17 @@ class PseudoFamilySelector(ipw.VBox):
 
     def set_value_trait(self, _=None):
         if self.override_protocol_pseudo_family.value:
-            if "PseudoDojo" in self.protocol_selection.value:
-                pseudo_family = f"PseudoDojo/0.4/{self.dft_functional.value}/SR/{self.protocol_selection.value.split()[1]}/upf"
-            elif "SSSP" in self.protocol_selection.value:
-                pseudo_family = f"SSSP/1.2/{self.dft_functional.value}/{self.protocol_selection.value.split()[1]}"
+            family, protocol = self.protocol_selection.value.split()
+            functional = self.dft_functional.value
+            if family == "PseudoDojo":
+                pseudo_family_string = f"PseudoDojo/0.4/{functional}/SR/{protocol}/upf"
+            elif family == "SSSP":
+                pseudo_family_string = f"SSSP/1.2/{functional}/{protocol}"
             else:
                 raise ValueError(
                     f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
                 )
-            self.value = pseudo_family
+            self.value = pseudo_family_string
         else:
             self.value = DEFAULT_PARAMETERS["pseudo_family"]
 
