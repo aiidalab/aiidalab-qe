@@ -18,7 +18,6 @@ docutils==0.17.1
     # via
     #   pydata-sphinx-theme
     #   sphinx
-    #   sphinx-panels
 idna==3.4
     # via requests
 imagesize==1.4.1
@@ -43,8 +42,8 @@ sphinx==4.5.0
     # via
     #   -r docs/requirements.in
     #   pydata-sphinx-theme
-    #   sphinx-panels
-sphinx-panels==0.6.0
+    #   sphinx-design
+sphinx-design==0.4.1
     # via -r docs/requirements.in
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
