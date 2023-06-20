@@ -1,22 +1,14 @@
-.. _access_aiidalab:
+.. note::
 
-Access AiiDAlab
-===============
+   If you used another method to access AiiDAlab, you may skip this page.
 
-You have three options for accessing AiiDAlab:
-
-#. Log into one of the `open AiiDAlab servers <https://www.aiidalab.net/deployments/>`_
-#. Run ``aiidalab`` from the `Quantum Mobile Virtual Machine <https://quantum-mobile.readthedocs.io/>`_ terminal
-#. Run the AiiDAlab :ref:`Docker <docker-pre>` container locally (see below)
-
-.. _docker-pre:
-
+======
 Docker
-******
+======
 
 AiiDAlab is available as a Docker container - a self-contained pre-configured environment including all the necessary software. To run the container, you must first install `Docker`_ on your workstation or laptop.
 
-.. note::
+.. important::
 
    On Linux, you need to have `root` privileges to do the `post-installation steps for Docker Engine <https://docs.docker.com/engine/install/linux-postinstall/>`_.
 
@@ -84,5 +76,3 @@ You can inspect the status of all configured AiiDAlab profiles with
 .. code-block:: console
 
    aiidalab-launch status
-
-.. _Docker: <https://docs.docker.com/get-docker>

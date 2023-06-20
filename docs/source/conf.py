@@ -90,4 +90,5 @@ html_show_sourcelink = False
 # Define common links
 rst_epilog = """
 .. _AiiDA: https://www.aiida.net
+.. _Docker: https://docs.docker.com/get-docker
 """
