@@ -66,7 +66,7 @@ Access AiiDAlab
 
       ++++
 
-      .. button-link:: https://materials-marketplace.aiidalab.net/hub/login
+      .. button-link:: https://aiidalab.materials-marketplace.eu/hub/login
          :click-parent:
          :expand:
          :color: primary
