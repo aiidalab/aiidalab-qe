@@ -1129,9 +1129,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         extra_parameters = self._create_extra_report_parameters()
 
         with self.hold_trait_notifications():
-            self.process = submit(builder)
-
             # Set the builder parameters on the work chain
+            self.process = submit(builder)
             builder_parameters = self._extract_report_parameters(
                 builder, extra_parameters
             )
@@ -1290,11 +1289,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             overrides=parameters.overrides,
             initial_magnetic_moments=parameters.initial_magnetic_moments,
         )
-        if parameters.periodicity in ["x", "xy"]:
-            builder.bands.pop("bands_kpoints_distance")
-            builder.bands.update(
-                {"bands_kpoints": parameters.overrides["bands"]["bands"]["kpoints"]}
-            )
 
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
@@ -1583,9 +1577,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "smearing"
             ]
 
-        parameters[
-            "bands_kpoints_distance"
-        ] = builder.bands.bands_kpoints_distance.value
+        if builder.bands.bands_kpoints_distance:
+            parameters[
+                "bands_kpoints_distance"
+            ] = builder.bands.bands_kpoints_distance.value
+        else:
+            parameters["bands_kpoints_distance"] = scf_kpoints_distance
+
         parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
 
         # Tot_Charge

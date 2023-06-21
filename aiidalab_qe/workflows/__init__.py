@@ -137,6 +137,10 @@ class QeAppWorkChain(WorkChain):
         bands.pop("relax")
         bands.pop("structure", None)
         bands.pop("clean_workdir", None)
+        if structure.pbc != (True, True, True):
+            bands.pop("bands_kpoints_distance")
+            bands.update({"bands_kpoints": bands_overrides["bands"]["kpoints"]})
+
         builder.bands = bands
 
         # pdos workchain settings

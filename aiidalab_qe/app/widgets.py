@@ -731,8 +731,8 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
 
-    @_register_structure
-    def _select_periodicity(self, _=None, atoms=None):
+    # @_register_structure
+    def _select_periodicity(self, _=None):
         """Select periodicity."""
         periodicity_options = {
             "xyz": (True, True, True),
@@ -740,7 +740,7 @@ class AddingTagsEditor(ipw.VBox):
             "x": (True, False, False),
         }
         new_structure = deepcopy(self.structure)
-        new_structure.pbc = periodicity_options[self.periodicity.value]
+        new_structure.set_pbc(periodicity_options[self.periodicity.value])
         self.structure = None
         self.structure = deepcopy(new_structure)
 
@@ -1119,14 +1119,6 @@ class HubbardWidget(ipw.VBox):
             with self.eigen_values_widget_out:
                 clear_output()
                 display(self.eigen_values_widget)
-
-    # def update_hubbard_widgets(self, change):
-    #     self.input_labels = self.input_structure.get_kind_names()
-    #     self.hubbard_widget = self.create_hubbard_widget()
-    #     if self.hubbard.value:
-    #         with self.hubbard_widget_out:
-    #             clear_output()
-    #             display(self.hubbard_widget)
 
     def toggle_hubbard_widgets(self, change):
         if change["new"]:
