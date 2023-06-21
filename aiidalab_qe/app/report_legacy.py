@@ -1,9 +1,15 @@
 from aiida.orm import WorkChainNode
 from aiida.plugins import WorkflowFactory
 
-from .report import PROTOCOL_PSEUDO_MAP, PSEUDO_LINK_MAP, FUNCTIONAL_LINK_MAP, _generate_report_html
+from .report import (
+    FUNCTIONAL_LINK_MAP,
+    PROTOCOL_PSEUDO_MAP,
+    PSEUDO_LINK_MAP,
+    _generate_report_html,
+)
 
 PwBaseWorkChain = WorkflowFactory("quantumespresso.pw.base")
+
 
 def _generate_report_dict(qeapp_wc: WorkChainNode):
     builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
