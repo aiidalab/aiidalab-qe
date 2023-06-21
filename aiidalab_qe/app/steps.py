@@ -1301,7 +1301,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         return builder
 
     def one_two_dim_kpoints_path(
-        self, structure, two_dim_kpoints_path, bands_kpoints_distance
+        self, structure, two_dim_kpoints_path, kpoints_distance
     ):
         """
         Return a KpoinsData object containing the 1D or 2D kpoints path for bandstructure calculations
@@ -1311,6 +1311,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         kpoints.set_cell_from_structure(structure)
         reciprocal_cell = kpoints.reciprocal_cell
         # reciprocal cell
+        if kpoints_distance >= 0.5:
+            bands_kpoints_distance = 0.1
+        elif kpoints_distance > 0.15 and kpoints_distance < 0.5:
+            bands_kpoints_distance = 0.025
+        else:
+            bands_kpoints_distance = 0.015
 
         selected_paths = {
             "hexagonal": {
