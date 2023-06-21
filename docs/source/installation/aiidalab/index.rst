@@ -6,14 +6,14 @@ Access AiiDAlab
 
    Please select one of the following options for accessing AiiDAlab.
 
-.. grid:: 1 2 2 2
+.. grid:: 1 1 1 2
    :gutter: 3
 
    .. grid-item-card:: Local Docker instance
       :text-align: left
       :shadow: md
 
-      We guide you through installing Docker on your local machine, spinning up a container instance of a pre-configured AiiDAlab image, and running AiiDAlab in your browser. No prior knowledge of Docker necessary!
+      Walk through installing Docker on your local machine, spinning up a container instance of a pre-configured AiiDAlab image, and running AiiDAlab in your browser. No prior knowledge of Docker necessary!
 
       ++++
 
@@ -24,13 +24,13 @@ Access AiiDAlab
          :color: primary
          :outline:
 
-         To run a local instance
+         To the guide
 
    .. grid-item-card:: Quantum Mobile Virtual Machine
       :text-align: left
       :shadow: md
 
-      We've prepared an instance of the Quantum Mobile virtual machine image pre-configured specifically for the Quantum ESPRESSO app. You may download the image here and run it with your favorite virtual machine software.
+      We've pre-configured a Quantum Mobile virtual machine image for AiiDAlab, with everything you need to run the Quantum ESPRESSO app. Download the image here and run it with your favorite virtual machine software.
 
       ++++
 
@@ -40,13 +40,13 @@ Access AiiDAlab
          :color: primary
          :outline:
 
-         To download the virtual image
+         Download the virtual image
 
    .. grid-item-card:: Materials Cloud AiiDAlab Server
       :text-align: left
       :shadow: md
 
-      For researchers affiliated with Materials Cloud partners, you may log into the open AiiDAlab server hosted on the Materials Cloud.
+      For researchers affiliated with Materials Cloud partners, log into the open AiiDAlab server hosted on the Materials Cloud.
 
       ++++
 
@@ -56,13 +56,13 @@ Access AiiDAlab
          :color: primary
          :outline:
 
-         To launch the server
+         Launch the server
 
    .. grid-item-card:: Materials MarketPlace AiiDAlab Server
       :text-align: left
       :shadow: md
 
-      For members of the Materials Modeling MarketPlace, you may log into the open AiiDAlab server hosted on the Materials MarketPlace.
+      For members of the Materials Modeling MarketPlace, log into the open AiiDAlab server hosted on the Materials MarketPlace.
 
       ++++
 
@@ -72,7 +72,7 @@ Access AiiDAlab
          :color: primary
          :outline:
 
-         To launch the server
+         Launch the server
 
 .. toctree::
    :maxdepth: 1
