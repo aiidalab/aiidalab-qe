@@ -1,10 +1,10 @@
-=================
-Installing Docker
-=================
+==============
+Install Docker
+==============
 
 .. note::
 
-   If you used another method to access AiiDAlab, feel free to skip this page.
+   If you used another method to access AiiDAlab, you can proceed to :doc:`install the app </installation/install>`.
 
 AiiDAlab is available as a Docker container - a self-contained, pre-configured environment including all the necessary software to access the AiiDAlab platform. To run the container, you first need to install Docker on your local machine. If you have yet to do so, you may click `here <https://docs.docker.com/get-docker>`_ to follow the official Docker installation guide.
 

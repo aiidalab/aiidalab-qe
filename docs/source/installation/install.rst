@@ -1,7 +1,8 @@
 .. _install:
 
-Install the QE app
-==================
+===============
+Install the app
+===============
 
 AiiDAlab offers two options for installing the Quantum ESPRESSO app:
 

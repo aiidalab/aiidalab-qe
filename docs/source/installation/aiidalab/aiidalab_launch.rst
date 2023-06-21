@@ -10,7 +10,7 @@ AiiDAlab launch
 
    The following steps require a local installation of `Docker`_.
 
-`AiiDAlab launch`_ is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image. To use AiiDAlab launch you will have to
+`AiiDAlab launch`_ is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image. To use AiiDAlab launch, you will have to
 
 #. Install AiiDAlab launch with `pipx <https://pypa.github.io/pipx/installation/>`_ (**recommended**):
 
