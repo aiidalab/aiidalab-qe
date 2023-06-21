@@ -28,7 +28,6 @@ from traitlets import Instance, Int, List, Unicode, Union, default, observe, val
 from widget_bandsplot import BandsPlotWidget
 
 from aiidalab_qe.app import static
-from aiidalab_qe.app.report import generate_report_html
 
 
 class MinimalStructureViewer(ipw.VBox):
@@ -286,6 +285,15 @@ class VBoxWithCaption(ipw.VBox):
 
 class SummaryView(ipw.VBox):
     def __init__(self, wc_node, **kwargs):
+        from packaging import version
+
+        # To backward compatibility < 23.10.0 use the legacy report generator
+        plugin_version = wc_node.base.attributes.all['version']['plugin']
+        if version.parse(plugin_version) < version.parse("23.10.0a0"):
+            from aiidalab_qe.app.report_legacy import generate_report_html
+        else:
+            from aiidalab_qe.app.report import generate_report_html
+            
         report_html = generate_report_html(wc_node)
 
         self.summary_view = ipw.HTML(report_html)

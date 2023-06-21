@@ -1,3 +1,5 @@
+from aiida.orm import WorkChainNode
+
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
     "PBEsol": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.100.136406",
@@ -94,7 +96,7 @@ def _generate_report_html(report):
     return env.from_string(template).render(style=style, **report)
 
 
-def generate_report_html(qeapp_wc):
+def generate_report_html(qeapp_wc: WorkChainNode):
     """Generate a html for reporting the inputs for the `QeAppWorkChain`"""
     builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
     report = dict(_generate_report_dict(builder_parameters))
