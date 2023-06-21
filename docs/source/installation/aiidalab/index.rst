@@ -79,3 +79,4 @@ Access AiiDAlab
    :hidden:
 
    docker
+   aiidalab_launch
