@@ -10,7 +10,7 @@ Access AiiDAlab
    :gutter: 3
 
    .. grid-item-card:: Local Docker Instance
-      :text-align: left
+      :text-align: center
       :shadow: md
 
       Install Docker locally and run an instance of an AiiDAlab image *pre-configured** for the Quantum ESPRESSO app. No prior knowledge of Docker necessary!
@@ -27,14 +27,14 @@ Access AiiDAlab
          To the guide
 
    .. grid-item-card:: Virtual Machine Image
-      :text-align: left
+      :text-align: center
       :shadow: md
 
       Download a virtual machine image for AiiDAlab based on Quantum Mobile, *pre-configured** with everything you need to run the Quantum ESPRESSO app.
 
       ++++
 
-      .. button-ref:: qmobile
+      .. button-ref:: vm
          :ref-type: doc
          :click-parent:
          :expand:
@@ -44,7 +44,7 @@ Access AiiDAlab
          To the download page
 
    .. grid-item-card:: Materials Cloud AiiDAlab Server
-      :text-align: left
+      :text-align: center
       :shadow: md
 
       For researchers affiliated with Materials Cloud partners, log into the open AiiDAlab server hosted on the Materials Cloud.
@@ -60,7 +60,7 @@ Access AiiDAlab
          Launch the server
 
    .. grid-item-card:: Materials MarketPlace AiiDAlab Server
-      :text-align: left
+      :text-align: center
       :shadow: md
 
       For members of the Materials Modeling MarketPlace, log into the open AiiDAlab server hosted on the Materials MarketPlace.
@@ -85,4 +85,4 @@ Access AiiDAlab
 
    docker
    aiidalab_launch
-   qmobile
+   vm
