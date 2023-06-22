@@ -9,11 +9,11 @@ Access AiiDAlab
 .. grid:: 1 1 1 2
    :gutter: 3
 
-   .. grid-item-card:: Local Docker instance
+   .. grid-item-card:: Local Docker Instance
       :text-align: left
       :shadow: md
 
-      Walk through installing Docker on your local machine, spinning up a container instance of a pre-configured AiiDAlab image, and running AiiDAlab in your browser. No prior knowledge of Docker necessary!
+      Install Docker locally and run an instance of an AiiDAlab image *pre-configured** for the Quantum ESPRESSO app. No prior knowledge of Docker necessary!
 
       ++++
 
@@ -26,21 +26,22 @@ Access AiiDAlab
 
          To the guide
 
-   .. grid-item-card:: Quantum Mobile Virtual Machine
+   .. grid-item-card:: Virtual Machine Image
       :text-align: left
       :shadow: md
 
-      We've pre-configured a Quantum Mobile virtual machine image for AiiDAlab, with everything you need to run the Quantum ESPRESSO app. Download the image here and run it with your favorite virtual machine software.
+      Download a virtual machine image for AiiDAlab based on Quantum Mobile, *pre-configured** with everything you need to run the Quantum ESPRESSO app.
 
       ++++
 
-      .. button-link:: https://quantum-mobile.readthedocs.io/
+      .. button-ref:: qmobile
+         :ref-type: doc
          :click-parent:
          :expand:
          :color: primary
          :outline:
 
-         Download the virtual image
+         To the download page
 
    .. grid-item-card:: Materials Cloud AiiDAlab Server
       :text-align: left
@@ -74,9 +75,14 @@ Access AiiDAlab
 
          Launch the server
 
+.. div::
+
+\* The Quantum ESPRESSO app is included in these images. No further installation required!
+
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    docker
    aiidalab_launch
+   qmobile

@@ -8,7 +8,7 @@ AiiDAlab launch
 
 .. important::
 
-   The following steps require a local installation of `Docker`_.
+   The following steps require a local installation of Docker. If you have yet to do so, you can follow the instructions :doc:`here <docker>`.
 
 `AiiDAlab launch`_ is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image. To use AiiDAlab launch, you will have to
 
