@@ -109,14 +109,16 @@ Welcome Page
 How to cite
 ===========
 
-Citation(s)
+If you use the app for research, please follow these links to:
+
+- `cite AiiDA <https://aiida.readthedocs.io/projects/aiida-core/en/latest/#how-to-cite>`_
+- `cite AiiDA's Quantum ESPRESSO plugin <https://aiida-quantumespresso.readthedocs.io/en/latest/#how-to-cite>`_
+- `cite AiiDAlab <https://aiidalab.readthedocs.io/en/latest/index.html#how-to-cite>`_
+- `cite Quantum ESPRESSO <https://www.quantum-espresso.org/Doc/user_guide/node6.html>`_
 
 ----
 
 Acknowledgements
 ================
 
-Acknowledgements(s)
-
-.. _Quantum ESPRESSO: https://www.quantum-espresso.org/
-.. _AiiDAlab: https://www.aiidalab.net/
+We acknowledge the AiiDAlab team for the development of the Quantum ESPRESSO app.
