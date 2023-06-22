@@ -43,7 +43,19 @@ def install_pseudos(pseudo_set):
     for i, pseudo in enumerate(pseudo_set):
         yield mult * i
         p_family, p_version, p_func, p_type = pseudo.split("/")
-        run_(["aiida-pseudo", "install", p_family.lower(), "-x", p_func, "-p", p_type])
+        run_(
+            [
+                "aiida-pseudo",
+                "install",
+                p_family.lower(),
+                "-x",
+                p_func,
+                "-p",
+                p_type,
+                "-v",
+                "1.2",
+            ]
+        )
 
 
 def install():
