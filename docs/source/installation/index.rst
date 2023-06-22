@@ -4,11 +4,10 @@
 Installation Guide
 ==================
 
-The following links will guide you through the necessary steps to access AiiDAlab, install the Quantum ESPRESSO app, and configure your environment.
+The following links will guide you through the necessary steps to access the AiiDAlab platform and install the Quantum ESPRESSO app.
 
 .. toctree::
    :maxdepth: 1
 
    aiidalab/index
    install
-   configure
