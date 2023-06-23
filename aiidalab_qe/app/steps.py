@@ -15,8 +15,6 @@ from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
 from aiida.orm import WorkChainNode, load_code, load_node
 from aiida.plugins import DataFactory
-from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
-from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import (
     AiidaNodeViewWidget,
     ComputationalResourcesWidget,
@@ -27,7 +25,6 @@ from aiidalab_widgets_base import (
 from IPython.display import display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.app.pseudos import PseudoFamilySelector
 from aiidalab_qe.app.setup_codes import QESetupWidget
 from aiidalab_qe.app.sssp import SSSPInstallWidget
 from aiidalab_qe.app.widgets import ParallelizationSettings, ResourceSelectionWidget
@@ -60,551 +57,6 @@ class QeWorkChainParameters:
     overrides: t.Dict[str, t.Any]
 
 
-class WorkChainSettings(ipw.VBox):
-    structure_title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Structure</h4></div>"""
-    )
-    structure_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-        You have three options:<br>
-        (1) Structure as is: perform a self consistent calculation using the structure provided as input.<br>
-        (2) Atomic positions: perform a full relaxation of the internal atomic coordinates. <br>
-        (3) Full geometry: perform a full relaxation for both the internal atomic coordinates and the cell vectors. </div>"""
-    )
-    materials_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        Below you can indicate both if the material should be treated as an insulator
-        or a metal (if in doubt, choose "Metal"),
-        and if it should be studied with magnetization/spin polarization,
-        switch magnetism On or Off (On is at least twice more costly).
-        </div>"""
-    )
-
-    properties_title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Properties</h4></div>"""
-    )
-    properties_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        The band structure workflow will
-        automatically detect the default path in reciprocal space using the
-        <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
-        SeeK-path tool</a>.</div>"""
-    )
-
-    protocol_title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Protocol</h4></div>"""
-    )
-    protocol_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
-        The "moderate" protocol represents a trade-off between
-        accuracy and speed. Choose the "fast" protocol for a faster calculation
-        with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
-    )
-
-    def __init__(self, **kwargs):
-        # RelaxType: degrees of freedom in geometry optimization
-        self.relax_type = ipw.ToggleButtons(
-            options=[
-                ("Structure as is", "none"),
-                ("Atomic positions", "positions"),
-                ("Full geometry", "positions_cell"),
-            ],
-            value="positions_cell",
-        )
-
-        # SpinType: magnetic properties of material
-        self.spin_type = ipw.ToggleButtons(
-            options=[("Off", "none"), ("On", "collinear")],
-            value=DEFAULT_PARAMETERS["spin_type"],
-            style={"description_width": "initial"},
-        )
-
-        # ElectronicType: electronic properties of material
-        self.electronic_type = ipw.ToggleButtons(
-            options=[("Metal", "metal"), ("Insulator", "insulator")],
-            value=DEFAULT_PARAMETERS["electronic_type"],
-            style={"description_width": "initial"},
-        )
-
-        # Checkbox to see if the band structure should be calculated
-        self.bands_run = ipw.Checkbox(
-            description="",
-            indent=False,
-            value=True,
-            layout=ipw.Layout(max_width="10%"),
-        )
-
-        # Checkbox to see if the PDOS should be calculated
-        self.pdos_run = ipw.Checkbox(
-            description="",
-            indent=False,
-            value=True,
-            layout=ipw.Layout(max_width="10%"),
-        )
-
-        # Work chain protocol
-        self.workchain_protocol = ipw.ToggleButtons(
-            options=["fast", "moderate", "precise"],
-            value="moderate",
-        )
-        super().__init__(
-            children=[
-                self.structure_title,
-                self.structure_help,
-                self.relax_type,
-                self.materials_help,
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Electronic Type:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        self.electronic_type,
-                    ]
-                ),
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Magnetism:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        self.spin_type,
-                    ]
-                ),
-                self.properties_title,
-                ipw.HTML("Select which properties to calculate:"),
-                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
-                ipw.HBox(
-                    children=[
-                        ipw.HTML("<b>Projected density of states</b>"),
-                        self.pdos_run,
-                    ]
-                ),
-                self.properties_help,
-                self.protocol_title,
-                ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-                self.workchain_protocol,
-                self.protocol_help,
-            ],
-            **kwargs,
-        )
-
-    def _update_settings(self, **kwargs):
-        """Update the settings based on the given dict."""
-        for key in [
-            "relax_type",
-            "spin_type",
-            "electronic_type",
-            "bands_run",
-            "pdos_run",
-            "workchain_protocol",
-        ]:
-            if key in kwargs:
-                getattr(self, key).value = kwargs[key]
-
-
-class AdvancedSettings(ipw.VBox):
-    title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 10px">
-        <h4>Advanced Settings</h4></div>"""
-    )
-    description = ipw.HTML("""Select the advanced settings for the <b>pw.x</b> code.""")
-
-    def __init__(self, **kwargs):
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-        self.smearing = SmearingSettings()
-        self.kpoints = KpointSettings()
-        self.tot_charge = TotalCharge()
-        self.list_overrides = [
-            self.smearing.override,
-            self.kpoints.override,
-            self.tot_charge.override,
-        ]
-        for override in self.list_overrides:
-            ipw.dlink(
-                (self.override, "value"),
-                (override, "disabled"),
-                lambda override: not override,
-            )
-        self.override.observe(self.set_advanced_settings, "value")
-        super().__init__(
-            children=[
-                self.title,
-                ipw.HBox(
-                    [
-                        self.description,
-                        self.override,
-                    ],
-                ),
-                self.tot_charge,
-                self.smearing,
-                self.kpoints,
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
-        )
-
-    def set_advanced_settings(self, _=None):
-        self.smearing.reset()
-        self.kpoints.reset()
-        self.tot_charge.reset()
-
-
-class TotalCharge(ipw.VBox):
-    tot_charge_default = traitlets.Float(default_value=0.0)
-
-    def __init__(self, **kwargs):
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-        self.charge = ipw.BoundedFloatText(
-            value=0,
-            min=-3,
-            max=3,
-            step=0.01,
-            disabled=False,
-            description="Total charge:",
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self.override, "value"),
-            (self.charge, "disabled"),
-            lambda override: not override,
-        )
-        super().__init__(
-            children=[
-                ipw.HBox(
-                    [
-                        self.override,
-                        self.charge,
-                    ],
-                ),
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
-        )
-        self.charge.observe(self.set_tot_charge, "value")
-        self.override.observe(self.set_tot_charge, "value")
-
-    def set_tot_charge(self, _=None):
-        self.charge.value = (
-            self.charge.value if self.override.value else self.tot_charge_default
-        )
-
-    def _update_settings(self, **kwargs):
-        """Update the override and override_tot_charge and override_tot_charge values by the given keyword arguments
-        Therefore the override checkbox is not updated and defaults to True"""
-        self.override.value = True
-        with self.hold_trait_notifications():
-            if "tot_charge" in kwargs:
-                self.charge.value = kwargs["tot_charge"]
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.charge.value = self.tot_charge_default
-            self.override.value = False
-
-
-class SmearingSettings(ipw.VBox):
-    smearing_description = ipw.HTML(
-        """<p>
-        The smearing type and width is set by the chosen <b>protocol</b>.
-        Tick the box to override the default, not advised unless you've mastered <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
-        target="_blank">here</a> for a discussion).
-    </p>"""
-    )
-
-    # The default of `smearing` and `degauss` the type and width
-    # must be linked to the `protocol`
-    degauss_default = traitlets.Float(default_value=0.01)
-    smearing_default = traitlets.Unicode(default_value="cold")
-
-    def __init__(self, **kwargs):
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-        self.smearing = ipw.Dropdown(
-            options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
-            value=self.smearing_default,
-            description="Smearing type:",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        self.degauss = ipw.FloatText(
-            value=self.degauss_default,
-            step=0.005,
-            description="Smearing width (Ry):",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self.override, "value"),
-            (self.degauss, "disabled"),
-            lambda override: not override,
-        )
-        ipw.dlink(
-            (self.override, "value"),
-            (self.smearing, "disabled"),
-            lambda override: not override,
-        )
-        self.degauss.observe(self.set_smearing, "value")
-        self.smearing.observe(self.set_smearing, "value")
-        self.override.observe(self.set_smearing, "value")
-
-        super().__init__(
-            children=[
-                self.smearing_description,
-                ipw.HBox([self.override, self.smearing, self.degauss]),
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
-        )
-
-    def set_smearing(self, _=None):
-        self.degauss.value = (
-            self.degauss.value if self.override.value else self.degauss_default
-        )
-        self.smearing.value = (
-            self.smearing.value if self.override.value else self.smearing_default
-        )
-
-    def _update_settings(self, **kwargs):
-        """Update the smearing and degauss values by the given keyword arguments
-        This is the same as the `set_smearing` method but without the observer.
-        Therefore the override checkbox is not updated and defaults to True"""
-        self.override.value = True
-
-        with self.hold_trait_notifications():
-            if "smearing" in kwargs:
-                self.smearing.value = kwargs["smearing"]
-
-            if "degauss" in kwargs:
-                self.degauss.value = kwargs["degauss"]
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.degauss.value = self.degauss_default
-            self.smearing.value = self.smearing_default
-            self.override.value = False
-
-
-class KpointSettings(ipw.VBox):
-    kpoints_distance_description = ipw.HTML(
-        """<div>
-        The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
-        The value below represents the maximum distance between the k-points in each direction of reciprocal space.
-        Tick the box to override the default, smaller is more accurate and costly. </div>"""
-    )
-
-    # The default of `kpoints_distance` must be linked to the `protocol`
-    kpoints_distance_default = traitlets.Float(default_value=0.15)
-
-    def __init__(self, **kwargs):
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-        self.distance = ipw.FloatText(
-            value=self.kpoints_distance_default,
-            step=0.05,
-            description="K-points distance (1/Å):",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self.override, "value"),
-            (self.distance, "disabled"),
-            lambda override: not override,
-        )
-        self.distance.observe(self.set_kpoints_distance, "value")
-        self.override.observe(self.set_kpoints_distance, "value")
-        self.observe(self.set_kpoints_distance, "kpoints_distance_default")
-
-        super().__init__(
-            children=[
-                self.kpoints_distance_description,
-                ipw.HBox([self.override, self.distance]),
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
-        )
-
-    def set_kpoints_distance(self, _=None):
-        self.distance.value = (
-            self.distance.value
-            if self.override.value
-            else self.kpoints_distance_default
-        )
-
-    def _update_settings(self, **kwargs):
-        """Update the kpoints_distance value by the given keyword arguments.
-        This is the same as the `set_kpoints_distance` method but without the observer.
-        """
-        self.override.value = True
-        if "kpoints_distance" in kwargs:
-            self.distance.value = kwargs["kpoints_distance"]
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.distance.value = self.kpoints_distance_default
-            self.override.value = False
-
-
-class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
-    confirmed = traitlets.Bool()
-    previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
-    workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
-    pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
-    advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
-
-    def __init__(self, **kwargs):
-        self.workchain_settings = WorkChainSettings()
-        self.workchain_settings.relax_type.observe(self._update_state, "value")
-        self.workchain_settings.bands_run.observe(self._update_state, "value")
-        self.workchain_settings.pdos_run.observe(self._update_state, "value")
-
-        self.pseudo_family_selector = PseudoFamilySelector()
-        self.advanced_settings = AdvancedSettings()
-
-        ipw.dlink(
-            (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings.kpoints, "kpoints_distance_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)[
-                "kpoints_distance"
-            ],
-        )
-
-        ipw.dlink(
-            (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings.smearing, "degauss_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
-                "parameters"
-            ]["SYSTEM"]["degauss"],
-        )
-
-        ipw.dlink(
-            (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings.smearing, "smearing_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
-                "parameters"
-            ]["SYSTEM"]["smearing"],
-        )
-
-        self.tab = ipw.Tab(
-            children=[
-                self.workchain_settings,
-                ipw.VBox(
-                    children=[
-                        self.advanced_settings,
-                        self.pseudo_family_selector,
-                    ]
-                ),
-            ],
-            layout=ipw.Layout(min_height="250px"),
-        )
-
-        self.tab.set_title(0, "Workflow")
-        self.tab.set_title(1, "Advanced settings")
-
-        self._submission_blocker_messages = ipw.HTML()
-
-        self.confirm_button = ipw.Button(
-            description="Confirm",
-            tooltip="Confirm the currently selected settings and go to the next step.",
-            button_style="success",
-            icon="check-circle",
-            disabled=True,
-            layout=ipw.Layout(width="auto"),
-        )
-
-        self.confirm_button.on_click(self.confirm)
-
-        super().__init__(
-            children=[
-                self.tab,
-                self._submission_blocker_messages,
-                self.confirm_button,
-            ],
-            **kwargs,
-        )
-
-    @traitlets.observe("previous_step_state")
-    def _observe_previous_step_state(self, change):
-        self._update_state()
-
-    def set_input_parameters(self, parameters):
-        """Set the inputs in the GUI based on a set of parameters."""
-
-        with self.hold_trait_notifications():
-            # Work chain settings
-            self.workchain_settings.relax_type.value = parameters["relax_type"]
-            self.workchain_settings.spin_type.value = parameters["spin_type"]
-            self.workchain_settings.electronic_type.value = parameters[
-                "electronic_type"
-            ]
-            self.workchain_settings.bands_run.value = parameters["run_bands"]
-            self.workchain_settings.pdos_run.value = parameters["run_pdos"]
-            self.workchain_settings.workchain_protocol.value = parameters["protocol"]
-
-            # Advanced settings
-            self.pseudo_family_selector.value = parameters["pseudo_family"]
-            if parameters.get("kpoints_distance_override", None) is not None:
-                self.advanced_settings.kpoints.distance.value = parameters[
-                    "kpoints_distance_override"
-                ]
-                self.advanced_settings.kpoints.override.value = True
-            if parameters.get("degauss_override", None) is not None:
-                self.advanced_settings.smearing.degauss.value = parameters[
-                    "degauss_override"
-                ]
-                self.advanced_settings.smearing.override.value = True
-            if parameters.get("smearing_override", None) is not None:
-                self.advanced_settings.smearing.smearing.value = parameters[
-                    "smearing_override"
-                ]
-                self.advanced_settings.smearing.override.value = True
-
-    def _update_state(self, _=None):
-        if self.previous_step_state == self.State.SUCCESS:
-            self.confirm_button.disabled = False
-            self._submission_blocker_messages.value = ""
-            self.state = self.State.CONFIGURED
-        elif self.previous_step_state == self.State.FAIL:
-            self.state = self.State.FAIL
-        else:
-            self.confirm_button.disabled = True
-            self.state = self.State.INIT
-            self.set_input_parameters(DEFAULT_PARAMETERS)
-
-    def confirm(self, _=None):
-        self.confirm_button.disabled = False
-        self.state = self.State.SUCCESS
-
-    @traitlets.default("state")
-    def _default_state(self):
-        return self.State.INIT
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.set_input_parameters(DEFAULT_PARAMETERS)
-
-
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
 
@@ -634,12 +86,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(WorkChainNode, allow_none=True)
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
-    workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
-    pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
-    advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode())
 
-    def __init__(self, qe_auto_setup=True, **kwargs):
+    def __init__(self, parent, qe_auto_setup=True, **kwargs):
+        self.parent = parent
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
@@ -910,16 +360,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                builder_parameters = process_node.base.extras.get(
-                    "builder_parameters", None
-                )
-                if builder_parameters is not None:
-                    self.set_selected_codes(builder_parameters)
+                ui_parameters = process_node.base.extras.get("ui_parameters", None)
+                if ui_parameters is not None:
+                    self.set_selected_codes(ui_parameters)
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
         self.submit()
+
+    def get_selected_codes(self):
+        parameters = dict(
+            pw_code=self.pw_code.value,
+            dos_code=self.dos_code.value,
+            projwfc_code=self.projwfc_code.value,
+        )
+        return parameters
 
     def set_selected_codes(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
@@ -938,8 +394,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.dos_code.value = _get_code_uuid(parameters["dos_code"])
             self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
 
+    # TODO This should be rewrite using more general way for the plugin
     def set_pdos_status(self):
-        if self.workchain_settings.pdos_run.value:
+        if self.self.parent.configure_step.workchain_settings.pdos_run.value:
             self.dos_code.code_select_dropdown.disabled = False
             self.projwfc_code.code_select_dropdown.disabled = False
         else:
@@ -948,113 +405,27 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
-        builder = self._create_builder()
-        extra_parameters = self._create_extra_report_parameters()
+        builder, parameters = self._create_builder()
 
         with self.hold_trait_notifications():
             self.process = submit(builder)
-
-            # Set the builder parameters on the work chain
-            builder_parameters = self._extract_report_parameters(
-                builder, extra_parameters
-            )
-            self.process.base.extras.set("builder_parameters", builder_parameters)
+            self.process.base.extras.set("ui_parameters", parameters)
 
         self._update_state()
 
-    def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
-        """Get the parameters of the `QeWorkChain` from widgets."""
-        # create the override parameters for sub PwBaseWorkChain
-        pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
-        for key in ["base", "scf", "nscf", "band"]:
-            if self.pseudo_family_selector.override_protocol_pseudo_family.value:
-                pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
-            if self.advanced_settings.override.value:
-                pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
-                if self.advanced_settings.tot_charge.override.value:
-                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                        "tot_charge"
-                    ] = self.advanced_settings.tot_charge.charge.value
-                if key in ["base", "scf"]:
-                    if self.advanced_settings.kpoints.override.value:
-                        pw_overrides[key][
-                            "kpoints_distance"
-                        ] = self.advanced_settings.kpoints.distance.value
-                    if (
-                        self.advanced_settings.smearing.override.value
-                        and self.workchain_settings.electronic_type.value == "metal"
-                    ):
-                        # smearing type setting
-                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                            "smearing"
-                        ] = self.advanced_settings.smearing.smearing.value
-
-                        # smearing degauss setting
-                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                            "degauss"
-                        ] = self.advanced_settings.smearing.degauss.value
-
-        overrides = {
-            "relax": {
-                "base": pw_overrides["base"],
-            },
-            "bands": {
-                "scf": pw_overrides["scf"],
-                "bands": pw_overrides["band"],
-            },
-            "pdos": {
-                "scf": pw_overrides["scf"],
-                "nscf": pw_overrides["nscf"],
-            },
-        }
-
-        # Work chain settings
-        relax_type = self.workchain_settings.relax_type.value
-        electronic_type = self.workchain_settings.electronic_type.value
-        spin_type = self.workchain_settings.spin_type.value
-
-        run_bands = self.workchain_settings.bands_run.value
-        run_pdos = self.workchain_settings.pdos_run.value
-        protocol = self.workchain_settings.workchain_protocol.value
-
-        properties = []
-
-        if run_bands:
-            properties.append("bands")
-        if run_pdos:
-            properties.append("pdos")
-
-        if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
-            properties.append("relax")
-
-        return QeWorkChainParameters(
-            protocol=protocol,
-            relax_type=relax_type,
-            properties=properties,
-            spin_type=spin_type,
-            electronic_type=electronic_type,
-            overrides=overrides,
-        )
-
+    # I removed the `_get_qe_workchain_parameters` method, because it belongs to the
+    # configuration step, not the submission step. After we get this parameters,
+    # the override settings should be handled by the plugin (bands, pdso) iteself.
     def _create_builder(self) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
-        pw_code = self.pw_code.value
-        dos_code = self.dos_code.value
-        projwfc_code = self.projwfc_code.value
+        from copy import deepcopy
 
-        parameters = self._get_qe_workchain_parameters()
+        parameters = self.parent.configure_step.get_input_parameters()
+        parameters["codes"] = self.get_selected_codes()
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            pw_code=load_code(pw_code),
-            dos_code=load_code(dos_code),
-            projwfc_code=load_code(projwfc_code),
-            protocol=parameters.protocol,
-            relax_type=RelaxType(parameters.relax_type),
-            properties=parameters.properties,
-            spin_type=SpinType(parameters.spin_type),
-            electronic_type=ElectronicType(parameters.electronic_type),
-            overrides=parameters.overrides,
+            parameters=deepcopy(parameters),
         )
 
         resources = {
@@ -1065,7 +436,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         npool = self.parallelization.npools.value
         self._update_builder(builder, resources, npool, self.MAX_MPI_PER_POOL)
 
-        return builder
+        return builder, parameters
 
     def _update_builder(self, buildy, resources, npools, max_mpi_per_pool):
         """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
@@ -1091,118 +462,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 else:
                     self._update_builder(v, resources, npools, max_mpi_per_pool)
 
-    def _create_extra_report_parameters(self) -> dict[str, t.Any]:
-        """This method will also create a dictionary of the parameters that were not
-        readably represented in the builder, which will be used to the report.
-        It is stored in the `extra_report_parameters`.
-        """
-        qe_workchain_parameters = self._get_qe_workchain_parameters()
-
-        # Construct the extra report parameters needed for the report
-        extra_report_parameters = {
-            "relax_type": qe_workchain_parameters.relax_type,
-            "electronic_type": qe_workchain_parameters.electronic_type,
-            "spin_type": qe_workchain_parameters.spin_type,
-            "protocol": qe_workchain_parameters.protocol,
-        }
-
-        # update pseudo family information to extra_report_parameters
-        if self.pseudo_family_selector.override_protocol_pseudo_family.value:
-            # If the pseudo family is overridden, use that
-            pseudo_family = self.pseudo_family_selector.value
-        else:
-            # otherwise extract the information from protocol
-            pseudo_family = PROTOCOL_PSEUDO_MAP[qe_workchain_parameters.protocol]
-
-        pseudo_family_info = pseudo_family.split("/")
-        if pseudo_family_info[0] == "SSSP":
-            pseudo_protocol = pseudo_family_info[3]
-        elif pseudo_family_info[0] == "PseudoDojo":
-            pseudo_protocol = pseudo_family_info[4]
-        extra_report_parameters.update(
-            {
-                "pseudo_family": pseudo_family,
-                "pseudo_library": pseudo_family_info[0],
-                "pseudo_version": pseudo_family_info[1],
-                "functional": pseudo_family_info[2],
-                "pseudo_protocol": pseudo_protocol,
-            }
-        )
-
-        # store codes info into extra_report_parameters for loading the process
-        pw_code = self.pw_code.value
-        dos_code = self.dos_code.value
-        projwfc_code = self.projwfc_code.value
-
-        extra_report_parameters.update(
-            {
-                "pw_code": pw_code,
-                "dos_code": dos_code,
-                "projwfc_code": projwfc_code,
-            }
-        )
-
-        return extra_report_parameters
-
-    @staticmethod
-    def _extract_report_parameters(
-        builder, extra_report_parameters
-    ) -> dict[str, t.Any]:
-        """Extract (recover) the parameters for report from the builder.
-
-        There are some parameters that are not stored in the builder, but can be extracted
-        directly from the widgets, such as the ``pseudo_family`` and ``relax_type``.
-        """
-        parameters = {
-            "run_relax": "relax" in builder.properties,
-            "run_bands": "bands" in builder.properties,
-            "run_pdos": "pdos" in builder.properties,
-        }
-
-        # Extract the pw calculation parameters from the builder
-
-        # energy_cutoff is same for all pw calculations when pseudopotentials are fixed
-        # as well as the smearing settings (semaring and degauss) and scf kpoints distance
-        # read from the first pw calculation of relax workflow.
-        # It is safe then to extract these parameters from the first pw calculation, since the
-        # builder is anyway set with subworkchain inputs even it is not run which controlled by
-        # the properties inputs.
-        energy_cutoff_wfc = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
-        energy_cutoff_rho = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutrho"]
-        occupation = builder.relax.base["pw"]["parameters"]["SYSTEM"]["occupations"]
-        scf_kpoints_distance = builder.relax.base.kpoints_distance.value
-
-        parameters.update(
-            {
-                "energy_cutoff_wfc": energy_cutoff_wfc,
-                "energy_cutoff_rho": energy_cutoff_rho,
-                "occupation": occupation,
-                "scf_kpoints_distance": scf_kpoints_distance,
-            }
-        )
-
-        if occupation == "smearing":
-            parameters["degauss"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
-                "degauss"
-            ]
-            parameters["smearing"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
-                "smearing"
-            ]
-
-        parameters[
-            "bands_kpoints_distance"
-        ] = builder.bands.bands_kpoints_distance.value
-        parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
-
-        parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
-            "tot_charge", 0.0
-        )
-
-        # parameters from extra_report_parameters
-        for k, v in extra_report_parameters.items():
-            parameters.update({k: v})
-
-        return parameters
+    # I removed the `_create_extra_report_parameters` method,
+    # because all the these extra parameters can be extracted from the parameters.
+    # I moved the `_extract_report_parameters` method to the the report section.
 
     def reset(self):
         with self.hold_trait_notifications():

@@ -12,11 +12,12 @@ dos_code: dos-7.2@localhost
 projwfc_code: projwfc-7.2@localhost
 pw_code: pw-7.2@localhost
 
-## Material settings
-spin_type: none
-electronic_type: metal
 
-## Calculation settings
-protocol: moderate
-kpoints_distance_override:
-pseudo_family: SSSP/1.2/PBEsol/efficiency
+basic:
+    spin_type: none
+    electronic_type: metal
+    protocol: moderate
+
+advance:
+    kpoints_distance_override:
+    pseudo_family: SSSP/1.2/PBEsol/efficiency

@@ -1,3 +1,10 @@
+"""PDOS results view widgets
+
+"""
+import typing as t
+
+from aiidalab_qe.app.panel import ResultPanel
+
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
     "PBEsol": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.100.136406",
@@ -21,31 +28,31 @@ FUNCTIONAL_REPORT_MAP = {
 }
 
 
-def _generate_report_dict(builder_parameters: dict):
+def _generate_report_dict(ui_parameters: dict):
     """Read from the bulider parameters and generate a dictionacry
     for reporting the inputs for the `QeAppWorkChain` with proper name corresponding
     to the template.
     """
     # Workflow logic
-    yield "relax_method", builder_parameters["relax_type"]
-    yield "relaxed", builder_parameters["run_relax"]
-    yield "bands_computed", builder_parameters["run_bands"]
-    yield "pdos_computed", builder_parameters["run_pdos"]
+    yield "relax_method", ui_parameters["relax_type"]
+    yield "relaxed", ui_parameters["run_relax"]
+    yield "bands_computed", ui_parameters["run_bands"]
+    yield "pdos_computed", ui_parameters["run_pdos"]
 
     # Material settings
-    yield "material_magnetic", builder_parameters["spin_type"]
-    yield "electronic_type", builder_parameters["electronic_type"]
+    yield "material_magnetic", ui_parameters["spin_type"]
+    yield "electronic_type", ui_parameters["electronic_type"]
 
     # Calculation settings
-    yield "protocol", builder_parameters["protocol"]
+    yield "protocol", ui_parameters["protocol"]
 
     # Pseudopotential settings
-    yield "pseudo_family", builder_parameters["pseudo_family"]
-    yield "pseudo_version", builder_parameters["pseudo_version"]
-    yield "pseudo_protocol", builder_parameters["pseudo_protocol"]
+    yield "pseudo_family", ui_parameters["pseudo_family"]
+    yield "pseudo_version", ui_parameters["pseudo_version"]
+    yield "pseudo_protocol", ui_parameters["pseudo_protocol"]
 
-    pseudo_library = builder_parameters["pseudo_library"]
-    functional = builder_parameters["functional"]
+    pseudo_library = ui_parameters["pseudo_library"]
+    functional = ui_parameters["functional"]
     yield "pseudo_library", pseudo_library
     yield "functional", functional
 
@@ -53,20 +60,20 @@ def _generate_report_dict(builder_parameters: dict):
     yield "functional_link", FUNCTIONAL_LINK_MAP[functional]
 
     # Detail calculation parameters
-    yield "energy_cutoff_wfc", builder_parameters["energy_cutoff_wfc"]
-    yield "energy_cutoff_rho", builder_parameters["energy_cutoff_rho"]
-    yield "scf_kpoints_distance", builder_parameters["scf_kpoints_distance"]
-    yield "bands_kpoints_distance", builder_parameters["bands_kpoints_distance"]
-    yield "nscf_kpoints_distance", builder_parameters["nscf_kpoints_distance"]
+    yield "energy_cutoff_wfc", ui_parameters["energy_cutoff_wfc"]
+    yield "energy_cutoff_rho", ui_parameters["energy_cutoff_rho"]
+    yield "scf_kpoints_distance", ui_parameters["scf_kpoints_distance"]
+    yield "bands_kpoints_distance", ui_parameters["bands_kpoints_distance"]
+    yield "nscf_kpoints_distance", ui_parameters["nscf_kpoints_distance"]
 
-    occupation = builder_parameters["occupation"]
+    occupation = ui_parameters["occupation"]
     yield "occupation_type", occupation
 
     if occupation == "smearing":
-        yield "degauss", builder_parameters["degauss"]
-        yield "smearing", builder_parameters["smearing"]
+        yield "degauss", ui_parameters["degauss"]
+        yield "smearing", ui_parameters["smearing"]
 
-    yield "tot_charge", builder_parameters["tot_charge"]
+    yield "tot_charge", ui_parameters["tot_charge"]
 
 
 def _generate_report_html(report):
@@ -96,8 +103,8 @@ def _generate_report_html(report):
 
 def generate_report_html(qeapp_wc):
     """Generate a html for reporting the inputs for the `QeAppWorkChain`"""
-    builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
-    report = dict(_generate_report_dict(builder_parameters))
+    ui_parameters = qeapp_wc.base.extras.get("ui_parameters", {})
+    report = dict(_generate_report_dict(ui_parameters))
 
     return _generate_report_html(report)
 
@@ -145,3 +152,71 @@ def generate_report_text(report_dict):
     report_string += "."
 
     return report_string
+
+
+class Result(ResultPanel):
+    title = "PDOS"
+    workchain_label = "pdos"
+
+    def _update_view(self):
+        pass
+        # builder = self.qeapp_node.get_builder_restart()
+        # parameters = self.qeapp_node.get_extra("ui_parameters", {})
+        # Set the builder parameters on the work chain
+        # report_parameters = self._extract_report_parameters(builder, parameters)
+
+    @staticmethod
+    def _extract_report_parameters(builder, parameters) -> dict[str, t.Any]:
+        """Extract (recover) the parameters for report from the builder.
+
+        There are some parameters that are not stored in the builder, but can be extracted
+        directly from the widgets, such as the ``pseudo_family`` and ``relax_type``.
+        """
+        report = {
+            "run_relax": "relax" in builder.properties,
+            "run_bands": "bands" in builder.properties,
+            "run_pdos": "pdos" in builder.properties,
+        }
+
+        # Extract the pw calculation parameters from the builder
+
+        # energy_cutoff is same for all pw calculations when pseudopotentials are fixed
+        # as well as the smearing settings (semaring and degauss) and scf kpoints distance
+        # read from the first pw calculation of relax workflow.
+        # It is safe then to extract these parameters from the first pw calculation, since the
+        # builder is anyway set with subworkchain inputs even it is not run which controlled by
+        # the properties inputs.
+        energy_cutoff_wfc = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
+        energy_cutoff_rho = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+        occupation = builder.relax.base["pw"]["parameters"]["SYSTEM"]["occupations"]
+        scf_kpoints_distance = builder.relax.base.kpoints_distance.value
+
+        report.update(
+            {
+                "energy_cutoff_wfc": energy_cutoff_wfc,
+                "energy_cutoff_rho": energy_cutoff_rho,
+                "occupation": occupation,
+                "scf_kpoints_distance": scf_kpoints_distance,
+            }
+        )
+
+        if occupation == "smearing":
+            report["degauss"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ]
+            report["smearing"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
+                "smearing"
+            ]
+
+        report["bands_kpoints_distance"] = builder.bands.bands_kpoints_distance.value
+        report["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
+
+        report["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
+            "tot_charge", 0.0
+        )
+
+        # report from parameters
+        for k, v in parameters.items():
+            report.update({k: v})
+
+        return report
