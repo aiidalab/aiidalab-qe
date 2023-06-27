@@ -2,12 +2,23 @@
 
 Authors: AiiDAlab team
 """
+import os
+import pathlib
 import warnings
 
 import aiida
 import ipywidgets as ipw
 import traitlets
-from aiidalab_widgets_base import WizardAppWidgetStep
+from aiidalab_widgets_base import (
+    BasicCellEditor,
+    BasicStructureEditor,
+    OptimadeQueryWidget,
+    StructureBrowserWidget,
+    StructureExamplesWidget,
+    StructureManagerWidget,
+    StructureUploadWidget,
+    WizardAppWidgetStep,
+)
 from pymatgen.analysis.dimensionality import get_dimensionality_larsen
 from pymatgen.analysis.local_env import CrystalNN
 
@@ -27,14 +38,35 @@ structures are supported.
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
+file_path = pathlib.Path(__file__).parent.parent.parent.resolve()
+# the file_path is added so that we can import this structure during the test.
 Examples = [
-    ("Silicon (diamond)", "miscellaneous/structures/Si.xyz"),
-    ("Silicon oxide", "miscellaneous/structures/SiO2.xyz"),
-    ("Diamond", "miscellaneous/structures/diamond.cif"),
-    ("Gallium arsenide", "miscellaneous/structures/GaAs.xyz"),
-    ("Gold (fcc)", "miscellaneous/structures/Au.cif"),
-    ("Cobalt (hcp)", "miscellaneous/structures/Co.cif"),
+    ("Silicon (diamond)", os.path.join(file_path, "miscellaneous/structures/Si.xyz")),
+    ("Silicon oxide", os.path.join(file_path, "miscellaneous/structures/SiO2.xyz")),
+    ("Diamond", os.path.join(file_path, "miscellaneous/structures/diamond.cif")),
+    ("Gallium arsenide", os.path.join(file_path, "miscellaneous/structures/GaAs.xyz")),
+    ("Gold (fcc)", os.path.join(file_path, "miscellaneous/structures/Au.cif")),
+    ("Cobalt (hcp)", os.path.join(file_path, "miscellaneous/structures/Co.cif")),
+    ("Water molecule", os.path.join(file_path, "miscellaneous/structures/H2O.xyz")),
 ]
+
+OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
+
+structure_manager_widget = StructureManagerWidget(
+    importers=[
+        StructureUploadWidget(title="Upload file"),
+        OptimadeQueryWidget(embedded=False),
+        StructureBrowserWidget(title="AiiDA database"),
+        StructureExamplesWidget(title="From Examples", examples=Examples),
+    ],
+    editors=[
+        BasicCellEditor(title="Edit cell"),
+        BasicStructureEditor(title="Edit structure"),
+    ],
+    node_class="StructureData",
+    storable=False,
+    configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
+)
 
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):

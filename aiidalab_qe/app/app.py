@@ -1,55 +1,38 @@
 import ipywidgets as ipw
 from aiida.orm import load_node
-from aiidalab_widgets_base import (
-    BasicCellEditor,
-    BasicStructureEditor,
-    OptimadeQueryWidget,
-    StructureBrowserWidget,
-    StructureExamplesWidget,
-    StructureManagerWidget,
-    StructureUploadWidget,
-    WizardAppWidget,
-    WizardAppWidgetStep,
-)
+from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
 from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.process import QeAppWorkChainSelector
-from aiidalab_qe.app.steps import (
-    SubmitQeAppWorkChainStep,
-    ViewQeAppWorkChainStatusAndResultsStep,
-)
-from aiidalab_qe.app.structures import Examples, StructureSelectionStep
-
-OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
+from aiidalab_qe.app.result.result import ViewQeAppWorkChainStatusAndResultsStep
+from aiidalab_qe.app.structures import StructureSelectionStep, structure_manager_widget
+from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
 
 
 class QEApp:
-    def __init__(self) -> None:
+    def __init__(self, qe_auto_setup=True) -> None:
+        # To keep the Qeapp simple and clear, I moved the
+        # structure_manager_widget to structure.py
         # Create the application steps
-        structure_manager_widget = StructureManagerWidget(
-            importers=[
-                StructureUploadWidget(title="Upload file"),
-                OptimadeQueryWidget(embedded=False),
-                StructureBrowserWidget(title="AiiDA database"),
-                StructureExamplesWidget(title="From Examples", examples=Examples),
-            ],
-            editors=[
-                BasicCellEditor(title="Edit cell"),
-                BasicStructureEditor(title="Edit structure"),
-            ],
-            node_class="StructureData",
-            storable=False,
-            configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
-        )
         self.structure_step = StructureSelectionStep(
             parent=self, manager=structure_manager_widget, auto_advance=True
         )
         self.configure_step = ConfigureQeAppWorkChainStep(
             parent=self, auto_advance=True
         )
-        self.submit_step = SubmitQeAppWorkChainStep(parent=self, auto_advance=True)
+        self.submit_step = SubmitQeAppWorkChainStep(
+            parent=self, auto_advance=True, qe_auto_setup=qe_auto_setup
+        )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep(parent=self)
-
+        # Add the application steps to the application
+        self.steps = WizardAppWidget(
+            steps=[
+                ("Select structure", self.structure_step),
+                ("Configure workflow", self.configure_step),
+                ("Choose computational resources", self.submit_step),
+                ("Status & Results", self.results_step),
+            ]
+        )
         # Link the application steps
         ipw.dlink(
             (self.structure_step, "state"),
@@ -71,16 +54,6 @@ class QEApp:
             (self.submit_step, "process"),
             (self.results_step, "process"),
             transform=lambda node: node.uuid if node is not None else None,
-        )
-
-        # Add the application steps to the application
-        self.steps = WizardAppWidget(
-            steps=[
-                ("Select structure", self.structure_step),
-                ("Configure workflow", self.configure_step),
-                ("Choose computational resources", self.submit_step),
-                ("Status & Results", self.results_step),
-            ]
         )
 
         # Reset all subsequent steps in case that a new structure is selected

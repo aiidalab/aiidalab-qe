@@ -3,8 +3,6 @@
 Authors: AiiDAlab team
 """
 
-import json
-import random
 import shutil
 import typing
 from importlib import resources
@@ -16,19 +14,19 @@ import nglview
 import traitlets
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
-from aiida.orm import CalcJobNode, Node, ProjectionData, WorkChainNode
+from aiida.orm import CalcJobNode, Node, WorkChainNode
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
-from aiidalab_widgets_base.viewers import StructureDataViewer
 from ase import Atoms
 from filelock import FileLock, Timeout
 from IPython.display import HTML, display
 from jinja2 import Environment
-from monty.json import jsanitize
 from traitlets import Instance, Int, List, Unicode, Union, default, observe, validate
-from widget_bandsplot import BandsPlotWidget
 
 from aiidalab_qe.app import static
-from aiidalab_qe.app.report import generate_report_html
+from aiidalab_qe.app.plugins.relax.result import Result as RelaxResult
+from aiidalab_qe.app.utils import get_entry_items
+
+from .report import SummaryView
 
 
 class MinimalStructureViewer(ipw.VBox):
@@ -105,194 +103,12 @@ class MinimalStructureViewer(ipw.VBox):
                 self._viewer.add_representation("ball+stick", aspectRatio=3.5)
 
 
-def export_bands_data(work_chain_node, fermi_energy=None):
-    if "band_structure" in work_chain_node.outputs:
-        data = json.loads(
-            work_chain_node.outputs.band_structure._exportcontent(
-                "json", comments=False
-            )[0]
-        )
-        # The fermi energy from band calculation is not robust.
-        data["fermi_level"] = (
-            fermi_energy or work_chain_node.outputs.band_parameters["fermi_energy"]
-        )
-        return [
-            jsanitize(data),
-        ]
-    else:
-        return None
-
-
-def cmap(label: str) -> str:
-    """Return RGB string of color for given pseudo info
-    Hardcoded at the momment.
-    """
-    # if a unknow type generate random color based on ascii sum
-    ascn = sum([ord(c) for c in label])
-    random.seed(ascn)
-
-    return "#%06x" % random.randint(0, 0xFFFFFF)
-
-
-def _projections_curated(
-    projections: ProjectionData,
-    group_dos_by="atom",
-    spin_type="none",
-    line_style="solid",
-):
-    """Collect the data from ProjectionData and parse it as dos list which can be
-    understand by bandsplot widget. `group_dos_by` is for which tag to be grouped, by atom or by orbital name.
-    The spin_type is used to invert all the y values of pdos to be shown as spin down pdos and to set label.
-    """
-    _pdos = {}
-
-    for orbital, pdos, energy in projections.get_pdos():
-        orbital_data = orbital.get_orbital_dict()
-        kind_name = orbital_data["kind_name"]
-        atom_position = [round(i, 2) for i in orbital_data["position"]]
-        orbital_name = orbital.get_name_from_quantum_numbers(
-            orbital_data["angular_momentum"], orbital_data["magnetic_number"]
-        ).lower()
-
-        if group_dos_by == "atom":
-            dos_group_name = atom_position
-        elif group_dos_by == "angular":
-            # by orbital label
-            dos_group_name = orbital_name[0]
-        elif group_dos_by == "angular_and_magnetic":
-            # by orbital label
-            dos_group_name = orbital_name
-        else:
-            raise Exception(f"Unknow dos type: {group_dos_by}!")
-
-        key = f"{kind_name}-{dos_group_name}"
-        if key in _pdos:
-            _pdos[key][1] += pdos
-        else:
-            _pdos[key] = [energy, pdos]
-
-    dos = []
-    for label, (energy, pdos) in _pdos.items():
-        if spin_type == "down":
-            # invert y-axis
-            pdos = -pdos
-            label = f"{label} (↓)"
-
-        if spin_type == "up":
-            label = f"{label} (↑)"
-
-        orbital_pdos = {
-            "label": label,
-            "x": energy.tolist(),
-            "y": pdos.tolist(),
-            "borderColor": cmap(label),
-            "lineStyle": line_style,
-        }
-        dos.append(orbital_pdos)
-
-    return dos
-
-
-def export_pdos_data(work_chain_node, group_dos_by="atom"):
-    if "dos" in work_chain_node.outputs:
-        _, energy_dos, _ = work_chain_node.outputs.dos.get_x()
-        tdos_values = {f"{n}": v for n, v, _ in work_chain_node.outputs.dos.get_y()}
-
-        dos = []
-
-        if "projections" in work_chain_node.outputs:
-            # The total dos parsed
-            tdos = {
-                "label": "Total DOS",
-                "x": energy_dos.tolist(),
-                "y": tdos_values.get("dos").tolist(),
-                "borderColor": "#8A8A8A",  # dark gray
-                "backgroundColor": "#999999",  # light gray
-                "backgroundAlpha": "40%",
-                "lineStyle": "solid",
-            }
-            dos.append(tdos)
-
-            dos += _projections_curated(
-                work_chain_node.outputs.projections,
-                group_dos_by=group_dos_by,
-                spin_type="none",
-            )
-
-        else:
-            # The total dos parsed
-            tdos_up = {
-                "label": "Total DOS (↑)",
-                "x": energy_dos.tolist(),
-                "y": tdos_values.get("dos_spin_up").tolist(),
-                "borderColor": "#8A8A8A",  # dark gray
-                "backgroundColor": "#999999",  # light gray
-                "backgroundAlpha": "40%",
-                "lineStyle": "solid",
-            }
-            tdos_down = {
-                "label": "Total DOS (↓)",
-                "x": energy_dos.tolist(),
-                "y": (-tdos_values.get("dos_spin_down")).tolist(),  # minus
-                "borderColor": "#8A8A8A",  # dark gray
-                "backgroundColor": "#999999",  # light gray
-                "backgroundAlpha": "40%",
-                "lineStyle": "dash",
-            }
-            dos += [tdos_up, tdos_down]
-
-            # spin-up (↑)
-            dos += _projections_curated(
-                work_chain_node.outputs.projections_up,
-                group_dos_by=group_dos_by,
-                spin_type="up",
-            )
-
-            # spin-dn (↓)
-            dos += _projections_curated(
-                work_chain_node.outputs.projections_down,
-                group_dos_by=group_dos_by,
-                spin_type="down",
-                line_style="dash",
-            )
-
-        data_dict = {
-            "fermi_energy": work_chain_node.outputs.nscf_parameters["fermi_energy"],
-            "dos": dos,
-        }
-
-        return json.loads(json.dumps(data_dict))
-
-    else:
-        return None
-
-
-def export_data(work_chain_node, group_dos_by="atom"):
-    dos = export_pdos_data(work_chain_node, group_dos_by=group_dos_by)
-    fermi_energy = dos["fermi_energy"] if dos else None
-
-    bands = export_bands_data(work_chain_node, fermi_energy)
-
-    return dict(
-        bands=bands,
-        dos=dos,
-    )
+# I removed all function related to pdos and bands to `pdos` and `bands` plugin folder.
 
 
 class VBoxWithCaption(ipw.VBox):
     def __init__(self, caption, body, *args, **kwargs):
         super().__init__(children=[ipw.HTML(caption), body], *args, **kwargs)
-
-
-class SummaryView(ipw.VBox):
-    def __init__(self, wc_node, **kwargs):
-        report_html = generate_report_html(wc_node)
-
-        self.summary_view = ipw.HTML(report_html)
-        super().__init__(
-            children=[self.summary_view],
-            **kwargs,
-        )
 
 
 class WorkChainOutputs(ipw.VBox):
@@ -497,6 +313,7 @@ class WorkChainViewer(ipw.VBox):
             return
 
         self.node = node
+        ui_parameters = node.base.extras.get("ui_parameters", {})
 
         self.title = ipw.HTML(
             f"""
@@ -507,23 +324,25 @@ class WorkChainViewer(ipw.VBox):
             """
         )
         self.workflows_summary = SummaryView(self.node)
+        self.structure_tab = RelaxResult(self.node)
 
         self.summary_tab = ipw.VBox(children=[self.workflows_summary])
-        self.structure_tab = ipw.VBox(
-            [ipw.Label("Structure not available.")],
-            layout=ipw.Layout(min_height="380px"),
-        )
-        self.bands_tab = ipw.VBox(
-            [ipw.Label("Electronic Structure not available.")],
-            layout=ipw.Layout(min_height="380px"),
-        )
-        self.result_tabs = ipw.Tab(
-            children=[self.summary_tab, self.structure_tab, self.bands_tab]
-        )
+        self.result_tabs = ipw.Tab(children=[self.summary_tab, self.structure_tab])
 
         self.result_tabs.set_title(0, "Workflow Summary")
-        self.result_tabs.set_title(1, "Final Geometry (n/a)")
-        self.result_tabs.set_title(2, "Electronic Structure (n/a)")
+        self.result_tabs.set_title(1, "Final Geometry")
+        # add plugin specific settings
+        entries = get_entry_items("aiidalab_qe.property", "result")
+        # print("plugin entries: ", entries)
+        self.results = {}
+        for name, entry_point in entries.items():
+            if not ui_parameters["workflow"]["properties"][name]:
+                continue
+            result = entry_point(self.node)
+            result.workchain_label = name
+            self.results[name] = result
+            self.result_tabs.children += (result,)
+            self.result_tabs.set_title(len(self.result_tabs.children) - 1, result.title)
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
@@ -531,13 +350,14 @@ class WorkChainViewer(ipw.VBox):
             index = change["new"]
             # Accessing the viewer only if the corresponding tab is present.
             if self.result_tabs._titles[str(index)] == "Final Geometry":
-                self._structure_view._viewer.handle_resize()
+                self.structure_tab._structure_view._viewer.handle_resize()
 
                 def toggle_camera():
                     """Toggle camera between perspective and orthographic."""
-                    self._structure_view._viewer.camera = (
+                    self.structure_tab._structure_view._viewer.camera = (
                         "perspective"
-                        if self._structure_view._viewer.camera == "orthographic"
+                        if self.structure_tab._structure_view._viewer.camera
+                        == "orthographic"
                         else "orthographic"
                     )
 
@@ -562,83 +382,26 @@ class WorkChainViewer(ipw.VBox):
         with self.hold_trait_notifications():
             if self.node.is_finished:
                 self._show_workflow_output()
-            if (
-                "structure" not in self._results_shown
-                and "structure" in self.node.outputs
-            ):
-                self._show_structure()
-                self._results_shown.add("structure")
+            # update the plugin specific results
+            for result in self.result_tabs.children[1:]:
+                # check if the result is already shown
+                # check if the plugin workchain is in the output links
+                if (
+                    result.workchain_label not in self._results_shown
+                    and result.workchain_label
+                    in self.node.base.links.get_outgoing().all_link_labels()
+                ):
+                    # check if the plugin workchain is finished
+                    if result.node.is_finished:
+                        result._update_view()
+                        self._results_shown.add(result.workchain_label)
 
-            if "electronic_structure" not in self._results_shown and (
-                "band_structure" in self.node.outputs or "dos" in self.node.outputs
-            ):
-                self._show_electronic_structure()
-                self._results_shown.add("electronic_structure")
-
-    def _show_structure(self):
-        self._structure_view = StructureDataViewer(
-            structure=self.node.outputs.structure
-        )
-        self.result_tabs.children[1].children = [self._structure_view]
-        self.result_tabs.set_title(1, "Final Geometry")
-
-    def _show_electronic_structure(self):
-        group_dos_by = ipw.ToggleButtons(
-            options=[
-                ("Atom", "atom"),
-                ("Orbital", "angular"),
-            ],
-            value="atom",
-        )
-        settings = ipw.VBox(
-            children=[
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "DOS grouped by:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        group_dos_by,
-                    ]
-                ),
-            ],
-            layout={"margin": "0 0 30px 30px"},
-        )
-        #
-        data = export_data(self.node, group_dos_by=group_dos_by.value)
-        bands_data = data.get("bands", None)
-        dos_data = data.get("dos", None)
-        _bands_plot_view = BandsPlotWidget(
-            bands=bands_data,
-            dos=dos_data,
-        )
-
-        def response(change):
-            data = export_data(self.node, group_dos_by=group_dos_by.value)
-            bands_data = data.get("bands", None)
-            dos_data = data.get("dos", None)
-            _bands_plot_view = BandsPlotWidget(
-                bands=bands_data,
-                dos=dos_data,
-            )
-            self.result_tabs.children[2].children = [
-                settings,
-                _bands_plot_view,
-            ]
-
-        group_dos_by.observe(response, names="value")
-        # update the electronic structure tab
-        self.result_tabs.children[2].children = [
-            settings,
-            _bands_plot_view,
-        ]
-        self.result_tabs.set_title(2, "Electronic Structure")
+    # I moved the _show_structure to the relax plugin part.
+    # I moved the _show_electronic_structure to electronic_structure.py
 
     def _show_workflow_output(self):
         self.workflows_output = WorkChainOutputs(self.node)
-
+        self.workflows_summary._update_view()
         self.result_tabs.children[0].children = [
             self.workflows_summary,
             self.workflows_output,

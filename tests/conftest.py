@@ -36,41 +36,21 @@ def structure_data_object():
 @pytest.fixture(scope="session", autouse=True)
 def sssp(aiida_profile, generate_upf_data):
     """Create an SSSP pseudo potential family from scratch."""
-    from aiida.common.constants import elements
     from aiida.plugins import GroupFactory
+    from aiida_pseudo.data.pseudo import UpfData
+
+    from aiidalab_qe.app.sssp import EXPECTED_PSEUDOS
 
     aiida_profile.clear_profile()
 
     SsspFamily = GroupFactory("pseudo.family.sssp")
+    PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
 
     cutoffs = {}
     stringency = "standard"
 
     with tempfile.TemporaryDirectory() as dirpath:
-        for values in elements.values():
-            element = values["symbol"]
-
-            actinides = (
-                "Ac",
-                "Th",
-                "Pa",
-                "U",
-                "Np",
-                "Pu",
-                "Am",
-                "Cm",
-                "Bk",
-                "Cf",
-                "Es",
-                "Fm",
-                "Md",
-                "No",
-                "Lr",
-            )
-
-            if element in actinides:
-                continue
-
+        for element in ["Si"]:
             upf = generate_upf_data(element)
             dirpath = pathlib.Path(dirpath)
             filename = dirpath / f"{element}.upf"
@@ -84,11 +64,14 @@ def sssp(aiida_profile, generate_upf_data):
                 "cutoff_wfc": 30.0,
                 "cutoff_rho": 240.0,
             }
-
-        label = "SSSP/1.2/PBEsol/efficiency"
-        family = SsspFamily.create_from_folder(dirpath, label)
-
-    family.set_cutoffs(cutoffs, stringency, unit="Ry")
+        for label in EXPECTED_PSEUDOS:
+            if label.startswith("SSSP"):
+                family = SsspFamily.create_from_folder(dirpath, label)
+            else:
+                family = PseudoDojoFamily.create_from_folder(
+                    dirpath, label, pseudo_type=UpfData
+                )
+            family.set_cutoffs(cutoffs, stringency, unit="Ry")
 
     return family
 
@@ -112,7 +95,15 @@ def generate_upf_data():
 def pw_code(aiida_local_code_factory):
     """Return a `Code` configured for the pw.x executable."""
     return aiida_local_code_factory(
-        label="pw@localhost", executable="bash", entry_point="quantumespresso.pw"
+        label="pw-7.2", executable="bash", entry_point="quantumespresso.pw"
+    )
+
+
+@pytest.fixture
+def pw_code_70(aiida_local_code_factory):
+    """Return a `Code` configured for the pw.x executable."""
+    return aiida_local_code_factory(
+        label="pw-7.0", executable="bash", entry_point="quantumespresso.pw"
     )
 
 
@@ -120,7 +111,7 @@ def pw_code(aiida_local_code_factory):
 def dos_code(aiida_local_code_factory):
     """Return a `Code` configured for the dos.x executable."""
     return aiida_local_code_factory(
-        label="dos@localhost", executable="bash", entry_point="quantumespresso.dos"
+        label="dos-7.2", executable="bash", entry_point="quantumespresso.dos"
     )
 
 
@@ -128,7 +119,7 @@ def dos_code(aiida_local_code_factory):
 def projwfc_code(aiida_local_code_factory):
     """Return a `Code` configured for the projwfc.x executable."""
     return aiida_local_code_factory(
-        label="projwfc@localhost",
+        label="projwfc-7.2",
         executable="bash",
         entry_point="quantumespresso.projwfc",
     )
@@ -137,7 +128,7 @@ def projwfc_code(aiida_local_code_factory):
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.steps import WorkChainSettings
+    from aiidalab_qe.app.configure.workflow import WorkChainSettings
 
     def _workchain_settings_generator(**kwargs):
         workchain_settings = WorkChainSettings()
@@ -147,43 +138,9 @@ def workchain_settings_generator():
     return _workchain_settings_generator
 
 
-@pytest.fixture()
-def tot_charge_generator():
-    """Return a function that generates a tot_charge dictionary."""
-    from aiidalab_qe.app.steps import TotalCharge
-
-    def _tot_charge_generator(**kwargs):
-        tot_charge = TotalCharge()
-        tot_charge._update_settings(**kwargs)
-        return tot_charge
-
-    return _tot_charge_generator
-
-
-@pytest.fixture()
-def smearing_settings_generator():
-    """Return a function that generates a smearing settings dictionary."""
-    from aiidalab_qe.app.steps import SmearingSettings
-
-    def _smearing_settings_generator(**kwargs):
-        smearing_settings = SmearingSettings()
-        smearing_settings._update_settings(**kwargs)
-        return smearing_settings
-
-    return _smearing_settings_generator
-
-
-@pytest.fixture()
-def kpoints_settings_generator():
-    """Return a function that generates a kpoints settings dictionary."""
-    from aiidalab_qe.app.steps import KpointSettings
-
-    def _kpoints_settings_generator(**kwargs):
-        kpoints_settings = KpointSettings()
-        kpoints_settings._update_settings(**kwargs)
-        return kpoints_settings
-
-    return _kpoints_settings_generator
+# I removed all the fixture for kinpoints, smearing, tot_charge
+# because there are not a seperate class anymore. They are just
+# a part of AdvancedSettings class.
 
 
 @pytest.fixture()
@@ -193,62 +150,87 @@ def submit_step_widget_generator(
     dos_code,
     projwfc_code,
     structure_data_object,
-    workchain_settings_generator,
-    smearing_settings_generator,
-    kpoints_settings_generator,
-    tot_charge_generator,
 ):
     """Return a function that generates a submit step widget."""
-    from aiidalab_qe.app.pseudos import PseudoFamilySelector
-    from aiidalab_qe.app.steps import AdvancedSettings, SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
 
-    def _submit_step_widget_generator(
-        relax_type="positions_cell",
-        spin_type="none",
-        electronic_type="metal",
-        bands_run=True,
-        pdo_run=True,
-        workchain_protocol="moderate",
-        kpoints_distance=0.12,
-        smearing="methfessel-paxton",
-        degauss=0.015,
-        override_protocol_smearing=True,
-        tot_charge=0.0,
-    ):
+    # I removed all the parameters related with configure step.
+    def _submit_step_widget_generator():
         submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
         submit_step.input_structure = structure_data_object
-        submit_step.pseudo_family_selector = PseudoFamilySelector()
 
         submit_step.pw_code.value = pw_code.uuid
         submit_step.dos_code.value = dos_code.uuid
         submit_step.projwfc_code.value = projwfc_code.uuid
 
-        # Settings
-        submit_step.workchain_settings = workchain_settings_generator(
-            relax_type=relax_type,
-            spin_type=spin_type,
-            electronic_type=electronic_type,
-            bands_run=bands_run,
-            pdos_run=pdo_run,
-            workchain_protocol=workchain_protocol,
-        )
-        # Advanced settings
-        submit_step.advanced_settings = AdvancedSettings()
-        submit_step.advanced_settings.override.value = True
-
-        submit_step.advanced_settings.tot_charge = tot_charge_generator(
-            tot_charge=tot_charge,
-        )
-
-        submit_step.advanced_settings.kpoints = kpoints_settings_generator(
-            kpoints_distance=kpoints_distance
-        )
-        submit_step.advanced_settings.smearing = smearing_settings_generator(
-            smearing=smearing,
-            degauss=degauss,
-            override=override_protocol_smearing,
-        )
-
         return submit_step
 
     return _submit_step_widget_generator
+
+
+# I try to use the usefixtures decorator but it does not work
+# so I pass the pw_code etc to the parameters list
+@pytest.fixture
+def app(pw_code, dos_code, projwfc_code, sssp):
+    from aiidalab_qe.app.app import QEApp
+
+    app = QEApp(qe_auto_setup=False)
+    yield app
+
+
+@pytest.fixture
+def generate_workchain():
+    """Generate an instance of a `WorkChain`."""
+
+    def _generate_workchain(process_class, inputs):
+        """Generate an instance of a `WorkChain` with the given entry point and inputs.
+
+        :param entry_point: entry point name of the work chain subclass.
+        :param inputs: inputs to be passed to process construction.
+        :return: a `WorkChain` instance.
+        """
+        from aiida.engine.utils import instantiate_process
+        from aiida.manage.manager import get_manager
+
+        runner = get_manager().get_runner()
+        process = instantiate_process(runner, process_class, **inputs)
+
+        return process
+
+    return _generate_workchain
+
+
+@pytest.fixture
+def qeapp_workchain(app, generate_workchain):
+    """Generate an instance of a `XpsWorkChain`."""
+    from aiida import engine
+
+    from aiidalab_qe.workflows import QeAppWorkChain
+
+    # Step 1: select structure from example
+    s1 = app.steps.steps[0][1]
+    structure = s1.manager.children[0].children[3]
+    structure.children[0].value = structure.children[0].options[1][1]
+    s1.confirm()
+    # step 2
+    s2 = app.steps.steps[1][1]
+    s2.workchain_settings.relax_type.value = "positions_cell"
+    s2.workchain_settings.properties["bands"].run.value = True
+    s2.workchain_settings.properties["pdos"].run.value = True
+    s2.basic_settings.workchain_protocol.value = "fast"
+    s2.confirm()
+    # step 3
+    #
+    s3 = app.steps.steps[2][1]
+    s3.resources_config.num_cpus.value = 4
+    builder, ui_parameters = s3._create_builder()
+
+    qeapp_process = generate_workchain(QeAppWorkChain, builder._inputs())
+    qeapp_node = qeapp_process.node
+    qeapp_node.set_exit_status(0)
+    qeapp_node.set_process_state(engine.ProcessState.FINISHED)
+    qeapp_node.store()
+    # set
+    qeapp_node.base.extras.set("ui_parameters", ui_parameters)
+
+    return qeapp_process

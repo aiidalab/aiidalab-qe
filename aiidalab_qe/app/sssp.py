@@ -144,6 +144,7 @@ class SSSPInstallWidget(ProgressBar):
             self.set_trait("busy", False)
 
     def refresh(self):
+        # TODO should we stop the thread if the installation is already finished?
         thread = Thread(target=self._refresh_installed)
         thread.start()
 

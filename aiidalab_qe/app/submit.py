@@ -6,22 +6,14 @@ Authors: AiiDAlab team
 from __future__ import annotations
 
 import os
-import typing as t
-from dataclasses import dataclass
 
 import ipywidgets as ipw
 import traitlets
 from aiida.common import NotExistent
-from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
+from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm import WorkChainNode, load_code, load_node
 from aiida.plugins import DataFactory
-from aiidalab_widgets_base import (
-    AiidaNodeViewWidget,
-    ComputationalResourcesWidget,
-    ProcessMonitor,
-    ProcessNodesTreeWidget,
-    WizardAppWidgetStep,
-)
+from aiidalab_widgets_base import ComputationalResourcesWidget, WizardAppWidgetStep
 from IPython.display import display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
@@ -35,26 +27,9 @@ Float = DataFactory("core.float")
 Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
 
-PROTOCOL_PSEUDO_MAP = {
-    "fast": "SSSP/1.2/PBE/efficiency",
-    "moderate": "SSSP/1.2/PBE/efficiency",
-    "precise": "SSSP/1.2/PBE/precision",
-}
-
-
-# The static input parameters for the QE App WorkChain
-# The dataclass does not include codes and structure which will be set
-# from widgets separately.
-# Relax type, electronic type, spin type, are str because they are used also
-# for serialized input of extras attributes of the workchain
-@dataclass(frozen=True)
-class QeWorkChainParameters:
-    protocol: str
-    relax_type: str
-    properties: t.List[str]
-    spin_type: str
-    electronic_type: str
-    overrides: t.Dict[str, t.Any]
+# I removed the QeWorkChainParameters, because, the parameters are generated
+# in the configure step by `get_input_parameters`, and the parameters
+# are dynamic and depend on the selected properties.
 
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -88,7 +63,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     _submission_blockers = traitlets.List(traitlets.Unicode())
 
-    def __init__(self, parent, qe_auto_setup=True, **kwargs):
+    def __init__(self, parent=None, qe_auto_setup=True, **kwargs):
         self.parent = parent
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
@@ -185,7 +160,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # No code selected for pdos (this is ignored while the setup process is running).
         if (
-            self.workchain_settings.pdos_run.value
+            self.parent.configure_step.workchain_settings.properties["pdos"].run.value
             and (self.dos_code.value is None or self.projwfc_code.value is None)
             and not self.qe_setup_status.busy
         ):
@@ -196,7 +171,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "The SSSP library is not installed."
 
         if (
-            self.workchain_settings.pdos_run.value
+            self.parent.configure_step.workchain_settings.properties["pdos"].run.value
             and not any(
                 [
                     self.pw_code.value is None,
@@ -239,6 +214,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if any(blockers):
             self._submission_blockers = blockers
             self.state = self.State.READY
+            print("Submission blocked:", self._submission_blockers)
             return
 
         self._submission_blockers = []
@@ -388,15 +364,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 except NotExistent:
                     return None
 
-        with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _get_code_uuid(parameters["pw_code"])
-            self.dos_code.value = _get_code_uuid(parameters["dos_code"])
-            self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
+
+        self.pw_code.value = _get_code_uuid(parameters["codes"]["pw_code"])
+        self.dos_code.value = _get_code_uuid(parameters["codes"]["dos_code"])
+        self.projwfc_code.value = _get_code_uuid(parameters["codes"]["projwfc_code"])
 
     # TODO This should be rewrite using more general way for the plugin
     def set_pdos_status(self):
-        if self.self.parent.configure_step.workchain_settings.pdos_run.value:
+        if self.parent.configure_step.workchain_settings.properties["pdos"].run.value:
             self.dos_code.code_select_dropdown.disabled = False
             self.projwfc_code.code_select_dropdown.disabled = False
         else:
@@ -405,11 +381,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
-        builder, parameters = self._create_builder()
+        builder, ui_parameters = self._create_builder()
 
         with self.hold_trait_notifications():
             self.process = submit(builder)
-            self.process.base.extras.set("ui_parameters", parameters)
+            self.process.base.extras.set("ui_parameters", ui_parameters)
 
         self._update_state()
 
@@ -470,65 +446,3 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.process = None
             self.input_structure = None
-
-
-class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
-    process = traitlets.Unicode(allow_none=True)
-
-    def __init__(self, **kwargs):
-        self.process_tree = ProcessNodesTreeWidget()
-        ipw.dlink(
-            (self, "process"),
-            (self.process_tree, "value"),
-        )
-
-        self.node_view = AiidaNodeViewWidget(layout={"width": "auto", "height": "auto"})
-        ipw.dlink(
-            (self.process_tree, "selected_nodes"),
-            (self.node_view, "node"),
-            transform=lambda nodes: nodes[0] if nodes else None,
-        )
-        self.process_status = ipw.VBox(children=[self.process_tree, self.node_view])
-
-        # Setup process monitor
-        self.process_monitor = ProcessMonitor(
-            timeout=0.2,
-            callbacks=[
-                self.process_tree.update,
-                self._update_state,
-            ],
-        )
-        ipw.dlink((self, "process"), (self.process_monitor, "value"))
-
-        super().__init__([self.process_status], **kwargs)
-
-    def can_reset(self):
-        "Do not allow reset while process is running."
-        return self.state is not self.State.ACTIVE
-
-    def reset(self):
-        self.process = None
-
-    def _update_state(self):
-        if self.process is None:
-            self.state = self.State.INIT
-        else:
-            process = load_node(self.process)
-            process_state = process.process_state
-            if process_state in (
-                ProcessState.CREATED,
-                ProcessState.RUNNING,
-                ProcessState.WAITING,
-            ):
-                self.state = self.State.ACTIVE
-            elif (
-                process_state in (ProcessState.EXCEPTED, ProcessState.KILLED)
-                or process.is_failed
-            ):
-                self.state = self.State.FAIL
-            elif process.is_finished_ok:
-                self.state = self.State.SUCCESS
-
-    @traitlets.observe("process")
-    def _observe_process(self, change):
-        self._update_state()

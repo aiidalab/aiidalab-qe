@@ -1,12 +1,4 @@
 """Package for the AiiDAlab QE app."""
-
-from .process import WorkChainSelector
-from .steps import SubmitQeAppWorkChainStep, ViewQeAppWorkChainStatusAndResultsStep
-from .structures import StructureSelectionStep
-
-__all__ = [
-    "StructureSelectionStep",
-    "SubmitQeAppWorkChainStep",
-    "ViewQeAppWorkChainStatusAndResultsStep",
-    "WorkChainSelector",
-]
+# I removed all the imports because
+# 1) they are not used elsewhele
+# 2) tp speed up import

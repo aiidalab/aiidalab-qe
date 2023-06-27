@@ -1,6 +1,32 @@
-def test_reload_selected_code(submit_step_widget_generator):
+def test_code(pw_code, dos_code, projwfc_code, pw_code_70):
     """Test set_selected_codes method."""
-    from aiidalab_qe.app.steps import SubmitQeAppWorkChainStep
+    from aiida.orm import load_code
+
+    from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+    from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
+
+    step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
+    # get the default codes
+    assert (
+        load_code(step.pw_code.value).full_label
+        == DEFAULT_PARAMETERS["codes"]["pw_code"]
+    )
+    assert (
+        load_code(step.dos_code.value).full_label
+        == DEFAULT_PARAMETERS["codes"]["dos_code"]
+    )
+    assert (
+        load_code(step.projwfc_code.value).full_label
+        == DEFAULT_PARAMETERS["codes"]["projwfc_code"]
+    )
+    # set the codes
+    step.pw_code.value = pw_code_70.uuid
+    assert load_code(step.pw_code.value).full_label == pw_code_70.full_label
+
+
+def test_ui_parameters_code(submit_step_widget_generator):
+    """Test set_selected_codes method."""
+    from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
 
     submit_step = submit_step_widget_generator()
 

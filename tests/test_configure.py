@@ -46,7 +46,13 @@ def test_set_input_parameters():
                 },
             },
         },
-        "workflow": {"relax_type": "positions", "properties": {}},
+        "workflow": {
+            "relax_type": "positions",
+            "properties": {
+                "bands": True,
+                "pdos": False,
+            },
+        },
     }
     wg.set_input_parameters(parameters_ref)
     parameters = wg.get_input_parameters()

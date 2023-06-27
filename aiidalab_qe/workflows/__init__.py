@@ -5,7 +5,6 @@ from aiida.engine import ToContext, WorkChain, if_
 from aiida.plugins import DataFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
-from aiida_quantumespresso.common.types import RelaxType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
@@ -15,15 +14,6 @@ XyData = DataFactory("core.array.xy")
 StructureData = DataFactory("core.structure")
 BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
-
-PROPERTIES_LIST = ["relax", "bands", "pdos"]
-
-
-def validate_properties(value, _):
-    """Validate the properties input."""
-    for property_ in value:
-        if property_ not in PROPERTIES_LIST:
-            return f"Property {property_} is not supported."
 
 
 class QeAppWorkChain(WorkChain):
@@ -38,10 +28,7 @@ class QeAppWorkChain(WorkChain):
                    help='The inputs structure.')
         spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
-        spec.input('properties', valid_type=orm.List, default=lambda: orm.List(),
-                   help='The properties to calculate, used to control the logic of QeAppWorkChain.',
-                   validator=validate_properties)
-        spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
+        spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure', 'base_final_scf'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PwRelaxWorkChain`, if not specified at all, the relaxation step is skipped.'})
         spec.expose_inputs(PwBandsWorkChain, namespace='bands',
@@ -85,82 +72,39 @@ class QeAppWorkChain(WorkChain):
         # yapf: enable
 
     @classmethod
-    def get_builder_from_protocol(
-        cls,
-        structure,
-        pw_code,
-        dos_code=None,
-        projwfc_code=None,
-        protocol=None,
-        overrides=None,
-        properties=None,
-        relax_type=RelaxType.NONE,
-        clean_workdir=False,
-        **kwargs,
-    ):
+    def get_builder_from_protocol(cls, structure, parameters):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
-        overrides = overrides or {}
-        builder = cls.get_builder()
+        from aiidalab_qe.app.plugins.bands.workchain import (
+            get_builder as get_bands_builder,
+        )
+        from aiidalab_qe.app.plugins.pdos.workchain import (
+            get_builder as get_pdos_builder,
+        )
+        from aiidalab_qe.app.plugins.relax.workchain import (
+            get_builder as get_relax_builder,
+        )
 
+        builder = cls.get_builder()
         # Set the structure.
         builder.structure = structure
+        codes = parameters.pop("codes", {})
+        #
+        # TODO do we always need to run a relax workchain
+        relax_builder = get_relax_builder(codes, structure, parameters)
+        builder.relax = relax_builder
 
-        # relax workchain settings
-        relax_overrides = overrides.get("relax", {})
+        # bands workchain
+        if parameters["workflow"]["properties"]["bands"]:
+            bands_builder = get_bands_builder(codes, structure, parameters)
+            builder.bands = bands_builder
 
-        relax = PwRelaxWorkChain.get_builder_from_protocol(
-            code=pw_code,
-            structure=structure,
-            protocol=protocol,
-            overrides=relax_overrides,
-            relax_type=relax_type,
-            **kwargs,
-        )
+        # pdos workchain
+        if parameters["workflow"]["properties"]["pdos"]:
+            pdos_builder = get_pdos_builder(codes, structure, parameters)
+            builder.pdos = pdos_builder
 
-        # pop the inputs that are excluded from the expose_inputs
-        relax.pop("structure", None)
-        relax.pop("clean_workdir", None)
-        relax.pop("base_final_scf", None)  # never run a final scf
-
-        builder.relax = relax
-
-        # bands workchain settings
-        bands_overrides = overrides.get("bands", {})
-        bands = PwBandsWorkChain.get_builder_from_protocol(
-            code=pw_code,
-            structure=structure,
-            protocol=protocol,
-            overrides=bands_overrides,
-            **kwargs,
-        )
-        # pop the inputs that are excluded from the expose_inputs
-        bands.pop("relax")
-        bands.pop("structure", None)
-        bands.pop("clean_workdir", None)
-        builder.bands = bands
-
-        # pdos workchain settings
-        if dos_code is not None and projwfc_code is not None:
-            pdos_overrides = overrides.get("pdos", {})
-            pdos = PdosWorkChain.get_builder_from_protocol(
-                pw_code=pw_code,
-                dos_code=dos_code,
-                projwfc_code=projwfc_code,
-                structure=structure,
-                protocol=protocol,
-                overrides=pdos_overrides,
-                **kwargs,
-            )
-            # pop the inputs that are exclueded from the expose_inputs
-            pdos.pop("structure", None)
-            pdos.pop("clean_workdir", None)
-            builder.pdos = pdos
-
-        if properties is None:
-            properties = []
-        builder.properties = orm.List(list=properties)
-
-        builder.clean_workdir = orm.Bool(clean_workdir)
+        # TODO check if we need to clean the workdir
+        # builder.clean_workdir = orm.Bool(clean_workdir)
 
         return builder
 
@@ -172,14 +116,9 @@ class QeAppWorkChain(WorkChain):
         self.ctx.current_number_of_bands = None
         self.ctx.scf_parent_folder = None
 
-        # logic based on the properties input
-        self.ctx.run_relax = "relax" in self.inputs.properties
-        self.ctx.run_bands = "bands" in self.inputs.properties
-        self.ctx.run_pdos = "pdos" in self.inputs.properties
-
     def should_run_relax(self):
         """Check if the geometry of the input structure should be optimized."""
-        return self.ctx.run_relax
+        return "relax" in self.inputs
 
     def run_relax(self):
         """Run the `PwRelaxWorkChain`."""
@@ -213,7 +152,7 @@ class QeAppWorkChain(WorkChain):
 
     def should_run_bands(self):
         """Check if the band structure should be calculated."""
-        return self.ctx.run_bands
+        return "bands" in self.inputs
 
     def run_bands(self):
         """Run the `PwBandsWorkChain`."""
@@ -254,7 +193,7 @@ class QeAppWorkChain(WorkChain):
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""
-        return self.ctx.run_pdos
+        return "pdos" in self.inputs
 
     def run_pdos(self):
         """Run the `PdosWorkChain`."""

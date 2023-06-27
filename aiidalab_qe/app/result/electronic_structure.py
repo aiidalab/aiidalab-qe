@@ -1,0 +1,86 @@
+"""Electronic structure results view widgets
+
+"""
+import ipywidgets as ipw
+
+from aiidalab_qe.app.panel import ResultPanel
+
+
+def export_data(work_chain_node, group_dos_by="atom"):
+    from aiidalab_qe.app.plugins.bands.result import export_bands_data
+    from aiidalab_qe.app.plugins.pdos.result import export_pdos_data
+
+    pdos_node = work_chain_node.base.links.get_outgoing().get_node_by_label("pdos")
+    dos = export_pdos_data(pdos_node, group_dos_by=group_dos_by)
+    fermi_energy = dos["fermi_energy"] if dos else None
+
+    bands_node = work_chain_node.base.links.get_outgoing().get_node_by_label("pdos")
+    bands = export_bands_data(bands_node, fermi_energy)
+
+    return dict(
+        bands=bands,
+        dos=dos,
+    )
+
+
+class Result(ResultPanel):
+    title = "Electronic Structure"
+
+    def _update_view(self):
+        from widget_bandsplot import BandsPlotWidget
+
+        group_dos_by = ipw.ToggleButtons(
+            options=[
+                ("Atom", "atom"),
+                ("Orbital", "angular"),
+            ],
+            value="atom",
+        )
+        settings = ipw.VBox(
+            children=[
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "DOS grouped by:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        group_dos_by,
+                    ]
+                ),
+            ],
+            layout={"margin": "0 0 30px 30px"},
+        )
+        #
+        data = export_data(self.node, group_dos_by=group_dos_by.value)
+        bands_data = data.get("bands", None)
+        dos_data = data.get("dos", None)
+        _bands_plot_view = BandsPlotWidget(
+            bands=bands_data,
+            dos=dos_data,
+        )
+
+        def response(change):
+            data = export_data(self.node, group_dos_by=group_dos_by.value)
+            bands_data = data.get("bands", None)
+            dos_data = data.get("dos", None)
+            _bands_plot_view = BandsPlotWidget(
+                bands=bands_data,
+                dos=dos_data,
+            )
+            self.result_tabs.children[2].children = [
+                settings,
+                _bands_plot_view,
+            ]
+
+        group_dos_by.observe(response, names="value")
+        # update the electronic structure tab
+        self.result_tabs.children[2].children = [
+            settings,
+            _bands_plot_view,
+        ]
+        self.result_tabs.set_title(2, "")
+        self.children = [
+            _bands_plot_view,
+        ]
