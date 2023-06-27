@@ -536,7 +536,7 @@ class AddingTagsEditor(ipw.VBox):
         self.title = title
         self._status_message = StatusHTML()
         self.atom_selection = ipw.Text(
-            description="Define kind", value="", layout={"width": "initial"}
+            description="Index of atoms", value="", layout={"width": "initial"}
         )
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
