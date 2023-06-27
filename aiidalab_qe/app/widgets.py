@@ -147,7 +147,7 @@ class FilenameDisplayWidget(ipw.Box):
 
     def __init__(self, max_width=None, **kwargs):
         self.max_width = max_width
-        self._html = ipw.HTML()
+        self._html = ipw.HTML(layout={"margin": "0 0 0 50px"},)
         super().__init__([self._html], **kwargs)
 
     @traitlets.observe("value")
@@ -549,29 +549,49 @@ class AddingTagsEditor(ipw.VBox):
             layout={"width": "initial"},
         )
 
-        self.clear_tags = ipw.Button(
-            description="Clear tags",
+        self.reset_tags = ipw.Button(
+            description="Reset tags",
             button_style="primary",
             layout={"width": "initial"},
         )
-        self.clear_all_tags = ipw.Button(
-            description="Clear all tags",
-            button_style="primary",
+        self.reset_all_tags = ipw.Button(
+            description="Reset all tags",
+            button_style="warning",
             layout={"width": "initial"},
         )
+        self.display_selected_tags = ipw.HTML()
         self.add_tags.on_click(self._add_tags)
-        self.clear_tags.on_click(self._clear_tags)
-        self.clear_all_tags.on_click(self._clear_all_tags)
+        self.reset_tags.on_click(self._reset_tags)
+        self.reset_all_tags.on_click(self._reset_all_tags)
+        self.atom_selection.observe(self._display_tags, 'value')
+        self.add_tags.on_click(self._display_tags)
+        self.reset_tags.on_click(self._display_tags)
+        self.reset_all_tags.on_click(self._display_tags)
         super().__init__(
             children=[
                 ipw.HTML(
                     "<b>Adding a tag to atoms</b>",
                 ),
-                ipw.HBox([self.atom_selection, self.from_selection, self.tag]),
-                ipw.HBox([self.add_tags, self.clear_tags, self.clear_all_tags]),
+                ipw.HBox([self.atom_selection, self.from_selection, self.tag, self.display_selected_tags]),
+                ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
             ]
         )
+
+    def _display_tags(self, _=None):
+        selection = string_range_to_list(self.atom_selection.value)[0]
+        current_tags = self.structure.get_tags()
+        chemichal_symbols = self.structure.get_chemical_symbols()
+        html_str = ''
+        if selection:
+            for index in selection:
+                tag = current_tags[index]
+                symbol = chemichal_symbols[index]
+                if tag == 0:
+                    tag = ''
+                html_str += f'  Id: {index+1}  {symbol}{tag} ;'
+            html_str = html_str[:-1]
+        self.display_selected_tags.value =  html_str
 
     def _from_selection(self, _=None):
         """Set the atom selection from the current selection."""
@@ -586,7 +606,7 @@ class AddingTagsEditor(ipw.VBox):
             </div>
             """
         else:
-            selection = string_range_to_list(self.atom_selection.value)
+            selection = string_range_to_list(self.atom_selection.value)[0]
             new_structure = deepcopy(self.structure)
             if new_structure.get_tags() == []:
                 new_tags = np.zeros(len(new_structure))
@@ -599,7 +619,7 @@ class AddingTagsEditor(ipw.VBox):
             self.input_selection = None
             self.input_selection = deepcopy(self.selection)
 
-    def _clear_tags(self, _=None):
+    def _reset_tags(self, _=None):
         """Clear tags from selected atoms."""
         if not self.atom_selection.value:
             self._status_message.message = """
@@ -608,7 +628,7 @@ class AddingTagsEditor(ipw.VBox):
             </div>
             """
         else:
-            selection = string_range_to_list(self.atom_selection.value)
+            selection = string_range_to_list(self.atom_selection.value)[0]
             new_structure = deepcopy(self.structure)
             new_tags = new_structure.get_tags()
             new_tags[selection] = 0
@@ -618,7 +638,7 @@ class AddingTagsEditor(ipw.VBox):
             self.input_selection = None
             self.input_selection = deepcopy(self.selection)
 
-    def _clear_all_tags(self, _=None):
+    def _reset_all_tags(self, _=None):
         """Clear all tags."""
         new_structure = deepcopy(self.structure)
         new_tags = np.zeros(len(new_structure))
