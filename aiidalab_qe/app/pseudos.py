@@ -24,15 +24,16 @@ class PseudoFamilySelector(ipw.VBox):
     pseudo_family_prompt = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;">
         <b><a href="https://www.materialscloud.org/discover/sssp/table/efficiency"
-        target="_blank">Standard solid-state pseudopotentials</a> (SSSP)</b></div>"""
+        target="_blank">Pseudopotential family</b></div>"""
     )
     pseudo_family_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
         If you are unsure, select 'SSSP efficiency', which for
         most calculations will produce sufficiently accurate results at
         comparatively small computational costs. If your calculations require a
-        higher accuracy, select 'SSSP accuracy', which will be computationally
-        more expensive.</div>"""
+        higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
+        more expensive. SSSP is the standard solid-state pseudopotentials.
+        The PseudoDojo used here has the SR relativistic type.</div>"""
     )
 
     dft_functional_prompt = ipw.HTML(
@@ -77,10 +78,22 @@ class PseudoFamilySelector(ipw.VBox):
             style={"description_width": "initial"},
         )
         self.dft_functional.observe(self.set_value_trait, "value")
-
+        #
+        pseudo_family_type = DEFAULT_PARAMETERS["pseudo_family"].split("/")[0]
+        if pseudo_family_type.upper() == "SSSP":
+            pseudo_family_type += (
+                " " + DEFAULT_PARAMETERS["pseudo_family"].split("/")[-1]
+            )
+        elif pseudo_family_type.upper() == "PSEUDODOJO":
+            pseudo_family_type = "PseudoDojo " + pseudo_family_type.split("_")[-2]
         self.protocol_selection = ipw.ToggleButtons(
-            options=["efficiency", "precision"],
-            value=DEFAULT_PARAMETERS["pseudo_family"].split("/")[3],
+            options=[
+                "SSSP efficiency",
+                "SSSP precision",
+                "PseudoDojo standard",
+                "PseudoDojo stringent",
+            ],
+            value=pseudo_family_type,
             layout=ipw.Layout(max_width="80%"),
         )
         self.protocol_selection.observe(self.set_value_trait, "value")
@@ -118,11 +131,20 @@ class PseudoFamilySelector(ipw.VBox):
         )
 
     def set_value_trait(self, _=None):
-        self.value = (
-            DEFAULT_PARAMETERS["pseudo_family"]
-            if not self.override_protocol_pseudo_family.value
-            else f"SSSP/1.2/{self.dft_functional.value}/{self.protocol_selection.value}"
-        )
+        if self.override_protocol_pseudo_family.value:
+            family, protocol = self.protocol_selection.value.split()
+            functional = self.dft_functional.value
+            if family == "PseudoDojo":
+                pseudo_family_string = f"PseudoDojo/0.4/{functional}/SR/{protocol}/upf"
+            elif family == "SSSP":
+                pseudo_family_string = f"SSSP/1.2/{functional}/{protocol}"
+            else:
+                raise ValueError(
+                    f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
+                )
+            self.value = pseudo_family_string
+        else:
+            self.value = DEFAULT_PARAMETERS["pseudo_family"]
 
     def set_show_ui(self, change):
         self.show_ui.value = not change.new
@@ -144,4 +166,4 @@ class PseudoFamilySelector(ipw.VBox):
             )
 
     def reset(self):
-        self.protocol_selection.value = "efficiency"
+        self.protocol_selection.value = "SSSP efficiency"

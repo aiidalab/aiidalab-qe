@@ -4,7 +4,8 @@ FUNCTIONAL_LINK_MAP = {
 }
 
 PSEUDO_LINK_MAP = {
-    "SSSP": "https://www.materialscloud.org/discover/sssp/table/efficiency"
+    "SSSP": "https://www.materialscloud.org/discover/sssp/table/efficiency",
+    "PseudoDojo": "http://www.pseudo-dojo.org/",
 }
 
 PROTOCOL_PSEUDO_MAP = {
