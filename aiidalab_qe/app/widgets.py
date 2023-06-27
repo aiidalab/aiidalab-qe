@@ -147,7 +147,9 @@ class FilenameDisplayWidget(ipw.Box):
 
     def __init__(self, max_width=None, **kwargs):
         self.max_width = max_width
-        self._html = ipw.HTML(layout={"margin": "0 0 0 50px"},)
+        self._html = ipw.HTML(
+            layout={"margin": "0 0 0 50px"},
+        )
         super().__init__([self._html], **kwargs)
 
     @traitlets.observe("value")
@@ -563,7 +565,7 @@ class AddingTagsEditor(ipw.VBox):
         self.add_tags.on_click(self._add_tags)
         self.reset_tags.on_click(self._reset_tags)
         self.reset_all_tags.on_click(self._reset_all_tags)
-        self.atom_selection.observe(self._display_tags, 'value')
+        self.atom_selection.observe(self._display_tags, "value")
         self.add_tags.on_click(self._display_tags)
         self.reset_tags.on_click(self._display_tags)
         self.reset_all_tags.on_click(self._display_tags)
@@ -572,7 +574,14 @@ class AddingTagsEditor(ipw.VBox):
                 ipw.HTML(
                     "<b>Adding a tag to atoms</b>",
                 ),
-                ipw.HBox([self.atom_selection, self.from_selection, self.tag, self.display_selected_tags]),
+                ipw.HBox(
+                    [
+                        self.atom_selection,
+                        self.from_selection,
+                        self.tag,
+                        self.display_selected_tags,
+                    ]
+                ),
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
             ]
@@ -582,16 +591,16 @@ class AddingTagsEditor(ipw.VBox):
         selection = string_range_to_list(self.atom_selection.value)[0]
         current_tags = self.structure.get_tags()
         chemichal_symbols = self.structure.get_chemical_symbols()
-        html_str = ''
+        html_str = ""
         if selection:
             for index in selection:
                 tag = current_tags[index]
                 symbol = chemichal_symbols[index]
                 if tag == 0:
-                    tag = ''
-                html_str += f'  Id: {index+1}  {symbol}{tag} ;'
+                    tag = ""
+                html_str += f"  Id: {index+1}  {symbol}{tag} ;"
             html_str = html_str[:-1]
-        self.display_selected_tags.value =  html_str
+        self.display_selected_tags.value = html_str
 
     def _from_selection(self, _=None):
         """Set the atom selection from the current selection."""
