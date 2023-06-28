@@ -10,97 +10,20 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import ipywidgets as ipw
-import nglview
 import traitlets
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
-from aiida.orm import CalcJobNode, Node, WorkChainNode
+from aiida.orm import CalcJobNode, WorkChainNode
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
-from ase import Atoms
 from filelock import FileLock, Timeout
 from IPython.display import HTML, display
 from jinja2 import Environment
-from traitlets import Instance, Int, List, Unicode, Union, default, observe, validate
 
 from aiidalab_qe.app import static
 from aiidalab_qe.app.plugins.relax.result import Result as RelaxResult
 from aiidalab_qe.app.utils import get_entry_items
 
-
-# TODO: this `MinimalStructureViewer` class is not used anywhere, consider removing it
-class MinimalStructureViewer(ipw.VBox):
-    structure = Union([Instance(Atoms), Instance(Node)], allow_none=True)
-    _displayed_structure = Instance(Atoms, allow_none=True, read_only=True)
-
-    background = Unicode()
-    supercell = List(Int())
-
-    def __init__(self, structure, *args, **kwargs):
-        self._viewer = nglview.NGLWidget()
-        self._viewer.camera = "orthographic"
-        self._viewer.stage.set_parameters(mouse_preset="pymol")
-        ipw.link((self, "background"), (self._viewer, "background"))
-
-        self.structure = structure
-
-        super().__init__(
-            children=[
-                self._viewer,
-            ],
-            *args,
-            **kwargs,
-        )
-
-    @default("background")
-    def _default_background(self):
-        return "#FFFFFF"
-
-    @default("supercell")
-    def _default_supercell(self):
-        return [1, 1, 1]
-
-    @validate("structure")
-    def _valid_structure(self, change):  # pylint: disable=no-self-use
-        """Update structure."""
-        structure = change["value"]
-
-        if structure is None:
-            return None  # if no structure provided, the rest of the code can be skipped
-
-        if isinstance(structure, Atoms):
-            return structure
-        if isinstance(structure, Node):
-            return structure.get_ase()
-        raise ValueError(
-            "Unsupported type {}, structure must be one of the following types: "
-            "ASE Atoms object, AiiDA CifData or StructureData."
-        )
-
-    @observe("structure")
-    def _update_displayed_structure(self, change):
-        """Update displayed_structure trait after the structure trait has been modified."""
-        # Remove the current structure(s) from the viewer.
-        if change["new"] is not None:
-            self.set_trait("_displayed_structure", change["new"].repeat(self.supercell))
-        else:
-            self.set_trait("_displayed_structure", None)
-
-    @observe("_displayed_structure")
-    def _update_structure_viewer(self, change):
-        """Update the view if displayed_structure trait was modified."""
-        with self.hold_trait_notifications():
-            for (
-                comp_id
-            ) in self._viewer._ngl_component_ids:  # pylint: disable=protected-access
-                self._viewer.remove_component(comp_id)
-            self.selection = list()
-            if change["new"] is not None:
-                self._viewer.add_component(nglview.ASEStructure(change["new"]))
-                self._viewer.clear()
-                self._viewer.stage.set_parameters(clipDist=0)
-                self._viewer.add_representation("unitcell", diffuse="#df0587")
-                self._viewer.add_representation("ball+stick", aspectRatio=3.5)
-
+# I removed this `MinimalStructureViewer` class, because it is not used anywhere
 
 # I removed all function related to pdos and bands to `pdos` and `bands` plugin folder.
 
