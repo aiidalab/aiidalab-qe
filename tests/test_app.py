@@ -28,9 +28,8 @@ def test_app_submit(app):
     #
     step3 = app.steps.steps[2][1]
     assert step3.previous_step_state == step1.State.SUCCESS
-    assert step3.state == step3.State.CONFIGURED
+    assert step3.state == step3.State.READY
     step3.resources_config.num_cpus.value = 4
     assert step3.resources_config.num_cpus.value == 4
-    builder = step3.get_builder()
-    print(builder)
+    builder, ui_parameters = step3._create_builder()
     # step3.submit()
