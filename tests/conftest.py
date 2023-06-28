@@ -257,7 +257,7 @@ def submit_step_widget_generator(
 # I try to use the usefixtures decorator but it does not work
 # so I pass the pw_code etc to the parameters list
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code, sssp, aiida_profile):
+def app(pw_code, dos_code, projwfc_code, sssp):
     from aiidalab_qe.app.app import QEApp
 
     app = QEApp(qe_auto_setup=False)
@@ -341,7 +341,6 @@ def generate_pdos_workchain(
     generate_xy_data,
     generate_projection_data,
     generate_workchain,
-    aiida_profile,
 ):
     """Generate an instance of a `XpsWorkChain`."""
 
