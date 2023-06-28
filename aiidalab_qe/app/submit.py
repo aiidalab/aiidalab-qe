@@ -263,6 +263,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ):
             self.set_resource_defaults(load_code(change["new"]).computer)
 
+    def get_resource(self):
+        resources = {
+            "num_machines": self.resources_config.num_nodes.value,
+            "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
+            "npools": self.parallelization.npools.value,
+        }
+        return resources
+
     def set_resource_defaults(self, computer=None):
         if computer is None or computer.hostname == "localhost":
             self.resources_config.num_nodes.disabled = True
@@ -398,23 +406,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         parameters = self.parent.configure_step.get_input_parameters()
         parameters["codes"] = self.get_selected_codes()
+        parameters["resources"] = self.get_resource()
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             parameters=deepcopy(parameters),
         )
 
-        resources = {
-            "num_machines": self.resources_config.num_nodes.value,
-            "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
-        }
-
-        npool = self.parallelization.npools.value
-        self._update_builder(builder, resources, npool, self.MAX_MPI_PER_POOL)
+        self._update_builder(
+            builder, deepcopy(parameters["resources"]), self.MAX_MPI_PER_POOL
+        )
 
         return builder, parameters
 
-    def _update_builder(self, buildy, resources, npools, max_mpi_per_pool):
+    def _update_builder(self, buildy, resources, max_mpi_per_pool):
+        npools = resources["npools"]
         """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
         for k, v in buildy.items():
             if isinstance(v, (dict, ProcessBuilderNamespace)):
@@ -436,7 +442,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if k == "resources":
                     buildy["resources"] = resources
                 else:
-                    self._update_builder(v, resources, npools, max_mpi_per_pool)
+                    self._update_builder(v, resources, max_mpi_per_pool)
 
     # I removed the `_create_extra_report_parameters` method,
     # because all the these extra parameters can be extracted from the parameters.

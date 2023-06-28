@@ -2,8 +2,9 @@ from aiida import engine, orm
 from aiida.common import LinkType
 
 
-def test_qeapp_workchain(qeapp_workchain):
-    wkchain = qeapp_workchain
+def test_qeapp_workchain(generate_qeapp_workchain):
+    wkchain = generate_qeapp_workchain()
+    print("wkchain: ", wkchain)
     assert wkchain.setup() is None
     # generate structure for scf calculation
     wkchain.setup()

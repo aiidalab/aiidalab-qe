@@ -10,12 +10,20 @@ def export_data(work_chain_node, group_dos_by="atom"):
     from aiidalab_qe.app.plugins.bands.result import export_bands_data
     from aiidalab_qe.app.plugins.pdos.result import export_pdos_data
 
-    pdos_node = work_chain_node.base.links.get_outgoing().get_node_by_label("pdos")
-    dos = export_pdos_data(pdos_node, group_dos_by=group_dos_by)
-    fermi_energy = dos["fermi_energy"] if dos else None
-
-    bands_node = work_chain_node.base.links.get_outgoing().get_node_by_label("pdos")
-    bands = export_bands_data(bands_node, fermi_energy)
+    if "pdos" in work_chain_node.base.links.get_outgoing().all_link_labels():
+        pdos_node = work_chain_node.base.links.get_outgoing().get_node_by_label("pdos")
+        dos = export_pdos_data(pdos_node, group_dos_by=group_dos_by)
+        fermi_energy = dos["fermi_energy"] if dos else None
+    else:
+        dos = None
+        fermi_energy = None
+    if "bands" in work_chain_node.base.links.get_outgoing().all_link_labels():
+        bands_node = work_chain_node.base.links.get_outgoing().get_node_by_label(
+            "bands"
+        )
+        bands = export_bands_data(bands_node, fermi_energy)
+    else:
+        bands = None
 
     return dict(
         bands=bands,
@@ -23,7 +31,7 @@ def export_data(work_chain_node, group_dos_by="atom"):
     )
 
 
-class Result(ResultPanel):
+class ElectronicStructure(ResultPanel):
     title = "Electronic Structure"
 
     def _update_view(self):
@@ -53,7 +61,7 @@ class Result(ResultPanel):
             layout={"margin": "0 0 30px 30px"},
         )
         #
-        data = export_data(self.node, group_dos_by=group_dos_by.value)
+        data = export_data(self.qeapp_node, group_dos_by=group_dos_by.value)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
         _bands_plot_view = BandsPlotWidget(
@@ -69,18 +77,14 @@ class Result(ResultPanel):
                 bands=bands_data,
                 dos=dos_data,
             )
-            self.result_tabs.children[2].children = [
+            self.children = [
                 settings,
                 _bands_plot_view,
             ]
 
         group_dos_by.observe(response, names="value")
         # update the electronic structure tab
-        self.result_tabs.children[2].children = [
-            settings,
-            _bands_plot_view,
-        ]
-        self.result_tabs.set_title(2, "")
         self.children = [
+            settings,
             _bands_plot_view,
         ]

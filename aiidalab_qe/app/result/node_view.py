@@ -26,9 +26,8 @@ from aiidalab_qe.app import static
 from aiidalab_qe.app.plugins.relax.result import Result as RelaxResult
 from aiidalab_qe.app.utils import get_entry_items
 
-from .report import SummaryView
 
-
+# TODO: this `MinimalStructureViewer` class is not used anywhere, consider removing it
 class MinimalStructureViewer(ipw.VBox):
     structure = Union([Instance(Atoms), Instance(Node)], allow_none=True)
     _displayed_structure = Instance(Atoms, allow_none=True, read_only=True)
@@ -308,6 +307,9 @@ class WorkChainViewer(ipw.VBox):
     _results_shown = traitlets.Set()
 
     def __init__(self, node, **kwargs):
+        from .electronic_structure import ElectronicStructure
+        from .summary_view import SummaryView
+
         if node.process_label != "QeAppWorkChain":
             super().__init__()
             return
@@ -325,15 +327,18 @@ class WorkChainViewer(ipw.VBox):
         )
         self.workflows_summary = SummaryView(self.node)
         self.structure_tab = RelaxResult(self.node)
+        self.electronic_tab = ElectronicStructure(self.node)
 
         self.summary_tab = ipw.VBox(children=[self.workflows_summary])
-        self.result_tabs = ipw.Tab(children=[self.summary_tab, self.structure_tab])
+        self.result_tabs = ipw.Tab(
+            children=[self.summary_tab, self.structure_tab, self.electronic_tab]
+        )
 
         self.result_tabs.set_title(0, "Workflow Summary")
         self.result_tabs.set_title(1, "Final Geometry")
+        self.result_tabs.set_title(2, "Electronic Structure")
         # add plugin specific settings
         entries = get_entry_items("aiidalab_qe.property", "result")
-        # print("plugin entries: ", entries)
         self.results = {}
         for name, entry_point in entries.items():
             if not ui_parameters["workflow"]["properties"][name]:
@@ -350,6 +355,8 @@ class WorkChainViewer(ipw.VBox):
             index = change["new"]
             # Accessing the viewer only if the corresponding tab is present.
             if self.result_tabs._titles[str(index)] == "Final Geometry":
+                if not hasattr(self.structure_tab, "_structure_view"):
+                    return
                 self.structure_tab._structure_view._viewer.handle_resize()
 
                 def toggle_camera():
@@ -395,6 +402,9 @@ class WorkChainViewer(ipw.VBox):
                     if result.node.is_finished:
                         result._update_view()
                         self._results_shown.add(result.workchain_label)
+            # electronic structure needs to combine the results from the bands and pdos
+            # TODO find a better way to show the results from several workchains
+            self.result_tabs.children[2]._update_view()
 
     # I moved the _show_structure to the relax plugin part.
     # I moved the _show_electronic_structure to electronic_structure.py

@@ -1,6 +1,5 @@
 import ipywidgets as ipw
-from aiida.orm import load_node
-from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
+from aiidalab_widgets_base import WizardAppWidget
 
 from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.process import QeAppWorkChainSelector
@@ -73,6 +72,9 @@ class QEApp:
         )
 
         def _observe_process_selection(change):
+            from aiida.orm import load_node
+            from aiidalab_widgets_base import WizardAppWidgetStep
+
             if change["old"] == change["new"]:
                 return
             pk = change["new"]

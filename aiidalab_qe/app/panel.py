@@ -86,14 +86,17 @@ class OutlinePanel(Panel):
 class ResultPanel(Panel):
     """Base class for all the result panels.
 
-    The base class has a method to load the result of the calculation. And a show method to display it in the panel. It has a update method to update the result in the panel.
+    The base class has a method to load the result of the calculation.
+    And a show method to display it in the panel.
+    It has a update method to update the result in the panel.
     """
 
     workchain_label = ""
     title = "Result"
 
-    def __init__(self, qeapp_node, **kwargs):
+    def __init__(self, qeapp_node=None, node=None, **kwargs):
         self.qeapp_node = qeapp_node
+        self._node = node
         self.children = [
             ipw.VBox(
                 [ipw.Label(f"{self.title} not available.")],
@@ -104,6 +107,8 @@ class ResultPanel(Panel):
 
     @property
     def node(self):
+        if self._node is not None:
+            return self._node
         return self.qeapp_node.base.links.get_outgoing().get_node_by_label(
             self.workchain_label
         )

@@ -1,5 +1,5 @@
-def test_code(pw_code, dos_code, projwfc_code, pw_code_70):
-    """Test set_selected_codes method."""
+def test_codes(pw_code, dos_code, projwfc_code, pw_code_70):
+    """Test get and set codes."""
     from aiida.orm import load_code
 
     from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
@@ -19,29 +19,33 @@ def test_code(pw_code, dos_code, projwfc_code, pw_code_70):
         load_code(step.projwfc_code.value).full_label
         == DEFAULT_PARAMETERS["codes"]["projwfc_code"]
     )
-    # set the codes
+    # test `get_selected_codes` method
+    codes = step.get_selected_codes()
+    codes["pw_code"] = pw_code.uuid
+    # set the codes manually
     step.pw_code.value = pw_code_70.uuid
     assert load_code(step.pw_code.value).full_label == pw_code_70.full_label
+    # set `set_selected_codes` method
+    step.set_selected_codes(parameters=DEFAULT_PARAMETERS)
+    assert step.pw_code.value == pw_code.uuid
 
 
-def test_ui_parameters_code(submit_step_widget_generator):
-    """Test set_selected_codes method."""
+def test_resources():
+    """Test get and set resources."""
     from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
 
-    submit_step = submit_step_widget_generator()
-
-    builder = submit_step._create_builder()
-    extra_parameters = submit_step._create_extra_report_parameters()
-    builder_parameters = submit_step._extract_report_parameters(
-        builder, extra_parameters
-    )
-
-    new_submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    new_submit_step.set_selected_codes(parameters=builder_parameters)
-
-    assert new_submit_step.pw_code.value == submit_step.pw_code.value
-    assert new_submit_step.dos_code.value == submit_step.dos_code.value
-    assert new_submit_step.projwfc_code.value == submit_step.projwfc_code.value
+    step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
+    step.resources_config.num_nodes.value = 2
+    step.resources_config.num_cpus.value = 4
+    step.parallelization.npools.value = 2
+    assert step.resources_config.num_nodes.value == 2
+    assert step.resources_config.num_cpus.value == 4
+    assert step.parallelization.npools.value == 2
+    # test `get_resource` method
+    resources = step.get_resource()
+    assert resources["num_machines"] == 2
+    assert resources["num_mpiprocs_per_machine"] == 4
+    assert resources["npool"] == 2
 
 
 def test_create_builder_default(

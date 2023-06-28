@@ -15,6 +15,9 @@ StructureData = DataFactory("core.structure")
 BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
 
+# I removed the `validate_properties`, because the `properties` to be
+# calculated are not fixed anymore. It depends on the installed plugins.
+
 
 class QeAppWorkChain(WorkChain):
     """WorkChain designed to calculate the requested properties in the AiiDAlab Quantum ESPRESSO app."""
@@ -28,6 +31,8 @@ class QeAppWorkChain(WorkChain):
                    help='The inputs structure.')
         spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
+        spec.input('properties', valid_type=orm.Dict, default=lambda: orm.Dict(),
+                   help='The properties to calculate, used to control the logic of QeAppWorkChain.')
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure', 'base_final_scf'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PwRelaxWorkChain`, if not specified at all, the relaxation step is skipped.'})
@@ -89,7 +94,11 @@ class QeAppWorkChain(WorkChain):
         builder.structure = structure
         codes = parameters.pop("codes", {})
         #
-        # TODO do we always need to run a relax workchain
+        # relax workchain
+        if parameters["workflow"]["relax_type"] == "none":
+            parameters["workflow"]["properties"]["relax"] = False
+        else:
+            parameters["workflow"]["properties"]["relax"] = True
         relax_builder = get_relax_builder(codes, structure, parameters)
         builder.relax = relax_builder
 
@@ -102,7 +111,7 @@ class QeAppWorkChain(WorkChain):
         if parameters["workflow"]["properties"]["pdos"]:
             pdos_builder = get_pdos_builder(codes, structure, parameters)
             builder.pdos = pdos_builder
-
+        builder.properties = orm.Dict(dict=parameters["workflow"]["properties"])
         # TODO check if we need to clean the workdir
         # builder.clean_workdir = orm.Bool(clean_workdir)
 
@@ -118,7 +127,7 @@ class QeAppWorkChain(WorkChain):
 
     def should_run_relax(self):
         """Check if the geometry of the input structure should be optimized."""
-        return "relax" in self.inputs
+        return self.inputs.properties.get_dict().get("relax", False)
 
     def run_relax(self):
         """Run the `PwRelaxWorkChain`."""
@@ -152,7 +161,7 @@ class QeAppWorkChain(WorkChain):
 
     def should_run_bands(self):
         """Check if the band structure should be calculated."""
-        return "bands" in self.inputs
+        return self.inputs.properties.get_dict().get("bands", False)
 
     def run_bands(self):
         """Run the `PwBandsWorkChain`."""
@@ -193,7 +202,7 @@ class QeAppWorkChain(WorkChain):
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""
-        return "pdos" in self.inputs
+        return self.inputs.properties.get_dict().get("pdos", False)
 
     def run_pdos(self):
         """Run the `PdosWorkChain`."""
