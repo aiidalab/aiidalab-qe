@@ -42,6 +42,7 @@ def test_set_input_parameters():
                     "SYSTEM": {
                         "degauss": 0.02,
                         "smearing": "gaussian",
+                        "tot_charge": 0,
                     }
                 },
             },

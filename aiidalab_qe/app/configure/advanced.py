@@ -148,6 +148,6 @@ class AdvancedSettings(Panel):
         if parameters.get("pw") is not None:
             self.degauss.value = parameters["pw"]["parameters"]["SYSTEM"]["degauss"]
             self.smearing.value = parameters["pw"]["parameters"]["SYSTEM"]["smearing"]
-            self.tot_charge.value = parameters["pw"]["parameters"]["SYSTEM"][
-                "tot_charge"
-            ]
+            self.tot_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
+                "tot_charge", 0
+            )
