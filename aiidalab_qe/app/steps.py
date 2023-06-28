@@ -359,7 +359,7 @@ class MagnetizationSettings(ipw.VBox):
         for i in range(1, len(self.kinds.children)):
             self.kinds.children[i].children[0].value = 0.0
 
-    def create_kinds_widgets(self):
+    def create_kinds_widget(self):
         widgets_list = []
         for label in self.input_structure_labels:
             hbox = ipw.HBox()
