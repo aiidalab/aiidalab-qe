@@ -3,7 +3,7 @@ def test_codes(pw_code, dos_code, projwfc_code, pw_code_70):
     from aiida.orm import load_code
 
     from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-    from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.submit.submit import SubmitQeAppWorkChainStep
 
     step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
     # get the default codes
@@ -30,9 +30,32 @@ def test_codes(pw_code, dos_code, projwfc_code, pw_code_70):
     assert step.pw_code.value == pw_code.uuid
 
 
+def test_resources_widget():
+    """Test resources widget."""
+    from aiidalab_qe.app.submit.resources import (
+        ParallelizationSettings,
+        ResourceSelectionWidget,
+    )
+
+    widget = ResourceSelectionWidget()
+    widget.num_nodes.value = 2
+    widget.num_cpus.value = 4
+    assert widget.num_nodes.value == 2
+    assert widget.num_cpus.value == 4
+    widget.reset()
+    assert widget.num_nodes.value == 1
+    assert widget.num_cpus.value == 1
+    #
+    widget = ParallelizationSettings()
+    widget.npools.value = 2
+    assert widget.npools.value == 2
+    widget.reset()
+    assert widget.npools.value == 1
+
+
 def test_resources():
     """Test get and set resources."""
-    from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.submit.submit import SubmitQeAppWorkChainStep
 
     step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
     step.resources_config.num_nodes.value = 2
@@ -45,7 +68,7 @@ def test_resources():
     resources = step.get_resource()
     assert resources["num_machines"] == 2
     assert resources["num_mpiprocs_per_machine"] == 4
-    assert resources["npool"] == 2
+    assert resources["npools"] == 2
 
 
 def test_create_builder_default(

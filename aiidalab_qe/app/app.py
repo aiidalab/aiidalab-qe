@@ -5,7 +5,7 @@ from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.process import QeAppWorkChainSelector
 from aiidalab_qe.app.result.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structures import StructureSelectionStep, structure_manager_widget
-from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
+from aiidalab_qe.app.submit.submit import SubmitQeAppWorkChainStep
 
 
 class QEApp:

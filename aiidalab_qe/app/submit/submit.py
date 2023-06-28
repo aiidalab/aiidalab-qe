@@ -19,7 +19,10 @@ from IPython.display import display
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.setup_codes import QESetupWidget
 from aiidalab_qe.app.sssp import SSSPInstallWidget
-from aiidalab_qe.app.widgets import ParallelizationSettings, ResourceSelectionWidget
+from aiidalab_qe.app.submit.resources import (
+    ParallelizationSettings,
+    ResourceSelectionWidget,
+)
 from aiidalab_qe.workflows import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")
@@ -420,7 +423,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         return builder, parameters
 
     def _update_builder(self, buildy, resources, max_mpi_per_pool):
-        npools = resources["npools"]
+        npools = resources.pop("npools", 1)
         """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
         for k, v in buildy.items():
             if isinstance(v, (dict, ProcessBuilderNamespace)):

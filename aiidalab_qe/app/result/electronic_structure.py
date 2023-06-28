@@ -64,6 +64,8 @@ class ElectronicStructure(ResultPanel):
         data = export_data(self.qeapp_node, group_dos_by=group_dos_by.value)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
+        if bands_data is None and dos_data is None:
+            return
         _bands_plot_view = BandsPlotWidget(
             bands=bands_data,
             dos=dos_data,
@@ -73,6 +75,8 @@ class ElectronicStructure(ResultPanel):
             data = export_data(self.node, group_dos_by=group_dos_by.value)
             bands_data = data.get("bands", None)
             dos_data = data.get("dos", None)
+            if bands_data is None and dos_data is None:
+                return
             _bands_plot_view = BandsPlotWidget(
                 bands=bands_data,
                 dos=dos_data,
