@@ -406,3 +406,49 @@ def generate_pdos_workchain(
         return wkchain
 
     return _generate_pdos_workchain
+
+
+@pytest.fixture
+def generate_bands_workchain(
+    pw_code,
+    structure_data_object,
+    fixture_localhost,
+    generate_xy_data,
+    generate_bands_data,
+    generate_workchain,
+):
+    """Generate an instance of a `XpsWorkChain`."""
+
+    def _generate_bands_workchain():
+        from copy import deepcopy
+
+        from aiida import engine
+        from aiida.orm import Dict
+        from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+
+        inputs = {
+            "code": pw_code,
+            "structure": structure_data_object,
+        }
+        builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)
+        inputs = builder._inputs()
+        inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
+        wkchain = generate_workchain(PwBandsWorkChain, inputs)
+        wkchain.setup()
+        # run pdos and return the process
+        output_parameters = Dict(dict={"fermi_energy": 2.0})
+        output_parameters.store()
+        wkchain.out("scf_parameters", output_parameters)
+        wkchain.out("band_parameters", output_parameters)
+        #
+        band_structure = generate_bands_data()
+        band_structure.store()
+        wkchain.out("band_structure", band_structure)
+        wkchain.update_outputs()
+        bands_node = wkchain.node
+        bands_node.set_exit_status(0)
+        bands_node.set_process_state(engine.ProcessState.FINISHED)
+        # set
+        return wkchain
+
+    return _generate_bands_workchain
