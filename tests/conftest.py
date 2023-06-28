@@ -64,23 +64,15 @@ def generate_bands_data():
 
     def _generate_bands_data():
         """Return a `BandsData` instance with some basic `kpoints` and `bands` arrays."""
-        import numpy
+        import numpy as np
         from aiida.plugins import DataFactory
 
-        BandsData = DataFactory("core.array.bands")  # pylint: disable=invalid-name
+        kpoints = np.array([[0.0, 0.0, 0.0]])
+        bands = np.array([[-5.64024889]])
+        BandsData = DataFactory("core.array.bands")
         bands_data = BandsData()
-
-        bands_data.set_kpoints(numpy.array([[0.0, 0.0, 0.0], [0.625, 0.25, 0.625]]))
-
-        bands_data.set_bands(
-            numpy.array(
-                [
-                    [-5.64024889, 6.66929678, 6.66929678, 6.66929678, 8.91047649],
-                    [-1.71354964, -0.74425095, 1.82242466, 3.98697455, 7.37979746],
-                ]
-            ),
-            units="eV",
-        )
+        bands_data.set_kpoints(kpoints)
+        bands_data.set_bands(bands, units="eV")
         bands_data.store()
 
         return bands_data
