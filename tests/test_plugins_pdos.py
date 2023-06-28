@@ -5,3 +5,4 @@ def test_result(generate_pdos_workchain):
     # generate structure for scf calculation
     result = Result(node=wkchain.node)
     result._update_view()
+    assert len(result.children) == 2

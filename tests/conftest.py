@@ -33,7 +33,7 @@ def structure_data_object():
     return structure
 
 
-@pytest.fixture()
+@pytest.fixture
 def generate_xy_data():
     """Return an ``XyData`` instance."""
 
@@ -58,30 +58,37 @@ def generate_xy_data():
     return _generate_xy_data
 
 
-@pytest.fixture()
+@pytest.fixture
 def generate_bands_data():
-    """Return an ``BandsData`` instance."""
+    """Return a `BandsData` node."""
 
     def _generate_bands_data():
-        """Return an ``BandsData`` node."""
-        import numpy as np
+        """Return a `BandsData` instance with some basic `kpoints` and `bands` arrays."""
+        import numpy
         from aiida.plugins import DataFactory
 
-        kpoints = np.array([[0.0, 0.0, 0.0]])
-        bands = np.array([[-5.64024889]])
-        BandsData = DataFactory("core.array.bands")
+        BandsData = DataFactory("core.array.bands")  # pylint: disable=invalid-name
         bands_data = BandsData()
-        bands_data.set_kpoints(kpoints)
-        bands_data.set_bands(bands, units="eV")
+
+        bands_data.set_kpoints(numpy.array([[0.0, 0.0, 0.0], [0.625, 0.25, 0.625]]))
+
+        bands_data.set_bands(
+            numpy.array(
+                [
+                    [-5.64024889, 6.66929678, 6.66929678, 6.66929678, 8.91047649],
+                    [-1.71354964, -0.74425095, 1.82242466, 3.98697455, 7.37979746],
+                ]
+            ),
+            units="eV",
+        )
         bands_data.store()
-        print("shape_bands: ", np.shape(bands_data))
 
         return bands_data
 
     return _generate_bands_data
 
 
-@pytest.fixture()
+@pytest.fixture
 def generate_projection_data(generate_bands_data):
     """Return an ``ProjectionData`` instance."""
 
@@ -100,17 +107,19 @@ def generate_projection_data(generate_bands_data):
             "position": [0.0, 0.0, 0.0],
         }
         orbitals = [OrbitalCls(**state_dict)]
-        projections = np.array([[1]])
+        # projections = np.array([[1]])
+        energy_arrays = np.array([1])
+        pdos_arrays = np.array([1])
 
         projection_data = ProjectionData()
         bands_data = generate_bands_data()
         projection_data.set_reference_bandsdata(bands_data)
         projection_data.set_projectiondata(
             orbitals,
-            list_of_projections=projections,
-            # list_of_energy=energy_arrays,
-            # list_of_pdos=pdos_arrays,
-            # bands_check=False
+            # list_of_projections=projections,
+            list_of_energy=energy_arrays,
+            list_of_pdos=pdos_arrays,
+            bands_check=False,
         )
         projection_data.store()
         return projection_data
@@ -210,7 +219,7 @@ def projwfc_code(aiida_local_code_factory):
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
     from aiidalab_qe.app.configure.workflow import WorkChainSettings
@@ -228,7 +237,7 @@ def workchain_settings_generator():
 # a part of AdvancedSettings class.
 
 
-@pytest.fixture()
+@pytest.fixture
 @pytest.mark.usefixtures("sssp")
 def submit_step_widget_generator(
     pw_code,
@@ -366,7 +375,7 @@ def generate_pdos_workchain(
         remote.store()
         retrieved = FolderData(tree="/tmp/aiida_run")
         retrieved.store()
-        output_parameters = Dict(dict={"test": 1})
+        output_parameters = Dict(dict={"fermi_energy": 2.0})
         output_parameters.store()
         wkchain.out(
             "dos",
@@ -384,6 +393,14 @@ def generate_pdos_workchain(
             {
                 "Dos": xy,
                 "projections": proj,
+                "output_parameters": output_parameters,
+                "remote_folder": remote,
+                "retrieved": retrieved,
+            },
+        )
+        wkchain.out(
+            "nscf",
+            {
                 "output_parameters": output_parameters,
                 "remote_folder": remote,
                 "retrieved": retrieved,
