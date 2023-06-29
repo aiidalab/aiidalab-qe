@@ -588,6 +588,7 @@ class AddingTagsEditor(ipw.VBox):
         )
 
     def _display_tags(self, _=None):
+        """Display the index of the atom and tag associated from the atom_selection."""
         selection = string_range_to_list(self.atom_selection.value)[0]
         current_tags = self.structure.get_tags()
         chemichal_symbols = self.structure.get_chemical_symbols()
