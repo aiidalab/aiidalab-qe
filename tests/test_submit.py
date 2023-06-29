@@ -31,66 +31,23 @@ def test_codes(pw_code, dos_code, projwfc_code, pw_code_70):
 
 
 def test_create_builder_default(
+    app_to_submit,
     data_regression,
-    submit_step_widget_generator,
 ):
     """ "Test the creation of the workchain builder.
 
     metal, non-magnetic
     """
-    from aiidalab_qe.app.report import _generate_report_html
 
-    submit_step = submit_step_widget_generator()
+    submit_step = app_to_submit.steps.steps[2][1]
 
-    builder = submit_step._create_builder()
-    extra_parameters = submit_step._create_extra_report_parameters()
+    builder, ui_parameters = submit_step._create_builder()
 
     # check and validate the builder
-    got = builder_to_readable_dict(builder)
+    got = builder_to_readable_dict(builder._inputs())
 
     # regression test
     data_regression.check(got)
-
-    # test the report can be properly generated from the builder without errors
-    builder_parameters = submit_step._extract_report_parameters(
-        builder, extra_parameters
-    )
-    report_html = _generate_report_html(builder_parameters)
-
-    # None in report_html means that the report not properly generated
-    assert "None" not in report_html
-
-
-def test_create_builder_insulator(
-    submit_step_widget_generator,
-):
-    """ "Test the creation of the workchain builder.
-
-    insulator, non-magnetic, no smearing
-    the occupation type is set to fixed, smearing and degauss should not be set"""
-    from aiidalab_qe.app.report import _generate_report_html
-
-    submit_step = submit_step_widget_generator(
-        electronic_type="insulator",
-    )
-
-    builder = submit_step._create_builder()
-    extra_parameters = submit_step._create_extra_report_parameters()
-
-    # check and validate the builder
-    got = builder_to_readable_dict(builder)
-
-    assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"] == "fixed"
-    assert "smearing" not in got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
-
-    # test the report can be properly generated from the builder without errors
-    builder_parameters = submit_step._extract_report_parameters(
-        builder, extra_parameters
-    )
-    report_html = _generate_report_html(builder_parameters)
-
-    # None in report_html means that the report not properly generated
-    assert "None" not in report_html
 
 
 def builder_to_readable_dict(builder):

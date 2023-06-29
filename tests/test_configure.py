@@ -25,6 +25,8 @@ def test_get_input_parameters():
 
 
 def test_set_input_parameters():
+    """insulator, non-magnetic, no smearing
+    the occupation type is set to fixed, smearing and degauss should not be set"""
     from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()

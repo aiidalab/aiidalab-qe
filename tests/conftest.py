@@ -17,6 +17,28 @@ def fixture_localhost(aiida_localhost):
 
 
 @pytest.fixture
+def fixture_code(fixture_localhost):
+    """Return an ``InstalledCode`` instance configured to run calculations of given entry point on localhost."""
+
+    def _fixture_code(entry_point_name):
+        from aiida.orm import InstalledCode, load_code
+
+        label = f"test.{entry_point_name}"
+
+        try:
+            return load_code(label=label)
+        except Exception:
+            return InstalledCode(
+                label=label,
+                computer=fixture_localhost,
+                filepath_executable="/bin/true",
+                default_calc_job_plugin=entry_point_name,
+            )
+
+    return _fixture_code
+
+
+@pytest.fixture
 def structure_data_object():
     """Return a `StructureData` object."""
     StructureData = plugins.DataFactory("core.structure")  # noqa: N806
@@ -180,9 +202,15 @@ def generate_upf_data():
 @pytest.fixture
 def pw_code(aiida_local_code_factory):
     """Return a `Code` configured for the pw.x executable."""
-    return aiida_local_code_factory(
-        label="pw-7.2", executable="bash", entry_point="quantumespresso.pw"
-    )
+    from aiida.common import exceptions
+    from aiida.orm import load_code
+
+    try:
+        return load_code(label="pw-7.2")
+    except exceptions.NotExistent:
+        return aiida_local_code_factory(
+            label="pw-7.2", executable="bash", entry_point="quantumespresso.pw"
+        )
 
 
 @pytest.fixture
@@ -229,31 +257,6 @@ def workchain_settings_generator():
 # a part of AdvancedSettings class.
 
 
-@pytest.fixture
-@pytest.mark.usefixtures("sssp")
-def submit_step_widget_generator(
-    pw_code,
-    dos_code,
-    projwfc_code,
-    structure_data_object,
-):
-    """Return a function that generates a submit step widget."""
-    from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
-
-    # I removed all the parameters related with configure step.
-    def _submit_step_widget_generator():
-        submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-        submit_step.input_structure = structure_data_object
-
-        submit_step.pw_code.value = pw_code.uuid
-        submit_step.dos_code.value = dos_code.uuid
-        submit_step.projwfc_code.value = projwfc_code.uuid
-
-        return submit_step
-
-    return _submit_step_widget_generator
-
-
 # I try to use the usefixtures decorator but it does not work
 # so I pass the pw_code etc to the parameters list
 @pytest.fixture
@@ -261,6 +264,22 @@ def app(pw_code, dos_code, projwfc_code, sssp):
     from aiidalab_qe.app.app import QEApp
 
     app = QEApp(qe_auto_setup=False)
+
+    yield app
+
+
+@pytest.fixture
+def app_to_submit(app):
+    # Step 1: select structure from example
+    step1 = app.steps.steps[0][1]
+    structure = step1.manager.children[0].children[3]
+    structure.children[0].value = structure.children[0].options[1][1]
+    step1.confirm()
+    # Step 2: configure calculation
+    step2 = app.steps.steps[1][1]
+    step2.workchain_settings.properties["bands"].run.value = True
+    step2.workchain_settings.properties["pdos"].run.value = True
+    step2.confirm()
     yield app
 
 
@@ -333,11 +352,9 @@ def generate_qeapp_workchain(app, generate_workchain):
 
 @pytest.fixture
 def generate_pdos_workchain(
-    pw_code,
-    dos_code,
-    projwfc_code,
     structure_data_object,
     fixture_localhost,
+    fixture_code,
     generate_xy_data,
     generate_projection_data,
     generate_workchain,
@@ -350,9 +367,9 @@ def generate_pdos_workchain(
         from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
         inputs = {
-            "pw_code": pw_code,
-            "dos_code": dos_code,
-            "projwfc_code": projwfc_code,
+            "pw_code": fixture_code("quantumespresso.pw"),
+            "dos_code": fixture_code("quantumespresso.dos"),
+            "projwfc_code": fixture_code("quantumespresso.projwfc"),
             "structure": structure_data_object,
         }
         builder = PdosWorkChain.get_builder_from_protocol(**inputs)
@@ -410,9 +427,9 @@ def generate_pdos_workchain(
 
 @pytest.fixture
 def generate_bands_workchain(
-    pw_code,
     structure_data_object,
     fixture_localhost,
+    fixture_code,
     generate_xy_data,
     generate_bands_data,
     generate_workchain,
@@ -427,7 +444,7 @@ def generate_bands_workchain(
         from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
         inputs = {
-            "code": pw_code,
+            "code": fixture_code("quantumespresso.pw"),
             "structure": structure_data_object,
         }
         builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)

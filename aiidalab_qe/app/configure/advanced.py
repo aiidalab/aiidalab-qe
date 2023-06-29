@@ -114,6 +114,7 @@ class AdvancedSettings(Panel):
 
         :return: a dictionary of the values of all the widgets in the panel.
         """
+        # TODO insulator, no smearing, the occupation type is set to fixed, smearing and degauss should not be set
 
         parameters = {
             "pseudo_family": self.pseudo_family_selector.value,
