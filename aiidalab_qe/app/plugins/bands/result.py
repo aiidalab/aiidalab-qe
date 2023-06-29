@@ -28,7 +28,6 @@ def export_bands_data(node, fermi_energy=None):
 
 class Result(ResultPanel):
     title = "Bands"
-    workchain_label = "bands"
 
     def _update_view(self):
         from widget_bandsplot import BandsPlotWidget

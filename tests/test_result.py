@@ -1,3 +1,12 @@
+def test_result_step(app_to_submit, generate_qeapp_workchain):
+    """Test the result step is properly updated when the process
+    is running."""
+
+    step = app_to_submit.steps.steps[3][1]
+    step.process = generate_qeapp_workchain().node.uuid
+    assert step.state == step.State.SUCCESS
+
+
 def test_workchainview(generate_qeapp_workchain):
     from aiidalab_qe.app.result.node_view import WorkChainViewer
 
@@ -18,3 +27,27 @@ def test_summary_view(generate_qeapp_workchain):
     print(wcv.result_tabs.children[0].children[0].children[0])
     # assert "None" not in report_html
     assert "None" not in wcv.result_tabs.children[0].children[0].children[0].value
+
+
+def test_electronic_structure(generate_qeapp_workchain):
+    """test the report can be properly generated from the builder without errors"""
+    from aiidalab_qe.app.result.node_view import WorkChainViewer
+
+    wkchain = generate_qeapp_workchain()
+    wcv = WorkChainViewer(wkchain.node)
+    print(wcv.result_tabs.children[2].children[0].children[0])
+    # assert "None" not in report_html
+    # TODO: Because we cat add the bands and dos nodes to the workchain,
+    # the electronic structure is not available
+    # assert 'Electronic Structure not available.' not in wcv.result_tabs.children[2].children[0].children[0].value
+
+
+def test_workchain_outputs(generate_qeapp_workchain):
+    """Test the workchain outputs widget can be properly generated
+    without errors"""
+    from aiidalab_qe.app.result.node_view import WorkChainOutputs
+
+    wkchain = generate_qeapp_workchain()
+    widget = WorkChainOutputs(wkchain.node)
+    widget._download_archive(1)
+    # TODO: check the content of the archive

@@ -27,13 +27,13 @@ def test_resources():
 
     step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
     step.resources_config.num_nodes.value = 2
-    step.resources_config.num_cpus.value = 4
+    step.resources_config.num_cpus.value = 2
     step.parallelization.npools.value = 2
     assert step.resources_config.num_nodes.value == 2
-    assert step.resources_config.num_cpus.value == 4
+    assert step.resources_config.num_cpus.value == 2
     assert step.parallelization.npools.value == 2
     # test `get_resource` method
     resources = step.get_resource()
     assert resources["num_machines"] == 2
-    assert resources["num_mpiprocs_per_machine"] == 4
+    assert resources["num_mpiprocs_per_machine"] == 2
     assert resources["npools"] == 2

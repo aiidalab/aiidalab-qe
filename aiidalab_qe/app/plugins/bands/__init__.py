@@ -2,6 +2,7 @@
 from aiidalab_qe.app.panel import OutlinePanel
 
 from .result import Result
+from .setting import Setting
 from .workchain import workchain_and_builder
 
 
@@ -16,6 +17,7 @@ SeeK-path tool</a>.
 
 property = {
     "outline": BandsOutline,
+    "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,
 }

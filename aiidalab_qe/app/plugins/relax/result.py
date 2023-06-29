@@ -7,7 +7,6 @@ from aiidalab_qe.app.panel import ResultPanel
 
 class Result(ResultPanel):
     title = "Final Geometry"
-    workchain_label = "relax"
 
     def _update_view(self):
         from aiidalab_widgets_base.viewers import StructureDataViewer

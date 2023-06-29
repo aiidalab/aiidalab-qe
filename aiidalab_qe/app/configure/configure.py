@@ -25,12 +25,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def __init__(self, parent=None, **kwargs):
         self.parent = parent
 
-        self.workchain_settings = WorkChainSettings()
+        self.workchain_settings = WorkChainSettings(identifier="workflow")
         # baisc settings (spin, electronic type ...) is splited from `workchain_settings`
-        self.basic_settings = BasicSettings()
+        self.basic_settings = BasicSettings(identifier="basic")
         # `pseudo_family_selector` and `advanced_settings` are
         # merged into `advance_settings`
-        self.advance_settings = AdvancedSettings()
+        self.advance_settings = AdvancedSettings(identifier="advanced")
         self.workchain_settings.relax_type.observe(self._update_state, "value")
         # link basic protocol to all plugin specific protocols
         ipw.dlink(
@@ -61,6 +61,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         entries = get_entry_items("aiidalab_qe.property", "setting")
         for name, entry_point in entries.items():
             self.settings[name] = entry_point(parent=self)
+            self.settings[name].identifier = name
             # link basic protocol to all plugin specific protocols
             if hasattr(self.settings[name], "workchain_protocol"):
                 ipw.dlink(
@@ -99,11 +100,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._update_state()
 
     def get_input_parameters(self):
-        """Get the builder parameters based on the GUI inputs."""
+        """Get the builder parameters based on the GUI inputs.
+        Only get the panel which is not hided."""
 
         parameters = dict()
-        for name, settings in self.settings.items():
-            parameters.update({name: settings.get_panel_value()})
+        for settings in self.tab.children:
+            parameters.update({settings.identifier: settings.get_panel_value()})
         return parameters
 
     def set_input_parameters(self, parameters):
@@ -142,7 +144,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.set_input_parameters(DEFAULT_PARAMETERS)
 
     def _update_panel(self, _=None):
-        """Dynamic add/remove the panel based on the the the workchain settings."""
+        """Dynamic add/remove the panel based on the workchain settings."""
         self.tab.children = [
             self.workchain_settings,
             self.basic_settings,

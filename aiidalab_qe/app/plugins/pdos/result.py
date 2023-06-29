@@ -158,7 +158,6 @@ def export_pdos_data(node, group_dos_by="atom"):
 
 class Result(ResultPanel):
     title = "PDOS"
-    workchain_label = "pdos"
 
     def _update_view(self):
         from widget_bandsplot import BandsPlotWidget

@@ -13,17 +13,25 @@ DEFAULT_PARAMETERS = {}
 class Panel(ipw.VBox):
     """Base class for all the panels.
 
-    The base class has a method to return the value of all the widgets in the panel as a dictionary. The dictionary is used to construct the input file for the calculation. The class also has a method to load a dictionary to set the value of the widgets in the panel.
+    The base class has a method to return the value of all the widgets in
+    the panel as a dictionary. The dictionary is used to construct the
+    input file for the calculation. The class also has a method to load a dictionary to set the value of the widgets in the panel.
+
+    title: the title to be shown in the GUI
+    identifier: which plugin this panel belong to.
+
     """
 
     title = "Panel"
 
-    def __init__(self, parent=None, **kwargs):
+    def __init__(self, parent=None, identifier="panel", **kwargs):
         """Initialize the panel.
 
         :param kwargs: keyword arguments to pass to the ipw.VBox constructor.
         """
         self.parent = parent
+        if identifier:
+            self.identifier = identifier
         super().__init__(
             children=self.children,
             **kwargs,
@@ -77,10 +85,10 @@ class OutlinePanel(Panel):
         super().__init__(**kwargs)
 
     def get_panel_value(self):
-        return {f"{self.name}_run": self.run.value}
+        return {f"{self.identifier}_run": self.run.value}
 
     def set_panel_value(self, input_dict):
-        self.run.value = input_dict.get(f"{self.name}_run", False)
+        self.run.value = input_dict.get(f"{self.identifier}_run", False)
 
 
 class ResultPanel(Panel):
@@ -91,7 +99,6 @@ class ResultPanel(Panel):
     It has a update method to update the result in the panel.
     """
 
-    workchain_label = ""
     title = "Result"
 
     def __init__(self, qeapp_node=None, node=None, **kwargs):
@@ -110,7 +117,7 @@ class ResultPanel(Panel):
         if self._node is not None:
             return self._node
         return self.qeapp_node.base.links.get_outgoing().get_node_by_label(
-            self.workchain_label
+            self.identifier
         )
 
     def _update_view(self):

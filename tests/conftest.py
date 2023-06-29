@@ -59,21 +59,20 @@ def structure_data_object():
 def generate_xy_data():
     """Return an ``XyData`` instance."""
 
-    def _generate_xy_data():
+    def _generate_xy_data(xvals=None, yvals=None, xlabel=None, ylabel=None):
         """Return an ``XyData`` node."""
-        import numpy as np
         from aiida.orm import XyData
 
-        xvals = [1, 2, 3]
-        yvals = [10, 20, 30]
-        xlabel = "X"
-        ylabel = "dos"
+        xvals = xvals  # [1, 2, 3]
+        yvals = yvals  # [10, 20, 30]
+        xlabel = xlabel  # "X"
+        ylabel = ylabel  # ["dos"]
         xunits = "n/a"
-        yunits = "n/a"
+        yunits = ["n/a"] * len(ylabel)
 
         xy_node = XyData()
-        xy_node.set_x(np.array(xvals), xlabel, xunits)
-        xy_node.set_y([np.array(yvals)], [ylabel], [yunits])
+        xy_node.set_x(xvals, xlabel, xunits)
+        xy_node.set_y(yvals, ylabel, yunits)
         xy_node.store()
         return xy_node
 
@@ -312,8 +311,6 @@ def generate_qeapp_workchain(app, generate_workchain):
     def _generate_qeapp_workchain(
         relax_type="positions_cell", run_bands=True, run_pdos=True
     ):
-        from aiida import engine
-
         from aiidalab_qe.workflows import QeAppWorkChain
 
         # Step 1: select structure from example
@@ -339,13 +336,11 @@ def generate_qeapp_workchain(app, generate_workchain):
         # override the workflow
         inputs["properties"]["bands"] = run_bands
         inputs["properties"]["pdos"] = run_pdos
-        qeapp_process = generate_workchain(QeAppWorkChain, inputs)
-        qeapp_node = qeapp_process.node
-        qeapp_node.set_exit_status(0)
-        qeapp_node.set_process_state(engine.ProcessState.FINISHED)
+        wkchain = generate_workchain(QeAppWorkChain, inputs)
         # set
+        qeapp_node = wkchain.node
         qeapp_node.base.extras.set("ui_parameters", ui_parameters)
-        return qeapp_process
+        return wkchain
 
     return _generate_qeapp_workchain
 
@@ -361,7 +356,8 @@ def generate_pdos_workchain(
 ):
     """Generate an instance of a `XpsWorkChain`."""
 
-    def _generate_pdos_workchain():
+    def _generate_pdos_workchain(spin=False):
+        import numpy as np
         from aiida import engine
         from aiida.orm import Dict, FolderData, RemoteData
         from aiida_quantumespresso.workflows.pdos import PdosWorkChain
@@ -376,9 +372,6 @@ def generate_pdos_workchain(
         inputs = builder._inputs()
         wkchain = generate_workchain(PdosWorkChain, inputs)
         wkchain.setup()
-        # run pdos and return the process
-        xy = generate_xy_data()
-        xy.store()
         remote = RemoteData(remote_path="/tmp/aiida_run")
         remote.computer = fixture_localhost
         remote.store()
@@ -386,27 +379,60 @@ def generate_pdos_workchain(
         retrieved.store()
         output_parameters = Dict(dict={"fermi_energy": 2.0})
         output_parameters.store()
-        wkchain.out(
-            "dos",
-            {
-                "output_dos": xy,
-                "output_parameters": output_parameters,
-                "remote_folder": remote,
-                "retrieved": retrieved,
-            },
-        )
         proj = generate_projection_data()
         proj.store()
-        wkchain.out(
-            "projwfc",
-            {
-                "Dos": xy,
-                "projections": proj,
-                "output_parameters": output_parameters,
-                "remote_folder": remote,
-                "retrieved": retrieved,
-            },
-        )
+        if not spin:
+            xy = generate_xy_data(
+                np.array([1, 2, 3]), [np.array([1, 2, 3])], "X", ["dos"]
+            )
+            xy.store()
+            wkchain.out(
+                "dos",
+                {
+                    "output_dos": xy,
+                    "output_parameters": output_parameters,
+                    "remote_folder": remote,
+                    "retrieved": retrieved,
+                },
+            )
+            wkchain.out(
+                "projwfc",
+                {
+                    "Dos": xy,
+                    "projections": proj,
+                    "output_parameters": output_parameters,
+                    "remote_folder": remote,
+                    "retrieved": retrieved,
+                },
+            )
+        else:
+            xy = generate_xy_data(
+                np.array([1, 2, 3]),
+                [np.array([1, 2, 3]), np.array([1, 2, 3])],
+                "X",
+                ["dos_spin_up", "dos_spin_down"],
+            )
+            xy.store()
+            wkchain.out(
+                "dos",
+                {
+                    "output_dos": xy,
+                    "output_parameters": output_parameters,
+                    "remote_folder": remote,
+                    "retrieved": retrieved,
+                },
+            )
+            wkchain.out(
+                "projwfc",
+                {
+                    "Dos": xy,
+                    "projections_up": proj,
+                    "projections_down": proj,
+                    "output_parameters": output_parameters,
+                    "remote_folder": remote,
+                    "retrieved": retrieved,
+                },
+            )
         wkchain.out(
             "nscf",
             {
@@ -452,7 +478,7 @@ def generate_bands_workchain(
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
         wkchain = generate_workchain(PwBandsWorkChain, inputs)
         wkchain.setup()
-        # run pdos and return the process
+        # run bands and return the process
         output_parameters = Dict(dict={"fermi_energy": 2.0})
         output_parameters.store()
         wkchain.out("scf_parameters", output_parameters)
@@ -462,6 +488,7 @@ def generate_bands_workchain(
         band_structure.store()
         wkchain.out("band_structure", band_structure)
         wkchain.update_outputs()
+        #
         bands_node = wkchain.node
         bands_node.set_exit_status(0)
         bands_node.set_process_state(engine.ProcessState.FINISHED)

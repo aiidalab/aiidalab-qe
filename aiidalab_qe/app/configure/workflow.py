@@ -5,6 +5,8 @@ from aiidalab_qe.app.utils import get_entry_items
 
 
 class WorkChainSettings(Panel):
+    identifier = "bands"
+
     relax_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Structure optimization</h4></div>"""

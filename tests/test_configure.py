@@ -52,7 +52,7 @@ def test_set_input_parameters():
         "workflow": {
             "relax_type": "positions",
             "properties": {
-                "bands": True,
+                "bands": False,
                 "pdos": False,
             },
         },
@@ -60,3 +60,17 @@ def test_set_input_parameters():
     wg.set_input_parameters(parameters_ref)
     parameters = wg.get_input_parameters()
     assert parameters == parameters_ref
+
+
+def test_panel():
+    """Dynamic add/remove the panel based on the workchain settings."""
+    from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
+
+    wg = ConfigureQeAppWorkChainStep()
+    assert len(wg.tab.children) == 3
+    parameters = wg.get_input_parameters()
+    assert "bands" not in parameters
+    wg.workchain_settings.properties["bands"].run.value = True
+    assert len(wg.tab.children) == 4
+    parameters = wg.get_input_parameters()
+    assert "bands" in parameters

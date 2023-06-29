@@ -11,6 +11,16 @@ def test_app_steps(app):
     assert step2.previous_step_state == step1.State.SUCCESS
 
 
+def test_app_workchain_selector(app, generate_qeapp_workchain):
+    """Test workchain selector.
+    When qeapp submit a new process, it will update the value of the
+    WorkChainSelector"""
+    qeapp_process = generate_qeapp_workchain()
+    step3 = app.steps.steps[2][1]
+    step3.process = qeapp_process.node
+    assert app.work_chain_selector.value == qeapp_process.node.pk
+
+
 def test_app_submit(app):
     # Step 1: select structure from example
     step1 = app.steps.steps[0][1]
