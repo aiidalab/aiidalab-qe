@@ -30,7 +30,7 @@ FUNCTIONAL_REPORT_MAP = {
 }
 
 
-def extract_report_parameters(builder, ui_parameters) -> dict[str, typing.Any]:
+def extract_report_parameters(builder, ui_parameters) -> typing.Dict[str, typing.Any]:
     """Extract (recover) the parameters for report from the builder and ui parameters.
     There are some parameters that are not stored in the builder, but can be extracted
     directly from the widgets, such as the ``pseudo_family`` and ``relax_type``.
