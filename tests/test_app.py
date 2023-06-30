@@ -44,3 +44,14 @@ def test_app_submit(app):
     assert step3.resources_config.num_cpus.value == 2
     builder, ui_parameters = step3._create_builder()
     # step3.submit()
+
+
+def test_app_load_process(app, generate_qeapp_workchain):
+    """Load a process from the workchain selector.
+    It should triger the app to load all widiget values from the process."""
+    qeapp_process = generate_qeapp_workchain(run_bands=True, run_pdos=False)
+    app.work_chain_selector.value = qeapp_process.node.pk
+    parameters = qeapp_process.node.base.extras.get("ui_parameters", {})
+    print(parameters)
+    assert app.configure_step.workchain_settings.properties["bands"].run.value is True
+    assert app.configure_step.workchain_settings.properties["pdos"].run.value is False

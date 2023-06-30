@@ -66,14 +66,10 @@ class QeAppWorkChain(WorkChain):
                        message='The PwBandsWorkChain sub process failed')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
-        spec.output('structure', valid_type=StructureData, required=False)
-        spec.output('band_parameters', valid_type=orm.Dict, required=False)
-        spec.output('band_structure', valid_type=BandsData, required=False)
-        spec.output('nscf_parameters', valid_type=orm.Dict, required=False)
-        spec.output('dos', valid_type=XyData, required=False)
-        spec.output('projections', valid_type=Orbital, required=False)
-        spec.output('projections_up', valid_type=Orbital, required=False)
-        spec.output('projections_down', valid_type=Orbital, required=False)
+        spec.expose_outputs(PwRelaxWorkChain, namespace='relax')
+        spec.expose_outputs(PwBandsWorkChain, namespace='bands')
+        spec.expose_outputs(PdosWorkChain, namespace='pdos')
+
         # yapf: enable
 
     @classmethod
@@ -151,13 +147,19 @@ class QeAppWorkChain(WorkChain):
                 f"PwRelaxWorkChain failed with exit status {workchain.exit_status}"
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_RELAX
+        else:
+            # Attach the output nodes directly as outputs of the workchain.
+            self.out_many(
+                self.exposed_outputs(
+                    self.ctx.workchain_relax, PwRelaxWorkChain, namespace="relax"
+                )
+            )
 
         if "output_structure" in workchain.outputs:
             self.ctx.current_structure = workchain.outputs.output_structure
             self.ctx.current_number_of_bands = (
                 workchain.outputs.output_parameters.get_attribute("number_of_bands")
             )
-            self.out("structure", self.ctx.current_structure)
 
     def should_run_bands(self):
         """Check if the band structure should be calculated."""
@@ -199,6 +201,12 @@ class QeAppWorkChain(WorkChain):
         )
         self.ctx.scf_parent_folder = scf.outputs.remote_folder
         self.ctx.current_structure = workchain.outputs.primitive_structure
+        # Attach the output nodes directly as outputs of the workchain.
+        self.out_many(
+            self.exposed_outputs(
+                self.ctx.workchain_bands, PwBandsWorkChain, namespace="bands"
+            )
+        )
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""
@@ -236,34 +244,17 @@ class QeAppWorkChain(WorkChain):
                 f"PdosWorkChain failed with exit status {workchain.exit_status}"
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_PDOS
+        # Attach the output nodes directly as outputs of the workchain.
+        self.out_many(
+            self.exposed_outputs(
+                self.ctx.workchain_pdos, PdosWorkChain, namespace="pdos"
+            )
+        )
 
     def results(self):
         """Add the results to the outputs."""
-        if "workchain_bands" in self.ctx:
-            self.out(
-                "band_parameters", self.ctx.workchain_bands.outputs.band_parameters
-            )
-            self.out("band_structure", self.ctx.workchain_bands.outputs.band_structure)
 
-        if "workchain_pdos" in self.ctx:
-            self.out(
-                "nscf_parameters",
-                self.ctx.workchain_pdos.outputs.nscf.output_parameters,
-            )
-            self.out("dos", self.ctx.workchain_pdos.outputs.dos.output_dos)
-            if "projections_up" in self.ctx.workchain_pdos.outputs.projwfc:
-                self.out(
-                    "projections_up",
-                    self.ctx.workchain_pdos.outputs.projwfc.projections_up,
-                )
-                self.out(
-                    "projections_down",
-                    self.ctx.workchain_pdos.outputs.projwfc.projections_down,
-                )
-            else:
-                self.out(
-                    "projections", self.ctx.workchain_pdos.outputs.projwfc.projections
-                )
+        self.report("workchain successfully completed")
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""

@@ -95,6 +95,9 @@ class QEApp:
                         )
                         self.configure_step.state = WizardAppWidgetStep.State.SUCCESS
                         self.submit_step.process = process
+                # set ui_parameters
+                ui_parameters = process.base.extras.get("ui_parameters", {})
+                self.configure_step.set_input_parameters(ui_parameters)
 
         self.work_chain_selector.observe(_observe_process_selection, "value")
         ipw.dlink(

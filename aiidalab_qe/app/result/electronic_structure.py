@@ -10,18 +10,14 @@ def export_data(work_chain_node, group_dos_by="atom"):
     from aiidalab_qe.app.plugins.bands.result import export_bands_data
     from aiidalab_qe.app.plugins.pdos.result import export_pdos_data
 
-    if "pdos" in work_chain_node.base.links.get_outgoing().all_link_labels():
-        pdos_node = work_chain_node.base.links.get_outgoing().get_node_by_label("pdos")
-        dos = export_pdos_data(pdos_node, group_dos_by=group_dos_by)
+    if "pdos" in work_chain_node.outputs:
+        dos = export_pdos_data(work_chain_node.outputs.pdos, group_dos_by=group_dos_by)
         fermi_energy = dos["fermi_energy"] if dos else None
     else:
         dos = None
         fermi_energy = None
-    if "bands" in work_chain_node.base.links.get_outgoing().all_link_labels():
-        bands_node = work_chain_node.base.links.get_outgoing().get_node_by_label(
-            "bands"
-        )
-        bands = export_bands_data(bands_node, fermi_energy)
+    if "bands" in work_chain_node.outputs:
+        bands = export_bands_data(work_chain_node.outputs.bands, fermi_energy)
     else:
         bands = None
 
@@ -33,6 +29,9 @@ def export_data(work_chain_node, group_dos_by="atom"):
 
 class ElectronicStructure(ResultPanel):
     title = "Electronic Structure"
+
+    def __init__(self, node=None, **kwargs):
+        super().__init__(node=node, identifier="electronic", **kwargs)
 
     def _update_view(self):
         from widget_bandsplot import BandsPlotWidget
@@ -61,7 +60,7 @@ class ElectronicStructure(ResultPanel):
             layout={"margin": "0 0 30px 30px"},
         )
         #
-        data = export_data(self.qeapp_node, group_dos_by=group_dos_by.value)
+        data = export_data(self.node, group_dos_by=group_dos_by.value)
         bands_data = data.get("bands", None)
         dos_data = data.get("dos", None)
         if bands_data is None and dos_data is None:

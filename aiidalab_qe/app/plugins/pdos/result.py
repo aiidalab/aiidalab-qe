@@ -80,16 +80,16 @@ def _projections_curated(
     return dos
 
 
-def export_pdos_data(node, group_dos_by="atom"):
+def export_pdos_data(outputs, group_dos_by="atom"):
     import json
 
-    if "output_dos" in node.outputs.dos:
-        _, energy_dos, _ = node.outputs.dos.output_dos.get_x()
-        tdos_values = {f"{n}": v for n, v, _ in node.outputs.dos.output_dos.get_y()}
+    if "output_dos" in outputs.dos:
+        _, energy_dos, _ = outputs.dos.output_dos.get_x()
+        tdos_values = {f"{n}": v for n, v, _ in outputs.dos.output_dos.get_y()}
 
         dos = []
 
-        if "projections" in node.outputs.projwfc:
+        if "projections" in outputs.projwfc:
             # The total dos parsed
             tdos = {
                 "label": "Total DOS",
@@ -103,7 +103,7 @@ def export_pdos_data(node, group_dos_by="atom"):
             dos.append(tdos)
 
             dos += _projections_curated(
-                node.outputs.projwfc.projections,
+                outputs.projwfc.projections,
                 group_dos_by=group_dos_by,
                 spin_type="none",
             )
@@ -132,21 +132,21 @@ def export_pdos_data(node, group_dos_by="atom"):
 
             # spin-up (↑)
             dos += _projections_curated(
-                node.outputs.projwfc.projections_up,
+                outputs.projwfc.projections_up,
                 group_dos_by=group_dos_by,
                 spin_type="up",
             )
 
             # spin-dn (↓)
             dos += _projections_curated(
-                node.outputs.projwfc.projections_down,
+                outputs.projwfc.projections_down,
                 group_dos_by=group_dos_by,
                 spin_type="down",
                 line_style="dash",
             )
 
         data_dict = {
-            "fermi_energy": node.outputs.nscf.output_parameters["fermi_energy"],
+            "fermi_energy": outputs.nscf.output_parameters["fermi_energy"],
             "dos": dos,
         }
 
@@ -159,7 +159,11 @@ def export_pdos_data(node, group_dos_by="atom"):
 class Result(ResultPanel):
     title = "PDOS"
 
+    def __init__(self, node=None, **kwargs):
+        super().__init__(node=node, identifier="pdos", **kwargs)
+
     def _update_view(self):
+        """Update the view of the widget."""
         from widget_bandsplot import BandsPlotWidget
 
         group_dos_by = ipw.ToggleButtons(
@@ -186,13 +190,13 @@ class Result(ResultPanel):
             layout={"margin": "0 0 30px 30px"},
         )
         #
-        dos_data = export_pdos_data(self.node, group_dos_by=group_dos_by.value)
+        dos_data = export_pdos_data(self.outputs, group_dos_by=group_dos_by.value)
         _bands_plot_view = BandsPlotWidget(
             dos=dos_data,
         )
 
         def response(change):
-            dos_data = export_pdos_data(self.node, group_dos_by=group_dos_by.value)
+            dos_data = export_pdos_data(self.outputs, group_dos_by=group_dos_by.value)
             _bands_plot_view = BandsPlotWidget(
                 dos=dos_data,
             )

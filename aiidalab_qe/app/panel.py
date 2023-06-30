@@ -101,9 +101,8 @@ class ResultPanel(Panel):
 
     title = "Result"
 
-    def __init__(self, qeapp_node=None, node=None, **kwargs):
-        self.qeapp_node = qeapp_node
-        self._node = node
+    def __init__(self, node=None, **kwargs):
+        self.node = node
         self.children = [
             ipw.VBox(
                 [ipw.Label(f"{self.title} not available.")],
@@ -113,12 +112,12 @@ class ResultPanel(Panel):
         super().__init__(**kwargs)
 
     @property
-    def node(self):
-        if self._node is not None:
-            return self._node
-        return self.qeapp_node.base.links.get_outgoing().get_node_by_label(
-            self.identifier
-        )
+    def outputs(self):
+        """Outputs of the calculation."""
+        if self.node is None:
+            return None
+
+        return getattr(self.node.outputs, self.identifier)
 
     def _update_view(self):
         """Update the result in the panel.

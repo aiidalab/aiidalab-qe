@@ -176,7 +176,7 @@ class SummaryView(ResultPanel):
     title = "Workflow Summary"
 
     def _update_view(self):
-        report_html = generate_report_html(self.qeapp_node)
+        report_html = generate_report_html(self.node)
 
         self.summary_view = ipw.HTML(report_html)
         self.children = [self.summary_view]

@@ -217,7 +217,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if any(blockers):
             self._submission_blockers = blockers
             self.state = self.State.READY
-            print("Submission blocked:", self._submission_blockers)
+            # print("Submission blocked:", self._submission_blockers)
             return
 
         self._submission_blockers = []

@@ -305,47 +305,6 @@ def generate_workchain():
 
 
 @pytest.fixture
-def generate_qeapp_workchain(app, generate_workchain):
-    """Generate an instance of a `XpsWorkChain`."""
-
-    def _generate_qeapp_workchain(
-        relax_type="positions_cell", run_bands=True, run_pdos=True
-    ):
-        from aiidalab_qe.workflows import QeAppWorkChain
-
-        # Step 1: select structure from example
-        s1 = app.steps.steps[0][1]
-        structure = s1.manager.children[0].children[3]
-        structure.children[0].value = structure.children[0].options[1][1]
-        s1.confirm()
-        # step 2 configure
-        s2 = app.steps.steps[1][1]
-        s2.workchain_settings.relax_type.value = relax_type
-        # In order to parepare a complete inputs, I set all the properties to true
-        # I wil override this later
-        s2.workchain_settings.properties["bands"].run.value = True
-        s2.workchain_settings.properties["pdos"].run.value = True
-        s2.basic_settings.workchain_protocol.value = "fast"
-        s2.confirm()
-        # step 3 setup code and resources
-        #
-        s3 = app.steps.steps[2][1]
-        s3.resources_config.num_cpus.value = 4
-        builder, ui_parameters = s3._create_builder()
-        inputs = builder._inputs()
-        # override the workflow
-        inputs["properties"]["bands"] = run_bands
-        inputs["properties"]["pdos"] = run_pdos
-        wkchain = generate_workchain(QeAppWorkChain, inputs)
-        # set
-        qeapp_node = wkchain.node
-        qeapp_node.base.extras.set("ui_parameters", ui_parameters)
-        return wkchain
-
-    return _generate_qeapp_workchain
-
-
-@pytest.fixture
 def generate_pdos_workchain(
     structure_data_object,
     fixture_localhost,
@@ -356,7 +315,7 @@ def generate_pdos_workchain(
 ):
     """Generate an instance of a `XpsWorkChain`."""
 
-    def _generate_pdos_workchain(spin=False):
+    def _generate_pdos_workchain(spin_type="none"):
         import numpy as np
         from aiida import engine
         from aiida.orm import Dict, FolderData, RemoteData
@@ -372,6 +331,7 @@ def generate_pdos_workchain(
         inputs = builder._inputs()
         wkchain = generate_workchain(PdosWorkChain, inputs)
         wkchain.setup()
+        # wkchain.run_pdos()
         remote = RemoteData(remote_path="/tmp/aiida_run")
         remote.computer = fixture_localhost
         remote.store()
@@ -381,7 +341,7 @@ def generate_pdos_workchain(
         output_parameters.store()
         proj = generate_projection_data()
         proj.store()
-        if not spin:
+        if spin_type == "none":
             xy = generate_xy_data(
                 np.array([1, 2, 3]), [np.array([1, 2, 3])], "X", ["dos"]
             )
@@ -496,3 +456,66 @@ def generate_bands_workchain(
         return wkchain
 
     return _generate_bands_workchain
+
+
+@pytest.fixture
+def generate_qeapp_workchain(
+    app, generate_workchain, generate_pdos_workchain, generate_bands_workchain
+):
+    """Generate an instance of a `XpsWorkChain`."""
+
+    def _generate_qeapp_workchain(
+        relax_type="positions_cell", run_bands=True, run_pdos=True, spin_type="none"
+    ):
+        from aiidalab_qe.workflows import QeAppWorkChain
+
+        # Step 1: select structure from example
+        s1 = app.steps.steps[0][1]
+        structure = s1.manager.children[0].children[3]
+        structure.children[0].value = structure.children[0].options[1][1]
+        s1.confirm()
+        # step 2 configure
+        s2 = app.steps.steps[1][1]
+        s2.workchain_settings.relax_type.value = relax_type
+        # In order to parepare a complete inputs, I set all the properties to true
+        # I wil override this later
+        s2.workchain_settings.properties["bands"].run.value = True
+        s2.workchain_settings.properties["pdos"].run.value = True
+        s2.basic_settings.workchain_protocol.value = "fast"
+        s2.basic_settings.spin_type.value = spin_type
+        s2.confirm()
+        # step 3 setup code and resources
+        #
+        s3 = app.steps.steps[2][1]
+        s3.resources_config.num_cpus.value = 4
+        builder, ui_parameters = s3._create_builder()
+        inputs = builder._inputs()
+        # override the workflow
+        inputs["properties"]["bands"] = run_bands
+        inputs["properties"]["pdos"] = run_pdos
+        ui_parameters["workflow"]["properties"]["bands"] = run_bands
+        ui_parameters["workflow"]["properties"]["pdos"] = run_pdos
+        wkchain = generate_workchain(QeAppWorkChain, inputs)
+        wkchain.setup()
+        # mock output
+        if run_pdos:
+            from aiida_quantumespresso.workflows.pdos import PdosWorkChain
+
+            pdos = generate_pdos_workchain(spin_type)
+            wkchain.out_many(
+                wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
+            )
+        if run_bands:
+            from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+
+            bands = generate_bands_workchain()
+            wkchain.out_many(
+                wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
+            )
+        wkchain.update_outputs()
+        # set
+        qeapp_node = wkchain.node
+        qeapp_node.base.extras.set("ui_parameters", ui_parameters)
+        return wkchain
+
+    return _generate_qeapp_workchain

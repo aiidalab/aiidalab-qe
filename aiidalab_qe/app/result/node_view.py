@@ -267,7 +267,6 @@ class WorkChainViewer(ipw.VBox):
             if not ui_parameters["workflow"]["properties"][name]:
                 continue
             result = entry_point(self.node)
-            result.identifier = name
             self.results[name] = result
             self.result_tabs.children += (result,)
             self.result_tabs.set_title(len(self.result_tabs.children) - 1, result.title)
@@ -315,16 +314,13 @@ class WorkChainViewer(ipw.VBox):
             # update the plugin specific results
             for result in self.result_tabs.children[1:]:
                 # check if the result is already shown
-                # check if the plugin workchain is in the output links
+                # check if the plugin workchain result is in the outputs
                 if (
                     result.identifier not in self._results_shown
-                    and result.identifier
-                    in self.node.base.links.get_outgoing().all_link_labels()
+                    and result.identifier in self.node.outputs
                 ):
-                    # check if the plugin workchain is finished
-                    if result.node.is_finished:
-                        result._update_view()
-                        self._results_shown.add(result.identifier)
+                    result._update_view()
+                    self._results_shown.add(result.identifier)
             # electronic structure needs to combine the results from the bands and pdos
             # TODO find a better way to show the results from several workchains
             self.result_tabs.children[2]._update_view()
