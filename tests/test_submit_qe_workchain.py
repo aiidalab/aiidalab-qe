@@ -26,6 +26,8 @@ def test_create_builder_default(
 
     metal, non-magnetic
     """
+    from bs4 import BeautifulSoup
+
     from aiidalab_qe.app.report import _generate_report_html
 
     submit_step = submit_step_widget_generator()
@@ -45,12 +47,11 @@ def test_create_builder_default(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # None in report_html means that the report not properly generated expect in initial_magnetic_moments
-    # assert "None" not in report_html
-    assert (
-        report_html.count("None") <= 1
-        or builder_parameters("initial_magnetic_moments") is not None
-    )
+    # There should be only one None from initial_magnetic_moments
+    assert report_html.count("None") == 1
+    if "initial_magnetic_moments" not in builder_parameters:
+        parsed = BeautifulSoup(report_html, "html.parser")
+        assert parsed.find("initial_magnetic_moments").text == "None"
 
 
 def test_create_builder_insulator(
@@ -60,6 +61,8 @@ def test_create_builder_insulator(
 
     insulator, non-magnetic, no smearing
     the occupation type is set to fixed, smearing and degauss should not be set"""
+    from bs4 import BeautifulSoup
+
     from aiidalab_qe.app.report import _generate_report_html
 
     submit_step = submit_step_widget_generator(
@@ -81,12 +84,61 @@ def test_create_builder_insulator(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # None in report_html means that the report not properly generated except in initial_magnetic_moments
-    # assert "None" not in report_html
-    assert (
-        report_html.count("None") <= 1
-        or builder_parameters("initial_magnetic_moments") is not None
+    # There should be only one None from initial_magnetic_moments
+    assert report_html.count("None") == 1
+    if "initial_magnetic_moments" not in builder_parameters:
+        parsed = BeautifulSoup(report_html, "html.parser")
+        assert parsed.find("initial_magnetic_moments").text == "None"
+
+
+def test_create_builder_advanced_settings(
+    submit_step_widget_generator,
+):
+    """ "Test the creation of the workchain builder.
+
+    insulator, non-magnetic, no smearing
+    the occupation type is set to fixed, smearing and degauss should not be set"""
+    from aiidalab_qe.app.report import _generate_report_html
+
+    submit_step = submit_step_widget_generator(
+        electronic_type="metal",
+        spin_type="collinear",
+        tot_charge=1.0,
+        initial_magnetic_moments=0.1,
     )
+
+    builder = submit_step._create_builder()
+    extra_parameters = submit_step._create_extra_report_parameters()
+
+    # check and validate the builder
+    got = builder_to_readable_dict(builder)
+
+    # test tot_charge is updated in the three steps
+    assert got["relax"]["base"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
+    assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
+    assert got["pdos"]["scf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
+    assert got["pdos"]["nscf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
+
+    # test initial_magnetic_moments set 'starting_magnetization' in pw.in
+    assert (
+        got["relax"]["base"]["pw"]["parameters"]["SYSTEM"]["starting_magnetization"][
+            "Si"
+        ]
+        == 0.025
+    )
+
+    # test the report can be properly generated from the builder without errors
+    builder_parameters = submit_step._extract_report_parameters(
+        builder, extra_parameters
+    )
+
+    # test initial_magnetization _moments for the report
+    assert builder_parameters["initial_magnetic_moments"]["Si"] == 0.1
+
+    report_html = _generate_report_html(builder_parameters)
+
+    # None in report_html means that the report not properly generated
+    assert "None" not in report_html
 
 
 def builder_to_readable_dict(builder):

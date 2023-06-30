@@ -267,6 +267,8 @@ class AdvancedSettings(ipw.VBox):
 
 
 class TotalCharge(ipw.VBox):
+    """Widget to define the total charge of the simulation"""
+
     tot_charge_default = traitlets.Float(default_value=0.0)
 
     def __init__(self, **kwargs):
@@ -324,12 +326,18 @@ class TotalCharge(ipw.VBox):
 
 
 class MagnetizationSettings(ipw.VBox):
+    """Widget to set the initial_magnetic_moments from each Kind in StructureData
+
+    Attributes:
+        input_structure(StructureData): trait that containes the input_strucgure (confirmed structure from previous step)
+    """
+
     input_structure = traitlets.Instance(StructureData, allow_none=True)
-    input_structure_labels = traitlets.List([])
 
     def __init__(self, **kwargs):
         self.input_structure = StructureData()
-        self.kinds = self.create_kinds_widgets()
+        self.input_structure_labels = []
+        self.kinds = self.create_kinds_widget()
         self.kinds_widget_out = ipw.Output()
         self.override = ipw.Checkbox(
             description="Override",
@@ -348,44 +356,56 @@ class MagnetizationSettings(ipw.VBox):
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
-        self.override.observe(self._disable_kings_widgets, "value")
+        self.display_kinds()
+        self.override.observe(self._disable_kinds_widgets, "value")
 
-    def _disable_kings_widgets(self, _=None):
+    def _disable_kinds_widgets(self, _=None):
         for i in range(1, len(self.kinds.children)):
             self.kinds.children[i].children[0].disabled = not self.override.value
 
     def reset(self):
         self.override.value = False
-        for i in range(1, len(self.kinds.children)):
-            self.kinds.children[i].children[0].value = 0.0
+        if hasattr(self.kinds, "children") and self.kinds.children:
+            for i in range(1, len(self.kinds.children)):
+                self.kinds.children[i].children[0].value = 0.0
 
     def create_kinds_widget(self):
-        widgets_list = []
-        for label in self.input_structure_labels:
-            hbox = ipw.HBox()
-            float_widget = ipw.BoundedFloatText(
-                description=label,
-                min=-1,
-                max=1,
-                step=0.1,
-                value=0.0,
-                disabled=True,
+        if self.input_structure_labels:
+            widgets_list = []
+            for label in self.input_structure_labels:
+                hbox = ipw.HBox()
+                float_widget = ipw.BoundedFloatText(
+                    description=label,
+                    min=-1,
+                    max=1,
+                    step=0.1,
+                    value=0.0,
+                    disabled=True,
+                )
+                hbox.children = [float_widget]
+                widgets_list.append(hbox)
+            kinds_widget = ipw.VBox([ipw.HTML("Define magnetization")] + widgets_list)
+        else:
+            kinds_widget = ipw.HTML(
+                "Define magnetization: Input structure not confirmed"
             )
-            hbox.children = [float_widget]
-            widgets_list.append(hbox)
-        kinds_widget = ipw.VBox([ipw.HTML("Define magnetization")] + widgets_list)
+
         return kinds_widget
 
-    def update_kinds_widgets(self, change):
+    def update_kinds_widget(self):
         self.input_structure_labels = self.input_structure.get_kind_names()
-        self.kinds = self.create_kinds_widgets()
-        with self.kinds_widget_out:
-            clear_output()
-            display(self.kinds)
+        self.kinds = self.create_kinds_widget()
+        self.display_kinds()
+
+    def display_kinds(self):
+        if "PYTEST_CURRENT_TEST" not in os.environ:
+            with self.kinds_widget_out:
+                clear_output()
+                display(self.kinds)
 
     def _update_widget(self, change):
         self.input_structure = change["new"]
-        self.update_kinds_widgets(change)
+        self.update_kinds_widget()
 
     def get_magnetization(self):
         magnetization = {}
@@ -394,6 +414,16 @@ class MagnetizationSettings(ipw.VBox):
                 self.kinds.children[i].children[0].value
             )
         return magnetization
+
+    def _set_magnetization_values(self, **kwargs):
+        """Update used for conftest setting all magnetization to a value"""
+        self.override.value = True
+        with self.hold_trait_notifications():
+            if "initial_magnetic_moments" in kwargs:
+                for i in range(1, len(self.kinds.children)):
+                    self.kinds.children[i].children[0].value = kwargs[
+                        "initial_magnetic_moments"
+                    ]
 
 
 class SmearingSettings(ipw.VBox):
@@ -1048,8 +1078,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
         """Get the parameters of the `QeWorkChain` from widgets."""
-        # create the the starting magnetization as None (Default)
-        starting_magnetization = None
+        # create the the initial_magnetic_moments as None (Default)
+        initial_magnetic_moments = None
         # create the override parameters for sub PwBaseWorkChain
         pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
         for key in ["base", "scf", "nscf", "band"]:
@@ -1065,7 +1095,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     self.advanced_settings.magnetization.override.value
                     and self.workchain_settings.spin_type.value == "collinear"
                 ):
-                    starting_magnetization = (
+                    initial_magnetic_moments = (
                         self.advanced_settings.magnetization.get_magnetization()
                     )
 
@@ -1128,7 +1158,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=spin_type,
             electronic_type=electronic_type,
             overrides=overrides,
-            initial_magnetic_moments=starting_magnetization,
+            initial_magnetic_moments=initial_magnetic_moments,
         )
 
     def _create_builder(self) -> ProcessBuilderNamespace:
