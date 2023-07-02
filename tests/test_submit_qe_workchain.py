@@ -94,7 +94,7 @@ def test_create_builder_insulator(
 def test_create_builder_advanced_settings(
     submit_step_widget_generator,
 ):
-    """ "Test the creation of the workchain builder.
+    """Test the creation of the workchain builder.
 
     insulator, non-magnetic, no smearing
     the occupation type is set to fixed, smearing and degauss should not be set"""
