@@ -326,7 +326,11 @@ class TotalCharge(ipw.VBox):
 
 
 class MagnetizationSettings(ipw.VBox):
-    """Widget to set the initial_magnetic_moments from each Kind in StructureData
+    """Widget to set the initial magnetic moments for each kind names defined in the StructureData (StructureDtaa.get_kind_names())
+    Usually these are the names of the elements in the StructureData
+    (For example 'C' , 'N' , 'Fe' . However the StructureData can have defined kinds like 'Fe1' and 'Fe2')
+
+    The widget generate a dictionary that can be used to set initial_magnetic_moments in the builder of PwBaseWorkChain
 
     Attributes:
         input_structure(StructureData): trait that containes the input_strucgure (confirmed structure from previous step)
@@ -337,6 +341,9 @@ class MagnetizationSettings(ipw.VBox):
     def __init__(self, **kwargs):
         self.input_structure = StructureData()
         self.input_structure_labels = []
+        self.description = ipw.HTML(
+            "Define magnetization: Input structure not confirmed"
+        )
         self.kinds = self.create_kinds_widget()
         self.kinds_widget_out = ipw.Output()
         self.override = ipw.Checkbox(
@@ -349,6 +356,7 @@ class MagnetizationSettings(ipw.VBox):
                 ipw.HBox(
                     [
                         self.override,
+                        self.description,
                         self.kinds_widget_out,
                     ],
                 ),
@@ -360,45 +368,43 @@ class MagnetizationSettings(ipw.VBox):
         self.override.observe(self._disable_kinds_widgets, "value")
 
     def _disable_kinds_widgets(self, _=None):
-        for i in range(1, len(self.kinds.children)):
-            self.kinds.children[i].children[0].disabled = not self.override.value
+        for i in range(len(self.kinds.children)):
+            # for i in range(1, len(self.kinds.children)):
+            self.kinds.children[i].disabled = not self.override.value
 
     def reset(self):
         self.override.value = False
         if hasattr(self.kinds, "children") and self.kinds.children:
-            for i in range(1, len(self.kinds.children)):
-                self.kinds.children[i].children[0].value = 0.0
+            for i in range(len(self.kinds.children)):
+                self.kinds.children[i].value = 0.0
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
             widgets_list = []
-            for label in self.input_structure_labels:
-                hbox = ipw.HBox()
-                float_widget = ipw.BoundedFloatText(
-                    description=label,
+            for kind_label in self.input_structure_labels:
+                kind_widget = ipw.BoundedFloatText(
+                    description=kind_label,
                     min=-1,
                     max=1,
                     step=0.1,
                     value=0.0,
                     disabled=True,
                 )
-                hbox.children = [float_widget]
-                widgets_list.append(hbox)
-            kinds_widget = ipw.VBox([ipw.HTML("Define magnetization")] + widgets_list)
+                widgets_list.append(kind_widget)
+            kinds_widget = ipw.VBox(widgets_list)
         else:
-            kinds_widget = ipw.HTML(
-                "Define magnetization: Input structure not confirmed"
-            )
+            kinds_widget = None
 
         return kinds_widget
 
     def update_kinds_widget(self):
         self.input_structure_labels = self.input_structure.get_kind_names()
         self.kinds = self.create_kinds_widget()
+        self.description.value = "Define magnetization: "
         self.display_kinds()
 
     def display_kinds(self):
-        if "PYTEST_CURRENT_TEST" not in os.environ:
+        if "PYTEST_CURRENT_TEST" not in os.environ and self.kinds:
             with self.kinds_widget_out:
                 clear_output()
                 display(self.kinds)
@@ -409,10 +415,8 @@ class MagnetizationSettings(ipw.VBox):
 
     def get_magnetization(self):
         magnetization = {}
-        for i in range(1, len(self.kinds.children)):
-            magnetization[self.input_structure_labels[i - 1]] = (
-                self.kinds.children[i].children[0].value
-            )
+        for i in range(len(self.kinds.children)):
+            magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
         return magnetization
 
     def _set_magnetization_values(self, **kwargs):
@@ -420,10 +424,8 @@ class MagnetizationSettings(ipw.VBox):
         self.override.value = True
         with self.hold_trait_notifications():
             if "initial_magnetic_moments" in kwargs:
-                for i in range(1, len(self.kinds.children)):
-                    self.kinds.children[i].children[0].value = kwargs[
-                        "initial_magnetic_moments"
-                    ]
+                for i in range(len(self.kinds.children)):
+                    self.kinds.children[i].value = kwargs["initial_magnetic_moments"]
 
 
 class SmearingSettings(ipw.VBox):
