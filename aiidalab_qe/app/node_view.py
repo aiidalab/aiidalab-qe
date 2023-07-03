@@ -587,7 +587,7 @@ class WorkChainViewer(ipw.VBox):
         with self.hold_trait_notifications():
             if self.node.is_finished:
                 self._show_workflow_output()
-                if self.node.is_file_ok and self.hubbard_cond == "Yes":
+                if self.node.is_finished_ok and self.hubbard_cond == "Yes":
                     self._show_hubbard_occupations()
             if (
                 "structure" not in self._results_shown
