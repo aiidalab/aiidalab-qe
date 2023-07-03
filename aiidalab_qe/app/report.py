@@ -72,6 +72,7 @@ def _generate_report_dict(builder_parameters: dict):
     yield "hubbard", builder_parameters["hubbard"]
     yield "spin_orbit", builder_parameters["spin_orbit"]
     yield "periodicity", builder_parameters["periodicity"]
+    yield "hubbard_dict", builder_parameters.get("hubbard_dict")
 
 
 def _generate_report_html(report):

@@ -619,7 +619,7 @@ class AddingTagsEditor(ipw.VBox):
         self.title = title
         self._status_message = StatusHTML()
         self.atom_selection = ipw.Text(
-            description="Define kind", value="", layout={"width": "initial"}
+            description="Index of atoms", value="", layout={"width": "initial"}
         )
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
@@ -656,16 +656,28 @@ class AddingTagsEditor(ipw.VBox):
             button_style="primary",
             layout={"width": "initial"},
         )
+        self.display_selected_tags = ipw.HTML()
         self.add_tags.on_click(self._add_tags)
         self.clear_tags.on_click(self._clear_tags)
         self.clear_all_tags.on_click(self._clear_all_tags)
         self.select_periodicity.on_click(self._select_periodicity)
+        self.atom_selection.observe(self._display_tags, "value")
+        self.add_tags.on_click(self._display_tags)
+        self.clear_tags.on_click(self._display_tags)
+        self.clear_all_tags.on_click(self._display_tags)
         super().__init__(
             children=[
                 ipw.HTML(
                     "<b>Adding a tag to atoms</b>",
                 ),
-                ipw.HBox([self.atom_selection, self.from_selection, self.tag]),
+                ipw.HBox(
+                    [
+                        self.atom_selection,
+                        self.from_selection,
+                        self.tag,
+                        self.display_selected_tags,
+                    ]
+                ),
                 ipw.HBox([self.add_tags, self.clear_tags, self.clear_all_tags]),
                 ipw.HTML(
                     "<b>Define periodicity</b>",
@@ -675,6 +687,22 @@ class AddingTagsEditor(ipw.VBox):
                 self._status_message,
             ]
         )
+
+    def _display_tags(self, _=None):
+        """Display the index of the atom and tag associated from the atom_selection."""
+        selection = string_range_to_list(self.atom_selection.value)[0]
+        current_tags = self.structure.get_tags()
+        chemichal_symbols = self.structure.get_chemical_symbols()
+        html_str = ""
+        if selection:
+            for index in selection:
+                tag = current_tags[index]
+                symbol = chemichal_symbols[index]
+                if tag == 0:
+                    tag = ""
+                html_str += f"  Id: {index+1}  {symbol}{tag} ;"
+            html_str = html_str[:-1]
+        self.display_selected_tags.value = html_str
 
     def _from_selection(self, _=None):
         """Set the atom selection from the current selection."""

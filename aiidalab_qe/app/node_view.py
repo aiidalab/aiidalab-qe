@@ -587,7 +587,7 @@ class WorkChainViewer(ipw.VBox):
         with self.hold_trait_notifications():
             if self.node.is_finished:
                 self._show_workflow_output()
-                if self.hubbard_cond == "Yes":
+                if self.node.is_file_ok and self.hubbard_cond == "Yes":
                     self._show_hubbard_occupations()
             if (
                 "structure" not in self._results_shown
@@ -921,7 +921,7 @@ class BandDosPlotsWidget(ipw.VBox):
     def _initial_view(self):
         with self.bands_widget:
             clear_output(wait=True)
-            #self.bandsplot_widget.show() #Fix plotly not showing 
+            # self.bandsplot_widget.show() #Fix plotly not showing
             display(self.bandsplot_widget)
             self.download_button.layout.visibility = "visible"
 
@@ -937,7 +937,7 @@ class BandDosPlotsWidget(ipw.VBox):
                 self.dos_data = self._get_dos_data()
                 self.bandsplot_widget = self._bandsplot_widget()
                 clear_output(wait=True)
-                #self.bandsplot_widget.show() #Fix plotly not showing
+                # self.bandsplot_widget.show() #Fix plotly not showing
                 display(self.bandsplot_widget)
 
     def _bandsplot_widget(self):
