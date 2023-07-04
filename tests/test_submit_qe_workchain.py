@@ -94,10 +94,13 @@ def test_create_builder_insulator(
 def test_create_builder_advanced_settings(
     submit_step_widget_generator,
 ):
-    """Test the creation of the workchain builder.
+    """Test the creation of the workchain builder with advanced settings
 
-    insulator, non-magnetic, no smearing
-    the occupation type is set to fixed, smearing and degauss should not be set"""
+    -metal
+    -collinear
+    -tot_charge
+    -initial_magnetic_moments
+    """
     from aiidalab_qe.app.report import _generate_report_html
 
     submit_step = submit_step_widget_generator(

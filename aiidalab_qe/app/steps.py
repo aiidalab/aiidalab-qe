@@ -369,7 +369,6 @@ class MagnetizationSettings(ipw.VBox):
 
     def _disable_kinds_widgets(self, _=None):
         for i in range(len(self.kinds.children)):
-            # for i in range(1, len(self.kinds.children)):
             self.kinds.children[i].disabled = not self.override.value
 
     def reset(self):
@@ -414,6 +413,7 @@ class MagnetizationSettings(ipw.VBox):
         self.update_kinds_widget()
 
     def get_magnetization(self):
+        """Method to generate the dictionary with the initial magnetic moments"""
         magnetization = {}
         for i in range(len(self.kinds.children)):
             magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
