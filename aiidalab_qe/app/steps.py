@@ -24,7 +24,7 @@ from aiidalab_widgets_base import (
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
 )
-from IPython.display import display
+from IPython.display import clear_output, display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.pseudos import PseudoFamilySelector
@@ -58,6 +58,7 @@ class QeWorkChainParameters:
     spin_type: str
     electronic_type: str
     overrides: t.Dict[str, t.Any]
+    initial_magnetic_moments: t.Dict[str, float]
 
 
 class WorkChainSettings(ipw.VBox):
@@ -226,10 +227,12 @@ class AdvancedSettings(ipw.VBox):
         self.smearing = SmearingSettings()
         self.kpoints = KpointSettings()
         self.tot_charge = TotalCharge()
+        self.magnetization = MagnetizationSettings()
         self.list_overrides = [
             self.smearing.override,
             self.kpoints.override,
             self.tot_charge.override,
+            self.magnetization.override,
         ]
         for override in self.list_overrides:
             ipw.dlink(
@@ -248,6 +251,7 @@ class AdvancedSettings(ipw.VBox):
                     ],
                 ),
                 self.tot_charge,
+                self.magnetization,
                 self.smearing,
                 self.kpoints,
             ],
@@ -259,9 +263,12 @@ class AdvancedSettings(ipw.VBox):
         self.smearing.reset()
         self.kpoints.reset()
         self.tot_charge.reset()
+        self.magnetization.reset()
 
 
 class TotalCharge(ipw.VBox):
+    """Widget to define the total charge of the simulation"""
+
     tot_charge_default = traitlets.Float(default_value=0.0)
 
     def __init__(self, **kwargs):
@@ -316,6 +323,109 @@ class TotalCharge(ipw.VBox):
         with self.hold_trait_notifications():
             self.charge.value = self.tot_charge_default
             self.override.value = False
+
+
+class MagnetizationSettings(ipw.VBox):
+    """Widget to set the initial magnetic moments for each kind names defined in the StructureData (StructureDtaa.get_kind_names())
+    Usually these are the names of the elements in the StructureData
+    (For example 'C' , 'N' , 'Fe' . However the StructureData can have defined kinds like 'Fe1' and 'Fe2')
+
+    The widget generate a dictionary that can be used to set initial_magnetic_moments in the builder of PwBaseWorkChain
+
+    Attributes:
+        input_structure(StructureData): trait that containes the input_strucgure (confirmed structure from previous step)
+    """
+
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
+
+    def __init__(self, **kwargs):
+        self.input_structure = StructureData()
+        self.input_structure_labels = []
+        self.description = ipw.HTML(
+            "Define magnetization: Input structure not confirmed"
+        )
+        self.kinds = self.create_kinds_widget()
+        self.kinds_widget_out = ipw.Output()
+        self.override = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    [
+                        self.override,
+                        self.description,
+                        self.kinds_widget_out,
+                    ],
+                ),
+            ],
+            layout=ipw.Layout(justify_content="space-between"),
+            **kwargs,
+        )
+        self.display_kinds()
+        self.override.observe(self._disable_kinds_widgets, "value")
+
+    def _disable_kinds_widgets(self, _=None):
+        for i in range(len(self.kinds.children)):
+            self.kinds.children[i].disabled = not self.override.value
+
+    def reset(self):
+        self.override.value = False
+        if hasattr(self.kinds, "children") and self.kinds.children:
+            for i in range(len(self.kinds.children)):
+                self.kinds.children[i].value = 0.0
+
+    def create_kinds_widget(self):
+        if self.input_structure_labels:
+            widgets_list = []
+            for kind_label in self.input_structure_labels:
+                kind_widget = ipw.BoundedFloatText(
+                    description=kind_label,
+                    min=-1,
+                    max=1,
+                    step=0.1,
+                    value=0.0,
+                    disabled=True,
+                )
+                widgets_list.append(kind_widget)
+            kinds_widget = ipw.VBox(widgets_list)
+        else:
+            kinds_widget = None
+
+        return kinds_widget
+
+    def update_kinds_widget(self):
+        self.input_structure_labels = self.input_structure.get_kind_names()
+        self.kinds = self.create_kinds_widget()
+        self.description.value = "Define magnetization: "
+        self.display_kinds()
+
+    def display_kinds(self):
+        if "PYTEST_CURRENT_TEST" not in os.environ and self.kinds:
+            with self.kinds_widget_out:
+                clear_output()
+                display(self.kinds)
+
+    def _update_widget(self, change):
+        self.input_structure = change["new"]
+        self.update_kinds_widget()
+
+    def get_magnetization(self):
+        """Method to generate the dictionary with the initial magnetic moments"""
+        magnetization = {}
+        for i in range(len(self.kinds.children)):
+            magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
+        return magnetization
+
+    def _set_magnetization_values(self, **kwargs):
+        """Update used for conftest setting all magnetization to a value"""
+        self.override.value = True
+        with self.hold_trait_notifications():
+            if "initial_magnetic_moments" in kwargs:
+                for i in range(len(self.kinds.children)):
+                    self.kinds.children[i].value = kwargs["initial_magnetic_moments"]
 
 
 class SmearingSettings(ipw.VBox):
@@ -472,6 +582,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     advanced_settings = traitlets.Instance(AdvancedSettings, allow_none=True)
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
@@ -543,6 +654,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ],
             **kwargs,
         )
+
+    @traitlets.observe("input_structure")
+    def _update_input_structure(self, change):
+        if self.input_structure is not None:
+            self.advanced_settings.magnetization._update_widget(change)
 
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
@@ -964,6 +1080,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
         """Get the parameters of the `QeWorkChain` from widgets."""
+        # create the the initial_magnetic_moments as None (Default)
+        initial_magnetic_moments = None
         # create the override parameters for sub PwBaseWorkChain
         pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
         for key in ["base", "scf", "nscf", "band"]:
@@ -975,6 +1093,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                         "tot_charge"
                     ] = self.advanced_settings.tot_charge.charge.value
+                if (
+                    self.advanced_settings.magnetization.override.value
+                    and self.workchain_settings.spin_type.value == "collinear"
+                ):
+                    initial_magnetic_moments = (
+                        self.advanced_settings.magnetization.get_magnetization()
+                    )
+
                 if key in ["base", "scf"]:
                     if self.advanced_settings.kpoints.override.value:
                         pw_overrides[key][
@@ -1034,6 +1160,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=spin_type,
             electronic_type=electronic_type,
             overrides=overrides,
+            initial_magnetic_moments=initial_magnetic_moments,
         )
 
     def _create_builder(self) -> ProcessBuilderNamespace:
@@ -1055,6 +1182,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             spin_type=SpinType(parameters.spin_type),
             electronic_type=ElectronicType(parameters.electronic_type),
             overrides=parameters.overrides,
+            initial_magnetic_moments=parameters.initial_magnetic_moments,
         )
 
         resources = {
@@ -1104,6 +1232,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "electronic_type": qe_workchain_parameters.electronic_type,
             "spin_type": qe_workchain_parameters.spin_type,
             "protocol": qe_workchain_parameters.protocol,
+            "initial_magnetic_moments": qe_workchain_parameters.initial_magnetic_moments,
         }
 
         # update pseudo family information to extra_report_parameters
