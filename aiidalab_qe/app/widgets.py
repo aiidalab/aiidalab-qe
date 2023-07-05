@@ -22,7 +22,7 @@ from aiidalab_widgets_base.utils import (
     list_to_string_range,
     string_range_to_list,
 )
-from IPython.display import HTML, Javascript, display
+from IPython.display import HTML, Javascript, clear_output, display
 
 # trigger registration of the viewer widget:
 from aiidalab_qe.app import node_view  # noqa: F401
@@ -561,14 +561,15 @@ class AddingTagsEditor(ipw.VBox):
             button_style="warning",
             layout={"width": "initial"},
         )
+        self.tag_display = ipw.Output()
         self.display_selected_tags = ipw.HTML()
         self.add_tags.on_click(self._add_tags)
         self.reset_tags.on_click(self._reset_tags)
         self.reset_all_tags.on_click(self._reset_all_tags)
-        self.atom_selection.observe(self._display_tags, "value")
-        self.add_tags.on_click(self._display_tags)
-        self.reset_tags.on_click(self._display_tags)
-        self.reset_all_tags.on_click(self._display_tags)
+        self.atom_selection.observe(self._display_table, "value")
+        self.add_tags.on_click(self._display_table)
+        self.reset_tags.on_click(self._display_table)
+        self.reset_all_tags.on_click(self._display_table)
         super().__init__(
             children=[
                 ipw.HTML(
@@ -579,29 +580,52 @@ class AddingTagsEditor(ipw.VBox):
                         self.atom_selection,
                         self.from_selection,
                         self.tag,
-                        self.display_selected_tags,
                     ]
                 ),
+                self.tag_display,
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
             ]
         )
 
-    def _display_tags(self, _=None):
-        """Display the index of the atom and tag associated from the atom_selection."""
+    def _display_table(self, _=None):
         selection = string_range_to_list(self.atom_selection.value)[0]
         current_tags = self.structure.get_tags()
         chemichal_symbols = self.structure.get_chemical_symbols()
-        html_str = ""
-        if selection:
+
+        if selection and (max(selection) <= (len(self.structure) - 1)):
+            table_data = []
             for index in selection:
                 tag = current_tags[index]
                 symbol = chemichal_symbols[index]
                 if tag == 0:
                     tag = ""
-                html_str += f"  Id: {index+1}  {symbol}{tag} ;"
-            html_str = html_str[:-1]
-        self.display_selected_tags.value = html_str
+                table_data.append(
+                    ["{}".format(index), "{}".format(symbol), "{}".format(tag)]
+                )
+
+            # Create an HTML table
+            table_html = "<table>"
+            table_html += "<tr><th>Index</th><th>Element</th><th>Tag</th></tr>"
+            for row in table_data:
+                table_html += "<tr>"
+                for cell in row:
+                    table_html += "<td>{}</td>".format(cell)
+                table_html += "</tr>"
+            table_html += "</table>"
+
+            self.tag_display.layout = {
+                "overflow": "auto",
+                "height": "100px",
+                "width": "150px",
+            }
+            with self.tag_display:
+                clear_output()
+                display(HTML(table_html))
+        else:
+            self.tag_display.layout = {}
+            with self.tag_display:
+                clear_output()
 
     def _from_selection(self, _=None):
         """Set the atom selection from the current selection."""
