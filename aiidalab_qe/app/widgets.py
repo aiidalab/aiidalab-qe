@@ -589,6 +589,9 @@ class AddingTagsEditor(ipw.VBox):
         )
 
     def _display_table(self, _=None):
+        """Function to control tag_display
+        When given a list of atom in selection it will display a HTML table with Index, Element and Tag
+        """
         selection = string_range_to_list(self.atom_selection.value)[0]
         current_tags = self.structure.get_tags()
         chemichal_symbols = self.structure.get_chemical_symbols()
