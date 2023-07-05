@@ -562,7 +562,6 @@ class AddingTagsEditor(ipw.VBox):
             layout={"width": "initial"},
         )
         self.tag_display = ipw.Output()
-        self.display_selected_tags = ipw.HTML()
         self.add_tags.on_click(self._add_tags)
         self.reset_tags.on_click(self._reset_tags)
         self.reset_all_tags.on_click(self._reset_all_tags)
@@ -617,6 +616,7 @@ class AddingTagsEditor(ipw.VBox):
                 table_html += "</tr>"
             table_html += "</table>"
 
+            # Set layout to a fix size
             self.tag_display.layout = {
                 "overflow": "auto",
                 "height": "100px",
