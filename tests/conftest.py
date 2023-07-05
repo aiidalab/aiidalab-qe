@@ -148,6 +148,21 @@ def workchain_settings_generator():
 
 
 @pytest.fixture()
+def initial_magnetic_moments_generator(structure_data_object):
+    """Retturn a function that generatates a initial_magnetic_moments dictionary"""
+    from aiidalab_qe.app.steps import MagnetizationSettings
+
+    def _initial_moments_generator(**kwargs):
+        initial_magnetic_moments = MagnetizationSettings()
+        initial_magnetic_moments.input_structure = structure_data_object
+        initial_magnetic_moments.update_kinds_widget()
+        initial_magnetic_moments._set_magnetization_values(**kwargs)
+        return initial_magnetic_moments
+
+    return _initial_moments_generator
+
+
+@pytest.fixture()
 def tot_charge_generator():
     """Return a function that generates a tot_charge dictionary."""
     from aiidalab_qe.app.steps import TotalCharge
@@ -197,6 +212,7 @@ def submit_step_widget_generator(
     smearing_settings_generator,
     kpoints_settings_generator,
     tot_charge_generator,
+    initial_magnetic_moments_generator,
 ):
     """Return a function that generates a submit step widget."""
     from aiidalab_qe.app.pseudos import PseudoFamilySelector
@@ -214,6 +230,7 @@ def submit_step_widget_generator(
         degauss=0.015,
         override_protocol_smearing=True,
         tot_charge=0.0,
+        initial_magnetic_moments=0.0,
     ):
         submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
         submit_step.input_structure = structure_data_object
@@ -238,6 +255,12 @@ def submit_step_widget_generator(
 
         submit_step.advanced_settings.tot_charge = tot_charge_generator(
             tot_charge=tot_charge,
+        )
+
+        submit_step.advanced_settings.magnetization = (
+            initial_magnetic_moments_generator(
+                initial_magnetic_moments=initial_magnetic_moments
+            )
         )
 
         submit_step.advanced_settings.kpoints = kpoints_settings_generator(
