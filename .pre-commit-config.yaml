@@ -14,7 +14,7 @@ repos:
             exclude: miscellaneous/structures/SiO2.xyz
 
     - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
-      rev: 0.2.2
+      rev: 0.2.3
       hooks:
           - id: yamlfmt
             exclude: tests
@@ -40,7 +40,7 @@ repos:
             args: [--profile, black, --filter-files]
 
     - repo: https://github.com/sirosen/check-jsonschema
-      rev: 0.22.0
+      rev: 0.23.2
       hooks:
           - id: check-github-workflows
 
