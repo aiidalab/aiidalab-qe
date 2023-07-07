@@ -282,12 +282,14 @@ class AdvancedSettings(ipw.VBox):
         self.smearing = SmearingSettings()
         self.kpoints = KpointSettings()
         self.tot_charge = TotalCharge()
+        self.pdos_smearing = PdosSmearing()
         self.magnetization = MagnetizationSettings()
         self.list_overrides = [
             self.smearing.override,
             self.kpoints.override,
             self.tot_charge.override,
             self.magnetization.override,
+            self.pdos_smearing.override,
         ]
         for override in self.list_overrides:
             ipw.dlink(
@@ -309,6 +311,7 @@ class AdvancedSettings(ipw.VBox):
                 self.magnetization,
                 self.smearing,
                 self.kpoints,
+                self.pdos_smearing,
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
@@ -319,6 +322,7 @@ class AdvancedSettings(ipw.VBox):
         self.kpoints.reset()
         self.tot_charge.reset()
         self.magnetization.reset()
+        self.pdos_smearing.reset()
 
 
 class TotalCharge(ipw.VBox):
@@ -536,6 +540,40 @@ class SmearingSettings(ipw.VBox):
             self.override.value = False
 
 
+class PdosSmearing(ipw.VBox):
+    def __init__(self, **kwargs):
+        self.override = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
+        self.smearing_pdos = ipw.FloatText(
+            value=0.01,
+            step=0.005,
+            description="Pdos Smearing width (Ry):",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self.override, "value"),
+            (self.smearing_pdos, "disabled"),
+            lambda override: not override,
+        )
+        super().__init__(
+            children=[
+                # self.smearing_description,
+                ipw.HBox([self.override, self.smearing_pdos]),
+            ],
+            layout=ipw.Layout(justify_content="space-between"),
+            **kwargs,
+        )
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.smearing_pdos.value = 0.01
+            self.override.value = False
+
+
 class KpointSettings(ipw.VBox):
     kpoints_distance_description = ipw.HTML(
         """<div>
@@ -546,8 +584,10 @@ class KpointSettings(ipw.VBox):
 
     # The default of `kpoints_distance` must be linked to the `protocol`
     kpoints_distance_default = traitlets.Float(default_value=0.15)
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
+        self.input_structure = StructureData()
         self.override = ipw.Checkbox(
             description="Override",
             indent=False,
@@ -560,6 +600,7 @@ class KpointSettings(ipw.VBox):
             disabled=False,
             style={"description_width": "initial"},
         )
+        self.mesh_grid = ipw.HTML()
         ipw.dlink(
             (self.override, "value"),
             (self.distance, "disabled"),
@@ -568,15 +609,23 @@ class KpointSettings(ipw.VBox):
         self.distance.observe(self.set_kpoints_distance, "value")
         self.override.observe(self.set_kpoints_distance, "value")
         self.observe(self.set_kpoints_distance, "kpoints_distance_default")
+        self.distance.observe(self._display_mesh, "value")
 
         super().__init__(
             children=[
                 self.kpoints_distance_description,
-                ipw.HBox([self.override, self.distance]),
+                ipw.HBox([self.override, self.distance, self.mesh_grid]),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
+
+    def _display_mesh(self, _=None):
+        if self.input_structure is not None:
+            mesh = self.create_kpoints_from_distance(
+                self.input_structure, self.distance.value, True
+            )
+            self.mesh_grid.value = "Mesh " + str(mesh)
 
     def set_kpoints_distance(self, _=None):
         self.distance.value = (
@@ -584,6 +633,10 @@ class KpointSettings(ipw.VBox):
             if self.override.value
             else self.kpoints_distance_default
         )
+
+    def _update_structure(self, change):
+        self.input_structure = change["new"]
+        self._display_mesh()
 
     def _update_settings(self, **kwargs):
         """Update the kpoints_distance value by the given keyword arguments.
@@ -597,6 +650,43 @@ class KpointSettings(ipw.VBox):
         with self.hold_trait_notifications():
             self.distance.value = self.kpoints_distance_default
             self.override.value = False
+
+    # Taken from QE-pluggin - Modified to return a list and to not use Float or Bool from aiida-core
+    def create_kpoints_from_distance(self, structure, distance, force_parity):
+        """Generate a uniformly spaced kpoint mesh for a given structure.
+
+        The spacing between kpoints in reciprocal space is guaranteed to be at least the defined distance.
+
+        :param structure: the StructureData to which the mesh should apply
+        :param distance: a Float with the desired distance between kpoints in reciprocal space
+        :param force_parity: a Bool to specify whether the generated mesh should maintain parity
+        :returns: a KpointsData with the generated mesh
+        """
+        from aiida.orm import KpointsData
+        from numpy import linalg
+
+        epsilon = 1e-5
+
+        kpoints = KpointsData()
+        kpoints.set_cell_from_structure(structure)
+        kpoints.set_kpoints_mesh_from_density(distance, force_parity=force_parity)
+
+        lengths_vector = [linalg.norm(vector) for vector in structure.cell]
+        lengths_kpoint = kpoints.get_kpoints_mesh()[0]
+
+        is_symmetric_cell = all(
+            abs(length - lengths_vector[0]) < epsilon for length in lengths_vector
+        )
+        is_symmetric_mesh = all(
+            length == lengths_kpoint[0] for length in lengths_kpoint
+        )
+
+        # If the vectors of the cell all have the same length, the kpoint mesh should be isotropic as well
+        if is_symmetric_cell and not is_symmetric_mesh:
+            nkpoints = max(lengths_kpoint)
+            kpoints.set_kpoints_mesh([nkpoints, nkpoints, nkpoints])
+
+        return kpoints.get_kpoints_mesh()[0]
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -684,6 +774,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.advanced_settings.magnetization._update_widget(change)
             self.workchain_settings.hubbard_widget.update_widgets(change)
             self.workchain_settings._update_input_structure(change)
+            self.advanced_settings.kpoints._update_structure(change)
 
     @traitlets.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
@@ -1215,6 +1306,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                             "degauss"
                         ] = self.advanced_settings.smearing.degauss.value
 
+        dos_overrides = {"parameters": {"DOS": {}}}
+        projwfc_overrides = {"parameters": {"PROJWFC": {}}}
+        if self.advanced_settings.override.value:
+            if self.advanced_settings.pdos_smearing.override.value:
+                dos_overrides["parameters"]["DOS"] = {
+                    "degauss": self.advanced_settings.pdos_smearing.smearing_pdos.value
+                }
+                projwfc_overrides["parameters"]["PROJWFC"] = {
+                    "degauss": self.advanced_settings.pdos_smearing.smearing_pdos.value
+                }
+
         overrides = {
             "relax": {
                 "base": pw_overrides["base"],
@@ -1226,6 +1328,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "pdos": {
                 "scf": pw_overrides["scf"],
                 "nscf": pw_overrides["nscf"],
+                "dos": dos_overrides,
+                "projwfc": projwfc_overrides,
             },
         }
 
