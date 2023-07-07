@@ -424,8 +424,8 @@ class MagnetizationSettings(ipw.VBox):
             hbox = ipw.HBox()
             float_widget = ipw.BoundedFloatText(
                 description=label,
-                min=-1,
-                max=1,
+                min=-3,
+                max=3,
                 step=0.1,
                 value=0.0,
                 disabled=True,
