@@ -39,7 +39,7 @@ def test_set_input_parameters():
         "advanced": {
             "pseudo_family": "SSSP/1.2/PBE/precision",
             "kpoints_distance": 0.25,
-            "initial_magnetic_moments": None,
+            "initial_magnetic_moments": {},
             "pw": {
                 "parameters": {
                     "SYSTEM": {

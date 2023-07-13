@@ -170,7 +170,7 @@ class AdvancedSettings(Panel):
                 "tot_charge", 0
             )
         self.magnetization._set_magnetization_values(
-            parameters["initial_magnetic_moments"]
+            parameters.get("initial_magnetic_moments", 0.0)
         )
 
     def reset(self):
