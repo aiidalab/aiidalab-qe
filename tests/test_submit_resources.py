@@ -33,7 +33,7 @@ def test_resources():
     assert step.resources_config.num_cpus.value == 2
     assert step.parallelization.npools.value == 2
     # test `get_resource` method
-    resources = step.get_resource()
+    resources = step.get_resources()
     assert resources["num_machines"] == 2
     assert resources["num_mpiprocs_per_machine"] == 2
     assert resources["npools"] == 2
