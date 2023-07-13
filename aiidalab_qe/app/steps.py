@@ -593,8 +593,9 @@ class KpointSettings(ipw.VBox):
             indent=False,
             value=False,
         )
-        self.distance = ipw.FloatText(
+        self.distance = ipw.BoundedFloatText(
             value=self.kpoints_distance_default,
+            min=0,
             step=0.05,
             description="K-points distance (1/Å):",
             disabled=False,
@@ -622,10 +623,13 @@ class KpointSettings(ipw.VBox):
 
     def _display_mesh(self, _=None):
         if self.input_structure is not None:
-            mesh = self.create_kpoints_from_distance(
-                self.input_structure, self.distance.value, True
-            )
-            self.mesh_grid.value = "Mesh " + str(mesh)
+            if self.distance.value > 0:
+                mesh = self.create_kpoints_from_distance(
+                    self.input_structure, self.distance.value, True
+                )
+                self.mesh_grid.value = "Mesh " + str(mesh)
+            else:
+                self.mesh_grid.value = "Please select a number higher than 0.0"
 
     def set_kpoints_distance(self, _=None):
         self.distance.value = (
