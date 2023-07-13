@@ -266,13 +266,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ):
             self.set_resource_defaults(load_code(change["new"]).computer)
 
-    def get_resource(self):
+    def get_resources(self):
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
             "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
             "npools": self.parallelization.npools.value,
         }
         return resources
+
+    def set_resources(self, resources):
+        self.resources_config.num_nodes.value = resources["num_machines"]
+        self.resources_config.num_cpus.value = resources["num_mpiprocs_per_machine"]
+        self.parallelization.npools.value = resources["npools"]
 
     def set_resource_defaults(self, computer=None):
         if computer is None or computer.hostname == "localhost":
@@ -409,7 +414,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         parameters = self.parent.configure_step.get_input_parameters()
         parameters["codes"] = self.get_selected_codes()
-        parameters["resources"] = self.get_resource()
+        parameters["resources"] = self.get_resources()
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,

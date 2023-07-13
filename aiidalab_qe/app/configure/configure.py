@@ -141,7 +141,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.set_input_parameters(DEFAULT_PARAMETERS)
+            for _name, settings in self.settings.items():
+                settings.reset()
 
     def _update_panel(self, _=None):
         """Dynamic add/remove the panel based on the workchain settings."""

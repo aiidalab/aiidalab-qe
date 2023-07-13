@@ -2,7 +2,10 @@ import ipywidgets as ipw
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 
 from aiidalab_qe.app.panel import Panel
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS as QEAPP_DEFAULT_PARAMETERS
 from aiidalab_qe.app.pseudos import PseudoFamilySelector
+
+DEFAULT_PARAMETERS = QEAPP_DEFAULT_PARAMETERS["advanced"]
 
 
 class AdvancedSettings(Panel):
@@ -152,3 +155,6 @@ class AdvancedSettings(Panel):
             self.tot_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
                 "tot_charge", 0
             )
+
+    def reset(self):
+        self.set_panel_value(DEFAULT_PARAMETERS)

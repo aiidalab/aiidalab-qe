@@ -1,7 +1,9 @@
 import ipywidgets as ipw
 
 from aiidalab_qe.app.panel import Panel
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS as QEAPP_DEFAULT_PARAMETERS
+
+DEFAULT_PARAMETERS = QEAPP_DEFAULT_PARAMETERS["basic"]
 
 
 class BasicSettings(Panel):
@@ -31,18 +33,18 @@ class BasicSettings(Panel):
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
-            value="moderate",
+            value=QEAPP_DEFAULT_PARAMETERS["basic"]["protocol"],
         )
         # SpinType: magnetic properties of material
         self.spin_type = ipw.ToggleButtons(
             options=[("Off", "none"), ("On", "collinear")],
-            value=DEFAULT_PARAMETERS["basic"]["spin_type"],
+            value=QEAPP_DEFAULT_PARAMETERS["basic"]["spin_type"],
             style={"description_width": "initial"},
         )
         # ElectronicType: electronic properties of material
         self.electronic_type = ipw.ToggleButtons(
             options=[("Metal", "metal"), ("Insulator", "insulator")],
-            value=DEFAULT_PARAMETERS["basic"]["electronic_type"],
+            value=QEAPP_DEFAULT_PARAMETERS["basic"]["electronic_type"],
             style={"description_width": "initial"},
         )
 
@@ -95,3 +97,6 @@ class BasicSettings(Panel):
         self.spin_type.value = parameters["spin_type"]
         self.electronic_type.value = parameters["electronic_type"]
         self.workchain_protocol.value = parameters["protocol"]
+
+    def reset(self):
+        self.set_panel_value(DEFAULT_PARAMETERS)

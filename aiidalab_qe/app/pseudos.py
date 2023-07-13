@@ -50,7 +50,7 @@ class PseudoFamilySelector(ipw.VBox):
     disabled = traitlets.Bool()
 
     value = traitlets.Unicode(
-        default_value=DEFAULT_PARAMETERS["advance"]["pseudo_family"],
+        default_value=DEFAULT_PARAMETERS["advanced"]["pseudo_family"],
     )
 
     def __init__(self, **kwargs):
@@ -74,17 +74,17 @@ class PseudoFamilySelector(ipw.VBox):
         # Choose the DFT functional
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
-            value=DEFAULT_PARAMETERS["advance"]["pseudo_family"].split("/")[2],
+            value=DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[2],
             style={"description_width": "initial"},
         )
         self.dft_functional.observe(self.set_value_trait, "value")
         #
-        pseudo_family_type = DEFAULT_PARAMETERS["advance"]["pseudo_family"].split("/")[
+        pseudo_family_type = DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[
             0
         ]
         if pseudo_family_type.upper() == "SSSP":
             pseudo_family_type += (
-                " " + DEFAULT_PARAMETERS["advance"]["pseudo_family"].split("/")[-1]
+                " " + DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[-1]
             )
         elif pseudo_family_type.upper() == "PSEUDODOJO":
             pseudo_family_type = "PseudoDojo " + pseudo_family_type.split("_")[-2]
@@ -146,7 +146,7 @@ class PseudoFamilySelector(ipw.VBox):
                 )
             self.value = pseudo_family_string
         else:
-            self.value = DEFAULT_PARAMETERS["advance"]["pseudo_family"]
+            self.value = DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
 
     def set_show_ui(self, change):
         self.show_ui.value = not change.new

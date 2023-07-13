@@ -309,8 +309,7 @@ class WorkChainViewer(ipw.VBox):
 
     def _update_view(self):
         with self.hold_trait_notifications():
-            if self.node.is_finished:
-                self._show_workflow_output()
+            self._show_workflow_output()
             # update the plugin specific results
             for result in self.result_tabs.children[1:]:
                 # check if the result is already shown
@@ -329,9 +328,14 @@ class WorkChainViewer(ipw.VBox):
     # I moved the _show_electronic_structure to electronic_structure.py
 
     def _show_workflow_output(self):
-        self.workflows_output = WorkChainOutputs(self.node)
         self.workflows_summary._update_view()
-        self.result_tabs.children[0].children = [
-            self.workflows_summary,
-            self.workflows_output,
-        ]
+        if self.node.is_finished:
+            self.workflows_output = WorkChainOutputs(self.node)
+            self.result_tabs.children[0].children = [
+                self.workflows_summary,
+                self.workflows_output,
+            ]
+        else:
+            self.result_tabs.children[0].children = [
+                self.workflows_summary,
+            ]

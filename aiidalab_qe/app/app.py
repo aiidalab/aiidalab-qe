@@ -81,6 +81,8 @@ class QEApp:
             if pk is None:
                 self.steps.reset()
                 self.steps.selected_index = 0
+                self.configure_step.reset()
+                self.submit_step.reset()
             else:
                 process = load_node(pk)
                 with structure_manager_widget.hold_sync():
@@ -98,6 +100,7 @@ class QEApp:
                 # set ui_parameters
                 ui_parameters = process.base.extras.get("ui_parameters", {})
                 self.configure_step.set_input_parameters(ui_parameters)
+                self.submit_step.set_resources(ui_parameters["resources"])
 
         self.work_chain_selector.observe(_observe_process_selection, "value")
         ipw.dlink(
