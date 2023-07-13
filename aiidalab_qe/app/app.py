@@ -9,6 +9,19 @@ from aiidalab_qe.app.submit.submit import SubmitQeAppWorkChainStep
 
 
 class QEApp:
+    """The Quantum ESPRESSO app is a graphical front end for calculating
+    materials properties using Quantum ESPRESSO (QE). Each property is
+    calculated by workflows powered by the AiiDA engine,
+    and maintained in the Quantum ESPRESSO plugin for AiiDA.
+
+    The QE app allows you to calculate properties in a simple 4-step process:
+
+    - 🔍 Step 1: Select the structure you want to run.
+    - ⚙️ Step 2: Select the properties you are interested in.
+    - 💻 Step 3: Choose the computational resources you want to run on.
+    - 🚀 Step 4: Submit your workflow.
+    """
+
     def __init__(self, qe_auto_setup=True) -> None:
         # To keep the Qeapp simple and clear, I moved the
         # structure_manager_widget to structure.py
