@@ -1,9 +1,13 @@
 import ipywidgets as ipw
+from aiida.plugins import DataFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
+from IPython.display import clear_output, display
 
 from aiidalab_qe.app.panel import Panel
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS as QEAPP_DEFAULT_PARAMETERS
 from aiidalab_qe.app.pseudos import PseudoFamilySelector
+
+StructureData = DataFactory("core.structure")
 
 DEFAULT_PARAMETERS = QEAPP_DEFAULT_PARAMETERS["advanced"]
 
@@ -72,6 +76,7 @@ class AdvancedSettings(Panel):
             description="Total charge:",
             style={"description_width": "initial"},
         )
+        self.magnetization = MagnetizationSettings()
         # update settings based on protocol
         ipw.dlink(
             (self.workchain_protocol, "value"),
@@ -101,6 +106,7 @@ class AdvancedSettings(Panel):
             self.subdescription,
             # self.tot_charge_description,
             self.tot_charge,
+            self.magnetization,
             self.kpoints_distance_description,
             self.kpoints_distance,
             self.smearing_description,
@@ -118,10 +124,18 @@ class AdvancedSettings(Panel):
         :return: a dictionary of the values of all the widgets in the panel.
         """
         # TODO insulator, no smearing, the occupation type is set to fixed, smearing and degauss should not be set
-
+        # TODO "fixed occupations and lsda need tot_magnetization"
+        if (
+            self.parent is not None
+            and self.parent.basic_settings.spin_type.value == "collinear"
+        ):
+            initial_magnetic_moments = self.magnetization.get_magnetization()
+        else:
+            initial_magnetic_moments = None
         parameters = {
             "pseudo_family": self.pseudo_family_selector.value,
             "kpoints_distance": self.kpoints_distance.value,
+            "initial_magnetic_moments": initial_magnetic_moments,
             "pw": {
                 "parameters": {
                     "SYSTEM": {
@@ -155,6 +169,124 @@ class AdvancedSettings(Panel):
             self.tot_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
                 "tot_charge", 0
             )
+        self.magnetization._set_magnetization_values(
+            parameters["initial_magnetic_moments"]
+        )
 
     def reset(self):
         self.set_panel_value(DEFAULT_PARAMETERS)
+
+    def _update_state(self):
+        """Update the state of the panel."""
+        if self.parent is not None:
+            self.magnetization._update_widget(
+                {"new": self.parent.parent.structure_step.confirmed_structure}
+            )
+
+
+class MagnetizationSettings(ipw.VBox):
+    """Widget to set the initial magnetic moments for each kind names defined in the StructureData (StructureDtaa.get_kind_names())
+    Usually these are the names of the elements in the StructureData
+    (For example 'C' , 'N' , 'Fe' . However the StructureData can have defined kinds like 'Fe1' and 'Fe2')
+
+    The widget generate a dictionary that can be used to set initial_magnetic_moments in the builder of PwBaseWorkChain
+
+    Attributes:
+        input_structure(StructureData): trait that containes the input_strucgure (confirmed structure from previous step)
+    """
+
+    def __init__(self, **kwargs):
+        self.input_structure = StructureData()
+        self.input_structure_labels = []
+        self.description = ipw.HTML(
+            "Define magnetization: Input structure not confirmed"
+        )
+        self.kinds = self.create_kinds_widget()
+        self.kinds_widget_out = ipw.Output()
+        self.override = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    [
+                        self.override,
+                        self.description,
+                        self.kinds_widget_out,
+                    ],
+                ),
+            ],
+            layout=ipw.Layout(justify_content="space-between"),
+            **kwargs,
+        )
+        self.display_kinds()
+        self.override.observe(self._disable_kinds_widgets, "value")
+
+    def _disable_kinds_widgets(self, _=None):
+        for i in range(len(self.kinds.children)):
+            self.kinds.children[i].disabled = not self.override.value
+
+    def reset(self):
+        self.override.value = False
+        if hasattr(self.kinds, "children") and self.kinds.children:
+            for i in range(len(self.kinds.children)):
+                self.kinds.children[i].value = 0.0
+
+    def create_kinds_widget(self):
+        if self.input_structure_labels:
+            widgets_list = []
+            for kind_label in self.input_structure_labels:
+                kind_widget = ipw.BoundedFloatText(
+                    description=kind_label,
+                    min=-1,
+                    max=1,
+                    step=0.1,
+                    value=0.0,
+                    disabled=True,
+                )
+                widgets_list.append(kind_widget)
+            kinds_widget = ipw.VBox(widgets_list)
+        else:
+            kinds_widget = ipw.VBox([])
+
+        return kinds_widget
+
+    def update_kinds_widget(self):
+        self.input_structure_labels = self.input_structure.get_kind_names()
+        self.kinds = self.create_kinds_widget()
+        self.description.value = "Define magnetization: "
+        self.display_kinds()
+
+    def display_kinds(self):
+        import os
+
+        if "PYTEST_CURRENT_TEST" not in os.environ and self.kinds:
+            with self.kinds_widget_out:
+                clear_output()
+                display(self.kinds)
+
+    def _update_widget(self, change):
+        self.input_structure = change["new"]
+        self.update_kinds_widget()
+
+    def get_magnetization(self):
+        """Method to generate the dictionary with the initial magnetic moments"""
+        magnetization = {}
+        for i in range(len(self.kinds.children)):
+            magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
+        return magnetization
+
+    def _set_magnetization_values(self, initial_magnetic_moments):
+        """Update used for conftest setting all magnetization to a value"""
+        self.override.value = True
+        with self.hold_trait_notifications():
+            if isinstance(initial_magnetic_moments, dict):
+                for i in range(len(self.kinds.children)):
+                    self.kinds.children[i].value = initial_magnetic_moments.get(
+                        self.input_structure_labels[i], 0.0
+                    )
+            elif isinstance(initial_magnetic_moments, (int, float)):
+                for i in range(len(self.kinds.children)):
+                    self.kinds.children[i].value = initial_magnetic_moments

@@ -20,16 +20,25 @@ def test_workchainview(generate_qeapp_workchain):
 
 def test_summary_view(generate_qeapp_workchain):
     """test the report can be properly generated from the builder without errors"""
+    from bs4 import BeautifulSoup
+
     from aiidalab_qe.app.result.node_view import WorkChainViewer
 
     wkchain = generate_qeapp_workchain()
     wcv = WorkChainViewer(wkchain.node)
-    print(wcv.result_tabs.children[0].children[0].children[0])
-    # assert "None" not in report_html
-    assert (
-        "Workflow Summary not available."
-        in wcv.result_tabs.children[0].children[0].children[0].children[0].value
-    )
+    report_html = wcv.result_tabs.children[0].children[0].children[0].value
+    # report_html = generate_report_html(wcv.node)
+    parsed = BeautifulSoup(report_html, "html.parser")
+    print(parsed)
+    # find the td with the text "Initial Magnetic Moments"
+    parameters = {
+        "Energy cutoff (wave functions)": "30.0 Ry",
+        "Total Charge": "0.0",
+        "Initial Magnetic Moments": "None",
+    }
+    for key, value in parameters.items():
+        td = parsed.find("td", text=key).find_next_sibling("td")
+        assert td.text == value
 
 
 def test_electronic_structure(generate_qeapp_workchain):
@@ -38,11 +47,11 @@ def test_electronic_structure(generate_qeapp_workchain):
 
     wkchain = generate_qeapp_workchain()
     wcv = WorkChainViewer(wkchain.node)
-    print(wcv.result_tabs.children[2].children[0].children[0])
-    # assert "None" not in report_html
-    # TODO: Because we cat add the bands and dos nodes to the workchain,
-    # the electronic structure is not available
-    # assert 'Electronic Structure not available.' not in wcv.result_tabs.children[2].children[0].children[0].value
+    print(wcv.result_tabs.children[2].children[0].children[0].children[0].value)
+    assert (
+        "DOS grouped by:"
+        == wcv.result_tabs.children[2].children[0].children[0].children[0].value
+    )
 
 
 def test_workchain_outputs(generate_qeapp_workchain):

@@ -22,6 +22,8 @@ from aiidalab_widgets_base import (
 from pymatgen.analysis.dimensionality import get_dimensionality_larsen
 from pymatgen.analysis.local_env import CrystalNN
 
+from aiidalab_qe.app.widgets import AddingTagsEditor
+
 NON_3D_ERROR_MESSAGE = """<div class="alert alert-danger">
 <p><strong><i class="fa fa-exclamation-circle" aria-hidden="true"></i>
 Structures that do not have three-dimensional periodic boundary conditions are currently
@@ -62,6 +64,7 @@ structure_manager_widget = StructureManagerWidget(
     editors=[
         BasicCellEditor(title="Edit cell"),
         BasicStructureEditor(title="Edit structure"),
+        AddingTagsEditor(title="Edit tags"),
     ],
     node_class="StructureData",
     storable=False,

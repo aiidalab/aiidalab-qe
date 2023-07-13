@@ -27,10 +27,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.workchain_settings = WorkChainSettings(identifier="workflow")
         # baisc settings (spin, electronic type ...) is splited from `workchain_settings`
-        self.basic_settings = BasicSettings(identifier="basic")
+        self.basic_settings = BasicSettings(parent=self, identifier="basic")
         # `pseudo_family_selector` and `advanced_settings` are
         # merged into `advance_settings`
-        self.advance_settings = AdvancedSettings(identifier="advanced")
+        self.advance_settings = AdvancedSettings(parent=self, identifier="advanced")
         self.workchain_settings.relax_type.observe(self._update_state, "value")
         # link basic protocol to all plugin specific protocols
         ipw.dlink(

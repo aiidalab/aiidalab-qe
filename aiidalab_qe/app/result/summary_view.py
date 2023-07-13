@@ -65,6 +65,10 @@ def extract_report_parameters(builder, ui_parameters) -> typing.Dict[str, typing
     report["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
         "tot_charge", 0.0
     )
+    report["initial_magnetic_moments"] = ui_parameters["advanced"][
+        "initial_magnetic_moments"
+    ]
+
     # report from parameters
     # Workflow logic
     report["relax_method"] = ui_parameters["workflow"]["relax_type"]

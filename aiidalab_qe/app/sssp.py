@@ -63,6 +63,8 @@ def install_pseudos(pseudo_set):
                 p_func,
                 "-p",
                 p_type,
+                "-v",
+                "1.2",
             ]
         elif pseudo.startswith("PseudoDojo"):
             p_family, p_version, p_func, p_rel, p_type, p_format = pseudo.split("/")
@@ -78,6 +80,8 @@ def install_pseudos(pseudo_set):
                 p_type,
                 "-f",
                 p_format,
+                "-v",
+                "0.4",
             ]
         run_(cmds)
 

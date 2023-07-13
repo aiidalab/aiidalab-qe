@@ -24,6 +24,7 @@ def test_get_panel_value():
     parameters_ref = {
         "pseudo_family": "SSSP/1.2/PBEsol/efficiency",
         "kpoints_distance": 0.15,
+        "initial_magnetic_moments": None,
         "pw": {
             "parameters": {
                 "SYSTEM": {
@@ -45,6 +46,7 @@ def test_set_panel_value():
     parameters_ref = {
         "pseudo_family": "SSSP/1.2/PBE/precision",
         "kpoints_distance": 0.25,
+        "initial_magnetic_moments": None,
         "pw": {
             "parameters": {
                 "SYSTEM": {
@@ -58,3 +60,16 @@ def test_set_panel_value():
     wg.set_panel_value(parameters_ref)
     parameters = wg.get_panel_value()
     assert parameters == parameters_ref
+
+
+def test_magnetization(structure_data_object):
+    """Test set_panel_value."""
+    from aiidalab_qe.app.configure.advanced import MagnetizationSettings
+
+    wg = MagnetizationSettings()
+    wg._update_widget({"new": structure_data_object})
+    # set magnetization
+    wg._set_magnetization_values({"Si": 1.0})
+    # get magnetization
+    magnetizations = wg.get_magnetization()
+    assert magnetizations == {"Si": 1.0}

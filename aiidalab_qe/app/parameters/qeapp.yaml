@@ -22,3 +22,4 @@ basic:
 advanced:
     kpoints_distance_override:
     pseudo_family: SSSP/1.2/PBEsol/efficiency
+    initial_magnetic_moments: none

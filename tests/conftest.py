@@ -254,6 +254,19 @@ def workchain_settings_generator():
 # I removed all the fixture for kinpoints, smearing, tot_charge
 # because there are not a seperate class anymore. They are just
 # a part of AdvancedSettings class.
+@pytest.fixture()
+def initial_magnetic_moments_generator(structure_data_object):
+    """Retturn a function that generatates a initial_magnetic_moments dictionary"""
+    from aiidalab_qe.app.steps import MagnetizationSettings
+
+    def _initial_moments_generator(**kwargs):
+        initial_magnetic_moments = MagnetizationSettings()
+        initial_magnetic_moments.input_structure = structure_data_object
+        initial_magnetic_moments.update_kinds_widget()
+        initial_magnetic_moments._set_magnetization_values(**kwargs)
+        return initial_magnetic_moments
+
+    return _initial_moments_generator
 
 
 # I try to use the usefixtures decorator but it does not work

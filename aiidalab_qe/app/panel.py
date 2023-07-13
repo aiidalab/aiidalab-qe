@@ -58,7 +58,8 @@ class Panel(ipw.VBox):
         self.set_panel_value(DEFAULT_PARAMETERS)
 
     def _update_state(self):
-        """Update the state of the panel."""
+        """Update the state of the panel.
+        This can be used to update the panel when the previous step is changed."""
         pass
 
 

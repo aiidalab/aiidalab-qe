@@ -5,16 +5,24 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
+from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import time
 
+import ase
 import ipywidgets as ipw
+import numpy as np
 import traitlets
 from aiida.orm import CalcJobNode, load_node
 from aiidalab_widgets_base import register_viewer_widget
-from IPython.display import HTML, Javascript, display
+from aiidalab_widgets_base.utils import (
+    StatusHTML,
+    list_to_string_range,
+    string_range_to_list,
+)
+from IPython.display import HTML, Javascript, clear_output, display
 
 # trigger registration of the viewer widget:
 from aiidalab_qe.app.result import node_view  # noqa: F401
@@ -139,7 +147,9 @@ class FilenameDisplayWidget(ipw.Box):
 
     def __init__(self, max_width=None, **kwargs):
         self.max_width = max_width
-        self._html = ipw.HTML()
+        self._html = ipw.HTML(
+            layout={"margin": "0 0 0 50px"},
+        )
         super().__init__([self._html], **kwargs)
 
     @traitlets.observe("value")
@@ -436,3 +446,162 @@ class ProgressBar(ipw.HBox):
         else:
             self._animation_rate = 0
             self._progress_bar.value = change["new"]
+
+
+class AddingTagsEditor(ipw.VBox):
+    """Editor for adding tags to atoms."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    selection = traitlets.List(traitlets.Int, allow_none=True)
+    input_selection = traitlets.List(traitlets.Int, allow_none=True)
+
+    def __init__(self, title=""):
+        self.title = title
+        self._status_message = StatusHTML()
+        self.atom_selection = ipw.Text(
+            description="Index of atoms", value="", layout={"width": "initial"}
+        )
+        self.from_selection = ipw.Button(description="From selection")
+        self.from_selection.on_click(self._from_selection)
+        self.tag = ipw.BoundedIntText(
+            description="Tag", value=1, min=0, max=4, layout={"width": "initial"}
+        )
+        self.add_tags = ipw.Button(
+            description="Update tags",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+
+        self.reset_tags = ipw.Button(
+            description="Reset tags",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+        self.reset_all_tags = ipw.Button(
+            description="Reset all tags",
+            button_style="warning",
+            layout={"width": "initial"},
+        )
+        self.tag_display = ipw.Output()
+        self.add_tags.on_click(self._add_tags)
+        self.reset_tags.on_click(self._reset_tags)
+        self.reset_all_tags.on_click(self._reset_all_tags)
+        self.atom_selection.observe(self._display_table, "value")
+        self.add_tags.on_click(self._display_table)
+        self.reset_tags.on_click(self._display_table)
+        self.reset_all_tags.on_click(self._display_table)
+        super().__init__(
+            children=[
+                ipw.HTML(
+                    "<b>Adding a tag to atoms</b>",
+                ),
+                ipw.HBox(
+                    [
+                        self.atom_selection,
+                        self.from_selection,
+                        self.tag,
+                    ]
+                ),
+                self.tag_display,
+                ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
+                self._status_message,
+            ]
+        )
+
+    def _display_table(self, _=None):
+        """Function to control tag_display
+        When given a list of atom in selection it will display a HTML table with Index, Element and Tag
+        """
+        selection = string_range_to_list(self.atom_selection.value)[0]
+        current_tags = self.structure.get_tags()
+        chemichal_symbols = self.structure.get_chemical_symbols()
+
+        if selection and (max(selection) <= (len(self.structure) - 1)):
+            table_data = []
+            for index in selection:
+                tag = current_tags[index]
+                symbol = chemichal_symbols[index]
+                if tag == 0:
+                    tag = ""
+                table_data.append(
+                    ["{}".format(index), "{}".format(symbol), "{}".format(tag)]
+                )
+
+            # Create an HTML table
+            table_html = "<table>"
+            table_html += "<tr><th>Index</th><th>Element</th><th>Tag</th></tr>"
+            for row in table_data:
+                table_html += "<tr>"
+                for cell in row:
+                    table_html += "<td>{}</td>".format(cell)
+                table_html += "</tr>"
+            table_html += "</table>"
+
+            # Set layout to a fix size
+            self.tag_display.layout = {
+                "overflow": "auto",
+                "height": "100px",
+                "width": "150px",
+            }
+            with self.tag_display:
+                clear_output()
+                display(HTML(table_html))
+        else:
+            self.tag_display.layout = {}
+            with self.tag_display:
+                clear_output()
+
+    def _from_selection(self, _=None):
+        """Set the atom selection from the current selection."""
+        self.atom_selection.value = list_to_string_range(self.selection)
+
+    def _add_tags(self, _=None):
+        """Add tags to the selected atoms."""
+        if not self.atom_selection.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select atoms first.</strong>
+            </div>
+            """
+        else:
+            selection = string_range_to_list(self.atom_selection.value)[0]
+            new_structure = deepcopy(self.structure)
+            if new_structure.get_tags() == []:
+                new_tags = np.zeros(len(new_structure))
+            else:
+                new_tags = new_structure.get_tags()
+            new_tags[selection] = self.tag.value
+            new_structure.set_tags(new_tags)
+            self.structure = None
+            self.structure = deepcopy(new_structure)
+            self.input_selection = None
+            self.input_selection = deepcopy(self.selection)
+
+    def _reset_tags(self, _=None):
+        """Clear tags from selected atoms."""
+        if not self.atom_selection.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select atoms first.</strong>
+            </div>
+            """
+        else:
+            selection = string_range_to_list(self.atom_selection.value)[0]
+            new_structure = deepcopy(self.structure)
+            new_tags = new_structure.get_tags()
+            new_tags[selection] = 0
+            new_structure.set_tags(new_tags)
+            self.structure = None
+            self.structure = deepcopy(new_structure)
+            self.input_selection = None
+            self.input_selection = deepcopy(self.selection)
+
+    def _reset_all_tags(self, _=None):
+        """Clear all tags."""
+        new_structure = deepcopy(self.structure)
+        new_tags = np.zeros(len(new_structure))
+        new_structure.set_tags(new_tags)
+        self.structure = None
+        self.structure = deepcopy(new_structure)
+        self.input_selection = None
+        self.input_selection = deepcopy(self.selection)
