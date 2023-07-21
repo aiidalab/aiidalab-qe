@@ -6,7 +6,7 @@ Install the app
 
    This section is mainly for users who accessed AiiDAlab via the open servers (Materials Cloud or Materials MarketPlace), where the app is not yet installed. For all other options, we've taken care of installing the app. You may proceed to use the app. To learn more about how to do so, you can check out the :doc:`tutorials </tutorials/index>`.
 
-   Nevertheless, if interested, please feel free to read on. This guide may be followed in general for other AiiDAlab apps, with minor adjustments if any .
+   Nevertheless, if interested, please feel free to read on. This guide may be followed in general for other AiiDAlab apps, with minor adjustments if any.
 
 AiiDAlab offers two options for installing the Quantum ESPRESSO app:
 
@@ -17,7 +17,7 @@ AiiDAlab offers two options for installing the Quantum ESPRESSO app:
 
 .. tip::
 
-   You may also install the app directly from the host computer using AiiDAlab launch with
+   If you're using `aiidalab-launch` to start AiiDAlab locally, you may also install the app directly from the host computer with
 
    .. code-block::
 
