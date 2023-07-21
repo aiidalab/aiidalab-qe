@@ -3,7 +3,8 @@
 How to upgrade or uninstall the app
 ===================================
 
-Upgrading or uninstalling the Quantum ESPRESSO app can be achieved via the App Manager tool or the built-in terminal.
+On the home page, apps with available updates will state "Update available" in blue at their top right corner. Otherwise, it will read "Latest version" in green.
+If desired, upgrading the Quantum ESPRESSO app can be achieved via the App Manager tool or the built-in terminal. Uninstalling the app may be done using the same tools. See the following tabs for more information.
 
 .. tab-set::
 
