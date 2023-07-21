@@ -121,4 +121,4 @@ If you use the app for research, please follow these links to:
 Acknowledgements
 ================
 
-We acknowledge the AiiDAlab team for the development of the Quantum ESPRESSO app.
+We acknowledge the `AiiDAlab`_ team for the development of the Quantum ESPRESSO app.
