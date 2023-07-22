@@ -11,5 +11,5 @@ Tutorials
    :maxdepth: 2
    :caption: Contents:
 
-   basic_run_on_local_computer
+   basic
    advance_run_on_remote_computer
