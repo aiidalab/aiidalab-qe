@@ -65,13 +65,6 @@ AiiDAlab offers two options for installing the Quantum ESPRESSO app:
 
             .. image:: ../_static/images/app-management-app-installation-completed.png
 
-         .. grid-item-card:: **Step 5: Start the app from the start page**
-
-            When the installation process is finished, the newly installed app will show up on the start page. Launch the app by clicking on the Quantum ESPRESSO logo.
-
-            .. image:: ../_static/images/app-management-start-page.png
-
-
    .. tab-item:: Terminal
 
       .. grid:: 1
@@ -88,11 +81,5 @@ AiiDAlab offers two options for installing the Quantum ESPRESSO app:
             .. code-block:: console
 
                $ aiidalab install quantum-espresso
-
-         .. grid-item-card:: **Step 3: Start the app from the start page**
-
-            When the installation process is finished, the newly installed app will show up on the start page. Launch the app by clicking on the Quantum ESPRESSO logo.
-
-            .. image:: ../_static/images/app-management-start-page.png
 
 .. _AiiDAlab app store: https://aiidalab.github.io/aiidalab-registry
