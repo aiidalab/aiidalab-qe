@@ -5,10 +5,7 @@ Tutorials
 
 .. important::
 
-    Before you get started, make sure that you have:
-
-    * installed the `QeApp` :doc:`(see instructions) </installation/index>`
-
+    Before you get started, make sure you've :doc:`accessed </installation/aiidalab/index>` AiiDAlab and :doc:`installed </installation/install>` the Quantum ESPRESSO app.
 
 .. toctree::
    :maxdepth: 2
