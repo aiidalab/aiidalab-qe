@@ -77,7 +77,7 @@ Access AiiDAlab
 
 .. div::
 
-\* The Quantum ESPRESSO app is included in these images. No further installation required!
+   \* The Quantum ESPRESSO app is included in these images. No further installation required!
 
 .. toctree::
    :maxdepth: 1
