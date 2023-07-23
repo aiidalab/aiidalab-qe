@@ -1,104 +1,52 @@
-.. _run_calculation_on_remote_computer:
+=================
+Advanced Tutorial
+=================
 
-Run calculation on remote computer
-==================================
+Overview
+--------
 
-This time, the goal is to submit a band structure calculation of magnetic cobalt on a remote machine (i.e., on a different computational resource). The instruction in collapsible text is for CSCS machine.
+Calculations probing more intricate properties often require additional computational resources. In this tutorial, we will again compute a band structure, but this time, we will do it for a magnetic system, namely bulk cobalt. As such, will set up our environment to submit to a remote machine capable of handling the calculation.
 
+Start
+-----
 
-Step 1 Select a structure
--------------------------
+.. admonition:: Goal
 
-Again use the "From examples" structure importer and select cobalt.
+   To submit a band structure calculation for magnetic cobalt on a remote machine.
 
-Step 2 Configure workflow
--------------------------
-
-Turn on the `Magnetism` option.
-
-For protocol, please select "fast" (or select the "precise" protocol if you have enough resource to test).
-
-
-Step 3 Choose computational resources
--------------------------------------
-
-Now you need set up a new computer (e.g., the CSCS Daint or Eiger machine if you have acount on it) and the codes on this newly setup computer (i.e., you need to tell AiiDA where the executables are, which modules to load etc.).
+To start, go ahead and :doc:`launch </installation/launch>` the app, then follow the steps below.
 
 .. note::
 
-   The widget to assist you in the computer/code setup is not very convinient for CSCS machines, because CSCS requires to specify the account and setting up a default one is not currently straightforward in AiiDA; we are working to improve this.
+   For brevity, we did not include images for steps 1-3. Please refer to the :doc:`basic tutorial </tutorials/basic>` for visual aid.
 
+Step 1: Select a structure
+**************************
 
-**Setup new code**
-- Click the button `Setup new code`.
-- In the `Domain` field, please select `daint.cscs.ch`.
-- Click `Detailed Setup`, then it will show three steps:
+Select `Cobalt (hcp)` from the `From examples` tab and click `Confirm`.
 
-    - password-less SSH
-    - computer in AiiDA
-    - code in AiiDA
+Step 2: Configure the workflow
+******************************
 
-**Set up password-less SSH connection**
-- In the `SSH username`, input your username for CSCS.
-- Click `Setup ssh`.
-- On the textbox above `Detailed Setup`, input your password, and click `Continue`.
-- Wait a few seconds, it will ask you to input your password again, and click `Continue`
+Select `Full geometry` to relax the structure. As we are looking at magnetic cobalt, we also want to turn on `Magnetism`. Go ahead and do so now.
 
-If you see a message as below:
-```
-30s timeout ...
-```
-Please click the `Setup ssh` button again and input the password.
+Select both `Band structure` and `Projected density of states` as the properties of interest.
 
+For the protocol, select `fast` to quickly produce results, or, if you have enough resources, you can select the `precise` protocol for increased accuracy.
 
-**Setup a computer in AiiDA**
+Click `Confirm` to proceed.
 
-Click the button `Setup computer`, then add one line in the `Prepend text` to specify your account (it is the project account, such as `mr32` or `mrcloud`) at CSCS. Replace the `<account_name>` string with it!
-```
-#SBATCH --account=<account_name>
-```
-You can find further parameters in the screenshot below.
+Step 3 - Choose computational resources
+***************************************
 
-.. figure:: /_static/images/step1_select_structure.png
-   :width: 12cm
+As mentioned above, our calculation will require more computational resources than the basic tutorial. As such, we will take a brief detour through the relevant :doc:`How-To </howto/setup_computer_code>` section to configure the environment with a remote machine. When you're done, click `Submit` to submit the calculation.
 
+Step 4: Check the status and results
+************************************
 
-Click the button `test computer`, then wait 1 minute: you will see this log message if everything was setup correctly:
+Again, while the calculation is running, you can monitor its status as shown in the :ref:`basic tutorial <basic_status>`. You can view the results once the calculation is finished.
 
-.. code-block:: none
+Summary
+-------
 
-   Report: Testing computer<daint-mc> for user<aiida@localhost>...
-   * Opening connection... [OK]
-   * Checking for spurious output... [OK]
-   * Getting number of jobs from scheduler... [OK]: 2255 jobs found in the queue
-   * Determining remote user name... [OK]: xingwang
-   * Creating and deleting temporary file... [OK]
-   Success: all 5 tests succeeded
-
-
-**Set up a code**
-
-In the field `Select computer`, please select the computer you just setup, in this case `daint-mc`. Check all other options, and then click the button `Setup code` to setup the `pw.x` code.
-
-.. figure:: /_static/images/setup_computer.png
-   :width: 12cm
-
-Similarly, setup the `dos.x` and `projwfc.x` codes, needed by the app to compute DOS and PDOS. You can skip the computer setup step, since it needs to be done only once per comouter, and go to `Set up a code in AiiDA` directly to setup the remaining codes.
-
-After you finishing the codes setup, you can launch a new calculation with the newly setup codes, that should be called:
-
-- pw-7.0@daint-mc
-- dos-7.0@daint-mc
-- projwfc-7.0@daint-mc
-
-.. figure:: /_static/images/setup_code.png
-   :width: 12cm
-
-In the end, click the `Submit` button.
-
-
-Step 4 Check the status and results.
-------------------------------------
-
-.. figure:: /_static/images/select_new_code.png
-   :width: 12cm
+In this tutorial, you learned how to submit a band structure calculation on a remote machine using the Quantum ESPRESSO app.

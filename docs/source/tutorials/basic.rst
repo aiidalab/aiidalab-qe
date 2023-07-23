@@ -104,6 +104,8 @@ Click the `Submit` button to launch the calculation.
 Step 4: Check the status and results
 ************************************
 
+.. _basic_status:
+
 Status
 ^^^^^^
 
