@@ -1,7 +1,6 @@
-.. _how_to_setup_computer_code:
-
-Setup remote computer/code
-==========================
+===================================
+How to setup a remote computer/code
+===================================
 
 The instruction in collapsible text is for CSCS machine.
 

@@ -1,8 +1,6 @@
-.. _import_structure:
-
-================
-Import structure
-================
+=========================
+How to import a structure
+=========================
 
 You can select a structure from the following four sources:
 

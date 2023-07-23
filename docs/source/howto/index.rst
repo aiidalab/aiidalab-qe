@@ -4,7 +4,7 @@ How-to guides
 =============
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    setup_computer_code
