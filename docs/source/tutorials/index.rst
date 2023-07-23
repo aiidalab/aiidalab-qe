@@ -12,4 +12,4 @@ Tutorials
    :caption: Contents:
 
    basic
-   advance_run_on_remote_computer
+   advanced
