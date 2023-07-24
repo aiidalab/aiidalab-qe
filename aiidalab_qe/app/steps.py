@@ -159,6 +159,14 @@ class WorkChainSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
 
+        #apply D3 corrections 
+        self.vdw_d3 = ipw.Checkbox(
+            description="",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="10%"),
+        )
+
         # Checkbox to see if the band structure should be calculated
         self.bands_run = ipw.Checkbox(
             description="",
@@ -220,6 +228,7 @@ class WorkChainSettings(ipw.VBox):
                         self.spin_orbit,
                     ]
                 ),
+                ipw.HBox(children=[ipw.HTML("<b>D3 corrections</b>"), self.vdw_d3]),
                 self.hubbard_widget,
                 ipw.HTML("Select which properties to calculate:"),
                 ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
@@ -1243,6 +1252,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
             if self.pseudo_family_selector.override_protocol_pseudo_family.value:
                 pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
+            if self.workchain_settings.vdw_d3.value:
+                pw_overrides[key]["pw"]["parameters"]["SYSTEM"].update({"vdw_corr": "Grimme-D3", "dftd3_version" : 4.0})
             if self.workchain_settings.hubbard_widget.hubbard.value:
                 pw_overrides[key]["pw"]["parameters"]["SYSTEM"].update(
                     self.workchain_settings.hubbard_widget.hubbard_dict
