@@ -1302,7 +1302,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         self.advanced_settings.magnetization.get_magnetization()
                     )
 
-                if key in ["base", "scf"]:
+                if key in ["base", "scf", "nscf"]:
                     if self.advanced_settings.kpoints.override.value:
                         pw_overrides[key][
                             "kpoints_distance"
