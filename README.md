@@ -1,6 +1,7 @@
 # AiiDAlab Quantum ESPRESSO application
 
 [![codecov](https://codecov.io/gh/aiidalab/aiidalab-qe/branch/master/graph/badge.svg)](https://codecov.io/gh/aiidalab/aiidalab-qe)
+[![Documentation Status](https://readthedocs.org/projects/aiidalab-qe/badge/?version=latest)](https://aiidalab-qe.readthedocs.io/?badge=latest)
 
 ## About
 
