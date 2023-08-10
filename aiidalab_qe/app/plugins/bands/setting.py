@@ -12,7 +12,7 @@ from aiidalab_qe.app.panel import Panel
 
 
 class Setting(Panel):
-    title = "Bands Structure Settings"
+    title = "Bands Structure"
     identifier = "bands"
 
     def __init__(self, **kwargs):

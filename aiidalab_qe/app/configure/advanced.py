@@ -60,15 +60,16 @@ class AdvancedSettings(Panel):
             disabled=False,
             style={"description_width": "initial"},
         )
-        self.kpoints_distance = ipw.FloatText(
+        self.kpoints_distance = ipw.BoundedFloatText(
             value=0.15,
+            min=0,
             step=0.05,
             description="K-points distance (1/Å):",
             disabled=False,
             style={"description_width": "initial"},
         )
         self.tot_charge = ipw.BoundedFloatText(
-            value=0,
+            value=QEAPP_DEFAULT_PARAMETERS["advanced"]["tot_charge"],
             min=-3,
             max=3,
             step=0.01,
@@ -155,7 +156,7 @@ class AdvancedSettings(Panel):
         """
         # TODO we shoudl first check the overide box, and then set the value
         # but discuss with others if we really need the orveride box
-        self.pseudo_family_selector.override_protocol_pseudo_family.value = True
+        self.pseudo_family_selector.override_protocol_pseudo_family.value = False
         pseudo_family = parameters.get("pseudo_family")
         self.pseudo_family_selector.value = pseudo_family
         # TODO support pseudodojo
@@ -280,7 +281,7 @@ class MagnetizationSettings(ipw.VBox):
 
     def _set_magnetization_values(self, initial_magnetic_moments):
         """Update used for conftest setting all magnetization to a value"""
-        self.override.value = True
+        # self.override.value = True
         with self.hold_trait_notifications():
             if isinstance(initial_magnetic_moments, dict):
                 for i in range(len(self.kinds.children)):

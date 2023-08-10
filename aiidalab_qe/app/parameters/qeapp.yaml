@@ -20,6 +20,7 @@ basic:
     protocol: moderate
 
 advanced:
+    tot_charge: 0
     kpoints_distance_override:
     pseudo_family: SSSP/1.2/PBEsol/efficiency
     initial_magnetic_moments: none
