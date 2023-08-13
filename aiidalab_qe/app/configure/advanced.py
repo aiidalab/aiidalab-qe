@@ -156,7 +156,6 @@ class AdvancedSettings(Panel):
         """
         # TODO we shoudl first check the overide box, and then set the value
         # but discuss with others if we really need the orveride box
-        self.pseudo_family_selector.override_protocol_pseudo_family.value = False
         pseudo_family = parameters.get("pseudo_family")
         self.pseudo_family_selector.value = pseudo_family
         # TODO support pseudodojo
@@ -173,6 +172,8 @@ class AdvancedSettings(Panel):
         self.magnetization._set_magnetization_values(
             parameters.get("initial_magnetic_moments", 0.0)
         )
+        print("pseudo functional: ", self.pseudo_family_selector.dft_functional.value)
+        print("pseudo: ", self.pseudo_family_selector.protocol_selection.value)
 
     def reset(self):
         self.set_panel_value(DEFAULT_PARAMETERS)
@@ -281,7 +282,6 @@ class MagnetizationSettings(ipw.VBox):
 
     def _set_magnetization_values(self, initial_magnetic_moments):
         """Update used for conftest setting all magnetization to a value"""
-        # self.override.value = True
         with self.hold_trait_notifications():
             if isinstance(initial_magnetic_moments, dict):
                 for i in range(len(self.kinds.children)):

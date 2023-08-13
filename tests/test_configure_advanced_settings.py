@@ -58,6 +58,7 @@ def test_set_panel_value():
         },
     }
     wg.set_panel_value(parameters_ref)
+    print("functional: ", wg.pseudo_family_selector.dft_functional.value)
     parameters = wg.get_panel_value()
     assert parameters == parameters_ref
 

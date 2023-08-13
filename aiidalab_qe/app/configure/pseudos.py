@@ -119,7 +119,6 @@ class PseudoFamilySelector(ipw.VBox):
         ipw.dlink((self.show_ui, "value"), (self.protocol_selection, "disabled"))
         ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
 
-        self.set_value_trait()
 
         super().__init__(
             children=[
@@ -133,20 +132,17 @@ class PseudoFamilySelector(ipw.VBox):
         )
 
     def set_value_trait(self, _=None):
-        if self.override_protocol_pseudo_family.value:
-            family, protocol = self.protocol_selection.value.split()
-            functional = self.dft_functional.value
-            if family == "PseudoDojo":
-                pseudo_family_string = f"PseudoDojo/0.4/{functional}/SR/{protocol}/upf"
-            elif family == "SSSP":
-                pseudo_family_string = f"SSSP/1.2/{functional}/{protocol}"
-            else:
-                raise ValueError(
-                    f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
-                )
-            self.value = pseudo_family_string
+        family, protocol = self.protocol_selection.value.split()
+        functional = self.dft_functional.value
+        if family == "PseudoDojo":
+            pseudo_family_string = f"PseudoDojo/0.4/{functional}/SR/{protocol}/upf"
+        elif family == "SSSP":
+            pseudo_family_string = f"SSSP/1.2/{functional}/{protocol}"
         else:
-            self.value = DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
+            raise ValueError(
+                f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
+            )
+        self.value = pseudo_family_string
 
     def set_show_ui(self, change):
         self.show_ui.value = not change.new
