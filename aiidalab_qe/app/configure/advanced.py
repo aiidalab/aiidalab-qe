@@ -126,12 +126,12 @@ class AdvancedSettings(Panel):
         self.children = [
             self.subtitle,
             ipw.HBox(
-                    [
-                        self.subdescription,
-                        self.override,
-                    ],
-                    layout=ipw.Layout(justify_content="space-between"),
-                ),
+                [
+                    self.subdescription,
+                    self.override,
+                ],
+                layout=ipw.Layout(justify_content="space-between"),
+            ),
             # self.tot_charge_description,
             self.tot_charge,
             self.magnetization,
