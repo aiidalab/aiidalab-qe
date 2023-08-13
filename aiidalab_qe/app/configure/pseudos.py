@@ -119,7 +119,6 @@ class PseudoFamilySelector(ipw.VBox):
         ipw.dlink((self.show_ui, "value"), (self.protocol_selection, "disabled"))
         ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
 
-
         super().__init__(
             children=[
                 self.title,
