@@ -84,8 +84,12 @@ class AdvancedSettings(Panel):
         )
         self.magnetization = MagnetizationSettings()
         # override
-        for item in [self.tot_charge, self.kpoints_distance,
-                     self.smearing, self.degauss]:
+        for item in [
+            self.tot_charge,
+            self.kpoints_distance,
+            self.smearing,
+            self.degauss,
+        ]:
             ipw.dlink(
                 (self.override, "value"),
                 (item, "disabled"),
@@ -122,12 +126,12 @@ class AdvancedSettings(Panel):
         self.children = [
             self.subtitle,
             ipw.HBox(
-                    [
-                        self.subdescription,
-                        self.override,
-                    ],
-                    layout=ipw.Layout(height="50px", justify_content="space-between"),
-                ),
+                [
+                    self.subdescription,
+                    self.override,
+                ],
+                layout=ipw.Layout(height="50px", justify_content="space-between"),
+            ),
             # self.tot_charge_description,
             self.tot_charge,
             self.magnetization,
