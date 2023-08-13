@@ -1,8 +1,8 @@
 import ipywidgets as ipw
 from aiidalab_widgets_base import WizardAppWidget
 
-from aiidalab_qe.app.configure import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.common.process import QeAppWorkChainSelector
+from aiidalab_qe.app.configure import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.result.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structures import StructureSelectionStep, structure_manager_widget
 from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep

@@ -20,8 +20,8 @@ from IPython.display import HTML, display
 from jinja2 import Environment
 
 from aiidalab_qe.app import static
-from aiidalab_qe.app.plugins.relax.result import Result as RelaxResult
 from aiidalab_qe.app.common.utils import get_entry_items
+from aiidalab_qe.app.plugins.relax.result import Result as RelaxResult
 
 # I removed this `MinimalStructureViewer` class, because it is not used anywhere
 

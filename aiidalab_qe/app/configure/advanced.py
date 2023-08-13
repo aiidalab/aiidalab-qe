@@ -4,8 +4,8 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from IPython.display import clear_output, display
 
 from aiidalab_qe.app.common.panel import Panel
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS as QEAPP_DEFAULT_PARAMETERS
 from aiidalab_qe.app.configure.pseudos import PseudoFamilySelector
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS as QEAPP_DEFAULT_PARAMETERS
 
 StructureData = DataFactory("core.structure")
 

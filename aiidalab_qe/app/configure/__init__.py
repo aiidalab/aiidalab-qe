@@ -3,8 +3,8 @@ import traitlets
 from aiida.plugins import DataFactory
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.common.utils import get_entry_items
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 
 from .advanced import AdvancedSettings
 from .basic import BasicSettings

@@ -16,13 +16,13 @@ from aiida.plugins import DataFactory
 from aiidalab_widgets_base import ComputationalResourcesWidget, WizardAppWidgetStep
 from IPython.display import display
 
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.common.setup_codes import QESetupWidget
-from aiidalab_qe.app.submit.sssp import SSSPInstallWidget
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.submit.resources import (
     ParallelizationSettings,
     ResourceSelectionWidget,
 )
+from aiidalab_qe.app.submit.sssp import SSSPInstallWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 StructureData = DataFactory("core.structure")
