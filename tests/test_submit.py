@@ -3,7 +3,7 @@ def test_codes(pw_code, dos_code, projwfc_code, pw_code_70):
     from aiida.orm import load_code
 
     from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-    from aiidalab_qe.app.submit.submit import SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
 
     step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
     # get the default codes

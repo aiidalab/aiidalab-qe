@@ -146,7 +146,7 @@ def sssp(aiida_profile, generate_upf_data):
     from aiida.plugins import GroupFactory
     from aiida_pseudo.data.pseudo import UpfData
 
-    from aiidalab_qe.app.sssp import EXPECTED_PSEUDOS
+    from aiidalab_qe.app.submit.sssp import EXPECTED_PSEUDOS
 
     aiida_profile.clear_profile()
 
@@ -273,7 +273,7 @@ def initial_magnetic_moments_generator(structure_data_object):
 # so I pass the pw_code etc to the parameters list
 @pytest.fixture
 def app(pw_code, dos_code, projwfc_code, sssp):
-    from aiidalab_qe.app.app import QEApp
+    from aiidalab_qe.app import QEApp
 
     app = QEApp(qe_auto_setup=False)
 

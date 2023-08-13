@@ -1,6 +1,6 @@
 def test_panel_class():
     """Test Panel class."""
-    from aiidalab_qe.app.panel import Panel
+    from aiidalab_qe.app.common.panel import Panel
 
     panel = Panel(identifier="test")
     assert panel.identifier == "test"
@@ -11,7 +11,7 @@ def test_panel_class():
 
 def test_outline_panel():
     """Test OutlinePanel class."""
-    from aiidalab_qe.app.panel import OutlinePanel
+    from aiidalab_qe.app.common.panel import OutlinePanel
 
     panel = OutlinePanel(identifier="test")
     assert panel.identifier == "test"
@@ -24,7 +24,7 @@ def test_outline_panel():
 
 def test_result_panel():
     """Test ResultPanel class.""" ""
-    from aiidalab_qe.app.panel import ResultPanel
+    from aiidalab_qe.app.common.panel import ResultPanel
 
     panel = ResultPanel(identifier="test")
     assert panel.identifier == "test"

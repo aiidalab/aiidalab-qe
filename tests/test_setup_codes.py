@@ -2,7 +2,7 @@ def test_setup_codes(pw_code, projwfc_code, dos_code, fixture_localhost):
     from aiida.orm import load_code
     from aiida.tools import delete_nodes
 
-    from aiidalab_qe.app.setup_codes import (
+    from aiidalab_qe.app.common.setup_codes import (
         QE_VERSION,
         _code_is_setup,
         _setup_code,
@@ -25,7 +25,7 @@ def test_setup_codes(pw_code, projwfc_code, dos_code, fixture_localhost):
 
 
 def test_widget(pw_code, projwfc_code, dos_code):
-    from aiidalab_qe.app.setup_codes import QESetupWidget
+    from aiidalab_qe.app.common.setup_codes import QESetupWidget
 
     widget = QESetupWidget(auto_start=False)
     widget.set_message("abc")

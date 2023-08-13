@@ -3,7 +3,7 @@ def test_protocol():
     The protocol from basic_settings will trigger the
     update of the protocol in advance_settings.
     """
-    from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
+    from aiidalab_qe.app.configure import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()
     wg.basic_settings.workchain_protocol.value = "fast"
@@ -12,7 +12,7 @@ def test_protocol():
 
 
 def test_get_input_parameters():
-    from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
+    from aiidalab_qe.app.configure import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()
     parameters = wg.get_input_parameters()
@@ -27,7 +27,7 @@ def test_get_input_parameters():
 def test_set_input_parameters():
     """insulator, non-magnetic, no smearing
     the occupation type is set to fixed, smearing and degauss should not be set"""
-    from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
+    from aiidalab_qe.app.configure import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()
     parameters_ref = {
@@ -65,7 +65,7 @@ def test_set_input_parameters():
 
 def test_panel():
     """Dynamic add/remove the panel based on the workchain settings."""
-    from aiidalab_qe.app.configure.configure import ConfigureQeAppWorkChainStep
+    from aiidalab_qe.app.configure import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()
     assert len(wg.tab.children) == 3

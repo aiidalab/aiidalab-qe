@@ -2,7 +2,7 @@
 
 """
 
-from aiidalab_qe.app.panel import ResultPanel
+from aiidalab_qe.app.common.panel import ResultPanel
 
 
 class Result(ResultPanel):

@@ -1,4 +1,4 @@
-from aiidalab_qe.app.panel import OutlinePanel
+from aiidalab_qe.app.common.panel import OutlinePanel
 
 from .result import Result
 from .workchain import workchain_and_builder

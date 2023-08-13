@@ -3,7 +3,7 @@
 """
 import ipywidgets as ipw
 
-from aiidalab_qe.app.panel import ResultPanel
+from aiidalab_qe.app.common.panel import ResultPanel
 
 
 def export_data(work_chain_node, group_dos_by="atom"):

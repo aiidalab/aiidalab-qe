@@ -23,7 +23,7 @@ def test_resources_widget():
 
 def test_resources():
     """Test get and set resources."""
-    from aiidalab_qe.app.submit.submit import SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.submit import SubmitQeAppWorkChainStep
 
     step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
     step.resources_config.num_nodes.value = 2

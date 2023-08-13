@@ -1,6 +1,6 @@
 import ipywidgets as ipw
 
-from aiidalab_qe.app.panel import Panel
+from aiidalab_qe.app.common.panel import Panel
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS as QEAPP_DEFAULT_PARAMETERS
 
 DEFAULT_PARAMETERS = QEAPP_DEFAULT_PARAMETERS["basic"]

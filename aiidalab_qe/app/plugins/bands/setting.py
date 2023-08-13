@@ -8,7 +8,7 @@ Authors:
 import ipywidgets as ipw
 from aiida.orm import Int, Str
 
-from aiidalab_qe.app.panel import Panel
+from aiidalab_qe.app.common.panel import Panel
 
 
 class Setting(Panel):

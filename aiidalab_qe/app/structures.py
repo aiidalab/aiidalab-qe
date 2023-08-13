@@ -22,7 +22,7 @@ from aiidalab_widgets_base import (
 from pymatgen.analysis.dimensionality import get_dimensionality_larsen
 from pymatgen.analysis.local_env import CrystalNN
 
-from aiidalab_qe.app.widgets import AddingTagsEditor
+from aiidalab_qe.app.common.widgets import AddingTagsEditor
 
 NON_3D_ERROR_MESSAGE = """<div class="alert alert-danger">
 <p><strong><i class="fa fa-exclamation-circle" aria-hidden="true"></i>

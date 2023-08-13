@@ -5,7 +5,7 @@ import typing
 
 import ipywidgets as ipw
 
-from aiidalab_qe.app.panel import ResultPanel
+from aiidalab_qe.app.common.panel import ResultPanel
 
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",

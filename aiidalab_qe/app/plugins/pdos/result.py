@@ -5,7 +5,7 @@
 import ipywidgets as ipw
 from aiida.orm import ProjectionData
 
-from aiidalab_qe.app.panel import ResultPanel
+from aiidalab_qe.app.common.panel import ResultPanel
 
 
 def cmap(label: str) -> str:

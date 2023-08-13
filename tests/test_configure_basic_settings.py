@@ -1,6 +1,6 @@
 def test_get_panel_value():
     """Test get_panel_value."""
-    from aiidalab_qe.app.configure.configure import BasicSettings
+    from aiidalab_qe.app.configure import BasicSettings
 
     wg = BasicSettings()
     parameters = wg.get_panel_value()
@@ -14,7 +14,7 @@ def test_get_panel_value():
 
 def test_set_panel_value():
     """Test set_panel_value."""
-    from aiidalab_qe.app.configure.configure import BasicSettings
+    from aiidalab_qe.app.configure import BasicSettings
 
     wg = BasicSettings()
     parameters_ref = {

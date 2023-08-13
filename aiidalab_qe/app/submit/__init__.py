@@ -17,8 +17,8 @@ from aiidalab_widgets_base import ComputationalResourcesWidget, WizardAppWidgetS
 from IPython.display import display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.app.setup_codes import QESetupWidget
-from aiidalab_qe.app.sssp import SSSPInstallWidget
+from aiidalab_qe.app.common.setup_codes import QESetupWidget
+from aiidalab_qe.app.submit.sssp import SSSPInstallWidget
 from aiidalab_qe.app.submit.resources import (
     ParallelizationSettings,
     ResourceSelectionWidget,

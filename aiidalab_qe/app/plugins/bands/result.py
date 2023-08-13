@@ -3,7 +3,7 @@
 """
 
 
-from aiidalab_qe.app.panel import ResultPanel
+from aiidalab_qe.app.common.panel import ResultPanel
 
 
 def export_bands_data(outputs, fermi_energy=None):
