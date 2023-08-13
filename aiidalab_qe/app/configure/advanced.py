@@ -20,13 +20,13 @@ class AdvancedSettings(Panel):
         <h4>Advanced Settings</h4></div>"""
     )
     subdescription = ipw.HTML(
-        """Select the advanced settings for the <b>pw.x</b> code."""
+        """Select the advanced settings for the <b>pw.x</b> code. Tick the box to override the default."""
     )
 
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
-        Tick the box to override the default, not advised unless you've mastered <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
+        About <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
         target="_blank">here</a> for a discussion).
     </p>"""
     )
@@ -34,11 +34,16 @@ class AdvancedSettings(Panel):
         """<div>
         The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
         The value below represents the maximum distance between the k-points in each direction of reciprocal space.
-        Tick the box to override the default, smaller is more accurate and costly. </div>"""
+        Smaller is more accurate and costly. </div>"""
     )
     tot_charge_description = ipw.HTML("""<p></p>""")
 
     def __init__(self, **kwargs):
+        self.override = ipw.Checkbox(
+            description="Override",
+            indent=False,
+            value=False,
+        )
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
@@ -49,14 +54,14 @@ class AdvancedSettings(Panel):
         self.smearing = ipw.Dropdown(
             options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
             value="cold",
-            description="Smearing type:",
+            description="<b>Smearing type</b>:",
             disabled=False,
             style={"description_width": "initial"},
         )
         self.degauss = ipw.FloatText(
             value=0.01,
             step=0.005,
-            description="Smearing width (Ry):",
+            description="<b>Smearing width</b> (Ry):",
             disabled=False,
             style={"description_width": "initial"},
         )
@@ -64,7 +69,7 @@ class AdvancedSettings(Panel):
             value=0.15,
             min=0,
             step=0.05,
-            description="K-points distance (1/Å):",
+            description="<b>K-points distance</b> (1/Å):",
             disabled=False,
             style={"description_width": "initial"},
         )
@@ -74,10 +79,22 @@ class AdvancedSettings(Panel):
             max=3,
             step=0.01,
             disabled=False,
-            description="Total charge:",
+            description="<b>Total charge</b>:",
             style={"description_width": "initial"},
         )
         self.magnetization = MagnetizationSettings()
+        # override
+        for item in [self.tot_charge, self.kpoints_distance,
+                     self.smearing, self.degauss]:
+            ipw.dlink(
+                (self.override, "value"),
+                (item, "disabled"),
+                lambda override: not override,
+            )
+        ipw.dlink(
+            (self.override, "value"),
+            (self.magnetization.override, "value"),
+        )
         # update settings based on protocol
         ipw.dlink(
             (self.workchain_protocol, "value"),
@@ -104,7 +121,13 @@ class AdvancedSettings(Panel):
         #
         self.children = [
             self.subtitle,
-            self.subdescription,
+            ipw.HBox(
+                    [
+                        self.subdescription,
+                        self.override,
+                    ],
+                    layout=ipw.Layout(height="50px", justify_content="space-between"),
+                ),
             # self.tot_charge_description,
             self.tot_charge,
             self.magnetization,
@@ -172,8 +195,6 @@ class AdvancedSettings(Panel):
         self.magnetization._set_magnetization_values(
             parameters.get("initial_magnetic_moments", 0.0)
         )
-        print("pseudo functional: ", self.pseudo_family_selector.dft_functional.value)
-        print("pseudo: ", self.pseudo_family_selector.protocol_selection.value)
 
     def reset(self):
         self.set_panel_value(DEFAULT_PARAMETERS)
@@ -201,7 +222,7 @@ class MagnetizationSettings(ipw.VBox):
         self.input_structure = StructureData()
         self.input_structure_labels = []
         self.description = ipw.HTML(
-            "Define magnetization: Input structure not confirmed"
+            "<b>Magnetization</b>: Input structure not confirmed"
         )
         self.kinds = self.create_kinds_widget()
         self.kinds_widget_out = ipw.Output()
@@ -214,7 +235,7 @@ class MagnetizationSettings(ipw.VBox):
             children=[
                 ipw.HBox(
                     [
-                        self.override,
+                        # self.override,
                         self.description,
                         self.kinds_widget_out,
                     ],
@@ -258,7 +279,7 @@ class MagnetizationSettings(ipw.VBox):
     def update_kinds_widget(self):
         self.input_structure_labels = self.input_structure.get_kind_names()
         self.kinds = self.create_kinds_widget()
-        self.description.value = "Define magnetization: "
+        self.description.value = "<b> Magnetization</b>: "
         self.display_kinds()
 
     def display_kinds(self):
