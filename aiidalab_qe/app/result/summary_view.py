@@ -45,17 +45,17 @@ def extract_report_parameters(builder, ui_parameters) -> typing.Dict[str, typing
     # the properties inputs.
     energy_cutoff_wfc = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
     energy_cutoff_rho = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutrho"]
-    occupation = builder.relax.base["pw"]["parameters"]["SYSTEM"]["occupations"]
+    occupation_type = builder.relax.base["pw"]["parameters"]["SYSTEM"]["occupations"]
     scf_kpoints_distance = builder.relax.base.kpoints_distance.value
     report.update(
         {
             "energy_cutoff_wfc": energy_cutoff_wfc,
             "energy_cutoff_rho": energy_cutoff_rho,
-            "occupation": occupation,
+            "occupation_type": occupation_type,
             "scf_kpoints_distance": scf_kpoints_distance,
         }
     )
-    if occupation == "smearing":
+    if occupation_type == "smearing":
         report["degauss"] = builder.relax.base["pw"]["parameters"]["SYSTEM"]["degauss"]
         report["smearing"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
             "smearing"
