@@ -37,7 +37,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
         # Setup process monitor
         self.process_monitor = ProcessMonitor(
-            timeout=0.2,
+            timeout=2,
             callbacks=[
                 self.process_tree.update,
                 self._update_state,

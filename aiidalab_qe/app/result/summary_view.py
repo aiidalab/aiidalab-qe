@@ -60,8 +60,16 @@ def extract_report_parameters(builder, ui_parameters) -> typing.Dict[str, typing
         report["smearing"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
             "smearing"
         ]
-    report["bands_kpoints_distance"] = builder.bands.bands_kpoints_distance.value
-    report["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
+    report["bands_kpoints_distance"] = (
+        builder.bands.bands_kpoints_distance.value
+        if builder.bands.bands_kpoints_distance
+        else None
+    )
+    report["nscf_kpoints_distance"] = (
+        builder.pdos.nscf.kpoints_distance.value
+        if builder.pdos.nscf.kpoints_distance
+        else None
+    )
     report["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
         "tot_charge", 0.0
     )

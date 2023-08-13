@@ -66,9 +66,9 @@ class QeAppWorkChain(WorkChain):
                        message='The PwBandsWorkChain sub process failed')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
-        spec.expose_outputs(PwRelaxWorkChain, namespace='relax')
-        spec.expose_outputs(PwBandsWorkChain, namespace='bands')
-        spec.expose_outputs(PdosWorkChain, namespace='pdos')
+        spec.expose_outputs(PwRelaxWorkChain, namespace='relax', namespace_options={'required': False})
+        spec.expose_outputs(PwBandsWorkChain, namespace='bands', namespace_options={'required': False})
+        spec.expose_outputs(PdosWorkChain, namespace='pdos', namespace_options={'required': False})
 
         # yapf: enable
 
@@ -102,11 +102,15 @@ class QeAppWorkChain(WorkChain):
         if parameters["workflow"]["properties"]["bands"]:
             bands_builder = get_bands_builder(codes, structure, parameters)
             builder.bands = bands_builder
+        else:
+            builder.pop("bands", None)
 
         # pdos workchain
         if parameters["workflow"]["properties"]["pdos"]:
             pdos_builder = get_pdos_builder(codes, structure, parameters)
             builder.pdos = pdos_builder
+        else:
+            builder.pop("pdos", None)
         builder.properties = orm.Dict(dict=parameters["workflow"]["properties"])
         # TODO check if we need to clean the workdir
         # builder.clean_workdir = orm.Bool(clean_workdir)
