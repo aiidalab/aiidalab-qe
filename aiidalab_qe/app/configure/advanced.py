@@ -20,7 +20,7 @@ class AdvancedSettings(Panel):
         <h4>Advanced Settings</h4></div>"""
     )
     subdescription = ipw.HTML(
-        """Select the advanced settings for the <b>pw.x</b> code. Tick the box to override the default."""
+        """Select the advanced settings for the <b>pw.x</b> code. Tick the box to override the default, not advised unless you know the meaning of the settings."""
     )
 
     smearing_description = ipw.HTML(
@@ -40,7 +40,7 @@ class AdvancedSettings(Panel):
 
     def __init__(self, **kwargs):
         self.override = ipw.Checkbox(
-            description="Override",
+            description="<b>Override</b>",
             indent=False,
             value=False,
         )
@@ -126,12 +126,12 @@ class AdvancedSettings(Panel):
         self.children = [
             self.subtitle,
             ipw.HBox(
-                [
-                    self.subdescription,
-                    self.override,
-                ],
-                layout=ipw.Layout(height="50px", justify_content="space-between"),
-            ),
+                    [
+                        self.subdescription,
+                        self.override,
+                    ],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
             # self.tot_charge_description,
             self.tot_charge,
             self.magnetization,
