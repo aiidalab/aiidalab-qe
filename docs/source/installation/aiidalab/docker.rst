@@ -23,9 +23,9 @@ You have two options to launch the container:
 
    .. code-block:: console
 
-      docker run -p 8888:8888 aiidalab/aiidalab-docker-stack/qe
+      docker run -p 8888:8888 aiidalab/qe:edge
 
-#.  Use the :doc:`aiidalab-launch <launch>` tool (**recommended**)
+#.  Use the :doc:`aiidalab-launch <launch>` (**recommended**)
 
 Windows/Mac
 ***********
