@@ -25,17 +25,7 @@ You have two options to launch the container:
 
       docker run -p 8888:8888 aiidalab/qe:edge
 
-#.  Use the `aiidalab-launch <launch>` (**recommended**)
-
-   .. code-block:: console
-
-      pipx install aiidalab-launch # install the aiidalab-launch tool
-      aiidalab-launch profile add --image aiidalab/qe:edge QE # add the profile named QE and set to using image aiidalab/qe:edge. Select `n` for the question `Do you want to edit it now? [Y/n]:`
-      aiidalab-launch start -p QE
-
-   The Quantum ESPRESSO app will be available at the URL printed in the terminal. Go to the URL in your browser to access the app!
-
-   For more information on the aiidalab-launch tool, please refer to the :doc:`aiidalab-launch documentation <launch>`.
+#.  Use the :doc:`aiidalab-launch <launch>` (**recommended**)
 
 Windows/Mac
 ***********
