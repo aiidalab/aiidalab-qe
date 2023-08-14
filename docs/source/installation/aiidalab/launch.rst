@@ -24,13 +24,21 @@ AiiDAlab launch
 
       pip install aiidalab-launch
 
+#. Set up a new `QE` profile with
+
+   .. code-block:: console
+
+      aiidalab-launch profile add --image aiidalab/qe:edge QE
+
+   At the prompt, enter `n` to skip editing the profile settings.
+
 #. Start AiiDAlab with
 
    .. code-block:: console
 
-       aiidalab-launch start
+       aiidalab-launch start -p QE
 
-#. Follow the instructions on the screen to open AiiDAlab in the browser
+#. Follow the URL on the screen to open AiiDAlab in the browser
 
 .. tip::
 
@@ -43,7 +51,7 @@ AiiDAlab launch
 Profile Management
 ^^^^^^^^^^^^^^^^^^
 
-You can manage multiple profiles in AiiDAlab launch, e.g., with different home directories or ports. For more information, run
+As shown above, you can manage multiple profiles in AiiDAlab launch, e.g., with different home directories or ports. For more information, run
 
 .. code-block:: console
 
