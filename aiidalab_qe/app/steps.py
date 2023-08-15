@@ -1108,6 +1108,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                     "ecutrho"
                 ] = self.pseudo_setter.ecutrho
+
             if self.advanced_settings.override.value:
                 pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
                 if self.advanced_settings.tot_charge.override.value:
