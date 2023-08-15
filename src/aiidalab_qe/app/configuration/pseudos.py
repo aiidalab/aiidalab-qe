@@ -180,8 +180,15 @@ class PseudoFamilySelector(ipw.VBox):
 class PseudoSetter(ipw.VBox):
     structure = tl.Instance(klass=orm.StructureData, allow_none=True)
     pseudos = tl.Dict()
+    ecutwfc = tl.Float()
+    ecutrho = tl.Float()
 
-    def __init__(self, structure: orm.StructureData | None = None, **kwargs):
+    def __init__(
+        self,
+        pseudo_family: str | None = None,
+        structure: orm.StructureData | None = None,
+        **kwargs,
+    ):
         self.pseudo_setting_widgets = ipw.VBox()
         self._status_message = StatusHTML(clear_after=20)
 
