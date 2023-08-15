@@ -8,6 +8,7 @@ import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
 from aiida.plugins import DataFactory
+from aiidalab_widgets_base.utils import StatusHTML
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 
@@ -182,10 +183,12 @@ class PseudoSetter(ipw.VBox):
 
     def __init__(self, structure: orm.StructureData | None = None, **kwargs):
         self.pseudo_setting_widgets = ipw.VBox()
+        self._status_message = StatusHTML(clear_after=20)
 
         super().__init__(
             children=[
                 self.pseudo_setting_widgets,
+                self._status_message,
             ],
             **kwargs,
         )
@@ -220,7 +223,11 @@ class PseudoSetter(ipw.VBox):
     def _update_pseudos(self, _=None):
         """Update the pseudos according to the pseudo setting widgets"""
         for w in self.pseudo_setting_widgets.children:
-            if w.pseudo:
+            if w.error_message is not None:
+                self._status_message.message = w.error_message
+                return
+
+            if w.pseudo is not None:
                 self.pseudos[w.pseudo.element] = w.pseudo
 
 
@@ -228,6 +235,7 @@ class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
 
     pseudo = tl.Instance(klass=UpfData, allow_none=True)
+    error_message = tl.Unicode(allow_none=True)
 
     def __init__(self, element=""):
         self.file_upload = ipw.FileUpload(
@@ -235,6 +243,8 @@ class PseudoUploadWidget(ipw.HBox):
         )
         self.pseudo_text = ipw.Text(description=element)
         self.file_upload.observe(self._on_file_upload, names="value")
+        self.error_message = None
+        self._element = element
         super().__init__(children=[self.pseudo_text, self.file_upload])
 
     def _on_file_upload(self, change=None):
@@ -246,4 +256,14 @@ class PseudoUploadWidget(ipw.HBox):
         # the pseudo_filename is set
         with self.hold_trait_notifications():
             self.pseudo = UpfData(io.BytesIO(content), filename=filename)
-            self.pseudo_text.value = filename
+
+            # check if element is matched with the pseudo
+            if self._element != self.pseudo.element:
+                self.error_message = f"""<div class="alert alert-danger"> ERROR: Element {self._element} is not matched with the pseudo {self.pseudo.element}</div>"""
+                self._reset()
+            else:
+                self.pseudo_text.value = filename
+
+    def _reset(self):
+        """Reset the widget to the initial state."""
+        self.pseudo = None
