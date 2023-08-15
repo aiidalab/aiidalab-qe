@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import io
 import re
 
 import ipywidgets as ipw
-import traitlets
+import traitlets as tl
+from aiida import orm
+from aiida.plugins import DataFactory
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+
+UpfData = DataFactory("pseudo.upf")
 
 
 class PseudoFamilySelector(ipw.VBox):
@@ -47,9 +54,9 @@ class PseudoFamilySelector(ipw.VBox):
         well-established generalised gradient approximation (GGA) functionals:
         PBE and PBEsol.</div>"""
     )
-    disabled = traitlets.Bool()
+    disabled = tl.Bool()
 
-    value = traitlets.Unicode(
+    value = tl.Unicode(
         default_value=DEFAULT_PARAMETERS["pseudo_family"],
     )
 
@@ -167,3 +174,76 @@ class PseudoFamilySelector(ipw.VBox):
 
     def reset(self):
         self.protocol_selection.value = "SSSP efficiency"
+
+
+class PseudoSetter(ipw.VBox):
+    structure = tl.Instance(klass=orm.StructureData, allow_none=True)
+    pseudos = tl.Dict()
+
+    def __init__(self, structure: orm.StructureData | None = None, **kwargs):
+        self.pseudo_setting_widgets = ipw.VBox()
+
+        super().__init__(
+            children=[
+                self.pseudo_setting_widgets,
+            ],
+            **kwargs,
+        )
+        self._reset_pseudo_widgets()
+        self.structure = structure
+
+    def _reset_pseudo_widgets(self):
+        """Reset the pseudo setting widgets according to the structure
+        by default the pseudos are get from the pseudo family
+        """
+        if self.structure is not None:
+            kinds = self.structure.get_kind_names()
+
+            # Reset the pseudo setting widgets and output interface pseudos
+            self.pseudo_setting_widgets.children = ()
+            self.pseudos = dict()
+
+            for kind in kinds:
+                pseudo_upload_widget = PseudoUploadWidget(element=kind)
+                pseudo_upload_widget.observe(self._update_pseudos, "pseudo")
+                self.pseudo_setting_widgets.children += (pseudo_upload_widget,)
+
+    def _create_pseudo_widget(self, kind):
+        """The sigle line of pseudo setter widget"""
+        return PseudoUploadWidget(element=kind)
+
+    @tl.observe("structure")
+    def _structure_change(self, _):
+        self._reset_pseudo_widgets()
+        self._update_pseudos()
+
+    def _update_pseudos(self, _=None):
+        """Update the pseudos according to the pseudo setting widgets"""
+        for w in self.pseudo_setting_widgets.children:
+            if w.pseudo:
+                self.pseudos[w.pseudo.element] = w.pseudo
+
+
+class PseudoUploadWidget(ipw.HBox):
+    """Class that allows to upload pseudopotential from user's computer."""
+
+    pseudo = tl.Instance(klass=UpfData, allow_none=True)
+
+    def __init__(self, element=""):
+        self.file_upload = ipw.FileUpload(
+            description="Upload", multiple=False, layout={"width": "initial"}
+        )
+        self.pseudo_text = ipw.Text(description=element)
+        self.file_upload.observe(self._on_file_upload, names="value")
+        super().__init__(children=[self.pseudo_text, self.file_upload])
+
+    def _on_file_upload(self, change=None):
+        """When file upload button is pressed."""
+        filename, item = next(iter(change["new"].items()))
+        content = item["content"]
+
+        # Order matters make sure when pseudo change
+        # the pseudo_filename is set
+        with self.hold_trait_notifications():
+            self.pseudo = UpfData(io.BytesIO(content), filename=filename)
+            self.pseudo_text.value = filename
