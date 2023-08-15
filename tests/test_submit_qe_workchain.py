@@ -149,8 +149,8 @@ def builder_to_readable_dict(builder):
     from aiida import orm
     from aiida.engine import ProcessBuilderNamespace
     from aiida.plugins import DataFactory
-    
-    UpfData = DataFactory('pseudo.upf')
+
+    UpfData = DataFactory("pseudo.upf")
 
     ignore_keys = ["metadata", "monitors", "code", "structure"]
 
