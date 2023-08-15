@@ -148,13 +148,18 @@ def builder_to_readable_dict(builder):
     """transverse the builder and return a dictionary with readable values."""
     from aiida import orm
     from aiida.engine import ProcessBuilderNamespace
+    from aiida.plugins import DataFactory
+    
+    UpfData = DataFactory('pseudo.upf')
 
-    ignore_keys = ["metadata", "monitors", "pseudos", "code", "structure"]
+    ignore_keys = ["metadata", "monitors", "code", "structure"]
 
     readable_dict = {}
     for k, v in builder.items():
         if k in ignore_keys:
             continue
+        if isinstance(v, UpfData):
+            readable_dict[k] = v.filename
         elif isinstance(v, (dict, ProcessBuilderNamespace)):
             readable_dict[k] = builder_to_readable_dict(v)
         elif isinstance(v, orm.Dict):
