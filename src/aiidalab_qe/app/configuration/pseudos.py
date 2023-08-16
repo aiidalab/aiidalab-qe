@@ -244,7 +244,7 @@ class PseudoSetter(ipw.VBox):
             # loop over the kinds and create the pseudo setting widget
             # (initialized with the pseudo from the family)
             for kind in kinds:
-                pseudo_upload_widget = PseudoUploadWidget(element=kind)
+                pseudo_upload_widget = PseudoUploadWidget(kind=kind)
 
                 # keep track of the changing of pseudo setting of each kind
                 pseudo_upload_widget.observe(
@@ -276,19 +276,18 @@ class PseudoSetter(ipw.VBox):
         self.pseudos = pseudos
         self.ecutwfc, self.ecutrho = cutoff_wfc, cutoff_rho
 
-        kinds = self.structure.get_kind_names()
-
         # Reset the traitlets, so the interface is clear setup
         self.pseudo_setting_widgets.children = ()
         self._reset_traitlets()
 
         # loop over the kinds and create the pseudo setting widget
         # (initialized with the pseudo from the family)
-        for kind in kinds:
-            pseudo = pseudos.get(kind, None)
-            _cutoffs = cutoffs.get(kind, None)
+        for kind in self.structure.kinds:
+            element = kind.symbol
+            pseudo = pseudos.get(kind.name, None)
+            _cutoffs = cutoffs.get(element, None)
             pseudo_upload_widget = PseudoUploadWidget(
-                element=kind, pseudo=pseudo, cutoffs=_cutoffs
+                kind=kind.name, pseudo=pseudo, cutoffs=_cutoffs
             )
 
             # keep track of the changing of pseudo setting of each kind
@@ -316,7 +315,7 @@ class PseudoSetter(ipw.VBox):
 
     def _create_pseudo_widget(self, kind):
         """The sigle line of pseudo setter widget"""
-        return PseudoUploadWidget(element=kind)
+        return PseudoUploadWidget(kind=kind)
 
     @tl.observe("structure")
     def _structure_change(self, _):
@@ -337,7 +336,7 @@ class PseudoSetter(ipw.VBox):
                 return
 
             if w.pseudo is not None:
-                self.pseudos[w.pseudo.element] = w.pseudo
+                self.pseudos[w.kind] = w.pseudo
                 self.ecutwfc = max(self.ecutwfc, w.ecutwfc)
                 self.ecutrho = max(self.ecutrho, w.ecutrho)
 
@@ -346,22 +345,23 @@ class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
 
     pseudo = tl.Instance(klass=UpfData, allow_none=True)
+    kind = tl.Unicode()
     ecutwfc = tl.Float(allow_none=True)
     ecutrho = tl.Float(allow_none=True)
     error_message = tl.Unicode(allow_none=True)
 
     def __init__(
         self,
-        element: str = "",
+        kind: str = "",
         pseudo: UpfData | None = None,
         cutoffs: dict | None = None,
         **kwargs,
     ):
-        self._element = element
+        self.kind = kind
         self.file_upload = ipw.FileUpload(
             description="Upload", multiple=False, layout={"width": "initial"}
         )
-        self.pseudo_text = ipw.Text(description=element)
+        self.pseudo_text = ipw.Text(description=kind)
         self.file_upload.observe(self._on_file_upload, names="value")
 
         self.ecutwfc_setter = ipw.FloatText(
@@ -407,7 +407,8 @@ class PseudoUploadWidget(ipw.HBox):
             self.pseudo = UpfData(io.BytesIO(content), filename=filename)
 
             # check if element is matched with the pseudo
-            if self._element != self.pseudo.element:
+            element = "".join([i for i in self.kind if not i.isdigit()])
+            if element != self.pseudo.element:
                 self.error_message = f"""<div class="alert alert-danger"> ERROR: Element {self._element} is not matched with the pseudo {self.pseudo.element}</div>"""
                 self._reset()
             else:

@@ -1099,9 +1099,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
 
             if self.pseudo_setter.pseudos:
-                pw_overrides[key].setdefault("pseudos", self.pseudo_setter.pseudos)
-
                 pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
+                pw_overrides[key]["pw"]["pseudos"] = self.pseudo_setter.pseudos
                 pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                     "ecutwfc"
                 ] = self.pseudo_setter.ecutwfc
