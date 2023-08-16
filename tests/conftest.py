@@ -97,13 +97,17 @@ def sssp(aiida_profile, generate_upf_data):
 def generate_upf_data():
     """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
 
-    def _generate_upf_data(element):
+    def _generate_upf_data(element, filename=None):
         """Return `UpfData` node."""
         from aiida_pseudo.data.pseudo import UpfData
 
         content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="4.0"\n/></UPF>\n'
         stream = io.BytesIO(content.encode("utf-8"))
-        return UpfData(stream, filename=f"{element}.upf")
+
+        if filename is None:
+            filename = f"{element}.upf"
+
+        return UpfData(stream, filename=filename)
 
     return _generate_upf_data
 

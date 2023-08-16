@@ -409,7 +409,7 @@ class PseudoUploadWidget(ipw.HBox):
             # check if element is matched with the pseudo
             element = "".join([i for i in self.kind if not i.isdigit()])
             if element != self.pseudo.element:
-                self.error_message = f"""<div class="alert alert-danger"> ERROR: Element {self._element} is not matched with the pseudo {self.pseudo.element}</div>"""
+                self.error_message = f"""<div class="alert alert-danger"> ERROR: Element {self.kind} is not matched with the pseudo {self.pseudo.element}</div>"""
                 self._reset()
             else:
                 self.pseudo_text.value = filename
