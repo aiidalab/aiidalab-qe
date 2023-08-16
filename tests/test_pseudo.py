@@ -14,19 +14,37 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
     from aiidalab_qe.app.configuration.pseudos import PseudoSetter
 
     # test the widget is set with the elements of the structure
-    w = PseudoSetter()
-    w.structure = generate_structure_data("silica")
-    w.override_pseudos.value = True
+    silicon = generate_structure_data("silicon")
+    w = PseudoSetter(structure=silicon, pseudo_family="SSSP/1.2/PBEsol/efficiency")
 
-    assert list(w.pseudo_setter_dict.keys()) == ["Ba", "Ti", "O"]
-    assert w.pseudo_setter_dict["Ba"].value.filename == "Ba.upf"
-    assert w.pseudo_setter_dict["Ti"].value.filename == "Ti.upf"
+    assert "Si" in w.pseudos.keys()
+    assert w.ecutwfc == 30
+    assert w.ecutrho == 240
 
-    # create a custom pseudo for Ba and set to the widget
-    custum_filename = "Ba_custom.upf"
-    pseudo = generate_upf_data("Ba", custum_filename)
-    w.pseudo_setter_dict["Ba"].value = pseudo
-    assert w.pseudo_setter_dict["Ba"].value.filname == custum_filename
+    # reset the structure, the widget should be reset
+    silica = generate_structure_data("silica")
+    w.structure = silica
+    assert "Si" in w.pseudos.keys()
+    assert "O" in w.pseudos.keys()
+
+    # Upload and set a new pseudo for O
+    new_O_pseudo = generate_upf_data("O", "O_new.upf")
+    upload_w = w.pseudo_setting_widgets.children[1]
+    upload_w._on_file_upload(
+        {
+            "new": {
+                "O_new.upf": {
+                    "content": bytes(new_O_pseudo.get_content(), encoding="utf-8"),
+                },
+            },
+        }
+    )
+    upload_w.ecutrho_setter.value = 250
+    upload_w.ecutwfc_setter.value = 35
+
+    assert w.pseudos["O"].filename == "O_new.upf"
+    assert w.ecutrho == 250
+    assert w.ecutwfc == 35
 
 
 def test_pseudo_upload_widget(generate_upf_data):
