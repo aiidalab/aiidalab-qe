@@ -9,13 +9,13 @@ def test_pseudos_family_selector_widget():
     assert w.value == "PseudoDojo/0.4/PBE/SR/stringent/upf"
 
 
-def test_pseudos_setter_widget(structure_data_object, generate_upf_data):
+def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
     """Test the pseudo setter widget."""
     from aiidalab_qe.app.configuration.pseudos import PseudoSetter
 
     # test the widget is set with the elements of the structure
     w = PseudoSetter()
-    w.structure = structure_data_object("BaTiO3")
+    w.structure = generate_structure_data("silica")
     w.override_pseudos.value = True
 
     assert list(w.pseudo_setter_dict.keys()) == ["Ba", "Ti", "O"]
