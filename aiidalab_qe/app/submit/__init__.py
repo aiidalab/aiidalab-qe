@@ -239,7 +239,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 try:
                     code_widget = getattr(self, code)
                     code_widget.refresh()
-                    code_widget.value = load_code(DEFAULT_PARAMETERS[code]).uuid
+                    code_widget.value = load_code(
+                        DEFAULT_PARAMETERS["codes"][code]
+                    ).uuid
                 except NotExistent:
                     pass
 
