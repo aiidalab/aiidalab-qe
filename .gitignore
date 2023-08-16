@@ -7,3 +7,6 @@
 build/
 export/
 .do-not-setup-on-localhost
+
+# Sphinx documentation
+docs/html
