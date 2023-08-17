@@ -224,7 +224,7 @@ class PseudoSetter(ipw.VBox):
             ),
         )
         self.setter_helper = ipw.HTML(
-            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; color: red;">
             Input structure is not set. Please set the structure first.
             </div>"""
         )

@@ -342,7 +342,9 @@ class MagnetizationSettings(ipw.VBox):
         self.input_structure = StructureData()
         self.input_structure_labels = []
         self.description = ipw.HTML(
-            "Define magnetization: Input structure not confirmed"
+            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 0px">
+            Define magnetization: <span style="color: red;"> Input structure not set.</span>
+            </div>"""
         )
         self.kinds = self.create_kinds_widget()
         self.kinds_widget_out = ipw.Output()
