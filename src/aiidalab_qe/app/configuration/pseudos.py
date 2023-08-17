@@ -192,6 +192,19 @@ class PseudoSetter(ipw.VBox):
     ecutwfc = tl.Float()
     ecutrho = tl.Float()
 
+    _setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+        The pseudopotential for each kind of atom in the structure can be set customly.
+        The default pseudopotential and cutoffs are get from the pseudo family.
+        The cutoffs used for the calculation are the maximum of the default from all pseudopotentials
+        and can be set customly.
+        </div>"""
+
+    cutoffs_message_template = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+        The cutoffs used for the calculation are: <br>
+        The wavefunction cutoff: <b>{ecutwfc} Ry</b> <br>
+        The charge density cutoff: <b>{ecutrho} Ry</b> <br>
+        </div>"""
+
     def __init__(
         self,
         structure: orm.StructureData | None = None,
@@ -205,9 +218,22 @@ class PseudoSetter(ipw.VBox):
         self.ecutwfc = 0
         self.ecutrho = 0
 
+        self._cutoffs_message = ipw.HTML(
+            self.cutoffs_message_template.format(
+                ecutwfc=self.ecutwfc, ecutrho=self.ecutrho
+            ),
+        )
+        self.setter_helper = ipw.HTML(
+            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+            Input structure is not set. Please set the structure first.
+            </div>"""
+        )
+
         super().__init__(
             children=[
+                self.setter_helper,
                 self.pseudo_setting_widgets,
+                self._cutoffs_message,
                 self._status_message,
             ],
             **kwargs,
@@ -339,6 +365,10 @@ class PseudoSetter(ipw.VBox):
                 self.pseudos[w.kind] = w.pseudo
                 self.ecutwfc = max(self.ecutwfc, w.ecutwfc)
                 self.ecutrho = max(self.ecutrho, w.ecutrho)
+                self._cutoffs_message.value = self.cutoffs_message_template.format(
+                    ecutwfc=self.ecutwfc, ecutrho=self.ecutrho
+                )
+                self.setter_helper.value = self._setter_helper_text
 
 
 class PseudoUploadWidget(ipw.HBox):
