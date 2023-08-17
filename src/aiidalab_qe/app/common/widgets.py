@@ -16,16 +16,12 @@ import ipywidgets as ipw
 import numpy as np
 import traitlets
 from aiida.orm import CalcJobNode, load_node
-from aiidalab_widgets_base import register_viewer_widget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
     string_range_to_list,
 )
 from IPython.display import HTML, Javascript, clear_output, display
-
-# trigger registration of the viewer widget:
-from aiidalab_qe.app import node_view  # noqa: F401
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -348,105 +344,6 @@ class CalcJobOutputFollower(traitlets.HasTraits):
                     self.output.extend(item)
                     self.lineno += len(item)
                 self._output_queue.task_done()
-
-
-@register_viewer_widget("process.calculation.calcjob.CalcJobNode.")
-class CalcJobNodeViewerWidget(ipw.VBox):
-    def __init__(self, calcjob, **kwargs):
-        self.calcjob = calcjob
-        self.output_follower = CalcJobOutputFollower()
-        self.log_output = LogOutputWidget()
-
-        self.output_follower.calcjob_uuid = self.calcjob.uuid
-        self.output_follower.observe(self._observe_output_follower_lineno, ["lineno"])
-
-        super().__init__(
-            [ipw.HTML(f"CalcJob: {self.calcjob}"), self.log_output], **kwargs
-        )
-
-    def _observe_output_follower_lineno(self, _):
-        with self.hold_trait_notifications():
-            self.log_output.filename = self.output_follower.filename
-            self.log_output.value = "\n".join(self.output_follower.output)
-
-
-class ResourceSelectionWidget(ipw.VBox):
-    """Widget for the selection of compute resources."""
-
-    title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Resources</h4>
-    </div>"""
-    )
-    prompt = ipw.HTML(
-        """<div style="line-height:120%; padding-top:0px">
-        <p style="padding-bottom:10px">
-        Specify the resources to use for the pw.x calculation.
-        </p></div>"""
-    )
-
-    def __init__(self, **kwargs):
-        extra = {
-            "style": {"description_width": "150px"},
-            "layout": {"min_width": "180px"},
-        }
-        self.num_nodes = ipw.BoundedIntText(
-            value=1, step=1, min=1, max=1000, description="Nodes", **extra
-        )
-        self.num_cpus = ipw.BoundedIntText(
-            value=1, step=1, min=1, description="CPUs", **extra
-        )
-
-        super().__init__(
-            children=[
-                self.title,
-                ipw.HBox(
-                    children=[self.prompt, self.num_nodes, self.num_cpus],
-                    layout=ipw.Layout(justify_content="space-between"),
-                ),
-            ]
-        )
-
-    def reset(self):
-        self.num_nodes.value = 1
-        self.num_cpus.value = 1
-
-
-class ParallelizationSettings(ipw.VBox):
-    """Widget for setting the parallelization settings."""
-
-    title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Parallelization</h4>
-    </div>"""
-    )
-    prompt = ipw.HTML(
-        """<div style="line-height:120%; padding-top:0px">
-        <p style="padding-bottom:10px">
-        Specify the number of k-points pools for the calculations.
-        </p></div>"""
-    )
-
-    def __init__(self, **kwargs):
-        extra = {
-            "style": {"description_width": "150px"},
-            "layout": {"min_width": "180px"},
-        }
-        self.npools = ipw.BoundedIntText(
-            value=1, step=1, min=1, max=128, description="Number of k-pools", **extra
-        )
-        super().__init__(
-            children=[
-                self.title,
-                ipw.HBox(
-                    children=[self.prompt, self.npools],
-                    layout=ipw.Layout(justify_content="space-between"),
-                ),
-            ]
-        )
-
-    def reset(self):
-        self.npools.value = 1
 
 
 class ProgressBar(ipw.HBox):

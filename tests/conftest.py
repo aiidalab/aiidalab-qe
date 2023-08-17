@@ -137,7 +137,7 @@ def projwfc_code(aiida_local_code_factory):
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.steps import WorkChainSettings
+    from aiidalab_qe.app.configuration.workflow import WorkChainSettings
 
     def _workchain_settings_generator(**kwargs):
         workchain_settings = WorkChainSettings()
@@ -150,7 +150,7 @@ def workchain_settings_generator():
 @pytest.fixture()
 def initial_magnetic_moments_generator(structure_data_object):
     """Retturn a function that generatates a initial_magnetic_moments dictionary"""
-    from aiidalab_qe.app.steps import MagnetizationSettings
+    from aiidalab_qe.app.configuration.advanced import MagnetizationSettings
 
     def _initial_moments_generator(**kwargs):
         initial_magnetic_moments = MagnetizationSettings()
@@ -165,7 +165,7 @@ def initial_magnetic_moments_generator(structure_data_object):
 @pytest.fixture()
 def tot_charge_generator():
     """Return a function that generates a tot_charge dictionary."""
-    from aiidalab_qe.app.steps import TotalCharge
+    from aiidalab_qe.app.configuration.advanced import TotalCharge
 
     def _tot_charge_generator(**kwargs):
         tot_charge = TotalCharge()
@@ -178,7 +178,7 @@ def tot_charge_generator():
 @pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
-    from aiidalab_qe.app.steps import SmearingSettings
+    from aiidalab_qe.app.configuration.advanced import SmearingSettings
 
     def _smearing_settings_generator(**kwargs):
         smearing_settings = SmearingSettings()
@@ -191,7 +191,7 @@ def smearing_settings_generator():
 @pytest.fixture()
 def kpoints_settings_generator():
     """Return a function that generates a kpoints settings dictionary."""
-    from aiidalab_qe.app.steps import KpointSettings
+    from aiidalab_qe.app.configuration.advanced import KpointSettings
 
     def _kpoints_settings_generator(**kwargs):
         kpoints_settings = KpointSettings()
@@ -215,8 +215,9 @@ def submit_step_widget_generator(
     initial_magnetic_moments_generator,
 ):
     """Return a function that generates a submit step widget."""
-    from aiidalab_qe.app.pseudos import PseudoFamilySelector
-    from aiidalab_qe.app.steps import AdvancedSettings, SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
+    from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector
+    from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     def _submit_step_widget_generator(
         relax_type="positions_cell",
