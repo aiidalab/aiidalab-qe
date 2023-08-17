@@ -1,11 +1,14 @@
 """Package for the AiiDAlab QE app."""
 
-from .process import WorkChainSelector
-from .steps import SubmitQeAppWorkChainStep, ViewQeAppWorkChainStatusAndResultsStep
-from .structures import StructureSelectionStep
+from .common import WorkChainSelector
+from .configuration import ConfigureQeAppWorkChainStep
+from .result import ViewQeAppWorkChainStatusAndResultsStep
+from .structure import StructureSelectionStep
+from .submission import SubmitQeAppWorkChainStep
 
 __all__ = [
     "StructureSelectionStep",
+    "ConfigureQeAppWorkChainStep",
     "SubmitQeAppWorkChainStep",
     "ViewQeAppWorkChainStatusAndResultsStep",
     "WorkChainSelector",

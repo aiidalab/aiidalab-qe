@@ -1,6 +1,6 @@
 def test_reload_selected_code(submit_step_widget_generator):
     """Test set_selected_codes method."""
-    from aiidalab_qe.app.steps import SubmitQeAppWorkChainStep
+    from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     submit_step = submit_step_widget_generator()
 
@@ -28,7 +28,7 @@ def test_create_builder_default(
     """
     from bs4 import BeautifulSoup
 
-    from aiidalab_qe.app.report import _generate_report_html
+    from aiidalab_qe.app.result.report import _generate_report_html
 
     submit_step = submit_step_widget_generator()
 
@@ -63,7 +63,7 @@ def test_create_builder_insulator(
     the occupation type is set to fixed, smearing and degauss should not be set"""
     from bs4 import BeautifulSoup
 
-    from aiidalab_qe.app.report import _generate_report_html
+    from aiidalab_qe.app.result.report import _generate_report_html
 
     submit_step = submit_step_widget_generator(
         electronic_type="insulator",
@@ -101,7 +101,7 @@ def test_create_builder_advanced_settings(
     -tot_charge
     -initial_magnetic_moments
     """
-    from aiidalab_qe.app.report import _generate_report_html
+    from aiidalab_qe.app.result.report import _generate_report_html
 
     submit_step = submit_step_widget_generator(
         electronic_type="metal",
