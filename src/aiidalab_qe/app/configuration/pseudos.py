@@ -257,6 +257,10 @@ class PseudoSetter(ipw.VBox):
         self.ecutwfc = self.ecutwfc_setter.value
         self.ecutrho = self.ecutrho_setter.value
 
+    def _reset_cutoff_widgets(self):
+        self.ecutrho_setter.value = 0
+        self.ecutrho_setter.value = 0
+
     def _reset_traitlets(self):
         self.ecutwfc = 0
         self.ecutrho = 0
@@ -267,6 +271,7 @@ class PseudoSetter(ipw.VBox):
         by default the pseudos are get from the pseudo family
         """
         if self.structure is None:
+            self._reset_cutoff_widgets()
             self._reset_traitlets()
             return
 
@@ -301,9 +306,6 @@ class PseudoSetter(ipw.VBox):
             return
 
         try:
-            cutoff_wfc, cutoff_rho = pseudo_family.get_recommended_cutoffs(
-                structure=self.structure, unit="Ry"
-            )
             pseudos = pseudo_family.get_pseudos(structure=self.structure)
             # get cutoffs dict of all elements
             cutoffs = self._get_cutoffs(pseudo_family)
@@ -314,7 +316,6 @@ class PseudoSetter(ipw.VBox):
         # success get family and cutoffs, set the traitlets accordingly
         # set the recommended cutoffs
         self.pseudos = pseudos
-        self.ecutwfc, self.ecutrho = cutoff_wfc, cutoff_rho
 
         # Reset the traitlets, so the interface is clear setup
         self.pseudo_setting_widgets.children = ()
@@ -388,7 +389,7 @@ class PseudoSetter(ipw.VBox):
 
     def _update_pseudos(self, _=None):
         """Update the pseudos according to the pseudo setting widgets"""
-        self._reset_traitlets()
+        self._reset_cutoff_widgets()
         for w in self.pseudo_setting_widgets.children:
             if w.error_message is not None:
                 self._status_message.message = w.error_message
@@ -398,7 +399,7 @@ class PseudoSetter(ipw.VBox):
                 self.pseudos[w.kind] = w.pseudo
                 self.pseudo_setter_helper.value = self._pseudo_setter_helper_text
 
-                with self.hold_sync():
+                with self.hold_trait_notifications():
                     self.ecutwfc_setter.value = max(self.ecutwfc, w.ecutwfc)
                     self.ecutrho_setter.value = max(self.ecutrho, w.ecutrho)
 
