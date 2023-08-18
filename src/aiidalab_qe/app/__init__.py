@@ -2,6 +2,7 @@
 
 from .common import WorkChainSelector
 from .configuration import ConfigureQeAppWorkChainStep
+from .main import MainApp
 from .result import ViewQeAppWorkChainStatusAndResultsStep
 from .structure import StructureSelectionStep
 from .submission import SubmitQeAppWorkChainStep
@@ -12,4 +13,5 @@ __all__ = [
     "SubmitQeAppWorkChainStep",
     "ViewQeAppWorkChainStatusAndResultsStep",
     "WorkChainSelector",
+    "MainApp",
 ]
