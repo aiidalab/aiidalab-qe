@@ -305,12 +305,14 @@ class PseudoSetter(ipw.VBox):
                 structure=self.structure, unit="Ry"
             )
             pseudos = pseudo_family.get_pseudos(structure=self.structure)
-            cutoffs = pseudo_family.get_cutoffs()  # XXX: unit is correct??
+            # get cutoffs dict of all elements
+            cutoffs = self._get_cutoffs(pseudo_family)
         except ValueError as exception:
             self._status_message.message = f"""<div class='alert alert-danger'> ERROR: failed to obtain recommended cutoffs for pseudos `{pseudo_family}`: {exception}</div>"""
             return
 
         # success get family and cutoffs, set the traitlets accordingly
+        # set the recommended cutoffs
         self.pseudos = pseudos
         self.ecutwfc, self.ecutrho = cutoff_wfc, cutoff_rho
 
@@ -323,7 +325,7 @@ class PseudoSetter(ipw.VBox):
         for kind in self.structure.kinds:
             element = kind.symbol
             pseudo = pseudos.get(kind.name, None)
-            _cutoffs = cutoffs.get(element, None)
+            _cutoffs = cutoffs.get(element, None)  # cutoffs for each element
             pseudo_upload_widget = PseudoUploadWidget(
                 kind=kind.name, pseudo=pseudo, cutoffs=_cutoffs
             )
@@ -350,6 +352,25 @@ class PseudoSetter(ipw.VBox):
             ) from exception
 
         return pseudo_family
+
+    def _get_cutoffs(self, pseudo_family):
+        """Get the cutoffs from the pseudo family."""
+        from aiida_pseudo.common.units import U
+
+        try:
+            cutoffs = pseudo_family.get_cutoffs()
+        except ValueError as exception:
+            self._status_message.message = f"""<div class='alert alert-danger'> ERROR: failed to obtain recommended cutoffs for pseudos `{pseudo_family}`: {exception}</div>"""
+            return
+
+        current_unit = pseudo_family.get_cutoffs_unit()
+        for element, cutoff in cutoffs.items():
+            cutoffs[element] = {
+                k: U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
+                for k, v in cutoff.items()
+            }
+
+        return cutoffs
 
     def _create_pseudo_widget(self, kind):
         """The sigle line of pseudo setter widget"""
@@ -392,8 +413,8 @@ class PseudoUploadWidget(ipw.HBox):
     error_message = tl.Unicode(allow_none=True)
 
     cutoffs_message_template = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The recommened cutoff for wavefunction: <b>{ecutwfc} Ry</b> &nbsp;
-        for charge density cutoff: <b>{ecutrho} Ry</b>
+        The recommened ecutwfc: <b>{ecutwfc} Ry</b> &nbsp;
+        for ecutrho: <b>{ecutrho} Ry</b>
         </div>"""
 
     def __init__(
@@ -405,7 +426,8 @@ class PseudoUploadWidget(ipw.HBox):
     ):
         self.kind = kind
         self.file_upload = ipw.FileUpload(
-            description="Upload", multiple=False, layout={"width": "initial"}
+            description="Upload",
+            multiple=False,
         )
         self.pseudo_text = ipw.Text(description=kind)
         self.file_upload.observe(self._on_file_upload, names="value")
