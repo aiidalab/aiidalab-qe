@@ -188,21 +188,19 @@ class PseudoSetter(ipw.VBox):
     # output pseudos
     pseudos = tl.Dict()
 
-    # recommended cutoffs
+    # output cutoffs
     ecutwfc = tl.Float()
     ecutrho = tl.Float()
 
-    _setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+    _pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
         The pseudopotential for each kind of atom in the structure can be set customly.
         The default pseudopotential and cutoffs are get from the pseudo family.
         The cutoffs used for the calculation are the maximum of the default from all pseudopotentials
         and can be set customly.
         </div>"""
 
-    cutoffs_message_template = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The cutoffs used for the calculation are: <br>
-        The wavefunction cutoff: <b>{ecutwfc} Ry</b> <br>
-        The charge density cutoff: <b>{ecutrho} Ry</b> <br>
+    _cutoff_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+        Please set the cutoffs for the calculation. The default cutoffs are get from the pseudo family.
         </div>"""
 
     def __init__(
@@ -218,22 +216,34 @@ class PseudoSetter(ipw.VBox):
         self.ecutwfc = 0
         self.ecutrho = 0
 
-        self._cutoffs_message = ipw.HTML(
-            self.cutoffs_message_template.format(
-                ecutwfc=self.ecutwfc, ecutrho=self.ecutrho
-            ),
-        )
-        self.setter_helper = ipw.HTML(
+        self.pseudo_setter_helper = ipw.HTML(
             """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; color: red;">
             Input structure is not set. Please set the structure first.
             </div>"""
         )
+        self.cutoff_setter_helper = ipw.HTML(self._cutoff_setter_helper_text)
+        self.ecutwfc_setter = ipw.FloatText(
+            description="Wavefunction cutoff (Ry)",
+            style={"description_width": "initial"},
+        )
+        self.ecutrho_setter = ipw.FloatText(
+            description="Charge density cutoff (Ry)",
+            style={"description_width": "initial"},
+        )
+        self.ecutwfc_setter.observe(self._on_cutoff_change, names="value")
+        self.ecutrho_setter.observe(self._on_cutoff_change, names="value")
 
         super().__init__(
             children=[
-                self.setter_helper,
+                self.pseudo_setter_helper,
                 self.pseudo_setting_widgets,
-                self._cutoffs_message,
+                self.cutoff_setter_helper,
+                ipw.HBox(
+                    children=[
+                        self.ecutwfc_setter,
+                        self.ecutrho_setter,
+                    ],
+                ),
                 self._status_message,
             ],
             **kwargs,
@@ -242,6 +252,10 @@ class PseudoSetter(ipw.VBox):
         with self.hold_trait_notifications():
             self.structure = structure
             self.pseudo_family = pseudo_family
+
+    def _on_cutoff_change(self, _=None):
+        self.ecutwfc = self.ecutwfc_setter.value
+        self.ecutrho = self.ecutrho_setter.value
 
     def _reset_traitlets(self):
         self.ecutwfc = 0
@@ -273,9 +287,7 @@ class PseudoSetter(ipw.VBox):
                 pseudo_upload_widget = PseudoUploadWidget(kind=kind)
 
                 # keep track of the changing of pseudo setting of each kind
-                pseudo_upload_widget.observe(
-                    self._update_pseudos, ["pseudo", "ecutwfc", "ecutrho"]
-                )
+                pseudo_upload_widget.observe(self._update_pseudos, ["pseudo"])
                 self.pseudo_setting_widgets.children += (pseudo_upload_widget,)
 
             return
@@ -293,7 +305,7 @@ class PseudoSetter(ipw.VBox):
                 structure=self.structure, unit="Ry"
             )
             pseudos = pseudo_family.get_pseudos(structure=self.structure)
-            cutoffs = pseudo_family.get_cutoffs()
+            cutoffs = pseudo_family.get_cutoffs()  # XXX: unit is correct??
         except ValueError as exception:
             self._status_message.message = f"""<div class='alert alert-danger'> ERROR: failed to obtain recommended cutoffs for pseudos `{pseudo_family}`: {exception}</div>"""
             return
@@ -363,12 +375,11 @@ class PseudoSetter(ipw.VBox):
 
             if w.pseudo is not None:
                 self.pseudos[w.kind] = w.pseudo
-                self.ecutwfc = max(self.ecutwfc, w.ecutwfc)
-                self.ecutrho = max(self.ecutrho, w.ecutrho)
-                self._cutoffs_message.value = self.cutoffs_message_template.format(
-                    ecutwfc=self.ecutwfc, ecutrho=self.ecutrho
-                )
-                self.setter_helper.value = self._setter_helper_text
+                self.pseudo_setter_helper.value = self._pseudo_setter_helper_text
+
+                with self.hold_sync():
+                    self.ecutwfc_setter.value = max(self.ecutwfc, w.ecutwfc)
+                    self.ecutrho_setter.value = max(self.ecutrho, w.ecutrho)
 
 
 class PseudoUploadWidget(ipw.HBox):
@@ -379,6 +390,11 @@ class PseudoUploadWidget(ipw.HBox):
     ecutwfc = tl.Float(allow_none=True)
     ecutrho = tl.Float(allow_none=True)
     error_message = tl.Unicode(allow_none=True)
+
+    cutoffs_message_template = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+        The recommened cutoff for wavefunction: <b>{ecutwfc} Ry</b> &nbsp;
+        for charge density cutoff: <b>{ecutrho} Ry</b>
+        </div>"""
 
     def __init__(
         self,
@@ -394,14 +410,9 @@ class PseudoUploadWidget(ipw.HBox):
         self.pseudo_text = ipw.Text(description=kind)
         self.file_upload.observe(self._on_file_upload, names="value")
 
-        self.ecutwfc_setter = ipw.FloatText(
-            description="ecutwfc (Ry)", layout={"width": "initial"}
+        self._cutoff_message = ipw.HTML(
+            self.cutoffs_message_template.format(ecutwfc=0, ecutrho=0)
         )
-        self.ecutrho_setter = ipw.FloatText(
-            description="ecutrho (Ry)", layout={"width": "initial"}
-        )
-        self.ecutwfc_setter.observe(self._on_cutoff_change, names="value")
-        self.ecutrho_setter.observe(self._on_cutoff_change, names="value")
 
         if pseudo is not None:
             self.pseudo = pseudo
@@ -412,19 +423,17 @@ class PseudoUploadWidget(ipw.HBox):
             children=[
                 self.pseudo_text,
                 self.file_upload,
-                self.ecutwfc_setter,
-                self.ecutrho_setter,
+                self._cutoff_message,
             ],
             **kwargs,
         )
         # set the widget directly to trigger the traitlets set
         if cutoffs is not None:
-            self.ecutwfc_setter.value = cutoffs.get("cutoff_wfc", 0)
-            self.ecutrho_setter.value = cutoffs.get("cutoff_rho", 0)
-
-    def _on_cutoff_change(self, _=None):
-        self.ecutwfc = self.ecutwfc_setter.value
-        self.ecutrho = self.ecutrho_setter.value
+            self.ecutwfc = cutoffs.get("cutoff_wfc", "not found")
+            self.ecutrho = cutoffs.get("cutoff_rho", "not found")
+            self._cutoff_message.value = self.cutoffs_message_template.format(
+                ecutwfc=self.ecutwfc, ecutrho=self.ecutrho
+            )
 
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""
@@ -447,5 +456,5 @@ class PseudoUploadWidget(ipw.HBox):
     def _reset(self):
         """Reset the widget to the initial state."""
         self.pseudo = None
-        self.ecutrho = None
-        self.ecutwfc = None
+        self.ecutrho = "not found"
+        self.ecutwfc = "not found"
