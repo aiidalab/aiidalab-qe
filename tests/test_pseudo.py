@@ -49,7 +49,7 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
 
 def test_pseudo_upload_widget(generate_upf_data):
     """Test the pseudo upload widget."""
-    from aiidalab_qe.app.pseudos import PseudoUploadWidget
+    from aiidalab_qe.app.configuration.pseudos import PseudoUploadWidget
 
     # Test that the kind can be not the element symbol
     # the widget initialize with the pseudo as input to mock how it will
