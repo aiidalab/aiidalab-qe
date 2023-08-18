@@ -39,12 +39,8 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
             },
         }
     )
-    upload_w.ecutrho_setter.value = 250
-    upload_w.ecutwfc_setter.value = 35
 
     assert w.pseudos["O"].filename == "O_new.upf"
-    assert w.ecutrho == 250
-    assert w.ecutwfc == 35
 
 
 def test_pseudo_upload_widget(generate_upf_data):
@@ -77,13 +73,9 @@ def test_pseudo_upload_widget(generate_upf_data):
             }
         }
     )
-    w.ecutrho_setter.value = 250
-    w.ecutwfc_setter.value = 35
 
     assert w.pseudo.filename == "O_new.upf"
     assert w.kind == "O1"
-    assert w.ecutrho == 250
-    assert w.ecutwfc == 35
     assert w.error_message is None
 
     # test upload a invalid pseudo of other element

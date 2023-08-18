@@ -452,10 +452,10 @@ class PseudoUploadWidget(ipw.HBox):
         )
         # set the widget directly to trigger the traitlets set
         if cutoffs is not None:
-            self.ecutwfc = cutoffs.get("cutoff_wfc", "not found")
-            self.ecutrho = cutoffs.get("cutoff_rho", "not found")
+            self.ecutwfc = cutoffs.get("cutoff_wfc", None)
+            self.ecutrho = cutoffs.get("cutoff_rho", None)
             self._cutoff_message.value = self.cutoffs_message_template.format(
-                ecutwfc=self.ecutwfc, ecutrho=self.ecutrho
+                ecutwfc=self.ecutwfc or "not set", ecutrho=self.ecutrho or "not set"
             )
 
     def _on_file_upload(self, change=None):
@@ -479,5 +479,5 @@ class PseudoUploadWidget(ipw.HBox):
     def _reset(self):
         """Reset the widget to the initial state."""
         self.pseudo = None
-        self.ecutrho = "not found"
-        self.ecutwfc = "not found"
+        self.ecutrho = None
+        self.ecutwfc = None
