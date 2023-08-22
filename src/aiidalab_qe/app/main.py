@@ -94,6 +94,10 @@ class MainApp(ipw.VBox):
             (self.configure_qe_app_work_chain_step, "pseudo_family_selector"),
             (self.submit_qe_app_work_chain_step, "pseudo_family_selector"),
         )
+        ipw.dlink(
+            (self.configure_qe_app_work_chain_step, "pseudo_setter"),
+            (self.submit_qe_app_work_chain_step, "pseudo_setter"),
+        )
 
         ipw.dlink(
             (self.submit_qe_app_work_chain_step, "process"),
