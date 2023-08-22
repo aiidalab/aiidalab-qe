@@ -20,7 +20,7 @@ from IPython.display import display
 
 from aiidalab_qe.app.common.setup_codes import QESetupWidget
 from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector
+from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector, PseudoSetter
 from aiidalab_qe.app.configuration.workflow import WorkChainSettings
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.workflows import QeAppWorkChain
@@ -83,6 +83,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = tl.Instance(WorkChainSettings, allow_none=True)
     pseudo_family_selector = tl.Instance(PseudoFamilySelector, allow_none=True)
+    pseudo_setter = tl.Instance(PseudoSetter, allow_none=True)
     advanced_settings = tl.Instance(AdvancedSettings, allow_none=True)
     _submission_blockers = tl.List(tl.Unicode())
 
@@ -420,8 +421,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         for key in ["base", "scf", "nscf", "band"]:
             if self.pseudo_family_selector.override_protocol_pseudo_family.value:
                 pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
+
+            if self.pseudo_setter.pseudos:
+                pw_overrides[key].setdefault("pseudos", self.pseudo_setter.pseudos)
+
+                pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
+                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
+                    "ecutwfc"
+                ] = self.pseudo_setter.ecutwfc
+                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
+                    "ecutrho"
+                ] = self.pseudo_setter.ecutrho
+
             if self.advanced_settings.override.value:
-                pw_overrides[key]["pw"] = {"parameters": {"SYSTEM": {}}}
+                pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
                 if self.advanced_settings.tot_charge.override.value:
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                         "tot_charge"

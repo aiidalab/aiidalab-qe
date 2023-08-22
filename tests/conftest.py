@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 
 import pytest
-from aiida import plugins
+from aiida import orm
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 
@@ -17,20 +17,38 @@ def fixture_localhost(aiida_localhost):
 
 
 @pytest.fixture
-def structure_data_object():
-    """Return a `StructureData` object."""
-    StructureData = plugins.DataFactory("core.structure")  # noqa: N806
-    structure = StructureData(
-        cell=[
-            [3.84737, 0.0, 0.0],
-            [1.923685, 3.331920, 0.0],
-            [1.923685, 1.110640, 3.141364],
-        ]
-    )
-    structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Si")
-    structure.append_atom(position=(1.923685, 1.110640, 0.785341), symbols="Si")
+def generate_structure_data():
+    """generate a `StructureData` object."""
 
-    return structure
+    def _generate_structure_data(name="silicon"):
+        if name == "silicon":
+            structure = orm.StructureData(
+                cell=[
+                    [3.84737, 0.0, 0.0],
+                    [1.923685, 3.331920, 0.0],
+                    [1.923685, 1.110640, 3.141364],
+                ]
+            )
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Si")
+            structure.append_atom(position=(1.923685, 1.110640, 0.785341), symbols="Si")
+        elif name == "silica":
+            structure = orm.StructureData(
+                cell=[
+                    [4.18, 0.0, 0.0],
+                    [0.0, 4.18, 0.0],
+                    [0.0, 0.0, 2.66],
+                ]
+            )
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Si")
+            structure.append_atom(position=(2.09, 2.09, 1.33), symbols="Si")
+            structure.append_atom(position=(3.37, 0.81, 1.33), symbols="O")
+            structure.append_atom(position=(1.28, 1.28, 0.0), symbols="O")
+            structure.append_atom(position=(2.9, 2.9, 0.0), symbols="O")
+            structure.append_atom(position=(0.81, 3.37, 1.33), symbols="O")
+
+        return structure
+
+    return _generate_structure_data
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -97,13 +115,17 @@ def sssp(aiida_profile, generate_upf_data):
 def generate_upf_data():
     """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
 
-    def _generate_upf_data(element):
+    def _generate_upf_data(element, filename=None):
         """Return `UpfData` node."""
         from aiida_pseudo.data.pseudo import UpfData
 
         content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="4.0"\n/></UPF>\n'
         stream = io.BytesIO(content.encode("utf-8"))
-        return UpfData(stream, filename=f"{element}.upf")
+
+        if filename is None:
+            filename = f"{element}.upf"
+
+        return UpfData(stream, filename=filename)
 
     return _generate_upf_data
 
@@ -148,13 +170,13 @@ def workchain_settings_generator():
 
 
 @pytest.fixture()
-def initial_magnetic_moments_generator(structure_data_object):
+def initial_magnetic_moments_generator(generate_structure_data):
     """Retturn a function that generatates a initial_magnetic_moments dictionary"""
     from aiidalab_qe.app.configuration.advanced import MagnetizationSettings
 
     def _initial_moments_generator(**kwargs):
         initial_magnetic_moments = MagnetizationSettings()
-        initial_magnetic_moments.input_structure = structure_data_object
+        initial_magnetic_moments.input_structure = generate_structure_data()
         initial_magnetic_moments.update_kinds_widget()
         initial_magnetic_moments._set_magnetization_values(**kwargs)
         return initial_magnetic_moments
@@ -207,7 +229,7 @@ def submit_step_widget_generator(
     pw_code,
     dos_code,
     projwfc_code,
-    structure_data_object,
+    generate_structure_data,
     workchain_settings_generator,
     smearing_settings_generator,
     kpoints_settings_generator,
@@ -216,7 +238,7 @@ def submit_step_widget_generator(
 ):
     """Return a function that generates a submit step widget."""
     from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-    from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector
+    from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector, PseudoSetter
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     def _submit_step_widget_generator(
@@ -234,8 +256,9 @@ def submit_step_widget_generator(
         initial_magnetic_moments=0.0,
     ):
         submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-        submit_step.input_structure = structure_data_object
+        submit_step.input_structure = generate_structure_data()
         submit_step.pseudo_family_selector = PseudoFamilySelector()
+        submit_step.pseudo_setter = PseudoSetter()
 
         submit_step.pw_code.value = pw_code.uuid
         submit_step.dos_code.value = dos_code.uuid
