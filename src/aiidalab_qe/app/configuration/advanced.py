@@ -183,8 +183,8 @@ class MagnetizationSettings(ipw.VBox):
             for kind_label in self.input_structure_labels:
                 kind_widget = ipw.BoundedFloatText(
                     description=kind_label,
-                    min=-1,
-                    max=1,
+                    min=-4,
+                    max=4,
                     step=0.1,
                     value=0.0,
                     disabled=True,
