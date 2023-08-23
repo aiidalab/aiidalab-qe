@@ -414,6 +414,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
         """Get the parameters of the `QeWorkChain` from widgets."""
+        # Work chain settings
+        relax_type = self.workchain_settings.relax_type.value
+        electronic_type = self.workchain_settings.electronic_type.value
+        spin_type = self.workchain_settings.spin_type.value
+
+        run_bands = self.workchain_settings.bands_run.value
+        run_pdos = self.workchain_settings.pdos_run.value
+        protocol = self.workchain_settings.workchain_protocol.value
+
         # create the the initial_magnetic_moments as None (Default)
         initial_magnetic_moments = None
         # create the override parameters for sub PwBaseWorkChain
@@ -447,11 +456,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         self.advanced_settings.magnetization.get_magnetization()
                     )
 
-                if key in ["base", "scf", "nscf"]:
+                if key in ["base", "scf"]:
                     if self.advanced_settings.kpoints.override.value:
+                        kpoints_distance = self.advanced_settings.kpoints.distance.value
                         pw_overrides[key][
                             "kpoints_distance"
-                        ] = self.advanced_settings.kpoints.distance.value
+                        ] = kpoints_distance
+
+                        if protocol == "fast" and (kpoints_distance < 0.5 and kpoints_distance > 0.15):
+                            pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
+                        if protocol == "moderate" and (kpoints_distance < 0.1):
+                            pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
+                        if protocol == "precise" and (kpoints_distance < 0.05):
+                            pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
+
                     if (
                         self.advanced_settings.smearing.override.value
                         and self.workchain_settings.electronic_type.value == "metal"
@@ -480,14 +498,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             },
         }
 
-        # Work chain settings
-        relax_type = self.workchain_settings.relax_type.value
-        electronic_type = self.workchain_settings.electronic_type.value
-        spin_type = self.workchain_settings.spin_type.value
 
-        run_bands = self.workchain_settings.bands_run.value
-        run_pdos = self.workchain_settings.pdos_run.value
-        protocol = self.workchain_settings.workchain_protocol.value
 
         properties = []
 
