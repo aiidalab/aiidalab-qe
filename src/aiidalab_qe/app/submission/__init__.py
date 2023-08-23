@@ -459,11 +459,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if key in ["base", "scf"]:
                     if self.advanced_settings.kpoints.override.value:
                         kpoints_distance = self.advanced_settings.kpoints.distance.value
-                        pw_overrides[key][
-                            "kpoints_distance"
-                        ] = kpoints_distance
+                        pw_overrides[key]["kpoints_distance"] = kpoints_distance
 
-                        if protocol == "fast" and (kpoints_distance < 0.5 and kpoints_distance > 0.15):
+                        if protocol == "fast" and (
+                            kpoints_distance < 0.5 and kpoints_distance > 0.15
+                        ):
                             pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
                         if protocol == "moderate" and (kpoints_distance < 0.1):
                             pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
@@ -497,8 +497,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "nscf": pw_overrides["nscf"],
             },
         }
-
-
 
         properties = []
 
