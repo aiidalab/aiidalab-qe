@@ -1,0 +1,4 @@
+docker
+pre-commit
+pytest
+requests

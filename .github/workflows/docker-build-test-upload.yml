@@ -33,7 +33,8 @@ jobs:
                   architecture: ${{ inputs.architecture }}
 
             - name: Build image 🛠
-              run: docker build --rm --force-rm --tag ${{ env.OWNER }}/${{ inputs.image }}:newly-build --file Dockerfile
+              working-directory: docker
+              run: docker buildx bake --set qe.platform=linux/${{ inputs.architecture }} -f docker-bake.hcl -f build.json --load
               env:
                   # Use buildx
                   DOCKER_BUILDKIT: 1

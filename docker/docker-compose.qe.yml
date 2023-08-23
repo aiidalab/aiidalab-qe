@@ -1,0 +1,19 @@
+---
+version: '3.4'
+
+services:
+
+    aiidalab:
+        image: ${REGISTRY:-}${QE_IMAGE:-aiidalab/qe}:${VERSION:-newly-bulid}
+        environment:
+            TZ: Europe/Zurich
+            DOCKER_STACKS_JUPYTER_CMD: notebook
+            SETUP_DEFAULT_AIIDA_PROFILE: 'true'
+            AIIDALAB_DEFAULT_APPS: ''
+        volumes:
+            - aiidalab-home-folder:/home/jovyan
+        ports:
+            - 0.0.0.0:${AIIDALAB_PORT:-}:8888
+
+volumes:
+    aiidalab-home-folder:
