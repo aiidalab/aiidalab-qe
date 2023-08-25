@@ -23,6 +23,7 @@ on:
 jobs:
     build-test-upload:
         runs-on: ${{ inputs.runsOn }}
+        continue-on-error: true
 
         steps:
             - name: Checkout Repo ⚡️
@@ -42,10 +43,11 @@ jobs:
                   BUILDKIT_PROGRESS: plain
               shell: bash
 
-            #- name: Run tests ✅
-            #  uses: ./.github/actions/integration-tests
-            #  with:
-            #      architecture: ${{ inputs.architecture }}
+            - name: Run tests ✅
+              uses: ./.github/actions/integration-tests
+              with:
+                  architecture: ${{ inputs.architecture }}
+                  runsOn: ${{ inputs.runsOn }}
 
             - name: Save image as a tar for later use 💾
               run: docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/${{ inputs.image }}-${{ inputs.architecture }}.tar
