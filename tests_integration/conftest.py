@@ -21,7 +21,7 @@ def is_responsive(url):
 
 @pytest.fixture(scope="session")
 def docker_compose_file(pytestconfig):
-    return str(Path(pytestconfig.rootdir) / "tests_notebooks" / "docker-compose.yml")
+    return str(Path(pytestconfig.rootdir) / "tests_integration" / "docker-compose.yml")
 
 
 @pytest.fixture(scope="session")
@@ -53,24 +53,12 @@ def nb_user(aiidalab_exec):
 def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     """Ensure that HTTP service is up and responsive."""
 
-    # Directory ~/apps/aiidalab-qe/ is mounted by docker,
-    # make it writeable for jovyan user, needed for `pip install`
-    appdir = f"/home/{nb_user}/apps/aiidalab-qe"
-    aiidalab_exec(f"chmod -R a+rw {appdir}", user="root")
-
-    # This is a temporary fix for dependencies
-    # otherwise `pip install -U .` will fail because of pybtex v0.22 installed.
-    aiidalab_exec("pip install pybtex==0.24", workdir=appdir)
-
-    # install aiidalab-qe
-    aiidalab_exec("pip install -U .", workdir=appdir)
-
     # `port_for` takes a container port and returns the corresponding host port
     port = docker_services.port_for("aiidalab", 8888)
     url = f"http://{docker_ip}:{port}"
-    token = os.environ["JUPYTER_TOKEN"]
+    token = os.environ.get("JUPYTER_TOKEN", "testtoken")
     docker_services.wait_until_responsive(
-        timeout=30.0, pause=0.1, check=lambda: is_responsive(url)
+        timeout=60.0, pause=0.1, check=lambda: is_responsive(url)
     )
     return url, token
 
