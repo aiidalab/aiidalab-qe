@@ -67,7 +67,9 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
 def selenium_driver(selenium, notebook_service):
     def _selenium_driver(nb_path, wait_time=5.0):
         url, token = notebook_service
-        url_with_token = urljoin(url, f"apps/apps/aiidalab-qe/{nb_path}?token={token}")
+        url_with_token = urljoin(
+            url, f"apps/apps/quantum-espresso/{nb_path}?token={token}"
+        )
         selenium.get(f"{url_with_token}")
         # By default, let's allow selenium functions to retry for 10s
         # till a given element is loaded, see:
@@ -94,8 +96,8 @@ def final_screenshot(request, screenshot_dir, selenium):
     Screenshot name is generated from the test function name
     by stripping the 'test_' prefix
     """
-    browser_naame = selenium.capabilities["browserName"]
-    screenshot_name = f"{request.function.__name__[5:]}-{browser_naame}.png"
+    browser_name = selenium.capabilities["browserName"]
+    screenshot_name = f"{request.function.__name__[5:]}-{browser_name}.png"
     screenshot_path = Path.joinpath(screenshot_dir, screenshot_name)
     yield
     selenium.get_screenshot_as_file(screenshot_path)
