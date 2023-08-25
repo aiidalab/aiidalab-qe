@@ -1,13 +1,11 @@
 ---
-# Run basic tests for this app on the latest aiidalab-docker image.
-
-name: downstream-integration
+name: downstream integration tests
 
 on:
-    workflow_dispatch:
-    schedule:
-        - cron: 41 3 * * *
-    pull_request:
+    workflow_run:
+        workflows: ['Build, and push Docker Image']
+        types:
+            - completed
 
 # https://docs.github.com/en/actions/using-jobs/using-concurrency
 concurrency:
@@ -16,63 +14,14 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
+    integration-tests-amd64:
+        uses: ./.github/workflows/integration-tests.yml
+        with:
+            architecture: amd64
+            runsOn: ubuntu-latest
 
-    test-app:
-
-        strategy:
-            matrix:
-                tag: [latest]
-                image: [aiidalab/full-stack]
-                browser: [Chrome, Firefox]
-            fail-fast: false
-
-        runs-on: ubuntu-latest
-        timeout-minutes: 60
-
-        steps:
-            - name: Check out app
-              uses: actions/checkout@v3
-
-            - name: Set up Python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: '3.10'
-                  cache: pip
-                  cache-dependency-path: |
-                      **/setup.cfg
-                      **/pyproject.toml
-                      **/requirements*.txt
-
-            - name: Install package
-              run: pip install -e .[dev]
-
-            - name: Set jupyter token env
-              run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
-
-            # The Firefox and its engine geckodrive need do be installed manually to run
-            # selenium tests.
-            - name: Install Firefox
-              uses: browser-actions/setup-firefox@latest
-              with:
-                  firefox-version: '96.0'
-              if: matrix.browser == 'Firefox'
-
-            - name: Install geckodriver
-              run: |
-                  wget -c https://github.com/mozilla/geckodriver/releases/download/v0.30.0/geckodriver-v0.30.0-linux64.tar.gz
-                  tar xf geckodriver-v0.30.0-linux64.tar.gz -C /usr/local/bin
-              if: matrix.browser == 'Firefox'
-
-            - name: Run pytest
-              run: pytest --driver ${{ matrix.browser }} tests_notebooks
-              env:
-                  TAG: ${{ matrix.tag }}
-                  AIIDALAB_IMAGE: ${{ matrix.image }}
-
-            - name: Upload screenshots as artifacts
-              if: always()
-              uses: actions/upload-artifact@v3
-              with:
-                  name: Screenshots-${{ matrix.tag }}-${{ matrix.browser }}
-                  path: screenshots/
-                  if-no-files-found: error
+    integration-tests-arm64:
+        uses: ./.github/workflows/integration-tests.yml
+        with:
+            architecture: arm64
+            runsOn: buildjet-2vcpu-ubuntu-2204-arm
