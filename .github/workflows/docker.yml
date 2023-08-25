@@ -44,6 +44,10 @@ on:
             - setup.cfg
             - pyproject.toml
     workflow_dispatch:
+    schedule:
+      # Periodically build and test the image and keep `edge` always up-to-date
+      # Weekly, at 03:00 on Monday UTC time
+        - cron: 0 3 * * 1
 
 # https://docs.github.com/en/actions/using-jobs/using-concurrency
 concurrency:

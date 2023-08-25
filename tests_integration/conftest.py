@@ -94,7 +94,8 @@ def final_screenshot(request, screenshot_dir, selenium):
     Screenshot name is generated from the test function name
     by stripping the 'test_' prefix
     """
-    screenshot_name = f"{request.function.__name__[5:]}.png"
+    browser_naame = selenium.capabilities["browserName"]
+    screenshot_name = f"{request.function.__name__[5:]}-{browser_naame}.png"
     screenshot_path = Path.joinpath(screenshot_dir, screenshot_name)
     yield
     selenium.get_screenshot_as_file(screenshot_path)

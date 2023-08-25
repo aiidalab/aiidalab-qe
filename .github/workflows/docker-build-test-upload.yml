@@ -1,5 +1,5 @@
 ---
-name: Build a new image and test it; then upload the image, tags and manifests to GitHub artifacts
+name: Build a new image and then upload the image, tags and manifests to GitHub artifacts
 
 env:
     OWNER: ${{ github.repository_owner }}
@@ -43,8 +43,9 @@ jobs:
               shell: bash
 
             #- name: Run tests ✅
-            #  run: VERSION=newly-build pytest -s tests/test-common.py tests/test-${{ inputs.image }}.py --variant ${{ inputs.image }}
-            #  shell: bash
+            #  uses: ./.github/actions/integration-tests
+            #  with:
+            #      architecture: ${{ inputs.architecture }}
 
             - name: Save image as a tar for later use 💾
               run: docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/${{ inputs.image }}-${{ inputs.architecture }}.tar

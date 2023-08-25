@@ -1,4 +1,9 @@
 docker
 pre-commit
-pytest
 requests
+pytest
+# dependencies for running integration tests
+pytest-docker
+pytest-selenium
+selenium~=4.9.0
+webdriver-manager
