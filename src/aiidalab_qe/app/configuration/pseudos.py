@@ -347,7 +347,7 @@ class PseudoSetter(ipw.VBox):
                 .one()[0]
             )
         except exceptions.NotExistent as exception:
-            raise ValueError(
+            raise exceptions.NotExistent(
                 f"required pseudo family `{pseudo_family}` is not installed. Please use `aiida-pseudo install` to"
                 "install it."
             ) from exception
