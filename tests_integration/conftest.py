@@ -58,7 +58,10 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
     url = f"http://{docker_ip}:{port}"
     token = os.environ.get("JUPYTER_TOKEN", "testtoken")
     docker_services.wait_until_responsive(
-        timeout=60.0, pause=0.1, check=lambda: is_responsive(url)
+        # The timeout is very hight for this test, because the installation of pseudo libraries.
+        timeout=180.0,
+        pause=0.1,
+        check=lambda: is_responsive(url),
     )
     return url, token
 
