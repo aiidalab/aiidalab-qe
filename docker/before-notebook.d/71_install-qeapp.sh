@@ -6,12 +6,18 @@ set -x
 # Install qeapp if it is not already installed.
 if aiidalab list | grep -q quantum-espresso; then
     echo "Quantum ESPRESSO app is already installed."
-elif [ -z "${APP_VERSION}" ]; then
-    echo "This is a development version of the Quantum ESPRESSO app."
 else
     echo "Installing Quantum ESPRESSO app."
-    aiidalab install --yes quantum-espresso==${APP_VERSION}
+    # Install by move the repo folder that is already in the image.
+    mv ${PREINSTALL_APP_FOLDER} /home/${NB_USER}/apps/quantum-espresso
+fi
 
-    # Remove the repo folder since it is not needed anymore.
-    rm -rf /home/${NB_USER}/apps/aiidalab-qe
+# Install the pseudo libraries if not already installed.
+# This can be simplified and accelerated once the following PR is merged:
+# https://github.com/aiidateam/aiida-pseudo/pull/135
+if aiida-pseudo list | grep -q "no pseudo potential families"; then
+    echo "Installing pseudo potential families."
+    python -m aiidalab_qe install-sssp
+else
+    echo "Pseudo potential families are already installed."
 fi

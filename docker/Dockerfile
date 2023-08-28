@@ -1,13 +1,15 @@
 # syntax=docker/dockerfile:1
 FROM base-image
 
+
+# Copy whole repo and pre-install the dependencies and app to the tmp folder.
+# In the before notebook scripts the app will be re-installed by moving it to the app folder.
+ENV PREINSTALL_APP_FOLDER ${CONDA_DIR}/aiidalab-qe
+COPY --chown=${NB_UID}:${NB_GID} --from=src . ${PREINSTALL_APP_FOLDER}
+
 USER ${NB_USER}
 
-# Copy whole repo and pre-install the dependencies.
-ENV APP_FOLDER /home/${NB_USER}/apps/quantum-espresso
-COPY --chown=${NB_UID}:${NB_GID} --from=src . ${APP_FOLDER}
-
-RUN cd ${APP_FOLDER} && \
+RUN cd ${PREINSTALL_APP_FOLDER} && \
      # Remove all untracked files and directories. For example the setup lock flag file.
      git clean -fx && \
      pip install . --no-cache-dir && \
