@@ -27,7 +27,7 @@ from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
 
 
-class MainApp(ipw.VBox):
+class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
 
     def __init__(self, qe_auto_setup=True):
