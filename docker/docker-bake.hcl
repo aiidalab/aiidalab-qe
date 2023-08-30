@@ -3,13 +3,8 @@ group "default" {
   targets = ["qe"]
 }
 
-variable "QE_VERSION" {
-}
-
-variable "BASE_IMAGE" {
-  default = "aiidalab/full-stack:latest"
-}
-
+# The variable for the organization name, which usually is the same as the
+# Docker Hub username or your GitHub organization name.
 variable "ORGANIZATION" {
   default = "aiidalab"
 }
@@ -19,9 +14,5 @@ target "qe" {
   context = "."
   contexts = {
     src = ".."
-    base-image = "docker-image://${BASE_IMAGE}"
-  }
-  args = {
-    "QE_VERSION" = "${QE_VERSION}"
   }
 }

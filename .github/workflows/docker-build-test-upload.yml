@@ -35,7 +35,7 @@ jobs:
 
             - name: Build image 🛠
               working-directory: docker
-              run: docker buildx bake --set qe.platform=linux/${{ inputs.architecture }} -f docker-bake.hcl -f build.json --load
+              run: docker buildx bake --set qe.platform=linux/${{ inputs.architecture }} -f docker-bake.hcl --load
               env:
                   # Use buildx
                   DOCKER_BUILDKIT: 1

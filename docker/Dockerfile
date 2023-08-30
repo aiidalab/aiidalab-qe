@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM base-image
+FROM aiidalab/full-stack:latest
 
 
 # Copy whole repo and pre-install the dependencies and app to the tmp folder.
@@ -16,12 +16,11 @@ RUN cd ${PREINSTALL_APP_FOLDER} && \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
 
-# The app version is used for installing the app when first time the container is started.
-ARG APP_VERSION
-ENV APP_VERSION ${APP_VERSION}
 
-ARG QE_VERSION
+# Quantum ESPRESSO version to install (conda).
+ARG QE_VERSION=7.2
 ENV QE_VERSION ${QE_VERSION}
+
 RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
         qe=${QE_VERSION} \
      && mamba clean --all -f -y && \
