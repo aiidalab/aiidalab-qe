@@ -8,6 +8,7 @@ import os
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from IPython.display import clear_output, display
 
 
@@ -229,6 +230,15 @@ class MagnetizationSettings(ipw.VBox):
 
 
 class SmearingSettings(ipw.VBox):
+    # Default protocol
+    _DEFAULT_PROTOCOL = "moderate"
+
+    # accept protocol as input and set the values
+    protocol = tl.Unicode(allow_none=True)
+
+    # The output of the widget is a dictionary with the values of smearing and degauss
+    settings = tl.Dict()
+
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
@@ -236,11 +246,6 @@ class SmearingSettings(ipw.VBox):
         target="_blank">here</a> for a discussion).
     </p>"""
     )
-
-    # The default of `smearing` and `degauss` the type and width
-    # must be linked to the `protocol`
-    degauss_default = tl.Float(default_value=0.01)
-    smearing_default = tl.Unicode(default_value="cold")
 
     def __init__(self, **kwargs):
         self.override = ipw.Checkbox(
@@ -250,13 +255,11 @@ class SmearingSettings(ipw.VBox):
         )
         self.smearing = ipw.Dropdown(
             options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
-            value=self.smearing_default,
             description="Smearing type:",
             disabled=False,
             style={"description_width": "initial"},
         )
         self.degauss = ipw.FloatText(
-            value=self.degauss_default,
             step=0.005,
             description="Smearing width (Ry):",
             disabled=False,
@@ -274,7 +277,6 @@ class SmearingSettings(ipw.VBox):
         )
         self.degauss.observe(self.set_smearing, "value")
         self.smearing.observe(self.set_smearing, "value")
-        self.override.observe(self.set_smearing, "value")
 
         super().__init__(
             children=[
@@ -285,31 +287,46 @@ class SmearingSettings(ipw.VBox):
             **kwargs,
         )
 
+        # Default settings to trigger the callback
+        self.protocol = self._DEFAULT_PROTOCOL
+
+    @tl.observe("protocol")
+    def _protocol_changed(self, _):
+        """Input protocol changed, update the widget values."""
+        self._update_settings_from_protocol(self.protocol)
+
+    def _update_settings_from_protocol(self, protocol):
+        """Update the widget values from the given protocol, and trigger the callback."""
+        parameters = PwBaseWorkChain.get_protocol_inputs(protocol)["pw"]["parameters"][
+            "SYSTEM"
+        ]
+
+        with self.hold_trait_notifications():
+            # This changes will trigger callbacks
+            self.degauss.value = parameters["degauss"]
+            self.smearing.value = parameters["smearing"]
+
     def set_smearing(self, _=None):
-        self.degauss.value = (
-            self.degauss.value if self.override.value else self.degauss_default
-        )
-        self.smearing.value = (
-            self.smearing.value if self.override.value else self.smearing_default
-        )
+        """callback function to set the smearing and degauss values"""
+        settings = {
+            "degauss": self.degauss.value,
+            "smearing": self.smearing.value,
+        }
+
+        self._update_settings(**settings)
 
     def _update_settings(self, **kwargs):
-        """Update the smearing and degauss values by the given keyword arguments
-        This is the same as the `set_smearing` method but without the observer.
-        Therefore the override checkbox is not updated and defaults to True"""
-        self.override.value = True
-
-        with self.hold_trait_notifications():
-            if "smearing" in kwargs:
-                self.smearing.value = kwargs["smearing"]
-
-            if "degauss" in kwargs:
-                self.degauss.value = kwargs["degauss"]
+        """Set the output dict from the given keyword arguments.
+        This function will only update the traitlets but not the widget value.
+        """
+        self.settings = {k: v for k, v in kwargs.items()}
 
     def reset(self):
+        """Reset the widget and the traitlets"""
+        self.protocol = self._DEFAULT_PROTOCOL
+
         with self.hold_trait_notifications():
-            self.degauss.value = self.degauss_default
-            self.smearing.value = self.smearing_default
+            self._update_settings_from_protocol(self.protocol)
             self.override.value = False
 
 

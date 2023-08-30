@@ -459,12 +459,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         # smearing type setting
                         pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                             "smearing"
-                        ] = self.advanced_settings.smearing.smearing.value
+                        ] = self.advanced_settings.smearing.settings.get("smearing")
 
                         # smearing degauss setting
                         pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                             "degauss"
-                        ] = self.advanced_settings.smearing.degauss.value
+                        ] = self.advanced_settings.smearing.settings.get("degauss")
 
         overrides = {
             "relax": {

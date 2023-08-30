@@ -293,7 +293,9 @@ def submit_step_widget_generator(
         submit_step.advanced_settings.smearing = smearing_settings_generator(
             smearing=smearing,
             degauss=degauss,
-            override=override_protocol_smearing,
+        )
+        submit_step.advanced_settings.smearing.override.value = (
+            override_protocol_smearing
         )
 
         return submit_step
