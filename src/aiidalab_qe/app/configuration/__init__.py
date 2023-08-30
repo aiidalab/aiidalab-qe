@@ -8,7 +8,6 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
-from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
@@ -44,10 +43,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings.kpoints, "kpoints_distance_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)[
-                "kpoints_distance"
-            ],
+            (self.advanced_settings.kpoints, "protocol"),
         )
 
         ipw.dlink(

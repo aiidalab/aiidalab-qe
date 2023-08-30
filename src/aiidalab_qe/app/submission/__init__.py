@@ -451,7 +451,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     if self.advanced_settings.kpoints.override.value:
                         pw_overrides[key][
                             "kpoints_distance"
-                        ] = self.advanced_settings.kpoints.distance.value
+                        ] = self.advanced_settings.kpoints.settings.get(
+                            "kpoints_distance"
+                        )
                     if (
                         self.advanced_settings.smearing.override.value
                         and self.workchain_settings.electronic_type.value == "metal"

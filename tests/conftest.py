@@ -290,6 +290,7 @@ def submit_step_widget_generator(
         submit_step.advanced_settings.kpoints = kpoints_settings_generator(
             kpoints_distance=kpoints_distance
         )
+        submit_step.advanced_settings.kpoints.override.value = True
         submit_step.advanced_settings.smearing = smearing_settings_generator(
             smearing=smearing,
             degauss=degauss,
