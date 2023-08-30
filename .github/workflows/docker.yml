@@ -61,6 +61,11 @@ concurrency:
 jobs:
     bake-and-push:
         runs-on: ubuntu-latest
+        timeout-minutes: 60
+
+        outputs:
+            tags: ${{ steps.meta.outputs.tags }}
+
         steps:
             - name: Checkout Repo ⚡️
               uses: actions/checkout@v3
@@ -75,7 +80,6 @@ jobs:
             - name: Docker meta 📝
               id: meta
               uses: docker/metadata-action@v4
-              env: ${{ fromJson(steps.build_vars.outputs.vars) }}
               with:
                   images: |
                       name=ghcr.io/${{ env.OWNER }}/qe
@@ -85,8 +89,8 @@ jobs:
                       type=ref,event=pr
                       type=match,pattern=v(\d{4}\.\d{4}),group=1
                       type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-                      type=raw,value=qe-${{ env.QE_VERSION }},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             - name: Build and push image 🏗📤💾
+              # This is a multi-arch build
               id: bake
               uses: docker/bake-action@v3.1.0
               with:
@@ -95,87 +99,58 @@ jobs:
                   provenance: false
                   files: docker-bake.hcl
                   push: true
-              #working-directory: docker
+                  workdir: docker
+            - name: Set output variable
+              run: |
+                  echo "TAGS=${{ steps.meta.outputs.tags }}" >> "${GITHUB_ENV}"
 
-#jobs:
-#    amd64:
-#        uses: ./.github/workflows/docker-build-test-upload.yml
-#        with:
-#            image: qe
-#            architecture: amd64
-#            runsOn: ubuntu-latest
-#
-#    arm64:
-#        uses: ./.github/workflows/docker-build-test-upload.yml
-#        with:
-#            image: qe
-#            architecture: arm64
-#            runsOn: buildjet-2vcpu-ubuntu-2204-arm
-#
-#    amd64-push-ghcr:
-#        uses: ./.github/workflows/docker-push.yml
-#        with:
-#            image: qe
-#            architecture: amd64
-#            registry: ghcr.io
-#        secrets:
-#            REGISTRY_USERNAME: ${{ github.actor }}
-#            REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        needs: [amd64]
-#
-#    arm64-push-ghcr:
-#        uses: ./.github/workflows/docker-push.yml
-#        with:
-#            image: qe
-#            architecture: arm64
-#            registry: ghcr.io
-#        secrets:
-#            REGISTRY_USERNAME: ${{ github.actor }}
-#            REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        needs: [arm64]
-#
-#    merge-tags-ghcr:
-#        uses: ./.github/workflows/docker-merge-tags.yml
-#        with:
-#            image: qe
-#            registry: ghcr.io
-#        secrets:
-#            REGISTRY_USERNAME: ${{ github.actor }}
-#            REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        needs: [amd64-push-ghcr, arm64-push-ghcr]
-#
-#    amd64-push-dockerhub:
-#        if: github.repository == 'aiidalab/aiidalab-qe' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-#        uses: ./.github/workflows/docker-push.yml
-#        with:
-#            image: qe
-#            architecture: amd64
-#            registry: docker.io
-#        secrets:
-#            REGISTRY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-#            REGISTRY_TOKEN: ${{ secrets.DOCKER_PASSWORD }}
-#        needs: [amd64]
-#
-#    arm64-push-dockerhub:
-#        if: github.repository == 'aiidalab/aiidalab-qe' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-#        uses: ./.github/workflows/docker-push.yml
-#        with:
-#            image: qe
-#            architecture: arm64
-#            registry: docker.io
-#        secrets:
-#            REGISTRY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-#            REGISTRY_TOKEN: ${{ secrets.DOCKER_PASSWORD }}
-#        needs: [arm64]
-#
-#    merge-tags-dockerhub:
-#        if: github.repository == 'aiidalab/aiidalab-qe' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-#        uses: ./.github/workflows/docker-merge-tags.yml
-#        with:
-#            image: qe
-#            registry: docker.io
-#        secrets:
-#            REGISTRY_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-#            REGISTRY_TOKEN: ${{ secrets.DOCKER_PASSWORD }}
-#        needs: [amd64-push-dockerhub, arm64-push-dockerhub]
-#
+
+    #test-amd64:
+    #    needs: bake-and-push
+
+    #    runs-on: ubuntu-latest
+    #    timeout-minutes: 30
+
+    #    steps:
+    #        - name: Checkout Repo ⚡️
+    #          uses: actions/checkout@v3
+    #        - name: Create dev environment 📦
+    #          uses: ./.github/actions/create-dev-env
+    #          with:
+    #              architecture: amd64
+
+    #        - name: Run tests ✅
+    #          uses: ./.github/actions/integration-tests
+    #          with:
+    #              architecture: amd64
+    #              tag: ${{ fromJson(needs.bake-and-push.outputs.tags).pr }}
+
+    #test-arm64:
+    #    needs: bake-and-push
+
+    #    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+    #    timeout-minutes: 30
+
+    #    steps:
+    #        - name: Checkout Repo ⚡️
+    #          uses: actions/checkout@v3
+    #        - name: Create dev environment 📦
+    #          uses: ./.github/actions/create-dev-env
+    #          with:
+    #              architecture: arm64
+
+    #        - name: Run tests ✅
+    #          uses: ./.github/actions/integration-tests
+    #          with:
+    #              architecture: arm64
+    #              tag: ${{ fromJson(needs.bake-and-push.outputs.tags).pr }}
+
+    #push-to-dockerhub:
+    #    needs: [test-amd64, test-arm64]
+    #    if: startsWith(github.ref, 'refs/tags/v')
+
+    #    runs-on: ubuntu-latest
+
+    #    steps:
+    #        - name: Checkout Repo ⚡️
+    #          uses: actions/checkout@v3

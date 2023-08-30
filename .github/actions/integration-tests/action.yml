@@ -7,8 +7,8 @@ inputs:
         description: Image architecture
         required: true
         type: string
-    runsOn:
-        description: GitHub Actions Runner image
+    tag:
+        description: Image tag
         required: true
         type: string
 
@@ -34,11 +34,11 @@ runs:
           shell: bash
 
         - name: Run pytest for firefox
-          run: VERSION=newly-baked pytest --driver Firefox tests_integration
+          run: VERSION=${{ inputs.tag }} pytest --driver Firefox tests_integration
           shell: bash
 
         - name: Run pytest for Chrome
-          run: VERSION=newly-baked pytest --driver Chrome tests_integration
+          run: VERSION=${{ inputs.tag }} pytest --driver Chrome tests_integration
           shell: bash
 
         - name: Upload screenshots as artifacts
