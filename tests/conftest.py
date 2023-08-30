@@ -204,7 +204,7 @@ def smearing_settings_generator():
 
     def _smearing_settings_generator(**kwargs):
         smearing_settings = SmearingSettings()
-        smearing_settings._update_settings(**kwargs)
+        smearing_settings.update_settings(**kwargs)
         return smearing_settings
 
     return _smearing_settings_generator
@@ -217,7 +217,7 @@ def kpoints_settings_generator():
 
     def _kpoints_settings_generator(**kwargs):
         kpoints_settings = KpointSettings()
-        kpoints_settings._update_settings(**kwargs)
+        kpoints_settings.update_settings(**kwargs)
         return kpoints_settings
 
     return _kpoints_settings_generator

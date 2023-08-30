@@ -5,28 +5,28 @@ def test_smearing_settings():
     # Check initial
     w = SmearingSettings()
 
-    assert w.settings.get("degauss") == 0.01
-    assert w.settings.get("smearing") == "cold"
+    assert w.value.get("degauss") == 0.01
+    assert w.value.get("smearing") == "cold"
 
     # Check values after changing protocol (currently the smearing not changed upon protocol)
     w.protocol = "fast"
 
-    assert w.settings.get("degauss") == 0.01
-    assert w.settings.get("smearing") == "cold"
+    assert w.value.get("degauss") == 0.01
+    assert w.value.get("smearing") == "cold"
 
     # Check changing value of sub-widgets changes the settings
     w.degauss.value = 0.03
     w.smearing.value = "methfessel-paxton"
 
-    assert w.settings.get("degauss") == 0.03
-    assert w.settings.get("smearing") == "methfessel-paxton"
+    assert w.value.get("degauss") == 0.03
+    assert w.value.get("smearing") == "methfessel-paxton"
 
     # Check reset
     w.reset()
 
     assert w.protocol == "moderate"
-    assert w.settings.get("degauss") == 0.01
-    assert w.settings.get("smearing") == "cold"
+    assert w.value.get("degauss") == 0.01
+    assert w.value.get("smearing") == "cold"
 
 
 def test_kpoints_settings():
@@ -35,18 +35,18 @@ def test_kpoints_settings():
 
     w = KpointSettings()
 
-    assert w.settings.get("kpoints_distance") == 0.15
+    assert w.value.get("kpoints_distance") == 0.15
 
     w.protocol = "fast"
 
-    assert w.settings.get("kpoints_distance") == 0.5
+    assert w.value.get("kpoints_distance") == 0.5
 
     # Check changing value of sub-widgets changes the settings
     w.distance.value = 0.22
-    assert w.settings.get("kpoints_distance") == 0.22
+    assert w.value.get("kpoints_distance") == 0.22
 
     # Check reset
     w.reset()
 
     assert w.protocol == "moderate"
-    assert w.settings.get("kpoints_distance") == 0.15
+    assert w.value.get("kpoints_distance") == 0.15
