@@ -50,3 +50,20 @@ def test_kpoints_settings():
 
     assert w.protocol == "moderate"
     assert w.value.get("kpoints_distance") == 0.15
+
+
+def test_tot_charge():
+    """Test TotCharge widget."""
+    from aiidalab_qe.app.configuration.advanced import TotalCharge
+
+    w = TotalCharge()
+
+    assert w.value == 0.0
+
+    w.charge.value = 1.0
+    assert w.value == 1.0
+
+    # Check reset
+    w.reset()
+
+    assert w.value == 0.0

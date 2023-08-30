@@ -189,9 +189,9 @@ def tot_charge_generator():
     """Return a function that generates a tot_charge dictionary."""
     from aiidalab_qe.app.configuration.advanced import TotalCharge
 
-    def _tot_charge_generator(**kwargs):
+    def _tot_charge_generator(value=0.0):
         tot_charge = TotalCharge()
-        tot_charge._update_settings(**kwargs)
+        tot_charge.update_value(value=value)
         return tot_charge
 
     return _tot_charge_generator
@@ -278,8 +278,9 @@ def submit_step_widget_generator(
         submit_step.advanced_settings.override.value = True
 
         submit_step.advanced_settings.tot_charge = tot_charge_generator(
-            tot_charge=tot_charge,
+            value=tot_charge,
         )
+        submit_step.advanced_settings.tot_charge.override.value = True
 
         submit_step.advanced_settings.magnetization = (
             initial_magnetic_moments_generator(

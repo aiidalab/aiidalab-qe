@@ -7,10 +7,9 @@ import os
 
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import clear_output, display
-
 from aiida import orm
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
+from IPython.display import clear_output, display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 
@@ -73,16 +72,17 @@ class AdvancedSettings(ipw.VBox):
 class TotalCharge(ipw.VBox):
     """Widget to define the total charge of the simulation"""
 
-    tot_charge_default = tl.Float(default_value=0.0)
+    value = tl.Float(allow_none=True)
 
     def __init__(self, **kwargs):
+        self.tot_charge_default = DEFAULT_PARAMETERS["tot_charge"]
+
         self.override = ipw.Checkbox(
             description="Override",
             indent=False,
             value=False,
         )
         self.charge = ipw.BoundedFloatText(
-            value=0,
             min=-3,
             max=3,
             step=0.01,
@@ -90,6 +90,8 @@ class TotalCharge(ipw.VBox):
             description="Total charge:",
             style={"description_width": "initial"},
         )
+        self.charge.observe(self._callback_value_set, "value")
+
         ipw.dlink(
             (self.override, "value"),
             (self.charge, "disabled"),
@@ -97,36 +99,32 @@ class TotalCharge(ipw.VBox):
         )
         super().__init__(
             children=[
-                ipw.HBox(
-                    [
-                        self.override,
-                        self.charge,
-                    ],
-                ),
+                ipw.HBox([self.override, self.charge]),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
-        self.charge.observe(self.set_tot_charge, "value")
-        self.override.observe(self.set_tot_charge, "value")
 
-    def set_tot_charge(self, _=None):
-        self.charge.value = (
-            self.charge.value if self.override.value else self.tot_charge_default
-        )
+    def _callback_value_set(self, _=None):
+        """callback function to set the total charge"""
+        self.update_value(self.charge.value)
 
-    def _update_settings(self, **kwargs):
-        """Update the override and override_tot_charge and override_tot_charge values by the given keyword arguments
-        Therefore the override checkbox is not updated and defaults to True"""
-        self.override.value = True
-        with self.hold_trait_notifications():
-            if "tot_charge" in kwargs:
-                self.charge.value = kwargs["tot_charge"]
+    def update_value(self, value):
+        """Update the value of the total charge.
+        The function only update the traitlets but not the widget value.
+        """
+        self.value = value
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.charge.value = self.tot_charge_default
+            # Reset the override checkbox
             self.override.value = False
+
+            # reset the value of the widget
+            self.charge.value = self.tot_charge_default
+
+            # reset the value of the traitlets
+            self.update_value(self.tot_charge_default)
 
 
 class MagnetizationSettings(ipw.VBox):

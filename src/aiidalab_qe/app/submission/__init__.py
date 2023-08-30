@@ -438,7 +438,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if self.advanced_settings.tot_charge.override.value:
                     pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                         "tot_charge"
-                    ] = self.advanced_settings.tot_charge.charge.value
+                    ] = self.advanced_settings.tot_charge.value
                 if (
                     self.advanced_settings.magnetization.override.value
                     and self.workchain_settings.spin_type.value == "collinear"

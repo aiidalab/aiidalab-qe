@@ -117,10 +117,13 @@ def test_create_builder_advanced_settings(
     got = builder_to_readable_dict(builder)
 
     # test tot_charge is updated in the three steps
-    assert got["relax"]["base"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
-    assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
-    assert got["pdos"]["scf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
-    assert got["pdos"]["nscf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
+    for parameters in [
+        got["relax"]["base"],
+        got["bands"]["scf"],
+        got["pdos"]["scf"],
+        got["pdos"]["nscf"],
+    ]:
+        assert parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
 
     # test initial_magnetic_moments set 'starting_magnetization' in pw.in
     assert (
