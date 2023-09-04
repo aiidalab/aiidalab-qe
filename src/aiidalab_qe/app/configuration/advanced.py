@@ -20,20 +20,47 @@ class AdvancedSettings(ipw.VBox):
         <h4>Advanced Settings</h4></div>"""
     )
     description = ipw.HTML("""Select the advanced settings for the <b>pw.x</b> code.""")
+    kpoints_description = ipw.HTML(
+        """<div>
+        The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
+        The value below represents the maximum distance between the k-points in each direction of reciprocal space.
+        Tick the box to override the default, smaller is more accurate and costly. </div>"""
+    )
 
-    def __init__(self, **kwargs):
+    # protocol interface
+    protocol = tl.Unicode(allow_none=True)
+
+    # output dictionary
+    value = tl.Dict()
+
+    def __init__(self, default_protocol=None, **kwargs):
+        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
+
         self.override = ipw.Checkbox(
             description="Override",
             indent=False,
             value=False,
         )
         self.smearing = SmearingSettings()
-        self.kpoints = KpointSettings()
+
+        # Kpoints setting widget
+        self.kpoints_distance = ipw.FloatText(
+            step=0.05,
+            description="K-points distance (1/Å):",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self.override, "value"),
+            (self.kpoints_distance, "disabled"),
+            lambda override: not override,
+        )
+        self.kpoints_distance.observe(self._callback_value_set, "value")
+
         self.tot_charge = TotalCharge()
         self.magnetization = MagnetizationSettings()
         self.list_overrides = [
             self.smearing.override,
-            self.kpoints.override,
             self.tot_charge.override,
             self.magnetization.override,
         ]
@@ -56,17 +83,58 @@ class AdvancedSettings(ipw.VBox):
                 self.tot_charge,
                 self.magnetization,
                 self.smearing,
-                self.kpoints,
+                # Kpoints setting widget
+                self.kpoints_description,
+                self.kpoints_distance,
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
 
+        # Default settings to trigger the callback
+        self.reset()
+
+    @tl.observe("protocol")
+    def _protocol_changed(self, _):
+        """Input protocol changed, update the widget values."""
+        self._update_settings_from_protocol(self.protocol)
+
+    def _update_settings_from_protocol(self, protocol):
+        """Update the values of sub-widgets from the given protocol, this will
+        trigger the callback of the sub-widget if it is exist.
+        """
+        parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
+
+        self.kpoints_distance.value = parameters["kpoints_distance"]
+
+    def _callback_value_set(self, _=None):
+        """Callback function to set the parameters"""
+        settings = {
+            "kpoints_distance": self.kpoints_distance.value,
+        }
+
+        self.update_settings(**settings)
+
+    def update_settings(self, **kwargs):
+        """Set the output dict from the given keyword arguments.
+        This function will only update the traitlets but not the widget value.
+
+        This function can also be used to set values directly for testing purpose.
+        """
+        self.value = {k: v for k, v in kwargs.items()}
+
     def set_advanced_settings(self, _=None):
         self.smearing.reset()
-        self.kpoints.reset()
         self.tot_charge.reset()
         self.magnetization.reset()
+
+    def reset(self):
+        """Reset the widget and the traitlets"""
+        self.protocol = self._default_protocol
+
+        with self.hold_trait_notifications():
+            self._update_settings_from_protocol(self.protocol)
+            self.override.value = False
 
 
 class TotalCharge(ipw.VBox):
@@ -311,88 +379,6 @@ class SmearingSettings(ipw.VBox):
         settings = {
             "degauss": self.degauss.value,
             "smearing": self.smearing.value,
-        }
-
-        self.update_settings(**settings)
-
-    def update_settings(self, **kwargs):
-        """Set the output dict from the given keyword arguments.
-        This function will only update the traitlets but not the widget value.
-        """
-        self.value = {k: v for k, v in kwargs.items()}
-
-    def reset(self):
-        """Reset the widget and the traitlets"""
-        self.protocol = self._default_protocol
-
-        with self.hold_trait_notifications():
-            self._update_settings_from_protocol(self.protocol)
-            self.override.value = False
-
-
-class KpointSettings(ipw.VBox):
-    # accept protocol as input and set the values
-    protocol = tl.Unicode(allow_none=True)
-
-    # The output of the widget is a dictionary with the values of smearing and degauss
-    value = tl.Dict()
-
-    kpoints_distance_description = ipw.HTML(
-        """<div>
-        The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
-        The value below represents the maximum distance between the k-points in each direction of reciprocal space.
-        Tick the box to override the default, smaller is more accurate and costly. </div>"""
-    )
-
-    def __init__(self, default_protocol=None, **kwargs):
-        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
-
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-        self.distance = ipw.FloatText(
-            step=0.05,
-            description="K-points distance (1/Å):",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self.override, "value"),
-            (self.distance, "disabled"),
-            lambda override: not override,
-        )
-        self.distance.observe(self._callback_value_set, "value")
-
-        super().__init__(
-            children=[
-                self.kpoints_distance_description,
-                ipw.HBox([self.override, self.distance]),
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
-        )
-
-        # Default settings to trigger the callback
-        self.protocol = self._default_protocol
-
-    @tl.observe("protocol")
-    def _protocol_changed(self, _):
-        """Input protocol changed, update the widget values."""
-        self._update_settings_from_protocol(self.protocol)
-
-    def _update_settings_from_protocol(self, protocol):
-        """Update the widget values from the given protocol, and trigger the callback."""
-        parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
-
-        # This changes will trigger callbacks
-        self.distance.value = parameters["kpoints_distance"]
-
-    def _callback_value_set(self, _=None):
-        """Callback function to set the kpoints distance"""
-        settings = {
-            "kpoints_distance": self.distance.value,
         }
 
         self.update_settings(**settings)

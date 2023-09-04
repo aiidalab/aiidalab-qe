@@ -29,11 +29,17 @@ def test_smearing_settings():
     assert w.value.get("smearing") == "cold"
 
 
-def test_kpoints_settings():
-    """Test KpointSettings widget."""
-    from aiidalab_qe.app.configuration.advanced import KpointSettings
+def test_advanced_kpoints_settings():
+    """Test kpoint setting of advanced setting widget."""
+    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
 
-    w = KpointSettings()
+    w = AdvancedSettings()
+
+    # Check the disable of is bind to override switch
+    assert w.kpoints_distance.disabled is True
+
+    w.override.value = True
+    assert w.kpoints_distance.disabled is False
 
     assert w.value.get("kpoints_distance") == 0.15
 
@@ -42,7 +48,7 @@ def test_kpoints_settings():
     assert w.value.get("kpoints_distance") == 0.5
 
     # Check changing value of sub-widgets changes the settings
-    w.distance.value = 0.22
+    w.kpoints_distance.value = 0.22
     assert w.value.get("kpoints_distance") == 0.22
 
     # Check reset
