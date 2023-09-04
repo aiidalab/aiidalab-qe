@@ -58,18 +58,24 @@ def test_advanced_kpoints_settings():
     assert w.value.get("kpoints_distance") == 0.15
 
 
-def test_tot_charge():
+def test_advanced_tot_charge_settings():
     """Test TotCharge widget."""
-    from aiidalab_qe.app.configuration.advanced import TotalCharge
+    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
 
-    w = TotalCharge()
+    w = AdvancedSettings()
 
-    assert w.value == 0.0
+    # Check the disable of is bind to override switch
+    assert w.total_charge.disabled is True
 
-    w.charge.value = 1.0
-    assert w.value == 1.0
+    w.override.value = True
+    assert w.total_charge.disabled is False
+
+    assert w.value.get("total_charge") == 0.0
+
+    w.total_charge.value = 1.0
+    assert w.value.get("total_charge") == 1.0
 
     # Check reset
     w.reset()
 
-    assert w.value == 0.0
+    assert w.value.get("total_charge") == 0.0

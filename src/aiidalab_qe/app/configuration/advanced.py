@@ -57,11 +57,25 @@ class AdvancedSettings(ipw.VBox):
         )
         self.kpoints_distance.observe(self._callback_value_set, "value")
 
-        self.tot_charge = TotalCharge()
+        # Total change setting widget
+        self.total_charge = ipw.BoundedFloatText(
+            min=-3,
+            max=3,
+            step=0.01,
+            disabled=False,
+            description="Total charge:",
+            style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self.override, "value"),
+            (self.total_charge, "disabled"),
+            lambda override: not override,
+        )
+        self.total_charge.observe(self._callback_value_set, "value")
+
         self.magnetization = MagnetizationSettings()
         self.list_overrides = [
             self.smearing.override,
-            self.tot_charge.override,
             self.magnetization.override,
         ]
         for override in self.list_overrides:
@@ -80,8 +94,11 @@ class AdvancedSettings(ipw.VBox):
                         self.override,
                     ],
                 ),
-                self.tot_charge,
+                # total charge setting widget
+                self.total_charge,
+                # magnetization setting widget
                 self.magnetization,
+                # smearing setting widget
                 self.smearing,
                 # Kpoints setting widget
                 self.kpoints_description,
@@ -111,6 +128,7 @@ class AdvancedSettings(ipw.VBox):
         """Callback function to set the parameters"""
         settings = {
             "kpoints_distance": self.kpoints_distance.value,
+            "total_charge": self.total_charge.value,
         }
 
         self.update_settings(**settings)
@@ -125,7 +143,6 @@ class AdvancedSettings(ipw.VBox):
 
     def set_advanced_settings(self, _=None):
         self.smearing.reset()
-        self.tot_charge.reset()
         self.magnetization.reset()
 
     def reset(self):
@@ -133,66 +150,13 @@ class AdvancedSettings(ipw.VBox):
         self.protocol = self._default_protocol
 
         with self.hold_trait_notifications():
+            # Reset protocol dependent settings
             self._update_settings_from_protocol(self.protocol)
+            # reset total charge
+            self.total_charge.value = DEFAULT_PARAMETERS["tot_charge"]
+
+            # reset the override checkbox
             self.override.value = False
-
-
-class TotalCharge(ipw.VBox):
-    """Widget to define the total charge of the simulation"""
-
-    value = tl.Float(allow_none=True)
-
-    def __init__(self, **kwargs):
-        self.tot_charge_default = DEFAULT_PARAMETERS["tot_charge"]
-
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-        self.charge = ipw.BoundedFloatText(
-            min=-3,
-            max=3,
-            step=0.01,
-            disabled=False,
-            description="Total charge:",
-            style={"description_width": "initial"},
-        )
-        self.charge.observe(self._callback_value_set, "value")
-
-        ipw.dlink(
-            (self.override, "value"),
-            (self.charge, "disabled"),
-            lambda override: not override,
-        )
-        super().__init__(
-            children=[
-                ipw.HBox([self.override, self.charge]),
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
-        )
-
-    def _callback_value_set(self, _=None):
-        """callback function to set the total charge"""
-        self.update_value(self.charge.value)
-
-    def update_value(self, value):
-        """Update the value of the total charge.
-        The function only update the traitlets but not the widget value.
-        """
-        self.value = value
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            # Reset the override checkbox
-            self.override.value = False
-
-            # reset the value of the widget
-            self.charge.value = self.tot_charge_default
-
-            # reset the value of the traitlets
-            self.update_value(self.tot_charge_default)
 
 
 class MagnetizationSettings(ipw.VBox):
