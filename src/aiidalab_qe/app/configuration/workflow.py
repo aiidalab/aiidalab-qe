@@ -150,8 +150,13 @@ class WorkChainSettings(ipw.VBox):
             "relax_type",
             "spin_type",
             "electronic_type",
+            "bands_run",
             "pdos_run",
             "workchain_protocol",
         ]:
             if key in kwargs:
-                getattr(self, key).value = kwargs[key]
+                # a temporary solution for the bands_run property
+                if key == "bands_run":
+                    self.properties["bands"].run.value = kwargs[key]
+                else:
+                    getattr(self, key).value = kwargs[key]
