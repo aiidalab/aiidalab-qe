@@ -36,10 +36,17 @@ class AdvancedSettings(ipw.VBox):
     def __init__(self, default_protocol=None, **kwargs):
         self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
 
+        # Override setting widget
+        self.override_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
         self.override = ipw.Checkbox(
-            description="Override",
+            description="",
             indent=False,
             value=False,
+            layout=ipw.Layout(max_width="10%"),
+        )
+        self.override_widget = ipw.HBox(
+            [self.override_prompt, self.override],
+            layout=ipw.Layout(max_width="20%"),
         )
         # Smearing setting widget
         self.smearing = SmearingSettings()
@@ -97,10 +104,8 @@ class AdvancedSettings(ipw.VBox):
             children=[
                 self.title,
                 ipw.HBox(
-                    [
-                        self.description,
-                        self.override,
-                    ],
+                    [self.description, self.override_widget],
+                    layout=ipw.Layout(height="50px", justify_content="space-between"),
                 ),
                 # total charge setting widget
                 self.total_charge,
