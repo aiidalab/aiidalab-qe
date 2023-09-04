@@ -124,4 +124,3 @@ class ResultPanel(Panel):
 
         :param result: the result of the calculation.
         """
-        pass
