@@ -41,7 +41,16 @@ class AdvancedSettings(ipw.VBox):
             indent=False,
             value=False,
         )
+        # Smearing setting widget
         self.smearing = SmearingSettings()
+        ipw.dlink(
+            (self.override, "value"),
+            (self.smearing, "disabled"),
+            lambda override: not override,
+        )
+        self.smearing.observe(
+            self._callback_value_set, ["degauss_value", "smearing_value"]
+        )
 
         # Kpoints setting widget
         self.kpoints_distance = ipw.FloatText(
@@ -75,7 +84,6 @@ class AdvancedSettings(ipw.VBox):
 
         self.magnetization = MagnetizationSettings()
         self.list_overrides = [
-            self.smearing.override,
             self.magnetization.override,
         ]
         for override in self.list_overrides:
@@ -120,6 +128,8 @@ class AdvancedSettings(ipw.VBox):
         """Update the values of sub-widgets from the given protocol, this will
         trigger the callback of the sub-widget if it is exist.
         """
+        self.smearing.protocol = protocol
+
         parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
 
         self.kpoints_distance.value = parameters["kpoints_distance"]
@@ -129,6 +139,8 @@ class AdvancedSettings(ipw.VBox):
         settings = {
             "kpoints_distance": self.kpoints_distance.value,
             "total_charge": self.total_charge.value,
+            "degauss": self.smearing.degauss_value,
+            "smearing": self.smearing.smearing_value,
         }
 
         self.update_settings(**settings)
@@ -267,7 +279,8 @@ class SmearingSettings(ipw.VBox):
     protocol = tl.Unicode(allow_none=True)
 
     # The output of the widget is a dictionary with the values of smearing and degauss
-    value = tl.Dict()
+    degauss_value = tl.Float()
+    smearing_value = tl.Unicode()
 
     smearing_description = ipw.HTML(
         """<p>
@@ -276,15 +289,11 @@ class SmearingSettings(ipw.VBox):
         target="_blank">here</a> for a discussion).
     </p>"""
     )
+    disabled = tl.Bool()
 
     def __init__(self, default_protocol=None, **kwargs):
         self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
 
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
         self.smearing = ipw.Dropdown(
             options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
             description="Smearing type:",
@@ -298,14 +307,12 @@ class SmearingSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self, "disabled"),
             (self.degauss, "disabled"),
-            lambda override: not override,
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self, "disabled"),
             (self.smearing, "disabled"),
-            lambda override: not override,
         )
         self.degauss.observe(self._callback_value_set, "value")
         self.smearing.observe(self._callback_value_set, "value")
@@ -313,7 +320,7 @@ class SmearingSettings(ipw.VBox):
         super().__init__(
             children=[
                 self.smearing_description,
-                ipw.HBox([self.override, self.smearing, self.degauss]),
+                ipw.HBox([self.smearing, self.degauss]),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
@@ -321,6 +328,10 @@ class SmearingSettings(ipw.VBox):
 
         # Default settings to trigger the callback
         self.protocol = self._default_protocol
+
+    @tl.default("disabled")
+    def _default_disabled(self):
+        return False
 
     @tl.observe("protocol")
     def _protocol_changed(self, _):
@@ -340,18 +351,14 @@ class SmearingSettings(ipw.VBox):
 
     def _callback_value_set(self, _=None):
         """callback function to set the smearing and degauss values"""
-        settings = {
-            "degauss": self.degauss.value,
-            "smearing": self.smearing.value,
-        }
+        self.update_settings()
 
-        self.update_settings(**settings)
-
-    def update_settings(self, **kwargs):
+    def update_settings(self):
         """Set the output dict from the given keyword arguments.
         This function will only update the traitlets but not the widget value.
         """
-        self.value = {k: v for k, v in kwargs.items()}
+        self.degauss_value = self.degauss.value
+        self.smearing_value = self.smearing.value
 
     def reset(self):
         """Reset the widget and the traitlets"""
@@ -359,4 +366,4 @@ class SmearingSettings(ipw.VBox):
 
         with self.hold_trait_notifications():
             self._update_settings_from_protocol(self.protocol)
-            self.override.value = False
+            self.disabled = False

@@ -1,9 +1,19 @@
-def test_smearing_settings():
+def test_advanced_smearing_settings():
     """Test SmearningSettings widget."""
-    from aiidalab_qe.app.configuration.advanced import SmearingSettings
+    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
 
-    # Check initial
-    w = SmearingSettings()
+    w = AdvancedSettings()
+
+    # Check the disable of is bind to override switch of both degauss and smearing
+    assert w.smearing.disabled is True
+    assert w.smearing.degauss.disabled is True
+    assert w.smearing.smearing.disabled is True
+
+    w.override.value = True
+
+    assert w.smearing.disabled is False
+    assert w.smearing.degauss.disabled is False
+    assert w.smearing.smearing.disabled is False
 
     assert w.value.get("degauss") == 0.01
     assert w.value.get("smearing") == "cold"
@@ -15,8 +25,9 @@ def test_smearing_settings():
     assert w.value.get("smearing") == "cold"
 
     # Check changing value of sub-widgets changes the settings
-    w.degauss.value = 0.03
-    w.smearing.value = "methfessel-paxton"
+    # By set the widget value directly
+    w.smearing.degauss.value = 0.03
+    w.smearing.smearing.value = "methfessel-paxton"
 
     assert w.value.get("degauss") == 0.03
     assert w.value.get("smearing") == "methfessel-paxton"
