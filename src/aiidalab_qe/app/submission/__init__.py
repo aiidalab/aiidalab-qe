@@ -463,7 +463,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                             "kpoints_distance"
                         ] = kpoints_distance
 
-                        if protocol == "fast" and (kpoints_distance < 0.5 and kpoints_distance > 0.15):
+                        if protocol == "fast" and (kpoints_distance < 0.5):
                             pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
                         if protocol == "moderate" and (kpoints_distance < 0.1):
                             pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
