@@ -154,7 +154,6 @@ class AdvancedSettings(ipw.VBox):
         self.value = {k: v for k, v in kwargs.items()}
 
     def set_advanced_settings(self, _=None):
-        self.smearing.reset()
         self.magnetization.reset()
 
     def reset(self):
@@ -351,14 +350,18 @@ class SmearingSettings(ipw.VBox):
 
     def _callback_value_set(self, _=None):
         """callback function to set the smearing and degauss values"""
-        self.update_settings()
+        settings = {
+            "degauss": self.degauss.value,
+            "smearing": self.smearing.value,
+        }
+        self.update_settings(**settings)
 
-    def update_settings(self):
+    def update_settings(self, **kwargs):
         """Set the output dict from the given keyword arguments.
         This function will only update the traitlets but not the widget value.
         """
-        self.degauss_value = self.degauss.value
-        self.smearing_value = self.smearing.value
+        self.degauss_value = kwargs.get("degauss")
+        self.smearing_value = kwargs.get("smearing")
 
     def reset(self):
         """Reset the widget and the traitlets"""

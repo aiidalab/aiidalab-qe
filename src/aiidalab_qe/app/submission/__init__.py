@@ -435,10 +435,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
             if self.advanced_settings.override.value:
                 pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
-                if self.advanced_settings.tot_charge.override.value:
-                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                        "tot_charge"
-                    ] = self.advanced_settings.tot_charge.value
+                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
+                    "tot_charge"
+                ] = self.advanced_settings.value.get("total_charge")
                 if (
                     self.advanced_settings.magnetization.override.value
                     and self.workchain_settings.spin_type.value == "collinear"
@@ -448,23 +447,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     )
 
                 if key in ["base", "scf"]:
-                    if self.advanced_settings.kpoints.override.value:
-                        pw_overrides[key][
-                            "kpoints_distance"
-                        ] = self.advanced_settings.kpoints.value.get("kpoints_distance")
-                    if (
-                        self.advanced_settings.smearing.override.value
-                        and self.workchain_settings.electronic_type.value == "metal"
-                    ):
+                    pw_overrides[key][
+                        "kpoints_distance"
+                    ] = self.advanced_settings.value.get("kpoints_distance")
+
+                    if self.workchain_settings.electronic_type.value == "metal":
                         # smearing type setting
                         pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                             "smearing"
-                        ] = self.advanced_settings.smearing.value.get("smearing")
+                        ] = self.advanced_settings.value.get("smearing")
 
                         # smearing degauss setting
                         pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                             "degauss"
-                        ] = self.advanced_settings.smearing.value.get("degauss")
+                        ] = self.advanced_settings.value.get("degauss")
 
         overrides = {
             "relax": {
