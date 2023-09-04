@@ -15,6 +15,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from .advanced import AdvancedSettings
 from .pseudos import PseudoFamilySelector, PseudoSetter
 from .workflow import WorkChainSettings
+from aiidalab_qe.app.utils import get_entry_items
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -29,7 +30,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
-        self.workchain_settings.bands_run.observe(self._update_state, "value")
+        # self.workchain_settings.bands_run.observe(self._update_state, "value")
         self.workchain_settings.pdos_run.observe(self._update_state, "value")
 
         self.pseudo_family_selector = PseudoFamilySelector()
@@ -67,6 +68,24 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.tab.set_title(0, "Workflow")
         self.tab.set_title(1, "Advanced settings")
+
+        # add plugin specific settings
+        self.settings = {}
+        # add plugin specific settings
+        entries = get_entry_items("aiidalab_qe.property", "setting")
+        for name, entry_point in entries.items():
+            self.settings[name] = entry_point(parent=self)
+            self.settings[name].identifier = name
+            # link basic protocol to all plugin specific protocols
+            if hasattr(self.settings[name], "workchain_protocol"):
+                ipw.dlink(
+                    (self.workchain_settings.workchain_protocol, "value"),
+                    (self.settings[name].workchain_protocol, "value"),
+                )
+            if name in self.workchain_settings.properties:
+                self.workchain_settings.properties[name].run.observe(
+                    self._update_panel, "value"
+                )
 
         self._submission_blocker_messages = ipw.HTML()
 
@@ -110,7 +129,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.workchain_settings.electronic_type.value = parameters[
                 "electronic_type"
             ]
-            self.workchain_settings.bands_run.value = parameters["run_bands"]
+            # self.workchain_settings.bands_run.value = parameters["run_bands"]
             self.workchain_settings.pdos_run.value = parameters["run_pdos"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
 
@@ -137,6 +156,9 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.confirm_button.disabled = False
             self._submission_blocker_messages.value = ""
             self.state = self.State.CONFIGURED
+            # update plugin specific settings
+            for _, settings in self.settings.items():
+                settings._update_state()
         elif self.previous_step_state == self.State.FAIL:
             self.state = self.State.FAIL
         else:
@@ -155,3 +177,18 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def reset(self):
         with self.hold_trait_notifications():
             self.set_input_parameters(DEFAULT_PARAMETERS)
+
+    def _update_panel(self, _=None):
+        """Dynamic add/remove the panel based on the selected properties."""
+        # only keep basic and advanced settings
+        self.tab.children = self.tab.children[:2]
+        # add plugin specific settings
+        for name in self.workchain_settings.properties:
+            if (
+                name in self.settings
+                and self.workchain_settings.properties[name].run.value
+            ):
+                self.tab.children += (self.settings[name],)
+                self.tab.set_title(
+                    len(self.tab.children) - 1, self.settings[name].title
+                )
