@@ -189,9 +189,9 @@ def tot_charge_generator():
     """Return a function that generates a tot_charge dictionary."""
     from aiidalab_qe.app.configuration.advanced import TotalCharge
 
-    def _tot_charge_generator(**kwargs):
+    def _tot_charge_generator(value=0.0):
         tot_charge = TotalCharge()
-        tot_charge._update_settings(**kwargs)
+        tot_charge.update_value(value=value)
         return tot_charge
 
     return _tot_charge_generator
@@ -204,7 +204,7 @@ def smearing_settings_generator():
 
     def _smearing_settings_generator(**kwargs):
         smearing_settings = SmearingSettings()
-        smearing_settings._update_settings(**kwargs)
+        smearing_settings.update_settings(**kwargs)
         return smearing_settings
 
     return _smearing_settings_generator
@@ -217,7 +217,7 @@ def kpoints_settings_generator():
 
     def _kpoints_settings_generator(**kwargs):
         kpoints_settings = KpointSettings()
-        kpoints_settings._update_settings(**kwargs)
+        kpoints_settings.update_settings(**kwargs)
         return kpoints_settings
 
     return _kpoints_settings_generator
@@ -278,8 +278,9 @@ def submit_step_widget_generator(
         submit_step.advanced_settings.override.value = True
 
         submit_step.advanced_settings.tot_charge = tot_charge_generator(
-            tot_charge=tot_charge,
+            value=tot_charge,
         )
+        submit_step.advanced_settings.tot_charge.override.value = True
 
         submit_step.advanced_settings.magnetization = (
             initial_magnetic_moments_generator(
@@ -290,10 +291,13 @@ def submit_step_widget_generator(
         submit_step.advanced_settings.kpoints = kpoints_settings_generator(
             kpoints_distance=kpoints_distance
         )
+        submit_step.advanced_settings.kpoints.override.value = True
         submit_step.advanced_settings.smearing = smearing_settings_generator(
             smearing=smearing,
             degauss=degauss,
-            override=override_protocol_smearing,
+        )
+        submit_step.advanced_settings.smearing.override.value = (
+            override_protocol_smearing
         )
 
         return submit_step
