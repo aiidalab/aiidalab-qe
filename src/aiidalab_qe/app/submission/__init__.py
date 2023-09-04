@@ -438,10 +438,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                     "tot_charge"
                 ] = self.advanced_settings.value.get("total_charge")
-                if (
-                    self.advanced_settings.magnetization.override.value
-                    and self.workchain_settings.spin_type.value == "collinear"
-                ):
+                if self.workchain_settings.spin_type.value == "collinear":
                     initial_magnetic_moments = (
                         self.advanced_settings.magnetization.get_magnetization()
                     )

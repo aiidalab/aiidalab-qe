@@ -1,3 +1,27 @@
+def test_advanced_default():
+    """Test default behavior of advanced setting widget."""
+    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
+
+    w = AdvancedSettings()
+
+    # Test override values and set back to default after un-tick the override checkbox
+    w.override.value = True
+    w.protocol = "fast"
+    w.smearing.smearing.value = "methfessel-paxton"
+    w.smearing.degauss.value = 0.03
+    w.kpoints_distance.value = 0.22
+
+    assert w.value.get("degauss") == 0.03
+    assert w.value.get("smearing") == "methfessel-paxton"
+    assert w.value.get("kpoints_distance") == 0.22
+
+    w.override.value = False
+
+    assert w.value.get("degauss") == 0.01
+    assert w.value.get("smearing") == "cold"
+    assert w.value.get("kpoints_distance") == 0.15
+
+
 def test_advanced_smearing_settings():
     """Test SmearningSettings widget."""
     from aiidalab_qe.app.configuration.advanced import AdvancedSettings

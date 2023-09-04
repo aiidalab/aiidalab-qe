@@ -44,6 +44,8 @@ class AdvancedSettings(ipw.VBox):
             value=False,
             layout=ipw.Layout(max_width="10%"),
         )
+        self.override.observe(self._override_changed, "value")
+
         self.override_widget = ipw.HBox(
             [self.override_prompt, self.override],
             layout=ipw.Layout(max_width="20%"),
@@ -90,16 +92,12 @@ class AdvancedSettings(ipw.VBox):
         self.total_charge.observe(self._callback_value_set, "value")
 
         self.magnetization = MagnetizationSettings()
-        self.list_overrides = [
-            self.magnetization.override,
-        ]
-        for override in self.list_overrides:
-            ipw.dlink(
-                (self.override, "value"),
-                (override, "disabled"),
-                lambda override: not override,
-            )
-        self.override.observe(self.set_advanced_settings, "value")
+        ipw.dlink(
+            (self.override, "value"),
+            (self.magnetization, "disabled"),
+            lambda override: not override,
+        )
+
         super().__init__(
             children=[
                 self.title,
@@ -123,6 +121,12 @@ class AdvancedSettings(ipw.VBox):
 
         # Default settings to trigger the callback
         self.reset()
+
+    def _override_changed(self, change):
+        """Callback function to set the override value"""
+        if change["new"] is False:
+            # When override is set to False, reset the widget
+            self.reset()
 
     @tl.observe("protocol")
     def _protocol_changed(self, _):
@@ -158,9 +162,6 @@ class AdvancedSettings(ipw.VBox):
         """
         self.value = {k: v for k, v in kwargs.items()}
 
-    def set_advanced_settings(self, _=None):
-        self.magnetization.reset()
-
     def reset(self):
         """Reset the widget and the traitlets"""
         self.protocol = self._default_protocol
@@ -188,6 +189,8 @@ class MagnetizationSettings(ipw.VBox):
 
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
+    disabled = tl.Bool()
+
     def __init__(self, **kwargs):
         self.input_structure = orm.StructureData()
         self.input_structure_labels = []
@@ -196,16 +199,10 @@ class MagnetizationSettings(ipw.VBox):
         )
         self.kinds = self.create_kinds_widget()
         self.kinds_widget_out = ipw.Output()
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
         super().__init__(
             children=[
                 ipw.HBox(
                     [
-                        self.override,
                         self.description,
                         self.kinds_widget_out,
                     ],
@@ -215,14 +212,16 @@ class MagnetizationSettings(ipw.VBox):
             **kwargs,
         )
         self.display_kinds()
-        self.override.observe(self._disable_kinds_widgets, "value")
 
-    def _disable_kinds_widgets(self, _=None):
-        for i in range(len(self.kinds.children)):
-            self.kinds.children[i].disabled = not self.override.value
+    @tl.observe("disabled")
+    def _disabled_changed(self, _):
+        """Disable the widget"""
+        if hasattr(self.kinds, "children") and self.kinds.children:
+            for i in range(len(self.kinds.children)):
+                self.kinds.children[i].disabled = self.disabled
 
     def reset(self):
-        self.override.value = False
+        self.disabled = True
         if hasattr(self.kinds, "children") and self.kinds.children:
             for i in range(len(self.kinds.children)):
                 self.kinds.children[i].value = 0.0
@@ -271,7 +270,7 @@ class MagnetizationSettings(ipw.VBox):
 
     def _set_magnetization_values(self, **kwargs):
         """Update used for conftest setting all magnetization to a value"""
-        self.override.value = True
+        # self.override.value = True
         with self.hold_trait_notifications():
             if "initial_magnetic_moments" in kwargs:
                 for i in range(len(self.kinds.children)):
