@@ -17,10 +17,10 @@ from jinja2 import Environment
 from widget_bandsplot import BandsPlotWidget
 
 from aiidalab_qe.app import static
+from aiidalab_qe.app.utils import get_entry_items
 
 from .electronic_structure import export_data
 from .summary_viewer import SummaryView
-from aiidalab_qe.app.utils import get_entry_items
 
 
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
@@ -69,7 +69,7 @@ class WorkChainViewer(ipw.VBox):
         for name, entry_point in entries.items():
             # only show the result tab if the property is selected to be run
             # this will be repalced by the ui_parameters in the future PR
-            if not builder_parameters.get(f'run_{name}', False):
+            if not builder_parameters.get(f"run_{name}", False):
                 continue
             result = entry_point(self.node)
             self.results[name] = result

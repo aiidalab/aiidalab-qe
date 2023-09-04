@@ -254,7 +254,9 @@ class QeAppWorkChain(WorkChain):
         # Attach the output nodes directly as outputs of the workchain.
         self.out_many(
             self.exposed_outputs(
-                workchain, PwBandsWorkChain, namespace="bands",
+                workchain,
+                PwBandsWorkChain,
+                namespace="bands",
             )
         )
         self.ctx.scf_parent_folder = scf.outputs.remote_folder

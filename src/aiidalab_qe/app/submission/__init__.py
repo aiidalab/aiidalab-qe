@@ -487,7 +487,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         run_pdos = self.workchain_settings.pdos_run.value
 
-        
         protocol = self.workchain_settings.workchain_protocol.value
 
         properties = []

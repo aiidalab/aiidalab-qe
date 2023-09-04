@@ -11,11 +11,11 @@ from aiida import orm
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.app.utils import get_entry_items
 
 from .advanced import AdvancedSettings
 from .pseudos import PseudoFamilySelector, PseudoSetter
 from .workflow import WorkChainSettings
-from aiidalab_qe.app.utils import get_entry_items
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
