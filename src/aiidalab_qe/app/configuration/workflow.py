@@ -5,7 +5,6 @@ Authors: AiiDAlab team
 """
 import ipywidgets as ipw
 
-from aiidalab_qe.app.common.panel import Panel
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 
