@@ -17,6 +17,7 @@ from jinja2 import Environment
 from widget_bandsplot import BandsPlotWidget
 
 from aiidalab_qe.app import static
+from aiidalab_qe.app.utils import get_entry_items
 
 from .electronic_structure import export_data
 from .summary_viewer import SummaryView
@@ -32,6 +33,8 @@ class WorkChainViewer(ipw.VBox):
             return
 
         self.node = node
+        # this will be replaced by "ui_parameters" in the future PR
+        builder_parameters = node.base.extras.get("builder_parameters", {})
 
         self.title = ipw.HTML(
             f"""
@@ -59,6 +62,19 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(0, "Workflow Summary")
         self.result_tabs.set_title(1, "Final Geometry (n/a)")
         self.result_tabs.set_title(2, "Electronic Structure (n/a)")
+
+        # add plugin specific settings
+        entries = get_entry_items("aiidalab_qe.properties", "result")
+        self.results = {}
+        for name, entry_point in entries.items():
+            # only show the result tab if the property is selected to be run
+            # this will be repalced by the ui_parameters in the future PR
+            if not builder_parameters.get(f"run_{name}", False):
+                continue
+            result = entry_point(self.node)
+            self.results[name] = result
+            self.result_tabs.children += (result,)
+            self.result_tabs.set_title(len(self.result_tabs.children) - 1, result.title)
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
@@ -109,6 +125,16 @@ class WorkChainViewer(ipw.VBox):
             ):
                 self._show_electronic_structure()
                 self._results_shown.add("electronic_structure")
+            # update the plugin specific results
+            for result in self.result_tabs.children[3:]:
+                # check if the result is already shown
+                # check if the plugin workchain result is in the outputs
+                if (
+                    result.identifier not in self._results_shown
+                    and result.identifier in self.node.outputs
+                ):
+                    result._update_view()
+                    self._results_shown.add(result.identifier)
 
     def _show_structure(self):
         self._structure_view = StructureDataViewer(

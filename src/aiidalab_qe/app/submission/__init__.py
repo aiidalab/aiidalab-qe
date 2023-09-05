@@ -485,16 +485,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         electronic_type = self.workchain_settings.electronic_type.value
         spin_type = self.workchain_settings.spin_type.value
 
-        run_bands = self.workchain_settings.bands_run.value
         run_pdos = self.workchain_settings.pdos_run.value
+
         protocol = self.workchain_settings.workchain_protocol.value
 
         properties = []
 
-        if run_bands:
-            properties.append("bands")
         if run_pdos:
             properties.append("pdos")
+        # add plugin specific settings
+        run_bands = False
+        for name in self.workchain_settings.properties:
+            if self.workchain_settings.properties[name].run.value:
+                properties.append(name)
+            if name == "bands":
+                run_bands = True
 
         if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
             properties.append("relax")

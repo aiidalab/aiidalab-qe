@@ -6,6 +6,7 @@ Authors: AiiDAlab team
 import ipywidgets as ipw
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.app.utils import get_entry_items
 
 
 class WorkChainSettings(ipw.VBox):
@@ -77,14 +78,6 @@ class WorkChainSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
 
-        # Checkbox to see if the band structure should be calculated
-        self.bands_run = ipw.Checkbox(
-            description="",
-            indent=False,
-            value=True,
-            layout=ipw.Layout(max_width="10%"),
-        )
-
         # Checkbox to see if the PDOS should be calculated
         self.pdos_run = ipw.Checkbox(
             description="",
@@ -98,6 +91,22 @@ class WorkChainSettings(ipw.VBox):
             options=["fast", "moderate", "precise"],
             value="moderate",
         )
+        self.properties = {}
+        self.property_children = [
+            self.properties_title,
+            ipw.HTML("Select which properties to calculate:"),
+            ipw.HBox(
+                children=[
+                    ipw.HTML("<b>Projected density of states</b>"),
+                    self.pdos_run,
+                ]
+            ),
+        ]
+        entries = get_entry_items("aiidalab_qe.properties", "outline")
+        for name, entry_point in entries.items():
+            self.properties[name] = entry_point()
+            self.property_children.append(self.properties[name])
+        self.property_children.append(self.properties_help)
         super().__init__(
             children=[
                 self.structure_title,
@@ -126,16 +135,7 @@ class WorkChainSettings(ipw.VBox):
                         self.spin_type,
                     ]
                 ),
-                self.properties_title,
-                ipw.HTML("Select which properties to calculate:"),
-                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
-                ipw.HBox(
-                    children=[
-                        ipw.HTML("<b>Projected density of states</b>"),
-                        self.pdos_run,
-                    ]
-                ),
-                self.properties_help,
+                *self.property_children,
                 self.protocol_title,
                 ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
                 self.workchain_protocol,
@@ -155,4 +155,8 @@ class WorkChainSettings(ipw.VBox):
             "workchain_protocol",
         ]:
             if key in kwargs:
-                getattr(self, key).value = kwargs[key]
+                # a temporary solution for the bands_run property
+                if key == "bands_run":
+                    self.properties["bands"].run.value = kwargs[key]
+                else:
+                    getattr(self, key).value = kwargs[key]

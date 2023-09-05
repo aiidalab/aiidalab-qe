@@ -52,6 +52,8 @@ class QeAppWorkChain(WorkChain):
                            exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PdosWorkChain`.'})
+        spec.expose_outputs(PwBandsWorkChain, namespace='bands',
+                            namespace_options={"required": False})
         spec.outline(
             cls.setup,
             if_(cls.should_run_relax)(
@@ -248,6 +250,14 @@ class QeAppWorkChain(WorkChain):
             workchain.get_outgoing(orm.WorkChainNode, link_label_filter="scf")
             .one()
             .node
+        )
+        # Attach the output nodes directly as outputs of the workchain.
+        self.out_many(
+            self.exposed_outputs(
+                workchain,
+                PwBandsWorkChain,
+                namespace="bands",
+            )
         )
         self.ctx.scf_parent_folder = scf.outputs.remote_folder
         self.ctx.current_structure = workchain.outputs.primitive_structure
