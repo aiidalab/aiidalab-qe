@@ -59,7 +59,6 @@ class Panel(ipw.VBox):
 
     def _update_state(self):
         """Update the state of the panel."""
-        pass
 
 
 class OutlinePanel(Panel):
