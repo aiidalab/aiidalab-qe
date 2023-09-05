@@ -37,7 +37,7 @@ class Setting(Panel):
             style={"description_width": "initial"},
         )
 
-        self.widgets = [
+        self.children = [
             self.settings_title,
             self.settings_help,
             self.path,

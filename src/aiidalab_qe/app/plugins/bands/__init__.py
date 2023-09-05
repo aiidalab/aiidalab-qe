@@ -16,7 +16,7 @@ SeeK-path tool</a>.
 """
 
 
-property = {
+bands = {
     "outline": BandsOutline,
     "setting": Setting,
     "result": Result,

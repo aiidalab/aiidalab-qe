@@ -51,18 +51,19 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.workchain_settings.workchain_protocol, "value"),
             (self.advanced_settings.smearing, "protocol"),
         )
-
+        #
+        self.built_in_settings = [
+            self.workchain_settings,
+            ipw.VBox(
+                children=[
+                    self.advanced_settings,
+                    self.pseudo_family_selector,
+                    self.pseudo_setter,
+                ]
+            ),
+        ]
         self.tab = ipw.Tab(
-            children=[
-                self.workchain_settings,
-                ipw.VBox(
-                    children=[
-                        self.advanced_settings,
-                        self.pseudo_family_selector,
-                        self.pseudo_setter,
-                    ]
-                ),
-            ],
+            children=self.built_in_settings,
             layout=ipw.Layout(min_height="250px"),
         )
 
@@ -181,7 +182,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_panel(self, _=None):
         """Dynamic add/remove the panel based on the selected properties."""
         # only keep basic and advanced settings
-        self.tab.children = self.tab.children[:2]
+        self.tab.children = self.built_in_settings
         # add plugin specific settings
         for name in self.workchain_settings.properties:
             if (

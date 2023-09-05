@@ -92,7 +92,7 @@ class WorkChainSettings(ipw.VBox):
             value="moderate",
         )
         self.properties = {}
-        property_children = [
+        self.property_children = [
             self.properties_title,
             ipw.HTML("Select which properties to calculate:"),
             ipw.HBox(
@@ -105,8 +105,8 @@ class WorkChainSettings(ipw.VBox):
         entries = get_entry_items("aiidalab_qe.properties", "outline")
         for name, entry_point in entries.items():
             self.properties[name] = entry_point()
-            property_children.append(self.properties[name])
-        property_children.append(self.properties_help)
+            self.property_children.append(self.properties[name])
+        self.property_children.append(self.properties_help)
         super().__init__(
             children=[
                 self.structure_title,
@@ -135,7 +135,7 @@ class WorkChainSettings(ipw.VBox):
                         self.spin_type,
                     ]
                 ),
-                *property_children,
+                *self.property_children,
                 self.protocol_title,
                 ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
                 self.workchain_protocol,
