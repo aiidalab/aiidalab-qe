@@ -185,19 +185,6 @@ def initial_magnetic_moments_generator(generate_structure_data):
 
 
 @pytest.fixture()
-def tot_charge_generator():
-    """Return a function that generates a tot_charge dictionary."""
-    from aiidalab_qe.app.configuration.advanced import TotalCharge
-
-    def _tot_charge_generator(value=0.0):
-        tot_charge = TotalCharge()
-        tot_charge.update_value(value=value)
-        return tot_charge
-
-    return _tot_charge_generator
-
-
-@pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
     from aiidalab_qe.app.configuration.advanced import SmearingSettings
@@ -211,19 +198,6 @@ def smearing_settings_generator():
 
 
 @pytest.fixture()
-def kpoints_settings_generator():
-    """Return a function that generates a kpoints settings dictionary."""
-    from aiidalab_qe.app.configuration.advanced import KpointSettings
-
-    def _kpoints_settings_generator(**kwargs):
-        kpoints_settings = KpointSettings()
-        kpoints_settings.update_settings(**kwargs)
-        return kpoints_settings
-
-    return _kpoints_settings_generator
-
-
-@pytest.fixture()
 @pytest.mark.usefixtures("sssp")
 def submit_step_widget_generator(
     pw_code,
@@ -232,8 +206,6 @@ def submit_step_widget_generator(
     generate_structure_data,
     workchain_settings_generator,
     smearing_settings_generator,
-    kpoints_settings_generator,
-    tot_charge_generator,
     initial_magnetic_moments_generator,
 ):
     """Return a function that generates a submit step widget."""
@@ -251,7 +223,6 @@ def submit_step_widget_generator(
         kpoints_distance=0.12,
         smearing="methfessel-paxton",
         degauss=0.015,
-        override_protocol_smearing=True,
         tot_charge=0.0,
         initial_magnetic_moments=0.0,
     ):
@@ -277,10 +248,8 @@ def submit_step_widget_generator(
         submit_step.advanced_settings = AdvancedSettings()
         submit_step.advanced_settings.override.value = True
 
-        submit_step.advanced_settings.tot_charge = tot_charge_generator(
-            value=tot_charge,
-        )
-        submit_step.advanced_settings.tot_charge.override.value = True
+        submit_step.advanced_settings.total_charge.value = tot_charge
+        submit_step.advanced_settings.kpoints_distance.value = kpoints_distance
 
         submit_step.advanced_settings.magnetization = (
             initial_magnetic_moments_generator(
@@ -288,17 +257,9 @@ def submit_step_widget_generator(
             )
         )
 
-        submit_step.advanced_settings.kpoints = kpoints_settings_generator(
-            kpoints_distance=kpoints_distance
-        )
-        submit_step.advanced_settings.kpoints.override.value = True
-        submit_step.advanced_settings.smearing = smearing_settings_generator(
-            smearing=smearing,
-            degauss=degauss,
-        )
-        submit_step.advanced_settings.smearing.override.value = (
-            override_protocol_smearing
-        )
+        # mimic the behavior of the smearing widget set up
+        submit_step.advanced_settings.smearing.smearing.value = smearing
+        submit_step.advanced_settings.smearing.degauss.value = degauss
 
         return submit_step
 
