@@ -18,11 +18,11 @@ from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinTy
 from aiidalab_widgets_base import ComputationalResourcesWidget, WizardAppWidgetStep
 from IPython.display import display
 
-from aiidalab_qe.app.common.setup_codes import QESetupWidget
 from aiidalab_qe.app.configuration.advanced import AdvancedSettings
 from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector, PseudoSetter
 from aiidalab_qe.app.configuration.workflow import WorkChainSettings
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 from .resource import ParallelizationSettings, ResourceSelectionWidget

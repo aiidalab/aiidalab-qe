@@ -10,7 +10,7 @@ from aiida.common.exceptions import NotExistent
 from aiida.orm import load_code
 from filelock import FileLock, Timeout
 
-from aiidalab_qe.app.common.widgets import ProgressBar
+from aiidalab_qe.common.widgets import ProgressBar
 
 __all__ = [
     "QESetupWidget",

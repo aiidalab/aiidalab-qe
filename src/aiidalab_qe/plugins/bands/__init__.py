@@ -1,5 +1,5 @@
 # from aiidalab_qe.bands.result import Result
-from aiidalab_qe.app.common.panel import OutlinePanel
+from aiidalab_qe.common.panel import OutlinePanel
 
 from .result import Result
 from .setting import Setting
