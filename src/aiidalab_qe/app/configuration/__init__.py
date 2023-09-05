@@ -72,7 +72,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # add plugin specific settings
         self.settings = {}
         # add plugin specific settings
-        entries = get_entry_items("aiidalab_qe.property", "setting")
+        entries = get_entry_items("aiidalab_qe.properties", "setting")
         for name, entry_point in entries.items():
             self.settings[name] = entry_point(parent=self)
             self.settings[name].identifier = name

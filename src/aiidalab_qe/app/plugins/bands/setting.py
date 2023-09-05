@@ -37,7 +37,7 @@ class Setting(Panel):
             style={"description_width": "initial"},
         )
 
-        self.children = [
+        self.widgets = [
             self.settings_title,
             self.settings_help,
             self.path,
@@ -52,7 +52,7 @@ class Setting(Panel):
             "npoint": Int(self.npoint.value),
         }
 
-    def load_panel_value(self, input_dict):
+    def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.path.value = input_dict.get("path", 1)
         self.npoint.value = input_dict.get("npoint", 2)

@@ -64,7 +64,7 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(2, "Electronic Structure (n/a)")
 
         # add plugin specific settings
-        entries = get_entry_items("aiidalab_qe.property", "result")
+        entries = get_entry_items("aiidalab_qe.properties", "result")
         self.results = {}
         for name, entry_point in entries.items():
             # only show the result tab if the property is selected to be run

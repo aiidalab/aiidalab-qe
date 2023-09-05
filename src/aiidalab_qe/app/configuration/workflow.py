@@ -102,7 +102,7 @@ class WorkChainSettings(ipw.VBox):
                 ]
             ),
         ]
-        entries = get_entry_items("aiidalab_qe.property", "outline")
+        entries = get_entry_items("aiidalab_qe.properties", "outline")
         for name, entry_point in entries.items():
             self.properties[name] = entry_point()
             property_children.append(self.properties[name])
