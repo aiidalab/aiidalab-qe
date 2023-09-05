@@ -71,6 +71,7 @@ class QeAppWorkChain(WorkChain):
                                               'help': 'Inputs for the `PdosWorkChain`.'})
         spec.expose_outputs(PwBandsWorkChain, namespace='relax',
                             namespace_options={"required": False})
+        i = 0
         for name, entry_point in plugin_entries.items():
             plugin_workchain = entry_point["workchain"]
             spec.expose_inputs(
@@ -88,10 +89,11 @@ class QeAppWorkChain(WorkChain):
                                 namespace_options={"required": False},
                                 )
             spec.exit_code(
-                404 + 1,
+                403 + i,
                 f"ERROR_SUB_PROCESS_FAILED_{name}",
                 message=f"The plugin {name} WorkChain sub process failed",
             )
+            i += 1
         spec.outline(
             cls.setup,
             if_(cls.should_run_relax)(
@@ -108,7 +110,7 @@ class QeAppWorkChain(WorkChain):
         )
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RELAX',
                        message='The PwRelaxWorkChain sub process failed')
-        spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
+        spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData, required=False)
         spec.output('band_parameters', valid_type=orm.Dict, required=False)
