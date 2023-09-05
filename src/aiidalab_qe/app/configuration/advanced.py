@@ -160,7 +160,7 @@ class AdvancedSettings(ipw.VBox):
 
         This function can also be used to set values directly for testing purpose.
         """
-        self.value = {k: v for k, v in kwargs.items()}
+        self.value = kwargs
 
     def reset(self):
         """Reset the widget and the traitlets"""

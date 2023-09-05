@@ -46,11 +46,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.advanced_settings, "protocol"),
         )
 
-        ipw.dlink(
-            (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings, "protocol"),
-        )
-
         self.tab = ipw.Tab(
             children=[
                 self.workchain_settings,
