@@ -30,8 +30,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
-        # self.workchain_settings.bands_run.observe(self._update_state, "value")
-        self.workchain_settings.pdos_run.observe(self._update_state, "value")
 
         self.pseudo_family_selector = PseudoFamilySelector()
         self.pseudo_setter = PseudoSetter()
@@ -125,8 +123,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.workchain_settings.electronic_type.value = parameters[
                 "electronic_type"
             ]
-            # self.workchain_settings.bands_run.value = parameters["run_bands"]
-            self.workchain_settings.pdos_run.value = parameters["run_pdos"]
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
 
             # Advanced settings

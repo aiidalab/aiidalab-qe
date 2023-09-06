@@ -3,4 +3,5 @@ def test_entry_point():
 
     entries = get_entries()
     assert "bands" in entries
+    assert "pdos" in entries
     assert "workchain" in entries["bands"]

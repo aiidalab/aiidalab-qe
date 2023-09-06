@@ -78,14 +78,6 @@ class WorkChainSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
 
-        # Checkbox to see if the PDOS should be calculated
-        self.pdos_run = ipw.Checkbox(
-            description="",
-            indent=False,
-            value=True,
-            layout=ipw.Layout(max_width="10%"),
-        )
-
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
@@ -95,12 +87,6 @@ class WorkChainSettings(ipw.VBox):
         self.property_children = [
             self.properties_title,
             ipw.HTML("Select which properties to calculate:"),
-            ipw.HBox(
-                children=[
-                    ipw.HTML("<b>Projected density of states</b>"),
-                    self.pdos_run,
-                ]
-            ),
         ]
         entries = get_entry_items("aiidalab_qe.properties", "outline")
         for name, entry_point in entries.items():
@@ -158,5 +144,7 @@ class WorkChainSettings(ipw.VBox):
                 # a temporary solution for the bands_run property
                 if key == "bands_run":
                     self.properties["bands"].run.value = kwargs[key]
+                elif key == "pdos_run":
+                    self.properties["pdos"].run.value = kwargs[key]
                 else:
                     getattr(self, key).value = kwargs[key]

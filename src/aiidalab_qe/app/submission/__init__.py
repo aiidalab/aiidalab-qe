@@ -183,7 +183,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # No code selected for pdos (this is ignored while the setup process is running).
         if (
-            self.workchain_settings.pdos_run.value
+            self.workchain_settings.properties["pdos"].run.value
             and (self.dos_code.value is None or self.projwfc_code.value is None)
             and not self.qe_setup_status.busy
         ):
@@ -194,7 +194,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "The SSSP library is not installed."
 
         if (
-            self.workchain_settings.pdos_run.value
+            self.workchain_settings.properties["pdos"].run.value
             and not any(
                 [
                     self.pw_code.value is None,
@@ -389,7 +389,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
 
     def set_pdos_status(self):
-        if self.workchain_settings.pdos_run.value:
+        if self.workchain_settings.properties["pdos"].run.value:
             self.dos_code.code_select_dropdown.disabled = False
             self.projwfc_code.code_select_dropdown.disabled = False
         else:
@@ -478,20 +478,19 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         electronic_type = self.workchain_settings.electronic_type.value
         spin_type = self.workchain_settings.spin_type.value
 
-        run_pdos = self.workchain_settings.pdos_run.value
-
         protocol = self.workchain_settings.workchain_protocol.value
 
         properties = []
 
-        if run_pdos:
-            properties.append("pdos")
         # add plugin specific settings
         run_bands = False
+        run_pdos = False
         for name in self.workchain_settings.properties:
             if self.workchain_settings.properties[name].run.value:
                 properties.append(name)
             if name == "bands":
+                run_bands = True
+            elif name == "pdos":
                 run_bands = True
 
         if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
