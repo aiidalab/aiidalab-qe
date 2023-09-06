@@ -17,10 +17,6 @@ BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
 
 
-# I removed the `validate_properties`, because the `properties` to be
-# calculated are not fixed anymore. It depends on the installed plugins.
-
-
 # functions to get entry points is copied from aiidalab_qe.app.utils
 # because we want to decouple the workflows from the app, so I copied it here
 # instead of importing it.
