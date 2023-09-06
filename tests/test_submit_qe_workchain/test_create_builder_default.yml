@@ -126,8 +126,8 @@ pdos:
       pseudos:
         Si: Si.upf
 properties:
-- pdos
 - bands
+- pdos
 - relax
 relax:
   base:

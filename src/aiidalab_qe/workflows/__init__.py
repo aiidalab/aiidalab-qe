@@ -96,10 +96,6 @@ class QeAppWorkChain(WorkChain):
                 cls.run_relax,
                 cls.inspect_relax
             ),
-            if_(cls.should_run_pdos)(
-                cls.run_pdos,
-                cls.inspect_pdos
-            ),
             cls.run_plugin,
             cls.inspect_plugin,
             cls.results
@@ -157,23 +153,6 @@ class QeAppWorkChain(WorkChain):
         relax.pop("base_final_scf", None)  # never run a final scf
 
         builder.relax = relax
-
-        # pdos workchain settings
-        if dos_code is not None and projwfc_code is not None:
-            pdos_overrides = overrides.get("pdos", {})
-            pdos = PdosWorkChain.get_builder_from_protocol(
-                pw_code=pw_code,
-                dos_code=dos_code,
-                projwfc_code=projwfc_code,
-                structure=structure,
-                protocol=protocol,
-                overrides=pdos_overrides,
-                **kwargs,
-            )
-            # pop the inputs that are exclueded from the expose_inputs
-            pdos.pop("structure", None)
-            pdos.pop("clean_workdir", None)
-            builder.pdos = pdos
 
         if properties is None:
             properties = []
@@ -239,43 +218,6 @@ class QeAppWorkChain(WorkChain):
             )
             self.out("structure", self.ctx.current_structure)
 
-    def should_run_pdos(self):
-        """Check if the projected density of states should be calculated."""
-        return self.ctx.run_pdos
-
-    def run_pdos(self):
-        """Run the `PdosWorkChain`."""
-        inputs = AttributeDict(self.exposed_inputs(PdosWorkChain, namespace="pdos"))
-        inputs.metadata.call_link_label = "pdos"
-        inputs.structure = self.ctx.current_structure
-        inputs.nscf.pw.parameters = inputs.nscf.pw.parameters.get_dict()
-
-        if self.ctx.current_number_of_bands:
-            inputs.nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-                "nbnd", self.ctx.current_number_of_bands
-            )
-
-        if self.ctx.scf_parent_folder:
-            inputs.pop("scf")
-            inputs.nscf.pw.parent_folder = self.ctx.scf_parent_folder
-
-        inputs = prepare_process_inputs(PdosWorkChain, inputs)
-        running = self.submit(PdosWorkChain, **inputs)
-
-        self.report(f"launching PdosWorkChain<{running.pk}>")
-
-        return ToContext(workchain_pdos=running)
-
-    def inspect_pdos(self):
-        """Verify that the `PdosWorkChain` finished successfully."""
-        workchain = self.ctx.workchain_pdos
-
-        if not workchain.is_finished_ok:
-            self.report(
-                f"PdosWorkChain failed with exit status {workchain.exit_status}"
-            )
-            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_PDOS
-
     def should_run_plugin(self, name):
         return name in self.inputs
 
@@ -324,25 +266,23 @@ class QeAppWorkChain(WorkChain):
             self.out("band_parameters", self.ctx.bands.outputs.band_parameters)
             self.out("band_structure", self.ctx.bands.outputs.band_structure)
 
-        if "workchain_pdos" in self.ctx:
+        if "pdos" in self.ctx:
             self.out(
                 "nscf_parameters",
-                self.ctx.workchain_pdos.outputs.nscf.output_parameters,
+                self.ctx.pdos.outputs.nscf.output_parameters,
             )
-            self.out("dos", self.ctx.workchain_pdos.outputs.dos.output_dos)
-            if "projections_up" in self.ctx.workchain_pdos.outputs.projwfc:
+            self.out("dos", self.ctx.pdos.outputs.dos.output_dos)
+            if "projections_up" in self.ctx.pdos.outputs.projwfc:
                 self.out(
                     "projections_up",
-                    self.ctx.workchain_pdos.outputs.projwfc.projections_up,
+                    self.ctx.pdos.outputs.projwfc.projections_up,
                 )
                 self.out(
                     "projections_down",
-                    self.ctx.workchain_pdos.outputs.projwfc.projections_down,
+                    self.ctx.pdos.outputs.projwfc.projections_down,
                 )
             else:
-                self.out(
-                    "projections", self.ctx.workchain_pdos.outputs.projwfc.projections
-                )
+                self.out("projections", self.ctx.pdos.outputs.projwfc.projections)
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
