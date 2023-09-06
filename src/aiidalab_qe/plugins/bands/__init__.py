@@ -1,10 +1,9 @@
 # from aiidalab_qe.bands.result import Result
-from aiidalab_qe.app.common.panel import OutlinePanel
+from aiidalab_qe.common.panel import OutlinePanel
 
 from .result import Result
 from .setting import Setting
-
-# from .workchain import workchain_and_builder
+from .workchain import workchain_and_builder
 
 
 class BandsOutline(OutlinePanel):
@@ -20,5 +19,5 @@ bands = {
     "outline": BandsOutline,
     "setting": Setting,
     "result": Result,
-    # "workchain": workchain_and_builder,
+    "workchain": workchain_and_builder,
 }

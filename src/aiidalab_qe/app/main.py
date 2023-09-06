@@ -18,11 +18,11 @@ from aiidalab_widgets_base import (
     WizardAppWidgetStep,
 )
 
-from aiidalab_qe.app.common import AddingTagsEditor, QeAppWorkChainSelector
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structure import Examples, StructureSelectionStep
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
+from aiidalab_qe.common import AddingTagsEditor, QeAppWorkChainSelector
 
 OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
 

@@ -16,14 +16,32 @@ StructureData = DataFactory("core.structure")
 BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
 
-PROPERTIES_LIST = ["relax", "bands", "pdos"]
+
+# functions to get entry points is copied from aiidalab_qe.app.utils
+# because we want to decouple the workflows from the app, so I copied it here
+# instead of importing it.
+# load entry points
+def get_entries(entry_point_name="aiidalab_qe.property"):
+    from importlib.metadata import entry_points
+
+    entries = {}
+    for entry_point in entry_points().get(entry_point_name, []):
+        entries[entry_point.name] = entry_point.load()
+
+    return entries
 
 
-def validate_properties(value, _):
-    """Validate the properties input."""
-    for property_ in value:
-        if property_ not in PROPERTIES_LIST:
-            return f"Property {property_} is not supported."
+# load entry point items
+def get_entry_items(entry_point_name, item_name="workchain"):
+    entries = get_entries(entry_point_name)
+    return {
+        name: entry_point.get(item_name)
+        for name, entry_point in entries.items()
+        if entry_point.get(item_name, False)
+    }
+
+
+plugin_entries = get_entry_items("aiidalab_qe.properties", "workchain")
 
 
 class QeAppWorkChain(WorkChain):
@@ -39,42 +57,56 @@ class QeAppWorkChain(WorkChain):
         spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
         spec.input('properties', valid_type=orm.List, default=lambda: orm.List(),
-                   help='The properties to calculate, used to control the logic of QeAppWorkChain.',
-                   validator=validate_properties)
+                   help='The properties to calculate, used to control the logic of QeAppWorkChain.')
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PwRelaxWorkChain`, if not specified at all, the relaxation step is skipped.'})
-        spec.expose_inputs(PwBandsWorkChain, namespace='bands',
-                           exclude=('clean_workdir', 'structure', 'relax'),
-                           namespace_options={'required': False, 'populate_defaults': False,
-                                              'help': 'Inputs for the `PwBandsWorkChain`.'})
         spec.expose_inputs(PdosWorkChain, namespace='pdos',
                            exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PdosWorkChain`.'})
-        spec.expose_outputs(PwBandsWorkChain, namespace='bands',
+        spec.expose_outputs(PwBandsWorkChain, namespace='relax',
                             namespace_options={"required": False})
+        i = 0
+        for name, entry_point in plugin_entries.items():
+            plugin_workchain = entry_point["workchain"]
+            spec.expose_inputs(
+                plugin_workchain,
+                namespace=name,
+                exclude=entry_point["exclude"],
+                namespace_options={
+                    "required": False,
+                    "populate_defaults": False,
+                    "help": f"Inputs for the {name} plugin.",
+                },
+            )
+            spec.expose_outputs(plugin_workchain,
+                                namespace=name,
+                                namespace_options={"required": False},
+                                )
+            spec.exit_code(
+                403 + i,
+                f"ERROR_SUB_PROCESS_FAILED_{name}",
+                message=f"The plugin {name} WorkChain sub process failed",
+            )
+            i += 1
         spec.outline(
             cls.setup,
             if_(cls.should_run_relax)(
                 cls.run_relax,
                 cls.inspect_relax
             ),
-            if_(cls.should_run_bands)(
-                cls.run_bands,
-                cls.inspect_bands
-            ),
             if_(cls.should_run_pdos)(
                 cls.run_pdos,
                 cls.inspect_pdos
             ),
+            cls.run_plugin,
+            cls.inspect_plugin,
             cls.results
         )
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RELAX',
                        message='The PwRelaxWorkChain sub process failed')
-        spec.exit_code(403, 'ERROR_SUB_PROCESS_FAILED_BANDS',
-                       message='The PwBandsWorkChain sub process failed')
-        spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_PDOS',
+        spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData, required=False)
         spec.output('band_parameters', valid_type=orm.Dict, required=False)
@@ -126,21 +158,6 @@ class QeAppWorkChain(WorkChain):
 
         builder.relax = relax
 
-        # bands workchain settings
-        bands_overrides = overrides.get("bands", {})
-        bands = PwBandsWorkChain.get_builder_from_protocol(
-            code=pw_code,
-            structure=structure,
-            protocol=protocol,
-            overrides=bands_overrides,
-            **kwargs,
-        )
-        # pop the inputs that are excluded from the expose_inputs
-        bands.pop("relax")
-        bands.pop("structure", None)
-        bands.pop("clean_workdir", None)
-        builder.bands = bands
-
         # pdos workchain settings
         if dos_code is not None and projwfc_code is not None:
             pdos_overrides = overrides.get("pdos", {})
@@ -161,6 +178,16 @@ class QeAppWorkChain(WorkChain):
         if properties is None:
             properties = []
         builder.properties = orm.List(list=properties)
+        # add plugin workchain
+        codes = {"pw_code": pw_code, "dos_code": dos_code, "projwfc_code": projwfc_code}
+        for name, entry_point in plugin_entries.items():
+            if name in properties:
+                plugin_builder = entry_point["get_builder"](
+                    codes, structure, overrides, protocol, **kwargs
+                )
+                setattr(builder, name, plugin_builder)
+            else:
+                builder.pop(name, None)
 
         builder.clean_workdir = orm.Bool(clean_workdir)
 
@@ -176,7 +203,6 @@ class QeAppWorkChain(WorkChain):
 
         # logic based on the properties input
         self.ctx.run_relax = "relax" in self.inputs.properties
-        self.ctx.run_bands = "bands" in self.inputs.properties
         self.ctx.run_pdos = "pdos" in self.inputs.properties
 
     def should_run_relax(self):
@@ -212,55 +238,6 @@ class QeAppWorkChain(WorkChain):
                 workchain.outputs.output_parameters.get_attribute("number_of_bands")
             )
             self.out("structure", self.ctx.current_structure)
-
-    def should_run_bands(self):
-        """Check if the band structure should be calculated."""
-        return self.ctx.run_bands
-
-    def run_bands(self):
-        """Run the `PwBandsWorkChain`."""
-        inputs = AttributeDict(self.exposed_inputs(PwBandsWorkChain, namespace="bands"))
-        inputs.metadata.call_link_label = "bands"
-        inputs.structure = self.ctx.current_structure
-        inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
-
-        if self.ctx.current_number_of_bands:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-                "nbnd", self.ctx.current_number_of_bands
-            )
-
-        inputs = prepare_process_inputs(PwBandsWorkChain, inputs)
-        running = self.submit(PwBandsWorkChain, **inputs)
-
-        self.report(f"launching PwBandsWorkChain<{running.pk}>")
-
-        return ToContext(workchain_bands=running)
-
-    def inspect_bands(self):
-        """Verify that the `PwBandsWorkChain` finished successfully."""
-        workchain = self.ctx.workchain_bands
-
-        if not workchain.is_finished_ok:
-            self.report(
-                f"PwBandsWorkChain failed with exit status {workchain.exit_status}"
-            )
-            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_BANDS
-
-        scf = (
-            workchain.get_outgoing(orm.WorkChainNode, link_label_filter="scf")
-            .one()
-            .node
-        )
-        # Attach the output nodes directly as outputs of the workchain.
-        self.out_many(
-            self.exposed_outputs(
-                workchain,
-                PwBandsWorkChain,
-                namespace="bands",
-            )
-        )
-        self.ctx.scf_parent_folder = scf.outputs.remote_folder
-        self.ctx.current_structure = workchain.outputs.primitive_structure
 
     def should_run_pdos(self):
         """Check if the projected density of states should be calculated."""
@@ -299,13 +276,53 @@ class QeAppWorkChain(WorkChain):
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_PDOS
 
+    def should_run_plugin(self, name):
+        return name in self.inputs
+
+    def run_plugin(self):
+        """Run the plugin `WorkChain`."""
+        plugin_running = {}
+        for name, entry_point in plugin_entries.items():
+            if not self.should_run_plugin(name):
+                continue
+            self.report(f"Run plugin : {name}")
+            plugin_workchain = entry_point["workchain"]
+            inputs = AttributeDict(
+                self.exposed_inputs(plugin_workchain, namespace=name)
+            )
+            inputs.metadata.call_link_label = name
+            inputs.structure = self.ctx.current_structure
+            inputs = prepare_process_inputs(plugin_workchain, inputs)
+            running = self.submit(plugin_workchain, **inputs)
+            self.report(f"launching plugin {name} <{running.pk}>")
+            plugin_running[name] = running
+
+        return ToContext(**plugin_running)
+
+    def inspect_plugin(self):
+        """Verify that the `pluginWorkChain` finished successfully."""
+        self.report("Inspect plugins:")
+        for name, entry_point in plugin_entries.items():
+            if not self.should_run_plugin(name):
+                continue
+            workchain = self.ctx[name]
+            if not workchain.is_finished_ok:
+                self.report(
+                    f"Plugin {name} WorkChain failed with exit status {workchain.exit_status}"
+                )
+                return self.exit_codes.get(f"ERROR_SUB_PROCESS_FAILED_{name}")
+            # Attach the output nodes directly as outputs of the workchain.
+            self.out_many(
+                self.exposed_outputs(
+                    workchain, entry_point["workchain"], namespace=name
+                )
+            )
+
     def results(self):
         """Add the results to the outputs."""
-        if "workchain_bands" in self.ctx:
-            self.out(
-                "band_parameters", self.ctx.workchain_bands.outputs.band_parameters
-            )
-            self.out("band_structure", self.ctx.workchain_bands.outputs.band_structure)
+        if "bands" in self.ctx:
+            self.out("band_parameters", self.ctx.bands.outputs.band_parameters)
+            self.out("band_structure", self.ctx.bands.outputs.band_structure)
 
         if "workchain_pdos" in self.ctx:
             self.out(

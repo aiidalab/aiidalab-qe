@@ -1,6 +1,6 @@
 def test_outline_panel():
     """Test OutlinePanel class."""
-    from aiidalab_qe.app.common.panel import OutlinePanel
+    from aiidalab_qe.common.panel import OutlinePanel
 
     panel = OutlinePanel(identifier="test")
     assert panel.identifier == "test"
