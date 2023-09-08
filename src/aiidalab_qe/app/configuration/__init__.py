@@ -41,11 +41,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         #
         self.built_in_settings = [
             self.workchain_settings,
-            ipw.VBox(
-                children=[
-                    self.advanced_settings,
-                ]
-            ),
+            self.advanced_settings,
         ]
         self.tab = ipw.Tab(
             children=self.built_in_settings,
