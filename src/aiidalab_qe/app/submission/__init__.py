@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 import typing as t
-from dataclasses import dataclass
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -18,31 +17,12 @@ from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinTy
 from aiidalab_widgets_base import ComputationalResourcesWidget, WizardAppWidgetStep
 from IPython.display import display
 
-from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-from aiidalab_qe.app.configuration.workflow import WorkChainSettings
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 from .resource import ParallelizationSettings, ResourceSelectionWidget
 from .sssp import SSSPInstallWidget
-
-
-# The static input parameters for the QE App WorkChain
-# The dataclass does not include codes and structure which will be set
-# from widgets separately.
-# Relax type, electronic type, spin type, are str because they are used also
-# for serialized input of extras attributes of the workchain
-@dataclass(frozen=True)
-class QeWorkChainParameters:
-    protocol: str
-    relax_type: str
-    properties: t.List[str]
-    spin_type: str
-    electronic_type: str
-    overrides: t.Dict[str, t.Any]
-    initial_magnetic_moments: t.Dict[str, float]
-
 
 PROTOCOL_PSEUDO_MAP = {
     "fast": "SSSP/1.2/PBE/efficiency",
@@ -80,8 +60,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-    workchain_settings = tl.Instance(WorkChainSettings, allow_none=True)
-    advanced_settings = tl.Instance(AdvancedSettings, allow_none=True)
+    input_parameters = tl.Dict()
     _submission_blockers = tl.List(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
@@ -180,7 +159,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # No code selected for pdos (this is ignored while the setup process is running).
         if (
-            self.workchain_settings.properties["pdos"].run.value
+            "pdos" in self.input_parameters.get("properties", [])
             and (self.dos_code.value is None or self.projwfc_code.value is None)
             and not self.qe_setup_status.busy
         ):
@@ -191,7 +170,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "The SSSP library is not installed."
 
         if (
-            self.workchain_settings.properties["pdos"].run.value
+            "pdos" in self.input_parameters.get("properties", [])
             and not any(
                 [
                     self.pw_code.value is None,
@@ -386,7 +365,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
 
     def set_pdos_status(self):
-        if self.workchain_settings.properties["pdos"].run.value:
+        if "pdos" in self.input_parameters.get("properties", []):
             self.dos_code.code_select_dropdown.disabled = False
             self.projwfc_code.code_select_dropdown.disabled = False
         else:
@@ -399,115 +378,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         extra_parameters = self._create_extra_report_parameters()
 
         with self.hold_trait_notifications():
-            self.process = submit(builder)
+            process = submit(builder)
 
             # Set the builder parameters on the work chain
             builder_parameters = self._extract_report_parameters(
                 builder, extra_parameters
             )
-            self.process.base.extras.set("builder_parameters", builder_parameters)
+            process.base.extras.set("builder_parameters", builder_parameters)
+            self.process = process
 
         self._update_state()
-
-    def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
-        """Get the parameters of the `QeWorkChain` from widgets."""
-        # create the the initial_magnetic_moments as None (Default)
-        initial_magnetic_moments = None
-        # create the override parameters for sub PwBaseWorkChain
-        pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
-        for key in ["base", "scf", "nscf", "band"]:
-            if (
-                self.advanced_settings.pseudo_family_selector.override_protocol_pseudo_family.value
-            ):
-                pw_overrides[key][
-                    "pseudo_family"
-                ] = self.advanced_settings.pseudo_family_selector.value
-
-            if self.advanced_settings.pseudo_setter.pseudos:
-                pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
-                pw_overrides[key]["pw"][
-                    "pseudos"
-                ] = self.advanced_settings.pseudo_setter.pseudos
-
-                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                    "ecutwfc"
-                ] = self.advanced_settings.pseudo_setter.ecutwfc
-                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                    "ecutrho"
-                ] = self.advanced_settings.pseudo_setter.ecutrho
-
-            if self.advanced_settings.override.value:
-                pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
-                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                    "tot_charge"
-                ] = self.advanced_settings.value.get("total_charge")
-                if self.workchain_settings.spin_type.value == "collinear":
-                    initial_magnetic_moments = (
-                        self.advanced_settings.magnetization.get_magnetization()
-                    )
-
-                if key in ["base", "scf"]:
-                    pw_overrides[key][
-                        "kpoints_distance"
-                    ] = self.advanced_settings.value.get("kpoints_distance")
-
-                    if self.workchain_settings.electronic_type.value == "metal":
-                        # smearing type setting
-                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                            "smearing"
-                        ] = self.advanced_settings.value.get("smearing")
-
-                        # smearing degauss setting
-                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                            "degauss"
-                        ] = self.advanced_settings.value.get("degauss")
-
-        overrides = {
-            "relax": {
-                "base": pw_overrides["base"],
-            },
-            "bands": {
-                "scf": pw_overrides["scf"],
-                "bands": pw_overrides["band"],
-            },
-            "pdos": {
-                "scf": pw_overrides["scf"],
-                "nscf": pw_overrides["nscf"],
-            },
-        }
-
-        # Work chain settings
-        relax_type = self.workchain_settings.relax_type.value
-        electronic_type = self.workchain_settings.electronic_type.value
-        spin_type = self.workchain_settings.spin_type.value
-
-        protocol = self.workchain_settings.workchain_protocol.value
-
-        properties = []
-
-        # add plugin specific settings
-        run_bands = False
-        run_pdos = False
-        for name in self.workchain_settings.properties:
-            if self.workchain_settings.properties[name].run.value:
-                properties.append(name)
-            if name == "bands":
-                run_bands = True
-            elif name == "pdos":
-                run_bands = True
-
-        if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
-            properties.append("relax")
-
-        return QeWorkChainParameters(
-            protocol=protocol,
-            relax_type=relax_type,
-            properties=properties,
-            spin_type=spin_type,
-            electronic_type=electronic_type,
-            overrides=overrides,
-            initial_magnetic_moments=initial_magnetic_moments,
-        )
 
     def _create_builder(self) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
@@ -515,20 +395,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         dos_code = self.dos_code.value
         projwfc_code = self.projwfc_code.value
 
-        parameters = self._get_qe_workchain_parameters()
+        parameters = self.input_parameters
+        print("parameters: ", parameters)
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=orm.load_code(pw_code),
             dos_code=orm.load_code(dos_code),
             projwfc_code=orm.load_code(projwfc_code),
-            protocol=parameters.protocol,
-            relax_type=RelaxType(parameters.relax_type),
-            properties=parameters.properties,
-            spin_type=SpinType(parameters.spin_type),
-            electronic_type=ElectronicType(parameters.electronic_type),
-            overrides=parameters.overrides,
-            initial_magnetic_moments=parameters.initial_magnetic_moments,
+            protocol=parameters["protocol"],
+            relax_type=RelaxType(parameters["relax_type"]),
+            properties=parameters["properties"],
+            spin_type=SpinType(parameters["spin_type"]),
+            electronic_type=ElectronicType(parameters["electronic_type"]),
+            overrides=parameters["overrides"],
+            initial_magnetic_moments=parameters["initial_magnetic_moments"],
         )
 
         resources = {
@@ -570,26 +451,24 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         readably represented in the builder, which will be used to the report.
         It is stored in the `extra_report_parameters`.
         """
-        qe_workchain_parameters = self._get_qe_workchain_parameters()
+        qe_workchain_parameters = self.input_parameters
 
         # Construct the extra report parameters needed for the report
         extra_report_parameters = {
-            "relax_type": qe_workchain_parameters.relax_type,
-            "electronic_type": qe_workchain_parameters.electronic_type,
-            "spin_type": qe_workchain_parameters.spin_type,
-            "protocol": qe_workchain_parameters.protocol,
-            "initial_magnetic_moments": qe_workchain_parameters.initial_magnetic_moments,
+            "relax_type": qe_workchain_parameters["relax_type"],
+            "electronic_type": qe_workchain_parameters["electronic_type"],
+            "spin_type": qe_workchain_parameters["spin_type"],
+            "protocol": qe_workchain_parameters["protocol"],
+            "initial_magnetic_moments": qe_workchain_parameters[
+                "initial_magnetic_moments"
+            ],
         }
 
         # update pseudo family information to extra_report_parameters
-        if (
-            self.advanced_settings.pseudo_family_selector.override_protocol_pseudo_family.value
-        ):
-            # If the pseudo family is overridden, use that
-            pseudo_family = self.advanced_settings.pseudo_family_selector.value
-        else:
-            # otherwise extract the information from protocol
-            pseudo_family = PROTOCOL_PSEUDO_MAP[qe_workchain_parameters.protocol]
+        pseudo_family = qe_workchain_parameters["overrides"]["relax"]["base"][
+            "pseudo_family"
+        ]
+        pseudo_family = PROTOCOL_PSEUDO_MAP[qe_workchain_parameters["protocol"]]
 
         pseudo_family_info = pseudo_family.split("/")
         if pseudo_family_info[0] == "SSSP":
@@ -666,10 +545,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "smearing"
             ]
 
-        parameters[
-            "bands_kpoints_distance"
-        ] = builder.bands.bands_kpoints_distance.value
-        parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
+        # parameters[
+        #     "bands_kpoints_distance"
+        # ] = builder.bands.bands_kpoints_distance.value
+        # parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
 
         parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
             "tot_charge", 0.0

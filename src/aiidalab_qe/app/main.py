@@ -83,12 +83,8 @@ class App(ipw.VBox):
             (self.submit_qe_app_work_chain_step, "previous_step_state"),
         )
         ipw.dlink(
-            (self.configure_qe_app_work_chain_step, "workchain_settings"),
-            (self.submit_qe_app_work_chain_step, "workchain_settings"),
-        )
-        ipw.dlink(
-            (self.configure_qe_app_work_chain_step, "advanced_settings"),
-            (self.submit_qe_app_work_chain_step, "advanced_settings"),
+            (self.configure_qe_app_work_chain_step, "value"),
+            (self.submit_qe_app_work_chain_step, "input_parameters"),
         )
 
         ipw.dlink(
@@ -156,3 +152,7 @@ class App(ipw.VBox):
                         WizardAppWidgetStep.State.SUCCESS
                     )
                     self.submit_qe_app_work_chain_step.process = process
+
+    @property
+    def steps(self):
+        return self._wizard_app_widget.steps

@@ -56,8 +56,10 @@ def _generate_report_dict(builder_parameters: dict):
     yield "energy_cutoff_wfc", builder_parameters["energy_cutoff_wfc"]
     yield "energy_cutoff_rho", builder_parameters["energy_cutoff_rho"]
     yield "scf_kpoints_distance", builder_parameters["scf_kpoints_distance"]
-    yield "bands_kpoints_distance", builder_parameters["bands_kpoints_distance"]
-    yield "nscf_kpoints_distance", builder_parameters["nscf_kpoints_distance"]
+    if builder_parameters.get("bands_kpoints_distance", False):
+        yield "bands_kpoints_distance", builder_parameters["bands_kpoints_distance"]
+    if builder_parameters.get("nscf_kpoints_distance", False):
+        yield "nscf_kpoints_distance", builder_parameters["nscf_kpoints_distance"]
 
     occupation = builder_parameters["occupation"]
     yield "occupation_type", occupation
