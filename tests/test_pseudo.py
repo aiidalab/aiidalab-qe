@@ -1,3 +1,13 @@
+def test_pseudos_family_selector_widget_protocol():
+    """Test the pseudos widget."""
+    from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector
+
+    w = PseudoFamilySelector()
+    w.protocol = "precise"
+    assert w.protocol_selection.value == "SSSP precision"
+    assert w.value == "SSSP/1.2/PBEsol/precision"
+
+
 def test_pseudos_family_selector_widget():
     """Test the pseudos widget."""
     from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector

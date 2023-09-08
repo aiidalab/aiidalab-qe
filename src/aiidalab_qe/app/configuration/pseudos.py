@@ -9,6 +9,7 @@ import traitlets as tl
 from aiida import orm
 from aiida.common import exceptions
 from aiida.plugins import DataFactory, GroupFactory
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base.utils import StatusHTML
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
@@ -59,6 +60,7 @@ class PseudoFamilySelector(ipw.VBox):
         well-established generalised gradient approximation (GGA) functionals:
         PBE and PBEsol.</div>"""
     )
+    protocol = tl.Unicode(allow_none=True)
     disabled = tl.Bool()
 
     value = tl.Unicode(
@@ -67,6 +69,7 @@ class PseudoFamilySelector(ipw.VBox):
 
     def __init__(self, **kwargs):
         # Enable manual setting of the pseudopotential family
+        self._default_protocol = DEFAULT_PARAMETERS["protocol"]
         self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
         self.override_protocol_pseudo_family = ipw.Checkbox(
             description="",
@@ -141,22 +144,20 @@ class PseudoFamilySelector(ipw.VBox):
                 ipw.HBox([self.dft_functional_box, self.pseudo_protocol_box]),
             ]
         )
+        self.protocol = self._default_protocol
 
     def set_value_trait(self, _=None):
-        if self.override_protocol_pseudo_family.value:
-            family, protocol = self.protocol_selection.value.split()
-            functional = self.dft_functional.value
-            if family == "PseudoDojo":
-                pseudo_family_string = f"PseudoDojo/0.4/{functional}/SR/{protocol}/upf"
-            elif family == "SSSP":
-                pseudo_family_string = f"SSSP/1.2/{functional}/{protocol}"
-            else:
-                raise ValueError(
-                    f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
-                )
-            self.value = pseudo_family_string
+        family, protocol = self.protocol_selection.value.split()
+        functional = self.dft_functional.value
+        if family == "PseudoDojo":
+            pseudo_family_string = f"PseudoDojo/0.4/{functional}/SR/{protocol}/upf"
+        elif family == "SSSP":
+            pseudo_family_string = f"SSSP/1.2/{functional}/{protocol}"
         else:
-            self.value = DEFAULT_PARAMETERS["pseudo_family"]
+            raise ValueError(
+                f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
+            )
+        self.value = pseudo_family_string
 
     def set_show_ui(self, change):
         self.show_ui.value = not change.new
@@ -179,6 +180,22 @@ class PseudoFamilySelector(ipw.VBox):
 
     def reset(self):
         self.protocol_selection.value = "SSSP efficiency"
+
+    @tl.observe("protocol")
+    def _protocol_changed(self, _):
+        """Input protocol changed, update the widget values."""
+        self._update_settings_from_protocol(self.protocol)
+
+    def _update_settings_from_protocol(self, protocol):
+        """Update the widget values from the given protocol, and trigger the callback."""
+        pseudo_family = PwBaseWorkChain.get_protocol_inputs(protocol)["pseudo_family"]
+
+        with self.hold_trait_notifications():
+            # This changes will trigger callbacks
+            family, _, functional, accuracy = pseudo_family.split("/")
+            protocol_selection = f"{family} {accuracy}"
+            self.protocol_selection.value = protocol_selection
+            self.dft_functional.value = functional
 
 
 class PseudoSetter(ipw.VBox):
