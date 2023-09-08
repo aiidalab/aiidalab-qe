@@ -8,12 +8,12 @@ Quantum ESPRESSO app (QeApp) uses the Wizards UI, which divides one calculation 
 
 .. image:: ../_static/images/plugin_step.png
 
-The plugin design make the QeApp more modularized, and pluggable. So the developer can maintain their plugin as a separate folder in the QeApp (even a separate pakcage).
+A QeApp plugin will typically register new panels (setting, result), and workchain to extend the app's functionality. The plugin design make the QeApp more modularized, and pluggable. So the developer can maintain their plugin as a separate folder in the QeApp (even a separate pakcage).
 
-How to write a QeApp Plugin?
+Your First Add-on
 ================================
 
-A QeApp plugin will typically register panels (setting, result), and workchain. To give an example, here is the simplest plugin to print the formula of the input structure:
+Here is the simplest plugin to print the formula of the input structure:
 
 **Outline**, it will be shown as a checkbox in the workflow panel, as shown below.
 
