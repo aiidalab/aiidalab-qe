@@ -19,7 +19,6 @@ from aiidalab_widgets_base import ComputationalResourcesWidget, WizardAppWidgetS
 from IPython.display import display
 
 from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector, PseudoSetter
 from aiidalab_qe.app.configuration.workflow import WorkChainSettings
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.setup_codes import QESetupWidget
@@ -82,8 +81,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = tl.Instance(WorkChainSettings, allow_none=True)
-    pseudo_family_selector = tl.Instance(PseudoFamilySelector, allow_none=True)
-    pseudo_setter = tl.Instance(PseudoSetter, allow_none=True)
     advanced_settings = tl.Instance(AdvancedSettings, allow_none=True)
     _submission_blockers = tl.List(tl.Unicode())
 
@@ -419,19 +416,25 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # create the override parameters for sub PwBaseWorkChain
         pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
         for key in ["base", "scf", "nscf", "band"]:
-            if self.pseudo_family_selector.override_protocol_pseudo_family.value:
-                pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
+            if (
+                self.advanced_settings.pseudo_family_selector.override_protocol_pseudo_family.value
+            ):
+                pw_overrides[key][
+                    "pseudo_family"
+                ] = self.advanced_settings.pseudo_family_selector.value
 
-            if self.pseudo_setter.pseudos:
+            if self.advanced_settings.pseudo_setter.pseudos:
                 pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
-                pw_overrides[key]["pw"]["pseudos"] = self.pseudo_setter.pseudos
+                pw_overrides[key]["pw"][
+                    "pseudos"
+                ] = self.advanced_settings.pseudo_setter.pseudos
 
                 pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                     "ecutwfc"
-                ] = self.pseudo_setter.ecutwfc
+                ] = self.advanced_settings.pseudo_setter.ecutwfc
                 pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
                     "ecutrho"
-                ] = self.pseudo_setter.ecutrho
+                ] = self.advanced_settings.pseudo_setter.ecutrho
 
             if self.advanced_settings.override.value:
                 pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
@@ -579,9 +582,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
         # update pseudo family information to extra_report_parameters
-        if self.pseudo_family_selector.override_protocol_pseudo_family.value:
+        if (
+            self.advanced_settings.pseudo_family_selector.override_protocol_pseudo_family.value
+        ):
             # If the pseudo family is overridden, use that
-            pseudo_family = self.pseudo_family_selector.value
+            pseudo_family = self.advanced_settings.pseudo_family_selector.value
         else:
             # otherwise extract the information from protocol
             pseudo_family = PROTOCOL_PSEUDO_MAP[qe_workchain_parameters.protocol]

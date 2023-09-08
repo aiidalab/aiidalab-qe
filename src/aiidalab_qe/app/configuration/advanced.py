@@ -13,6 +13,8 @@ from IPython.display import clear_output, display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 
+from .pseudos import PseudoFamilySelector, PseudoSetter
+
 
 class AdvancedSettings(ipw.VBox):
     title = ipw.HTML(
@@ -29,6 +31,7 @@ class AdvancedSettings(ipw.VBox):
 
     # protocol interface
     protocol = tl.Unicode(allow_none=True)
+    input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     # output dictionary
     value = tl.Dict()
@@ -97,7 +100,12 @@ class AdvancedSettings(ipw.VBox):
             (self.magnetization, "disabled"),
             lambda override: not override,
         )
-
+        self.pseudo_family_selector = PseudoFamilySelector()
+        self.pseudo_setter = PseudoSetter()
+        ipw.dlink(
+            (self.pseudo_family_selector, "value"),
+            (self.pseudo_setter, "pseudo_family"),
+        )
         super().__init__(
             children=[
                 self.title,
@@ -114,6 +122,8 @@ class AdvancedSettings(ipw.VBox):
                 # Kpoints setting widget
                 self.kpoints_description,
                 self.kpoints_distance,
+                self.pseudo_family_selector,
+                self.pseudo_setter,
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
@@ -128,6 +138,12 @@ class AdvancedSettings(ipw.VBox):
             # When override is set to False, reset the widget
             self.reset()
 
+    @tl.observe("input_structure")
+    def _update_input_structure(self, change):
+        if self.input_structure is not None:
+            self.magnetization._update_widget(change)
+            self.pseudo_setter.structure = change["new"]
+
     @tl.observe("protocol")
     def _protocol_changed(self, _):
         """Input protocol changed, update the widget values."""
@@ -138,6 +154,7 @@ class AdvancedSettings(ipw.VBox):
         trigger the callback of the sub-widget if it is exist.
         """
         self.smearing.protocol = protocol
+        self.pseudo_family_selector.protocol = protocol
 
         parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
 

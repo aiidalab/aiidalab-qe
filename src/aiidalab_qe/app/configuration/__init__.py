@@ -14,7 +14,6 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 
 from .advanced import AdvancedSettings
-from .pseudos import PseudoFamilySelector, PseudoSetter
 from .workflow import WorkChainSettings
 
 
@@ -22,8 +21,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     confirmed = tl.Bool()
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = tl.Instance(WorkChainSettings, allow_none=True)
-    pseudo_family_selector = tl.Instance(PseudoFamilySelector, allow_none=True)
-    pseudo_setter = tl.Instance(PseudoSetter, allow_none=True)
     advanced_settings = tl.Instance(AdvancedSettings, allow_none=True)
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
@@ -31,18 +28,15 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_settings = WorkChainSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
 
-        self.pseudo_family_selector = PseudoFamilySelector()
-        self.pseudo_setter = PseudoSetter()
-        ipw.dlink(
-            (self.pseudo_family_selector, "value"),
-            (self.pseudo_setter, "pseudo_family"),
-        )
-
         self.advanced_settings = AdvancedSettings()
 
         ipw.dlink(
             (self.workchain_settings.workchain_protocol, "value"),
             (self.advanced_settings, "protocol"),
+        )
+        ipw.dlink(
+            (self, "input_structure"),
+            (self.advanced_settings, "input_structure"),
         )
         #
         self.built_in_settings = [
@@ -50,8 +44,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ipw.VBox(
                 children=[
                     self.advanced_settings,
-                    self.pseudo_family_selector,
-                    self.pseudo_setter,
                 ]
             ),
         ]
@@ -103,12 +95,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             **kwargs,
         )
 
-    @tl.observe("input_structure")
-    def _update_input_structure(self, change):
-        if self.input_structure is not None:
-            self.advanced_settings.magnetization._update_widget(change)
-            self.pseudo_setter.structure = change["new"]
-
     @tl.observe("previous_step_state")
     def _observe_previous_step_state(self, change):
         self._update_state()
@@ -126,7 +112,9 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.workchain_settings.workchain_protocol.value = parameters["protocol"]
 
             # Advanced settings
-            self.pseudo_family_selector.value = parameters["pseudo_family"]
+            self.advanced_settings.pseudo_family_selector.value = parameters[
+                "pseudo_family"
+            ]
             if parameters.get("kpoints_distance_override", None) is not None:
                 self.advanced_settings.kpoints.distance.value = parameters[
                     "kpoints_distance_override"
