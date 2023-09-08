@@ -1,7 +1,7 @@
 .. _develop-apps:
 
 ###################
-App developer guide
+Developer guide
 ###################
 
 This guide explains how to get started with developing apps.
