@@ -233,7 +233,7 @@ def submit_step_widget_generator(
         tot_charge=0.0,
         initial_magnetic_moments=0.0,
     ):
-        configure_step = app.steps[1][1]
+        configure_step = app.configure_step
         # Settings
         configure_step.input_structure = generate_structure_data()
         parameters = {
@@ -258,7 +258,7 @@ def submit_step_widget_generator(
         configure_step.advanced_settings.smearing.degauss.value = degauss
         configure_step.confirm()
         #
-        submit_step = app.steps[2][1]
+        submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
 
         submit_step.pw_code.value = pw_code.uuid

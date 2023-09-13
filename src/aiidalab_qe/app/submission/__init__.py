@@ -396,7 +396,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         projwfc_code = self.projwfc_code.value
 
         parameters = self.input_parameters
-        print("parameters: ", parameters)
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
