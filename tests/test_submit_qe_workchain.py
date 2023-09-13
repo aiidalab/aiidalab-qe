@@ -26,7 +26,6 @@ def test_create_builder_default(
 
     metal, non-magnetic
     """
-    from bs4 import BeautifulSoup
 
     from aiidalab_qe.app.result.report import _generate_report_html
 
@@ -47,11 +46,11 @@ def test_create_builder_default(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # There should be only one None from initial_magnetic_moments
-    assert report_html.count("None") == 1
-    if "initial_magnetic_moments" not in builder_parameters:
-        parsed = BeautifulSoup(report_html, "html.parser")
-        assert parsed.find("initial_magnetic_moments").text == "None"
+    # All None value is removed in the final report
+    assert report_html.count("None") == 0
+    # if "initial_magnetic_moments" not in builder_parameters:
+    #     parsed = BeautifulSoup(report_html, "html.parser")
+    #     assert parsed.find("initial_magnetic_moments").text == "None"
 
 
 def test_create_builder_insulator(
@@ -61,7 +60,6 @@ def test_create_builder_insulator(
 
     insulator, non-magnetic, no smearing
     the occupation type is set to fixed, smearing and degauss should not be set"""
-    from bs4 import BeautifulSoup
 
     from aiidalab_qe.app.result.report import _generate_report_html
 
@@ -84,11 +82,11 @@ def test_create_builder_insulator(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # There should be only one None from initial_magnetic_moments
-    assert report_html.count("None") == 1
-    if "initial_magnetic_moments" not in builder_parameters:
-        parsed = BeautifulSoup(report_html, "html.parser")
-        assert parsed.find("initial_magnetic_moments").text == "None"
+    # All None value is removed in the final report
+    assert report_html.count("None") == 0
+    # if "initial_magnetic_moments" not in builder_parameters:
+    #     parsed = BeautifulSoup(report_html, "html.parser")
+    #     assert parsed.find("initial_magnetic_moments").text == "None"
 
 
 def test_create_builder_advanced_settings(
