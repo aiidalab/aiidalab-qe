@@ -26,7 +26,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     # output dictionary
-    value = tl.Dict()
+    configuration_parameters = tl.Dict()
 
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
@@ -249,7 +249,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.set_input_parameters(DEFAULT_PARAMETERS)
 
     def confirm(self, _=None):
-        self.value = self.get_configuration_parameters()
+        self.configuration_parameters = self.get_configuration_parameters()
         self.confirm_button.disabled = False
         self.state = self.State.SUCCESS
 

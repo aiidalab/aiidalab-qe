@@ -77,7 +77,7 @@ class App(ipw.VBox):
             (self.submit_step, "previous_step_state"),
         )
         ipw.dlink(
-            (self.configure_step, "value"),
+            (self.configure_step, "configuration_parameters"),
             (self.submit_step, "input_parameters"),
         )
 
