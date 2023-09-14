@@ -47,8 +47,8 @@ def test_create_builder_default(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # There should be only one None from initial_magnetic_moments
-    assert report_html.count("None") == 1
+    # All None value is removed in the final report
+    assert report_html.count("None") == 0
     if "initial_magnetic_moments" not in builder_parameters:
         parsed = BeautifulSoup(report_html, "html.parser")
         assert parsed.find("initial_magnetic_moments").text == "None"
@@ -84,8 +84,8 @@ def test_create_builder_insulator(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # There should be only one None from initial_magnetic_moments
-    assert report_html.count("None") == 1
+    # All None value is removed in the final report
+    assert report_html.count("None") == 0
     if "initial_magnetic_moments" not in builder_parameters:
         parsed = BeautifulSoup(report_html, "html.parser")
         assert parsed.find("initial_magnetic_moments").text == "None"

@@ -197,9 +197,19 @@ def smearing_settings_generator():
     return _smearing_settings_generator
 
 
+@pytest.fixture
+def app(pw_code, dos_code, projwfc_code, sssp):
+    from aiidalab_qe.app.main import App
+
+    app = App(qe_auto_setup=False)
+
+    yield app
+
+
 @pytest.fixture()
 @pytest.mark.usefixtures("sssp")
 def submit_step_widget_generator(
+    app,
     pw_code,
     dos_code,
     projwfc_code,
@@ -209,16 +219,13 @@ def submit_step_widget_generator(
     initial_magnetic_moments_generator,
 ):
     """Return a function that generates a submit step widget."""
-    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-    from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector, PseudoSetter
-    from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     def _submit_step_widget_generator(
         relax_type="positions_cell",
         spin_type="none",
         electronic_type="metal",
         bands_run=True,
-        pdo_run=True,
+        pdos_run=True,
         workchain_protocol="moderate",
         kpoints_distance=0.12,
         smearing="methfessel-paxton",
@@ -226,40 +233,37 @@ def submit_step_widget_generator(
         tot_charge=0.0,
         initial_magnetic_moments=0.0,
     ):
-        submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-        submit_step.input_structure = generate_structure_data()
-        submit_step.pseudo_family_selector = PseudoFamilySelector()
-        submit_step.pseudo_setter = PseudoSetter()
-
-        submit_step.pw_code.value = pw_code.uuid
-        submit_step.dos_code.value = dos_code.uuid
-        submit_step.projwfc_code.value = projwfc_code.uuid
-
+        configure_step = app.configure_step
         # Settings
-        submit_step.workchain_settings = workchain_settings_generator(
-            relax_type=relax_type,
-            spin_type=spin_type,
-            electronic_type=electronic_type,
-            bands_run=bands_run,
-            pdos_run=pdo_run,
-            workchain_protocol=workchain_protocol,
-        )
+        configure_step.input_structure = generate_structure_data()
+        parameters = {
+            "relax_type": relax_type,
+            "spin_type": spin_type,
+            "electronic_type": electronic_type,
+            "properties": ["bands", "pdos"],
+            "protocol": workchain_protocol,
+        }
+        configure_step.set_input_parameters(parameters)
         # Advanced settings
-        submit_step.advanced_settings = AdvancedSettings()
-        submit_step.advanced_settings.override.value = True
-
-        submit_step.advanced_settings.total_charge.value = tot_charge
-        submit_step.advanced_settings.kpoints_distance.value = kpoints_distance
-
-        submit_step.advanced_settings.magnetization = (
+        configure_step.advanced_settings.override.value = True
+        configure_step.advanced_settings.total_charge.value = tot_charge
+        configure_step.advanced_settings.kpoints_distance.value = kpoints_distance
+        configure_step.advanced_settings.magnetization = (
             initial_magnetic_moments_generator(
                 initial_magnetic_moments=initial_magnetic_moments
             )
         )
-
         # mimic the behavior of the smearing widget set up
-        submit_step.advanced_settings.smearing.smearing.value = smearing
-        submit_step.advanced_settings.smearing.degauss.value = degauss
+        configure_step.advanced_settings.smearing.smearing.value = smearing
+        configure_step.advanced_settings.smearing.degauss.value = degauss
+        configure_step.confirm()
+        #
+        submit_step = app.submit_step
+        submit_step.input_structure = generate_structure_data()
+
+        submit_step.pw_code.value = pw_code.uuid
+        submit_step.dos_code.value = dos_code.uuid
+        submit_step.projwfc_code.value = projwfc_code.uuid
 
         return submit_step
 
