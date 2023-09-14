@@ -27,25 +27,25 @@ def _generate_report_dict(builder_parameters: dict):
     to the template.
     """
     # Workflow logic
-    yield "relax_method", builder_parameters.get("relax_type", None)
-    yield "relaxed", builder_parameters.get("run_relax", None)
-    yield "bands_computed", builder_parameters.get("run_bands", None)
-    yield "pdos_computed", builder_parameters.get("run_pdos", None)
+    yield "relax_method", builder_parameters.get("relax_type")
+    yield "relaxed", builder_parameters.get("run_relax")
+    yield "bands_computed", builder_parameters.get("run_bands")
+    yield "pdos_computed", builder_parameters.get("run_pdos")
 
     # Material settings
-    yield "material_magnetic", builder_parameters.get("spin_type", None)
-    yield "electronic_type", builder_parameters.get("electronic_type", None)
+    yield "material_magnetic", builder_parameters.get("spin_type")
+    yield "electronic_type", builder_parameters.get("electronic_type")
 
     # Calculation settings
-    yield "protocol", builder_parameters.get("protocol", None)
+    yield "protocol", builder_parameters.get("protocol")
 
     # Pseudopotential settings
-    yield "pseudo_family", builder_parameters.get("pseudo_family", None)
-    yield "pseudo_version", builder_parameters.get("pseudo_version", None)
-    yield "pseudo_protocol", builder_parameters.get("pseudo_protocol", None)
+    yield "pseudo_family", builder_parameters.get("pseudo_family")
+    yield "pseudo_version", builder_parameters.get("pseudo_version")
+    yield "pseudo_protocol", builder_parameters.get("pseudo_protocol")
 
-    pseudo_library = builder_parameters.get("pseudo_library", None)
-    functional = builder_parameters.get("functional", None)
+    pseudo_library = builder_parameters.get("pseudo_library")
+    functional = builder_parameters.get("functional")
     yield "pseudo_library", pseudo_library
     yield "functional", functional
 
@@ -53,20 +53,20 @@ def _generate_report_dict(builder_parameters: dict):
     yield "functional_link", FUNCTIONAL_LINK_MAP[functional]
 
     # Detail calculation parameters
-    yield "energy_cutoff_wfc", builder_parameters.get("energy_cutoff_wfc", None)
-    yield "energy_cutoff_rho", builder_parameters.get("energy_cutoff_rho", None)
-    yield "scf_kpoints_distance", builder_parameters.get("scf_kpoints_distance", None)
+    yield "energy_cutoff_wfc", builder_parameters.get("energy_cutoff_wfc")
+    yield "energy_cutoff_rho", builder_parameters.get("energy_cutoff_rho")
+    yield "scf_kpoints_distance", builder_parameters.get("scf_kpoints_distance")
     yield "bands_kpoints_distance", builder_parameters.get(
         "bands_kpoints_distance", None
     )
-    yield "nscf_kpoints_distance", builder_parameters.get("nscf_kpoints_distance", None)
+    yield "nscf_kpoints_distance", builder_parameters.get("nscf_kpoints_distance")
 
-    yield "occupation_type", builder_parameters.get("occupation", None)
+    yield "occupation_type", builder_parameters.get("occupation")
 
-    yield "degauss", builder_parameters.get("degauss", None)
-    yield "smearing", builder_parameters.get("smearing", None)
+    yield "degauss", builder_parameters.get("degauss")
+    yield "smearing", builder_parameters.get("smearing")
 
-    yield "tot_charge", builder_parameters.get("tot_charge", None)
+    yield "tot_charge", builder_parameters.get("tot_charge")
     yield "initial_magnetic_moments", builder_parameters.get(
         "initial_magnetic_moments", None
     )

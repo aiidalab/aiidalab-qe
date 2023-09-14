@@ -142,7 +142,3 @@ class App(ipw.VBox):
                     self.structure_step.confirmed_structure = process.inputs.structure
                     self.configure_step.state = WizardAppWidgetStep.State.SUCCESS
                     self.submit_step.process = process
-
-    @property
-    def steps(self):
-        return self._wizard_app_widget.steps
