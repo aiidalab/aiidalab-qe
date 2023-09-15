@@ -30,7 +30,7 @@ def test_create_builder_default(
 
     from aiidalab_qe.app.result.report import _generate_report_html
 
-    submit_step = submit_step_widget_generator()
+    submit_step = submit_step_widget_generator(properties=["bands", "pdos"])
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()
@@ -66,7 +66,7 @@ def test_create_builder_insulator(
     from aiidalab_qe.app.result.report import _generate_report_html
 
     submit_step = submit_step_widget_generator(
-        electronic_type="insulator",
+        electronic_type="insulator", properties=["bands", "pdos"]
     )
 
     builder = submit_step._create_builder()
@@ -108,6 +108,7 @@ def test_create_builder_advanced_settings(
         spin_type="collinear",
         tot_charge=1.0,
         initial_magnetic_moments=0.1,
+        properties=["bands", "pdos"],
     )
 
     builder = submit_step._create_builder()

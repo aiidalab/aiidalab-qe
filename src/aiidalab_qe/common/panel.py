@@ -24,7 +24,7 @@ class Panel(ipw.VBox):
 
     title = "Panel"
 
-    def __init__(self, parent=None, identifier="panel", **kwargs):
+    def __init__(self, parent=None, identifier=None, **kwargs):
         """Initialize the panel.
 
         :param kwargs: keyword arguments to pass to the ipw.VBox constructor.

@@ -12,11 +12,14 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from IPython.display import clear_output, display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.panel import Panel
 
 from .pseudos import PseudoFamilySelector, PseudoSetter
 
 
-class AdvancedSettings(ipw.VBox):
+class AdvancedSettings(Panel):
+    identifier = "advanced"
+
     title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Advanced Settings</h4></div>"""
@@ -108,25 +111,25 @@ class AdvancedSettings(ipw.VBox):
             (self.pseudo_family_selector, "value"),
             (self.pseudo_setter, "pseudo_family"),
         )
+        self.children = [
+            self.title,
+            ipw.HBox(
+                [self.description, self.override_widget],
+                layout=ipw.Layout(height="50px", justify_content="space-between"),
+            ),
+            # total charge setting widget
+            self.total_charge,
+            # magnetization setting widget
+            self.magnetization,
+            # smearing setting widget
+            self.smearing,
+            # Kpoints setting widget
+            self.kpoints_description,
+            self.kpoints_distance,
+            self.pseudo_family_selector,
+            self.pseudo_setter,
+        ]
         super().__init__(
-            children=[
-                self.title,
-                ipw.HBox(
-                    [self.description, self.override_widget],
-                    layout=ipw.Layout(height="50px", justify_content="space-between"),
-                ),
-                # total charge setting widget
-                self.total_charge,
-                # magnetization setting widget
-                self.magnetization,
-                # smearing setting widget
-                self.smearing,
-                # Kpoints setting widget
-                self.kpoints_description,
-                self.kpoints_distance,
-                self.pseudo_family_selector,
-                self.pseudo_setter,
-            ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
@@ -181,7 +184,7 @@ class AdvancedSettings(ipw.VBox):
         """
         self.value = kwargs
 
-    def get_setting_parameters(self):
+    def get_panel_value(self):
         # create the the initial_magnetic_moments as None (Default)
         parameters = {
             "initial_magnetic_moments": None,
@@ -221,7 +224,7 @@ class AdvancedSettings(ipw.VBox):
                 )
         return parameters
 
-    def set_setting_parameters(self, parameters):
+    def set_panel_value(self, parameters):
         if parameters.get("pseudo_family", False):
             self.pseudo_family_selector.value = parameters["pseudo_family"]
         if parameters.get("kpoints_distance_override", None) is not None:

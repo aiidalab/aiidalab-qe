@@ -13,7 +13,6 @@ import traitlets as tl
 from aiida import orm
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, submit
-from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiidalab_widgets_base import ComputationalResourcesWidget, WizardAppWidgetStep
 from IPython.display import display
 
@@ -159,7 +158,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # No code selected for pdos (this is ignored while the setup process is running).
         if (
-            "pdos" in self.input_parameters.get("properties", [])
+            "pdos" in self.input_parameters.get("workchain", {}).get("properties", [])
             and (self.dos_code.value is None or self.projwfc_code.value is None)
             and not self.qe_setup_status.busy
         ):
@@ -170,7 +169,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "The SSSP library is not installed."
 
         if (
-            "pdos" in self.input_parameters.get("properties", [])
+            "pdos" in self.input_parameters.get("workchain", {}).get("properties", [])
             and not any(
                 [
                     self.pw_code.value is None,
@@ -365,7 +364,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
 
     def set_pdos_status(self):
-        if "pdos" in self.input_parameters.get("properties", []):
+        if "pdos" in self.input_parameters.get("workchain", {}).get("properties", []):
             self.dos_code.code_select_dropdown.disabled = False
             self.projwfc_code.code_select_dropdown.disabled = False
         else:
@@ -398,23 +397,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         projwfc_code = self.projwfc_code.value
 
         parameters = deepcopy(self.input_parameters)
-        initial_magnetic_moments = parameters["advanced_settings"].pop(
-            "initial_magnetic_moments", None
-        )
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=orm.load_code(pw_code),
             dos_code=orm.load_code(dos_code),
             projwfc_code=orm.load_code(projwfc_code),
-            protocol=parameters["workchain_settings"]["protocol"],
-            relax_type=RelaxType(parameters["workchain_settings"]["relax_type"]),
-            properties=parameters["workchain_settings"]["properties"],
-            spin_type=SpinType(parameters["workchain_settings"]["spin_type"]),
-            electronic_type=ElectronicType(
-                parameters["workchain_settings"]["electronic_type"]
-            ),
-            overrides=parameters["advanced_settings"],
-            initial_magnetic_moments=initial_magnetic_moments,
+            parameters=parameters,
         )
 
         resources = {
@@ -460,22 +448,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # Construct the extra report parameters needed for the report
         extra_report_parameters = {
-            "relax_type": input_parameters["workchain_settings"]["relax_type"],
-            "electronic_type": input_parameters["workchain_settings"][
-                "electronic_type"
-            ],
-            "spin_type": input_parameters["workchain_settings"]["spin_type"],
-            "protocol": input_parameters["workchain_settings"]["protocol"],
-            "initial_magnetic_moments": input_parameters["advanced_settings"][
+            "relax_type": input_parameters["workchain"]["relax_type"],
+            "electronic_type": input_parameters["workchain"]["electronic_type"],
+            "spin_type": input_parameters["workchain"]["spin_type"],
+            "protocol": input_parameters["workchain"]["protocol"],
+            "initial_magnetic_moments": input_parameters["advanced"][
                 "initial_magnetic_moments"
             ],
         }
 
         # update pseudo family information to extra_report_parameters
-        pseudo_family = input_parameters["advanced_settings"]["pseudo_family"]
-        pseudo_family = PROTOCOL_PSEUDO_MAP[
-            input_parameters["workchain_settings"]["protocol"]
-        ]
+        pseudo_family = input_parameters["advanced"]["pseudo_family"]
+        pseudo_family = PROTOCOL_PSEUDO_MAP[input_parameters["workchain"]["protocol"]]
 
         pseudo_family_info = pseudo_family.split("/")
         if pseudo_family_info[0] == "SSSP":
