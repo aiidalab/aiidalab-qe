@@ -130,9 +130,11 @@ class QeAppWorkChain(WorkChain):
 
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
-        builder = cls.get_builder()
         codes = {"pw_code": pw_code, "dos_code": dos_code, "projwfc_code": projwfc_code}
-
+        #
+        builder = cls.get_builder()
+        # Set the structure.
+        builder.structure = structure
         # relax
         relax_overrides = {"base": parameters["advanced"]}
         protocol = parameters["workchain"]["protocol"]
