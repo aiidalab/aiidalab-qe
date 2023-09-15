@@ -32,6 +32,8 @@ class AdvancedSettings(ipw.VBox):
     # protocol interface
     protocol = tl.Unicode(allow_none=True)
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
+    spin_type = tl.Unicode()
+    electronic_type = tl.Unicode()
 
     # output dictionary
     value = tl.Dict()
@@ -178,6 +180,59 @@ class AdvancedSettings(ipw.VBox):
         This function can also be used to set values directly for testing purpose.
         """
         self.value = kwargs
+
+    def get_setting_parameters(self):
+        # create the the initial_magnetic_moments as None (Default)
+        parameters = {
+            "initial_magnetic_moments": None,
+            "pw": {
+                "parameters": {
+                    "SYSTEM": {},
+                },
+            },
+        }
+        parameters["pseudo_family"] = self.pseudo_family_selector.value
+        if self.pseudo_setter.pseudos:
+            parameters["pw"]["pseudos"] = self.pseudo_setter.pseudos
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "ecutwfc"
+            ] = self.pseudo_setter.ecutwfc
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "ecutrho"
+            ] = self.pseudo_setter.ecutrho
+        if self.override.value:
+            parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.value.get(
+                "total_charge"
+            )
+            # there are two choose, use link or parent
+            if self.spin_type == "collinear":
+                parameters[
+                    "initial_magnetic_moments"
+                ] = self.magnetization.get_magnetization()
+            parameters["kpoints_distance"] = self.value.get("kpoints_distance")
+            if self.electronic_type == "metal":
+                # smearing type setting
+                parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = self.value.get(
+                    "smearing"
+                )
+                # smearing degauss setting
+                parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = self.value.get(
+                    "degauss"
+                )
+        return parameters
+
+    def set_setting_parameters(self, parameters):
+        if parameters.get("pseudo_family", False):
+            self.pseudo_family_selector.value = parameters["pseudo_family"]
+        if parameters.get("kpoints_distance_override", None) is not None:
+            self.kpoints.distance.value = parameters["kpoints_distance_override"]
+            self.kpoints.override.value = True
+        if parameters.get("degauss_override", None) is not None:
+            self.smearing.degauss.value = parameters["degauss_override"]
+            self.smearing.override.value = True
+        if parameters.get("smearing_override", None) is not None:
+            self.smearing.smearing.value = parameters["smearing_override"]
+            self.smearing.override.value = True
 
     def reset(self):
         """Reset the widget and the traitlets"""

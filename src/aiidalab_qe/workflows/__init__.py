@@ -136,7 +136,7 @@ class QeAppWorkChain(WorkChain):
         builder.structure = structure
 
         # relax workchain settings
-        relax_overrides = overrides.get("relax", {})
+        relax_overrides = {"base": overrides}
 
         relax = PwRelaxWorkChain.get_builder_from_protocol(
             code=pw_code,

@@ -391,12 +391,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _create_builder(self) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
+        from copy import deepcopy
+
         pw_code = self.pw_code.value
         dos_code = self.dos_code.value
         projwfc_code = self.projwfc_code.value
 
-        parameters = self.input_parameters
-
+        parameters = deepcopy(self.input_parameters)
+        initial_magnetic_moments = parameters["advanced_settings"].pop(
+            "initial_magnetic_moments", None
+        )
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=orm.load_code(pw_code),
@@ -409,8 +413,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             electronic_type=ElectronicType(
                 parameters["workchain_settings"]["electronic_type"]
             ),
-            overrides=parameters["overrides"],
-            initial_magnetic_moments=parameters["initial_magnetic_moments"],
+            overrides=parameters["advanced_settings"],
+            initial_magnetic_moments=initial_magnetic_moments,
         )
 
         resources = {
@@ -462,11 +466,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ],
             "spin_type": input_parameters["workchain_settings"]["spin_type"],
             "protocol": input_parameters["workchain_settings"]["protocol"],
-            "initial_magnetic_moments": input_parameters["initial_magnetic_moments"],
+            "initial_magnetic_moments": input_parameters["advanced_settings"][
+                "initial_magnetic_moments"
+            ],
         }
 
         # update pseudo family information to extra_report_parameters
-        pseudo_family = input_parameters["overrides"]["relax"]["base"]["pseudo_family"]
+        pseudo_family = input_parameters["advanced_settings"]["pseudo_family"]
         pseudo_family = PROTOCOL_PSEUDO_MAP[
             input_parameters["workchain_settings"]["protocol"]
         ]
