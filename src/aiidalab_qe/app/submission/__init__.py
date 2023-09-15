@@ -455,6 +455,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "initial_magnetic_moments": input_parameters["advanced"][
                 "initial_magnetic_moments"
             ],
+            "properties": input_parameters["workchain"]["properties"],
         }
 
         # update pseudo family information to extra_report_parameters
