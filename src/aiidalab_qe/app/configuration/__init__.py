@@ -59,11 +59,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.tab.set_title(0, "Workflow")
         self.tab.set_title(1, "Advanced settings")
 
+        # store the property name and setting panel for all plugins
+        # only show the setting panel when the corresponding property is selected
+        # first add the built-in settings
         self.settings = {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
-        # add plugin specific settings
+        # then add plugin specific settings
         entries = get_entry_items("aiidalab_qe.properties", "setting")
         for name, entry_point in entries.items():
             self.settings[name] = entry_point(parent=self)
