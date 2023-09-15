@@ -8,7 +8,6 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
-from aiida_quantumespresso.common.types import RelaxType
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
@@ -161,36 +160,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "nscf": pw_overrides["nscf"],
             },
         }
-
         # Work chain settings
-        relax_type = self.workchain_settings.relax_type.value
-        electronic_type = self.workchain_settings.electronic_type.value
-        spin_type = self.workchain_settings.spin_type.value
-
-        protocol = self.workchain_settings.workchain_protocol.value
-
-        properties = []
-
-        # add plugin specific settings
-        run_bands = False
-        run_pdos = False
-        for name in self.workchain_settings.properties:
-            if self.workchain_settings.properties[name].run.value:
-                properties.append(name)
-            if name == "bands":
-                run_bands = True
-            elif name == "pdos":
-                run_bands = True
-
-        if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
-            properties.append("relax")
-
+        workchain_settings = self.workchain_settings.get_setting_parameters()
         return {
-            "protocol": protocol,
-            "relax_type": relax_type,
-            "properties": properties,
-            "spin_type": spin_type,
-            "electronic_type": electronic_type,
+            "workchain_settings": workchain_settings,
             "overrides": overrides,
             "initial_magnetic_moments": initial_magnetic_moments,
         }
@@ -200,18 +173,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Work chain settings
-            self.workchain_settings.relax_type.value = parameters["relax_type"]
-            self.workchain_settings.spin_type.value = parameters["spin_type"]
-            self.workchain_settings.electronic_type.value = parameters[
-                "electronic_type"
-            ]
-            self.workchain_settings.workchain_protocol.value = parameters["protocol"]
-            # properties
-            for name in self.workchain_settings.properties:
-                if name in parameters.get("properties", []):
-                    self.workchain_settings.properties[name].run.value = True
-                else:
-                    self.workchain_settings.properties[name].run.value = False
+            workchain_settings = parameters.get("workchain_settings", {})
+            self.workchain_settings.set_setting_parameters(workchain_settings)
             # Advanced settings
             if parameters.get("pseudo_family", False):
                 self.advanced_settings.pseudo_family_selector.value = parameters[

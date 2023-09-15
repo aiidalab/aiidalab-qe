@@ -402,11 +402,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             pw_code=orm.load_code(pw_code),
             dos_code=orm.load_code(dos_code),
             projwfc_code=orm.load_code(projwfc_code),
-            protocol=parameters["protocol"],
-            relax_type=RelaxType(parameters["relax_type"]),
-            properties=parameters["properties"],
-            spin_type=SpinType(parameters["spin_type"]),
-            electronic_type=ElectronicType(parameters["electronic_type"]),
+            protocol=parameters["workchain_settings"]["protocol"],
+            relax_type=RelaxType(parameters["workchain_settings"]["relax_type"]),
+            properties=parameters["workchain_settings"]["properties"],
+            spin_type=SpinType(parameters["workchain_settings"]["spin_type"]),
+            electronic_type=ElectronicType(
+                parameters["workchain_settings"]["electronic_type"]
+            ),
             overrides=parameters["overrides"],
             initial_magnetic_moments=parameters["initial_magnetic_moments"],
         )
@@ -450,24 +452,24 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         readably represented in the builder, which will be used to the report.
         It is stored in the `extra_report_parameters`.
         """
-        qe_workchain_parameters = self.input_parameters
+        input_parameters = self.input_parameters
 
         # Construct the extra report parameters needed for the report
         extra_report_parameters = {
-            "relax_type": qe_workchain_parameters["relax_type"],
-            "electronic_type": qe_workchain_parameters["electronic_type"],
-            "spin_type": qe_workchain_parameters["spin_type"],
-            "protocol": qe_workchain_parameters["protocol"],
-            "initial_magnetic_moments": qe_workchain_parameters[
-                "initial_magnetic_moments"
+            "relax_type": input_parameters["workchain_settings"]["relax_type"],
+            "electronic_type": input_parameters["workchain_settings"][
+                "electronic_type"
             ],
+            "spin_type": input_parameters["workchain_settings"]["spin_type"],
+            "protocol": input_parameters["workchain_settings"]["protocol"],
+            "initial_magnetic_moments": input_parameters["initial_magnetic_moments"],
         }
 
         # update pseudo family information to extra_report_parameters
-        pseudo_family = qe_workchain_parameters["overrides"]["relax"]["base"][
-            "pseudo_family"
+        pseudo_family = input_parameters["overrides"]["relax"]["base"]["pseudo_family"]
+        pseudo_family = PROTOCOL_PSEUDO_MAP[
+            input_parameters["workchain_settings"]["protocol"]
         ]
-        pseudo_family = PROTOCOL_PSEUDO_MAP[qe_workchain_parameters["protocol"]]
 
         pseudo_family_info = pseudo_family.split("/")
         if pseudo_family_info[0] == "SSSP":

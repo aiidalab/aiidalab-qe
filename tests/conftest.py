@@ -237,11 +237,13 @@ def submit_step_widget_generator(
         # Settings
         configure_step.input_structure = generate_structure_data()
         parameters = {
-            "relax_type": relax_type,
-            "spin_type": spin_type,
-            "electronic_type": electronic_type,
-            "properties": ["bands", "pdos"],
-            "protocol": workchain_protocol,
+            "workchain_settings": {
+                "relax_type": relax_type,
+                "spin_type": spin_type,
+                "electronic_type": electronic_type,
+                "properties": ["bands", "pdos"],
+                "protocol": workchain_protocol,
+            }
         }
         configure_step.set_input_parameters(parameters)
         # Advanced settings
