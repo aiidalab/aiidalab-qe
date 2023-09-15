@@ -73,7 +73,7 @@ class QeAppWorkChain(WorkChain):
             spec.expose_inputs(
                 plugin_workchain,
                 namespace=name,
-                exclude=entry_point["exclude"],
+                exclude=entry_point.get("exclude", []),
                 namespace_options={
                     "required": False,
                     "populate_defaults": False,
