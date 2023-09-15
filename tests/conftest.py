@@ -208,7 +208,7 @@ def app(pw_code, dos_code, projwfc_code, sssp):
 
 @pytest.fixture()
 @pytest.mark.usefixtures("sssp")
-def submit_step_widget_generator(
+def submit_app_generator(
     app,
     pw_code,
     dos_code,
@@ -220,12 +220,11 @@ def submit_step_widget_generator(
 ):
     """Return a function that generates a submit step widget."""
 
-    def _submit_step_widget_generator(
+    def _submit_app_generator(
         relax_type="positions_cell",
         spin_type="none",
         electronic_type="metal",
-        bands_run=True,
-        pdos_run=True,
+        properties=None,
         workchain_protocol="moderate",
         kpoints_distance=0.12,
         smearing="methfessel-paxton",
@@ -237,15 +236,15 @@ def submit_step_widget_generator(
         # Settings
         configure_step.input_structure = generate_structure_data()
         parameters = {
-            "workchain_settings": {
+            "workchain": {
                 "relax_type": relax_type,
                 "spin_type": spin_type,
                 "electronic_type": electronic_type,
-                "properties": ["bands", "pdos"],
+                "properties": properties or [],
                 "protocol": workchain_protocol,
             }
         }
-        configure_step.set_input_parameters(parameters)
+        configure_step.set_configuration_parameters(parameters)
         # Advanced settings
         configure_step.advanced_settings.override.value = True
         configure_step.advanced_settings.total_charge.value = tot_charge
@@ -267,6 +266,6 @@ def submit_step_widget_generator(
         submit_step.dos_code.value = dos_code.uuid
         submit_step.projwfc_code.value = projwfc_code.uuid
 
-        return submit_step
+        return app
 
-    return _submit_step_widget_generator
+    return _submit_app_generator

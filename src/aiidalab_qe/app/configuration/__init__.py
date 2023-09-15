@@ -20,8 +20,6 @@ from .workflow import WorkChainSettings
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     confirmed = tl.Bool()
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-    workchain_settings = tl.Instance(WorkChainSettings, allow_none=True)
-    advanced_settings = tl.Instance(AdvancedSettings, allow_none=True)
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     # output dictionary
@@ -61,21 +59,26 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.tab.set_title(0, "Workflow")
         self.tab.set_title(1, "Advanced settings")
 
-        # add plugin specific settings
-        self.settings = {}
-        # add plugin specific settings
+        # store the property identifier and setting panel for all plugins
+        # only show the setting panel when the corresponding property is selected
+        # first add the built-in settings
+        self.settings = {
+            "workchain": self.workchain_settings,
+            "advanced": self.advanced_settings,
+        }
+        # then add plugin specific settings
         entries = get_entry_items("aiidalab_qe.properties", "setting")
-        for name, entry_point in entries.items():
-            self.settings[name] = entry_point(parent=self)
-            self.settings[name].identifier = name
+        for identifier, entry_point in entries.items():
+            self.settings[identifier] = entry_point(parent=self)
+            self.settings[identifier].identifier = identifier
             # link basic protocol to all plugin specific protocols
-            if hasattr(self.settings[name], "workchain_protocol"):
+            if hasattr(self.settings[identifier], "workchain_protocol"):
                 ipw.dlink(
                     (self.workchain_settings.workchain_protocol, "value"),
-                    (self.settings[name].workchain_protocol, "value"),
+                    (self.settings[identifier].workchain_protocol, "value"),
                 )
-            if name in self.workchain_settings.properties:
-                self.workchain_settings.properties[name].run.observe(
+            if identifier in self.workchain_settings.properties:
+                self.workchain_settings.properties[identifier].run.observe(
                     self._update_panel, "value"
                 )
 
@@ -108,25 +111,15 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def get_configuration_parameters(self):
         """Get the parameters of the configuration step."""
 
-        # Work chain settings
-        workchain_settings = self.workchain_settings.get_setting_parameters()
-        # Work chain settings
-        advanced_settings = self.advanced_settings.get_setting_parameters()
-        return {
-            "workchain_settings": workchain_settings,
-            "advanced_settings": advanced_settings,
-        }
+        return {s.identifier: s.get_panel_value() for s in self.tab.children}
 
-    def set_input_parameters(self, parameters):
+    def set_configuration_parameters(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
 
         with self.hold_trait_notifications():
-            # Work chain settings
-            workchain_settings = parameters.get("workchain_settings", {})
-            self.workchain_settings.set_setting_parameters(workchain_settings)
-            # Advanced settings
-            advanced_settings = parameters.get("advanced_settings", {})
-            self.advanced_settings.set_setting_parameters(advanced_settings)
+            for identifier, settings in self.settings.items():
+                if parameters.get(identifier):
+                    settings.set_panel_value(parameters[identifier])
 
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
@@ -141,7 +134,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             self.confirm_button.disabled = True
             self.state = self.State.INIT
-            self.set_input_parameters(DEFAULT_PARAMETERS)
+            self.set_configuration_parameters(DEFAULT_PARAMETERS)
 
     def confirm(self, _=None):
         self.configuration_parameters = self.get_configuration_parameters()
@@ -154,19 +147,19 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.set_input_parameters(DEFAULT_PARAMETERS)
+            self.set_configuration_parameters(DEFAULT_PARAMETERS)
 
     def _update_panel(self, _=None):
         """Dynamic add/remove the panel based on the selected properties."""
         # only keep basic and advanced settings
         self.tab.children = self.built_in_settings
         # add plugin specific settings
-        for name in self.workchain_settings.properties:
+        for identifier in self.workchain_settings.properties:
             if (
-                name in self.settings
-                and self.workchain_settings.properties[name].run.value
+                identifier in self.settings
+                and self.workchain_settings.properties[identifier].run.value
             ):
-                self.tab.children += (self.settings[name],)
+                self.tab.children += (self.settings[identifier],)
                 self.tab.set_title(
-                    len(self.tab.children) - 1, self.settings[name].title
+                    len(self.tab.children) - 1, self.settings[identifier].title
                 )

@@ -8,9 +8,12 @@ from aiida_quantumespresso.common.types import RelaxType
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.panel import Panel
 
 
-class WorkChainSettings(ipw.VBox):
+class WorkChainSettings(Panel):
+    identifier = "workchain"
+
     structure_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Structure</h4></div>"""
@@ -94,44 +97,40 @@ class WorkChainSettings(ipw.VBox):
             self.properties[name] = entry_point()
             self.property_children.append(self.properties[name])
         self.property_children.append(self.properties_help)
+        self.children = [
+            self.structure_title,
+            self.structure_help,
+            self.relax_type,
+            self.materials_help,
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Electronic Type:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.electronic_type,
+                ]
+            ),
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Magnetism:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.spin_type,
+                ]
+            ),
+            *self.property_children,
+            self.protocol_title,
+            ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
+            self.workchain_protocol,
+            self.protocol_help,
+        ]
         super().__init__(
-            children=[
-                self.structure_title,
-                self.structure_help,
-                self.relax_type,
-                self.materials_help,
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Electronic Type:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        self.electronic_type,
-                    ]
-                ),
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Magnetism:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        self.spin_type,
-                    ]
-                ),
-                *self.property_children,
-                self.protocol_title,
-                ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-                self.workchain_protocol,
-                self.protocol_help,
-            ],
             **kwargs,
         )
 
-    def get_setting_parameters(self):
+    def get_panel_value(self):
         # Work chain settings
         relax_type = self.relax_type.value
         electronic_type = self.electronic_type.value
@@ -162,7 +161,7 @@ class WorkChainSettings(ipw.VBox):
             "electronic_type": electronic_type,
         }
 
-    def set_setting_parameters(self, parameters):
+    def set_panel_value(self, parameters):
         """Update the settings based on the given dict."""
         for key in [
             "relax_type",

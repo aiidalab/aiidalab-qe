@@ -1,14 +1,18 @@
 from aiida.plugins import WorkflowFactory
+from aiida_quantumespresso.common.types import ElectronicType, SpinType
 
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 
 
-def get_builder(codes, structure, overrides, protocol, **kwargs):
+def get_builder(codes, structure, parameters, **kwargs):
+    """Get a builder for the PwBandsWorkChain."""
     from copy import deepcopy
 
     pw_code = codes.get("pw_code", {})
-    scf_overrides = deepcopy(overrides)
-    bands_overrides = deepcopy(overrides)
+    protocol = parameters["workchain"]["protocol"]
+    #
+    scf_overrides = deepcopy(parameters["advanced"])
+    bands_overrides = deepcopy(parameters["advanced"])
     bands_overrides.pop("kpoints_distance", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
@@ -20,6 +24,9 @@ def get_builder(codes, structure, overrides, protocol, **kwargs):
         code=pw_code,
         structure=structure,
         protocol=protocol,
+        electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
+        spin_type=SpinType(parameters["workchain"]["spin_type"]),
+        initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
         overrides=overrides,
         **kwargs,
     )

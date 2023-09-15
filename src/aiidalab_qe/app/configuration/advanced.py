@@ -12,11 +12,14 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from IPython.display import clear_output, display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.panel import Panel
 
 from .pseudos import PseudoFamilySelector, PseudoSetter
 
 
-class AdvancedSettings(ipw.VBox):
+class AdvancedSettings(Panel):
+    identifier = "advanced"
+
     title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Advanced Settings</h4></div>"""
@@ -108,25 +111,25 @@ class AdvancedSettings(ipw.VBox):
             (self.pseudo_family_selector, "value"),
             (self.pseudo_setter, "pseudo_family"),
         )
+        self.children = [
+            self.title,
+            ipw.HBox(
+                [self.description, self.override_widget],
+                layout=ipw.Layout(height="50px", justify_content="space-between"),
+            ),
+            # total charge setting widget
+            self.total_charge,
+            # magnetization setting widget
+            self.magnetization,
+            # smearing setting widget
+            self.smearing,
+            # Kpoints setting widget
+            self.kpoints_description,
+            self.kpoints_distance,
+            self.pseudo_family_selector,
+            self.pseudo_setter,
+        ]
         super().__init__(
-            children=[
-                self.title,
-                ipw.HBox(
-                    [self.description, self.override_widget],
-                    layout=ipw.Layout(height="50px", justify_content="space-between"),
-                ),
-                # total charge setting widget
-                self.total_charge,
-                # magnetization setting widget
-                self.magnetization,
-                # smearing setting widget
-                self.smearing,
-                # Kpoints setting widget
-                self.kpoints_description,
-                self.kpoints_distance,
-                self.pseudo_family_selector,
-                self.pseudo_setter,
-            ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
@@ -181,7 +184,7 @@ class AdvancedSettings(ipw.VBox):
         """
         self.value = kwargs
 
-    def get_setting_parameters(self):
+    def get_panel_value(self):
         # create the the initial_magnetic_moments as None (Default)
         parameters = {
             "initial_magnetic_moments": None,
@@ -201,9 +204,9 @@ class AdvancedSettings(ipw.VBox):
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
         if self.override.value:
-            parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.value.get(
-                "total_charge"
-            )
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "tot_charge"
+            ] = self.total_charge.value
             # there are two choose, use link or parent
             if self.spin_type == "collinear":
                 parameters[
@@ -212,27 +215,33 @@ class AdvancedSettings(ipw.VBox):
             parameters["kpoints_distance"] = self.value.get("kpoints_distance")
             if self.electronic_type == "metal":
                 # smearing type setting
-                parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = self.value.get(
+                parameters["pw"]["parameters"]["SYSTEM"][
                     "smearing"
-                )
+                ] = self.smearing.smearing_value
                 # smearing degauss setting
-                parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = self.value.get(
+                parameters["pw"]["parameters"]["SYSTEM"][
                     "degauss"
-                )
+                ] = self.smearing.degauss_value
+
         return parameters
 
-    def set_setting_parameters(self, parameters):
-        if parameters.get("pseudo_family", False):
-            self.pseudo_family_selector.value = parameters["pseudo_family"]
-        if parameters.get("kpoints_distance_override", None) is not None:
-            self.kpoints.distance.value = parameters["kpoints_distance_override"]
-            self.kpoints.override.value = True
-        if parameters.get("degauss_override", None) is not None:
-            self.smearing.degauss.value = parameters["degauss_override"]
-            self.smearing.override.value = True
-        if parameters.get("smearing_override", None) is not None:
-            self.smearing.smearing.value = parameters["smearing_override"]
-            self.smearing.override.value = True
+    def set_panel_value(self, parameters):
+        """Set the panel value from the given parameters."""
+
+        if "pseudo_family" in parameters:
+            self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
+        if parameters.get("pw") is not None:
+            self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ]
+            self.smearing.smearing_value = parameters["pw"]["parameters"]["SYSTEM"][
+                "smearing"
+            ]
+            self.total_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
+                "tot_charge", 0
+            )
+        self.magnetization._set_magnetization_values(**parameters)
 
     def reset(self):
         """Reset the widget and the traitlets"""

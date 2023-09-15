@@ -5,7 +5,7 @@ from aiida.engine import ToContext, WorkChain, if_
 from aiida.plugins import DataFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
-from aiida_quantumespresso.common.types import RelaxType
+from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
@@ -73,7 +73,7 @@ class QeAppWorkChain(WorkChain):
             spec.expose_inputs(
                 plugin_workchain,
                 namespace=name,
-                exclude=entry_point["exclude"],
+                exclude=entry_point.get("exclude"),
                 namespace_options={
                     "required": False,
                     "populate_defaults": False,
@@ -121,48 +121,48 @@ class QeAppWorkChain(WorkChain):
         pw_code,
         dos_code=None,
         projwfc_code=None,
-        protocol=None,
-        overrides=None,
-        properties=None,
-        relax_type=RelaxType.NONE,
+        parameters=None,
         clean_workdir=False,
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
-        overrides = overrides or {}
-        builder = cls.get_builder()
+        import copy
 
+        parameters = parameters or {}
+        properties = parameters["workchain"].pop("properties", [])
+        codes = {"pw_code": pw_code, "dos_code": dos_code, "projwfc_code": projwfc_code}
+        #
+        builder = cls.get_builder()
         # Set the structure.
         builder.structure = structure
-
-        # relax workchain settings
-        relax_overrides = {"base": overrides}
-
-        relax = PwRelaxWorkChain.get_builder_from_protocol(
+        # relax
+        relax_overrides = {"base": parameters["advanced"]}
+        protocol = parameters["workchain"]["protocol"]
+        relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
             code=pw_code,
             structure=structure,
             protocol=protocol,
+            relax_type=RelaxType(parameters["workchain"]["relax_type"]),
+            electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
+            spin_type=SpinType(parameters["workchain"]["spin_type"]),
+            initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
             overrides=relax_overrides,
-            relax_type=relax_type,
             **kwargs,
         )
-
         # pop the inputs that are excluded from the expose_inputs
-        relax.pop("structure", None)
-        relax.pop("clean_workdir", None)
-        relax.pop("base_final_scf", None)  # never run a final scf
-
-        builder.relax = relax
+        relax_builder.pop("structure", None)
+        relax_builder.pop("clean_workdir", None)
+        relax_builder.pop("base_final_scf", None)  # never run a final scf
+        builder.relax = relax_builder
 
         if properties is None:
             properties = []
         builder.properties = orm.List(list=properties)
         # add plugin workchain
-        codes = {"pw_code": pw_code, "dos_code": dos_code, "projwfc_code": projwfc_code}
         for name, entry_point in plugin_entries.items():
             if name in properties:
                 plugin_builder = entry_point["get_builder"](
-                    codes, structure, overrides, protocol, **kwargs
+                    codes, structure, copy.deepcopy(parameters), **kwargs
                 )
                 setattr(builder, name, plugin_builder)
             else:
