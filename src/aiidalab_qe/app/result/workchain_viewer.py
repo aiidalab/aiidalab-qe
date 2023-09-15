@@ -66,13 +66,13 @@ class WorkChainViewer(ipw.VBox):
         # add plugin specific settings
         entries = get_entry_items("aiidalab_qe.properties", "result")
         self.results = {}
-        for name, entry_point in entries.items():
+        for identifier, entry_point in entries.items():
             # only show the result tab if the property is selected to be run
             # this will be repalced by the ui_parameters in the future PR
-            if not builder_parameters.get(f"run_{name}", False):
+            if identifier not in builder_parameters["properties"]:
                 continue
             result = entry_point(self.node)
-            self.results[name] = result
+            self.results[identifier] = result
             self.result_tabs.children += (result,)
             self.result_tabs.set_title(len(self.result_tabs.children) - 1, result.title)
 
