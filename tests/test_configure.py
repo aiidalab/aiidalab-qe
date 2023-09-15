@@ -23,10 +23,6 @@ def test_get_configuration_parameters():
     assert parameters == parameters_ref
 
 
-# I skip the test for set_configuration_parameters because it
-# needs changes code in magnetization
-
-
 def test_panel():
     """Dynamic add/remove the panel based on the workchain settings."""
     from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
