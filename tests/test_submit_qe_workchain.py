@@ -1,8 +1,9 @@
-def test_reload_selected_code(submit_step_widget_generator):
+def test_reload_selected_code(submit_app_generator):
     """Test set_selected_codes method."""
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
-    submit_step = submit_step_widget_generator()
+    app = submit_app_generator()
+    submit_step = app.submit_step
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()
@@ -20,7 +21,7 @@ def test_reload_selected_code(submit_step_widget_generator):
 
 def test_create_builder_default(
     data_regression,
-    submit_step_widget_generator,
+    submit_app_generator,
 ):
     """ "Test the creation of the workchain builder.
 
@@ -30,7 +31,8 @@ def test_create_builder_default(
 
     from aiidalab_qe.app.result.report import _generate_report_html
 
-    submit_step = submit_step_widget_generator(properties=["bands", "pdos"])
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()
@@ -55,7 +57,7 @@ def test_create_builder_default(
 
 
 def test_create_builder_insulator(
-    submit_step_widget_generator,
+    submit_app_generator,
 ):
     """ "Test the creation of the workchain builder.
 
@@ -65,9 +67,10 @@ def test_create_builder_insulator(
 
     from aiidalab_qe.app.result.report import _generate_report_html
 
-    submit_step = submit_step_widget_generator(
+    app = submit_app_generator(
         electronic_type="insulator", properties=["bands", "pdos"]
     )
+    submit_step = app.submit_step
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()
@@ -92,7 +95,7 @@ def test_create_builder_insulator(
 
 
 def test_create_builder_advanced_settings(
-    submit_step_widget_generator,
+    submit_app_generator,
 ):
     """Test the creation of the workchain builder with advanced settings
 
@@ -103,13 +106,14 @@ def test_create_builder_advanced_settings(
     """
     from aiidalab_qe.app.result.report import _generate_report_html
 
-    submit_step = submit_step_widget_generator(
+    app = submit_app_generator(
         electronic_type="metal",
         spin_type="collinear",
         tot_charge=1.0,
         initial_magnetic_moments=0.1,
         properties=["bands", "pdos"],
     )
+    submit_step = app.submit_step
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()

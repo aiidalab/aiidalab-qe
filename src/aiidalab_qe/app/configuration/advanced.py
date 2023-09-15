@@ -204,9 +204,9 @@ class AdvancedSettings(Panel):
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
         if self.override.value:
-            parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.value.get(
-                "total_charge"
-            )
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "tot_charge"
+            ] = self.total_charge.value
             # there are two choose, use link or parent
             if self.spin_type == "collinear":
                 parameters[
@@ -215,27 +215,31 @@ class AdvancedSettings(Panel):
             parameters["kpoints_distance"] = self.value.get("kpoints_distance")
             if self.electronic_type == "metal":
                 # smearing type setting
-                parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = self.value.get(
+                parameters["pw"]["parameters"]["SYSTEM"][
                     "smearing"
-                )
+                ] = self.smearing.smearing_value
                 # smearing degauss setting
-                parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = self.value.get(
+                parameters["pw"]["parameters"]["SYSTEM"][
                     "degauss"
-                )
+                ] = self.smearing.degauss_value
+
         return parameters
 
     def set_panel_value(self, parameters):
-        if parameters.get("pseudo_family", False):
-            self.pseudo_family_selector.value = parameters["pseudo_family"]
-        if parameters.get("kpoints_distance_override", None) is not None:
-            self.kpoints.distance.value = parameters["kpoints_distance_override"]
-            self.kpoints.override.value = True
-        if parameters.get("degauss_override", None) is not None:
-            self.smearing.degauss.value = parameters["degauss_override"]
-            self.smearing.override.value = True
-        if parameters.get("smearing_override", None) is not None:
-            self.smearing.smearing.value = parameters["smearing_override"]
-            self.smearing.override.value = True
+        if "pseudo_family" in parameters:
+            self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
+        if parameters.get("pw") is not None:
+            self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ]
+            self.smearing.smearing_value = parameters["pw"]["parameters"]["SYSTEM"][
+                "smearing"
+            ]
+            self.total_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
+                "tot_charge", 0
+            )
+        self.magnetization._set_magnetization_values(**parameters)
 
     def reset(self):
         """Reset the widget and the traitlets"""
@@ -339,6 +343,8 @@ class MagnetizationSettings(ipw.VBox):
     def get_magnetization(self):
         """Method to generate the dictionary with the initial magnetic moments"""
         magnetization = {}
+        if self.kinds is None:
+            return magnetization
         for i in range(len(self.kinds.children)):
             magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
         return magnetization
@@ -347,7 +353,7 @@ class MagnetizationSettings(ipw.VBox):
         """Update used for conftest setting all magnetization to a value"""
         # self.override.value = True
         with self.hold_trait_notifications():
-            if "initial_magnetic_moments" in kwargs:
+            if "initial_magnetic_moments" in kwargs and self.kinds is not None:
                 for i in range(len(self.kinds.children)):
                     self.kinds.children[i].value = kwargs["initial_magnetic_moments"]
 

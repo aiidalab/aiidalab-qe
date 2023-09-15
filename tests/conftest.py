@@ -208,7 +208,7 @@ def app(pw_code, dos_code, projwfc_code, sssp):
 
 @pytest.fixture()
 @pytest.mark.usefixtures("sssp")
-def submit_step_widget_generator(
+def submit_app_generator(
     app,
     pw_code,
     dos_code,
@@ -220,7 +220,7 @@ def submit_step_widget_generator(
 ):
     """Return a function that generates a submit step widget."""
 
-    def _submit_step_widget_generator(
+    def _submit_app_generator(
         relax_type="positions_cell",
         spin_type="none",
         electronic_type="metal",
@@ -266,6 +266,6 @@ def submit_step_widget_generator(
         submit_step.dos_code.value = dos_code.uuid
         submit_step.projwfc_code.value = projwfc_code.uuid
 
-        return submit_step
+        return app
 
-    return _submit_step_widget_generator
+    return _submit_app_generator
