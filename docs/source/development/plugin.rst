@@ -92,7 +92,10 @@ Here is the simplest plugin to print the formula of the input structure:
         return builder
 
 
-    workchain_and_builder = [HelloWorldWorkChain, get_builder]
+    workchain_and_builder = {
+        "workchain": HelloWorldWorkChain,
+        "get_builder": get_builder,
+        }
 
 **Entry point**, here is the entry point for this plugin. One needs to add it to `entry_points` inside the setup file.
 
