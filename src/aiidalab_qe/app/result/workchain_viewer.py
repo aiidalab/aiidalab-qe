@@ -73,6 +73,7 @@ class WorkChainViewer(ipw.VBox):
                 continue
             result = entry_point(self.node)
             self.results[identifier] = result
+            self.results[identifier].identifier = identifier
             self.result_tabs.children += (result,)
             self.result_tabs.set_title(len(self.result_tabs.children) - 1, result.title)
 
