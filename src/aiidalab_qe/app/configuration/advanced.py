@@ -226,6 +226,8 @@ class AdvancedSettings(Panel):
         return parameters
 
     def set_panel_value(self, parameters):
+        """Set the panel value from the given parameters."""
+
         if "pseudo_family" in parameters:
             self.pseudo_family_selector.value = parameters.get("pseudo_family")
         self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
@@ -343,8 +345,6 @@ class MagnetizationSettings(ipw.VBox):
     def get_magnetization(self):
         """Method to generate the dictionary with the initial magnetic moments"""
         magnetization = {}
-        if self.kinds is None:
-            return magnetization
         for i in range(len(self.kinds.children)):
             magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
         return magnetization
@@ -353,7 +353,7 @@ class MagnetizationSettings(ipw.VBox):
         """Update used for conftest setting all magnetization to a value"""
         # self.override.value = True
         with self.hold_trait_notifications():
-            if "initial_magnetic_moments" in kwargs and self.kinds is not None:
+            if "initial_magnetic_moments" in kwargs:
                 for i in range(len(self.kinds.children)):
                     self.kinds.children[i].value = kwargs["initial_magnetic_moments"]
 
