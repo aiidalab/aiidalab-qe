@@ -4,13 +4,23 @@ PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 
 
 def get_builder(codes, structure, overrides, protocol, **kwargs):
+    from copy import deepcopy
+
     pw_code = codes.get("pw_code", {})
-    bands_overrides = overrides.get("bands", {})
+    scf_overrides = deepcopy(overrides)
+    bands_overrides = deepcopy(overrides)
+    bands_overrides.pop("kpoints_distance", None)
+    bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
+    bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
+    overrides = {
+        "scf": scf_overrides,
+        "bands": bands_overrides,
+    }
     bands = PwBandsWorkChain.get_builder_from_protocol(
         code=pw_code,
         structure=structure,
         protocol=protocol,
-        overrides=bands_overrides,
+        overrides=overrides,
         **kwargs,
     )
     # pop the inputs that are excluded from the expose_inputs

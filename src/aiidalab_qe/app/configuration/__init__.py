@@ -37,6 +37,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.advanced_settings, "protocol"),
         )
         ipw.dlink(
+            (self.workchain_settings.spin_type, "value"),
+            (self.advanced_settings, "spin_type"),
+        )
+        ipw.dlink(
+            (self.workchain_settings.electronic_type, "value"),
+            (self.advanced_settings, "electronic_type"),
+        )
+        ipw.dlink(
             (self, "input_structure"),
             (self.advanced_settings, "input_structure"),
         )
@@ -99,73 +107,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def get_configuration_parameters(self):
         """Get the parameters of the configuration step."""
-        # create the the initial_magnetic_moments as None (Default)
-        initial_magnetic_moments = None
-        # create the override parameters for sub PwBaseWorkChain
-        pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
-        for key in ["base", "scf", "nscf", "band"]:
-            pw_overrides[key][
-                "pseudo_family"
-            ] = self.advanced_settings.pseudo_family_selector.value
 
-            if self.advanced_settings.pseudo_setter.pseudos:
-                pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
-                pw_overrides[key]["pw"][
-                    "pseudos"
-                ] = self.advanced_settings.pseudo_setter.pseudos
-
-                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                    "ecutwfc"
-                ] = self.advanced_settings.pseudo_setter.ecutwfc
-                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                    "ecutrho"
-                ] = self.advanced_settings.pseudo_setter.ecutrho
-
-            if self.advanced_settings.override.value:
-                pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
-                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                    "tot_charge"
-                ] = self.advanced_settings.value.get("total_charge")
-                if self.workchain_settings.spin_type.value == "collinear":
-                    initial_magnetic_moments = (
-                        self.advanced_settings.magnetization.get_magnetization()
-                    )
-
-                if key in ["base", "scf"]:
-                    pw_overrides[key][
-                        "kpoints_distance"
-                    ] = self.advanced_settings.value.get("kpoints_distance")
-
-                    if self.workchain_settings.electronic_type.value == "metal":
-                        # smearing type setting
-                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                            "smearing"
-                        ] = self.advanced_settings.value.get("smearing")
-
-                        # smearing degauss setting
-                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                            "degauss"
-                        ] = self.advanced_settings.value.get("degauss")
-
-        overrides = {
-            "relax": {
-                "base": pw_overrides["base"],
-            },
-            "bands": {
-                "scf": pw_overrides["scf"],
-                "bands": pw_overrides["band"],
-            },
-            "pdos": {
-                "scf": pw_overrides["scf"],
-                "nscf": pw_overrides["nscf"],
-            },
-        }
         # Work chain settings
         workchain_settings = self.workchain_settings.get_setting_parameters()
+        # Work chain settings
+        advanced_settings = self.advanced_settings.get_setting_parameters()
         return {
             "workchain_settings": workchain_settings,
-            "overrides": overrides,
-            "initial_magnetic_moments": initial_magnetic_moments,
+            "advanced_settings": advanced_settings,
         }
 
     def set_input_parameters(self, parameters):
@@ -176,25 +125,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             workchain_settings = parameters.get("workchain_settings", {})
             self.workchain_settings.set_setting_parameters(workchain_settings)
             # Advanced settings
-            if parameters.get("pseudo_family", False):
-                self.advanced_settings.pseudo_family_selector.value = parameters[
-                    "pseudo_family"
-                ]
-            if parameters.get("kpoints_distance_override", None) is not None:
-                self.advanced_settings.kpoints.distance.value = parameters[
-                    "kpoints_distance_override"
-                ]
-                self.advanced_settings.kpoints.override.value = True
-            if parameters.get("degauss_override", None) is not None:
-                self.advanced_settings.smearing.degauss.value = parameters[
-                    "degauss_override"
-                ]
-                self.advanced_settings.smearing.override.value = True
-            if parameters.get("smearing_override", None) is not None:
-                self.advanced_settings.smearing.smearing.value = parameters[
-                    "smearing_override"
-                ]
-                self.advanced_settings.smearing.override.value = True
+            advanced_settings = parameters.get("advanced_settings", {})
+            self.advanced_settings.set_setting_parameters(advanced_settings)
 
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
