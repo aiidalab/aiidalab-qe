@@ -3,7 +3,6 @@
 Authors: AiiDAlab team
 """
 import os
-import pathlib
 import warnings
 
 import aiida
@@ -28,8 +27,7 @@ structures are supported.
 </div>"""
 
 # Navigate to the aiidalab_qe root directory
-file_path = pathlib.Path(__file__)
-file_path = os.path.abspath(os.path.join(file_path, "..", "..", "..", "..", "../"))
+file_path = os.path.abspath(os.path.join(__file__, "../../../../../"))
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
 Examples = [
