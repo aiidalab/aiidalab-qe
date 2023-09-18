@@ -560,7 +560,6 @@ def generate_bands_workchain(
         bands_node = wkchain.node
         bands_node.set_exit_status(0)
         bands_node.set_process_state(engine.ProcessState.FINISHED)
-        # set
         return wkchain
 
     return _generate_bands_workchain
@@ -588,14 +587,13 @@ def generate_qeapp_workchain(
         s2 = app.configure_step
         s2.workchain_settings.relax_type.value = relax_type
         # In order to parepare a complete inputs, I set all the properties to true
-        # I wil override this later
+        # this can be overrided later
         s2.workchain_settings.properties["bands"].run.value = run_bands
         s2.workchain_settings.properties["pdos"].run.value = run_pdos
         s2.workchain_settings.workchain_protocol.value = "fast"
         s2.workchain_settings.spin_type.value = spin_type
         s2.confirm()
         # step 3 setup code and resources
-        #
         s3 = app.submit_step
         s3.resources_config.num_cpus.value = 4
         builder = s3._create_builder()
