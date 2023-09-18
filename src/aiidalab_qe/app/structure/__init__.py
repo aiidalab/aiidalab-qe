@@ -3,6 +3,7 @@
 Authors: AiiDAlab team
 """
 import os
+import pathlib
 import warnings
 
 import aiida
@@ -11,8 +12,6 @@ import traitlets
 from aiidalab_widgets_base import WizardAppWidgetStep
 from pymatgen.analysis.dimensionality import get_dimensionality_larsen
 from pymatgen.analysis.local_env import CrystalNN
-
-import aiidalab_qe
 
 NON_3D_ERROR_MESSAGE = """<div class="alert alert-danger">
 <p><strong><i class="fa fa-exclamation-circle" aria-hidden="true"></i>
@@ -29,7 +28,8 @@ structures are supported.
 </div>"""
 
 # Navigate to the aiidalab_qe root directory
-file_path = os.path.abspath(os.path.join(aiidalab_qe.__file__, "..", "..", "../"))
+file_path = pathlib.Path(__file__)
+file_path = os.path.abspath(os.path.join(file_path, "..", "..", "..", "..", "../"))
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
 Examples = [
