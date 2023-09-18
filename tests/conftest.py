@@ -240,23 +240,17 @@ def generate_upf_data():
 @pytest.fixture
 def pw_code(aiida_local_code_factory):
     """Return a `Code` configured for the pw.x executable."""
-    from aiida.common import exceptions
-    from aiida.orm import load_code
 
-    try:
-        return load_code(label="pw-7.2")
-    except exceptions.NotExistent:
-        print("create pw code")
-        return aiida_local_code_factory(
-            label="pw-7.2", executable="bash", entry_point="quantumespresso.pw"
-        )
+    return aiida_local_code_factory(
+        label="pw", executable="bash", entry_point="quantumespresso.pw"
+    )
 
 
 @pytest.fixture
 def dos_code(aiida_local_code_factory):
     """Return a `Code` configured for the dos.x executable."""
     return aiida_local_code_factory(
-        label="dos-7.2", executable="bash", entry_point="quantumespresso.dos"
+        label="dos", executable="bash", entry_point="quantumespresso.dos"
     )
 
 
@@ -264,7 +258,7 @@ def dos_code(aiida_local_code_factory):
 def projwfc_code(aiida_local_code_factory):
     """Return a `Code` configured for the projwfc.x executable."""
     return aiida_local_code_factory(
-        label="projwfc-7.2",
+        label="projwfc",
         executable="bash",
         entry_point="quantumespresso.projwfc",
     )
@@ -313,15 +307,12 @@ def smearing_settings_generator():
 
 @pytest.fixture
 def app(pw_code, dos_code, projwfc_code, sssp):
-    from aiida.orm import load_code
-
     from aiidalab_qe.app.main import App
 
     app = App(qe_auto_setup=False)
-    print("uuid", pw_code.uuid)
     app.submit_step.pw_code.value = pw_code.uuid
-    print(app.submit_step.pw_code)
-    load_code()
+    app.submit_step.dos_code.value = dos_code.uuid
+    app.submit_step.projwfc_code.value = projwfc_code.uuid
 
     yield app
 
