@@ -17,6 +17,28 @@ def fixture_localhost(aiida_localhost):
 
 
 @pytest.fixture
+def fixture_code(fixture_localhost):
+    """Return an ``InstalledCode`` instance configured to run calculations of given entry point on localhost."""
+
+    def _fixture_code(entry_point_name):
+        from aiida.orm import InstalledCode, load_code
+
+        label = f"test.{entry_point_name}"
+
+        try:
+            return load_code(label=label)
+        except Exception:
+            return InstalledCode(
+                label=label,
+                computer=fixture_localhost,
+                filepath_executable="/bin/true",
+                default_calc_job_plugin=entry_point_name,
+            )
+
+    return _fixture_code
+
+
+@pytest.fixture
 def generate_structure_data():
     """generate a `StructureData` object."""
 
@@ -49,6 +71,91 @@ def generate_structure_data():
         return structure
 
     return _generate_structure_data
+
+
+@pytest.fixture
+def generate_xy_data():
+    """Return an ``XyData`` instance."""
+
+    def _generate_xy_data(xvals=None, yvals=None, xlabel=None, ylabel=None):
+        """Return an ``XyData`` node."""
+        from aiida.orm import XyData
+
+        xvals = xvals  # [1, 2, 3]
+        yvals = yvals  # [10, 20, 30]
+        xlabel = xlabel  # "X"
+        ylabel = ylabel  # ["dos"]
+        xunits = "n/a"
+        yunits = ["n/a"] * len(ylabel)
+
+        xy_node = XyData()
+        xy_node.set_x(xvals, xlabel, xunits)
+        xy_node.set_y(yvals, ylabel, yunits)
+        xy_node.store()
+        return xy_node
+
+    return _generate_xy_data
+
+
+@pytest.fixture
+def generate_bands_data():
+    """Return a `BandsData` node."""
+
+    def _generate_bands_data():
+        """Return a `BandsData` instance with some basic `kpoints` and `bands` arrays."""
+        import numpy as np
+        from aiida.plugins import DataFactory
+
+        kpoints = np.array([[0.0, 0.0, 0.0]])
+        bands = np.array([[-5.64024889]])
+        BandsData = DataFactory("core.array.bands")
+        bands_data = BandsData()
+        bands_data.set_kpoints(kpoints)
+        bands_data.set_bands(bands, units="eV")
+        bands_data.store()
+
+        return bands_data
+
+    return _generate_bands_data
+
+
+@pytest.fixture
+def generate_projection_data(generate_bands_data):
+    """Return an ``ProjectionData`` instance."""
+
+    def _generate_projection_data():
+        """Return an ``ProjectionData`` node."""
+        import numpy as np
+        from aiida.orm import ProjectionData
+        from aiida.plugins import OrbitalFactory
+
+        OrbitalCls = OrbitalFactory("core.realhydrogen")
+        state_dict = {
+            "kind_name": "C",
+            "angular_momentum": 0,
+            "magnetic_number": 0,
+            "radial_nodes": 1,
+            "position": [0.0, 0.0, 0.0],
+        }
+        orbitals = [OrbitalCls(**state_dict)]
+        # projections = np.array([[1]])
+        energy_arrays = np.array([1])
+        pdos_arrays = np.array([1])
+
+        projection_data = ProjectionData()
+        bands_data = generate_bands_data()
+        projection_data.set_reference_bandsdata(bands_data)
+        projection_data.set_projectiondata(
+            orbitals,
+            # list_of_projections=projections,
+            list_of_energy=energy_arrays,
+            list_of_pdos=pdos_arrays,
+            bands_check=False,
+        )
+        projection_data.store()
+        return projection_data
+
+    return _generate_projection_data
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -134,7 +241,7 @@ def generate_upf_data():
 def pw_code(aiida_local_code_factory):
     """Return a `Code` configured for the pw.x executable."""
     return aiida_local_code_factory(
-        label="pw@localhost", executable="bash", entry_point="quantumespresso.pw"
+        label="pw-7.2", executable="bash", entry_point="quantumespresso.pw"
     )
 
 
@@ -142,7 +249,7 @@ def pw_code(aiida_local_code_factory):
 def dos_code(aiida_local_code_factory):
     """Return a `Code` configured for the dos.x executable."""
     return aiida_local_code_factory(
-        label="dos@localhost", executable="bash", entry_point="quantumespresso.dos"
+        label="dos-7.2", executable="bash", entry_point="quantumespresso.dos"
     )
 
 
@@ -150,7 +257,7 @@ def dos_code(aiida_local_code_factory):
 def projwfc_code(aiida_local_code_factory):
     """Return a `Code` configured for the projwfc.x executable."""
     return aiida_local_code_factory(
-        label="projwfc@localhost",
+        label="projwfc-7.2",
         executable="bash",
         entry_point="quantumespresso.projwfc",
     )
@@ -210,9 +317,6 @@ def app(pw_code, dos_code, projwfc_code, sssp):
 @pytest.mark.usefixtures("sssp")
 def submit_app_generator(
     app,
-    pw_code,
-    dos_code,
-    projwfc_code,
     generate_structure_data,
     workchain_settings_generator,
     smearing_settings_generator,
@@ -262,10 +366,259 @@ def submit_app_generator(
         submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
 
-        submit_step.pw_code.value = pw_code.uuid
-        submit_step.dos_code.value = dos_code.uuid
-        submit_step.projwfc_code.value = projwfc_code.uuid
-
         return app
 
     return _submit_app_generator
+
+
+@pytest.fixture
+def app_to_submit(app):
+    # Step 1: select structure from example
+    step1 = app.steps.steps[0][1]
+    structure = step1.manager.children[0].children[3]
+    structure.children[0].value = structure.children[0].options[1][1]
+    step1.confirm()
+    # Step 2: configure calculation
+    step2 = app.steps.steps[1][1]
+    step2.workchain_settings.properties["bands"].run.value = True
+    step2.workchain_settings.properties["pdos"].run.value = True
+    step2.confirm()
+    yield app
+
+
+@pytest.fixture
+def generate_workchain():
+    """Generate an instance of a `WorkChain`."""
+
+    def _generate_workchain(process_class, inputs):
+        """Generate an instance of a `WorkChain` with the given entry point and inputs.
+
+        :param entry_point: entry point name of the work chain subclass.
+        :param inputs: inputs to be passed to process construction.
+        :return: a `WorkChain` instance.
+        """
+        from aiida.engine.utils import instantiate_process
+        from aiida.manage.manager import get_manager
+
+        runner = get_manager().get_runner()
+        process = instantiate_process(runner, process_class, **inputs)
+
+        return process
+
+    return _generate_workchain
+
+
+@pytest.fixture
+def generate_pdos_workchain(
+    generate_structure_data,
+    fixture_localhost,
+    fixture_code,
+    generate_xy_data,
+    generate_projection_data,
+    generate_workchain,
+):
+    """Generate an instance of a `XpsWorkChain`."""
+
+    def _generate_pdos_workchain(spin_type="none"):
+        import numpy as np
+        from aiida import engine
+        from aiida.orm import Dict, FolderData, RemoteData
+        from aiida_quantumespresso.workflows.pdos import PdosWorkChain
+
+        inputs = {
+            "pw_code": fixture_code("quantumespresso.pw"),
+            "dos_code": fixture_code("quantumespresso.dos"),
+            "projwfc_code": fixture_code("quantumespresso.projwfc"),
+            "structure": generate_structure_data(),
+        }
+        builder = PdosWorkChain.get_builder_from_protocol(**inputs)
+        inputs = builder._inputs()
+        wkchain = generate_workchain(PdosWorkChain, inputs)
+        wkchain.setup()
+        # wkchain.run_pdos()
+        remote = RemoteData(remote_path="/tmp/aiida_run")
+        remote.computer = fixture_localhost
+        remote.store()
+        retrieved = FolderData(tree="/tmp/aiida_run")
+        retrieved.store()
+        output_parameters = Dict(dict={"fermi_energy": 2.0})
+        output_parameters.store()
+        proj = generate_projection_data()
+        proj.store()
+        if spin_type == "none":
+            xy = generate_xy_data(
+                np.array([1, 2, 3]), [np.array([1, 2, 3])], "X", ["dos"]
+            )
+            xy.store()
+            wkchain.out(
+                "dos",
+                {
+                    "output_dos": xy,
+                    "output_parameters": output_parameters,
+                    "remote_folder": remote,
+                    "retrieved": retrieved,
+                },
+            )
+            wkchain.out(
+                "projwfc",
+                {
+                    "Dos": xy,
+                    "projections": proj,
+                    "output_parameters": output_parameters,
+                    "remote_folder": remote,
+                    "retrieved": retrieved,
+                },
+            )
+        else:
+            xy = generate_xy_data(
+                np.array([1, 2, 3]),
+                [np.array([1, 2, 3]), np.array([1, 2, 3])],
+                "X",
+                ["dos_spin_up", "dos_spin_down"],
+            )
+            xy.store()
+            wkchain.out(
+                "dos",
+                {
+                    "output_dos": xy,
+                    "output_parameters": output_parameters,
+                    "remote_folder": remote,
+                    "retrieved": retrieved,
+                },
+            )
+            wkchain.out(
+                "projwfc",
+                {
+                    "Dos": xy,
+                    "projections_up": proj,
+                    "projections_down": proj,
+                    "output_parameters": output_parameters,
+                    "remote_folder": remote,
+                    "retrieved": retrieved,
+                },
+            )
+        wkchain.out(
+            "nscf",
+            {
+                "output_parameters": output_parameters,
+                "remote_folder": remote,
+                "retrieved": retrieved,
+            },
+        )
+        wkchain.update_outputs()
+        pdos_node = wkchain.node
+        pdos_node.set_exit_status(0)
+        pdos_node.set_process_state(engine.ProcessState.FINISHED)
+        # set
+        return wkchain
+
+    return _generate_pdos_workchain
+
+
+@pytest.fixture
+def generate_bands_workchain(
+    generate_structure_data,
+    fixture_localhost,
+    fixture_code,
+    generate_xy_data,
+    generate_bands_data,
+    generate_workchain,
+):
+    """Generate an instance of a the WorkChain."""
+
+    def _generate_bands_workchain():
+        from copy import deepcopy
+
+        from aiida import engine
+        from aiida.orm import Dict
+        from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+
+        inputs = {
+            "code": fixture_code("quantumespresso.pw"),
+            "structure": generate_structure_data(),
+        }
+        builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)
+        inputs = builder._inputs()
+        inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
+        wkchain = generate_workchain(PwBandsWorkChain, inputs)
+        wkchain.setup()
+        # run bands and return the process
+        output_parameters = Dict(dict={"fermi_energy": 2.0})
+        output_parameters.store()
+        wkchain.out("scf_parameters", output_parameters)
+        wkchain.out("band_parameters", output_parameters)
+        #
+        band_structure = generate_bands_data()
+        band_structure.store()
+        wkchain.out("band_structure", band_structure)
+        wkchain.update_outputs()
+        #
+        bands_node = wkchain.node
+        bands_node.set_exit_status(0)
+        bands_node.set_process_state(engine.ProcessState.FINISHED)
+        # set
+        return wkchain
+
+    return _generate_bands_workchain
+
+
+@pytest.fixture
+def generate_qeapp_workchain(
+    app, generate_workchain, generate_pdos_workchain, generate_bands_workchain
+):
+    """Generate an instance of the WorkChain."""
+
+    def _generate_qeapp_workchain(
+        relax_type="positions_cell", run_bands=True, run_pdos=True, spin_type="none"
+    ):
+        from copy import deepcopy
+
+        from aiidalab_qe.workflows import QeAppWorkChain
+
+        # Step 1: select structure from example
+        s1 = app.structure_step
+        structure = s1.manager.children[0].children[3]
+        structure.children[0].value = structure.children[0].options[1][1]
+        s1.confirm()
+        # step 2 configure
+        s2 = app.configure_step
+        s2.workchain_settings.relax_type.value = relax_type
+        # In order to parepare a complete inputs, I set all the properties to true
+        # I wil override this later
+        s2.workchain_settings.properties["bands"].run.value = run_bands
+        s2.workchain_settings.properties["pdos"].run.value = run_pdos
+        s2.workchain_settings.workchain_protocol.value = "fast"
+        s2.workchain_settings.spin_type.value = spin_type
+        s2.confirm()
+        # step 3 setup code and resources
+        #
+        s3 = app.submit_step
+        s3.resources_config.num_cpus.value = 4
+        builder = s3._create_builder()
+        inputs = builder._inputs()
+        inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
+        if run_bands:
+            inputs["properties"].append("bands")
+        if run_pdos:
+            inputs["properties"].append("pdos")
+        wkchain = generate_workchain(QeAppWorkChain, inputs)
+        wkchain.setup()
+        # mock output
+        if run_pdos:
+            from aiida_quantumespresso.workflows.pdos import PdosWorkChain
+
+            pdos = generate_pdos_workchain(spin_type)
+            wkchain.out_many(
+                wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
+            )
+        if run_bands:
+            from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+
+            bands = generate_bands_workchain()
+            wkchain.out_many(
+                wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
+            )
+        wkchain.update_outputs()
+        return wkchain
+
+    return _generate_qeapp_workchain

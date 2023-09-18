@@ -2,6 +2,7 @@
 
 Authors: AiiDAlab team
 """
+import os
 import warnings
 
 import aiida
@@ -10,6 +11,8 @@ import traitlets
 from aiidalab_widgets_base import WizardAppWidgetStep
 from pymatgen.analysis.dimensionality import get_dimensionality_larsen
 from pymatgen.analysis.local_env import CrystalNN
+
+import aiidalab_qe
 
 NON_3D_ERROR_MESSAGE = """<div class="alert alert-danger">
 <p><strong><i class="fa fa-exclamation-circle" aria-hidden="true"></i>
@@ -25,15 +28,17 @@ structures are supported.
 </strong></p>
 </div>"""
 
+# Navigate to the aiidalab_qe root directory
+file_path = os.path.abspath(os.path.join(aiidalab_qe.__file__, "..", "..", "../"))
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
 Examples = [
-    ("Silicon (diamond)", "miscellaneous/structures/Si.xyz"),
-    ("Silicon oxide", "miscellaneous/structures/SiO2.xyz"),
-    ("Diamond", "miscellaneous/structures/diamond.cif"),
-    ("Gallium arsenide", "miscellaneous/structures/GaAs.xyz"),
-    ("Gold (fcc)", "miscellaneous/structures/Au.cif"),
-    ("Cobalt (hcp)", "miscellaneous/structures/Co.cif"),
+    ("Silicon (diamond)", os.path.join(file_path, "miscellaneous/structures/Si.xyz")),
+    ("Silicon oxide", os.path.join(file_path, "miscellaneous/structures/SiO2.xyz")),
+    ("Diamond", os.path.join(file_path, "miscellaneous/structures/diamond.cif")),
+    ("Gallium arsenide", os.path.join(file_path, "miscellaneous/structures/GaAs.xyz")),
+    ("Gold (fcc)", os.path.join(file_path, "miscellaneous/structures/Au.cif")),
+    ("Cobalt (hcp)", os.path.join(file_path, "miscellaneous/structures/Co.cif")),
 ]
 
 
