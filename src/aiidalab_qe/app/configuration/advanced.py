@@ -203,25 +203,23 @@ class AdvancedSettings(Panel):
             parameters["pw"]["parameters"]["SYSTEM"][
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
-        if self.override.value:
+        # if override is not ticked, use the default value
+        parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
+        # there are two choose, use link or parent
+        if self.spin_type == "collinear":
+            parameters[
+                "initial_magnetic_moments"
+            ] = self.magnetization.get_magnetization()
+        parameters["kpoints_distance"] = self.value.get("kpoints_distance")
+        if self.electronic_type == "metal":
+            # smearing type setting
             parameters["pw"]["parameters"]["SYSTEM"][
-                "tot_charge"
-            ] = self.total_charge.value
-            # there are two choose, use link or parent
-            if self.spin_type == "collinear":
-                parameters[
-                    "initial_magnetic_moments"
-                ] = self.magnetization.get_magnetization()
-            parameters["kpoints_distance"] = self.value.get("kpoints_distance")
-            if self.electronic_type == "metal":
-                # smearing type setting
-                parameters["pw"]["parameters"]["SYSTEM"][
-                    "smearing"
-                ] = self.smearing.smearing_value
-                # smearing degauss setting
-                parameters["pw"]["parameters"]["SYSTEM"][
-                    "degauss"
-                ] = self.smearing.degauss_value
+                "smearing"
+            ] = self.smearing.smearing_value
+            # smearing degauss setting
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ] = self.smearing.degauss_value
 
         return parameters
 
