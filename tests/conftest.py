@@ -306,10 +306,13 @@ def smearing_settings_generator():
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code, sssp):
+def app(fixture_code, sssp):
     from aiidalab_qe.app.main import App
 
     app = App(qe_auto_setup=False)
+    pw_code = fixture_code("quantumespresso.pw")
+    dos_code = fixture_code("quantumespresso.dos")
+    projwfc_code = fixture_code("quantumespresso.projwfc")
     app.submit_step.pw_code.value = pw_code.uuid
     app.submit_step.dos_code.value = dos_code.uuid
     app.submit_step.projwfc_code.value = projwfc_code.uuid
