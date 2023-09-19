@@ -7,8 +7,6 @@ from aiida.plugins import DataFactory
 # AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
-from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
 
 XyData = DataFactory("core.array.xy")
@@ -125,6 +123,9 @@ class QeAppWorkChain(WorkChain):
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
         codes = {"pw_code": pw_code, "dos_code": dos_code, "projwfc_code": projwfc_code}
+        # update pseudos
+        for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
+            parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
         #
         builder = cls.get_builder()
         # Set the structure.

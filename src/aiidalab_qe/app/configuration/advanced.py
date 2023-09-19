@@ -203,10 +203,15 @@ class AdvancedSettings(Panel):
             parameters["pw"]["parameters"]["SYSTEM"][
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
+<<<<<<< HEAD
         #if self.override.value:
         parameters["pw"]["parameters"]["SYSTEM"][
             "tot_charge"
         ] = self.total_charge.value
+=======
+        # if override is not ticked, use the default value
+        parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
+>>>>>>> 1666c5619bccf9eda3a43d24d3a34632e1b330fc
         # there are two choose, use link or parent
         if self.spin_type == "collinear":
             parameters[
@@ -230,6 +235,13 @@ class AdvancedSettings(Panel):
 
         if "pseudo_family" in parameters:
             self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        if "pseudos" in parameters["pw"]:
+            cutoffs = {
+                "ecutwfc": parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"],
+                "ecutrho": parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"],
+            }
+            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], cutoffs)
+        #
         self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
         if parameters.get("pw") is not None:
             self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
