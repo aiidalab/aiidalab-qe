@@ -9,12 +9,12 @@ KpointsData = DataFactory("core.array.kpoints")
 def one_two_dim_kpoints_path(structure, kpoints_distance, two_dim_kpoints_path):
         """
         Return a KpoinsData object containing the 1D or 2D kpoints path for bandstructure calculations
-
+        The number of kpoints is calculated based on the kpoints_distance
         """
         kpoints = KpointsData()
         kpoints.set_cell_from_structure(structure)
         reciprocal_cell = kpoints.reciprocal_cell
-        # reciprocal cell
+        # bands_kpoints_distance based on the kpoints_distance (as in the PwBandsWorkChain protocol)
         if kpoints_distance >= 0.5:
             bands_kpoints_distance = 0.1
         elif kpoints_distance > 0.15 and kpoints_distance < 0.5:
@@ -189,7 +189,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     
     if structure.pbc != (True, True, True):
         kpoints_distance = parameters["advanced"]["kpoints_distance"]
-        two_dim_kpoints_path = "hexagonal"
+        two_dim_kpoints_path = parameters["bands"]["two_dim_kpoints_path"]
         kpoints = one_two_dim_kpoints_path(
             structure, kpoints_distance, two_dim_kpoints_path
         )
