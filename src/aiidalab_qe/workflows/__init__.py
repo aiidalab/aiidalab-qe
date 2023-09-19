@@ -118,9 +118,6 @@ class QeAppWorkChain(WorkChain):
     def get_builder_from_protocol(
         cls,
         structure,
-        pw_code,
-        dos_code=None,
-        projwfc_code=None,
         parameters=None,
         clean_workdir=False,
         **kwargs,
@@ -130,7 +127,8 @@ class QeAppWorkChain(WorkChain):
 
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
-        codes = {"pw_code": pw_code, "dos_code": dos_code, "projwfc_code": projwfc_code}
+        codes = parameters.pop("codes", {})
+        codes = {key: orm.load_node(value) for key, value in codes.items()}
         #
         builder = cls.get_builder()
         # Set the structure.
@@ -139,7 +137,7 @@ class QeAppWorkChain(WorkChain):
         relax_overrides = {"base": parameters["advanced"]}
         protocol = parameters["workchain"]["protocol"]
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
-            code=pw_code,
+            code=codes.get("pw_code"),
             structure=structure,
             protocol=protocol,
             relax_type=RelaxType(parameters["workchain"]["relax_type"]),
