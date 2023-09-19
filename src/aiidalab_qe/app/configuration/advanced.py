@@ -275,6 +275,7 @@ class AdvancedSettings(Panel):
             else:
                 self.mesh_grid.value = "Please select a number higher than 0.0"
 
+    # Taken from QE-pluggin - Modified to return a list and to not use Float or Bool from aiida-core
     def create_kpoints_from_distance(self, structure, distance, force_parity):
         """Generate a uniformly spaced kpoint mesh for a given structure.
 
