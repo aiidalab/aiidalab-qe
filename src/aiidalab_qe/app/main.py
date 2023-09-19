@@ -42,7 +42,7 @@ class App(ipw.VBox):
             editors=[
                 BasicCellEditor(title="Edit cell"),
                 BasicStructureEditor(title="Edit structure"),
-                AddingTagsEditor(title="Edit tags"),
+                AddingTagsEditor(title="Edit StructureData"),
             ],
             node_class="StructureData",
             storable=False,

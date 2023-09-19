@@ -458,6 +458,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "properties": input_parameters["workchain"]["properties"],
         }
 
+        #Periodicity
+        periodicity_options = {
+            (True, True, True): "xyz",
+            (True, True, False): "xy",
+            (True, False, False): "x",
+        }
+
+        periodicity = periodicity_options[self.input_structure.pbc]
+        extra_report_parameters.update({"periodicity": periodicity})
+
         # update pseudo family information to extra_report_parameters
         pseudo_family = input_parameters["advanced"]["pseudo_family"]
         pseudo_family = PROTOCOL_PSEUDO_MAP[input_parameters["workchain"]["protocol"]]

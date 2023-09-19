@@ -61,12 +61,6 @@ class QeAppWorkChain(WorkChain):
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PwRelaxWorkChain`, if not specified at all, the relaxation step is skipped.'})
-        spec.expose_inputs(PdosWorkChain, namespace='pdos',
-                           exclude=('clean_workdir', 'structure'),
-                           namespace_options={'required': False, 'populate_defaults': False,
-                                              'help': 'Inputs for the `PdosWorkChain`.'})
-        spec.expose_outputs(PwBandsWorkChain, namespace='relax',
-                            namespace_options={"required": False})
         i = 0
         for name, entry_point in plugin_entries.items():
             plugin_workchain = entry_point["workchain"]

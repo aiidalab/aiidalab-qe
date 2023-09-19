@@ -15,7 +15,7 @@ import ase
 import ipywidgets as ipw
 import numpy as np
 import traitlets
-from aiida.orm import CalcJobNode, load_node
+from aiida.orm import CalcJobNode, load_node, Data as orm_Data
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -430,6 +430,7 @@ class AddingTagsEditor(ipw.VBox):
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
     selection = traitlets.List(traitlets.Int, allow_none=True)
     input_selection = traitlets.List(traitlets.Int, allow_none=True)
+    structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
     def __init__(self, title=""):
         self.title = title
@@ -458,6 +459,21 @@ class AddingTagsEditor(ipw.VBox):
             button_style="warning",
             layout={"width": "initial"},
         )
+        self.periodicity = ipw.RadioButtons(
+            options=[
+                "xyz",
+                "xy",
+                "x",
+            ],
+            value="xyz",
+            description="Periodicty: ",
+            layout={"width": "initial"},
+        )
+        self.select_periodicity = ipw.Button(
+            description="Select",
+            button_style="primary",
+            layout={"width": "100px"},
+        )
         self.tag_display = ipw.Output()
         self.add_tags.on_click(self._add_tags)
         self.reset_tags.on_click(self._reset_tags)
@@ -466,6 +482,7 @@ class AddingTagsEditor(ipw.VBox):
         self.add_tags.on_click(self._display_table)
         self.reset_tags.on_click(self._display_table)
         self.reset_all_tags.on_click(self._display_table)
+        self.select_periodicity.on_click(self._select_periodicity)
         super().__init__(
             children=[
                 ipw.HTML(
@@ -481,6 +498,11 @@ class AddingTagsEditor(ipw.VBox):
                 self.tag_display,
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
+                ipw.HTML(
+                    "<b>Define periodicity</b>",
+                ),
+                self.periodicity,
+                self.select_periodicity,
             ]
         )
 
@@ -581,3 +603,15 @@ class AddingTagsEditor(ipw.VBox):
         self.structure = deepcopy(new_structure)
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
+    
+    def _select_periodicity(self, _=None):
+        """Select periodicity."""
+        periodicity_options = {
+            "xyz": (True, True, True),
+            "xy": (True, True, False),
+            "x": (True, False, False),
+        }
+        new_structure = deepcopy(self.structure)
+        new_structure.set_pbc(periodicity_options[self.periodicity.value])
+        self.structure = None
+        self.structure = deepcopy(new_structure)

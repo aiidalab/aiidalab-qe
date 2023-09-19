@@ -36,12 +36,26 @@ class Setting(Panel):
             disabled=False,
             style={"description_width": "initial"},
         )
+        self.two_dim_kpoints_path = ipw.Dropdown(
+            description="Select path:",
+            options=[
+                ("Hexagonal", "hexagonal"),
+                ("Square", "square"),
+                ("Rectangular", "rectangular"),
+                ("Centered Rectangular", "centered_rectangular"),
+                ("Oblique", "oblique"),
+            ],
+            value="hexagonal",
+        )
+        self.two_dim_kpoints_path_out = ipw.Output()
 
         self.children = [
             self.settings_title,
             self.settings_help,
             self.path,
             self.npoint,
+            self.two_dim_kpoints_path#_out,
+            #self.two_dim_kpoints_path_out,
         ]
         super().__init__(**kwargs)
 
