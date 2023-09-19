@@ -131,6 +131,9 @@ class QeAppWorkChain(WorkChain):
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
         codes = {"pw_code": pw_code, "dos_code": dos_code, "projwfc_code": projwfc_code}
+        # update pseudos
+        for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
+            parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
         #
         builder = cls.get_builder()
         # Set the structure.
