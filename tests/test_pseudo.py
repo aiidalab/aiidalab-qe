@@ -54,6 +54,13 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
     )
 
     assert orm.load_node(w.pseudos["O"]).filename == "O_new.upf"
+    #
+    pseudos = w.pseudos
+    cutoffs = {"cutoff_wfc": w.ecutwfc, "cutoff_rho": w.ecutrho}
+    w._reset()
+    assert orm.load_node(w.pseudos["O"]).filename != "O_new.upf"
+    w.set_pseudos(pseudos, cutoffs)
+    assert orm.load_node(w.pseudos["O"]).filename == "O_new.upf"
 
 
 def test_pseudo_upload_widget(generate_upf_data):

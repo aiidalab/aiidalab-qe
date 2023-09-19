@@ -230,6 +230,13 @@ class AdvancedSettings(Panel):
 
         if "pseudo_family" in parameters:
             self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        if "pseudos" in parameters["pw"]:
+            cutoffs = {
+                "ecutwfc": parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"],
+                "ecutrho": parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"],
+            }
+            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], cutoffs)
+        #
         self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
         if parameters.get("pw") is not None:
             self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
