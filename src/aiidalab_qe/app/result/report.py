@@ -32,13 +32,14 @@ def _generate_report_dict(builder_parameters: dict):
     for reporting the inputs for the `QeAppWorkChain` with proper name corresponding
     to the template.
     """
+
     # Helper function for bands_kpoints_distance for one and two dimensional
     def bands_kpoints_distance(bands_computed, protocol):
         if bands_computed:
             return PROTOCOL_BANDS_KPOINTS_MAP[protocol]
         else:
             return None
-        
+
     # Workflow logic
     yield "relax_method", builder_parameters.get("relax_type")
     yield "relaxed", builder_parameters.get("run_relax")
@@ -70,7 +71,10 @@ def _generate_report_dict(builder_parameters: dict):
     yield "energy_cutoff_rho", builder_parameters.get("energy_cutoff_rho")
     yield "scf_kpoints_distance", builder_parameters.get("scf_kpoints_distance")
     yield "bands_kpoints_distance", builder_parameters.get(
-        "bands_kpoints_distance", bands_kpoints_distance(builder_parameters.get("run_bands"), builder_parameters.get("protocol"))
+        "bands_kpoints_distance",
+        bands_kpoints_distance(
+            builder_parameters.get("run_bands"), builder_parameters.get("protocol")
+        ),
     )
     yield "nscf_kpoints_distance", builder_parameters.get("nscf_kpoints_distance")
 

@@ -2,12 +2,14 @@
 """Panel for Bands plugin."""
 import ipywidgets as ipw
 from aiida.orm import Int, Str
+
 from aiidalab_qe.common.panel import Panel
 
 
 class Setting(Panel):
     title = "Bands Structure Settings"
     identifier = "bands"
+
     def __init__(self, **kwargs):
         self.settings_title = ipw.HTML(
             """<div style="padding-top: 0px; padding-bottom: 0px">
@@ -52,7 +54,7 @@ class Setting(Panel):
             self.npoint,
             self.two_dim_kpoints_path,
         ]
-        super().__init__(**kwargs)        
+        super().__init__(**kwargs)
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""

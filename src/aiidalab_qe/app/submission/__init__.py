@@ -478,7 +478,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "properties": input_parameters["workchain"]["properties"],
         }
 
-        #Periodicity
+        # Periodicity
         periodicity_options = {
             (True, True, True): "xyz",
             (True, True, False): "xy",
