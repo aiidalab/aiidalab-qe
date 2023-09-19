@@ -203,15 +203,8 @@ class AdvancedSettings(Panel):
             parameters["pw"]["parameters"]["SYSTEM"][
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
-<<<<<<< HEAD
-        #if self.override.value:
-        parameters["pw"]["parameters"]["SYSTEM"][
-            "tot_charge"
-        ] = self.total_charge.value
-=======
         # if override is not ticked, use the default value
         parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
->>>>>>> 1666c5619bccf9eda3a43d24d3a34632e1b330fc
         # there are two choose, use link or parent
         if self.spin_type == "collinear":
             parameters[
