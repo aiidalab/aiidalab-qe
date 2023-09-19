@@ -389,111 +389,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self._update_state()
 
-<<<<<<< HEAD
-    def _get_qe_workchain_parameters(self) -> QeWorkChainParameters:
-        """Get the parameters of the `QeWorkChain` from widgets."""
-        # Work chain settings
-        relax_type = self.workchain_settings.relax_type.value
-        electronic_type = self.workchain_settings.electronic_type.value
-        spin_type = self.workchain_settings.spin_type.value
-
-        run_bands = self.workchain_settings.bands_run.value
-        run_pdos = self.workchain_settings.pdos_run.value
-        protocol = self.workchain_settings.workchain_protocol.value
-
-        # create the the initial_magnetic_moments as None (Default)
-        initial_magnetic_moments = None
-        # create the override parameters for sub PwBaseWorkChain
-        pw_overrides = {"base": {}, "scf": {}, "nscf": {}, "band": {}}
-        for key in ["base", "scf", "nscf", "band"]:
-            if self.pseudo_family_selector.override_protocol_pseudo_family.value:
-                pw_overrides[key]["pseudo_family"] = self.pseudo_family_selector.value
-
-            if self.pseudo_setter.pseudos:
-                pw_overrides[key].setdefault("pseudos", self.pseudo_setter.pseudos)
-
-                pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
-                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                    "ecutwfc"
-                ] = self.pseudo_setter.ecutwfc
-                pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                    "ecutrho"
-                ] = self.pseudo_setter.ecutrho
-
-            if self.advanced_settings.override.value:
-                pw_overrides[key].setdefault("pw", {"parameters": {"SYSTEM": {}}})
-                if self.advanced_settings.tot_charge.override.value:
-                    pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                        "tot_charge"
-                    ] = self.advanced_settings.tot_charge.charge.value
-                if (
-                    self.advanced_settings.magnetization.override.value
-                    and self.workchain_settings.spin_type.value == "collinear"
-                ):
-                    initial_magnetic_moments = (
-                        self.advanced_settings.magnetization.get_magnetization()
-                    )
-
-                if key in ["base", "scf"]:
-                    if self.advanced_settings.kpoints.override.value:
-                        kpoints_distance = self.advanced_settings.kpoints.distance.value
-                        pw_overrides[key]["kpoints_distance"] = kpoints_distance
-
-                        if protocol == "fast" and (kpoints_distance < 0.5):
-                            pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
-                        if protocol == "moderate" and (kpoints_distance < 0.1):
-                            pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
-                        if protocol == "precise" and (kpoints_distance < 0.05):
-                            pw_overrides["nscf"]["kpoints_distance"] = kpoints_distance
-
-                    if (
-                        self.advanced_settings.smearing.override.value
-                        and self.workchain_settings.electronic_type.value == "metal"
-                    ):
-                        # smearing type setting
-                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                            "smearing"
-                        ] = self.advanced_settings.smearing.smearing.value
-
-                        # smearing degauss setting
-                        pw_overrides[key]["pw"]["parameters"]["SYSTEM"][
-                            "degauss"
-                        ] = self.advanced_settings.smearing.degauss.value
-
-        overrides = {
-            "relax": {
-                "base": pw_overrides["base"],
-            },
-            "bands": {
-                "scf": pw_overrides["scf"],
-                "bands": pw_overrides["band"],
-            },
-            "pdos": {
-                "scf": pw_overrides["scf"],
-                "nscf": pw_overrides["nscf"],
-            },
-        }
-
-        properties = []
-
-        if run_bands:
-            properties.append("bands")
-        if run_pdos:
-            properties.append("pdos")
-
-        if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
-            properties.append("relax")
-
-        return QeWorkChainParameters(
-            protocol=protocol,
-            relax_type=relax_type,
-            properties=properties,
-            spin_type=spin_type,
-            electronic_type=electronic_type,
-            overrides=overrides,
-            initial_magnetic_moments=initial_magnetic_moments,
-        )
-=======
     def _generate_label(self) -> dict:
         """Generate a label for the work chain based on the input parameters."""
         formula = self.input_structure.get_formula()
@@ -512,7 +407,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         label = "{} {} {}".format(formula, relax_info, properties_info)
         return label
->>>>>>> main
 
     def _create_builder(self) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
