@@ -484,6 +484,7 @@ class PseudoUploadWidget(ipw.HBox):
         # the pseudo_filename is set
         with self.hold_trait_notifications():
             self.pseudo = UpfData(io.BytesIO(content), filename=filename)
+            self.pseudo.store()
 
             # check if element is matched with the pseudo
             element = "".join([i for i in self.kind if not i.isdigit()])
