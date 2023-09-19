@@ -2,14 +2,11 @@
 
 Authors: AiiDAlab team
 """
-import warnings
 
 import aiida
 import ipywidgets as ipw
 import traitlets
 from aiidalab_widgets_base import WizardAppWidgetStep
-from pymatgen.analysis.dimensionality import get_dimensionality_larsen
-from pymatgen.analysis.local_env import CrystalNN
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.

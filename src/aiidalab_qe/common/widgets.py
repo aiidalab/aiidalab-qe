@@ -15,7 +15,9 @@ import ase
 import ipywidgets as ipw
 import numpy as np
 import traitlets
-from aiida.orm import CalcJobNode, load_node, Data as orm_Data
+from aiida.orm import CalcJobNode
+from aiida.orm import Data as orm_Data
+from aiida.orm import load_node
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -603,7 +605,7 @@ class AddingTagsEditor(ipw.VBox):
         self.structure = deepcopy(new_structure)
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
-    
+
     def _select_periodicity(self, _=None):
         """Select periodicity."""
         periodicity_options = {
