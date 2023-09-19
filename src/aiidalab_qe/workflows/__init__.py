@@ -7,8 +7,6 @@ from aiida.plugins import DataFactory
 # AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
-from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
 
 XyData = DataFactory("core.array.xy")
@@ -61,12 +59,6 @@ class QeAppWorkChain(WorkChain):
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
                                               'help': 'Inputs for the `PwRelaxWorkChain`, if not specified at all, the relaxation step is skipped.'})
-        spec.expose_inputs(PdosWorkChain, namespace='pdos',
-                           exclude=('clean_workdir', 'structure'),
-                           namespace_options={'required': False, 'populate_defaults': False,
-                                              'help': 'Inputs for the `PdosWorkChain`.'})
-        spec.expose_outputs(PwBandsWorkChain, namespace='relax',
-                            namespace_options={"required": False})
         i = 0
         for name, entry_point in plugin_entries.items():
             plugin_workchain = entry_point["workchain"]
@@ -129,6 +121,9 @@ class QeAppWorkChain(WorkChain):
         properties = parameters["workchain"].pop("properties", [])
         codes = parameters.pop("codes", {})
         codes = {key: orm.load_node(value) for key, value in codes.items()}
+        # update pseudos
+        for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
+            parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
         #
         builder = cls.get_builder()
         # Set the structure.

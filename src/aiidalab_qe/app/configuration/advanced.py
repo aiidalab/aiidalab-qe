@@ -203,25 +203,23 @@ class AdvancedSettings(Panel):
             parameters["pw"]["parameters"]["SYSTEM"][
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
-        if self.override.value:
+        # if override is not ticked, use the default value
+        parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
+        # there are two choose, use link or parent
+        if self.spin_type == "collinear":
+            parameters[
+                "initial_magnetic_moments"
+            ] = self.magnetization.get_magnetization()
+        parameters["kpoints_distance"] = self.value.get("kpoints_distance")
+        if self.electronic_type == "metal":
+            # smearing type setting
             parameters["pw"]["parameters"]["SYSTEM"][
-                "tot_charge"
-            ] = self.total_charge.value
-            # there are two choose, use link or parent
-            if self.spin_type == "collinear":
-                parameters[
-                    "initial_magnetic_moments"
-                ] = self.magnetization.get_magnetization()
-            parameters["kpoints_distance"] = self.value.get("kpoints_distance")
-            if self.electronic_type == "metal":
-                # smearing type setting
-                parameters["pw"]["parameters"]["SYSTEM"][
-                    "smearing"
-                ] = self.smearing.smearing_value
-                # smearing degauss setting
-                parameters["pw"]["parameters"]["SYSTEM"][
-                    "degauss"
-                ] = self.smearing.degauss_value
+                "smearing"
+            ] = self.smearing.smearing_value
+            # smearing degauss setting
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ] = self.smearing.degauss_value
 
         return parameters
 
@@ -230,6 +228,13 @@ class AdvancedSettings(Panel):
 
         if "pseudo_family" in parameters:
             self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        if "pseudos" in parameters["pw"]:
+            cutoffs = {
+                "ecutwfc": parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"],
+                "ecutrho": parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"],
+            }
+            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], cutoffs)
+        #
         self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
         if parameters.get("pw") is not None:
             self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
