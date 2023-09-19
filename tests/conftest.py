@@ -185,117 +185,87 @@ def initial_magnetic_moments_generator(generate_structure_data):
 
 
 @pytest.fixture()
-def tot_charge_generator():
-    """Return a function that generates a tot_charge dictionary."""
-    from aiidalab_qe.app.configuration.advanced import TotalCharge
-
-    def _tot_charge_generator(**kwargs):
-        tot_charge = TotalCharge()
-        tot_charge._update_settings(**kwargs)
-        return tot_charge
-
-    return _tot_charge_generator
-
-
-@pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
     from aiidalab_qe.app.configuration.advanced import SmearingSettings
 
     def _smearing_settings_generator(**kwargs):
         smearing_settings = SmearingSettings()
-        smearing_settings._update_settings(**kwargs)
+        smearing_settings.update_settings(**kwargs)
         return smearing_settings
 
     return _smearing_settings_generator
 
 
-@pytest.fixture()
-def kpoints_settings_generator():
-    """Return a function that generates a kpoints settings dictionary."""
-    from aiidalab_qe.app.configuration.advanced import KpointSettings
+@pytest.fixture
+def app(pw_code, dos_code, projwfc_code, sssp):
+    from aiidalab_qe.app.main import App
 
-    def _kpoints_settings_generator(**kwargs):
-        kpoints_settings = KpointSettings()
-        kpoints_settings._update_settings(**kwargs)
-        return kpoints_settings
+    app = App(qe_auto_setup=False)
 
-    return _kpoints_settings_generator
+    yield app
 
 
 @pytest.fixture()
 @pytest.mark.usefixtures("sssp")
-def submit_step_widget_generator(
+def submit_app_generator(
+    app,
     pw_code,
     dos_code,
     projwfc_code,
     generate_structure_data,
     workchain_settings_generator,
     smearing_settings_generator,
-    kpoints_settings_generator,
-    tot_charge_generator,
     initial_magnetic_moments_generator,
 ):
     """Return a function that generates a submit step widget."""
-    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-    from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector, PseudoSetter
-    from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
-    def _submit_step_widget_generator(
+    def _submit_app_generator(
         relax_type="positions_cell",
         spin_type="none",
         electronic_type="metal",
-        bands_run=True,
-        pdo_run=True,
+        properties=None,
         workchain_protocol="moderate",
         kpoints_distance=0.12,
         smearing="methfessel-paxton",
         degauss=0.015,
-        override_protocol_smearing=True,
         tot_charge=0.0,
         initial_magnetic_moments=0.0,
     ):
-        submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
+        configure_step = app.configure_step
+        # Settings
+        configure_step.input_structure = generate_structure_data()
+        parameters = {
+            "workchain": {
+                "relax_type": relax_type,
+                "spin_type": spin_type,
+                "electronic_type": electronic_type,
+                "properties": properties or [],
+                "protocol": workchain_protocol,
+            }
+        }
+        configure_step.set_configuration_parameters(parameters)
+        # Advanced settings
+        configure_step.advanced_settings.override.value = True
+        configure_step.advanced_settings.total_charge.value = tot_charge
+        configure_step.advanced_settings.kpoints_distance.value = kpoints_distance
+        configure_step.advanced_settings.magnetization = (
+            initial_magnetic_moments_generator(
+                initial_magnetic_moments=initial_magnetic_moments
+            )
+        )
+        # mimic the behavior of the smearing widget set up
+        configure_step.advanced_settings.smearing.smearing.value = smearing
+        configure_step.advanced_settings.smearing.degauss.value = degauss
+        configure_step.confirm()
+        #
+        submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
-        submit_step.pseudo_family_selector = PseudoFamilySelector()
-        submit_step.pseudo_setter = PseudoSetter()
 
         submit_step.pw_code.value = pw_code.uuid
         submit_step.dos_code.value = dos_code.uuid
         submit_step.projwfc_code.value = projwfc_code.uuid
 
-        # Settings
-        submit_step.workchain_settings = workchain_settings_generator(
-            relax_type=relax_type,
-            spin_type=spin_type,
-            electronic_type=electronic_type,
-            bands_run=bands_run,
-            pdos_run=pdo_run,
-            workchain_protocol=workchain_protocol,
-        )
-        # Advanced settings
-        submit_step.advanced_settings = AdvancedSettings()
-        submit_step.advanced_settings.override.value = True
+        return app
 
-        submit_step.advanced_settings.tot_charge = tot_charge_generator(
-            tot_charge=tot_charge,
-        )
-
-        submit_step.advanced_settings.magnetization = (
-            initial_magnetic_moments_generator(
-                initial_magnetic_moments=initial_magnetic_moments
-            )
-        )
-
-        submit_step.advanced_settings.kpoints = kpoints_settings_generator(
-            kpoints_distance=kpoints_distance
-        )
-        submit_step.advanced_settings.smearing = smearing_settings_generator(
-            smearing=smearing,
-            degauss=degauss,
-            override=override_protocol_smearing,
-        )
-
-        return submit_step
-
-    return _submit_step_widget_generator
+    return _submit_app_generator

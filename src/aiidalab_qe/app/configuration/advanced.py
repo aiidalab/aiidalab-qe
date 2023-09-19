@@ -8,77 +8,83 @@ import os
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from IPython.display import clear_output, display
 
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.panel import Panel
 
-class AdvancedSettings(ipw.VBox):
+from .pseudos import PseudoFamilySelector, PseudoSetter
+
+
+class AdvancedSettings(Panel):
+    identifier = "advanced"
+
     title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Advanced Settings</h4></div>"""
     )
     description = ipw.HTML("""Select the advanced settings for the <b>pw.x</b> code.""")
+    kpoints_description = ipw.HTML(
+        """<div>
+        The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
+        The value below represents the maximum distance between the k-points in each direction of reciprocal space.
+        Tick the box to override the default, smaller is more accurate and costly. </div>"""
+    )
 
-    def __init__(self, **kwargs):
+    # protocol interface
+    protocol = tl.Unicode(allow_none=True)
+    input_structure = tl.Instance(orm.StructureData, allow_none=True)
+    spin_type = tl.Unicode()
+    electronic_type = tl.Unicode()
+
+    # output dictionary
+    value = tl.Dict()
+
+    def __init__(self, default_protocol=None, **kwargs):
+        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
+
+        # Override setting widget
+        self.override_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
         self.override = ipw.Checkbox(
-            description="Override",
+            description="",
             indent=False,
             value=False,
+            layout=ipw.Layout(max_width="10%"),
         )
+        self.override.observe(self._override_changed, "value")
+
+        self.override_widget = ipw.HBox(
+            [self.override_prompt, self.override],
+            layout=ipw.Layout(max_width="20%"),
+        )
+        # Smearing setting widget
         self.smearing = SmearingSettings()
-        self.kpoints = KpointSettings()
-        self.tot_charge = TotalCharge()
-        self.magnetization = MagnetizationSettings()
-        self.list_overrides = [
-            self.smearing.override,
-            self.kpoints.override,
-            self.tot_charge.override,
-            self.magnetization.override,
-        ]
-        for override in self.list_overrides:
-            ipw.dlink(
-                (self.override, "value"),
-                (override, "disabled"),
-                lambda override: not override,
-            )
-        self.override.observe(self.set_advanced_settings, "value")
-        super().__init__(
-            children=[
-                self.title,
-                ipw.HBox(
-                    [
-                        self.description,
-                        self.override,
-                    ],
-                ),
-                self.tot_charge,
-                self.magnetization,
-                self.smearing,
-                self.kpoints,
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
+        ipw.dlink(
+            (self.override, "value"),
+            (self.smearing, "disabled"),
+            lambda override: not override,
+        )
+        self.smearing.observe(
+            self._callback_value_set, ["degauss_value", "smearing_value"]
         )
 
-    def set_advanced_settings(self, _=None):
-        self.smearing.reset()
-        self.kpoints.reset()
-        self.tot_charge.reset()
-        self.magnetization.reset()
-
-
-class TotalCharge(ipw.VBox):
-    """Widget to define the total charge of the simulation"""
-
-    tot_charge_default = tl.Float(default_value=0.0)
-
-    def __init__(self, **kwargs):
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
+        # Kpoints setting widget
+        self.kpoints_distance = ipw.FloatText(
+            step=0.05,
+            description="K-points distance (1/Å):",
+            disabled=False,
+            style={"description_width": "initial"},
         )
-        self.charge = ipw.BoundedFloatText(
-            value=0,
+        ipw.dlink(
+            (self.override, "value"),
+            (self.kpoints_distance, "disabled"),
+            lambda override: not override,
+        )
+        self.kpoints_distance.observe(self._callback_value_set, "value")
+
+        # Total change setting widget
+        self.total_charge = ipw.BoundedFloatText(
             min=-3,
             max=3,
             step=0.01,
@@ -88,40 +94,171 @@ class TotalCharge(ipw.VBox):
         )
         ipw.dlink(
             (self.override, "value"),
-            (self.charge, "disabled"),
+            (self.total_charge, "disabled"),
             lambda override: not override,
         )
+        self.total_charge.observe(self._callback_value_set, "value")
+
+        self.magnetization = MagnetizationSettings()
+        ipw.dlink(
+            (self.override, "value"),
+            (self.magnetization, "disabled"),
+            lambda override: not override,
+        )
+        self.pseudo_family_selector = PseudoFamilySelector()
+        self.pseudo_setter = PseudoSetter()
+        ipw.dlink(
+            (self.pseudo_family_selector, "value"),
+            (self.pseudo_setter, "pseudo_family"),
+        )
+        self.children = [
+            self.title,
+            ipw.HBox(
+                [self.description, self.override_widget],
+                layout=ipw.Layout(height="50px", justify_content="space-between"),
+            ),
+            # total charge setting widget
+            self.total_charge,
+            # magnetization setting widget
+            self.magnetization,
+            # smearing setting widget
+            self.smearing,
+            # Kpoints setting widget
+            self.kpoints_description,
+            self.kpoints_distance,
+            self.pseudo_family_selector,
+            self.pseudo_setter,
+        ]
         super().__init__(
-            children=[
-                ipw.HBox(
-                    [
-                        self.override,
-                        self.charge,
-                    ],
-                ),
-            ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
-        self.charge.observe(self.set_tot_charge, "value")
-        self.override.observe(self.set_tot_charge, "value")
 
-    def set_tot_charge(self, _=None):
-        self.charge.value = (
-            self.charge.value if self.override.value else self.tot_charge_default
-        )
+        # Default settings to trigger the callback
+        self.reset()
 
-    def _update_settings(self, **kwargs):
-        """Update the override and override_tot_charge and override_tot_charge values by the given keyword arguments
-        Therefore the override checkbox is not updated and defaults to True"""
-        self.override.value = True
-        with self.hold_trait_notifications():
-            if "tot_charge" in kwargs:
-                self.charge.value = kwargs["tot_charge"]
+    def _override_changed(self, change):
+        """Callback function to set the override value"""
+        if change["new"] is False:
+            # When override is set to False, reset the widget
+            self.reset()
+
+    @tl.observe("input_structure")
+    def _update_input_structure(self, change):
+        if self.input_structure is not None:
+            self.magnetization._update_widget(change)
+            self.pseudo_setter.structure = change["new"]
+
+    @tl.observe("protocol")
+    def _protocol_changed(self, _):
+        """Input protocol changed, update the widget values."""
+        self._update_settings_from_protocol(self.protocol)
+
+    def _update_settings_from_protocol(self, protocol):
+        """Update the values of sub-widgets from the given protocol, this will
+        trigger the callback of the sub-widget if it is exist.
+        """
+        self.smearing.protocol = protocol
+        self.pseudo_family_selector.protocol = protocol
+
+        parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
+
+        self.kpoints_distance.value = parameters["kpoints_distance"]
+
+    def _callback_value_set(self, _=None):
+        """Callback function to set the parameters"""
+        settings = {
+            "kpoints_distance": self.kpoints_distance.value,
+            "total_charge": self.total_charge.value,
+            "degauss": self.smearing.degauss_value,
+            "smearing": self.smearing.smearing_value,
+        }
+
+        self.update_settings(**settings)
+
+    def update_settings(self, **kwargs):
+        """Set the output dict from the given keyword arguments.
+        This function will only update the traitlets but not the widget value.
+
+        This function can also be used to set values directly for testing purpose.
+        """
+        self.value = kwargs
+
+    def get_panel_value(self):
+        # create the the initial_magnetic_moments as None (Default)
+        parameters = {
+            "initial_magnetic_moments": None,
+            "pw": {
+                "parameters": {
+                    "SYSTEM": {},
+                },
+            },
+        }
+        parameters["pseudo_family"] = self.pseudo_family_selector.value
+        if self.pseudo_setter.pseudos:
+            parameters["pw"]["pseudos"] = self.pseudo_setter.pseudos
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "ecutwfc"
+            ] = self.pseudo_setter.ecutwfc
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "ecutrho"
+            ] = self.pseudo_setter.ecutrho
+        # if override is not ticked, use the default value
+        parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
+        # there are two choose, use link or parent
+        if self.spin_type == "collinear":
+            parameters[
+                "initial_magnetic_moments"
+            ] = self.magnetization.get_magnetization()
+        parameters["kpoints_distance"] = self.value.get("kpoints_distance")
+        if self.electronic_type == "metal":
+            # smearing type setting
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "smearing"
+            ] = self.smearing.smearing_value
+            # smearing degauss setting
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ] = self.smearing.degauss_value
+
+        return parameters
+
+    def set_panel_value(self, parameters):
+        """Set the panel value from the given parameters."""
+
+        if "pseudo_family" in parameters:
+            self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        if "pseudos" in parameters["pw"]:
+            cutoffs = {
+                "ecutwfc": parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"],
+                "ecutrho": parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"],
+            }
+            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], cutoffs)
+        #
+        self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
+        if parameters.get("pw") is not None:
+            self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ]
+            self.smearing.smearing_value = parameters["pw"]["parameters"]["SYSTEM"][
+                "smearing"
+            ]
+            self.total_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
+                "tot_charge", 0
+            )
+        self.magnetization._set_magnetization_values(**parameters)
 
     def reset(self):
+        """Reset the widget and the traitlets"""
+        self.protocol = self._default_protocol
+
         with self.hold_trait_notifications():
-            self.charge.value = self.tot_charge_default
+            # Reset protocol dependent settings
+            self._update_settings_from_protocol(self.protocol)
+            # reset total charge
+            self.total_charge.value = DEFAULT_PARAMETERS["tot_charge"]
+
+            # reset the override checkbox
             self.override.value = False
 
 
@@ -138,6 +275,8 @@ class MagnetizationSettings(ipw.VBox):
 
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
+    disabled = tl.Bool()
+
     def __init__(self, **kwargs):
         self.input_structure = orm.StructureData()
         self.input_structure_labels = []
@@ -146,16 +285,10 @@ class MagnetizationSettings(ipw.VBox):
         )
         self.kinds = self.create_kinds_widget()
         self.kinds_widget_out = ipw.Output()
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
         super().__init__(
             children=[
                 ipw.HBox(
                     [
-                        self.override,
                         self.description,
                         self.kinds_widget_out,
                     ],
@@ -165,14 +298,16 @@ class MagnetizationSettings(ipw.VBox):
             **kwargs,
         )
         self.display_kinds()
-        self.override.observe(self._disable_kinds_widgets, "value")
 
-    def _disable_kinds_widgets(self, _=None):
-        for i in range(len(self.kinds.children)):
-            self.kinds.children[i].disabled = not self.override.value
+    @tl.observe("disabled")
+    def _disabled_changed(self, _):
+        """Disable the widget"""
+        if hasattr(self.kinds, "children") and self.kinds.children:
+            for i in range(len(self.kinds.children)):
+                self.kinds.children[i].disabled = self.disabled
 
     def reset(self):
-        self.override.value = False
+        self.disabled = True
         if hasattr(self.kinds, "children") and self.kinds.children:
             for i in range(len(self.kinds.children)):
                 self.kinds.children[i].value = 0.0
@@ -183,8 +318,8 @@ class MagnetizationSettings(ipw.VBox):
             for kind_label in self.input_structure_labels:
                 kind_widget = ipw.BoundedFloatText(
                     description=kind_label,
-                    min=-1,
-                    max=1,
+                    min=-4,
+                    max=4,
                     step=0.1,
                     value=0.0,
                     disabled=True,
@@ -221,7 +356,7 @@ class MagnetizationSettings(ipw.VBox):
 
     def _set_magnetization_values(self, **kwargs):
         """Update used for conftest setting all magnetization to a value"""
-        self.override.value = True
+        # self.override.value = True
         with self.hold_trait_notifications():
             if "initial_magnetic_moments" in kwargs:
                 for i in range(len(self.kinds.children)):
@@ -229,6 +364,13 @@ class MagnetizationSettings(ipw.VBox):
 
 
 class SmearingSettings(ipw.VBox):
+    # accept protocol as input and set the values
+    protocol = tl.Unicode(allow_none=True)
+
+    # The output of the widget is a dictionary with the values of smearing and degauss
+    degauss_value = tl.Float()
+    smearing_value = tl.Unicode()
+
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
@@ -236,141 +378,85 @@ class SmearingSettings(ipw.VBox):
         target="_blank">here</a> for a discussion).
     </p>"""
     )
+    disabled = tl.Bool()
 
-    # The default of `smearing` and `degauss` the type and width
-    # must be linked to the `protocol`
-    degauss_default = tl.Float(default_value=0.01)
-    smearing_default = tl.Unicode(default_value="cold")
+    def __init__(self, default_protocol=None, **kwargs):
+        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
 
-    def __init__(self, **kwargs):
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
         self.smearing = ipw.Dropdown(
             options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
-            value=self.smearing_default,
             description="Smearing type:",
             disabled=False,
             style={"description_width": "initial"},
         )
         self.degauss = ipw.FloatText(
-            value=self.degauss_default,
             step=0.005,
             description="Smearing width (Ry):",
             disabled=False,
             style={"description_width": "initial"},
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self, "disabled"),
             (self.degauss, "disabled"),
-            lambda override: not override,
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self, "disabled"),
             (self.smearing, "disabled"),
-            lambda override: not override,
         )
-        self.degauss.observe(self.set_smearing, "value")
-        self.smearing.observe(self.set_smearing, "value")
-        self.override.observe(self.set_smearing, "value")
+        self.degauss.observe(self._callback_value_set, "value")
+        self.smearing.observe(self._callback_value_set, "value")
 
         super().__init__(
             children=[
                 self.smearing_description,
-                ipw.HBox([self.override, self.smearing, self.degauss]),
+                ipw.HBox([self.smearing, self.degauss]),
             ],
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
 
-    def set_smearing(self, _=None):
-        self.degauss.value = (
-            self.degauss.value if self.override.value else self.degauss_default
-        )
-        self.smearing.value = (
-            self.smearing.value if self.override.value else self.smearing_default
-        )
+        # Default settings to trigger the callback
+        self.protocol = self._default_protocol
 
-    def _update_settings(self, **kwargs):
-        """Update the smearing and degauss values by the given keyword arguments
-        This is the same as the `set_smearing` method but without the observer.
-        Therefore the override checkbox is not updated and defaults to True"""
-        self.override.value = True
+    @tl.default("disabled")
+    def _default_disabled(self):
+        return False
+
+    @tl.observe("protocol")
+    def _protocol_changed(self, _):
+        """Input protocol changed, update the widget values."""
+        self._update_settings_from_protocol(self.protocol)
+
+    def _update_settings_from_protocol(self, protocol):
+        """Update the widget values from the given protocol, and trigger the callback."""
+        parameters = PwBaseWorkChain.get_protocol_inputs(protocol)["pw"]["parameters"][
+            "SYSTEM"
+        ]
 
         with self.hold_trait_notifications():
-            if "smearing" in kwargs:
-                self.smearing.value = kwargs["smearing"]
+            # This changes will trigger callbacks
+            self.degauss.value = parameters["degauss"]
+            self.smearing.value = parameters["smearing"]
 
-            if "degauss" in kwargs:
-                self.degauss.value = kwargs["degauss"]
+    def _callback_value_set(self, _=None):
+        """callback function to set the smearing and degauss values"""
+        settings = {
+            "degauss": self.degauss.value,
+            "smearing": self.smearing.value,
+        }
+        self.update_settings(**settings)
 
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.degauss.value = self.degauss_default
-            self.smearing.value = self.smearing_default
-            self.override.value = False
-
-
-class KpointSettings(ipw.VBox):
-    kpoints_distance_description = ipw.HTML(
-        """<div>
-        The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
-        The value below represents the maximum distance between the k-points in each direction of reciprocal space.
-        Tick the box to override the default, smaller is more accurate and costly. </div>"""
-    )
-
-    # The default of `kpoints_distance` must be linked to the `protocol`
-    kpoints_distance_default = tl.Float(default_value=0.15)
-
-    def __init__(self, **kwargs):
-        self.override = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-        self.distance = ipw.FloatText(
-            value=self.kpoints_distance_default,
-            step=0.05,
-            description="K-points distance (1/Å):",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self.override, "value"),
-            (self.distance, "disabled"),
-            lambda override: not override,
-        )
-        self.distance.observe(self.set_kpoints_distance, "value")
-        self.override.observe(self.set_kpoints_distance, "value")
-        self.observe(self.set_kpoints_distance, "kpoints_distance_default")
-
-        super().__init__(
-            children=[
-                self.kpoints_distance_description,
-                ipw.HBox([self.override, self.distance]),
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
-        )
-
-    def set_kpoints_distance(self, _=None):
-        self.distance.value = (
-            self.distance.value
-            if self.override.value
-            else self.kpoints_distance_default
-        )
-
-    def _update_settings(self, **kwargs):
-        """Update the kpoints_distance value by the given keyword arguments.
-        This is the same as the `set_kpoints_distance` method but without the observer.
+    def update_settings(self, **kwargs):
+        """Set the output dict from the given keyword arguments.
+        This function will only update the traitlets but not the widget value.
         """
-        self.override.value = True
-        if "kpoints_distance" in kwargs:
-            self.distance.value = kwargs["kpoints_distance"]
+        self.degauss_value = kwargs.get("degauss")
+        self.smearing_value = kwargs.get("smearing")
 
     def reset(self):
+        """Reset the widget and the traitlets"""
+        self.protocol = self._default_protocol
+
         with self.hold_trait_notifications():
-            self.distance.value = self.kpoints_distance_default
-            self.override.value = False
+            self._update_settings_from_protocol(self.protocol)
+            self.disabled = False

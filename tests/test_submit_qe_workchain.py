@@ -1,8 +1,9 @@
-def test_reload_selected_code(submit_step_widget_generator):
+def test_reload_selected_code(submit_app_generator):
     """Test set_selected_codes method."""
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
-    submit_step = submit_step_widget_generator()
+    app = submit_app_generator()
+    submit_step = app.submit_step
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()
@@ -20,7 +21,7 @@ def test_reload_selected_code(submit_step_widget_generator):
 
 def test_create_builder_default(
     data_regression,
-    submit_step_widget_generator,
+    submit_app_generator,
 ):
     """ "Test the creation of the workchain builder.
 
@@ -30,7 +31,8 @@ def test_create_builder_default(
 
     from aiidalab_qe.app.result.report import _generate_report_html
 
-    submit_step = submit_step_widget_generator()
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()
@@ -47,15 +49,15 @@ def test_create_builder_default(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # There should be only one None from initial_magnetic_moments
-    assert report_html.count("None") == 1
+    # All None value is removed in the final report
+    assert report_html.count("None") == 0
     if "initial_magnetic_moments" not in builder_parameters:
         parsed = BeautifulSoup(report_html, "html.parser")
         assert parsed.find("initial_magnetic_moments").text == "None"
 
 
 def test_create_builder_insulator(
-    submit_step_widget_generator,
+    submit_app_generator,
 ):
     """ "Test the creation of the workchain builder.
 
@@ -65,9 +67,10 @@ def test_create_builder_insulator(
 
     from aiidalab_qe.app.result.report import _generate_report_html
 
-    submit_step = submit_step_widget_generator(
-        electronic_type="insulator",
+    app = submit_app_generator(
+        electronic_type="insulator", properties=["bands", "pdos"]
     )
+    submit_step = app.submit_step
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()
@@ -84,15 +87,15 @@ def test_create_builder_insulator(
     )
     report_html = _generate_report_html(builder_parameters)
 
-    # There should be only one None from initial_magnetic_moments
-    assert report_html.count("None") == 1
+    # All None value is removed in the final report
+    assert report_html.count("None") == 0
     if "initial_magnetic_moments" not in builder_parameters:
         parsed = BeautifulSoup(report_html, "html.parser")
         assert parsed.find("initial_magnetic_moments").text == "None"
 
 
 def test_create_builder_advanced_settings(
-    submit_step_widget_generator,
+    submit_app_generator,
 ):
     """Test the creation of the workchain builder with advanced settings
 
@@ -103,12 +106,14 @@ def test_create_builder_advanced_settings(
     """
     from aiidalab_qe.app.result.report import _generate_report_html
 
-    submit_step = submit_step_widget_generator(
+    app = submit_app_generator(
         electronic_type="metal",
         spin_type="collinear",
         tot_charge=1.0,
         initial_magnetic_moments=0.1,
+        properties=["bands", "pdos"],
     )
+    submit_step = app.submit_step
 
     builder = submit_step._create_builder()
     extra_parameters = submit_step._create_extra_report_parameters()
@@ -117,10 +122,13 @@ def test_create_builder_advanced_settings(
     got = builder_to_readable_dict(builder)
 
     # test tot_charge is updated in the three steps
-    assert got["relax"]["base"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
-    assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
-    assert got["pdos"]["scf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
-    assert got["pdos"]["nscf"]["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
+    for parameters in [
+        got["relax"]["base"],
+        got["bands"]["scf"],
+        got["pdos"]["scf"],
+        got["pdos"]["nscf"],
+    ]:
+        assert parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
 
     # test initial_magnetic_moments set 'starting_magnetization' in pw.in
     assert (
