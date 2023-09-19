@@ -332,7 +332,7 @@ class PseudoSetter(ipw.VBox):
 
         # success get family and cutoffs, set the traitlets accordingly
         # set the recommended cutoffs
-        self.pseudos = pseudos
+        self.pseudos = {kind: pseudo.uuid for kind, pseudo in pseudos.items()}
 
         # Reset the traitlets, so the interface is clear setup
         self.pseudo_setting_widgets.children = ()
@@ -413,7 +413,7 @@ class PseudoSetter(ipw.VBox):
                 return
 
             if w.pseudo is not None:
-                self.pseudos[w.kind] = w.pseudo
+                self.pseudos[w.kind] = w.pseudo.uuid
                 self.pseudo_setter_helper.value = self._pseudo_setter_helper_text
 
                 with self.hold_trait_notifications():
