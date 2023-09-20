@@ -3,7 +3,6 @@
 Authors: AiiDAlab team
 """
 import os
-import pathlib
 import warnings
 
 import aiida
@@ -28,7 +27,7 @@ structures are supported.
 </div>"""
 
 # Navigate to the aiidalab_qe root directory
-file_path = pathlib.Path(__file__).parent.parent.parent.parent.parent.resolve()
+file_path = os.path.abspath(os.path.join(__file__, "../../../../../"))
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
 Examples = [
@@ -39,6 +38,8 @@ Examples = [
     ("Gold (fcc)", os.path.join(file_path, "miscellaneous/structures/Au.cif")),
     ("Cobalt (hcp)", os.path.join(file_path, "miscellaneous/structures/Co.cif")),
 ]
+
+print("Examples: ", Examples)
 
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
