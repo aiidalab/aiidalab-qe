@@ -383,10 +383,30 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder_parameters = self._extract_report_parameters(
                 builder, extra_parameters
             )
+            process.label = self._generate_label()
             process.base.extras.set("builder_parameters", builder_parameters)
             self.process = process
 
         self._update_state()
+
+    def _generate_label(self) -> dict:
+        """Generate a label for the work chain based on the input parameters."""
+        formula = self.input_structure.get_formula()
+        properties = [
+            p for p in self.input_parameters["workchain"]["properties"] if p != "realx"
+        ]
+        relax_type = self.input_parameters["workchain"].get("relax_type")
+        if relax_type != "none":
+            relax_info = "structure is relaxed"
+        else:
+            relax_info = "structure is not relaxed"
+        if not properties:
+            properties_info = ""
+        else:
+            properties_info = f"properties on {', '.join(properties)}"
+
+        label = "{} {} {}".format(formula, relax_info, properties_info)
+        return label
 
     def _create_builder(self) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
@@ -455,6 +475,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "initial_magnetic_moments": input_parameters["advanced"][
                 "initial_magnetic_moments"
             ],
+            "properties": input_parameters["workchain"]["properties"],
         }
 
         # update pseudo family information to extra_report_parameters

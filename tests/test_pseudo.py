@@ -1,3 +1,6 @@
+from aiida import orm
+
+
 def test_pseudos_family_selector_widget_protocol():
     """Test the pseudos widget."""
     from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector
@@ -50,7 +53,14 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
         }
     )
 
-    assert w.pseudos["O"].filename == "O_new.upf"
+    assert orm.load_node(w.pseudos["O"]).filename == "O_new.upf"
+    #
+    pseudos = w.pseudos
+    cutoffs = {"cutoff_wfc": w.ecutwfc, "cutoff_rho": w.ecutrho}
+    w._reset()
+    assert orm.load_node(w.pseudos["O"]).filename != "O_new.upf"
+    w.set_pseudos(pseudos, cutoffs)
+    assert orm.load_node(w.pseudos["O"]).filename == "O_new.upf"
 
 
 def test_pseudo_upload_widget(generate_upf_data):
