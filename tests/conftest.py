@@ -240,14 +240,10 @@ def generate_upf_data():
 @pytest.fixture
 def pw_code(aiida_local_code_factory):
     """Return a `Code` configured for the pw.x executable."""
-    from aiida.common import exceptions
 
-    try:
-        return orm.load_code(label="test-pw")
-    except exceptions.NotExistent:
-        return aiida_local_code_factory(
-            label="test-pw", executable="bash", entry_point="quantumespresso.pw"
-        )
+    return aiida_local_code_factory(
+        label="pw", executable="bash", entry_point="quantumespresso.pw"
+    )
 
 
 @pytest.fixture
@@ -310,23 +306,25 @@ def smearing_settings_generator():
 
 
 @pytest.fixture
-def app(fixture_code, sssp):
+def app(pw_code, dos_code, projwfc_code, sssp):
     from aiidalab_qe.app.main import App
 
     app = App(qe_auto_setup=False)
-    pw_code = fixture_code("quantumespresso.pw")
-    dos_code = fixture_code("quantumespresso.dos")
-    projwfc_code = fixture_code("quantumespresso.projwfc")
-    pw_code.store()
-    dos_code.store()
-    projwfc_code.store()
     # set up codes
     app.submit_step.pw_code.refresh()
     app.submit_step.dos_code.refresh()
     app.submit_step.projwfc_code.refresh()
-    app.submit_step.pw_code.value = pw_code.uuid
-    app.submit_step.dos_code.value = dos_code.uuid
-    app.submit_step.projwfc_code.value = projwfc_code.uuid
+    app.submit_step.pw_code.value = (
+        app.submit_step.pw_code.code_select_dropdown.options[pw_code.full_label]
+    )
+    app.submit_step.dos_code.value = (
+        app.submit_step.dos_code.code_select_dropdown.options[dos_code.full_label]
+    )
+    app.submit_step.projwfc_code.value = (
+        app.submit_step.projwfc_code.code_select_dropdown.options[
+            projwfc_code.full_label
+        ]
+    )
 
     yield app
 
