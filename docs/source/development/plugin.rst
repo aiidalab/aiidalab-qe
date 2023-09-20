@@ -4,11 +4,8 @@
 Create your plugin
 ************************
 
-Quantum ESPRESSO app (QeApp) uses the Wizards UI, which divides one calculation into four steps. Each step may contain several sections (panels), as shown below.
+A QeApp plugin will typically register new panels (setting, result), and workchain to extend the app's functionality.
 
-.. image:: ../_static/images/plugin_step.png
-
-A QeApp plugin will typically register new panels (setting, result), and workchain to extend the app's functionality. The plugin design make the QeApp more modularized, and pluggable. So the developer can maintain their plugin as a separate folder in the QeApp (even a separate pakcage).
 
 Your First Add-on
 ================================
@@ -28,9 +25,6 @@ The **Outline** will be shown as a checkbox in the `Properties` section of the w
 
     class Outline(OutlinePanel):
         title = "Hello World"
-
-
-
 
 
 
