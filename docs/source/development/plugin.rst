@@ -15,7 +15,12 @@ Your First Add-on
 
 Here is the simplest plugin to print the formula of the input structure:
 
-**Outline**, it will be shown as a checkbox in the workflow panel, as shown below.
+Outline
+-----------------------
+The **Outline** will be shown as a checkbox in the `Properties` section of the workflow panel, as shown below, the ``Hello World``.
+
+.. image:: ../_static/images/plugin_outline.png
+
 
 .. code-block:: python
 
@@ -25,12 +30,13 @@ Here is the simplest plugin to print the formula of the input structure:
         title = "Hello World"
 
 
-.. image:: ../_static/images/plugin_outline.png
 
 
 
 
-**Setting**, it will register a new panel in the configuration Step. In this class, one needs to implement the `get_panel_value` and `load_panel_value` methods to tell QeApp how to handle the panel values.
+Setting
+-----------------------
+it will register a new panel in the configuration Step. In this class, one needs to implement the `get_panel_value` and `load_panel_value` methods to tell QeApp how to handle the panel values.
 
 .. image:: ../_static/images/plugin_setting.png
 
@@ -54,7 +60,9 @@ Here is the simplest plugin to print the formula of the input structure:
         def load_panel_value(self, input_dict):
             self.name.value = input_dict.get("name", 1)
 
-**Result**, it will register a new panel in the Results Step. In this class, one needs to implement the `_update_view` method to tell QeApp how to show the outputs of the workchain.
+Result
+-----------------------
+it will register a new panel in the Results Step. In this class, one needs to implement the `_update_view` method to tell QeApp how to show the outputs of the workchain.
 
 .. image:: ../_static/images/plugin_result.png
 
@@ -76,7 +84,9 @@ Here is the simplest plugin to print the formula of the input structure:
             self.children = [ipw.HBox(children=[self.summary_view])]
 
 
-**WorkChain**, it will be loaded into the QeApp workchain. One needs to implement a `get_builder` function to extract the input parameters for the sub-workchain.
+WorkChain
+-----------------------
+It will be loaded into the QeApp workchain. One needs to implement a `get_builder` function to extract the input parameters for the sub-workchain.
 
 .. code-block:: python
 
@@ -97,7 +107,9 @@ Here is the simplest plugin to print the formula of the input structure:
         "get_builder": get_builder,
         }
 
-**Entry point**, here is the entry point for this plugin. One needs to add it to `entry_points` inside the setup file.
+Entry point
+-----------------------
+Here is the entry point for this plugin. One needs to add it to `entry_points` inside the setup file.
 
 .. code-block:: python
 
