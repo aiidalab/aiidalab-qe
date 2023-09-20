@@ -269,16 +269,17 @@ class AdvancedSettings(Panel):
             self.override.value = False
 
     def _display_mesh(self, _=None):
-        if self.input_structure is not None:
-            if self.kpoints_distance.value > 0:
-                mesh = create_kpoints_from_distance(
-                    self.input_structure,
-                    orm.Float(self.kpoints_distance.value),
-                    orm.Bool(True),
-                )
-                self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
-            else:
-                self.mesh_grid.value = "Please select a number higher than 0.0"
+        if self.input_structure is None:
+            return
+        if self.kpoints_distance.value > 0:
+            mesh = create_kpoints_from_distance(
+                self.input_structure,
+                orm.Float(self.kpoints_distance.value),
+                orm.Bool(True),
+            )
+            self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
+        else:
+            self.mesh_grid.value = "Please select a number higher than 0.0"
 
 
 class MagnetizationSettings(ipw.VBox):
