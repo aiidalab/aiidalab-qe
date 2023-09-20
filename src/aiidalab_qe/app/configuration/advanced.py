@@ -8,6 +8,9 @@ import os
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
+from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
+    create_kpoints_from_distance,
+)
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from IPython.display import clear_output, display
 
@@ -70,12 +73,14 @@ class AdvancedSettings(Panel):
         )
 
         # Kpoints setting widget
-        self.kpoints_distance = ipw.FloatText(
+        self.kpoints_distance = ipw.BoundedFloatText(
+            min=0.0,
             step=0.05,
             description="K-points distance (1/Å):",
             disabled=False,
             style={"description_width": "initial"},
         )
+        self.mesh_grid = ipw.HTML()
         ipw.dlink(
             (self.override, "value"),
             (self.kpoints_distance, "disabled"),
@@ -111,6 +116,7 @@ class AdvancedSettings(Panel):
             (self.pseudo_family_selector, "value"),
             (self.pseudo_setter, "pseudo_family"),
         )
+        self.kpoints_distance.observe(self._display_mesh, "value")
         self.children = [
             self.title,
             ipw.HBox(
@@ -125,7 +131,7 @@ class AdvancedSettings(Panel):
             self.smearing,
             # Kpoints setting widget
             self.kpoints_description,
-            self.kpoints_distance,
+            ipw.HBox([self.kpoints_distance, self.mesh_grid]),
             self.pseudo_family_selector,
             self.pseudo_setter,
         ]
@@ -148,6 +154,7 @@ class AdvancedSettings(Panel):
         if self.input_structure is not None:
             self.magnetization._update_widget(change)
             self.pseudo_setter.structure = change["new"]
+            self._display_mesh()
 
     @tl.observe("protocol")
     def _protocol_changed(self, _):
@@ -203,25 +210,23 @@ class AdvancedSettings(Panel):
             parameters["pw"]["parameters"]["SYSTEM"][
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
-        if self.override.value:
+        # if override is not ticked, use the default value
+        parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
+        # there are two choose, use link or parent
+        if self.spin_type == "collinear":
+            parameters[
+                "initial_magnetic_moments"
+            ] = self.magnetization.get_magnetization()
+        parameters["kpoints_distance"] = self.value.get("kpoints_distance")
+        if self.electronic_type == "metal":
+            # smearing type setting
             parameters["pw"]["parameters"]["SYSTEM"][
-                "tot_charge"
-            ] = self.total_charge.value
-            # there are two choose, use link or parent
-            if self.spin_type == "collinear":
-                parameters[
-                    "initial_magnetic_moments"
-                ] = self.magnetization.get_magnetization()
-            parameters["kpoints_distance"] = self.value.get("kpoints_distance")
-            if self.electronic_type == "metal":
-                # smearing type setting
-                parameters["pw"]["parameters"]["SYSTEM"][
-                    "smearing"
-                ] = self.smearing.smearing_value
-                # smearing degauss setting
-                parameters["pw"]["parameters"]["SYSTEM"][
-                    "degauss"
-                ] = self.smearing.degauss_value
+                "smearing"
+            ] = self.smearing.smearing_value
+            # smearing degauss setting
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ] = self.smearing.degauss_value
 
         return parameters
 
@@ -230,6 +235,13 @@ class AdvancedSettings(Panel):
 
         if "pseudo_family" in parameters:
             self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        if "pseudos" in parameters["pw"]:
+            cutoffs = {
+                "ecutwfc": parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"],
+                "ecutrho": parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"],
+            }
+            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], cutoffs)
+        #
         self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
         if parameters.get("pw") is not None:
             self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
@@ -255,6 +267,19 @@ class AdvancedSettings(Panel):
 
             # reset the override checkbox
             self.override.value = False
+
+    def _display_mesh(self, _=None):
+        if self.input_structure is None:
+            return
+        if self.kpoints_distance.value > 0:
+            mesh = create_kpoints_from_distance(
+                self.input_structure,
+                orm.Float(self.kpoints_distance.value),
+                orm.Bool(True),
+            )
+            self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
+        else:
+            self.mesh_grid.value = "Please select a number higher than 0.0"
 
 
 class MagnetizationSettings(ipw.VBox):

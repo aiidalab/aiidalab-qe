@@ -332,27 +332,8 @@ class PseudoSetter(ipw.VBox):
 
         # success get family and cutoffs, set the traitlets accordingly
         # set the recommended cutoffs
-        self.pseudos = {key: value.uuid for key, value in pseudos.items()}
-
-        # Reset the traitlets, so the interface is clear setup
-        self.pseudo_setting_widgets.children = ()
-        self._reset_traitlets()
-
-        # loop over the kinds and create the pseudo setting widget
-        # (initialized with the pseudo from the family)
-        for kind in self.structure.kinds:
-            element = kind.symbol
-            pseudo = pseudos.get(kind.name, None)
-            _cutoffs = cutoffs.get(element, None)  # cutoffs for each element
-            pseudo_upload_widget = PseudoUploadWidget(
-                kind=kind.name, pseudo=pseudo, cutoffs=_cutoffs
-            )
-
-            # keep track of the changing of pseudo setting of each kind
-            pseudo_upload_widget.observe(
-                self._update_pseudos, ["pseudo", "ecutwfc", "ecutrho"]
-            )
-            self.pseudo_setting_widgets.children += (pseudo_upload_widget,)
+        self.pseudos = {kind: pseudo.uuid for kind, pseudo in pseudos.items()}
+        self.set_pseudos(self.pseudos, cutoffs)
 
     def _get_pseudos_family(self, pseudo_family: str) -> orm.Group:
         """Get the pseudo family from the database."""
@@ -420,6 +401,28 @@ class PseudoSetter(ipw.VBox):
                     self.ecutwfc_setter.value = max(self.ecutwfc, w.ecutwfc)
                     self.ecutrho_setter.value = max(self.ecutrho, w.ecutrho)
 
+    def set_pseudos(self, pseudos, cutoffs):
+        # Reset the traitlets, so the interface is clear setup
+        self.pseudo_setting_widgets.children = ()
+        self._reset_traitlets()
+
+        # loop over the kinds and create the pseudo setting widget
+        # (initialized with the pseudo from the family)
+        for kind in self.structure.kinds:
+            element = kind.symbol
+            pseudo = orm.load_node(pseudos.get(kind.name, None))
+            _cutoffs = cutoffs.get(element, None)  # cutoffs for each element
+            pseudo_upload_widget = PseudoUploadWidget(
+                kind=kind.name, pseudo=pseudo, cutoffs=_cutoffs
+            )
+
+            # keep track of the changing of pseudo setting of each kind
+            pseudo_upload_widget.observe(
+                self._update_pseudos, ["pseudo", "ecutwfc", "ecutrho"]
+            )
+            self.pseudo_setting_widgets.children += (pseudo_upload_widget,)
+        self._update_pseudos()
+
 
 class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
@@ -484,6 +487,7 @@ class PseudoUploadWidget(ipw.HBox):
         # the pseudo_filename is set
         with self.hold_trait_notifications():
             self.pseudo = UpfData(io.BytesIO(content), filename=filename)
+            self.pseudo.store()
 
             # check if element is matched with the pseudo
             element = "".join([i for i in self.kind if not i.isdigit()])
