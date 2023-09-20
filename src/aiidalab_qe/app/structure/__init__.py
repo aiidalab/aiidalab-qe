@@ -3,6 +3,7 @@
 Authors: AiiDAlab team
 """
 import os
+import pathlib
 import warnings
 
 import aiida
@@ -26,20 +27,17 @@ structures are supported.
 </strong></p>
 </div>"""
 
-# Navigate to the aiidalab_qe root directory
-file_path = os.path.abspath(os.path.join(__file__, "../../../../../"))
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
+file_path = pathlib.Path(__file__).parent.resolve()
 Examples = [
-    ("Silicon (diamond)", os.path.join(file_path, "miscellaneous/structures/Si.xyz")),
-    ("Silicon oxide", os.path.join(file_path, "miscellaneous/structures/SiO2.xyz")),
-    ("Diamond", os.path.join(file_path, "miscellaneous/structures/diamond.cif")),
-    ("Gallium arsenide", os.path.join(file_path, "miscellaneous/structures/GaAs.xyz")),
-    ("Gold (fcc)", os.path.join(file_path, "miscellaneous/structures/Au.cif")),
-    ("Cobalt (hcp)", os.path.join(file_path, "miscellaneous/structures/Co.cif")),
+    ("Silicon (diamond)", os.path.join(file_path, "examples/Si.xyz")),
+    ("Silicon oxide", os.path.join(file_path, "examples/SiO2.xyz")),
+    ("Diamond", os.path.join(file_path, "examples/diamond.cif")),
+    ("Gallium arsenide", os.path.join(file_path, "examples/GaAs.xyz")),
+    ("Gold (fcc)", os.path.join(file_path, "examples/Au.cif")),
+    ("Cobalt (hcp)", os.path.join(file_path, "examples/Co.cif")),
 ]
-
-print("Examples: ", Examples)
 
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):

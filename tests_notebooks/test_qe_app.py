@@ -39,8 +39,7 @@ def test_qe_app_select_silicon_and_confirm(
             EC.element_to_be_clickable((By.XPATH, "//button[text()='Confirm']"))
         )
         element.click()
-    except Exception as exception:
-        print(exception)
+    except Exception:
         driver.find_element(By.TAG_NAME, "summary").click()
         time.sleep(10)
     # Take a screenshot of the selected diamond
