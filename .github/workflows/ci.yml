@@ -51,7 +51,11 @@ jobs:
 
         runs-on: ubuntu-latest
         timeout-minutes: 30
-
+        services:
+            rabbitmq:
+                image: rabbitmq:latest
+                ports:
+                    - 5672:5672
         steps:
 
             - name: Check out app
