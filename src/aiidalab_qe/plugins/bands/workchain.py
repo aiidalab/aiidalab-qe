@@ -17,8 +17,8 @@ def pairwise(iterable):
     return zip(a, b)
 
 
-# function to calculate the number of points per branch depending on the kpoints_distance and the reciprocal cell
 def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distance):
+    """ function to calculate the number of points per branch depending on the kpoints_distance and the reciprocal cell"""
     scaled_vector_a = np.array(vector_a)
     scaled_vector_b = np.array(vector_b)
     reciprocal_vector_a = scaled_vector_a.dot(reciprocal_cell)
