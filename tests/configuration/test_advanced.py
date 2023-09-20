@@ -146,7 +146,8 @@ def test_advanced_kpoints_mesh():
     w.input_structure = structure
 
     w.override.value = True
-    assert w.mesh_grid.value == [6, 6, 6]
+    assert w.mesh_grid.value == "Mesh [16, 16, 16]"
 
-    # Check reset
-    w.reset()
+    # change protocol
+    w.protocol = "fast"
+    assert w.mesh_grid.value == "Mesh [6, 6, 6]"
