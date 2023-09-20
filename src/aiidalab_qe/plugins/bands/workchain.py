@@ -65,16 +65,6 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     reciprocal_cell = kpoints.reciprocal_cell
     bands_kpoints_distance = calculate_bands_kpoints_distance(kpoints_distance)
 
-    def pairwise(iterable):
-        """This function is equivalent to the pairwise function in the itertools module (Python 3.10)
-        https://docs.python.org/3/library/itertools.html#itertools.pairwise
-        We implemented here to make the app compatible with older versions of Python"""
-        from itertools import tee
-
-        a, b = tee(iterable)
-        next(b, None)
-        return zip(a, b)
-
     # dictionary with the 2D symmetry paths
     selected_paths = {
         "hexagonal": {
@@ -145,7 +135,9 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     num_per_branch = []
     path = selected_paths[kpath_2d]["path"]
     labels = selected_paths[kpath_2d]["labels"]
-    branches = pairwise(path)
+    branches = zip(
+        path[:-1], path[1:]
+    )  # zip the path with the next point in the path to define the branches
 
     # Calculate the number of points per branch and generate the kpoints
     for branch in branches:
@@ -166,6 +158,7 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
         points_branch.append(points.tolist())
         num_per_branch.append(num_points_per_branch)
 
+    # Generate the kpoints as single list and add the labels
     list_kpoints = [item for sublist in points_branch for item in sublist]
     kpoints.set_kpoints(list_kpoints)
     kpoints.labels = [
@@ -183,7 +176,6 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     pw_code = codes.get("pw_code", {})
     protocol = parameters["workchain"]["protocol"]
-    #
     scf_overrides = deepcopy(parameters["advanced"])
     bands_overrides = deepcopy(parameters["advanced"])
     bands_overrides.pop("kpoints_distance", None)
