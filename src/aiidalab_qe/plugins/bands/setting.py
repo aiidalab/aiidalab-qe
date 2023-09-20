@@ -36,8 +36,13 @@ class Setting(Panel):
             disabled=False,
             style={"description_width": "initial"},
         )
-        self.two_dim_kpoints_path = ipw.Dropdown(
-            description="Select 2D symmetry path:",
+        self.kpath_2d_help = ipw.HTML(
+            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+            If your system has periodicity xy. Please select of the five 2D Bravais lattices corresponding to your system.
+            </div>"""
+        )
+        self.kpath_2d = ipw.Dropdown(
+            description="Lattice:",
             options=[
                 ("Hexagonal", "hexagonal"),
                 ("Square", "square"),
@@ -52,7 +57,8 @@ class Setting(Panel):
             self.settings_help,
             self.path,
             self.npoint,
-            self.two_dim_kpoints_path,
+            self.kpath_2d_help,
+            self.kpath_2d,
         ]
         super().__init__(**kwargs)
 
@@ -61,10 +67,11 @@ class Setting(Panel):
         return {
             "path": Str(self.path.value),
             "npoint": Int(self.npoint.value),
-            "two_dim_kpoints_path": self.two_dim_kpoints_path.value,
+            "kpath_2d": self.kpath_2d.value,
         }
 
     def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.path.value = input_dict.get("path", 1)
         self.npoint.value = input_dict.get("npoint", 2)
+        self.kpath_2d.value = input_dict.get("kpath_2d", 3)
