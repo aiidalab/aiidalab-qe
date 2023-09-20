@@ -114,3 +114,39 @@ def test_advanced_tot_charge_settings():
     w.reset()
 
     assert w.value.get("total_charge") == 0.0
+
+
+def test_advanced_kpoints_mesh():
+    """Test Mesh Grid HTML widget."""
+    from aiida.plugins import DataFactory
+
+    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
+
+    StructureData = DataFactory("structure")
+
+    w = AdvancedSettings()
+
+    # Create a StructureData for AdvancedSettings (Silicon)
+
+    structure = StructureData(
+        cell=[
+            [3.8401979337, 0.0000000000, 0.0000000000],
+            [1.9200989668, 3.3257101909, 0.0000000000],
+            [0.0000000000, -2.2171384943, 3.1355090603],
+        ],
+        pbc=[True, True, True],
+    )
+    structure.append_atom(
+        position=[0.0000000000, 0.0000000000, 0.0000000000], symbols="Si"
+    )
+    structure.append_atom(
+        position=[2.5601312956, 1.6544735986, 1.5677545302], symbols="Si"
+    )
+
+    w.input_structure = structure
+
+    w.override.value = True
+    assert w.mesh_grid.value == [6, 6, 6]
+
+    # Check reset
+    w.reset()

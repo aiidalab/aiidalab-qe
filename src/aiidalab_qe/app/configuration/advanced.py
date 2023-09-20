@@ -8,6 +8,9 @@ import os
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
+from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
+    create_kpoints_from_distance,
+)
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from IPython.display import clear_output, display
 
@@ -268,49 +271,14 @@ class AdvancedSettings(Panel):
     def _display_mesh(self, _=None):
         if self.input_structure is not None:
             if self.kpoints_distance.value > 0:
-                mesh = self.create_kpoints_from_distance(
-                    self.input_structure, self.kpoints_distance.value, True
+                mesh = create_kpoints_from_distance(
+                    self.input_structure,
+                    orm.Float(self.kpoints_distance.value),
+                    orm.Bool(True),
                 )
-                self.mesh_grid.value = "Mesh " + str(mesh)
+                self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
             else:
                 self.mesh_grid.value = "Please select a number higher than 0.0"
-
-    # Taken from QE-pluggin - Modified to return a list and to not use Float or Bool from aiida-core
-    def create_kpoints_from_distance(self, structure, distance, force_parity):
-        """Generate a uniformly spaced kpoint mesh for a given structure.
-
-        The spacing between kpoints in reciprocal space is guaranteed to be at least the defined distance.
-
-        :param structure: the StructureData to which the mesh should apply
-        :param distance: a Float with the desired distance between kpoints in reciprocal space
-        :param force_parity: a Bool to specify whether the generated mesh should maintain parity
-        :returns: a KpointsData with the generated mesh
-        """
-        from aiida.orm import KpointsData
-        from numpy import linalg
-
-        epsilon = 1e-5
-
-        kpoints = KpointsData()
-        kpoints.set_cell_from_structure(structure)
-        kpoints.set_kpoints_mesh_from_density(distance, force_parity=force_parity)
-
-        lengths_vector = [linalg.norm(vector) for vector in structure.cell]
-        lengths_kpoint = kpoints.get_kpoints_mesh()[0]
-
-        is_symmetric_cell = all(
-            abs(length - lengths_vector[0]) < epsilon for length in lengths_vector
-        )
-        is_symmetric_mesh = all(
-            length == lengths_kpoint[0] for length in lengths_kpoint
-        )
-
-        # If the vectors of the cell all have the same length, the kpoint mesh should be isotropic as well
-        if is_symmetric_cell and not is_symmetric_mesh:
-            nkpoints = max(lengths_kpoint)
-            kpoints.set_kpoints_mesh([nkpoints, nkpoints, nkpoints])
-
-        return kpoints.get_kpoints_mesh()[0]
 
 
 class MagnetizationSettings(ipw.VBox):
