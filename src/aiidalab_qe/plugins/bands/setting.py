@@ -38,7 +38,7 @@ class Setting(Panel):
         )
         self.kpath_2d_help = ipw.HTML(
             """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-            If your system has periodicity xy. Please select of the five 2D Bravais lattices corresponding to your system.
+            If your system has periodicity xy. Please select one of the five 2D Bravais lattices corresponding to your system.
             </div>"""
         )
         self.kpath_2d = ipw.Dropdown(
