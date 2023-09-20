@@ -2,19 +2,10 @@ import numpy as np
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 
+GAMMA = "\u0393"
+
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 KpointsData = DataFactory("core.array.kpoints")
-
-
-# function to get pairwise elements from a list
-# Compatible with python 3.8 onwards
-def pairwise(iterable):
-    # pairwise('ABCDEFG') --> AB BC CD DE EF FG
-    from itertools import tee
-
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
 
 
 def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distance):
@@ -27,8 +18,8 @@ def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distanc
     return round(distance / bands_kpoints_distance)
 
 
-# function to calculate the bands_kpoints_distance depending on the kpoints_distance
 def calculate_bands_kpoints_distance(kpoints_distance):
+    """function to calculate the bands_kpoints_distance depending on the kpoints_distance"""
     if kpoints_distance >= 0.5:
         return 0.1
     elif 0.15 < kpoints_distance < 0.5:
@@ -37,7 +28,7 @@ def calculate_bands_kpoints_distance(kpoints_distance):
         return 0.015
 
 
-def generate_one_dim_kpoints_path(structure, kpoints_distance):
+def generate_kpath_1d(structure, kpoints_distance):
     """Return a kpoints object for one dimensional systems (from Gamma to X)
     The number of kpoints is calculated based on the kpoints_distance (as in the PwBandsWorkChain protocol)
     """
@@ -61,11 +52,11 @@ def generate_one_dim_kpoints_path(structure, kpoints_distance):
         num=num_points_per_branch,
     )
     kpoints.set_kpoints(points.tolist())
-    kpoints.labels = [[0, "\u0393"], [len(points) - 1, "X"]]
+    kpoints.labels = [[0, GAMMA], [len(points) - 1, "X"]]
     return kpoints
 
 
-def generate_two_dim_kpoints_path(structure, kpoints_distance, two_dim_kpoints_path):
+def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     """Return a kpoints object for two dimensional systems based on the selected 2D symmetry path
     The number of kpoints is calculated based on the kpoints_distance (as in the PwBandsWorkChain protocol)
     """
@@ -73,6 +64,16 @@ def generate_two_dim_kpoints_path(structure, kpoints_distance, two_dim_kpoints_p
     kpoints.set_cell_from_structure(structure)
     reciprocal_cell = kpoints.reciprocal_cell
     bands_kpoints_distance = calculate_bands_kpoints_distance(kpoints_distance)
+
+    def pairwise(iterable):
+        """This function is equivalent to the pairwise function in the itertools module (Python 3.10)
+        https://docs.python.org/3/library/itertools.html#itertools.pairwise
+        We implemented here to make the app compatible with older versions of Python"""
+        from itertools import tee
+
+        a, b = tee(iterable)
+        next(b, None)
+        return zip(a, b)
 
     # dictionary with the 2D symmetry paths
     selected_paths = {
@@ -83,7 +84,7 @@ def generate_two_dim_kpoints_path(structure, kpoints_distance, two_dim_kpoints_p
                 [0.5, 0.5, 0.0],
                 [1.0, 0.0, 0.0],
             ],
-            "labels": ["\u0393", "K", "M", "\u0393"],
+            "labels": [GAMMA, "K", "M", GAMMA],
         },
         "square": {
             "path": [
@@ -92,7 +93,7 @@ def generate_two_dim_kpoints_path(structure, kpoints_distance, two_dim_kpoints_p
                 [0.5, 0.5, 0.0],
                 [1.0, 0.0, 0.0],
             ],
-            "labels": ["\u0393", "X", "M", "\u0393"],
+            "labels": [GAMMA, "X", "M", GAMMA],
         },
         "rectangular": {
             "path": [
@@ -102,11 +103,11 @@ def generate_two_dim_kpoints_path(structure, kpoints_distance, two_dim_kpoints_p
                 [0.0, 0.5, 0.0],
                 [1.0, 0.0, 0.0],
             ],
-            "labels": ["\u0393", "X", "S", "Y", "\u0393"],
+            "labels": [GAMMA, "X", "S", "Y", GAMMA],
         },
     }
     # if the selected path is centered_rectangular or oblique, the path is calculated based on the reciprocal cell
-    if two_dim_kpoints_path in ["centered_rectangular", "oblique"]:
+    if kpath_2d in ["centered_rectangular", "oblique"]:
         a1 = reciprocal_cell[0]
         a2 = reciprocal_cell[1]
         norm_a1 = np.linalg.norm(a1)
@@ -126,7 +127,7 @@ def generate_two_dim_kpoints_path(structure, kpoints_distance, two_dim_kpoints_p
                 [eta, 1 - nu, 0.0],
                 [1.0, 0.0, 0.0],
             ],
-            "labels": ["\u0393", "X", "H_1", "C", "H", "\u0393"],
+            "labels": [GAMMA, "X", "H_1", "C", "H", GAMMA],
         }
         selected_paths["oblique"] = {
             "path": [
@@ -138,12 +139,12 @@ def generate_two_dim_kpoints_path(structure, kpoints_distance, two_dim_kpoints_p
                 [0.0, 0.5, 0.0],
                 [1.0, 0.0, 0.0],
             ],
-            "labels": ["\u0393", "X", "H_1", "C", "H", "Y", "\u0393"],
+            "labels": [GAMMA, "X", "H_1", "C", "H", "Y", GAMMA],
         }
     points_branch = []
     num_per_branch = []
-    path = selected_paths[two_dim_kpoints_path]["path"]
-    labels = selected_paths[two_dim_kpoints_path]["labels"]
+    path = selected_paths[kpath_2d]["path"]
+    labels = selected_paths[kpath_2d]["labels"]
     branches = pairwise(path)
 
     # Calculate the number of points per branch and generate the kpoints
@@ -206,9 +207,9 @@ def get_builder(codes, structure, parameters, **kwargs):
     if structure.pbc != (True, True, True):
         kpoints_distance = parameters["advanced"]["kpoints_distance"]
         if structure.pbc == (True, False, False):
-            kpoints = generate_one_dim_kpoints_path(structure, kpoints_distance)
+            kpoints = generate_kpath_1d(structure, kpoints_distance)
         elif structure.pbc == (True, True, False):
-            kpoints = generate_two_dim_kpoints_path(
+            kpoints = generate_kpath_2d(
                 structure, kpoints_distance, parameters["bands"]["kpath_2d"]
             )
         bands.pop("bands_kpoints_distance")
