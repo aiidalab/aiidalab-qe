@@ -226,12 +226,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
             for code in [
-                "pw_code",
-                "dos_code",
-                "projwfc_code",
+                "pw",
+                "dos",
+                "projwfc",
             ]:
                 try:
-                    code_widget = getattr(self, code)
+                    code_widget = getattr(self, f"{code}_code")
                     code_widget.refresh()
                     code_widget.value = orm.load_code(DEFAULT_PARAMETERS[code]).uuid
                 except NotExistent:
@@ -360,10 +360,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.submit()
 
     def get_selected_codes(self):
+        """Get the codes selected in the GUI.
+
+        return: A dict with the code names as keys and the code UUIDs as values.
+        """
         codes = {
-            "pw_code": self.pw_code.value,
-            "dos_code": self.dos_code.value,
-            "projwfc_code": self.projwfc_code.value,
+            "pw": self.pw_code.value,
+            "dos": self.dos_code.value,
+            "projwfc": self.projwfc_code.value,
         }
         return codes
 
@@ -380,9 +384,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _get_code_uuid(parameters["pw_code"])
-            self.dos_code.value = _get_code_uuid(parameters["dos_code"])
-            self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
+            self.pw_code.value = _get_code_uuid(parameters["pw"])
+            self.dos_code.value = _get_code_uuid(parameters["dos"])
+            self.projwfc_code.value = _get_code_uuid(parameters["projwfc"])
 
     def set_pdos_status(self):
         if "pdos" in self.input_parameters.get("workchain", {}).get("properties", []):
@@ -437,7 +441,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # add codes info into input_parameters
         self.builder_parameters["codes"] = self.get_selected_codes()
         self.builder_parameters["resources"] = self.get_resources()
-        #
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             parameters=self.builder_parameters,
@@ -518,9 +521,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         extra_report_parameters.update(
             {
-                "pw_code": pw_code,
-                "dos_code": dos_code,
-                "projwfc_code": projwfc_code,
+                "pw": pw_code,
+                "dos": dos_code,
+                "projwfc": projwfc_code,
             }
         )
 
