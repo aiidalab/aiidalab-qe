@@ -4,6 +4,7 @@ Authors: AiiDAlab team
 """
 
 import pathlib
+
 import aiida
 import ipywidgets as ipw
 import traitlets
