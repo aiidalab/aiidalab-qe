@@ -226,14 +226,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
             for code in [
-                "pw_code",
-                "dos_code",
-                "projwfc_code",
+                "pw",
+                "dos",
+                "projwfc",
             ]:
                 try:
-                    code_widget = getattr(self, code)
+                    code_widget = getattr(self, f"{code}_code")
                     code_widget.refresh()
-                    code_widget.value = orm.load_code(DEFAULT_PARAMETERS[code]).uuid
+                    code_widget.value = orm.load_code(
+                        DEFAULT_PARAMETERS["codes"][code]
+                    ).uuid
                 except NotExistent:
                     pass
 
@@ -259,6 +261,19 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             != orm.load_code(change["old"]).computer.pk
         ):
             self.set_resource_defaults(orm.load_code(change["new"]).computer)
+
+    def get_resources(self):
+        resources = {
+            "num_machines": self.resources_config.num_nodes.value,
+            "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
+            "npools": self.parallelization.npools.value,
+        }
+        return resources
+
+    def set_resources(self, resources):
+        self.resources_config.num_nodes.value = resources["num_machines"]
+        self.resources_config.num_cpus.value = resources["num_mpiprocs_per_machine"]
+        self.parallelization.npools.value = resources["npools"]
 
     def set_resource_defaults(self, computer=None):
         if computer is None or computer.hostname == "localhost":
@@ -346,6 +361,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.submit_button.disabled = True
         self.submit()
 
+    def get_selected_codes(self):
+        """Get the codes selected in the GUI.
+
+        return: A dict with the code names as keys and the code UUIDs as values.
+        """
+        codes = {
+            "pw": self.pw_code.value,
+            "dos": self.dos_code.value,
+            "projwfc": self.projwfc_code.value,
+        }
+        return codes
+
     def set_selected_codes(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
 
@@ -359,9 +386,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _get_code_uuid(parameters["pw_code"])
-            self.dos_code.value = _get_code_uuid(parameters["dos_code"])
-            self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
+            self.pw_code.value = _get_code_uuid(parameters["codes"]["pw"])
+            self.dos_code.value = _get_code_uuid(parameters["codes"]["dos"])
+            self.projwfc_code.value = _get_code_uuid(parameters["codes"]["projwfc"])
 
     def set_pdos_status(self):
         if "pdos" in self.input_parameters.get("workchain", {}).get("properties", []):
@@ -412,30 +439,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Create the builder for the `QeAppWorkChain` submit."""
         from copy import deepcopy
 
-        pw_code = self.pw_code.value
-        dos_code = self.dos_code.value
-        projwfc_code = self.projwfc_code.value
-
-        parameters = deepcopy(self.input_parameters)
+        self.builder_parameters = deepcopy(self.input_parameters)
+        # add codes info into input_parameters
+        self.builder_parameters["codes"] = self.get_selected_codes()
+        self.builder_parameters["resources"] = self.get_resources()
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            pw_code=orm.load_code(pw_code),
-            dos_code=orm.load_code(dos_code),
-            projwfc_code=orm.load_code(projwfc_code),
-            parameters=parameters,
+            parameters=self.builder_parameters,
         )
 
-        resources = {
-            "num_machines": self.resources_config.num_nodes.value,
-            "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
-        }
-
-        npool = self.parallelization.npools.value
-        self._update_builder(builder, resources, npool, self.MAX_MPI_PER_POOL)
+        self._update_builder(builder, self.MAX_MPI_PER_POOL)
 
         return builder
 
-    def _update_builder(self, buildy, resources, npools, max_mpi_per_pool):
+    def _update_builder(self, buildy, max_mpi_per_pool):
+        resources = self.get_resources()
+        npools = resources.pop("npools", 1)
         """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
         for k, v in buildy.items():
             if isinstance(v, (dict, ProcessBuilderNamespace)):
@@ -457,7 +476,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if k == "resources":
                     buildy["resources"] = resources
                 else:
-                    self._update_builder(v, resources, npools, max_mpi_per_pool)
+                    self._update_builder(v, max_mpi_per_pool)
 
     def _create_extra_report_parameters(self) -> dict[str, t.Any]:
         """This method will also create a dictionary of the parameters that were not
@@ -502,13 +521,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         dos_code = self.dos_code.value
         projwfc_code = self.projwfc_code.value
 
-        extra_report_parameters.update(
-            {
-                "pw_code": pw_code,
-                "dos_code": dos_code,
-                "projwfc_code": projwfc_code,
-            }
-        )
+        extra_report_parameters["codes"] = {
+            "pw": pw_code,
+            "dos": dos_code,
+            "projwfc": projwfc_code,
+        }
 
         return extra_report_parameters
 
