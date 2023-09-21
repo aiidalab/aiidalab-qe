@@ -78,13 +78,15 @@ def generate_xy_data():
     """Return an ``XyData`` instance."""
 
     def _generate_xy_data(xvals=None, yvals=None, xlabel=None, ylabel=None):
-        """Return an ``XyData`` node."""
+        """Return an ``XyData`` node.
+        xvals and yvals are lists, and should have the same length.
+        """
         from aiida.orm import XyData
 
-        xvals = xvals  # [1, 2, 3]
-        yvals = yvals  # [10, 20, 30]
-        xlabel = xlabel  # "X"
-        ylabel = ylabel  # ["dos"]
+        xvals = xvals
+        yvals = yvals
+        xlabel = xlabel
+        ylabel = ylabel
         xunits = "n/a"
         yunits = ["n/a"] * len(ylabel)
 
@@ -106,9 +108,10 @@ def generate_bands_data():
         import numpy as np
         from aiida.plugins import DataFactory
 
+        BandsData = DataFactory("core.array.bands")
+
         kpoints = np.array([[0.0, 0.0, 0.0]])
         bands = np.array([[-5.64024889]])
-        BandsData = DataFactory("core.array.bands")
         bands_data = BandsData()
         bands_data.set_kpoints(kpoints)
         bands_data.set_bands(bands, units="eV")
@@ -126,10 +129,11 @@ def generate_projection_data(generate_bands_data):
     def _generate_projection_data():
         """Return an ``ProjectionData`` node."""
         import numpy as np
-        from aiida.orm import ProjectionData
-        from aiida.plugins import OrbitalFactory
+        from aiida.plugins import DataFactory, OrbitalFactory
 
+        ProjectionData = DataFactory("core.array.projection")
         OrbitalCls = OrbitalFactory("core.realhydrogen")
+
         state_dict = {
             "kind_name": "C",
             "angular_momentum": 0,
@@ -138,7 +142,6 @@ def generate_projection_data(generate_bands_data):
             "position": [0.0, 0.0, 0.0],
         }
         orbitals = [OrbitalCls(**state_dict)]
-        # projections = np.array([[1]])
         energy_arrays = np.array([1])
         pdos_arrays = np.array([1])
 
@@ -147,7 +150,6 @@ def generate_projection_data(generate_bands_data):
         projection_data.set_reference_bandsdata(bands_data)
         projection_data.set_projectiondata(
             orbitals,
-            # list_of_projections=projections,
             list_of_energy=energy_arrays,
             list_of_pdos=pdos_arrays,
             bands_check=False,

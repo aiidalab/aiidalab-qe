@@ -53,8 +53,6 @@ jobs:
         timeout-minutes: 30
 
         services:
-            postgres:
-                image: postgres:12
             rabbitmq:
                 image: rabbitmq:latest
                 ports:
