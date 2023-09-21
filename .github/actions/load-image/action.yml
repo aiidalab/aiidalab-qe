@@ -19,13 +19,13 @@ runs:
           uses: actions/download-artifact@v3
           with:
               name: ${{ inputs.image }}-${{ inputs.architecture }}
-              path: /tmp/
+              path: /tmp/aiidalab/
         - name: Load downloaded image to docker 📥
           run: |
-              docker load --input /tmp/${{ inputs.image }}-${{ inputs.architecture }}.tar
+              docker load --input /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
               docker image ls --all
           shell: bash
         - name: Delete the file 🗑️
-          run: rm -f /tmp/${{ inputs.image }}-${{ inputs.architecture }}.tar
+          run: rm -f /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
           shell: bash
           if: always()

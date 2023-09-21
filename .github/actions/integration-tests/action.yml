@@ -51,7 +51,7 @@ runs:
           shell: bash
 
         - name: Upload screenshots as artifacts
-          if : ${{ inputs.architecture == 'amd64' }} && always()
+          if : ${{ inputs.architecture == 'amd64' }}
           uses: actions/upload-artifact@v3
           with:
               name: Screenshots-CI-${{ inputs.architecture }}

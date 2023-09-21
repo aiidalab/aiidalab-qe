@@ -30,6 +30,10 @@ runs:
         - name: Install Dev Dependencies 📦
           if: ${{ inputs.architecture == 'arm64' }}
           run: |
+              echo $(whoami)
+              echo $PATH
+              echo $(docker context ls)
+              echo $(docker ps -a)
               pip install --upgrade pip
               pip install --upgrade -r docker/requirements-dev-arm64.txt
           shell: bash
