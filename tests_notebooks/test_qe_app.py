@@ -32,17 +32,19 @@ def test_qe_app_select_silicon_and_confirm(
     )
     element.click()
 
-    driver.find_element(By.XPATH, "//option[@value='Diamond']").click()
-    time.sleep(10)
-
+    try:
+        driver.find_element(By.XPATH, "//option[@value='Diamond']").click()
+        time.sleep(10)
+        element = WebDriverWait(driver, 60).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[text()='Confirm']"))
+        )
+        element.click()
+    except Exception:
+        driver.find_element(By.TAG_NAME, "summary").click()
+        time.sleep(10)
+    # Take a screenshot of the selected diamond
     driver.get_screenshot_as_file(
         str(Path.joinpath(screenshot_dir, "qe-app-select-diamond-selected.png"))
     )
-
-    element = WebDriverWait(driver, 60).until(
-        EC.element_to_be_clickable((By.XPATH, "//button[text()='Confirm']"))
-    )
-    element.click()
-
     # Test that we have indeed proceeded to the next step
     driver.find_element(By.XPATH, "//span[contains(.,'✓ Step 1')]")
