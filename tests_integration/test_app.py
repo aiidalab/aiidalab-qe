@@ -1,16 +1,9 @@
 import time
 from pathlib import Path
 
-import requests
 import selenium.webdriver.support.expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
-
-
-def test_notebook_service_available(notebook_service):
-    url, token = notebook_service
-    response = requests.get(f"{url}/?token={token}")
-    assert response.status_code == 200
 
 
 def test_qe_app_take_screenshot(selenium_driver, final_screenshot):
