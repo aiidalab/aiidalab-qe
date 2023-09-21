@@ -37,11 +37,11 @@ runs:
 
         - name: Run pytest for firefox
           if : ${{ inputs.architecture == 'amd64' }}
-          run: VERSION=newly-baked pytest --driver Firefox tests_integration
+          run: TAG=newly-baked pytest --driver Firefox tests_integration
           shell: bash
 
         - name: Run pytest for Chrome
-          run: VERSION=newly-baked pytest --driver Chrome tests_integration
+          run: TAG=newly-baked pytest --driver Chrome tests_integration
           shell: bash
 
         - name: Upload screenshots as artifacts
