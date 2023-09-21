@@ -80,6 +80,7 @@ jobs:
                       docker push ${arch_tag}
 
                       # write tag to file
+                      mkdir -p /tmp/aiidalab/
                       echo ${arch_tag} >> /tmp/${{ inputs.image }}-${{ inputs.architecture }}-tags.txt
                   done
               shell: bash

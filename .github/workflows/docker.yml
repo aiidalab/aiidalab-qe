@@ -68,7 +68,7 @@ jobs:
         with:
             image: qe
             architecture: arm64
-            runsOn: buildjet-2vcpu-ubuntu-2204-arm
+            runsOn: ARM64
 
     amd64-push-ghcr:
         uses: ./.github/workflows/docker-push.yml
