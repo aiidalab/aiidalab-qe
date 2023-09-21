@@ -233,7 +233,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 try:
                     code_widget = getattr(self, f"{code}_code")
                     code_widget.refresh()
-                    code_widget.value = orm.load_code(DEFAULT_PARAMETERS[code]).uuid
+                    code_widget.value = orm.load_code(
+                        DEFAULT_PARAMETERS["codes"][code]
+                    ).uuid
                 except NotExistent:
                     pass
 
@@ -384,9 +386,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _get_code_uuid(parameters["pw"])
-            self.dos_code.value = _get_code_uuid(parameters["dos"])
-            self.projwfc_code.value = _get_code_uuid(parameters["projwfc"])
+            self.pw_code.value = _get_code_uuid(parameters["codes"]["pw"])
+            self.dos_code.value = _get_code_uuid(parameters["codes"]["dos"])
+            self.projwfc_code.value = _get_code_uuid(parameters["codes"]["projwfc"])
 
     def set_pdos_status(self):
         if "pdos" in self.input_parameters.get("workchain", {}).get("properties", []):
@@ -519,13 +521,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         dos_code = self.dos_code.value
         projwfc_code = self.projwfc_code.value
 
-        extra_report_parameters.update(
-            {
-                "pw": pw_code,
-                "dos": dos_code,
-                "projwfc": projwfc_code,
-            }
-        )
+        extra_report_parameters["codes"] = {
+            "pw": pw_code,
+            "dos": dos_code,
+            "projwfc": projwfc_code,
+        }
 
         return extra_report_parameters
 
