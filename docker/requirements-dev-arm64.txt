@@ -9,9 +9,3 @@ pytest-docker
 doit
 dunamai
 pyyaml<=5.3.1
-
-# test dependencies same runner qe
-pytest-selenium
-pytest-html<4.0
-selenium~=4.11.2
-webdriver-manager

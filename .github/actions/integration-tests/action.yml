@@ -20,8 +20,13 @@ runs:
           run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
           shell: bash
 
+        - name: Run pytest to test image is working
+          run: TAG=newly-baked pytest tests_integration/test_image.py
+          shell: bash
+
         # The Firefox and its engine geckodrive need do be installed manually to run
-        # selenium tests.
+        # selenium tests. This only works on amd64 architecture and it should be enough only test this
+        # on one architecture.
         - name: Install Firefox
           if : ${{ inputs.architecture == 'amd64' }}
           uses: browser-actions/setup-firefox@latest
@@ -37,15 +42,16 @@ runs:
 
         - name: Run pytest for firefox
           if : ${{ inputs.architecture == 'amd64' }}
-          run: TAG=newly-baked pytest --driver Firefox tests_integration
+          run: TAG=newly-baked pytest --driver Firefox tests_integration/test_app.py
           shell: bash
 
         - name: Run pytest for Chrome
-          run: TAG=newly-baked pytest --driver Chrome tests_integration
+          if : ${{ inputs.architecture == 'amd64' }}
+          run: TAG=newly-baked pytest --driver Chrome tests_integration/test_app.py
           shell: bash
 
         - name: Upload screenshots as artifacts
-          if: always()
+          if : ${{ inputs.architecture == 'amd64' }} && always()
           uses: actions/upload-artifact@v3
           with:
               name: Screenshots-CI-${{ inputs.architecture }}
