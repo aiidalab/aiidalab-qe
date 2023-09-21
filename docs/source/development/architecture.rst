@@ -11,26 +11,37 @@ Quantum ESPRESSO app (QeApp) uses the Wizards UI, which divides one calculation 
 
 .. image:: ../_static/images/plugin_step.png
 
-Parameter trasfer between steps
+Parameter transfer between steps
 -------------------------------
-In each step, user can set the parameters in the panels. The parameters are generated and stored as a value (e.g. Structure or dictionary), which is passed to the next step by linking it to the cooresponding trailet of the step. For example, the ``confirmed_structure`` of step 1 is linked to the ``input_structure`` trailet of step 2.
+Data is passed to the next step by linking it to the corresponding trailet of the step. For example, the ``confirmed_structure`` of step 1 is linked to the ``input_structure`` trailet of step 2.
 
 .. code:: python
 
     ipw.dlink(
             (self.structure_selection_step, "confirmed_structure"),
-            (self.submit_qe_app_work_chain_step, "input_structure"),
+            (self.configure_qe_app_work_chain_step, "input_structure"),
         )
 
+In the configuration step, there are several panels. The parameters from these panels are generated and stored as a dictionary, which is linked to the ``input_parameters`` trailet of the next submit step. The dictionary has the following structure:
+
+.. code:: python
+
+    {
+        "workchain": {...},
+        "advanced": {...},
+        "bands": {...},
+        "plugin_1": {...},
+        ...
+    }
 
 Plugin
 ======
-QeApp supports run multiple properties (bands, pdos, etc) calculations in one app. Take into account the following facts:
+QeApp supports runing multiple properties (bands, pdos, etc) calculations in one app. Take into account the following facts:
 
 - the configuration for a property calculation has its settings unrelated to other properties.
 - the sub-workchain of the properties can be run independently.
 - the analysis of the results of the properties is also independent.
 
-Thus, we can divide the App into several small groups, and each group is responsible for one property calculation. For example, we could create a group for the `PDOS` property, which includes its settings, workchain, and result analysis. The `PDOS` group is only loaded when the user selects to run the `PDOS` property
+Thus, we can divide the App into several small groups, each responsible for one property calculation. For example, we could create a PDOS property group, including its settings, workchain, and result analysis. The PDOS group is only loaded when the user selects to run the PDOS property.
 
-A QeApp plugin will typically register new panels (setting, result), and workchain to extend the app's functionality. The plugin design make the QeApp more modularized, and pluggable. So the developer can maintain their plugin as a separate folder in the QeApp (even a separate pakcage).
+A QeApp plugin will typically register new panels (setting, result), and workchain to extend the app's functionality. The plugin design makes the QeApp more modularized and pluggable. So the developer can maintain their plugin as a separate folder in the QeApp (even a separate package).
