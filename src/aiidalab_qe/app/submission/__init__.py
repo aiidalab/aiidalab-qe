@@ -479,13 +479,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
         # Periodicity
-        periodicity_options = {
+        periodicity_mapping = {
             (True, True, True): "xyz",
             (True, True, False): "xy",
             (True, False, False): "x",
         }
 
-        periodicity = periodicity_options[self.input_structure.pbc]
+        periodicity = periodicity_mapping.get(self.input_structure.pbc, "xyz")
         extra_report_parameters.update({"periodicity": periodicity})
 
         # update pseudo family information to extra_report_parameters
