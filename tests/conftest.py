@@ -42,7 +42,7 @@ def fixture_code(fixture_localhost):
 def generate_structure_data():
     """generate a `StructureData` object."""
 
-    def _generate_structure_data(name="silicon"):
+    def _generate_structure_data(name="silicon", pbc=(True, True, True)):
         if name == "silicon":
             structure = orm.StructureData(
                 cell=[
@@ -67,7 +67,7 @@ def generate_structure_data():
             structure.append_atom(position=(1.28, 1.28, 0.0), symbols="O")
             structure.append_atom(position=(2.9, 2.9, 0.0), symbols="O")
             structure.append_atom(position=(0.81, 3.37, 1.33), symbols="O")
-
+        structure.pbc = pbc
         return structure
 
     return _generate_structure_data
@@ -428,7 +428,6 @@ def generate_workchain():
 
 @pytest.fixture
 def generate_pdos_workchain(
-    generate_structure_data,
     fixture_localhost,
     fixture_code,
     generate_xy_data,
@@ -437,7 +436,7 @@ def generate_pdos_workchain(
 ):
     """Generate an instance of a `XpsWorkChain`."""
 
-    def _generate_pdos_workchain(spin_type="none"):
+    def _generate_pdos_workchain(structure, spin_type="none"):
         import numpy as np
         from aiida import engine
         from aiida.orm import Dict, FolderData, RemoteData
@@ -447,7 +446,7 @@ def generate_pdos_workchain(
             "pw_code": fixture_code("quantumespresso.pw"),
             "dos_code": fixture_code("quantumespresso.dos"),
             "projwfc_code": fixture_code("quantumespresso.projwfc"),
-            "structure": generate_structure_data(),
+            "structure": structure,
         }
         builder = PdosWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
@@ -535,7 +534,6 @@ def generate_pdos_workchain(
 
 @pytest.fixture
 def generate_bands_workchain(
-    generate_structure_data,
     fixture_localhost,
     fixture_code,
     generate_xy_data,
@@ -544,7 +542,7 @@ def generate_bands_workchain(
 ):
     """Generate an instance of a the WorkChain."""
 
-    def _generate_bands_workchain():
+    def _generate_bands_workchain(structure):
         from copy import deepcopy
 
         from aiida import engine
@@ -553,7 +551,7 @@ def generate_bands_workchain(
 
         inputs = {
             "code": fixture_code("quantumespresso.pw"),
-            "structure": generate_structure_data(),
+            "structure": structure,
         }
         builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
@@ -586,7 +584,11 @@ def generate_qeapp_workchain(
     """Generate an instance of the WorkChain."""
 
     def _generate_qeapp_workchain(
-        relax_type="positions_cell", run_bands=True, run_pdos=True, spin_type="none"
+        structure=None,
+        relax_type="positions_cell",
+        run_bands=True,
+        run_pdos=True,
+        spin_type="none",
     ):
         from copy import deepcopy
 
@@ -594,9 +596,21 @@ def generate_qeapp_workchain(
 
         # Step 1: select structure from example
         s1 = app.structure_step
-        structure = s1.manager.children[0].children[3]
-        structure.children[0].value = structure.children[0].options[1][1]
+        if structure is None:
+            from_example = s1.manager.children[0].children[3]
+            from_example.children[0].value = from_example.children[0].options[1][1]
+        else:
+            structure.store()
+            aiida_database = s1.manager.children[0].children[2]
+            aiida_database.search()
+            key = [
+                key
+                for key in aiida_database.results.options
+                if key.startswith(f"PK: {structure.pk}")
+            ][0]
+            aiida_database.results.value = aiida_database.results.options[key]
         s1.confirm()
+        structure = s1.confirmed_structure
         # step 2 configure
         s2 = app.configure_step
         s2.workchain_settings.relax_type.value = relax_type
@@ -623,14 +637,14 @@ def generate_qeapp_workchain(
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
-            pdos = generate_pdos_workchain(spin_type)
+            pdos = generate_pdos_workchain(structure, spin_type)
             wkchain.out_many(
                 wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
             )
         if run_bands:
             from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
-            bands = generate_bands_workchain()
+            bands = generate_bands_workchain(structure)
             wkchain.out_many(
                 wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
             )
