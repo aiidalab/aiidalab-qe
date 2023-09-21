@@ -14,12 +14,6 @@ PROTOCOL_PSEUDO_MAP = {
     "precise": "SSSP/1.2/PBE/precision",
 }
 
-PROTOCOL_BANDS_KPOINTS_MAP = {
-    "fast": 0.1,
-    "moderate": 0.025,
-    "precise": 0.1,
-}
-
 FUNCTIONAL_REPORT_MAP = {
     "LDA": "local density approximation (LDA)",
     "PBE": "generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE)",
@@ -32,14 +26,6 @@ def _generate_report_dict(builder_parameters: dict):
     for reporting the inputs for the `QeAppWorkChain` with proper name corresponding
     to the template.
     """
-
-    # Helper function for bands_kpoints_distance for one and two dimensional
-    def bands_kpoints_distance(bands_computed, protocol):
-        if bands_computed:
-            return PROTOCOL_BANDS_KPOINTS_MAP[protocol]
-        else:
-            return None
-
     # Workflow logic
     yield "relax_method", builder_parameters.get("relax_type")
     yield "relaxed", builder_parameters.get("run_relax")
@@ -70,12 +56,7 @@ def _generate_report_dict(builder_parameters: dict):
     yield "energy_cutoff_wfc", builder_parameters.get("energy_cutoff_wfc")
     yield "energy_cutoff_rho", builder_parameters.get("energy_cutoff_rho")
     yield "scf_kpoints_distance", builder_parameters.get("scf_kpoints_distance")
-    yield "bands_kpoints_distance", builder_parameters.get(
-        "bands_kpoints_distance",
-        bands_kpoints_distance(
-            builder_parameters.get("run_bands"), builder_parameters.get("protocol")
-        ),
-    )
+    yield "bands_kpoints_distance", builder_parameters.get("bands_kpoints_distance")
     yield "nscf_kpoints_distance", builder_parameters.get("nscf_kpoints_distance")
 
     yield "occupation_type", builder_parameters.get("occupation")
@@ -84,10 +65,8 @@ def _generate_report_dict(builder_parameters: dict):
     yield "smearing", builder_parameters.get("smearing")
 
     yield "tot_charge", builder_parameters.get("tot_charge")
-    yield "initial_magnetic_moments", builder_parameters.get(
-        "initial_magnetic_moments", None
-    )
-    yield "periodicity", builder_parameters.get("periodicity", "xyz")
+    yield "initial_magnetic_moments", builder_parameters.get("initial_magnetic_moments")
+    yield "periodicity", builder_parameters.get("periodicity")
 
 
 def _generate_report_html(report):

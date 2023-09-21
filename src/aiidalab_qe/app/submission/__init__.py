@@ -567,10 +567,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "smearing"
             ]
 
-        # parameters[
-        #     "bands_kpoints_distance"
-        # ] = builder.bands.bands_kpoints_distance.value
-        # parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
+        if "bands" in builder.properties:
+            parameters[
+                "bands_kpoints_distance"
+            ] = builder.bands.bands_kpoints_distance.value
 
         parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
             "tot_charge", 0.0
