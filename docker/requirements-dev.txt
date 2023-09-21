@@ -6,6 +6,5 @@ pytest
 pytest-docker
 pytest-selenium
 pytest-html<4.0
-#selenium~=4.9.0
-selenium
+selenium~=4.9.0
 webdriver-manager
