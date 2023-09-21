@@ -5,5 +5,7 @@ pytest
 # dependencies for running integration tests
 pytest-docker
 pytest-selenium
-selenium~=4.9.0
+pytest-html<4.0
+#selenium~=4.9.0
+selenium
 webdriver-manager
