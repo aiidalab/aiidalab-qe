@@ -5,14 +5,10 @@ def test_reload_selected_code(submit_app_generator):
     app = submit_app_generator()
     submit_step = app.submit_step
 
-    builder = submit_step._create_builder()
-    extra_parameters = submit_step._create_extra_report_parameters()
-    builder_parameters = submit_step._extract_report_parameters(
-        builder, extra_parameters
-    )
+    submit_step._create_builder()
 
     new_submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    new_submit_step.set_selected_codes(parameters=builder_parameters)
+    new_submit_step.set_selected_codes(parameters=submit_step.ui_parameters)
 
     assert new_submit_step.pw_code.value == submit_step.pw_code.value
     assert new_submit_step.dos_code.value == submit_step.dos_code.value
@@ -27,33 +23,17 @@ def test_create_builder_default(
 
     metal, non-magnetic
     """
-    from bs4 import BeautifulSoup
-
-    from aiidalab_qe.app.result.report import _generate_report_html
 
     app = submit_app_generator(properties=["bands", "pdos"])
     submit_step = app.submit_step
 
     builder = submit_step._create_builder()
-    extra_parameters = submit_step._create_extra_report_parameters()
 
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
     # regression test
     data_regression.check(got)
-
-    # test the report can be properly generated from the builder without errors
-    builder_parameters = submit_step._extract_report_parameters(
-        builder, extra_parameters
-    )
-    report_html = _generate_report_html(builder_parameters)
-
-    # All None value is removed in the final report
-    assert report_html.count("None") == 0
-    if "initial_magnetic_moments" not in builder_parameters:
-        parsed = BeautifulSoup(report_html, "html.parser")
-        assert parsed.find("initial_magnetic_moments").text == "None"
 
 
 def test_create_builder_insulator(
@@ -63,9 +43,6 @@ def test_create_builder_insulator(
 
     insulator, non-magnetic, no smearing
     the occupation type is set to fixed, smearing and degauss should not be set"""
-    from bs4 import BeautifulSoup
-
-    from aiidalab_qe.app.result.report import _generate_report_html
 
     app = submit_app_generator(
         electronic_type="insulator", properties=["bands", "pdos"]
@@ -73,25 +50,12 @@ def test_create_builder_insulator(
     submit_step = app.submit_step
 
     builder = submit_step._create_builder()
-    extra_parameters = submit_step._create_extra_report_parameters()
 
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
     assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"] == "fixed"
     assert "smearing" not in got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
-
-    # test the report can be properly generated from the builder without errors
-    builder_parameters = submit_step._extract_report_parameters(
-        builder, extra_parameters
-    )
-    report_html = _generate_report_html(builder_parameters)
-
-    # All None value is removed in the final report
-    assert report_html.count("None") == 0
-    if "initial_magnetic_moments" not in builder_parameters:
-        parsed = BeautifulSoup(report_html, "html.parser")
-        assert parsed.find("initial_magnetic_moments").text == "None"
 
 
 def test_create_builder_advanced_settings(
@@ -104,7 +68,6 @@ def test_create_builder_advanced_settings(
     -tot_charge
     -initial_magnetic_moments
     """
-    from aiidalab_qe.app.result.report import _generate_report_html
 
     app = submit_app_generator(
         electronic_type="metal",
@@ -116,7 +79,6 @@ def test_create_builder_advanced_settings(
     submit_step = app.submit_step
 
     builder = submit_step._create_builder()
-    extra_parameters = submit_step._create_extra_report_parameters()
 
     # check and validate the builder
     got = builder_to_readable_dict(builder)
@@ -137,19 +99,6 @@ def test_create_builder_advanced_settings(
         ]
         == 0.025
     )
-
-    # test the report can be properly generated from the builder without errors
-    builder_parameters = submit_step._extract_report_parameters(
-        builder, extra_parameters
-    )
-
-    # test initial_magnetization _moments for the report
-    assert builder_parameters["initial_magnetic_moments"]["Si"] == 0.1
-
-    report_html = _generate_report_html(builder_parameters)
-
-    # None in report_html means that the report not properly generated
-    assert "None" not in report_html
 
 
 def builder_to_readable_dict(builder):

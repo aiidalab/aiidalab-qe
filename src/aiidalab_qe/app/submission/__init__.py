@@ -117,6 +117,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.qe_setup_status.observe(self._update_state, "busy")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
         self.qe_setup_status.observe(self._auto_select_code, "installed")
+        self.ui_parameters = {}
 
         super().__init__(
             children=[
@@ -349,11 +350,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                builder_parameters = process_node.base.extras.get(
-                    "builder_parameters", None
-                )
-                if builder_parameters is not None:
-                    self.set_selected_codes(builder_parameters)
+                ui_parameters = process_node.base.extras.get("ui_parameters", None)
+                if ui_parameters is not None:
+                    self.set_selected_codes(ui_parameters)
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
@@ -405,7 +404,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process = submit(builder)
 
             process.label = self._generate_label()
-            process.base.extras.set("builder_parameters", self.input_parameters)
+            process.base.extras.set("ui_parameters", self.ui_parameters)
             self.process = process
 
         self._update_state()
@@ -433,13 +432,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Create the builder for the `QeAppWorkChain` submit."""
         from copy import deepcopy
 
-        self.builder_parameters = deepcopy(self.input_parameters)
+        self.ui_parameters = deepcopy(self.input_parameters)
         # add codes info into input_parameters
-        self.builder_parameters["codes"] = self.get_selected_codes()
-        self.builder_parameters["resources"] = self.get_resources()
+        self.ui_parameters["codes"] = self.get_selected_codes()
+        self.ui_parameters["resources"] = self.get_resources()
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            parameters=self.builder_parameters,
+            parameters=deepcopy(self.ui_parameters),
         )
 
         self._update_builder(builder, self.MAX_MPI_PER_POOL)
