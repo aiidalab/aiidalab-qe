@@ -2,6 +2,7 @@
 
 Authors: AiiDAlab team
 """
+import pathlib
 import warnings
 
 import aiida
@@ -27,13 +28,14 @@ structures are supported.
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
+file_path = pathlib.Path(__file__).parent
 Examples = [
-    ("Silicon (diamond)", "miscellaneous/structures/Si.xyz"),
-    ("Silicon oxide", "miscellaneous/structures/SiO2.xyz"),
-    ("Diamond", "miscellaneous/structures/diamond.cif"),
-    ("Gallium arsenide", "miscellaneous/structures/GaAs.xyz"),
-    ("Gold (fcc)", "miscellaneous/structures/Au.cif"),
-    ("Cobalt (hcp)", "miscellaneous/structures/Co.cif"),
+    ("Silicon (diamond)", file_path / "examples" / "Si.xyz"),
+    ("Silicon oxide", file_path / "examples" / "SiO2.xyz"),
+    ("Diamond", file_path / "examples" / "diamond.cif"),
+    ("Gallium arsenide", file_path / "examples" / "GaAs.xyz"),
+    ("Gold (fcc)", file_path / "examples" / "Au.cif"),
+    ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
 ]
 
 

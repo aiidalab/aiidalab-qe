@@ -1,0 +1,75 @@
+---
+name: Build a new image and then upload the image, tags and manifests to GitHub artifacts
+
+env:
+    OWNER: ${{ github.repository_owner }}
+
+on:
+    workflow_call:
+        inputs:
+            image:
+                description: Image name
+                required: true
+                type: string
+            architecture:
+                description: Image architecture, e.g. amd64, arm64
+                required: true
+                type: string
+            runsOn:
+                description: GitHub Actions Runner image
+                required: true
+                type: string
+
+jobs:
+    build-test-upload:
+        runs-on: ${{ inputs.runsOn }}
+        continue-on-error: true
+
+        steps:
+            - name: Checkout Repo ⚡️
+              uses: actions/checkout@v3
+            - name: Create dev environment 📦
+              uses: ./.github/actions/create-dev-env
+              with:
+                  architecture: ${{ inputs.architecture }}
+
+            # Self-hosted runners share a state (whole VM) between runs
+            # Also, they might have running or stopped containers,
+            # which are not cleaned up by `docker system prun`
+            - name: Reset docker state and cleanup artifacts 🗑️
+              if: ${{ inputs.platform != 'x86_64' }}
+              run: |
+                  docker kill $(docker ps --quiet) || true
+                  docker rm $(docker ps --all --quiet) || true
+                  docker system prune --all --force
+                  rm -rf /tmp/aiidalab/
+              shell: bash
+
+            - name: Build image 🛠
+              working-directory: docker
+              run: docker buildx bake --set qe.platform=linux/${{ inputs.architecture }} -f docker-bake.hcl -f build.json --load
+              env:
+                  # Use buildx
+                  DOCKER_BUILDKIT: 1
+                  # Full logs for CI build
+                  BUILDKIT_PROGRESS: plain
+              shell: bash
+
+            - name: Run tests ✅
+              uses: ./.github/actions/integration-tests
+              with:
+                  architecture: ${{ inputs.architecture }}
+                  runsOn: ${{ inputs.runsOn }}
+
+            - name: Save image as a tar for later use 💾
+              run: |
+                  mkdir -p /tmp/aiidalab/
+                  docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
+              shell: bash
+
+            - name: Upload image as artifact 💾
+              uses: actions/upload-artifact@v3
+              with:
+                  name: ${{ inputs.image }}-${{ inputs.architecture }}
+                  path: /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
+                  retention-days: 3
