@@ -7,9 +7,9 @@ PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 def get_builder(codes, structure, parameters, **kwargs):
     from copy import deepcopy
 
-    pw_code = codes.get("pw_code", None)
-    dos_code = codes.get("dos_code", None)
-    projwfc_code = codes.get("projwfc_code", None)
+    pw_code = codes.get("pw", None)
+    dos_code = codes.get("dos", None)
+    projwfc_code = codes.get("projwfc", None)
     protocol = parameters["workchain"]["protocol"]
     #
     scf_overrides = deepcopy(parameters["advanced"])

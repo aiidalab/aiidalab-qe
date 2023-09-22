@@ -174,7 +174,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     """Get a builder for the PwBandsWorkChain."""
     from copy import deepcopy
 
-    pw_code = codes.get("pw_code", {})
+    pw_code = codes.get("pw", {})
     protocol = parameters["workchain"]["protocol"]
     scf_overrides = deepcopy(parameters["advanced"])
     bands_overrides = deepcopy(parameters["advanced"])

@@ -21,7 +21,7 @@ def is_responsive(url):
 
 @pytest.fixture(scope="session")
 def docker_compose_file(pytestconfig):
-    return str(Path(pytestconfig.rootdir) / "tests_notebooks" / "docker-compose.yml")
+    return str(Path(pytestconfig.rootdir) / "tests_integration" / "docker-compose.yml")
 
 
 @pytest.fixture(scope="session")
@@ -50,27 +50,18 @@ def nb_user(aiidalab_exec):
 
 
 @pytest.fixture(scope="session")
-def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
+def notebook_service(docker_ip, docker_services):
     """Ensure that HTTP service is up and responsive."""
-
-    # Directory ~/apps/aiidalab-qe/ is mounted by docker,
-    # make it writeable for jovyan user, needed for `pip install`
-    appdir = f"/home/{nb_user}/apps/aiidalab-qe"
-    aiidalab_exec(f"chmod -R a+rw {appdir}", user="root")
-
-    # This is a temporary fix for dependencies
-    # otherwise `pip install -U .` will fail because of pybtex v0.22 installed.
-    aiidalab_exec("pip install pybtex==0.24", workdir=appdir)
-
-    # install aiidalab-qe
-    aiidalab_exec("pip install -U .", workdir=appdir)
 
     # `port_for` takes a container port and returns the corresponding host port
     port = docker_services.port_for("aiidalab", 8888)
     url = f"http://{docker_ip}:{port}"
-    token = os.environ["JUPYTER_TOKEN"]
+    token = os.environ.get("JUPYTER_TOKEN", "testtoken")
     docker_services.wait_until_responsive(
-        timeout=30.0, pause=0.1, check=lambda: is_responsive(url)
+        # The timeout is very high for this test, because the installation of pseudo libraries.
+        timeout=180.0,
+        pause=0.1,
+        check=lambda: is_responsive(url),
     )
     return url, token
 
@@ -79,7 +70,9 @@ def notebook_service(docker_ip, docker_services, aiidalab_exec, nb_user):
 def selenium_driver(selenium, notebook_service):
     def _selenium_driver(nb_path, wait_time=5.0):
         url, token = notebook_service
-        url_with_token = urljoin(url, f"apps/apps/aiidalab-qe/{nb_path}?token={token}")
+        url_with_token = urljoin(
+            url, f"apps/apps/quantum-espresso/{nb_path}?token={token}"
+        )
         selenium.get(f"{url_with_token}")
         # By default, let's allow selenium functions to retry for 10s
         # till a given element is loaded, see:
@@ -106,7 +99,8 @@ def final_screenshot(request, screenshot_dir, selenium):
     Screenshot name is generated from the test function name
     by stripping the 'test_' prefix
     """
-    screenshot_name = f"{request.function.__name__[5:]}.png"
+    browser_name = selenium.capabilities["browserName"]
+    screenshot_name = f"{request.function.__name__[5:]}-{browser_name}.png"
     screenshot_path = Path.joinpath(screenshot_dir, screenshot_name)
     yield
     selenium.get_screenshot_as_file(screenshot_path)

@@ -392,12 +392,12 @@ def submit_app_generator(
 @pytest.fixture
 def app_to_submit(app):
     # Step 1: select structure from example
-    step1 = app.steps.steps[0][1]
+    step1 = app.structure_step
     structure = step1.manager.children[0].children[3]
     structure.children[0].value = structure.children[0].options[1][1]
     step1.confirm()
     # Step 2: configure calculation
-    step2 = app.steps.steps[1][1]
+    step2 = app.configure_step
     step2.workchain_settings.properties["bands"].run.value = True
     step2.workchain_settings.properties["pdos"].run.value = True
     step2.confirm()
@@ -589,6 +589,7 @@ def generate_qeapp_workchain(
         run_bands=True,
         run_pdos=True,
         spin_type="none",
+        initial_magnetic_moments=0.0,
     ):
         from copy import deepcopy
 
@@ -620,6 +621,9 @@ def generate_qeapp_workchain(
         s2.workchain_settings.properties["pdos"].run.value = run_pdos
         s2.workchain_settings.workchain_protocol.value = "fast"
         s2.workchain_settings.spin_type.value = spin_type
+        s2.advanced_settings.magnetization._set_magnetization_values(
+            **{"initial_magnetic_moments": initial_magnetic_moments}
+        )
         s2.confirm()
         # step 3 setup code and resources
         s3 = app.submit_step
@@ -634,6 +638,8 @@ def generate_qeapp_workchain(
         wkchain = generate_workchain(QeAppWorkChain, inputs)
         wkchain.setup()
         # mock output
+        if relax_type != "none":
+            wkchain.out("structure", s1.confirmed_structure)
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
@@ -641,6 +647,19 @@ def generate_qeapp_workchain(
             wkchain.out_many(
                 wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
             )
+            wkchain.out("nscf_parameters", pdos.node.outputs.nscf.output_parameters)
+            wkchain.out("dos", pdos.node.outputs.dos.output_dos)
+            if "projections_up" in pdos.node.outputs.projwfc:
+                wkchain.out(
+                    "projections_up",
+                    pdos.node.outputs.projwfc.projections_up,
+                )
+                wkchain.out(
+                    "projections_down",
+                    pdos.node.outputs.projwfc.projections_down,
+                )
+            else:
+                wkchain.out("projections", pdos.node.outputs.projwfc.projections)
         if run_bands:
             from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
@@ -648,7 +667,12 @@ def generate_qeapp_workchain(
             wkchain.out_many(
                 wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
             )
+            wkchain.out("band_structure", bands.node.outputs.band_structure)
+            wkchain.out("band_parameters", bands.node.outputs.band_parameters)
         wkchain.update_outputs()
+        # set
+        qeapp_node = wkchain.node
+        qeapp_node.base.extras.set("ui_parameters", s3.ui_parameters)
         return wkchain
 
     return _generate_qeapp_workchain

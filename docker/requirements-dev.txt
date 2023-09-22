@@ -1,0 +1,11 @@
+docker
+requests
+pre-commit
+pytest
+pytest-docker
+
+# test dependencies
+pytest-selenium
+pytest-html<4.0
+selenium~=4.9.0
+webdriver-manager

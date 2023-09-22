@@ -7,3 +7,5 @@
 build/
 export/
 .do-not-setup-on-localhost
+
+screenshots/
