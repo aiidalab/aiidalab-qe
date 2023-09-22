@@ -14,10 +14,15 @@ Here is the simplest plugin to print the formula of the input structure:
 
 Outline
 -----------------------
-The **Outline** will be shown as a checkbox in the `Properties` section of the workflow panel, as shown below, the ``Hello World``.
+A  :class:`~aiidalab_qe.common.panel.Outline` will add a item in the properties section of the workflow panel. For this example we'll add the ``Hello World`` item, as shown below.
+
 
 .. image:: ../_static/images/plugin_outline.png
+    :align: center
 
+
+
+The **Outline** will be shown as a checkbox.
 
 .. code-block:: python
 
@@ -30,10 +35,12 @@ The **Outline** will be shown as a checkbox in the `Properties` section of the w
 
 Setting
 -----------------------
-it will register a new panel in the configuration Step. In this class, one needs to implement the `get_panel_value` and `load_panel_value` methods to tell QeApp how to handle the panel values.
+A  :class:`~aiidalab_qe.common.panel.Panel` will register a new panel in the configuration Step, e.g. the ``Hello workd`` panel.
+
 
 .. image:: ../_static/images/plugin_setting.png
 
+In this class, one can add widgets (e.g, Float, Int) to the GUI. The values of these widgets will be used in the WorkChain. One needs to override the ``get_panel_value`` to tell QeApp how to use the values from the widgets. One also need to override the ``set_panel_value`` methods to tell QeApp how to reload the panel values.
 
 .. code-block:: python
 
@@ -51,15 +58,17 @@ it will register a new panel in the configuration Step. In this class, one needs
         def get_panel_value(self):
             return {"name": Str(self.name.value)}
 
-        def load_panel_value(self, input_dict):
+        def set_panel_value(self, input_dict):
             self.name.value = input_dict.get("name", 1)
 
 Result
 -----------------------
-it will register a new panel in the Results Step. In this class, one needs to implement the `_update_view` method to tell QeApp how to show the outputs of the workchain.
+A  :class:`~aiidalab_qe.common.panel.ResultPanel` will register a new panel in the Results Step, e.g. the ``Hello workd`` panel.
+
 
 .. image:: ../_static/images/plugin_result.png
 
+In this class, one needs to implement the ``_update_view`` method to tell QeApp how to show the results of the workchain. The output of the workchain will be stored in ``self.outputs``. For example, the ``name`` and ``structure`` are the outputs of the ``HelloWorldWorkChain``.
 
 .. code-block:: python
 
@@ -70,17 +79,17 @@ it will register a new panel in the Results Step. In this class, one needs to im
         workchain_label = "hello_world"
 
         def _update_view(self):
-            name = self.node.outputs.name.value
-            formula = self.node.outputs.structure.get_formula()
+            name = self.outputs.name.value
+            formula = self.outputs.structure.get_formula()
             self.summary_view = ipw.HTML(
                 f"""<div> <h4>Hello {name}</h4> The input structure is: {formula} </div>""".format()
             )
             self.children = [ipw.HBox(children=[self.summary_view])]
 
 
-WorkChain
+WorkChain and Builder
 -----------------------
-It will be loaded into the QeApp workchain. One needs to implement a `get_builder` function to extract the input parameters for the sub-workchain.
+One needs to implement a ``get_builder`` function to tell QeApp how to use the input parameters from the GUI. Then register the workchain and builder in the `workchain_and_builder` dict, so that the QeApp can load them.
 
 .. code-block:: python
 
@@ -95,7 +104,7 @@ It will be loaded into the QeApp workchain. One needs to implement a `get_builde
                 )
         return builder
 
-
+    # register the workchain and builder
     workchain_and_builder = {
         "workchain": HelloWorldWorkChain,
         "get_builder": get_builder,
@@ -103,10 +112,11 @@ It will be loaded into the QeApp workchain. One needs to implement a `get_builde
 
 Entry point
 -----------------------
-Here is the entry point for this plugin. One needs to add it to `entry_points` inside the setup file.
+Finally, one needs to register the entry point of the plugin. Here is the entry point for this plugin.
 
 .. code-block:: python
 
+    # this is the entry point of the plugin
     hello_world ={
     "outline": Outline,
     "setting": Setting,
@@ -114,6 +124,7 @@ Here is the entry point for this plugin. One needs to add it to `entry_points` i
     "result": Result,
     }
 
+One needs to add the path of ``hello_world`` to ``entry_points`` inside the setup file.
 
 .. code-block:: python
 
@@ -123,8 +134,10 @@ Here is the entry point for this plugin. One needs to add it to `entry_points` i
             ],
         },
 
-Note: one plugin does not need to register all the items (settings, workchain, results). The panel in each step is pluggable, which means you could only register one item in a plugin. For example, you can only add a new `Structure` panel in Step 1 without doing any property calculation.
+Note: one plugin does not need to register all the items (settings, workchain, results). The panel in each step is pluggable, which means you could only register one item in a plugin. For example, you can only add a new `Result` panel without doing any property calculation.
 
 You can add this plugin as a folder in the QeApp package, or create a new package for it.
 
-**Bringing It All Together**, You can find all the code above in this [github repository](https://github.com/superstar54/aiidalab-qe-hello-world).
+**Bringing It All Together**, You can find all the code above in this github repository: https://github.com/superstar54/aiidalab-qe-hello-world
+
+QeApp comes with built-in plugins, which can be found in the ``aiidalab_qe`` package. You can also use them as examples to create your own plugins.
