@@ -234,26 +234,30 @@ class AdvancedSettings(Panel):
         """Set the panel value from the given parameters."""
 
         if "pseudo_family" in parameters:
-            self.pseudo_family_selector.value = parameters.get("pseudo_family")
+            self.pseudo_family_selector.set_from_pseudo_family(
+                parameters.get("pseudo_family")
+            )
         if "pseudos" in parameters["pw"]:
-            cutoffs = {
-                "ecutwfc": parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"],
-                "ecutrho": parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"],
-            }
-            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], cutoffs)
+            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], {})
+            self.pseudo_setter.ecutwfc_setter.value = parameters["pw"]["parameters"][
+                "SYSTEM"
+            ]["ecutwfc"]
+            self.pseudo_setter.ecutrho_setter.value = parameters["pw"]["parameters"][
+                "SYSTEM"
+            ]["ecutrho"]
         #
         self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
         if parameters.get("pw") is not None:
-            self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
-                "degauss"
-            ]
-            self.smearing.smearing_value = parameters["pw"]["parameters"]["SYSTEM"][
-                "smearing"
-            ]
+            system = parameters["pw"]["parameters"]["SYSTEM"]
+            if "degauss" in system:
+                self.smearing.degauss_value = system["degauss"]
+            if "smearing" in system:
+                self.smearing.smearing_value = system["smearing"]
             self.total_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
                 "tot_charge", 0
             )
-        self.magnetization._set_magnetization_values(**parameters)
+        if parameters.get("initial_magnetic_moments"):
+            self.magnetization._set_magnetization_values(**parameters)
 
     def reset(self):
         """Reset the widget and the traitlets"""

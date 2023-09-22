@@ -124,12 +124,16 @@ class App(ipw.VBox):
                 self._wizard_app_widget.reset()
 
     def _observe_process_selection(self, change):
+        from aiida.orm.utils.serialize import deserialize_unsafe
+
         if change["old"] == change["new"]:
             return
         pk = change["new"]
         if pk is None:
             self._wizard_app_widget.reset()
             self._wizard_app_widget.selected_index = 0
+            self.configure_step.reset()
+            self.submit_step.reset()
         else:
             process = load_node(pk)
             with self.structure_manager_widget.hold_sync():
@@ -142,3 +146,11 @@ class App(ipw.VBox):
                     self.structure_step.confirmed_structure = process.inputs.structure
                     self.configure_step.state = WizardAppWidgetStep.State.SUCCESS
                     self.submit_step.process = process
+            # set ui_parameters
+            ui_parameters = deserialize_unsafe(
+                process.base.extras.get("ui_parameters", "")
+            )
+            self.configure_step.set_configuration_parameters(ui_parameters)
+            self.configure_step.state = self.configure_step.State.SUCCESS
+            self.submit_step.set_submission_parameters(ui_parameters)
+            self.submit_step.state = self.submit_step.State.SUCCESS

@@ -9,6 +9,7 @@ import traitlets as tl
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
+from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 from filelock import FileLock, Timeout
@@ -34,7 +35,7 @@ class WorkChainViewer(ipw.VBox):
 
         self.node = node
         # this will be replaced by "ui_parameters" in the future PR
-        ui_parameters = node.base.extras.get("ui_parameters", {})
+        ui_parameters = deserialize_unsafe(node.base.extras.get("ui_parameters", ""))
 
         self.title = ipw.HTML(
             f"""

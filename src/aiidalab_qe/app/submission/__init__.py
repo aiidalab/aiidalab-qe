@@ -80,7 +80,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.resources_config = ResourceSelectionWidget()
         self.parallelization = ParallelizationSettings()
 
-        self.set_selected_codes(DEFAULT_PARAMETERS)
+        self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
         self.set_resource_defaults()
 
         self.pw_code.observe(self._update_state, "value")
@@ -346,13 +346,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     @tl.observe("process")
     def _observe_process(self, change):
+        from aiida.orm.utils.serialize import deserialize_unsafe
+
         with self.hold_trait_notifications():
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                ui_parameters = process_node.base.extras.get("ui_parameters", None)
+                ui_parameters = deserialize_unsafe(
+                    process_node.base.extras.get("ui_parameters", None)
+                )
                 if ui_parameters is not None:
-                    self.set_selected_codes(ui_parameters)
+                    self.set_selected_codes(ui_parameters["codes"])
+                    self.set_resources(ui_parameters["resources"])
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
@@ -371,8 +376,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
         return codes
 
-    def set_selected_codes(self, parameters):
-        """Set the inputs in the GUI based on a set of parameters."""
+    def set_selected_codes(self, codes):
+        """Set the inputs in the GUI based on a set of codes."""
 
         # Codes
         def _get_code_uuid(code):
@@ -384,9 +389,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _get_code_uuid(parameters["codes"]["pw"])
-            self.dos_code.value = _get_code_uuid(parameters["codes"]["dos"])
-            self.projwfc_code.value = _get_code_uuid(parameters["codes"]["projwfc"])
+            self.pw_code.value = _get_code_uuid(codes["pw"])
+            self.dos_code.value = _get_code_uuid(codes["dos"])
+            self.projwfc_code.value = _get_code_uuid(codes["projwfc"])
 
     def set_pdos_status(self):
         if "pdos" in self.input_parameters.get("workchain", {}).get("properties", []):
@@ -398,13 +403,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
+        from aiida.orm.utils.serialize import serialize
+
         builder = self._create_builder()
 
         with self.hold_trait_notifications():
             process = submit(builder)
 
             process.label = self._generate_label()
-            process.base.extras.set("ui_parameters", self.ui_parameters)
+            # since AiiDA data node may exist in the ui_parameters,
+            # we serialize it to yaml
+            process.base.extras.set("ui_parameters", serialize(self.ui_parameters))
             self.process = process
 
         self._update_state()
@@ -433,9 +442,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         from copy import deepcopy
 
         self.ui_parameters = deepcopy(self.input_parameters)
-        # add codes info into input_parameters
-        self.ui_parameters["codes"] = self.get_selected_codes()
         self.ui_parameters["resources"] = self.get_resources()
+        # add codes and resource info into ui_parameters
+        self.ui_parameters.update(self.get_submission_parameters())
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             parameters=deepcopy(self.ui_parameters),
@@ -470,6 +479,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     buildy["resources"] = resources
                 else:
                     self._update_builder(v, max_mpi_per_pool)
+
+    def set_submission_parameters(self, parameters):
+        self.set_resources(parameters["resources"])
+        self.set_selected_codes(parameters["codes"])
+
+    def get_submission_parameters(self):
+        return {
+            "codes": self.get_selected_codes(),
+            "resources": self.get_resources(),
+        }
 
     def reset(self):
         with self.hold_trait_notifications():

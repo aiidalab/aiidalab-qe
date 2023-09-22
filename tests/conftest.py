@@ -593,6 +593,8 @@ def generate_qeapp_workchain(
     ):
         from copy import deepcopy
 
+        from aiida.orm.utils.serialize import serialize
+
         from aiidalab_qe.workflows import QeAppWorkChain
 
         # Step 1: select structure from example
@@ -670,9 +672,9 @@ def generate_qeapp_workchain(
             wkchain.out("band_structure", bands.node.outputs.band_structure)
             wkchain.out("band_parameters", bands.node.outputs.band_parameters)
         wkchain.update_outputs()
-        # set
+        # set ui_parameters
         qeapp_node = wkchain.node
-        qeapp_node.base.extras.set("ui_parameters", s3.ui_parameters)
+        qeapp_node.base.extras.set("ui_parameters", serialize(s3.ui_parameters))
         return wkchain
 
     return _generate_qeapp_workchain
