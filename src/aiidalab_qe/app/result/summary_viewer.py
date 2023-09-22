@@ -37,7 +37,8 @@ def generate_report_parameters(qeapp_wc):
     ui_parameters = qeapp_wc.base.extras.get("ui_parameters", {})
     # Construct the report parameters needed for the report
     report = {
-        "relax_type": ui_parameters["workchain"]["relax_type"],
+        "relaxed": ui_parameters["workchain"]["relax_type"],
+        "relax_method": ui_parameters["workchain"]["relax_type"],
         "electronic_type": ui_parameters["workchain"]["electronic_type"],
         "material_magnetic": ui_parameters["workchain"]["spin_type"],
         "protocol": ui_parameters["workchain"]["protocol"],
@@ -49,26 +50,29 @@ def generate_report_parameters(qeapp_wc):
     #
     report.update(
         {
-            "run_relax": "relax" in ui_parameters["workchain"]["properties"],
-            "run_bands": "bands" in ui_parameters["workchain"]["properties"],
-            "run_pdos": "pdos" in ui_parameters["workchain"]["properties"],
+            "bands_computed": "bands" in ui_parameters["workchain"]["properties"],
+            "pdos_computed": "pdos" in ui_parameters["workchain"]["properties"],
         }
     )
     # update pseudo family information to report
     pseudo_family = ui_parameters["advanced"]["pseudo_family"]
     pseudo_family = PROTOCOL_PSEUDO_MAP[ui_parameters["workchain"]["protocol"]]
     pseudo_family_info = pseudo_family.split("/")
-    if pseudo_family_info[0] == "SSSP":
+    pseudo_library = pseudo_family_info[0]
+    functional = pseudo_family_info[2]
+    if pseudo_library == "SSSP":
         pseudo_protocol = pseudo_family_info[3]
-    elif pseudo_family_info[0] == "PseudoDojo":
+    elif pseudo_library == "PseudoDojo":
         pseudo_protocol = pseudo_family_info[4]
     report.update(
         {
             "pseudo_family": pseudo_family,
-            "pseudo_library": pseudo_family_info[0],
+            "pseudo_library": pseudo_library,
             "pseudo_version": pseudo_family_info[1],
-            "functional": pseudo_family_info[2],
+            "functional": functional,
             "pseudo_protocol": pseudo_protocol,
+            "pseudo_link": PSEUDO_LINK_MAP[pseudo_library],
+            "functional_link": FUNCTIONAL_LINK_MAP[functional],
         }
     )
     # Extract the pw calculation parameters from the workchain's inputs
