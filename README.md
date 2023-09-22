@@ -1,6 +1,6 @@
 # AiiDAlab Quantum ESPRESSO application
 
-[![codecov](https://codecov.io/gh/aiidalab/aiidalab-qe/branch/master/graph/badge.svg)](https://codecov.io/gh/aiidalab/aiidalab-qe)
+[![codecov](https://codecov.io/gh/aiidalab/aiidalab-qe/branch/main/graph/badge.svg)](https://codecov.io/gh/aiidalab/aiidalab-qe)
 [![Documentation Status](https://readthedocs.org/projects/aiidalab-qe/badge/?version=latest)](https://aiidalab-qe.readthedocs.io/?badge=latest)
 
 ## About
@@ -28,6 +28,19 @@ To run unit tests in the AiiDAlab container, you need to run `pytest` from withi
 conda activate aiida-core-services
 pytest -sv tests
 ```
+
+To run the integration tests, you need to build the Docker image first:
+
+```
+cd docker/
+docker buildx bake -f build.json -f docker-bake.hcl --set "*.platform=linux/amd64" --load
+```
+
+Then, you can run the integration tests with:
+
+```bash
+JUPYTER_TOKEN=max TAG=newly-baked pytest --driver Chrome tests_integration -sv
+``````
 
 ## For maintainers
 

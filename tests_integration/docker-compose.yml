@@ -4,15 +4,12 @@ version: '3.4'
 services:
 
     aiidalab:
-        image: ${AIIDALAB_IMAGE:-aiidalab/full-stack}:${TAG:-latest}
+        image: ${REGISTRY:-}${QE_IMAGE:-aiidalab/qe}:${TAG:-newly-baked}
         environment:
-            RMQHOST: messaging
             TZ: Europe/Zurich
             DOCKER_STACKS_JUPYTER_CMD: notebook
             SETUP_DEFAULT_AIIDA_PROFILE: 'true'
             AIIDALAB_DEFAULT_APPS: ''
             JUPYTER_TOKEN: ${JUPYTER_TOKEN}
-        volumes:
-            - ..:/home/jovyan/apps/aiidalab-qe
         ports:
-            - 8998:8888
+            - 0.0.0.0:${AIIDALAB_PORT:-8998}:8888

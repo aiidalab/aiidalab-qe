@@ -4,12 +4,16 @@
 Authors: AiiDAlab team
 """
 import ipywidgets as ipw
+from aiida_quantumespresso.common.types import RelaxType
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.panel import Panel
 
 
-class WorkChainSettings(ipw.VBox):
+class WorkChainSettings(Panel):
+    identifier = "workchain"
+
     structure_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Structure</h4></div>"""
@@ -93,58 +97,83 @@ class WorkChainSettings(ipw.VBox):
             self.properties[name] = entry_point()
             self.property_children.append(self.properties[name])
         self.property_children.append(self.properties_help)
+        self.children = [
+            self.structure_title,
+            self.structure_help,
+            self.relax_type,
+            self.materials_help,
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Electronic Type:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.electronic_type,
+                ]
+            ),
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Magnetism:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.spin_type,
+                ]
+            ),
+            *self.property_children,
+            self.protocol_title,
+            ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
+            self.workchain_protocol,
+            self.protocol_help,
+        ]
         super().__init__(
-            children=[
-                self.structure_title,
-                self.structure_help,
-                self.relax_type,
-                self.materials_help,
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Electronic Type:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        self.electronic_type,
-                    ]
-                ),
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Magnetism:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        self.spin_type,
-                    ]
-                ),
-                *self.property_children,
-                self.protocol_title,
-                ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-                self.workchain_protocol,
-                self.protocol_help,
-            ],
             **kwargs,
         )
 
-    def _update_settings(self, **kwargs):
+    def get_panel_value(self):
+        # Work chain settings
+        relax_type = self.relax_type.value
+        electronic_type = self.electronic_type.value
+        spin_type = self.spin_type.value
+
+        protocol = self.workchain_protocol.value
+
+        properties = []
+
+        # add plugin specific settings
+        run_bands = False
+        run_pdos = False
+        for name in self.properties:
+            if self.properties[name].run.value:
+                properties.append(name)
+            if name == "bands":
+                run_bands = True
+            elif name == "pdos":
+                run_bands = True
+
+        if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
+            properties.append("relax")
+        return {
+            "protocol": protocol,
+            "relax_type": relax_type,
+            "properties": properties,
+            "spin_type": spin_type,
+            "electronic_type": electronic_type,
+        }
+
+    def set_panel_value(self, parameters):
         """Update the settings based on the given dict."""
         for key in [
             "relax_type",
             "spin_type",
             "electronic_type",
-            "bands_run",
-            "pdos_run",
             "workchain_protocol",
         ]:
-            if key in kwargs:
-                # a temporary solution for the bands_run property
-                if key == "bands_run":
-                    self.properties["bands"].run.value = kwargs[key]
-                elif key == "pdos_run":
-                    self.properties["pdos"].run.value = kwargs[key]
-                else:
-                    getattr(self, key).value = kwargs[key]
+            if key in parameters:
+                getattr(self, key).value = parameters[key]
+        properties = parameters.get("properties", [])
+        for name in self.properties:
+            if name in properties:
+                self.properties[name].run.value = True
+            else:
+                self.properties[name].run.value = False

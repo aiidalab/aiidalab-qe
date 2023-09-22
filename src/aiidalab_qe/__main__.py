@@ -3,9 +3,9 @@
 
 import click
 
-from aiidalab_qe.app.common.setup_codes import codes_are_setup
-from aiidalab_qe.app.common.setup_codes import install as install_qe_codes
 from aiidalab_qe.app.submission.sssp import install as setup_sssp
+from aiidalab_qe.common.setup_codes import codes_are_setup
+from aiidalab_qe.common.setup_codes import install as install_qe_codes
 
 
 @click.group()
