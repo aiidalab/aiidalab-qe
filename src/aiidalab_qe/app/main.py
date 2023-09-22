@@ -98,18 +98,20 @@ class App(ipw.VBox):
         )
 
         # Add process selection header
-        work_chain_selector = QeAppWorkChainSelector(layout=ipw.Layout(width="auto"))
-        work_chain_selector.observe(self._observe_process_selection, "value")
+        self.work_chain_selector = QeAppWorkChainSelector(
+            layout=ipw.Layout(width="auto")
+        )
+        self.work_chain_selector.observe(self._observe_process_selection, "value")
 
         ipw.dlink(
             (self.submit_step, "process"),
-            (work_chain_selector, "value"),
+            (self.work_chain_selector, "value"),
             transform=lambda node: None if node is None else node.pk,
         )
 
         super().__init__(
             children=[
-                work_chain_selector,
+                self.work_chain_selector,
                 self._wizard_app_widget,
             ]
         )

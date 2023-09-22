@@ -257,7 +257,9 @@ class AdvancedSettings(Panel):
                 "tot_charge", 0
             )
         if parameters.get("initial_magnetic_moments"):
-            self.magnetization._set_magnetization_values(**parameters)
+            self.magnetization._set_magnetization_values(
+                parameters.get("initial_magnetic_moments")
+            )
 
     def reset(self):
         """Reset the widget and the traitlets"""
@@ -378,13 +380,17 @@ class MagnetizationSettings(ipw.VBox):
             magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
         return magnetization
 
-    def _set_magnetization_values(self, **kwargs):
-        """Update used for conftest setting all magnetization to a value"""
+    def _set_magnetization_values(self, magnetic_moments):
+        """Set magnetization"""
         # self.override.value = True
         with self.hold_trait_notifications():
-            if "initial_magnetic_moments" in kwargs:
-                for i in range(len(self.kinds.children)):
-                    self.kinds.children[i].value = kwargs["initial_magnetic_moments"]
+            for i in range(len(self.kinds.children)):
+                if isinstance(magnetic_moments, dict):
+                    self.kinds.children[i].value = magnetic_moments.get(
+                        self.kinds.children[i].description, 0.0
+                    )
+                else:
+                    self.kinds.children[i].value = magnetic_moments
 
 
 class SmearingSettings(ipw.VBox):
