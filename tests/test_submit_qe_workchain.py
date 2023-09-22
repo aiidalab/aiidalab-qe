@@ -8,7 +8,7 @@ def test_reload_selected_code(submit_app_generator):
     submit_step._create_builder()
 
     new_submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    new_submit_step.set_selected_codes(parameters=submit_step.ui_parameters)
+    new_submit_step.set_selected_codes(submit_step.ui_parameters["codes"])
 
     assert new_submit_step.pw_code.value == submit_step.pw_code.value
     assert new_submit_step.dos_code.value == submit_step.dos_code.value
