@@ -1,4 +1,5 @@
 bands_computed: true
+bands_kpoints_distance: 0.1
 degauss: 0.01
 electronic_type: metal
 energy_cutoff_rho: 240.0
@@ -7,8 +8,10 @@ functional: PBE
 functional_link: https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865
 initial_magnetic_moments: null
 material_magnetic: none
+nscf_kpoints_distance: 0.5
 occupation_type: smearing
 pdos_computed: true
+periodicity: xyz
 properties:
 - bands
 - pdos
