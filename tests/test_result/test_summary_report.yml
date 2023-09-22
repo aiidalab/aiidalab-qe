@@ -5,7 +5,7 @@ energy_cutoff_wfc: 30.0
 functional: PBE
 initial_magnetic_moments: null
 material_magnetic: none
-occupation: smearing
+occupation_type: smearing
 properties:
 - bands
 - pdos

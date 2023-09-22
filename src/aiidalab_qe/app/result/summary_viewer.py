@@ -1,5 +1,3 @@
-import typing as t
-
 import ipywidgets as ipw
 
 FUNCTIONAL_LINK_MAP = {
@@ -25,7 +23,7 @@ FUNCTIONAL_REPORT_MAP = {
 }
 
 
-def generate_report_parameters(qeapp_wc) -> dict[str, t.Any]:
+def generate_report_parameters(qeapp_wc):
     """Generate the report parameters from the ui parameters and workchain's input.
 
     Parameters extracted from ui parameters, directly from the widgets,
