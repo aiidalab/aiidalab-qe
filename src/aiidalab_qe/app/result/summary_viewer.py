@@ -22,6 +22,13 @@ FUNCTIONAL_REPORT_MAP = {
     "PBEsol": "the revised generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE) for solids",
 }
 
+# Periodicity
+PERIODICITY_MAPPING = {
+    (True, True, True): "xyz",
+    (True, True, False): "xy",
+    (True, False, False): "x",
+}
+
 
 def generate_report_parameters(qeapp_wc):
     """Generate the report parameters from the ui parameters and workchain's input.
@@ -98,11 +105,19 @@ def generate_report_parameters(qeapp_wc):
     if occupation == "smearing":
         report["degauss"] = pw_parameters["SYSTEM"]["degauss"]
         report["smearing"] = pw_parameters["SYSTEM"]["smearing"]
-    # report[
-    #     "bands_kpoints_distance"
-    # ] = builder.bands.bands_kpoints_distance.value
-    # report["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
     report["tot_charge"] = pw_parameters["SYSTEM"].get("tot_charge", 0.0)
+    report["periodicity"] = PERIODICITY_MAPPING.get(
+        qeapp_wc.inputs.structure.pbc, "xyz"
+    )
+    # hard code bands and pdos
+    if "bands" in qeapp_wc.inputs:
+        report[
+            "bands_kpoints_distance"
+        ] = qeapp_wc.inputs.bands.bands_kpoints_distance.value
+    if "pdos" in qeapp_wc.inputs:
+        report[
+            "nscf_kpoints_distance"
+        ] = qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
     return report
 
 
