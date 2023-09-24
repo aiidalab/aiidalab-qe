@@ -2,38 +2,24 @@
 
 Authors: AiiDAlab team
 """
-import warnings
+
+import pathlib
 
 import aiida
 import ipywidgets as ipw
 import traitlets
 from aiidalab_widgets_base import WizardAppWidgetStep
-from pymatgen.analysis.dimensionality import get_dimensionality_larsen
-from pymatgen.analysis.local_env import CrystalNN
-
-NON_3D_ERROR_MESSAGE = """<div class="alert alert-danger">
-<p><strong><i class="fa fa-exclamation-circle" aria-hidden="true"></i>
-Structures that do not have three-dimensional periodic boundary conditions are currently
-not supported.
-</strong></p>
-</div>"""
-
-NON_3D_WARNING = """<div class="alert alert-warning">
-<p><strong><i class="fa fa-exclamation-circle" aria-hidden="true"></i>
-Warning: {dimension}D structure detected. Note that currently only three-dimensional
-structures are supported.
-</strong></p>
-</div>"""
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
+file_path = pathlib.Path(__file__).parent
 Examples = [
-    ("Silicon (diamond)", "miscellaneous/structures/Si.xyz"),
-    ("Silicon oxide", "miscellaneous/structures/SiO2.xyz"),
-    ("Diamond", "miscellaneous/structures/diamond.cif"),
-    ("Gallium arsenide", "miscellaneous/structures/GaAs.xyz"),
-    ("Gold (fcc)", "miscellaneous/structures/Au.cif"),
-    ("Cobalt (hcp)", "miscellaneous/structures/Co.cif"),
+    ("Silicon (diamond)", file_path / "examples" / "Si.xyz"),
+    ("Silicon oxide", file_path / "examples" / "SiO2.xyz"),
+    ("Diamond", file_path / "examples" / "diamond.cif"),
+    ("Gallium arsenide", file_path / "examples" / "GaAs.xyz"),
+    ("Gold (fcc)", file_path / "examples" / "Au.cif"),
+    ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
 ]
 
 
@@ -101,9 +87,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             else:
                 self.state = self.State.SUCCESS
         else:
-            if self.structure.pbc != (True, True, True):
-                self.state = self.State.READY
-            elif self.confirmed_structure is None:
+            if self.confirmed_structure is None:
                 self.state = self.State.CONFIGURED
             else:
                 self.state = self.State.SUCCESS
@@ -117,16 +101,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.message_area.value = ""
             else:
                 self.structure_name_text.value = str(self.structure.get_formula())
-                if self.structure.pbc != (True, True, True):
-                    self.message_area.value = NON_3D_ERROR_MESSAGE
-                else:
-                    struc_dimension = self._get_structure_dimensionality()
-                    if struc_dimension != 3:
-                        self.message_area.value = NON_3D_WARNING.format(
-                            dimension=struc_dimension
-                        )
-                    else:
-                        self.message_area.value = ""
             self._update_state()
 
     @traitlets.observe("confirmed_structure")
@@ -151,10 +125,3 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
     def reset(self):  # unconfirm
         self.confirmed_structure = None
-
-    def _get_structure_dimensionality(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            return get_dimensionality_larsen(
-                CrystalNN().get_bonded_structure(self.structure.get_pymatgen())
-            )

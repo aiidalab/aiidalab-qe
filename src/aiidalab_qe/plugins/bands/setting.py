@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Panel for Bands plugin."""
 import ipywidgets as ipw
-from aiida.orm import Int, Str
 
 from aiidalab_qe.common.panel import Panel
 
@@ -15,44 +14,39 @@ class Setting(Panel):
             """<div style="padding-top: 0px; padding-bottom: 0px">
             <h4>Settings</h4></div>"""
         )
-        self.settings_help = ipw.HTML(
-            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-            Please set the value of path and number of points.
-            </div>"""
-        )
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
             value="moderate",
         )
-        self.path = ipw.Text(
-            value="G",
-            description="Bands path:",
-            disabled=False,
-            style={"description_width": "initial"},
+        self.kpath_2d_help = ipw.HTML(
+            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+            If your system has periodicity xy. Please select one of the five 2D Bravais lattices corresponding to your system.
+            </div>"""
         )
-        self.npoint = ipw.IntText(
-            value=50,
-            description="Number of point:",
-            disabled=False,
-            style={"description_width": "initial"},
+        self.kpath_2d = ipw.Dropdown(
+            description="Lattice:",
+            options=[
+                ("Hexagonal", "hexagonal"),
+                ("Square", "square"),
+                ("Rectangular", "rectangular"),
+                ("Centered Rectangular", "centered_rectangular"),
+                ("Oblique", "oblique"),
+            ],
+            value="hexagonal",
         )
-
         self.children = [
             self.settings_title,
-            self.settings_help,
-            self.path,
-            self.npoint,
+            self.kpath_2d_help,
+            self.kpath_2d,
         ]
         super().__init__(**kwargs)
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
         return {
-            "path": Str(self.path.value),
-            "npoint": Int(self.npoint.value),
+            "kpath_2d": self.kpath_2d.value,
         }
 
     def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
-        self.path.value = input_dict.get("path", 1)
-        self.npoint.value = input_dict.get("npoint", 2)
+        self.kpath_2d.value = input_dict.get("kpath_2d", "hexagonal")

@@ -29,6 +29,19 @@ conda activate aiida-core-services
 pytest -sv tests
 ```
 
+To run the integration tests, you need to build the Docker image first:
+
+```
+cd docker/
+docker buildx bake -f build.json -f docker-bake.hcl --set "*.platform=linux/amd64" --load
+```
+
+Then, you can run the integration tests with:
+
+```bash
+JUPYTER_TOKEN=max TAG=newly-baked pytest --driver Chrome tests_integration -sv
+``````
+
 ## For maintainers
 
 To create a new release, clone the repository, install development dependencies with `pip install '.[dev]'`, and then execute `bumpver update`.

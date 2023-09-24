@@ -6,7 +6,6 @@ Authors: AiiDAlab team
 from __future__ import annotations
 
 import os
-import typing as t
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -118,6 +117,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.qe_setup_status.observe(self._update_state, "busy")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
         self.qe_setup_status.observe(self._auto_select_code, "installed")
+        self.ui_parameters = {}
 
         super().__init__(
             children=[
@@ -226,14 +226,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
             for code in [
-                "pw_code",
-                "dos_code",
-                "projwfc_code",
+                "pw",
+                "dos",
+                "projwfc",
             ]:
                 try:
-                    code_widget = getattr(self, code)
+                    code_widget = getattr(self, f"{code}_code")
                     code_widget.refresh()
-                    code_widget.value = orm.load_code(DEFAULT_PARAMETERS[code]).uuid
+                    code_widget.value = orm.load_code(
+                        DEFAULT_PARAMETERS["codes"][code]
+                    ).uuid
                 except NotExistent:
                     pass
 
@@ -259,6 +261,19 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             != orm.load_code(change["old"]).computer.pk
         ):
             self.set_resource_defaults(orm.load_code(change["new"]).computer)
+
+    def get_resources(self):
+        resources = {
+            "num_machines": self.resources_config.num_nodes.value,
+            "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
+            "npools": self.parallelization.npools.value,
+        }
+        return resources
+
+    def set_resources(self, resources):
+        self.resources_config.num_nodes.value = resources["num_machines"]
+        self.resources_config.num_cpus.value = resources["num_mpiprocs_per_machine"]
+        self.parallelization.npools.value = resources["npools"]
 
     def set_resource_defaults(self, computer=None):
         if computer is None or computer.hostname == "localhost":
@@ -335,16 +350,26 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                builder_parameters = process_node.base.extras.get(
-                    "builder_parameters", None
-                )
-                if builder_parameters is not None:
-                    self.set_selected_codes(builder_parameters)
+                ui_parameters = process_node.base.extras.get("ui_parameters", None)
+                if ui_parameters is not None:
+                    self.set_selected_codes(ui_parameters)
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
         self.submit()
+
+    def get_selected_codes(self):
+        """Get the codes selected in the GUI.
+
+        return: A dict with the code names as keys and the code UUIDs as values.
+        """
+        codes = {
+            "pw": self.pw_code.value,
+            "dos": self.dos_code.value,
+            "projwfc": self.projwfc_code.value,
+        }
+        return codes
 
     def set_selected_codes(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
@@ -359,9 +384,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            self.pw_code.value = _get_code_uuid(parameters["pw_code"])
-            self.dos_code.value = _get_code_uuid(parameters["dos_code"])
-            self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
+            self.pw_code.value = _get_code_uuid(parameters["codes"]["pw"])
+            self.dos_code.value = _get_code_uuid(parameters["codes"]["dos"])
+            self.projwfc_code.value = _get_code_uuid(parameters["codes"]["projwfc"])
 
     def set_pdos_status(self):
         if "pdos" in self.input_parameters.get("workchain", {}).get("properties", []):
@@ -374,17 +399,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
         builder = self._create_builder()
-        extra_parameters = self._create_extra_report_parameters()
 
         with self.hold_trait_notifications():
             process = submit(builder)
 
-            # Set the builder parameters on the work chain
-            builder_parameters = self._extract_report_parameters(
-                builder, extra_parameters
-            )
             process.label = self._generate_label()
-            process.base.extras.set("builder_parameters", builder_parameters)
+            process.base.extras.set("ui_parameters", self.ui_parameters)
             self.process = process
 
         self._update_state()
@@ -412,30 +432,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Create the builder for the `QeAppWorkChain` submit."""
         from copy import deepcopy
 
-        pw_code = self.pw_code.value
-        dos_code = self.dos_code.value
-        projwfc_code = self.projwfc_code.value
-
-        parameters = deepcopy(self.input_parameters)
+        self.ui_parameters = deepcopy(self.input_parameters)
+        # add codes info into input_parameters
+        self.ui_parameters["codes"] = self.get_selected_codes()
+        self.ui_parameters["resources"] = self.get_resources()
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            pw_code=orm.load_code(pw_code),
-            dos_code=orm.load_code(dos_code),
-            projwfc_code=orm.load_code(projwfc_code),
-            parameters=parameters,
+            parameters=deepcopy(self.ui_parameters),
         )
 
-        resources = {
-            "num_machines": self.resources_config.num_nodes.value,
-            "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
-        }
-
-        npool = self.parallelization.npools.value
-        self._update_builder(builder, resources, npool, self.MAX_MPI_PER_POOL)
+        self._update_builder(builder, self.MAX_MPI_PER_POOL)
 
         return builder
 
-    def _update_builder(self, buildy, resources, npools, max_mpi_per_pool):
+    def _update_builder(self, buildy, max_mpi_per_pool):
+        resources = self.get_resources()
+        npools = resources.pop("npools", 1)
         """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
         for k, v in buildy.items():
             if isinstance(v, (dict, ProcessBuilderNamespace)):
@@ -457,120 +469,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if k == "resources":
                     buildy["resources"] = resources
                 else:
-                    self._update_builder(v, resources, npools, max_mpi_per_pool)
-
-    def _create_extra_report_parameters(self) -> dict[str, t.Any]:
-        """This method will also create a dictionary of the parameters that were not
-        readably represented in the builder, which will be used to the report.
-        It is stored in the `extra_report_parameters`.
-        """
-        input_parameters = self.input_parameters
-
-        # Construct the extra report parameters needed for the report
-        extra_report_parameters = {
-            "relax_type": input_parameters["workchain"]["relax_type"],
-            "electronic_type": input_parameters["workchain"]["electronic_type"],
-            "spin_type": input_parameters["workchain"]["spin_type"],
-            "protocol": input_parameters["workchain"]["protocol"],
-            "initial_magnetic_moments": input_parameters["advanced"][
-                "initial_magnetic_moments"
-            ],
-            "properties": input_parameters["workchain"]["properties"],
-        }
-
-        # update pseudo family information to extra_report_parameters
-        pseudo_family = input_parameters["advanced"]["pseudo_family"]
-        pseudo_family = PROTOCOL_PSEUDO_MAP[input_parameters["workchain"]["protocol"]]
-
-        pseudo_family_info = pseudo_family.split("/")
-        if pseudo_family_info[0] == "SSSP":
-            pseudo_protocol = pseudo_family_info[3]
-        elif pseudo_family_info[0] == "PseudoDojo":
-            pseudo_protocol = pseudo_family_info[4]
-        extra_report_parameters.update(
-            {
-                "pseudo_family": pseudo_family,
-                "pseudo_library": pseudo_family_info[0],
-                "pseudo_version": pseudo_family_info[1],
-                "functional": pseudo_family_info[2],
-                "pseudo_protocol": pseudo_protocol,
-            }
-        )
-
-        # store codes info into extra_report_parameters for loading the process
-        pw_code = self.pw_code.value
-        dos_code = self.dos_code.value
-        projwfc_code = self.projwfc_code.value
-
-        extra_report_parameters.update(
-            {
-                "pw_code": pw_code,
-                "dos_code": dos_code,
-                "projwfc_code": projwfc_code,
-            }
-        )
-
-        return extra_report_parameters
-
-    @staticmethod
-    def _extract_report_parameters(
-        builder, extra_report_parameters
-    ) -> dict[str, t.Any]:
-        """Extract (recover) the parameters for report from the builder.
-
-        There are some parameters that are not stored in the builder, but can be extracted
-        directly from the widgets, such as the ``pseudo_family`` and ``relax_type``.
-        """
-        parameters = {
-            "run_relax": "relax" in builder.properties,
-            "run_bands": "bands" in builder.properties,
-            "run_pdos": "pdos" in builder.properties,
-        }
-
-        # Extract the pw calculation parameters from the builder
-
-        # energy_cutoff is same for all pw calculations when pseudopotentials are fixed
-        # as well as the smearing settings (semaring and degauss) and scf kpoints distance
-        # read from the first pw calculation of relax workflow.
-        # It is safe then to extract these parameters from the first pw calculation, since the
-        # builder is anyway set with subworkchain inputs even it is not run which controlled by
-        # the properties inputs.
-        energy_cutoff_wfc = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
-        energy_cutoff_rho = builder.relax.base["pw"]["parameters"]["SYSTEM"]["ecutrho"]
-        occupation = builder.relax.base["pw"]["parameters"]["SYSTEM"]["occupations"]
-        scf_kpoints_distance = builder.relax.base.kpoints_distance.value
-
-        parameters.update(
-            {
-                "energy_cutoff_wfc": energy_cutoff_wfc,
-                "energy_cutoff_rho": energy_cutoff_rho,
-                "occupation": occupation,
-                "scf_kpoints_distance": scf_kpoints_distance,
-            }
-        )
-
-        if occupation == "smearing":
-            parameters["degauss"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
-                "degauss"
-            ]
-            parameters["smearing"] = builder.relax.base["pw"]["parameters"]["SYSTEM"][
-                "smearing"
-            ]
-
-        # parameters[
-        #     "bands_kpoints_distance"
-        # ] = builder.bands.bands_kpoints_distance.value
-        # parameters["nscf_kpoints_distance"] = builder.pdos.nscf.kpoints_distance.value
-
-        parameters["tot_charge"] = builder.relax.base["pw"]["parameters"]["SYSTEM"].get(
-            "tot_charge", 0.0
-        )
-
-        # parameters from extra_report_parameters
-        for k, v in extra_report_parameters.items():
-            parameters.update({k: v})
-
-        return parameters
+                    self._update_builder(v, max_mpi_per_pool)
 
     def reset(self):
         with self.hold_trait_notifications():
