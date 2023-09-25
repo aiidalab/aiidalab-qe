@@ -11,12 +11,20 @@ def get_builder(codes, structure, parameters, **kwargs):
     dos_code = codes.get("dos", None)
     projwfc_code = codes.get("projwfc", None)
     protocol = parameters["workchain"]["protocol"]
-    #
+    kpoints_distance = parameters["advanced"]["kpoints_distance"]
+
     scf_overrides = deepcopy(parameters["advanced"])
     nscf_overrides = deepcopy(parameters["advanced"])
-    nscf_overrides.pop("kpoints_distance", None)
+    if protocol == "fast" and (kpoints_distance < 0.5):
+        nscf_overrides["kpoints_distance"] = kpoints_distance
+    if protocol == "moderate" and (kpoints_distance < 0.1):
+        nscf_overrides["kpoints_distance"] = kpoints_distance
+    if protocol == "precise" and (kpoints_distance < 0.05):
+        nscf_overrides["kpoints_distance"] = kpoints_distance
+
     nscf_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
     nscf_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
+
     overrides = {
         "scf": scf_overrides,
         "nscf": nscf_overrides,
