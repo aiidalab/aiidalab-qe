@@ -22,9 +22,6 @@ def get_builder(codes, structure, parameters, **kwargs):
     if protocol == "precise" and (kpoints_distance < 0.05):
         nscf_overrides["kpoints_distance"] = kpoints_distance
 
-    nscf_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
-    nscf_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
-
     overrides = {
         "scf": scf_overrides,
         "nscf": nscf_overrides,
