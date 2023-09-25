@@ -11,16 +11,12 @@ def get_builder(codes, structure, parameters, **kwargs):
     dos_code = codes.get("dos", None)
     projwfc_code = codes.get("projwfc", None)
     protocol = parameters["workchain"]["protocol"]
-    kpoints_distance = parameters["advanced"]["kpoints_distance"]
 
     scf_overrides = deepcopy(parameters["advanced"])
     nscf_overrides = deepcopy(parameters["advanced"])
-    if protocol == "fast" and (kpoints_distance < 0.5):
-        nscf_overrides["kpoints_distance"] = kpoints_distance
-    if protocol == "moderate" and (kpoints_distance < 0.1):
-        nscf_overrides["kpoints_distance"] = kpoints_distance
-    if protocol == "precise" and (kpoints_distance < 0.05):
-        nscf_overrides["kpoints_distance"] = kpoints_distance
+
+    # Update the nscf kpoints distance from the setting panel
+    nscf_overrides["kpoints_distance"] = parameters["pdos"]["nscf_kpoints_distance"]
 
     overrides = {
         "scf": scf_overrides,

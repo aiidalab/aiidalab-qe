@@ -82,6 +82,17 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     self._update_panel, "value"
                 )
 
+            # link the input structure and protocol to all plugin specific settings
+            if identifier == "pdos":
+                ipw.dlink(
+                    (self, "input_structure"),
+                    (self.settings[identifier], "input_structure"),
+                )
+                ipw.dlink(
+                    (self.workchain_settings.workchain_protocol, "value"),
+                    (self.settings[identifier], "protocol"),
+                )
+
         self._submission_blocker_messages = ipw.HTML()
 
         self.confirm_button = ipw.Button(
