@@ -64,7 +64,7 @@ pdos:
       DOS:
         DeltaE: 0.02
   nscf:
-    kpoints_distance: 0.12
+    kpoints_distance: 0.1
     kpoints_force_parity: false
     pw:
       parallelization:
