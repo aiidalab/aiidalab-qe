@@ -280,21 +280,6 @@ def workchain_settings_generator():
 
 
 @pytest.fixture()
-def initial_magnetic_moments_generator(generate_structure_data):
-    """Retturn a function that generatates a initial_magnetic_moments dictionary"""
-    from aiidalab_qe.app.configuration.advanced import MagnetizationSettings
-
-    def _initial_moments_generator(**kwargs):
-        initial_magnetic_moments = MagnetizationSettings()
-        initial_magnetic_moments.input_structure = generate_structure_data()
-        initial_magnetic_moments.update_kinds_widget()
-        initial_magnetic_moments._set_magnetization_values(**kwargs)
-        return initial_magnetic_moments
-
-    return _initial_moments_generator
-
-
-@pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
     from aiidalab_qe.app.configuration.advanced import SmearingSettings
@@ -338,7 +323,6 @@ def submit_app_generator(
     generate_structure_data,
     workchain_settings_generator,
     smearing_settings_generator,
-    initial_magnetic_moments_generator,
 ):
     """Return a function that generates a submit step widget."""
 
@@ -371,10 +355,8 @@ def submit_app_generator(
         configure_step.advanced_settings.override.value = True
         configure_step.advanced_settings.total_charge.value = tot_charge
         configure_step.advanced_settings.kpoints_distance.value = kpoints_distance
-        configure_step.advanced_settings.magnetization = (
-            initial_magnetic_moments_generator(
-                initial_magnetic_moments=initial_magnetic_moments
-            )
+        configure_step.advanced_settings.magnetization._set_magnetization_values(
+            initial_magnetic_moments
         )
         # mimic the behavior of the smearing widget set up
         configure_step.advanced_settings.smearing.smearing.value = smearing
@@ -593,6 +575,8 @@ def generate_qeapp_workchain(
     ):
         from copy import deepcopy
 
+        from aiida.orm.utils.serialize import serialize
+
         from aiidalab_qe.workflows import QeAppWorkChain
 
         # Step 1: select structure from example
@@ -622,7 +606,7 @@ def generate_qeapp_workchain(
         s2.workchain_settings.workchain_protocol.value = "fast"
         s2.workchain_settings.spin_type.value = spin_type
         s2.advanced_settings.magnetization._set_magnetization_values(
-            **{"initial_magnetic_moments": initial_magnetic_moments}
+            initial_magnetic_moments
         )
         s2.confirm()
         # step 3 setup code and resources
@@ -670,9 +654,9 @@ def generate_qeapp_workchain(
             wkchain.out("band_structure", bands.node.outputs.band_structure)
             wkchain.out("band_parameters", bands.node.outputs.band_parameters)
         wkchain.update_outputs()
-        # set
+        # set ui_parameters
         qeapp_node = wkchain.node
-        qeapp_node.base.extras.set("ui_parameters", s3.ui_parameters)
+        qeapp_node.base.extras.set("ui_parameters", serialize(s3.ui_parameters))
         return wkchain
 
     return _generate_qeapp_workchain
