@@ -250,9 +250,9 @@ class AdvancedSettings(Panel):
         if parameters.get("pw") is not None:
             system = parameters["pw"]["parameters"]["SYSTEM"]
             if "degauss" in system:
-                self.smearing.degauss_value = system["degauss"]
+                self.smearing.degauss.value = system["degauss"]
             if "smearing" in system:
-                self.smearing.smearing_value = system["smearing"]
+                self.smearing.smearing.value = system["smearing"]
             self.total_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
                 "tot_charge", 0
             )

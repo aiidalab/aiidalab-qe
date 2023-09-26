@@ -346,18 +346,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     @tl.observe("process")
     def _observe_process(self, change):
-        from aiida.orm.utils.serialize import deserialize_unsafe
-
         with self.hold_trait_notifications():
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                ui_parameters = deserialize_unsafe(
-                    process_node.base.extras.get("ui_parameters", None)
-                )
-                if ui_parameters is not None:
-                    self.set_selected_codes(ui_parameters["codes"])
-                    self.set_resources(ui_parameters["resources"])
             self._update_state()
 
     def _on_submit_button_clicked(self, _):

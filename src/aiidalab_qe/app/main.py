@@ -149,10 +149,11 @@ class App(ipw.VBox):
                     self.configure_step.state = WizardAppWidgetStep.State.SUCCESS
                     self.submit_step.process = process
             # set ui_parameters
-            ui_parameters = deserialize_unsafe(
-                process.base.extras.get("ui_parameters", "")
-            )
-            self.configure_step.set_configuration_parameters(ui_parameters)
-            self.configure_step.state = self.configure_step.State.SUCCESS
-            self.submit_step.set_submission_parameters(ui_parameters)
-            self.submit_step.state = self.submit_step.State.SUCCESS
+            # print out error message if yaml format ui_parameters is not reachable
+            ui_parameters = process.base.extras.get("ui_parameters", {})
+            if ui_parameters and isinstance(ui_parameters, str):
+                ui_parameters = deserialize_unsafe(ui_parameters)
+                self.configure_step.set_configuration_parameters(ui_parameters)
+                self.configure_step.state = self.configure_step.State.SUCCESS
+                self.submit_step.set_submission_parameters(ui_parameters)
+                self.submit_step.state = self.submit_step.State.SUCCESS

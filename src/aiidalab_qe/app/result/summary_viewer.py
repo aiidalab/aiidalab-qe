@@ -43,7 +43,9 @@ def generate_report_parameters(qeapp_wc):
     """
     from aiida.orm.utils.serialize import deserialize_unsafe
 
-    ui_parameters = deserialize_unsafe(qeapp_wc.base.extras.get("ui_parameters", ""))
+    ui_parameters = qeapp_wc.base.extras.get("ui_parameters", {})
+    if isinstance(ui_parameters, str):
+        ui_parameters = deserialize_unsafe(ui_parameters)
     # Construct the report parameters needed for the report
     report = {
         "relaxed": ui_parameters["workchain"]["relax_type"],

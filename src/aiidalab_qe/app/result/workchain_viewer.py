@@ -34,8 +34,11 @@ class WorkChainViewer(ipw.VBox):
             return
 
         self.node = node
-        # this will be replaced by "ui_parameters" in the future PR
-        ui_parameters = deserialize_unsafe(node.base.extras.get("ui_parameters", ""))
+        # In the new version of the plugin, the ui_parameters are stored as a yaml string
+        # which is then converted to a dictionary
+        ui_parameters = node.base.extras.get("ui_parameters", {})
+        if isinstance(ui_parameters, str):
+            ui_parameters = deserialize_unsafe(ui_parameters)
 
         self.title = ipw.HTML(
             f"""
