@@ -45,7 +45,9 @@ class AdvancedSettings(Panel):
     value = tl.Dict()
 
     def __init__(self, default_protocol=None, **kwargs):
-        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
+        self._default_protocol = (
+            default_protocol or DEFAULT_PARAMETERS["workchain"]["protocol"]
+        )
 
         # Override setting widget
         self.override_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
@@ -268,9 +270,11 @@ class AdvancedSettings(Panel):
         with self.hold_trait_notifications():
             # Reset protocol dependent settings
             self._update_settings_from_protocol(self.protocol)
+            self.pseudo_family_selector.set_from_pseudo_family(
+                DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
+            )
             # reset total charge
-            self.total_charge.value = DEFAULT_PARAMETERS["tot_charge"]
-
+            self.total_charge.value = DEFAULT_PARAMETERS["advanced"]["tot_charge"]
             # reset the override checkbox
             self.override.value = False
 
@@ -411,7 +415,9 @@ class SmearingSettings(ipw.VBox):
     disabled = tl.Bool()
 
     def __init__(self, default_protocol=None, **kwargs):
-        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
+        self._default_protocol = (
+            default_protocol or DEFAULT_PARAMETERS["workchain"]["protocol"]
+        )
 
         self.smearing = ipw.Dropdown(
             options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],

@@ -10,7 +10,6 @@ import traitlets as tl
 from aiida import orm
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 
 from .advanced import AdvancedSettings
@@ -27,7 +26,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def __init__(self, **kwargs):
         self.workchain_settings = WorkChainSettings()
-        self.workchain_settings.relax_type.observe(self._update_state, "value")
         self.advanced_settings = AdvancedSettings()
 
         ipw.dlink(
@@ -134,7 +132,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             self.confirm_button.disabled = True
             self.state = self.State.INIT
-            self.set_configuration_parameters(DEFAULT_PARAMETERS)
+            self.reset()
 
     def confirm(self, _=None):
         self.configuration_parameters = self.get_configuration_parameters()
@@ -147,7 +145,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.set_configuration_parameters(DEFAULT_PARAMETERS)
+            for _, settings in self.settings.items():
+                settings.reset()
 
     def _update_panel(self, _=None):
         """Dynamic add/remove the panel based on the selected properties."""

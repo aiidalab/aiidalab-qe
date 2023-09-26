@@ -64,12 +64,12 @@ class PseudoFamilySelector(ipw.VBox):
     disabled = tl.Bool()
 
     value = tl.Unicode(
-        default_value=DEFAULT_PARAMETERS["pseudo_family"],
+        default_value=DEFAULT_PARAMETERS["advanced"]["pseudo_family"],
     )
 
     def __init__(self, **kwargs):
         # Enable manual setting of the pseudopotential family
-        self._default_protocol = DEFAULT_PARAMETERS["protocol"]
+        self._default_protocol = DEFAULT_PARAMETERS["workchain"]["protocol"]
         self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
         self.override_protocol_pseudo_family = ipw.Checkbox(
             description="",
@@ -89,15 +89,17 @@ class PseudoFamilySelector(ipw.VBox):
         # Choose the DFT functional
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
-            value=DEFAULT_PARAMETERS["pseudo_family"].split("/")[2],
+            value=DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[2],
             style={"description_width": "initial"},
         )
         self.dft_functional.observe(self.set_value_trait, "value")
         #
-        pseudo_family_type = DEFAULT_PARAMETERS["pseudo_family"].split("/")[0]
+        pseudo_family_type = DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[
+            0
+        ]
         if pseudo_family_type.upper() == "SSSP":
             pseudo_family_type += (
-                " " + DEFAULT_PARAMETERS["pseudo_family"].split("/")[-1]
+                " " + DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[-1]
             )
         elif pseudo_family_type.upper() == "PSEUDODOJO":
             pseudo_family_type = "PseudoDojo " + pseudo_family_type.split("_")[-2]
