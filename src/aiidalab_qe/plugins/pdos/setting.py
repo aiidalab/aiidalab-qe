@@ -9,7 +9,7 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
 
 from aiidalab_qe.common.panel import Panel
 
-# Periodicity
+# nscf_kpoints_distance values from PdosWorkChain
 NSCF_DISTANCE_MAP = {
     "fast": 0.5,
     "moderate": 0.1,
@@ -30,7 +30,7 @@ class Setting(Panel):
         )
         # nscf kpoints setting widget
         self.nscf_kpoints_distance = ipw.BoundedFloatText(
-            min=0.0,
+            min=0.001,
             step=0.01,
             value=0.1,
             description="NSCF K-points distance (1/Å):",
@@ -58,15 +58,12 @@ class Setting(Panel):
     def _display_mesh(self, _=None):
         if self.input_structure is None:
             return
-        if self.nscf_kpoints_distance.value > 0:
-            mesh = create_kpoints_from_distance(
-                self.input_structure,
-                orm.Float(self.nscf_kpoints_distance.value),
-                orm.Bool(True),
-            )
-            self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
-        else:
-            self.mesh_grid.value = "Please select a number higher than 0.0"
+        mesh = create_kpoints_from_distance(
+            self.input_structure,
+            orm.Float(self.nscf_kpoints_distance.value),
+            orm.Bool(True),
+        )
+        self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
