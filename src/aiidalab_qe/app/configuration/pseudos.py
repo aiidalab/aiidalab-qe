@@ -192,10 +192,13 @@ class PseudoFamilySelector(ipw.VBox):
 
         with self.hold_trait_notifications():
             # This changes will trigger callbacks
-            family, _, functional, accuracy = pseudo_family.split("/")
-            protocol_selection = f"{family} {accuracy}"
-            self.protocol_selection.value = protocol_selection
-            self.dft_functional.value = functional
+            self.set_from_pseudo_family(pseudo_family)
+
+    def set_from_pseudo_family(self, pseudo_family):
+        family, _, functional, accuracy = pseudo_family.split("/")
+        protocol_selection = f"{family} {accuracy}"
+        self.protocol_selection.value = protocol_selection
+        self.dft_functional.value = functional
 
 
 class PseudoSetter(ipw.VBox):

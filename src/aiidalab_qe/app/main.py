@@ -98,18 +98,20 @@ class App(ipw.VBox):
         )
 
         # Add process selection header
-        work_chain_selector = QeAppWorkChainSelector(layout=ipw.Layout(width="auto"))
-        work_chain_selector.observe(self._observe_process_selection, "value")
+        self.work_chain_selector = QeAppWorkChainSelector(
+            layout=ipw.Layout(width="auto")
+        )
+        self.work_chain_selector.observe(self._observe_process_selection, "value")
 
         ipw.dlink(
             (self.submit_step, "process"),
-            (work_chain_selector, "value"),
+            (self.work_chain_selector, "value"),
             transform=lambda node: None if node is None else node.pk,
         )
 
         super().__init__(
             children=[
-                work_chain_selector,
+                self.work_chain_selector,
                 self._wizard_app_widget,
             ]
         )
@@ -124,12 +126,16 @@ class App(ipw.VBox):
                 self._wizard_app_widget.reset()
 
     def _observe_process_selection(self, change):
+        from aiida.orm.utils.serialize import deserialize_unsafe
+
         if change["old"] == change["new"]:
             return
         pk = change["new"]
         if pk is None:
             self._wizard_app_widget.reset()
             self._wizard_app_widget.selected_index = 0
+            self.configure_step.reset()
+            self.submit_step.reset()
         else:
             process = load_node(pk)
             with self.structure_manager_widget.hold_sync():
@@ -142,3 +148,12 @@ class App(ipw.VBox):
                     self.structure_step.confirmed_structure = process.inputs.structure
                     self.configure_step.state = WizardAppWidgetStep.State.SUCCESS
                     self.submit_step.process = process
+            # set ui_parameters
+            # print out error message if yaml format ui_parameters is not reachable
+            ui_parameters = process.base.extras.get("ui_parameters", {})
+            if ui_parameters and isinstance(ui_parameters, str):
+                ui_parameters = deserialize_unsafe(ui_parameters)
+                self.configure_step.set_configuration_parameters(ui_parameters)
+                self.configure_step.state = self.configure_step.State.SUCCESS
+                self.submit_step.set_submission_parameters(ui_parameters)
+                self.submit_step.state = self.submit_step.State.SUCCESS

@@ -167,10 +167,11 @@ class WorkChainSettings(Panel):
             "relax_type",
             "spin_type",
             "electronic_type",
-            "workchain_protocol",
         ]:
             if key in parameters:
                 getattr(self, key).value = parameters[key]
+        if "protocol" in parameters:
+            self.workchain_protocol.value = parameters["protocol"]
         properties = parameters.get("properties", [])
         for name in self.properties:
             if name in properties:

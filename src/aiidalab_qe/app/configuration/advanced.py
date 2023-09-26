@@ -234,26 +234,32 @@ class AdvancedSettings(Panel):
         """Set the panel value from the given parameters."""
 
         if "pseudo_family" in parameters:
-            self.pseudo_family_selector.value = parameters.get("pseudo_family")
+            self.pseudo_family_selector.set_from_pseudo_family(
+                parameters.get("pseudo_family")
+            )
         if "pseudos" in parameters["pw"]:
-            cutoffs = {
-                "ecutwfc": parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"],
-                "ecutrho": parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"],
-            }
-            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], cutoffs)
+            self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], {})
+            self.pseudo_setter.ecutwfc_setter.value = parameters["pw"]["parameters"][
+                "SYSTEM"
+            ]["ecutwfc"]
+            self.pseudo_setter.ecutrho_setter.value = parameters["pw"]["parameters"][
+                "SYSTEM"
+            ]["ecutrho"]
         #
         self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
         if parameters.get("pw") is not None:
-            self.smearing.degauss_value = parameters["pw"]["parameters"]["SYSTEM"][
-                "degauss"
-            ]
-            self.smearing.smearing_value = parameters["pw"]["parameters"]["SYSTEM"][
-                "smearing"
-            ]
+            system = parameters["pw"]["parameters"]["SYSTEM"]
+            if "degauss" in system:
+                self.smearing.degauss.value = system["degauss"]
+            if "smearing" in system:
+                self.smearing.smearing.value = system["smearing"]
             self.total_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
                 "tot_charge", 0
             )
-        self.magnetization._set_magnetization_values(**parameters)
+        if parameters.get("initial_magnetic_moments"):
+            self.magnetization._set_magnetization_values(
+                parameters.get("initial_magnetic_moments")
+            )
 
     def reset(self):
         """Reset the widget and the traitlets"""
@@ -374,13 +380,17 @@ class MagnetizationSettings(ipw.VBox):
             magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
         return magnetization
 
-    def _set_magnetization_values(self, **kwargs):
-        """Update used for conftest setting all magnetization to a value"""
+    def _set_magnetization_values(self, magnetic_moments):
+        """Set magnetization"""
         # self.override.value = True
         with self.hold_trait_notifications():
-            if "initial_magnetic_moments" in kwargs:
-                for i in range(len(self.kinds.children)):
-                    self.kinds.children[i].value = kwargs["initial_magnetic_moments"]
+            for i in range(len(self.kinds.children)):
+                if isinstance(magnetic_moments, dict):
+                    self.kinds.children[i].value = magnetic_moments.get(
+                        self.kinds.children[i].description, 0.0
+                    )
+                else:
+                    self.kinds.children[i].value = magnetic_moments
 
 
 class SmearingSettings(ipw.VBox):
