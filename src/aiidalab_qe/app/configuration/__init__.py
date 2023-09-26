@@ -77,11 +77,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.settings[identifier] = entry_point(parent=self)
             self.settings[identifier].identifier = identifier
             # link basic protocol to all plugin specific protocols
-            if hasattr(self.settings[identifier], "workchain_protocol"):
-                ipw.dlink(
-                    (self.workchain_settings.workchain_protocol, "value"),
-                    (self.settings[identifier].workchain_protocol, "value"),
-                )
             if identifier in self.workchain_settings.properties:
                 self.workchain_settings.properties[identifier].run.observe(
                     self._update_panel, "value"
