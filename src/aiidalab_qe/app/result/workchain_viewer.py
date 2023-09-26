@@ -73,7 +73,10 @@ class WorkChainViewer(ipw.VBox):
         for identifier, entry_point in entries.items():
             # only show the result tab if the property is selected to be run
             # this will be repalced by the ui_parameters in the future PR
-            if identifier not in ui_parameters["workchain"]["properties"]:
+            # if this is the old version without plugin specific ui_parameters, just skip
+            if identifier not in ui_parameters.get("workchain", {}).get(
+                "properties", []
+            ):
                 continue
             result = entry_point(self.node)
             self.results[identifier] = result

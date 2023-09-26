@@ -47,6 +47,9 @@ def generate_report_parameters(qeapp_wc):
     if isinstance(ui_parameters, str):
         ui_parameters = deserialize_unsafe(ui_parameters)
     # Construct the report parameters needed for the report
+    # drop support for old ui parameters
+    if "workchain" not in ui_parameters:
+        return {}
     report = {
         "relaxed": ui_parameters["workchain"]["relax_type"],
         "relax_method": ui_parameters["workchain"]["relax_type"],
