@@ -321,8 +321,6 @@ def app(pw_code, dos_code, projwfc_code, sssp):
 def submit_app_generator(
     app,
     generate_structure_data,
-    workchain_settings_generator,
-    smearing_settings_generator,
 ):
     """Return a function that generates a submit step widget."""
 
