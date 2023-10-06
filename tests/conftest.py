@@ -293,7 +293,7 @@ def smearing_settings_generator():
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code, sssp):
+def app(pw_code, dos_code, projwfc_code):
     from aiidalab_qe.app.main import App
 
     app = App(qe_auto_setup=False)

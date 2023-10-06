@@ -111,7 +111,6 @@ class QeAppWorkChain(WorkChain):
         cls,
         structure,
         parameters=None,
-        clean_workdir=True,
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
@@ -161,6 +160,9 @@ class QeAppWorkChain(WorkChain):
             else:
                 builder.pop(name, None)
 
+        # XXX (unkcpz) I smell not proper design here since I have to look at
+        # configuration step to know what show be set here.
+        clean_workdir = parameters["advanced"]["clean_workdir"]
         builder.clean_workdir = orm.Bool(clean_workdir)
 
         return builder
