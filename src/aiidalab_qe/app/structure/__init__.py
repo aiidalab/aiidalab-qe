@@ -124,4 +124,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         return self.confirmed_structure is not None
 
     def reset(self):  # unconfirm
+        """Reset the widget to its initial state."""
         self.confirmed_structure = None
+        self.manager.structure = None

@@ -134,6 +134,7 @@ class App(ipw.VBox):
         if pk is None:
             self._wizard_app_widget.reset()
             self._wizard_app_widget.selected_index = 0
+            self.structure_step.reset()
             self.configure_step.reset()
             self.submit_step.reset()
         else:
