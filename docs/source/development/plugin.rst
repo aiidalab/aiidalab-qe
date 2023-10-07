@@ -89,7 +89,40 @@ In this class, one needs to implement the ``_update_view`` method to tell QeApp 
 
 WorkChain and Builder
 -----------------------
-One needs to implement a ``get_builder`` function to tell QeApp how to use the input parameters from the GUI. Then register the workchain and builder in the `workchain_and_builder` dict, so that the QeApp can load them.
+One needs to implement a ``get_builder`` function to tell QeApp how to use the input parameters from the GUI.
+
+The `parameters` passed to the `get_builder` function has the following structure:
+
+.. code:: python
+
+    {
+        "workchain": {
+            "protocol": "fast",
+            "relax_type": "positions",
+            "properties": ["bands", "pdos", "relax"],
+            "spin_type": "none",
+            "electronic_type": "insulator",
+        },
+        "advanced": {
+            "initial_magnetic_moments": None,
+            "pw": {
+                "parameters": {
+                    "SYSTEM": {"ecutwfc": 30.0, "ecutrho": 240.0, "tot_charge": 0.0}
+                },
+                "pseudos": {"Si": "eaef3352-2b0e-4205-b404-e6565a88aec8"},
+            },
+            "pseudo_family": "SSSP/1.2/PBEsol/efficiency",
+            "kpoints_distance": 0.5,
+        },
+        "bands": {"kpath_2d": "hexagonal"},
+        "pdos": {...},
+        "hello_world": {...},
+        "plugin_1": {...},
+    }
+
+One needs to decide which parameters are needed for the workchain, and how to use them. For example, the ``HelloWorldWorkChain`` needs the ``name`` parameter, which is defined in the ``Setting`` panel. The ``get_builder`` function will return a ``builder`` for the ``HelloWorldWorkChain``. The ``builder`` will be used to submit the workchain.
+
+
 
 .. code-block:: python
 
@@ -103,6 +136,10 @@ One needs to implement a ``get_builder`` function to tell QeApp how to use the i
                     parameters=parameters,
                 )
         return builder
+
+Then register the workchain and builder in the `workchain_and_builder` dict, so that the QeApp can load them.
+
+.. code-block:: python
 
     # register the workchain and builder
     workchain_and_builder = {

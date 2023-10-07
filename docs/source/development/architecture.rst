@@ -27,11 +27,28 @@ In the configuration step, there are several panels. The parameters from these p
 .. code:: python
 
     {
-        "workchain": {...},
-        "advanced": {...},
-        "bands": {...},
+        "workchain": {
+            "protocol": "fast",
+            "relax_type": "positions",
+            "properties": ["bands", "pdos", "relax"],
+            "spin_type": "none",
+            "electronic_type": "insulator",
+        },
+        "advanced": {
+            "initial_magnetic_moments": None,
+            "pw": {
+                "parameters": {
+                    "SYSTEM": {"ecutwfc": 30.0, "ecutrho": 240.0, "tot_charge": 0.0}
+                },
+                "pseudos": {"Si": "eaef3352-2b0e-4205-b404-e6565a88aec8"},
+            },
+            "pseudo_family": "SSSP/1.2/PBEsol/efficiency",
+            "kpoints_distance": 0.5,
+        },
+        "bands": {"kpath_2d": "hexagonal"},
+        "pdos": {...},
         "plugin_1": {...},
-        ...
+        "plugin_2": {...},
     }
 
 Plugin
