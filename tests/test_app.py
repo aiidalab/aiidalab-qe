@@ -14,7 +14,9 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
     # new workflow, this will reset the GUI
     app.work_chain_selector.value = None
     # check if the value are reload correctly
+    assert app.structure_step.manager.structure is None
     assert app.configure_step.workchain_settings.relax_type.value == "positions_cell"
     assert app.configure_step.workchain_settings.spin_type.value == "none"
     assert app.configure_step.workchain_settings.properties["bands"].run.value is False
     assert app.configure_step.workchain_settings.properties["pdos"].run.value is False
+    assert app.submit_step.resources_config.num_cpus.value == 1
