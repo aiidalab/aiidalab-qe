@@ -364,6 +364,7 @@ def submit_app_generator(
         configure_step.confirm()
         #
         submit_step = app.submit_step
+        submit_step.input_structure = generate_structure_data()
         submit_step.resources_config.num_cpus.value = 2
 
         return app
