@@ -16,11 +16,24 @@ def test_get_configuration_parameters():
 
     wg = ConfigureQeAppWorkChainStep()
     parameters = wg.get_configuration_parameters()
+    print("parameters:", parameters)
     parameters_ref = {
         "workchain": wg.workchain_settings.get_panel_value(),
         "advanced": wg.advanced_settings.get_panel_value(),
     }
     assert parameters == parameters_ref
+
+
+def test_set_configuration_parameters(submit_app_generator):
+    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+
+    wg = ConfigureQeAppWorkChainStep()
+    parameters = wg.get_configuration_parameters()
+    parameters["workchain"]["relax_type"] = "positions"
+    parameters["advanced"]["pseudo_family"] = "SSSP/1.2/PBE/efficiency"
+    wg.set_configuration_parameters(parameters)
+    new_parameters = wg.get_configuration_parameters()
+    assert parameters == new_parameters
 
 
 def test_panel():

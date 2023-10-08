@@ -9,6 +9,7 @@ import traitlets as tl
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
+from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 from filelock import FileLock, Timeout
@@ -33,8 +34,11 @@ class WorkChainViewer(ipw.VBox):
             return
 
         self.node = node
-        # this will be replaced by "ui_parameters" in the future PR
+        # In the new version of the plugin, the ui_parameters are stored as a yaml string
+        # which is then converted to a dictionary
         ui_parameters = node.base.extras.get("ui_parameters", {})
+        if isinstance(ui_parameters, str):
+            ui_parameters = deserialize_unsafe(ui_parameters)
 
         self.title = ipw.HTML(
             f"""
@@ -69,7 +73,10 @@ class WorkChainViewer(ipw.VBox):
         for identifier, entry_point in entries.items():
             # only show the result tab if the property is selected to be run
             # this will be repalced by the ui_parameters in the future PR
-            if identifier not in ui_parameters["workchain"]["properties"]:
+            # if this is the old version without plugin specific ui_parameters, just skip
+            if identifier not in ui_parameters.get("workchain", {}).get(
+                "properties", []
+            ):
                 continue
             result = entry_point(self.node)
             self.results[identifier] = result

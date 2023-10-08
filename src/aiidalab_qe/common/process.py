@@ -17,7 +17,7 @@ class WorkChainSelector(ipw.HBox):
     names of the output keys of the `parse_extra_info` method.
     """
 
-    # The PK of a 'aiida.workflows:quantumespresso.pw.bands' WorkChainNode.
+    # The PK of a WorkChainNode.
     value = tl.Int(allow_none=True)
 
     # Indicate whether the widget is currently updating the work chain options.
@@ -41,7 +41,7 @@ class WorkChainSelector(ipw.HBox):
         )
         self.work_chains_selector = ipw.Dropdown(
             options=[("New workflow...", self._NO_PROCESS)],
-            layout=ipw.Layout(min_width="300px", flex="1 1 auto"),
+            layout=ipw.Layout(min_width="360px", flex="1 1 auto"),
         )
         ipw.dlink(
             (self.work_chains_selector, "value"),
@@ -55,13 +55,29 @@ class WorkChainSelector(ipw.HBox):
         else:
             self.fmt_workchain = self.BASE_FMT_WORKCHAIN
 
-        self.refresh_work_chains_button = ipw.Button(description="Refresh")
+        self.new_work_chains_button = ipw.Button(
+            description="New",
+            tooltip="Start a new computation",
+            button_style="success",
+            icon="plus-circle",
+            layout=ipw.Layout(width="auto"),
+        )
+        self.new_work_chains_button.on_click(self._on_click_new_work_chain)
+
+        self.refresh_work_chains_button = ipw.Button(
+            description="Refresh",
+            tooltip="Refresh the list of computed workflows",
+            button_style="primary",
+            icon="refresh",
+            layout=ipw.Layout(width="auto"),
+        )
         self.refresh_work_chains_button.on_click(self.refresh_work_chains)
 
         super().__init__(
             children=[
                 self.work_chains_prompt,
                 self.work_chains_selector,
+                self.new_work_chains_button,
                 self.refresh_work_chains_button,
             ],
             **kwargs,
@@ -129,6 +145,10 @@ class WorkChainSelector(ipw.HBox):
                 self.work_chains_selector.value = original_value
         finally:
             self.set_trait("busy", False)  # reenable the widget
+
+    def _on_click_new_work_chain(self, _=None):
+        self.refresh_work_chains()
+        self.work_chains_selector.value = self._NO_PROCESS
 
     @tl.observe("value")
     def _observe_value(self, change):
