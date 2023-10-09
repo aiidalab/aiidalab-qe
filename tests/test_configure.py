@@ -17,7 +17,6 @@ def test_get_configuration_parameters():
 
     wg = ConfigureQeAppWorkChainStep()
     parameters = wg.get_configuration_parameters()
-    print("parameters:", parameters)
     parameters_ref = {
         "workchain": wg.workchain_settings.get_panel_value(),
         "advanced": wg.advanced_settings.get_panel_value(),
