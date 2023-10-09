@@ -279,7 +279,7 @@ class PseudoSetter(ipw.VBox):
         self.ecutrho = self.ecutrho_setter.value
 
     def _reset_cutoff_widgets(self):
-        self.ecutrho_setter.value = 0
+        self.ecutwfc_setter.value = 0
         self.ecutrho_setter.value = 0
 
     def _reset_traitlets(self):
