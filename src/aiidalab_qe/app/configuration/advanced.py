@@ -526,4 +526,4 @@ class SmearingSettings(ipw.VBox):
 
         with self.hold_trait_notifications():
             self._update_settings_from_protocol(self.protocol)
-            self.disabled = False
+            self.disabled = True
