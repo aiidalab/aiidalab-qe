@@ -1,4 +1,4 @@
-"""Bands results view widgets
+"""XPS results view widgets
 
 """
 import ipywidgets as ipw

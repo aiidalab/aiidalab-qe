@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Panel for Bands plugin.
+"""Panel for XPS plugin.
 
 """
 import ipywidgets as ipw
@@ -54,13 +54,13 @@ class Setting(Panel):
         </div>"""
     )
 
-    element_title = ipw.HTML(
+    peak_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Select element</h4></div>"""
+        <h4>Select peak</h4></div>"""
     )
-    element_help = ipw.HTML(
+    peak_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
-        The list of elements to be considered for analysis. If no elements list is given, we instead calculate all elements in the structure.
+        The list of peaks to be considered for analysis.
         </div>"""
     )
     structure_title = ipw.HTML(
@@ -112,7 +112,7 @@ class Setting(Panel):
             disabled=False,
             style={"description_width": "initial"},
         )
-        self.elements_list = ipw.VBox()
+        self.peak_list = ipw.VBox()
 
         self.structure_type = ipw.ToggleButtons(
             options=[
@@ -145,10 +145,10 @@ class Setting(Panel):
             self.pseudo_title,
             self.pseudo_help,
             self.pseudo_group,
-            self.element_title,
-            self.element_help,
+            self.peak_title,
+            self.peak_help,
             ipw.HBox(
-                [self.elements_list],
+                [self.peak_list],
             ),
             # self.supercell_title,
             # self.supercell_help,
@@ -161,25 +161,15 @@ class Setting(Panel):
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
-        elements_list = [
-            element.description
-            for element in self.elements_list.children
-            if element.value
-        ]
-        if len(elements_list) == 0:
-            elements_list = [
-                element.description for element in self.elements_list.children
-            ]
-        if len(elements_list) == 0:
-            raise Exception(
-                f"No element is supported by pseudo group {self.pseudo_group.value}."
-            )
+        peak_list = [peak.description for peak in self.peak_list.children if peak.value]
+        if len(peak_list) == 0:
+            raise Exception("Please select at least one peak.")
         parameters = {
             "core_hole_treatment": self.core_hole_treatment.value,
             "structure_type": self.structure_type.value,
             "pseudo_group": self.pseudo_group.value,
             "correction_energies": self.correction_energies,
-            "elements_list": elements_list,
+            "peak_list": peak_list,
         }
         return parameters
 
@@ -190,20 +180,20 @@ class Setting(Panel):
             "core_hole_treatment", "xch_smear"
         )
         self.structure_type.value = input_dict.get("structure_type", "crystal")
-        elements_list = input_dict.get("elements_list", {})
-        for ele in self.elements_list.children:
-            if ele.value in elements_list:
-                ele.value = True
+        peak_list = input_dict.get("peak_list", {})
+        for peak in self.peak_list.children:
+            if peak.value in peak_list:
+                peak.value = True
 
     @tl.observe("input_structure")
     def _update_structure(self, _=None):
-        self._update_element_list()
+        self._update_peak_list()
 
-    def _update_element_list(self):
+    def _update_peak_list(self):
         if self.input_structure is None:
             return
         structure = self.input_structure
-        elements_list = [Kind.symbol for Kind in structure.kinds]
+        kind_list = [Kind.symbol for Kind in structure.kinds]
         checkbox_list = []
         qb = QueryBuilder()
         qb.append(Group, filters={"label": self.pseudo_group.value})
@@ -211,17 +201,17 @@ class Setting(Panel):
             install_pseudos(self.pseudo_group.value)
         group = qb.all()[0][0]
         self.correction_energies = group.base.extras.get("correction")
-        supported_elements = {}
+        supported_peaks = {}
         for key in self.correction_energies:
             ele, orbital = key.split("_")
-            if ele not in supported_elements:
-                supported_elements[ele] = [key]
+            if ele not in supported_peaks:
+                supported_peaks[ele] = [key]
             else:
-                supported_elements[ele].append(key)
-        # print("supported_elements: ", supported_elements)
-        for ele in elements_list:
-            if ele in supported_elements:
-                for orbital in supported_elements[ele]:
+                supported_peaks[ele].append(key)
+        # print("supported_peaks: ", supported_peaks)
+        for ele in kind_list:
+            if ele in supported_peaks:
+                for orbital in supported_peaks[ele]:
                     checkbox_list += (
                         ipw.Checkbox(
                             description=orbital,
@@ -241,7 +231,7 @@ class Setting(Panel):
                         layout=ipw.Layout(max_width="100%"),
                     ),
                 )
-        self.elements_list.children = checkbox_list
+        self.peak_list.children = checkbox_list
 
     def _update_pseudo(self, change):
         pseudo_group = change["new"]
@@ -249,4 +239,10 @@ class Setting(Panel):
         qb.append(Group, filters={"label": pseudo_group})
         if len(qb.all()) == 0:
             install_pseudos(pseudo_group)
-        self._update_element_list()
+        self._update_peak_list()
+
+    def reset(self):
+        """Reset the panel to its initial state."""
+        self.input_structure = None
+        self.structure_type.value = "crystal"
+        self.pseudo_group.value = "pseudo_demo_pbe"

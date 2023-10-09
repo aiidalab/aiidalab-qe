@@ -4,6 +4,12 @@ from aiida_quantumespresso.common.types import ElectronicType, SpinType
 
 XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
+supercell_min_parameter_map = {
+    "fast": 4.0,
+    "moderate": 8.0,
+    "precise": 12.0,
+}
+
 
 def get_builder(codes, structure, parameters, **kwargs):
     from copy import deepcopy
@@ -11,15 +17,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     protocol = parameters["workchain"]["protocol"]
     xps_parameters = parameters.get("xps", {})
     all_correction_energies = xps_parameters.pop("correction_energies", {})
-    elements_list = xps_parameters.pop("elements_list", None)
-    # set core hole treatment for element
-    if parameters["workchain"]["electronic_type"] == "INSULATOR":
-        core_hole_treatment = "xch_fixed"
-    else:
-        core_hole_treatment = "xch_smear"
-    core_hole_treatments = {}
-    for element in elements_list:
-        core_hole_treatments[element] = core_hole_treatment
+    peak_list = xps_parameters.pop("peak_list", None)
     # load pseudo for excited-state and group-state.
     pseudo_group = xps_parameters.pop("pseudo_group")
     pseudo_group = (
@@ -27,9 +25,9 @@ def get_builder(codes, structure, parameters, **kwargs):
     )
     # set pseudo for element
     pseudos = {}
-    elements = []
+    elements_list = []
     correction_energies = {}
-    for label in elements_list:
+    for label in peak_list:
         element = label.split("_")[0]
         pseudos[element] = {
             "core_hole": [
@@ -42,21 +40,21 @@ def get_builder(codes, structure, parameters, **kwargs):
             ][0],
         }
         correction_energies[element] = all_correction_energies[label]["core"]
-        elements.append(element)
+        elements_list.append(element)
+    # set core hole treatment for element
+    if parameters["workchain"]["electronic_type"] == "metal":
+        core_hole_treatment = "xch_smear"
+    else:
+        core_hole_treatment = "xch_fixed"
+    core_hole_treatments = {element: core_hole_treatment for element in elements_list}
     # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
     is_molecule_input = (
         True if xps_parameters.get("structure_type") == "molecule" else False
     )
     structure_preparation_settings = {
-        "supercell_min_parameter": Float(3.0),
+        "supercell_min_parameter": Float(supercell_min_parameter_map[protocol]),
         "is_molecule_input": Bool(is_molecule_input),
     }
-    if is_molecule_input:
-        # kpoint
-        # kpoints = KpointsData()
-        # kpoints.set_kpoints_mesh([1, 1, 1])
-        # parameters["advanced"]["kpoints"] = kpoints
-        structure_preparation_settings["supercell_min_parameter"] = Float(8.0)
     pw_code = codes.get("pw", None)
     overrides = {
         "ch_scf": deepcopy(parameters["advanced"]),
@@ -66,7 +64,7 @@ def get_builder(codes, structure, parameters, **kwargs):
         structure=structure,
         protocol=protocol,
         pseudos=pseudos,
-        elements_list=elements,
+        elements_list=elements_list,
         calc_binding_energy=Bool(True),
         correction_energies=Dict(correction_energies),
         core_hole_treatments=core_hole_treatments,
@@ -79,7 +77,14 @@ def get_builder(codes, structure, parameters, **kwargs):
     )
     builder.pop("relax")
     builder.pop("clean_workdir", None)
-    # print("xps builder: ", builder)
+    # there is a bug in aiida-quantumespresso xps, that one can not set the kpoints
+    # this is fxied in a PR, but we need to wait for the next release.
+    # we set a large kpoints_distance value to set the kpoints to 1x1x1
+    if is_molecule_input:
+        # kpoints = KpointsData()
+        # kpoints.set_kpoints_mesh([1, 1, 1])
+        # parameters["advanced"]["kpoints"] = kpoints
+        builder.ch_scf.kpoints_distance = Float(5)
     return builder
 
 
