@@ -86,7 +86,9 @@ class WorkChainSelector(ipw.HBox):
         ipw.dlink(
             (self, "value"),
             (self.kill_work_chains_button, "disabled"),
-            lambda workchain: orm.load_node(workchain).is_terminated if isinstance(workchain, int) else True,
+            lambda workchain: orm.load_node(workchain).is_terminated
+            if isinstance(workchain, int)
+            else True,
         )
         self.kill_work_chains_button.on_click(self._on_click_kill_work_chain)
 
@@ -144,7 +146,6 @@ class WorkChainSelector(ipw.HBox):
             child.disabled = change["new"]
 
     def refresh_work_chains(self, _=None):
-        
         try:
             self.set_trait("busy", True)  # disables the widget
 
@@ -164,9 +165,12 @@ class WorkChainSelector(ipw.HBox):
                 self.work_chains_selector.value = original_value
         finally:
             self.set_trait("busy", False)  # reenable the widget
-            
-        self.kill_work_chains_button.disabled = orm.load_node(self.value).is_terminated if isinstance(self.value, int) else True
 
+        self.kill_work_chains_button.disabled = (
+            orm.load_node(self.value).is_terminated
+            if isinstance(self.value, int)
+            else True
+        )
 
     def _on_click_new_work_chain(self, _=None):
         self.refresh_work_chains()
