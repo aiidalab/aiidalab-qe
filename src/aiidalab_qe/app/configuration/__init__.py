@@ -153,6 +153,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def reset(self):
         """Reset the widgets in all settings to their initial states."""
         with self.hold_trait_notifications():
+            self.input_structure = None
             for _, settings in self.settings.items():
                 settings.reset()
 

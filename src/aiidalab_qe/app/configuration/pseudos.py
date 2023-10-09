@@ -214,7 +214,10 @@ class PseudoSetter(ipw.VBox):
     ecutwfc = tl.Float()
     ecutrho = tl.Float()
 
-    _pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+    _default_pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; color: red;">
+            Input structure is not set. Please set the structure first.
+            </div>"""
+    _update_pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
         The pseudopotential for each kind of atom in the structure can be set customly.
         The default pseudopotential and cutoffs are get from the pseudo family.
         The cutoffs used for the calculation are the maximum of the default from all pseudopotentials
@@ -238,11 +241,7 @@ class PseudoSetter(ipw.VBox):
         self.ecutwfc = 0
         self.ecutrho = 0
 
-        self.pseudo_setter_helper = ipw.HTML(
-            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; color: red;">
-            Input structure is not set. Please set the structure first.
-            </div>"""
-        )
+        self.pseudo_setter_helper = ipw.HTML(self._default_pseudo_setter_helper_text)
         self.cutoff_setter_helper = ipw.HTML(self._cutoff_setter_helper_text)
         self.ecutwfc_setter = ipw.FloatText(
             description="Wavefunction cutoff (Ry)",
@@ -295,6 +294,8 @@ class PseudoSetter(ipw.VBox):
         if self.structure is None:
             self._reset_cutoff_widgets()
             self._reset_traitlets()
+            self.pseudo_setting_widgets.children = ()
+            self.pseudo_setter_helper.value = self._default_pseudo_setter_helper_text
             return
 
         if self.pseudo_family is None:
@@ -400,7 +401,7 @@ class PseudoSetter(ipw.VBox):
 
             if w.pseudo is not None:
                 self.pseudos[w.kind] = w.pseudo.uuid
-                self.pseudo_setter_helper.value = self._pseudo_setter_helper_text
+                self.pseudo_setter_helper.value = self._update_pseudo_setter_helper_text
 
                 with self.hold_trait_notifications():
                     self.ecutwfc_setter.value = max(self.ecutwfc, w.ecutwfc)

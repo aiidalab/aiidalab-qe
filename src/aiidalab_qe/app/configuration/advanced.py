@@ -277,6 +277,12 @@ class AdvancedSettings(Panel):
             self.total_charge.value = DEFAULT_PARAMETERS["advanced"]["tot_charge"]
             # reset the override checkbox
             self.override.value = False
+            self.smearing.reset()
+            # reset the pseudo setter
+            self.pseudo_setter.structure = None
+            self.pseudo_setter._reset()
+            # reset the magnetization
+            self.magnetization.reset()
 
     def _display_mesh(self, _=None):
         if self.input_structure is None:
@@ -338,9 +344,11 @@ class MagnetizationSettings(ipw.VBox):
 
     def reset(self):
         self.disabled = True
-        if hasattr(self.kinds, "children") and self.kinds.children:
-            for i in range(len(self.kinds.children)):
-                self.kinds.children[i].value = 0.0
+        self.kinds = None
+        self.description.value = "Define magnetization: Input structure not confirmed"
+        with self.kinds_widget_out:
+            clear_output()
+            display(self.kinds)
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
