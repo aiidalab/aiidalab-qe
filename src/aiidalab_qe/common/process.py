@@ -3,9 +3,10 @@ from dataclasses import make_dataclass
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida.tools.query.calculation import CalculationQueryBuilder
-from aiida.engine.processes import control
 from aiida import orm
+from aiida.engine.processes import control
+from aiida.tools.query.calculation import CalculationQueryBuilder
+
 
 class WorkChainSelector(ipw.HBox):
     """A widget to select a WorkChainNode of a given process label.
@@ -73,7 +74,7 @@ class WorkChainSelector(ipw.HBox):
             layout=ipw.Layout(width="auto"),
         )
         self.refresh_work_chains_button.on_click(self.refresh_work_chains)
-        
+
         self.kill_work_chains_button = ipw.Button(
             description="Kill",
             tooltip="Kill the selected workflow",
@@ -170,7 +171,7 @@ class WorkChainSelector(ipw.HBox):
     def _on_click_new_work_chain(self, _=None):
         self.refresh_work_chains()
         self.work_chains_selector.value = self._NO_PROCESS
-        
+
     def _on_click_kill_work_chain(self, _=None):
         processes = [orm.load_node(self.work_chains_selector.value)]
         control.kill_processes(processes)
