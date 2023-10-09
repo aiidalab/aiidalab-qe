@@ -54,7 +54,7 @@ class AdvancedSettings(Panel):
             description="",
             indent=False,
             value=True,
-            layout=ipw.Layout(max_width="10%"),
+            layout=ipw.Layout(max_width="20px"),
         )
         self.clean_workdir_description = ipw.HTML(
             """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
