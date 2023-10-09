@@ -72,6 +72,15 @@ class WorkChainSelector(ipw.HBox):
             layout=ipw.Layout(width="auto"),
         )
         self.refresh_work_chains_button.on_click(self.refresh_work_chains)
+        
+        self.kill_work_chains_button = ipw.Button(
+            description="Kill",
+            tooltip="Kill the selected workflow",
+            button_style="danger",
+            icon="window-close",
+            layout=ipw.Layout(width="auto"),
+        )
+        #self.refresh_work_chains_button.on_click(self.refresh_work_chains)
 
         super().__init__(
             children=[
@@ -79,6 +88,7 @@ class WorkChainSelector(ipw.HBox):
                 self.work_chains_selector,
                 self.new_work_chains_button,
                 self.refresh_work_chains_button,
+                self.kill_work_chains_button,
             ],
             **kwargs,
         )
