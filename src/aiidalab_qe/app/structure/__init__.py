@@ -8,7 +8,19 @@ import pathlib
 import aiida
 import ipywidgets as ipw
 import traitlets
-from aiidalab_widgets_base import WizardAppWidgetStep
+from aiidalab_widgets_base import (
+    BasicCellEditor,
+    BasicStructureEditor,
+    OptimadeQueryWidget,
+    StructureBrowserWidget,
+    StructureExamplesWidget,
+    StructureManagerWidget,
+    StructureUploadWidget,
+    WizardAppWidgetStep,
+)
+
+from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common import AddingTagsEditor
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
@@ -22,6 +34,8 @@ Examples = [
     ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
 ]
 
+OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
+
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     """Integrated widget for the selection of structures from different sources."""
@@ -29,8 +43,34 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
-    def __init__(self, manager, description=None, **kwargs):
-        self.manager = manager
+    def __init__(self, description=None, **kwargs):
+        importers = [
+            StructureUploadWidget(title="Upload file"),
+            OptimadeQueryWidget(embedded=False),
+            StructureBrowserWidget(title="AiiDA database"),
+            StructureExamplesWidget(title="From Examples", examples=Examples),
+        ]
+        # add plugin specific structure importers
+        entries = get_entry_items("aiidalab_qe.properties", "importer")
+        for _, entry_point in entries.items():
+            importers.append(entry_point())
+        #
+        editors = [
+            BasicCellEditor(title="Edit cell"),
+            BasicStructureEditor(title="Edit structure"),
+            AddingTagsEditor(title="Edit StructureData"),
+        ]
+        entries = get_entry_items("aiidalab_qe.properties", "editor")
+        for _, entry_point in entries.items():
+            importers.append(entry_point())
+        #
+        self.manager = StructureManagerWidget(
+            importers=importers,
+            editors=editors,
+            node_class="StructureData",
+            storable=False,
+            configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
+        )
 
         if description is None:
             description = ipw.HTML(
@@ -63,7 +103,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
         # Create directional link from the (read-only) 'structure_node' traitlet of the
         # structure manager to our 'structure' traitlet:
-        ipw.dlink((manager, "structure_node"), (self, "structure"))
+        ipw.dlink((self.manager, "structure_node"), (self, "structure"))
 
         super().__init__(
             children=[
