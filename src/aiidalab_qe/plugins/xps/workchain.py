@@ -41,16 +41,18 @@ def get_builder(codes, structure, parameters, **kwargs):
         }
         correction_energies[element] = all_correction_energies[label]["core"]
         elements_list.append(element)
+    # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
+    is_molecule_input = (
+        True if xps_parameters.get("structure_type") == "molecule" else False
+    )
     # set core hole treatment for element
     if parameters["workchain"]["electronic_type"] == "metal":
         core_hole_treatment = "xch_smear"
     else:
         core_hole_treatment = "xch_fixed"
+    if is_molecule_input:
+        core_hole_treatment = "full"
     core_hole_treatments = {element: core_hole_treatment for element in elements_list}
-    # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
-    is_molecule_input = (
-        True if xps_parameters.get("structure_type") == "molecule" else False
-    )
     structure_preparation_settings = {
         "supercell_min_parameter": Float(supercell_min_parameter_map[protocol]),
         "is_molecule_input": Bool(is_molecule_input),
