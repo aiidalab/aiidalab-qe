@@ -40,7 +40,7 @@ A  :class:`~aiidalab_qe.common.panel.Panel` will register a new panel in the con
 
 .. image:: ../_static/images/plugin_setting.png
 
-In this class, one can add widgets (e.g, Float, Int) to the GUI. The values of these widgets will be used in the WorkChain. One needs to override the ``get_panel_value`` to tell QeApp how to use the values from the widgets. One also need to override the ``set_panel_value`` methods to tell QeApp how to reload the panel values.
+In this class, one can add widgets (e.g, Float, Int) to the GUI. The values of these widgets will be used in the WorkChain. One needs to override the ``get_panel_value`` method to tell QeApp how to use the values from the widgets. One also need to override the ``set_panel_value`` method to tell QeApp how to reload the panel values from previous calculation, and the ``reset`` method to reset the panel to the default values.
 
 .. code-block:: python
 
@@ -56,10 +56,16 @@ In this class, one can add widgets (e.g, Float, Int) to the GUI. The values of t
             super().__init__(**kwargs)
 
         def get_panel_value(self):
+            """Get the panel value"""
             return {"name": Str(self.name.value)}
 
         def set_panel_value(self, input_dict):
+            """Set the panel value"""
             self.name.value = input_dict.get("name", 1)
+
+        def reset(self):
+            """Reset the panel"""
+            self.name.value = ""
 
 Result
 -----------------------
