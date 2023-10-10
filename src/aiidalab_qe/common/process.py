@@ -80,15 +80,8 @@ class WorkChainSelector(ipw.HBox):
             tooltip="Kill the selected workflow",
             button_style="danger",
             icon="window-close",
-            disabled=False,
+            disabled=True,
             layout=ipw.Layout(width="auto"),
-        )
-        ipw.dlink(
-            (self, "value"),
-            (self.kill_work_chains_button, "disabled"),
-            lambda workchain: orm.load_node(workchain).is_terminated
-            if isinstance(workchain, int)
-            else True,
         )
         self.kill_work_chains_button.on_click(self._on_click_kill_work_chain)
 
@@ -104,6 +97,9 @@ class WorkChainSelector(ipw.HBox):
         )
 
         self.refresh_work_chains()
+        #the following is needed to disable the button.
+        self.kill_work_chains_button.disabled = True
+
 
     def parse_extra_info(self, pk: int) -> dict:
         """Parse extra information about the work chain."""
@@ -166,12 +162,7 @@ class WorkChainSelector(ipw.HBox):
         finally:
             self.set_trait("busy", False)  # reenable the widget
 
-        self.kill_work_chains_button.disabled = (
-            orm.load_node(self.value).is_terminated
-            if isinstance(self.value, int)
-            else True
-        )
-
+        
     def _on_click_new_work_chain(self, _=None):
         self.refresh_work_chains()
         self.work_chains_selector.value = self._NO_PROCESS
@@ -190,6 +181,14 @@ class WorkChainSelector(ipw.HBox):
 
         if new not in {pk for _, pk in self.work_chains_selector.options}:
             self.refresh_work_chains()
+            
+        if hasattr(self,"kill_work_chains_button"):
+            #when the app is loaded the first time, the button is not there so it excepts.
+            self.kill_work_chains_button.disabled = (
+            orm.load_node(self.value).is_terminated
+            if isinstance(self.value, int)
+            else True
+        )
 
         self.work_chains_selector.value = new
 
