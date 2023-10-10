@@ -134,9 +134,6 @@ class App(ipw.VBox):
         if pk is None:
             self._wizard_app_widget.reset()
             self._wizard_app_widget.selected_index = 0
-            self.structure_step.reset()
-            self.configure_step.reset()
-            self.submit_step.reset()
         else:
             process = load_node(pk)
             with self.structure_manager_widget.hold_sync():
@@ -145,7 +142,6 @@ class App(ipw.VBox):
                     self.structure_manager_widget.input_structure = (
                         process.inputs.structure
                     )
-                    self.structure_step.structure = process.inputs.structure
                     self.structure_step.confirmed_structure = process.inputs.structure
                     self.configure_step.state = WizardAppWidgetStep.State.SUCCESS
                     self.submit_step.process = process
