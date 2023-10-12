@@ -14,7 +14,8 @@ Here is the simplest plugin to print the formula of the input structure:
 
 Outline
 -----------------------
-A  :class:`~aiidalab_qe.common.panel.Outline` will add a item in the properties section of the workflow panel. For this example we'll add the ``Hello World`` item, as shown below.
+A  :class:`~aiidalab_qe.common.panel.Outline` will add a item in the properties section of the workflow panel.
+For this example we'll add the ``Hello World`` item, as shown below.
 
 
 .. image:: ../_static/images/plugin_outline.png
@@ -40,7 +41,10 @@ A  :class:`~aiidalab_qe.common.panel.Panel` will register a new panel in the con
 
 .. image:: ../_static/images/plugin_setting.png
 
-In this class, one can add widgets (e.g, Float, Int) to the GUI. The values of these widgets will be used in the WorkChain. One needs to override the ``get_panel_value`` method to tell QeApp how to use the values from the widgets. One also need to override the ``set_panel_value`` method to tell QeApp how to reload the panel values from previous calculation, and the ``reset`` method to reset the panel to the default values.
+In this class, one can add widgets (e.g, Float, Int) to the GUI.
+The values of these widgets will be used in the WorkChain.
+One needs to override the ``get_panel_value`` method to tell QeApp how to use the values from the widgets.
+One also need to override the ``set_panel_value`` method to tell QeApp how to reload the panel values from previous calculation, and the ``reset`` method to reset the panel to the default values.
 
 .. code-block:: python
 
@@ -74,7 +78,9 @@ A  :class:`~aiidalab_qe.common.panel.ResultPanel` will register a new panel in t
 
 .. image:: ../_static/images/plugin_result.png
 
-In this class, one needs to implement the ``_update_view`` method to tell QeApp how to show the results of the workchain. The output of the workchain will be stored in ``self.outputs``. For example, the ``name`` and ``structure`` are the outputs of the ``HelloWorldWorkChain``.
+In this class, one needs to implement the ``_update_view`` method to tell QeApp how to show the results of the workchain.
+The output of the workchain will be stored in ``self.outputs``.
+For example, the ``name`` and ``structure`` are the outputs of the ``HelloWorldWorkChain``.
 
 .. code-block:: python
 
@@ -126,7 +132,10 @@ The `parameters` passed to the `get_builder` function has the following structur
         "plugin_1": {...},
     }
 
-One needs to decide which parameters are needed for the workchain, and how to use them. For example, the ``HelloWorldWorkChain`` needs the ``name`` parameter, which is defined in the ``Setting`` panel. The ``get_builder`` function will return a ``builder`` for the ``HelloWorldWorkChain``. The ``builder`` will be used to submit the workchain.
+One needs to decide which parameters are needed for the workchain, and how to use them.
+For example, the ``HelloWorldWorkChain`` needs the ``name`` parameter, which is defined in the ``Setting`` panel.
+The ``get_builder`` function will return a ``builder`` for the ``HelloWorldWorkChain``.
+The ``builder`` will be used to submit the workchain.
 
 
 
@@ -177,10 +186,12 @@ One needs to add the path of ``hello_world`` to ``entry_points`` inside the setu
             ],
         },
 
-Note: one plugin does not need to register all the items (settings, workchain, results). The panel in each step is pluggable, which means you could only register one item in a plugin. For example, you can only add a new `Result` panel without doing any property calculation.
+Note: one plugin does not need to register all the items (settings, workchain, results). The panel in each step is pluggable, which means you could only register one item in a plugin.
+For example, you can only add a new `Result` panel without doing any property calculation.
 
 You can add this plugin as a folder in the QeApp package, or create a new package for it.
 
 **Bringing It All Together**, You can find all the code above in this github repository: https://github.com/superstar54/aiidalab-qe-hello-world
 
-QeApp comes with built-in plugins, which can be found in the ``aiidalab_qe`` package. You can also use them as examples to create your own plugins.
+QeApp comes with built-in plugins, which can be found in the ``aiidalab_qe`` package.
+You can also use them as examples to create your own plugins.
