@@ -52,7 +52,7 @@ class QeAppWorkChain(WorkChain):
         super().define(spec)
         spec.input('structure', valid_type=StructureData,
                    help='The inputs structure.')
-        spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
+        spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(True),
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
         spec.input('properties', valid_type=orm.List, default=lambda: orm.List(),
                    help='The properties to calculate, used to control the logic of QeAppWorkChain.')
@@ -111,7 +111,6 @@ class QeAppWorkChain(WorkChain):
         cls,
         structure,
         parameters=None,
-        clean_workdir=False,
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
@@ -161,6 +160,9 @@ class QeAppWorkChain(WorkChain):
             else:
                 builder.pop(name, None)
 
+        # XXX (unkcpz) I smell not proper design here since I have to look at
+        # configuration step to know what show be set here.
+        clean_workdir = parameters["advanced"]["clean_workdir"]
         builder.clean_workdir = orm.Bool(clean_workdir)
 
         return builder

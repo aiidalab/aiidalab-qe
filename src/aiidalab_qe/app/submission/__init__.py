@@ -316,9 +316,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             if process_node is not None:
                 self.input_structure = process_node.inputs.structure
-                ui_parameters = process_node.base.extras.get("ui_parameters", None)
-                if ui_parameters is not None:
-                    self.set_selected_codes(ui_parameters["codes"])
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
@@ -346,18 +343,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             # Codes
-            for key, value in codes.items():
-                self.codes[key].value = _get_code_uuid(value)
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
+        from aiida.orm.utils.serialize import serialize
+
         builder = self._create_builder()
 
         with self.hold_trait_notifications():
             process = submit(builder)
 
             process.label = self._generate_label()
-            process.base.extras.set("ui_parameters", self.ui_parameters)
+            # since AiiDA data node may exist in the ui_parameters,
+            # we serialize it to yaml
+            process.base.extras.set("ui_parameters", serialize(self.ui_parameters))
             self.process = process
 
         self._update_state()
@@ -386,9 +385,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         from copy import deepcopy
 
         self.ui_parameters = deepcopy(self.input_parameters)
-        # add codes info into input_parameters
-        self.ui_parameters["codes"] = self.get_selected_codes()
         self.ui_parameters["resources"] = self.get_resources()
+        # add codes and resource info into ui_parameters
+        self.ui_parameters.update(self.get_submission_parameters())
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             parameters=deepcopy(self.ui_parameters),
@@ -423,6 +422,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     buildy["resources"] = resources
                 else:
                     self._update_builder(v, max_mpi_per_pool)
+
+    def set_submission_parameters(self, parameters):
+        self.set_resources(parameters["resources"])
+        self.set_selected_codes(parameters["codes"])
+
+    def get_submission_parameters(self):
+        return {
+            "codes": self.get_selected_codes(),
+            "resources": self.get_resources(),
+        }
 
     def reset(self):
         with self.hold_trait_notifications():

@@ -66,21 +66,28 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
+
+        # list of trailets to link
+        # if new trailets are added to the settings, they need to be added here
+        trailets_list = ["input_structure", "protocol", "electronic_type", "spin_type"]
+
         # then add plugin specific settings
         entries = get_entry_items("aiidalab_qe.properties", "setting")
         for identifier, entry_point in entries.items():
             self.settings[identifier] = entry_point(parent=self)
             self.settings[identifier].identifier = identifier
             # link basic protocol to all plugin specific protocols
-            if hasattr(self.settings[identifier], "workchain_protocol"):
-                ipw.dlink(
-                    (self.workchain_settings.workchain_protocol, "value"),
-                    (self.settings[identifier].workchain_protocol, "value"),
-                )
             if identifier in self.workchain_settings.properties:
                 self.workchain_settings.properties[identifier].run.observe(
                     self._update_panel, "value"
                 )
+            # link the trailets if they exist in the plugin specific settings
+            for trailet in trailets_list:
+                if hasattr(self.settings[identifier], trailet):
+                    ipw.dlink(
+                        (self.advanced_settings, trailet),
+                        (self.settings[identifier], trailet),
+                    )
 
         self._submission_blocker_messages = ipw.HTML()
 

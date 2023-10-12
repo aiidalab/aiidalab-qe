@@ -38,12 +38,13 @@ def get_builder(codes, structure, parameters, **kwargs):
     projwfc_code = codes.get("projwfc", None)
     check_codes(pw_code, dos_code, projwfc_code)
     protocol = parameters["workchain"]["protocol"]
-    #
+
     scf_overrides = deepcopy(parameters["advanced"])
     nscf_overrides = deepcopy(parameters["advanced"])
-    nscf_overrides.pop("kpoints_distance", None)
-    nscf_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
-    nscf_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
+
+    # Update the nscf kpoints distance from the setting panel
+    nscf_overrides["kpoints_distance"] = parameters["pdos"]["nscf_kpoints_distance"]
+
     overrides = {
         "scf": scf_overrides,
         "nscf": nscf_overrides,

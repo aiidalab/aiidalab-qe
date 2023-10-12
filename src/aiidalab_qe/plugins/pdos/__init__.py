@@ -1,6 +1,7 @@
 from aiidalab_qe.common.panel import CodePanel, OutlinePanel
 
 from .result import Result
+from .setting import Setting
 from .workchain import workchain_and_builder
 
 
@@ -23,7 +24,8 @@ class ProjwfcCodePanel(CodePanel):
 
 pdos = {
     "outline": PdosOutline,
-    "code": {"dos": DosCodePanel, "projwfc": ProjwfcCodePanel},
+    "code": {"dos": DosCodePanel, "projwfc": ProjwfcCodePanel}
+    "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,
 }
