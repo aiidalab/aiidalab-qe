@@ -195,7 +195,10 @@ class PseudoFamilySelector(ipw.VBox):
             self.set_from_pseudo_family(pseudo_family)
 
     def set_from_pseudo_family(self, pseudo_family):
-        family, _, functional, accuracy = pseudo_family.split("/")
+        if pseudo_family.startswith("SSSP"):
+            family, _, functional, accuracy = pseudo_family.split("/")
+        elif pseudo_family.startswith("PseudoDojo"):
+            family, _, functional, _, accuracy, _ = pseudo_family.split("/")
         protocol_selection = f"{family} {accuracy}"
         self.protocol_selection.value = protocol_selection
         self.dft_functional.value = functional

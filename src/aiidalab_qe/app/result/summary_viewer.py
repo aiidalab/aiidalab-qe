@@ -69,8 +69,9 @@ def generate_report_parameters(qeapp_wc):
         }
     )
     # update pseudo family information to report
-    pseudo_family = ui_parameters["advanced"]["pseudo_family"]
-    pseudo_family = PROTOCOL_PSEUDO_MAP[ui_parameters["workchain"]["protocol"]]
+    pseudo_family = ui_parameters["advanced"].get("pseudo_family")
+    if pseudo_family is None:
+        pseudo_family = PROTOCOL_PSEUDO_MAP[ui_parameters["workchain"]["protocol"]]
     pseudo_family_info = pseudo_family.split("/")
     pseudo_library = pseudo_family_info[0]
     functional = pseudo_family_info[2]
