@@ -119,7 +119,11 @@ class QeAppWorkChain(WorkChain):
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
         codes = parameters.pop("codes", {})
-        codes = {key: orm.load_node(value) for key, value in codes.items()}
+        codes = {
+            key: orm.load_node(value)
+            for key, value in codes.items()
+            if value is not None
+        }
         # update pseudos
         for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
             parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
