@@ -127,3 +127,5 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         """Reset the widget to its initial state."""
         self.confirmed_structure = None
         self.manager.structure = None
+        self.manager.viewer.structure = None
+        self.manager.output.value = ""
