@@ -197,6 +197,7 @@ class PseudoFamilySelector(ipw.VBox):
             self.set_from_pseudo_family(pseudo_family)
 
     def set_from_pseudo_family(self, pseudo_family):
+        """Set the widget values from the given pseudo family."""
         family, _, functional, accuracy = pseudo_family.split("/")
         protocol_selection = f"{family} {accuracy}"
         self.protocol_selection.value = protocol_selection
@@ -275,14 +276,17 @@ class PseudoSetter(ipw.VBox):
             self.pseudo_family = pseudo_family
 
     def _on_cutoff_change(self, _=None):
+        """Update the cutoffs according to the cutoff widgets"""
         self.ecutwfc = self.ecutwfc_setter.value
         self.ecutrho = self.ecutrho_setter.value
 
     def _reset_cutoff_widgets(self):
+        """Reset the cutoff widgets to 0"""
         self.ecutwfc_setter.value = 0
         self.ecutrho_setter.value = 0
 
     def _reset_traitlets(self):
+        """Reset the traitlets to the initial state"""
         self.ecutwfc = 0
         self.ecutrho = 0
         self.pseudos = dict()
