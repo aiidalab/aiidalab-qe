@@ -74,3 +74,7 @@ class Setting(Panel):
     def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.nscf_kpoints_distance.value = input_dict.get("nscf_kpoints_distance", 0.1)
+
+    def reset(self):
+        """Reset the panel to its default values."""
+        self.nscf_kpoints_distance.value = 0.1

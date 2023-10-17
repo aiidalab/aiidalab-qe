@@ -71,14 +71,14 @@ class WorkChainSettings(Panel):
         # SpinType: magnetic properties of material
         self.spin_type = ipw.ToggleButtons(
             options=[("Off", "none"), ("On", "collinear")],
-            value=DEFAULT_PARAMETERS["spin_type"],
+            value=DEFAULT_PARAMETERS["workchain"]["spin_type"],
             style={"description_width": "initial"},
         )
 
         # ElectronicType: electronic properties of material
         self.electronic_type = ipw.ToggleButtons(
             options=[("Metal", "metal"), ("Insulator", "insulator")],
-            value=DEFAULT_PARAMETERS["electronic_type"],
+            value=DEFAULT_PARAMETERS["workchain"]["electronic_type"],
             style={"description_width": "initial"},
         )
 
@@ -178,3 +178,11 @@ class WorkChainSettings(Panel):
                 self.properties[name].run.value = True
             else:
                 self.properties[name].run.value = False
+
+    def reset(self):
+        """Reset the panel to the default value."""
+        for key in ["relax_type", "spin_type", "electronic_type"]:
+            getattr(self, key).value = DEFAULT_PARAMETERS["workchain"][key]
+        self.workchain_protocol.value = DEFAULT_PARAMETERS["workchain"]["protocol"]
+        for key, p in self.properties.items():
+            p.run.value = key in DEFAULT_PARAMETERS["workchain"]["properties"]

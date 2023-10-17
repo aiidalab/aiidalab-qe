@@ -483,6 +483,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
     def reset(self):
+        """Reset the widget to its initial state."""
         with self.hold_trait_notifications():
             self.process = None
             self.input_structure = None
+            self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
+            self.set_resource_defaults()
