@@ -10,12 +10,6 @@ PSEUDO_LINK_MAP = {
     "PseudoDojo": "http://www.pseudo-dojo.org/",
 }
 
-PROTOCOL_PSEUDO_MAP = {
-    "fast": "SSSP/1.2/PBEsol/efficiency",
-    "moderate": "SSSP/1.2/PBEsol/efficiency",
-    "precise": "SSSP/1.2/PBEsol/precision",
-}
-
 FUNCTIONAL_REPORT_MAP = {
     "LDA": "local density approximation (LDA)",
     "PBE": "generalized gradient approximation of Perdew-Burke-Ernzerhof (PBE)",
@@ -70,8 +64,6 @@ def generate_report_parameters(qeapp_wc):
     )
     # update pseudo family information to report
     pseudo_family = ui_parameters["advanced"].get("pseudo_family")
-    if pseudo_family is None:
-        pseudo_family = PROTOCOL_PSEUDO_MAP[ui_parameters["workchain"]["protocol"]]
     pseudo_family_info = pseudo_family.split("/")
     pseudo_library = pseudo_family_info[0]
     functional = pseudo_family_info[2]
