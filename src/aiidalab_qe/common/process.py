@@ -4,7 +4,6 @@ from dataclasses import make_dataclass
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
-from aiida.engine.processes import control
 from aiida.tools.query.calculation import CalculationQueryBuilder
 
 
@@ -75,30 +74,18 @@ class WorkChainSelector(ipw.HBox):
         )
         self.refresh_work_chains_button.on_click(self.refresh_work_chains)
 
-        self.kill_work_chains_button = ipw.Button(
-            description="Kill",
-            tooltip="Kill the selected workflow",
-            button_style="danger",
-            icon="window-close",
-            disabled=True,
-            layout=ipw.Layout(width="auto"),
-        )
-        self.kill_work_chains_button.on_click(self._on_click_kill_work_chain)
-
         super().__init__(
             children=[
                 self.work_chains_prompt,
                 self.work_chains_selector,
                 self.new_work_chains_button,
                 self.refresh_work_chains_button,
-                self.kill_work_chains_button,
             ],
             **kwargs,
         )
 
         self.refresh_work_chains()
         # the following is needed to disable the button.
-        self.kill_work_chains_button.disabled = True
 
     def parse_extra_info(self, pk: int) -> dict:
         """Parse extra information about the work chain."""
@@ -165,10 +152,6 @@ class WorkChainSelector(ipw.HBox):
         self.refresh_work_chains()
         self.work_chains_selector.value = self._NO_PROCESS
 
-    def _on_click_kill_work_chain(self, _=None):
-        processes = [orm.load_node(self.work_chains_selector.value)]
-        control.kill_processes(processes)
-        self.refresh_work_chains()
 
     @tl.observe("value")
     def _observe_value(self, change):
@@ -179,14 +162,6 @@ class WorkChainSelector(ipw.HBox):
 
         if new not in {pk for _, pk in self.work_chains_selector.options}:
             self.refresh_work_chains()
-
-        if hasattr(self, "kill_work_chains_button"):
-            # when the app is loaded the first time, the button is not there so it excepts.
-            self.kill_work_chains_button.disabled = (
-                orm.load_node(self.value).is_terminated
-                if isinstance(self.value, int)
-                else True
-            )
 
         self.work_chains_selector.value = new
 
