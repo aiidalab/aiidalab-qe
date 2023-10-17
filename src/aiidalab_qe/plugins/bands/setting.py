@@ -50,3 +50,7 @@ class Setting(Panel):
     def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.kpath_2d.value = input_dict.get("kpath_2d", "hexagonal")
+
+    def reset(self):
+        """Reset the panel to its default values."""
+        self.kpath_2d.value = "hexagonal"
