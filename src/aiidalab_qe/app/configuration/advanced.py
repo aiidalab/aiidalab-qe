@@ -259,7 +259,7 @@ class AdvancedSettings(Panel):
         """Set the panel value from the given parameters."""
 
         if "pseudo_family" in parameters:
-            self.pseudo_family_selector.set_from_pseudo_family(
+            self.pseudo_family_selector.load_from_pseudo_family(
                 parameters.get("pseudo_family")
             )
         if "pseudos" in parameters["pw"]:
@@ -293,7 +293,7 @@ class AdvancedSettings(Panel):
         with self.hold_trait_notifications():
             # Reset protocol dependent settings
             self._update_settings_from_protocol(self.protocol)
-            self.pseudo_family_selector.set_from_pseudo_family(
+            self.pseudo_family_selector.load_from_pseudo_family(
                 DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
             )
             # reset total charge
