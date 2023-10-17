@@ -147,6 +147,15 @@ class QeAppWorkChain(WorkChain):
         relax_builder.pop("base_final_scf", None)  # never run a final scf
         builder.relax = relax_builder
 
+        # remove starting magnetization if tot_magnetization is set
+        if (
+            relax_builder["base"]["pw"]["parameters"]["SYSTEM"].get("tot_magnetization")
+            is not None
+        ):
+            builder.relax["base"]["pw"]["parameters"]["SYSTEM"].pop(
+                "starting_magnetization", None
+            )
+
         if properties is None:
             properties = []
         builder.properties = orm.List(list=properties)

@@ -38,6 +38,13 @@ def get_builder(codes, structure, parameters, **kwargs):
         # pop the inputs that are exclueded from the expose_inputs
         pdos.pop("structure", None)
         pdos.pop("clean_workdir", None)
+
+        if (
+            scf_overrides["pw"]["parameters"]["SYSTEM"].get("tot_magnetization")
+            is not None
+        ):
+            pdos.scf["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
+            pdos.nscf["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
     else:
         raise ValueError("The dos_code and projwfc_code are required.")
     return pdos
