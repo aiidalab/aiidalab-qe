@@ -23,6 +23,7 @@ from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structure import Examples, StructureSelectionStep
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.common import AddingTagsEditor, QeAppWorkChainSelector
+from aiidalab_qe.app.utils import get_entry_items
 
 OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
 
@@ -31,14 +32,21 @@ class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
 
     def __init__(self, qe_auto_setup=True):
-        # Create the application steps
-        self.structure_manager_widget = StructureManagerWidget(
-            importers=[
+        #default structure importers
+        importers=[
                 StructureUploadWidget(title="Upload file"),
                 OptimadeQueryWidget(embedded=False),
                 StructureBrowserWidget(title="AiiDA database"),
                 StructureExamplesWidget(title="From Examples", examples=Examples),
-            ],
+            ]
+        # prepare plugin specific importers
+        entries = get_entry_items("aiidalab_qe.properties", "importer")
+        for identifier, entry_point in entries.items():
+            importers.append(entry_point())
+
+        # Create the application steps
+        self.structure_manager_widget = StructureManagerWidget(
+            importers=importers,
             editors=[
                 BasicCellEditor(title="Edit cell"),
                 BasicStructureEditor(title="Edit structure"),
@@ -48,6 +56,7 @@ class App(ipw.VBox):
             storable=False,
             configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
         )
+        
         self.structure_step = StructureSelectionStep(
             manager=self.structure_manager_widget, auto_advance=True
         )
