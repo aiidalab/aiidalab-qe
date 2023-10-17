@@ -255,24 +255,29 @@ class AdvancedSettings(Panel):
             parameters["pw"]["parameters"]["SYSTEM"][
                 "degauss"
             ] = self.smearing.degauss_value
-            #magnetization logic
+            # magnetization logic
             if self.spin_type == "collinear":
-                #check if override is ticked to use widget inputs , else use default
+                # check if override is ticked to use widget inputs , else use default
                 if self.override.value:
-                    #according to the selection use tot_magnetization or initial_magnetic_moments
-                    if self.magnetization.magnetization_type.value == "tot_magnetization":
+                    # according to the selection use tot_magnetization or initial_magnetic_moments
+                    if (
+                        self.magnetization.magnetization_type.value
+                        == "tot_magnetization"
+                    ):
                         parameters["pw"]["parameters"]["SYSTEM"][
                             "tot_magnetization"
                         ] = self.magnetization.tot_magnetization.value
                     else:
-                        parameters["initial_magnetic_moments"] = self.magnetization.get_magnetization()
+                        parameters[
+                            "initial_magnetic_moments"
+                        ] = self.magnetization.get_magnetization()
         else:
             # magnetization in insulators
             if self.spin_type == "collinear":
                 # Use tot_magnetization
                 parameters["pw"]["parameters"]["SYSTEM"][
-                        "tot_magnetization"
-                    ] = self.magnetization.tot_magnetization.value
+                    "tot_magnetization"
+                ] = self.magnetization.tot_magnetization.value
 
         return parameters
 
@@ -323,8 +328,11 @@ class AdvancedSettings(Panel):
             self.override.value = False
             self.smearing.reset()
             # reset the pseudo setter
-            self.pseudo_setter.structure = None
-            self.pseudo_setter._reset()
+            if self.input_structure is None:
+                self.pseudo_setter.structure = None
+                self.pseudo_setter._reset()
+            else:
+                self.pseudo_setter._reset()
             # reset the magnetization
             self.magnetization.reset()
 
@@ -370,7 +378,10 @@ class MagnetizationSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         self.magnetization_type = ipw.ToggleButtons(
-            options=[("Tot. Magnetization", "tot_magnetization"), ("Starting Magnetization", "atomic_type")],
+            options=[
+                ("Tot. Magnetization", "tot_magnetization"),
+                ("Starting Magnetization", "atomic_type"),
+            ],
             value="tot_magnetization",
             style={"description_width": "initial"},
         )
@@ -390,7 +401,6 @@ class MagnetizationSettings(ipw.VBox):
             layout=ipw.Layout(justify_content="space-between"),
             **kwargs,
         )
-        
 
     @tl.observe("disabled")
     def _disabled_changed(self, _):
@@ -400,17 +410,19 @@ class MagnetizationSettings(ipw.VBox):
                 self.kinds.children[i].disabled = self.disabled
         self.tot_magnetization.disabled = self.disabled
         self.magnetization_type.disabled = self.disabled
-        
+
     def reset(self):
         self.disabled = True
-        self.tot_magnetization.value = 0.0 
+        self.tot_magnetization.value = 0.0
         #
         if self.input_structure is None:
-            self.description.value = "<b>Magnetization: Input structure not confirmed</b>"
+            self.description.value = (
+                "<b>Magnetization: Input structure not confirmed</b>"
+            )
             self.kinds = None
         else:
             self.description.value = "<b>Magnetization</b>"
-            self.kinds = self.create_kinds_widget()   
+            self.kinds = self.create_kinds_widget()
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
@@ -442,13 +454,12 @@ class MagnetizationSettings(ipw.VBox):
                 display(self.tot_magnetization)
                 with self.kinds_widget_out:
                     clear_output()
-                   
+
     def update_kinds_widget(self):
         self.input_structure_labels = self.input_structure.get_kind_names()
         self.kinds = self.create_kinds_widget()
         self.description.value = "<b>Magnetization</b>"
-        
-    
+
     def _display_starting(self, value):
         if value["new"] == "tot_magnetization":
             with self.kinds_widget_out:
@@ -456,7 +467,7 @@ class MagnetizationSettings(ipw.VBox):
                 display(self.tot_magnetization)
         else:
             self.display_kinds()
-            
+
     def display_kinds(self):
         if "PYTEST_CURRENT_TEST" not in os.environ and self.kinds:
             with self.kinds_widget_out:
