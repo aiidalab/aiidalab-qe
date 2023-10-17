@@ -152,7 +152,6 @@ class WorkChainSelector(ipw.HBox):
         self.refresh_work_chains()
         self.work_chains_selector.value = self._NO_PROCESS
 
-
     @tl.observe("value")
     def _observe_value(self, change):
         if change["old"] == change["new"]:

@@ -41,22 +41,22 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             ],
         )
         ipw.dlink((self, "process"), (self.process_monitor, "value"))
-        
+
         self.kill_work_chains_button = ipw.Button(
             description="Kill workchain",
             tooltip="Kill the below workchain.",
             button_style="danger",
             icon="window-close",
             disabled=True,
-            layout=ipw.Layout(width="120px",height="40px",display="none"),
+            layout=ipw.Layout(width="120px", height="40px", display="none"),
         )
         self.kill_work_chains_button.on_click(self._on_click_kill_work_chain)
         self.kill_work_chains_box = ipw.HBox(
             children=[self.kill_work_chains_button],
-            layout=ipw.Layout(justify_content="flex-end")
-            )
+            layout=ipw.Layout(justify_content="flex-end"),
+        )
 
-        super().__init__([self.kill_work_chains_box,self.process_status], **kwargs)
+        super().__init__([self.kill_work_chains_box, self.process_status], **kwargs)
 
     def can_reset(self):
         "Do not allow reset while process is running."
@@ -89,7 +89,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
                 self.kill_work_chains_button.disabled = True
-                
+
     def _on_click_kill_work_chain(self, _=None):
         workchain = [orm.load_node(self.process)]
         control.kill_processes(workchain)
