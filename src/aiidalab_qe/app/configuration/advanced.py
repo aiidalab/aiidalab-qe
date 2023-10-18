@@ -302,7 +302,8 @@ class AdvancedSettings(Panel):
             self.override.value = False
             self.smearing.reset()
             # reset the pseudo setter
-            self.pseudo_setter.structure = None
+            if self.input_structure is None:
+                self.pseudo_setter.structure = None
             self.pseudo_setter._reset()
             # reset the magnetization
             self.magnetization.reset()
@@ -367,11 +368,16 @@ class MagnetizationSettings(ipw.VBox):
 
     def reset(self):
         self.disabled = True
-        self.kinds = None
-        self.description.value = "Define magnetization: Input structure not confirmed"
-        with self.kinds_widget_out:
-            clear_output()
-            display(self.kinds)
+        if self.input_structure is None:
+            self.description.value = (
+                "Define magnetization: Input structure not confirmed"
+            )
+            self.kinds = None
+            with self.kinds_widget_out:
+                clear_output()
+                display(self.kinds)
+        else:
+            self.kinds = self.create_kinds_widget()
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
