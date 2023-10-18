@@ -291,7 +291,6 @@ class AdvancedSettings(Panel):
 
     def reset(self):
         """Reset the widget and the traitlets"""
-        self.protocol = self._default_protocol
 
         with self.hold_trait_notifications():
             # Reset protocol dependent settings
