@@ -175,6 +175,9 @@ class AdvancedSettings(Panel):
             self.magnetization._update_widget(change)
             self.pseudo_setter.structure = change["new"]
             self._display_mesh()
+        else:
+            self.magnetization.input_structure = None
+            self.pseudo_setter.structure = None
 
     @tl.observe("protocol")
     def _protocol_changed(self, _):
@@ -302,11 +305,12 @@ class AdvancedSettings(Panel):
             self.override.value = False
             self.smearing.reset()
             # reset the pseudo setter
-            if self.input_structure is None:
-                self.pseudo_setter.structure = None
             self.pseudo_setter._reset()
             # reset the magnetization
             self.magnetization.reset()
+            # reset mesh grid
+            if self.input_structure is None:
+                self.mesh_grid.value = " "
 
     def _display_mesh(self, _=None):
         if self.input_structure is None:
@@ -375,9 +379,10 @@ class MagnetizationSettings(ipw.VBox):
             self.kinds = None
             with self.kinds_widget_out:
                 clear_output()
-                display(self.kinds)
+                
         else:
-            self.kinds = self.create_kinds_widget()
+            self.update_kinds_widget()
+            
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
