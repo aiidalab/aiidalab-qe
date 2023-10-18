@@ -64,12 +64,12 @@ class PseudoFamilySelector(ipw.VBox):
     disabled = tl.Bool()
 
     value = tl.Unicode(
-        default_value=DEFAULT_PARAMETERS["pseudo_family"],
+        default_value=DEFAULT_PARAMETERS["advanced"]["pseudo_family"],
     )
 
     def __init__(self, **kwargs):
         # Enable manual setting of the pseudopotential family
-        self._default_protocol = DEFAULT_PARAMETERS["protocol"]
+        self._default_protocol = DEFAULT_PARAMETERS["workchain"]["protocol"]
         self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
         self.override_protocol_pseudo_family = ipw.Checkbox(
             description="",
@@ -89,15 +89,17 @@ class PseudoFamilySelector(ipw.VBox):
         # Choose the DFT functional
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
-            value=DEFAULT_PARAMETERS["pseudo_family"].split("/")[2],
+            value=DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[2],
             style={"description_width": "initial"},
         )
         self.dft_functional.observe(self.set_value_trait, "value")
         #
-        pseudo_family_type = DEFAULT_PARAMETERS["pseudo_family"].split("/")[0]
+        pseudo_family_type = DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[
+            0
+        ]
         if pseudo_family_type.upper() == "SSSP":
             pseudo_family_type += (
-                " " + DEFAULT_PARAMETERS["pseudo_family"].split("/")[-1]
+                " " + DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[-1]
             )
         elif pseudo_family_type.upper() == "PSEUDODOJO":
             pseudo_family_type = "PseudoDojo " + pseudo_family_type.split("_")[-2]
@@ -195,6 +197,7 @@ class PseudoFamilySelector(ipw.VBox):
             self.set_from_pseudo_family(pseudo_family)
 
     def set_from_pseudo_family(self, pseudo_family):
+        """Set the widget values from the given pseudo family."""
         family, _, functional, accuracy = pseudo_family.split("/")
         protocol_selection = f"{family} {accuracy}"
         self.protocol_selection.value = protocol_selection
@@ -212,7 +215,10 @@ class PseudoSetter(ipw.VBox):
     ecutwfc = tl.Float()
     ecutrho = tl.Float()
 
-    _pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+    _default_pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; color: red;">
+            Input structure is not set. Please set the structure first.
+            </div>"""
+    _update_pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
         The pseudopotential for each kind of atom in the structure can be set customly.
         The default pseudopotential and cutoffs are get from the pseudo family.
         The cutoffs used for the calculation are the maximum of the default from all pseudopotentials
@@ -236,11 +242,7 @@ class PseudoSetter(ipw.VBox):
         self.ecutwfc = 0
         self.ecutrho = 0
 
-        self.pseudo_setter_helper = ipw.HTML(
-            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; color: red;">
-            Input structure is not set. Please set the structure first.
-            </div>"""
-        )
+        self.pseudo_setter_helper = ipw.HTML(self._default_pseudo_setter_helper_text)
         self.cutoff_setter_helper = ipw.HTML(self._cutoff_setter_helper_text)
         self.ecutwfc_setter = ipw.FloatText(
             description="Wavefunction cutoff (Ry)",
@@ -274,14 +276,17 @@ class PseudoSetter(ipw.VBox):
             self.pseudo_family = pseudo_family
 
     def _on_cutoff_change(self, _=None):
+        """Update the cutoffs according to the cutoff widgets"""
         self.ecutwfc = self.ecutwfc_setter.value
         self.ecutrho = self.ecutrho_setter.value
 
     def _reset_cutoff_widgets(self):
-        self.ecutrho_setter.value = 0
+        """Reset the cutoff widgets to 0"""
+        self.ecutwfc_setter.value = 0
         self.ecutrho_setter.value = 0
 
     def _reset_traitlets(self):
+        """Reset the traitlets to the initial state"""
         self.ecutwfc = 0
         self.ecutrho = 0
         self.pseudos = dict()
@@ -293,6 +298,8 @@ class PseudoSetter(ipw.VBox):
         if self.structure is None:
             self._reset_cutoff_widgets()
             self._reset_traitlets()
+            self.pseudo_setting_widgets.children = ()
+            self.pseudo_setter_helper.value = self._default_pseudo_setter_helper_text
             return
 
         if self.pseudo_family is None:
@@ -398,7 +405,7 @@ class PseudoSetter(ipw.VBox):
 
             if w.pseudo is not None:
                 self.pseudos[w.kind] = w.pseudo.uuid
-                self.pseudo_setter_helper.value = self._pseudo_setter_helper_text
+                self.pseudo_setter_helper.value = self._update_pseudo_setter_helper_text
 
                 with self.hold_trait_notifications():
                     self.ecutwfc_setter.value = max(self.ecutwfc, w.ecutwfc)

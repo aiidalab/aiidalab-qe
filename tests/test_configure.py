@@ -12,6 +12,7 @@ def test_protocol():
 
 
 def test_get_configuration_parameters():
+    """Test the get_configuration_parameters method."""
     from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()
@@ -23,7 +24,8 @@ def test_get_configuration_parameters():
     assert parameters == parameters_ref
 
 
-def test_set_configuration_parameters(submit_app_generator):
+def test_set_configuration_parameters():
+    """Test the set_configuration_parameters method."""
     from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()

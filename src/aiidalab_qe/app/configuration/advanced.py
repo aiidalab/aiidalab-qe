@@ -47,7 +47,9 @@ class AdvancedSettings(Panel):
     value = tl.Dict()
 
     def __init__(self, default_protocol=None, **kwargs):
-        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
+        self._default_protocol = (
+            default_protocol or DEFAULT_PARAMETERS["workchain"]["protocol"]
+        )
 
         # clean-up workchain settings
         self.clean_workdir = ipw.Checkbox(
@@ -291,11 +293,19 @@ class AdvancedSettings(Panel):
         with self.hold_trait_notifications():
             # Reset protocol dependent settings
             self._update_settings_from_protocol(self.protocol)
+            self.pseudo_family_selector.set_from_pseudo_family(
+                DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
+            )
             # reset total charge
-            self.total_charge.value = DEFAULT_PARAMETERS["tot_charge"]
-
+            self.total_charge.value = DEFAULT_PARAMETERS["advanced"]["tot_charge"]
             # reset the override checkbox
             self.override.value = False
+            self.smearing.reset()
+            # reset the pseudo setter
+            self.pseudo_setter.structure = None
+            self.pseudo_setter._reset()
+            # reset the magnetization
+            self.magnetization.reset()
 
     def _display_mesh(self, _=None):
         if self.input_structure is None:
@@ -357,9 +367,11 @@ class MagnetizationSettings(ipw.VBox):
 
     def reset(self):
         self.disabled = True
-        if hasattr(self.kinds, "children") and self.kinds.children:
-            for i in range(len(self.kinds.children)):
-                self.kinds.children[i].value = 0.0
+        self.kinds = None
+        self.description.value = "Define magnetization: Input structure not confirmed"
+        with self.kinds_widget_out:
+            clear_output()
+            display(self.kinds)
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
@@ -434,7 +446,9 @@ class SmearingSettings(ipw.VBox):
     disabled = tl.Bool()
 
     def __init__(self, default_protocol=None, **kwargs):
-        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
+        self._default_protocol = (
+            default_protocol or DEFAULT_PARAMETERS["workchain"]["protocol"]
+        )
 
         self.smearing = ipw.Dropdown(
             options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
@@ -512,4 +526,4 @@ class SmearingSettings(ipw.VBox):
 
         with self.hold_trait_notifications():
             self._update_settings_from_protocol(self.protocol)
-            self.disabled = False
+            self.disabled = True
