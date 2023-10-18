@@ -2,25 +2,24 @@
 # Default parameters for the QeAppWorkChain widgets initialization
 # The builder is not directly effected by this file.
 
-## Properties
-relax_type: positions_cell
-run_bands: false
-run_pdos: false
+workchain:
+    relax_type: positions_cell
+    ## Properties
+    properties: []
+    ## Material settings
+    spin_type: none
+    electronic_type: metal
+
+    ## Calculation settings
+    protocol: moderate
+
+## Advanced pw settings
+advanced:
+    pseudo_family: SSSP/1.2/PBEsol/efficiency
+    tot_charge: 0
 
 ## Codes
 codes:
     dos: dos-7.2@localhost
     projwfc: projwfc-7.2@localhost
     pw: pw-7.2@localhost
-
-## Material settings
-spin_type: none
-electronic_type: metal
-
-## Calculation settings
-protocol: moderate
-kpoints_distance_override:
-pseudo_family: SSSP/1.2/PBEsol/efficiency
-
-## Advanced pw settings
-tot_charge: 0
