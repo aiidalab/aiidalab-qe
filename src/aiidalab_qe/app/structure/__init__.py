@@ -38,7 +38,11 @@ OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
 
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
-    """Integrated widget for the selection of structures from different sources."""
+    """Integrated widget for the selection and edition of structure.
+    The widget includes a structure manager that allows to select a structure
+    from different sources. It also includes the structure editor. Both the
+    structure importers and the structure editors can be extended by plugins.
+    """
 
     structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
@@ -54,7 +58,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         entries = get_entry_items("aiidalab_qe.properties", "importer")
         for _, entry_point in entries.items():
             importers.append(entry_point())
-        #
+        # add plugin specific structure editors
         editors = [
             BasicCellEditor(title="Edit cell"),
             BasicStructureEditor(title="Edit structure"),
@@ -62,7 +66,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         ]
         entries = get_entry_items("aiidalab_qe.properties", "editor")
         for _, entry_point in entries.items():
-            importers.append(entry_point())
+            editors.append(entry_point())
         #
         self.manager = StructureManagerWidget(
             importers=importers,
