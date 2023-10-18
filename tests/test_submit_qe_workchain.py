@@ -1,3 +1,10 @@
+def test_code_not_selected(submit_app_generator):
+    """Test if there is an error when the code is not selected."""
+    app = submit_app_generator()
+    app.submit_step.dos_code.value = None
+    app.submit_step._create_builder()
+
+
 def test_reload_selected_code(submit_app_generator):
     """Test set_selected_codes method."""
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
