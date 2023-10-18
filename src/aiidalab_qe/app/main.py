@@ -108,7 +108,7 @@ class App(ipw.VBox):
             with self.structure_step.manager.hold_sync():
                 with self.structure_step.hold_sync():
                     self._wizard_app_widget.selected_index = 3
-                    self.structure_manager_widget.viewer.structure = (
+                    self.structure_step.manager.viewer.structure = (
                         process.inputs.structure.get_ase()
                     )
                     self.structure_step.confirmed_structure = process.inputs.structure
