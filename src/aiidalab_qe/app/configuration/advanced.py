@@ -379,10 +379,9 @@ class MagnetizationSettings(ipw.VBox):
             self.kinds = None
             with self.kinds_widget_out:
                 clear_output()
-                
+
         else:
             self.update_kinds_widget()
-            
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
