@@ -5,7 +5,7 @@ def test_code_not_selected(submit_app_generator):
     app.submit_step._create_builder()
 
 
-def test_reload_selected_code(submit_app_generator):
+def test_set_selected_codes(submit_app_generator):
     """Test set_selected_codes method."""
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
