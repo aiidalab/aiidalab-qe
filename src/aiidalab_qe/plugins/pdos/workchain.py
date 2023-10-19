@@ -5,12 +5,13 @@ PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 
 
 def check_codes(pw_code, dos_code, projwfc_code):
+    """Check that the codes are installed on the same computer."""
     if (
         not any(
             [
-                pw_code.value is None,
-                dos_code.value is None,
-                projwfc_code.value is None,
+                pw_code is None,
+                dos_code is None,
+                projwfc_code is None,
             ]
         )
         and len(
@@ -33,9 +34,9 @@ def check_codes(pw_code, dos_code, projwfc_code):
 def get_builder(codes, structure, parameters, **kwargs):
     from copy import deepcopy
 
-    pw_code = codes.get("pw", None)
-    dos_code = codes.get("dos", None)
-    projwfc_code = codes.get("projwfc", None)
+    pw_code = codes.get("pw")
+    dos_code = codes.get("dos")
+    projwfc_code = codes.get("projwfc")
     check_codes(pw_code, dos_code, projwfc_code)
     protocol = parameters["workchain"]["protocol"]
 

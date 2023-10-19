@@ -439,6 +439,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.set_selected_codes(parameters["codes"])
 
     def get_submission_parameters(self):
+        """Get the parameters for the submission step."""
         return {
             "codes": self.get_selected_codes(),
             "resources": self.get_resources(),
