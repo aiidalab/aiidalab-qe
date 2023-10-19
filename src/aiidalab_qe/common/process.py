@@ -3,7 +3,6 @@ from dataclasses import make_dataclass
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida import orm
 from aiida.tools.query.calculation import CalculationQueryBuilder
 
 
