@@ -85,10 +85,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.codes_help,
             self.pw_code,
         ]
-        entries = get_entry_items("aiidalab_qe.properties", "code")
-        for _, entry_point in entries.items():
+        self.code_entries = get_entry_items("aiidalab_qe.properties", "code")
+        for _, entry_point in self.code_entries.items():
             for name, code in entry_point.items():
-                self.codes[name] = code()
+                self.codes[name] = code
                 self.code_children.append(self.codes[name])
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
         # s
@@ -192,16 +192,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            for code in [
-                "pw",
-                "dos",
-                "projwfc",
-            ]:
+            for name, code_widget in self.codes.items():
                 try:
-                    code_widget = getattr(self, f"{code}_code")
                     code_widget.refresh()
                     code_widget.value = orm.load_code(
-                        DEFAULT_PARAMETERS["codes"][code]
+                        DEFAULT_PARAMETERS["codes"][name]
                     ).uuid
                 except NotExistent:
                     pass
@@ -309,6 +304,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @tl.observe("previous_step_state")
     def _observe_input_structure(self, _):
         self._update_state()
+        self.set_codes_status()
 
     @tl.observe("process")
     def _observe_process(self, change):
@@ -342,7 +338,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     return None
 
         with self.hold_trait_notifications():
-            # Codes
+            for name, code in self.codes.items():
+                code.value = _get_code_uuid(codes.get(name))
+
+    def set_codes_status(self):
+        """Disable code if no related property is selected."""
+        # disable all codes except pw
+        for name, code in self.codes.items():
+            if name == "pw":
+                continue
+            code.code_select_dropdown.disabled = True
+        # enable code if the related property is selected.
+        properties = self.input_parameters.get("workchain", {}).get("properties", [])
+        for identifer, codes in self.code_entries.items():
+            if identifer in properties:
+                for name in codes:
+                    self.codes[name].code_select_dropdown.disabled = False
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""

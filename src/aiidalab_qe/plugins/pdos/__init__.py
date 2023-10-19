@@ -1,4 +1,6 @@
-from aiidalab_qe.common.panel import CodePanel, OutlinePanel
+from aiidalab_widgets_base import ComputationalResourcesWidget
+
+from aiidalab_qe.common.panel import OutlinePanel
 
 from .result import Result
 from .setting import Setting
@@ -10,21 +12,20 @@ class PdosOutline(OutlinePanel):
     help = """"""
 
 
-class DosCodePanel(CodePanel):
-    title = "Code"
-    description = "dos.x"
-    default_calc_job_plugin = "quantumespresso.dos"
+dos_code = ComputationalResourcesWidget(
+    description="dos.x",
+    default_calc_job_plugin="quantumespresso.dos",
+)
 
-
-class ProjwfcCodePanel(CodePanel):
-    title = "Code"
-    description = "projwfc.x"
-    default_calc_job_plugin = "quantumespresso.projwfc"
+projwfc_code = ComputationalResourcesWidget(
+    description="projwfc.x",
+    default_calc_job_plugin="quantumespresso.projwfc",
+)
 
 
 pdos = {
     "outline": PdosOutline,
-    "code": {"dos": DosCodePanel, "projwfc": ProjwfcCodePanel}
+    "code": {"dos": dos_code, "projwfc": projwfc_code},
     "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,
