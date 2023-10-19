@@ -52,7 +52,7 @@ class QeAppWorkChain(WorkChain):
         super().define(spec)
         spec.input('structure', valid_type=StructureData,
                    help='The inputs structure.')
-        spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
+        spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(True),
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
         spec.input('properties', valid_type=orm.List, default=lambda: orm.List(),
                    help='The properties to calculate, used to control the logic of QeAppWorkChain.')
@@ -90,20 +90,12 @@ class QeAppWorkChain(WorkChain):
             ),
             cls.run_plugin,
             cls.inspect_plugin,
-            cls.results
         )
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RELAX',
                        message='The PwRelaxWorkChain sub process failed')
         spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_PDOS',
                        message='The PdosWorkChain sub process failed')
         spec.output('structure', valid_type=StructureData, required=False)
-        spec.output('band_parameters', valid_type=orm.Dict, required=False)
-        spec.output('band_structure', valid_type=BandsData, required=False)
-        spec.output('nscf_parameters', valid_type=orm.Dict, required=False)
-        spec.output('dos', valid_type=XyData, required=False)
-        spec.output('projections', valid_type=Orbital, required=False)
-        spec.output('projections_up', valid_type=Orbital, required=False)
-        spec.output('projections_down', valid_type=Orbital, required=False)
         # yapf: enable
 
     @classmethod
@@ -111,7 +103,6 @@ class QeAppWorkChain(WorkChain):
         cls,
         structure,
         parameters=None,
-        clean_workdir=False,
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
@@ -120,7 +111,11 @@ class QeAppWorkChain(WorkChain):
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
         codes = parameters.pop("codes", {})
-        codes = {key: orm.load_node(value) for key, value in codes.items()}
+        codes = {
+            key: orm.load_node(value)
+            for key, value in codes.items()
+            if value is not None
+        }
         # update pseudos
         for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
             parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
@@ -161,6 +156,9 @@ class QeAppWorkChain(WorkChain):
             else:
                 builder.pop(name, None)
 
+        # XXX (unkcpz) I smell not proper design here since I have to look at
+        # configuration step to know what show be set here.
+        clean_workdir = parameters["advanced"]["clean_workdir"]
         builder.clean_workdir = orm.Bool(clean_workdir)
 
         return builder
@@ -252,30 +250,6 @@ class QeAppWorkChain(WorkChain):
                     workchain, entry_point["workchain"], namespace=name
                 )
             )
-
-    def results(self):
-        """Add the results to the outputs."""
-        if "bands" in self.ctx:
-            self.out("band_parameters", self.ctx.bands.outputs.band_parameters)
-            self.out("band_structure", self.ctx.bands.outputs.band_structure)
-
-        if "pdos" in self.ctx:
-            self.out(
-                "nscf_parameters",
-                self.ctx.pdos.outputs.nscf.output_parameters,
-            )
-            self.out("dos", self.ctx.pdos.outputs.dos.output_dos)
-            if "projections_up" in self.ctx.pdos.outputs.projwfc:
-                self.out(
-                    "projections_up",
-                    self.ctx.pdos.outputs.projwfc.projections_up,
-                )
-                self.out(
-                    "projections_down",
-                    self.ctx.pdos.outputs.projwfc.projections_down,
-                )
-            else:
-                self.out("projections", self.ctx.pdos.outputs.projwfc.projections)
 
     def on_terminated(self):
         """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""

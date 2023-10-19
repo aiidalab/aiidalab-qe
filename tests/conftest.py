@@ -293,7 +293,7 @@ def smearing_settings_generator():
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code, sssp):
+def app(pw_code, dos_code, projwfc_code):
     from aiidalab_qe.app.main import App
 
     app = App(qe_auto_setup=False)
@@ -321,8 +321,6 @@ def app(pw_code, dos_code, projwfc_code, sssp):
 def submit_app_generator(
     app,
     generate_structure_data,
-    workchain_settings_generator,
-    smearing_settings_generator,
 ):
     """Return a function that generates a submit step widget."""
 
@@ -365,6 +363,7 @@ def submit_app_generator(
         #
         submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
+        submit_step.resources_config.num_cpus.value = 2
 
         return app
 
@@ -631,19 +630,6 @@ def generate_qeapp_workchain(
             wkchain.out_many(
                 wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
             )
-            wkchain.out("nscf_parameters", pdos.node.outputs.nscf.output_parameters)
-            wkchain.out("dos", pdos.node.outputs.dos.output_dos)
-            if "projections_up" in pdos.node.outputs.projwfc:
-                wkchain.out(
-                    "projections_up",
-                    pdos.node.outputs.projwfc.projections_up,
-                )
-                wkchain.out(
-                    "projections_down",
-                    pdos.node.outputs.projwfc.projections_down,
-                )
-            else:
-                wkchain.out("projections", pdos.node.outputs.projwfc.projections)
         if run_bands:
             from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
@@ -651,8 +637,6 @@ def generate_qeapp_workchain(
             wkchain.out_many(
                 wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
             )
-            wkchain.out("band_structure", bands.node.outputs.band_structure)
-            wkchain.out("band_parameters", bands.node.outputs.band_parameters)
         wkchain.update_outputs()
         # set ui_parameters
         qeapp_node = wkchain.node

@@ -27,7 +27,9 @@ class AdvancedSettings(Panel):
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Advanced Settings</h4></div>"""
     )
-    description = ipw.HTML("""Select the advanced settings for the <b>pw.x</b> code.""")
+    pw_adv_description = ipw.HTML(
+        """Select the advanced settings for the <b>pw.x</b> code."""
+    )
     kpoints_description = ipw.HTML(
         """<div>
         The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
@@ -45,7 +47,21 @@ class AdvancedSettings(Panel):
     value = tl.Dict()
 
     def __init__(self, default_protocol=None, **kwargs):
-        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
+        self._default_protocol = (
+            default_protocol or DEFAULT_PARAMETERS["workchain"]["protocol"]
+        )
+
+        # clean-up workchain settings
+        self.clean_workdir = ipw.Checkbox(
+            description="",
+            indent=False,
+            value=True,
+            layout=ipw.Layout(max_width="20px"),
+        )
+        self.clean_workdir_description = ipw.HTML(
+            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+            Tick to clean-up the work directory after the calculation is finished.</div>"""
+        )
 
         # Override setting widget
         self.override_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
@@ -120,7 +136,11 @@ class AdvancedSettings(Panel):
         self.children = [
             self.title,
             ipw.HBox(
-                [self.description, self.override_widget],
+                [self.clean_workdir, self.clean_workdir_description],
+                layout=ipw.Layout(height="50px", justify_content="flex-start"),
+            ),
+            ipw.HBox(
+                [self.pw_adv_description, self.override_widget],
                 layout=ipw.Layout(height="50px", justify_content="space-between"),
             ),
             # total charge setting widget
@@ -193,6 +213,7 @@ class AdvancedSettings(Panel):
 
     def get_panel_value(self):
         # create the the initial_magnetic_moments as None (Default)
+        # XXX: start from parameters = {} and then bundle the settings by purposes (e.g. pw, bands, etc.)
         parameters = {
             "initial_magnetic_moments": None,
             "pw": {
@@ -201,6 +222,10 @@ class AdvancedSettings(Panel):
                 },
             },
         }
+        # add clean_workdir to the parameters
+        parameters["clean_workdir"] = self.clean_workdir.value
+
+        # add the pseudo_family to the parameters
         parameters["pseudo_family"] = self.pseudo_family_selector.value
         if self.pseudo_setter.pseudos:
             parameters["pw"]["pseudos"] = self.pseudo_setter.pseudos
@@ -234,7 +259,7 @@ class AdvancedSettings(Panel):
         """Set the panel value from the given parameters."""
 
         if "pseudo_family" in parameters:
-            self.pseudo_family_selector.set_from_pseudo_family(
+            self.pseudo_family_selector.load_from_pseudo_family(
                 parameters.get("pseudo_family")
             )
         if "pseudos" in parameters["pw"]:
@@ -268,11 +293,19 @@ class AdvancedSettings(Panel):
         with self.hold_trait_notifications():
             # Reset protocol dependent settings
             self._update_settings_from_protocol(self.protocol)
+            self.pseudo_family_selector.load_from_pseudo_family(
+                DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
+            )
             # reset total charge
-            self.total_charge.value = DEFAULT_PARAMETERS["tot_charge"]
-
+            self.total_charge.value = DEFAULT_PARAMETERS["advanced"]["tot_charge"]
             # reset the override checkbox
             self.override.value = False
+            self.smearing.reset()
+            # reset the pseudo setter
+            self.pseudo_setter.structure = None
+            self.pseudo_setter._reset()
+            # reset the magnetization
+            self.magnetization.reset()
 
     def _display_mesh(self, _=None):
         if self.input_structure is None:
@@ -334,9 +367,11 @@ class MagnetizationSettings(ipw.VBox):
 
     def reset(self):
         self.disabled = True
-        if hasattr(self.kinds, "children") and self.kinds.children:
-            for i in range(len(self.kinds.children)):
-                self.kinds.children[i].value = 0.0
+        self.kinds = None
+        self.description.value = "Define magnetization: Input structure not confirmed"
+        with self.kinds_widget_out:
+            clear_output()
+            display(self.kinds)
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
@@ -411,7 +446,9 @@ class SmearingSettings(ipw.VBox):
     disabled = tl.Bool()
 
     def __init__(self, default_protocol=None, **kwargs):
-        self._default_protocol = default_protocol or DEFAULT_PARAMETERS["protocol"]
+        self._default_protocol = (
+            default_protocol or DEFAULT_PARAMETERS["workchain"]["protocol"]
+        )
 
         self.smearing = ipw.Dropdown(
             options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
@@ -489,4 +526,4 @@ class SmearingSettings(ipw.VBox):
 
         with self.hold_trait_notifications():
             self._update_settings_from_protocol(self.protocol)
-            self.disabled = False
+            self.disabled = True
