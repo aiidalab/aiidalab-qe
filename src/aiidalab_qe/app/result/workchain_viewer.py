@@ -129,7 +129,7 @@ class WorkChainViewer(ipw.VBox):
                 self._results_shown.add("structure")
 
             if "electronic_structure" not in self._results_shown and (
-                "band_structure" in self.node.outputs or "dos" in self.node.outputs
+                "bands" in self.node.outputs or "pdos" in self.node.outputs
             ):
                 self._show_electronic_structure()
                 self._results_shown.add("electronic_structure")
