@@ -125,20 +125,3 @@ class ResultPanel(Panel):
 
         :param result: the result of the calculation.
         """
-
-
-class CodePanel(Panel):
-    title = "Code"
-    description = "pw.x"
-    default_calc_job_plugin = "quantumespresso.pw"
-
-    def __init__(self, **kwargs):
-        from aiidalab_widgets_base import ComputationalResourcesWidget
-
-        # Checkbox to see if the property should be calculated
-        self.code = ComputationalResourcesWidget(
-            description=self.description,
-            default_calc_job_plugin=self.default_calc_job_plugin,
-        )
-        self.children = [self.code]
-        super().__init__(**kwargs)
