@@ -299,19 +299,17 @@ def app(pw_code, dos_code, projwfc_code):
     app = App(qe_auto_setup=False)
     # set up codes
     app.submit_step.pw_code.refresh()
-    app.submit_step.dos_code.refresh()
-    app.submit_step.projwfc_code.refresh()
+    app.submit_step.codes["dos"].refresh()
+    app.submit_step.codes["projwfc"].refresh()
     app.submit_step.pw_code.value = (
         app.submit_step.pw_code.code_select_dropdown.options[pw_code.full_label]
     )
-    app.submit_step.dos_code.value = (
-        app.submit_step.dos_code.code_select_dropdown.options[dos_code.full_label]
-    )
-    app.submit_step.projwfc_code.value = (
-        app.submit_step.projwfc_code.code_select_dropdown.options[
-            projwfc_code.full_label
-        ]
-    )
+    app.submit_step.codes["dos"].value = app.submit_step.codes[
+        "dos"
+    ].code_select_dropdown.options[dos_code.full_label]
+    app.submit_step.codes["projwfc"].value = app.submit_step.codes[
+        "projwfc"
+    ].code_select_dropdown.options[projwfc_code.full_label]
 
     yield app
 
