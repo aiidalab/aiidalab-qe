@@ -299,19 +299,17 @@ def app(pw_code, dos_code, projwfc_code):
     app = App(qe_auto_setup=False)
     # set up codes
     app.submit_step.pw_code.refresh()
-    app.submit_step.dos_code.refresh()
-    app.submit_step.projwfc_code.refresh()
+    app.submit_step.codes["dos"].refresh()
+    app.submit_step.codes["projwfc"].refresh()
     app.submit_step.pw_code.value = (
         app.submit_step.pw_code.code_select_dropdown.options[pw_code.full_label]
     )
-    app.submit_step.dos_code.value = (
-        app.submit_step.dos_code.code_select_dropdown.options[dos_code.full_label]
-    )
-    app.submit_step.projwfc_code.value = (
-        app.submit_step.projwfc_code.code_select_dropdown.options[
-            projwfc_code.full_label
-        ]
-    )
+    app.submit_step.codes["dos"].value = app.submit_step.codes[
+        "dos"
+    ].code_select_dropdown.options[dos_code.full_label]
+    app.submit_step.codes["projwfc"].value = app.submit_step.codes[
+        "projwfc"
+    ].code_select_dropdown.options[projwfc_code.full_label]
 
     yield app
 
@@ -630,19 +628,6 @@ def generate_qeapp_workchain(
             wkchain.out_many(
                 wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
             )
-            wkchain.out("nscf_parameters", pdos.node.outputs.nscf.output_parameters)
-            wkchain.out("dos", pdos.node.outputs.dos.output_dos)
-            if "projections_up" in pdos.node.outputs.projwfc:
-                wkchain.out(
-                    "projections_up",
-                    pdos.node.outputs.projwfc.projections_up,
-                )
-                wkchain.out(
-                    "projections_down",
-                    pdos.node.outputs.projwfc.projections_down,
-                )
-            else:
-                wkchain.out("projections", pdos.node.outputs.projwfc.projections)
         if run_bands:
             from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
@@ -650,8 +635,6 @@ def generate_qeapp_workchain(
             wkchain.out_many(
                 wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
             )
-            wkchain.out("band_structure", bands.node.outputs.band_structure)
-            wkchain.out("band_parameters", bands.node.outputs.band_parameters)
         wkchain.update_outputs()
         # set ui_parameters
         qeapp_node = wkchain.node
