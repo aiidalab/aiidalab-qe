@@ -19,7 +19,7 @@ def test_advanced_default():
 
     assert w.value.get("degauss") == 0.01
     assert w.value.get("smearing") == "cold"
-    assert w.value.get("kpoints_distance") == 0.15
+    assert w.value.get("kpoints_distance") == 0.5
 
 
 def test_advanced_smearing_settings():
@@ -59,7 +59,8 @@ def test_advanced_smearing_settings():
     # Check reset
     w.reset()
 
-    assert w.protocol == "moderate"
+    # the protocol will not be reset
+    assert w.protocol == "fast"
     assert w.value.get("degauss") == 0.01
     assert w.value.get("smearing") == "cold"
 
@@ -89,8 +90,9 @@ def test_advanced_kpoints_settings():
     # Check reset
     w.reset()
 
-    assert w.protocol == "moderate"
-    assert w.value.get("kpoints_distance") == 0.15
+    # the protocol will not be reset
+    assert w.protocol == "fast"
+    assert w.value.get("kpoints_distance") == 0.5
 
 
 def test_advanced_tot_charge_settings():
