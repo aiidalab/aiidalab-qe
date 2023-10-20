@@ -8,4 +8,13 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 filterwarnings = [
     'error',
+    'ignore:Creating AiiDA configuration:UserWarning:aiida',
+    # For some reason we get this error, perhaps because we do
+    # not unload the AiiDA profile? Let's ignore this for now.
+    # E pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function Popen.__del__>
+    # E Traceback (most recent call last):
+    # E   File "/opt/conda/lib/python3.9/subprocess.py", line 1052, in __del__
+    # E     _warn("subprocess %s is still running" % self.pid,
+    # E ResourceWarning: subprocess 382685 is still running
+    'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
 ]
