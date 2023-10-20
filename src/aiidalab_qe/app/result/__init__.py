@@ -2,6 +2,7 @@ import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
 from aiida.engine import ProcessState
+from aiida.engine.processes import control
 from aiidalab_widgets_base import (
     AiidaNodeViewWidget,
     ProcessMonitor,
@@ -41,7 +42,18 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         )
         ipw.dlink((self, "process"), (self.process_monitor, "value"))
 
-        super().__init__([self.process_status], **kwargs)
+        self.kill_button = ipw.Button(
+            description="Kill workchain",
+            tooltip="Kill the below workchain.",
+            button_style="danger",
+            icon="window-close",
+            layout=ipw.Layout(width="120px", height="40px"),
+        )
+        self.kill_button.on_click(self._on_click_kill_button)
+
+        super().__init__([self.kill_button, self.process_status], **kwargs)
+
+        self._update_kill_button_layout()
 
     def can_reset(self):
         "Do not allow reset while process is running."
@@ -51,6 +63,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self.process = None
 
     def _update_state(self):
+        """Based on the process state, update the state of the step."""
         if self.process is None:
             self.state = self.State.INIT
         else:
@@ -70,6 +83,35 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
 
+    def _update_kill_button_layout(self):
+        """Update the layout of the kill button."""
+        # If no process is selected, hide the button.
+        if self.process is None:
+            self.kill_button.layout.display = "none"
+        else:
+            self.kill_button.layout.display = "block"
+
+        # If the step is not activated, no point to click the button, so disable it.
+        # Only enable it if the process is on (RUNNING, CREATED, WAITING).
+        if self.state is self.State.ACTIVE:
+            self.kill_button.disabled = False
+        else:
+            self.kill_button.disabled = True
+
+    def _on_click_kill_button(self, _=None):
+        """callback for the kill button.
+        First kill the process, then update the kill button layout.
+        """
+        workchain = [orm.load_node(self.process)]
+        control.kill_processes(workchain)
+
+        # update the kill button layout
+        self._update_kill_button_layout()
+
     @tl.observe("process")
-    def _observe_process(self, change):
+    def _observe_process(self, _):
+        """Callback for when the process is changed."""
+        # The order of the following calls matters,
+        # as the self.state is updated in the _update_state method.
         self._update_state()
+        self._update_kill_button_layout()
