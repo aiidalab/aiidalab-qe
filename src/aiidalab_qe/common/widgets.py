@@ -430,8 +430,8 @@ class AddingTagsEditor(ipw.VBox):
     """Editor for adding tags to atoms."""
 
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
-    selection = traitlets.List(traitlets.Int, allow_none=True)
-    input_selection = traitlets.List(traitlets.Int, allow_none=True)
+    selection = traitlets.List(traitlets.Int(), allow_none=True)
+    input_selection = traitlets.List(traitlets.Int(), allow_none=True)
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
     def __init__(self, title=""):
