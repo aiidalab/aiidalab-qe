@@ -175,6 +175,9 @@ class AdvancedSettings(Panel):
             self.magnetization._update_widget(change)
             self.pseudo_setter.structure = change["new"]
             self._display_mesh()
+        else:
+            self.magnetization.input_structure = None
+            self.pseudo_setter.structure = None
 
     @tl.observe("protocol")
     def _protocol_changed(self, _):
@@ -288,7 +291,6 @@ class AdvancedSettings(Panel):
 
     def reset(self):
         """Reset the widget and the traitlets"""
-        self.protocol = self._default_protocol
 
         with self.hold_trait_notifications():
             # Reset protocol dependent settings
@@ -302,10 +304,12 @@ class AdvancedSettings(Panel):
             self.override.value = False
             self.smearing.reset()
             # reset the pseudo setter
-            self.pseudo_setter.structure = None
             self.pseudo_setter._reset()
             # reset the magnetization
             self.magnetization.reset()
+            # reset mesh grid
+            if self.input_structure is None:
+                self.mesh_grid.value = " "
 
     def _display_mesh(self, _=None):
         if self.input_structure is None:
@@ -367,11 +371,16 @@ class MagnetizationSettings(ipw.VBox):
 
     def reset(self):
         self.disabled = True
-        self.kinds = None
-        self.description.value = "Define magnetization: Input structure not confirmed"
-        with self.kinds_widget_out:
-            clear_output()
-            display(self.kinds)
+        if self.input_structure is None:
+            self.description.value = (
+                "Define magnetization: Input structure not confirmed"
+            )
+            self.kinds = None
+            with self.kinds_widget_out:
+                clear_output()
+
+        else:
+            self.update_kinds_widget()
 
     def create_kinds_widget(self):
         if self.input_structure_labels:
