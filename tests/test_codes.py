@@ -20,15 +20,30 @@ def test_set_selected_codes(submit_app_generator):
     assert new_submit_step.get_selected_codes() == submit_step.get_selected_codes()
 
 
-def test_set_code_status():
-    """Test set_codes_status method.
-    If the workchain property is not selected, the related code should be disabled.
+def test_udpate_codes_visibility():
+    """Test udpate_codes_visibility method.
+    If the workchain property is not selected, the related code should be hidden.
     """
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     submit = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    submit.set_codes_status()
-    assert submit.codes["dos"].code_select_dropdown.disabled is True
+    submit.udpate_codes_visibility()
+    assert submit.codes["dos"].layout.visibility == "hidden"
     submit.input_parameters = {"workchain": {"properties": ["pdos"]}}
-    submit.set_codes_status()
-    assert submit.codes["dos"].code_select_dropdown.disabled is False
+    submit.udpate_codes_visibility()
+    assert submit.codes["dos"].layout.visibility == "visible"
+
+
+def test_identify_submission_blockers(app):
+    """Test identify_submission_blockers method."""
+    submit = app.submit_step
+    blockers = list(submit._identify_submission_blockers())
+    # there is one blocker: ['The SSSP library is not installed.']
+    assert len(blockers) == 1
+    submit.input_parameters = {"workchain": {"properties": ["pdos"]}}
+    blockers = list(submit._identify_submission_blockers())
+    assert len(blockers) == 1
+    # set dos code to None, will introduce another blocker
+    submit.codes["dos"].value = None
+    blockers = list(submit._identify_submission_blockers())
+    assert len(blockers) == 2

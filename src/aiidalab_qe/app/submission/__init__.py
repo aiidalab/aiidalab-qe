@@ -90,8 +90,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             for name, code in entry_point.items():
                 self.codes[name] = code
                 self.code_children.append(self.codes[name])
+        # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
-        # s
+        #
         self.submit_button = ipw.Button(
             description="Submit",
             tooltip="Submit the calculation with the selected parameters.",
@@ -152,10 +153,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
 
-        # No code selected (this is ignored while the setup process is running).
+        # No pw code selected (this is ignored while the setup process is running).
         if self.pw_code.value is None and not self.qe_setup_status.busy:
             yield ("No pw code selected")
-
+        # code related to the selected property is not installed
+        properties = self.input_parameters.get("workchain", {}).get("properties", [])
+        for identifer in properties:
+            for name, code in self.code_entries.get(identifer, {}).items():
+                if code.value is None:
+                    yield f"Calculating the {identifer} property requires code {name} to be set."
         # SSSP library not installed
         if not self.sssp_installation_status.installed:
             yield "The SSSP library is not installed."
@@ -304,7 +310,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @tl.observe("previous_step_state")
     def _observe_input_structure(self, _):
         self._update_state()
-        self.set_codes_status()
+        self.udpate_codes_visibility()
 
     @tl.observe("process")
     def _observe_process(self, change):
@@ -341,19 +347,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             for name, code in self.codes.items():
                 code.value = _get_code_uuid(codes.get(name))
 
-    def set_codes_status(self):
-        """Disable code if no related property is selected."""
-        # disable all codes except pw
+    def udpate_codes_visibility(self):
+        """Hide code if no related property is selected."""
+        # hide all codes except pw
         for name, code in self.codes.items():
             if name == "pw":
                 continue
-            code.code_select_dropdown.disabled = True
-        # enable code if the related property is selected.
+            code.layout.visibility = "hidden"
         properties = self.input_parameters.get("workchain", {}).get("properties", [])
-        for identifer, codes in self.code_entries.items():
-            if identifer in properties:
-                for name in codes:
-                    self.codes[name].code_select_dropdown.disabled = False
+        # show the code if the related property is selected.
+        for identifer in properties:
+            for code in self.code_entries.get(identifer, {}).values():
+                code.layout.visibility = "visible"
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
