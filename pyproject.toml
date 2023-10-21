@@ -17,4 +17,29 @@ filterwarnings = [
     # E     _warn("subprocess %s is still running" % self.pid,
     # E ResourceWarning: subprocess 382685 is still running
     'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
+    # TODO: This comes from a transitive dependency of optimade_client
+    # Remove this when this issue is addressed:
+    # https://github.com/CasperWA/ipywidgets-extended/issues/85
+    'ignore::DeprecationWarning:ipywidgets_extended',
+    # TODO: StructureManagerWidget pass arguments by kwargs to StructureDataViewer and will be deprecated.
+    # E           DeprecationWarning: Passing unrecognized arguments to super(StructureManagerWidget).__init__(configuration_tabs=['Cell', 'Selection', 'Appearance', 'Download']).
+    # E           object.__init__() takes exactly one argument (the instance to initialize)
+    # E           This is deprecated in traitlets 4.2.This error will be raised in a future release of traitlets.
+    'ignore::DeprecationWarning:ipywidgets',
+    'ignore::DeprecationWarning:ase.atoms',
+    # TODO: bandsplot_widget has an issue in schema validation
+    # >       result._update_view()
+    #
+    # tests/test_plugins_bands.py:12:
+    # _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    # src/aiidalab_qe/plugins/bands/result.py:40: in _update_view
+    #     _bands_plot_view = BandsPlotWidget(
+    # ../../.local/lib/python3.9/site-packages/widget_bandsplot/bandsplot.py:112: in __init__
+    #     validate(instance=i, schema=BANDS_SCHEMA)
+    # /opt/conda/lib/python3.9/site-packages/jsonschema/validators.py:928: in validate
+    #     cls = validator_for(schema)
+    'ignore::DeprecationWarning:jsonschema',
+    # TODO: use uuid instead of node object in WorkChainViewer.
+    # Otherwise, the `Instance '<DbNode at 0x7f2f1bd885b0>' is not persistent within this Session` exception is raised.
+    'ignore::pytest.PytestUnhandledThreadExceptionWarning:_pytest',
 ]
