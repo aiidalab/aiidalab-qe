@@ -1,8 +1,12 @@
+"""Electronic structure results view widgets"""
 import json
 import random
 
+import ipywidgets as ipw
 from aiida import orm
 from monty.json import jsanitize
+
+from aiidalab_qe.common.panel import ResultPanel
 
 
 def export_data(work_chain_node, group_dos_by="atom"):
@@ -182,3 +186,67 @@ def cmap(label: str) -> str:
     random.seed(ascn)
 
     return "#%06x" % random.randint(0, 0xFFFFFF)
+
+
+class Result(ResultPanel):
+    title = "Electronic Structure"
+    workchain_labels = ["bands", "pdos"]
+
+    def __init__(self, node=None, **kwargs):
+        super().__init__(node=node, **kwargs)
+
+    def _update_view(self):
+        """Update the view of the widget."""
+        from widget_bandsplot import BandsPlotWidget
+
+        group_dos_by = ipw.ToggleButtons(
+            options=[
+                ("Atom", "atom"),
+                ("Orbital", "angular"),
+            ],
+            value="atom",
+        )
+        settings = ipw.VBox(
+            children=[
+                ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "DOS grouped by:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="120px"
+                            ),
+                        ),
+                        group_dos_by,
+                    ]
+                ),
+            ],
+            layout={"margin": "0 0 30px 30px"},
+        )
+        #
+        data = export_data(self.node, group_dos_by=group_dos_by.value)
+        bands_data = data.get("bands", None)
+        dos_data = data.get("dos", None)
+        _bands_plot_view = BandsPlotWidget(
+            bands=bands_data,
+            dos=dos_data,
+        )
+
+        def response(change):
+            data = export_data(self.node, group_dos_by=group_dos_by.value)
+            bands_data = data.get("bands", None)
+            dos_data = data.get("dos", None)
+            _bands_plot_view = BandsPlotWidget(
+                bands=bands_data,
+                dos=dos_data,
+            )
+            self.children = [
+                settings,
+                _bands_plot_view,
+            ]
+
+        group_dos_by.observe(response, names="value")
+        # update the electronic structure tab
+        self.children = [
+            settings,
+            _bands_plot_view,
+        ]

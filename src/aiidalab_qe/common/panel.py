@@ -99,6 +99,7 @@ class ResultPanel(Panel):
     """
 
     title = "Result"
+    workchain_labels = []
 
     def __init__(self, node=None, **kwargs):
         self.node = node
@@ -116,7 +117,7 @@ class ResultPanel(Panel):
         if self.node is None:
             return None
 
-        return getattr(self.node.outputs, self.identifier)
+        return self.node.outputs
 
     def _update_view(self):
         """Update the result in the panel.
