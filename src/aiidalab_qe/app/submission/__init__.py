@@ -89,6 +89,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         for _, entry_point in self.code_entries.items():
             for name, code in entry_point.items():
                 self.codes[name] = code
+                code.observe(self._update_state, "value")
                 self.code_children.append(self.codes[name])
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
