@@ -18,10 +18,10 @@ from IPython.display import display
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
+from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 from .resource import ParallelizationSettings, ResourceSelectionWidget
-from .sssp import SSSPInstallWidget
 
 PROTOCOL_PSEUDO_MAP = {
     "fast": "SSSP/1.2/PBE/efficiency",
@@ -110,7 +110,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # in case that the installation was already triggered elsewhere, e.g.,
         # by the start up scripts.  The submission is blocked while the
         # potentials are not yet installed.
-        self.sssp_installation_status = SSSPInstallWidget(auto_start=qe_auto_setup)
+        self.sssp_installation_status = PseudosInstallWidget(auto_start=qe_auto_setup)
         self.sssp_installation_status.observe(self._update_state, ["busy", "installed"])
         self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
 

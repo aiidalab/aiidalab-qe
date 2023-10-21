@@ -2,10 +2,11 @@
 """
 
 import click
+from aiida import load_profile
 
-from aiidalab_qe.app.submission.sssp import install as setup_sssp
 from aiidalab_qe.common.setup_codes import codes_are_setup
 from aiidalab_qe.common.setup_codes import install as install_qe_codes
+from aiidalab_qe.common.setup_pseudos import install as setup_pseudos
 
 
 @click.group()
@@ -15,7 +16,9 @@ def cli():
 
 @cli.command()
 @click.option("-f", "--force", is_flag=True)
-def install_qe(force):
+@click.option("-p", "--profile", default="default")
+def install_qe(force, profile):
+    load_profile(profile)
     try:
         for msg in install_qe_codes(force=force):
             click.echo(msg)
@@ -26,11 +29,13 @@ def install_qe(force):
 
 
 @cli.command()
-def install_sssp():
+@click.option("-p", "--profile", default="default")
+def install_pseudos(profile):
+    load_profile(profile)
     try:
-        for msg, _ in setup_sssp():
+        for msg, _ in setup_pseudos():
             click.echo(msg)
-        click.secho("SSSP pseudo potentials are installed!", fg="green")
+        click.secho("Pseudopotentials are installed!", fg="green")
     except Exception as error:
         raise click.ClickException(f"Failed to set up pseudo potentials: {error}")
 
