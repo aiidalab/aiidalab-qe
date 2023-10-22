@@ -17,7 +17,7 @@ fi
 # https://github.com/aiidateam/aiida-pseudo/pull/135
 if aiida-pseudo list | grep -q "no pseudo potential families"; then
     echo "Installing pseudo potential families."
-    python -m aiidalab_qe install-sssp
+    python -m aiidalab_qe install-pseudos
 else
     echo "Pseudo potential families are already installed."
 fi
