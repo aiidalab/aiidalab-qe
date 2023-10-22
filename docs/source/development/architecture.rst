@@ -60,18 +60,18 @@ The dictionary has the following structure:
 Plugin
 ======
 
-QeApp supports runing multiple properties (bands, pdos, etc) calculations in one app.
-Take into account the following facts:
+QeApp supports running multiple properties (bands, pdos, etc.) calculations in one app.
+Please take into account the following facts:
 
 - the configuration for a property calculation has its settings unrelated to other properties.
 - the sub-workchain of the properties can be run independently.
 - the analysis of the results of the properties is also independent.
 
 Thus, we can develop a property separately and integrate it into the QeApp as a plugin.
-Each plugin resposible for one property calculation.
+Each plugin responsible for one property calculation.
 For example, we could create a PDOS plugin, including its settings, workchain, and result analysis.
 The GUI of the PDOS plugin is only loaded when the user selects to run the PDOS property.
-Here is an example, that two new setting panels are shown when the user selects to run the properties.
+Here is an example, where two new setting panels are shown when the user selects to run the properties.
 
 .. figure:: ../_static/images/plugin_example.png
 

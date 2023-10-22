@@ -7,15 +7,15 @@ Create your plugin
 A QeApp plugin will typically register new panels (setting, result), and workchain to extend the app's functionality.
 
 
-Your First Add-on
+Your First Plugin
 ================================
 
 Here is the simplest plugin to print the formula of the input structure:
 
 Outline
 -----------------------
-A  :class:`~aiidalab_qe.common.panel.Outline` will add a item in the properties section of the workflow panel.
-For this example we'll add the ``Hello World`` item, as shown below.
+A  :class:`~aiidalab_qe.common.panel.Outline` will add an item in the properties section of the workflow panel.
+For this example, we'll add the ``Hello World`` item, as shown below.
 
 
 .. image:: ../_static/images/plugin_outline.png
@@ -36,12 +36,12 @@ The **Outline** will be shown as a checkbox.
 
 Setting
 -----------------------
-A  :class:`~aiidalab_qe.common.panel.Panel` will register a new panel in the configuration Step, e.g. the ``Hello workd`` panel.
+A  :class:`~aiidalab_qe.common.panel.Panel` will register a new panel in the configuration step, e.g. the ``Hello world`` panel.
 
 
 .. image:: ../_static/images/plugin_setting.png
 
-In this class, one can add widgets (e.g, Float, Int) to the GUI.
+In this class, one can add widgets (e.g. Float, Int) to the GUI.
 The values of these widgets will be used in the WorkChain.
 One needs to override the ``get_panel_value`` method to tell QeApp how to use the values from the widgets.
 One also need to override the ``set_panel_value`` method to tell QeApp how to reload the panel values from previous calculation, and the ``reset`` method to reset the panel to the default values.
@@ -73,7 +73,7 @@ One also need to override the ``set_panel_value`` method to tell QeApp how to re
 
 Result
 -----------------------
-A  :class:`~aiidalab_qe.common.panel.ResultPanel` will register a new panel in the Results Step, e.g. the ``Hello workd`` panel.
+A  :class:`~aiidalab_qe.common.panel.ResultPanel` will register a new panel in the Results Step, e.g., the ``Hello world`` panel.
 
 
 .. image:: ../_static/images/plugin_result.png
@@ -88,7 +88,7 @@ For example, the ``name`` and ``structure`` are the outputs of the ``HelloWorldW
 
     class Result(ResultPanel):
         title = "Hello world"
-        workchain_label = "hello_world"
+        workchain_labels = ["hello_world"]
 
         def _update_view(self):
             name = self.outputs.name.value
