@@ -44,6 +44,11 @@ def test_identify_submission_blockers(app):
     blockers = list(submit._identify_submission_blockers())
     assert len(blockers) == 1
     # set dos code to None, will introduce another blocker
+    dos_value = submit.codes["dos"].value
     submit.codes["dos"].value = None
     blockers = list(submit._identify_submission_blockers())
     assert len(blockers) == 2
+    # set dos code back will remove the blocker
+    submit.codes["dos"].value = dos_value
+    blockers = list(submit._identify_submission_blockers())
+    assert len(blockers) == 1
