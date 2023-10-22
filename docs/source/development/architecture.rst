@@ -7,7 +7,7 @@ Architecture
 Wizards UI
 ==========
 
-Quantum ESPRESSO app (QeApp) uses the Wizards UI, which divides one calculation into four steps.
+QuantumESPRESSO app uses the Wizards UI, which divides one calculation into four steps.
 Each step may contain several sections (panels), as shown below.
 
 .. image:: ../_static/images/plugin_step.png
@@ -60,14 +60,14 @@ The dictionary has the following structure:
 Plugin
 ======
 
-QeApp supports running multiple properties (bands, pdos, etc.) calculations in one app.
+QuantumESPRESSO app supports running multiple properties (bands, pdos, etc.) calculations in one app.
 Please take into account the following facts:
 
 - the configuration for a property calculation has its settings unrelated to other properties.
 - the sub-workchain of the properties can be run independently.
 - the analysis of the results of the properties is also independent.
 
-Thus, we can develop a property separately and integrate it into the QeApp as a plugin.
+Thus, we can develop a property separately and integrate it into the QuantumESPRESSO app as a plugin.
 Each plugin responsible for one property calculation.
 For example, we could create a PDOS plugin, including its settings, workchain, and result analysis.
 The GUI of the PDOS plugin is only loaded when the user selects to run the PDOS property.
@@ -76,6 +76,6 @@ Here is an example, where two new setting panels are shown when the user selects
 .. figure:: ../_static/images/plugin_example.png
 
 
-A QeApp plugin will typically register new panels (setting, result), and workchain to extend the app's functionality.
-The plugin design makes the QeApp more modularized and pluggable.
-So the developer can maintain their plugin as a separate folder in the QeApp (even a separate package).
+A QuantumESPRESSO app plugin will typically register new panels (setting, result), and workchain to extend the app's functionality.
+The plugin design makes the QuantumESPRESSO app more modularized and pluggable.
+So the developer can maintain their plugin as a separate folder in the QuantumESPRESSO app (even a separate package).
