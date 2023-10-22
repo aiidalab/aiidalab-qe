@@ -148,10 +148,10 @@ The ``builder`` will be used to submit the workchain.
         """
         parameters = parameters.get("hello_world", {})
         builder = HelloWorldWorkChain.get_builder_from_protocol(
-                    codes=codes,
-                    structure=structure,
-                    parameters=parameters,
-                )
+            codes=codes,
+            structure=structure,
+            parameters=parameters,
+        )
         return builder
 
 Then register the workchain and builder in the `workchain_and_builder` dict, so that the QuantumESPRESSO app can load them.
@@ -162,7 +162,7 @@ Then register the workchain and builder in the `workchain_and_builder` dict, so 
     workchain_and_builder = {
         "workchain": HelloWorldWorkChain,
         "get_builder": get_builder,
-        }
+    }
 
 Entry point
 -----------------------
@@ -172,10 +172,10 @@ Finally, one needs to register the entry point of the plugin. Here is the entry 
 
     # this is the entry point of the plugin
     hello_world ={
-    "outline": Outline,
-    "setting": Setting,
-    "workchain": workchain_and_builder,
-    "result": Result,
+        "outline": Outline,
+        "setting": Setting,
+        "workchain": workchain_and_builder,
+        "result": Result,
     }
 
 Install the plugin
@@ -234,7 +234,7 @@ Here is the example for such plugin.
     my_plugin ={
         "importer": StructureImporter,
         "editor": StructureEditor,
-        }
+    }
 
 
 

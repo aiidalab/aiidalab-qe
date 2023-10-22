@@ -15,8 +15,8 @@ Each step may contain several sections (panels), as shown below.
 Parameter transfer between steps
 ---------------------------------
 
-Data is passed to the next step by linking it to the corresponding trailet of the step.
-For example, the ``confirmed_structure`` of step 1 is linked to the ``input_structure`` trailet of step 2.
+The data is passed to the next step by linking it to the corresponding ``trail`` of the step.
+For example, the ``confirmed_structure`` of step 1 is linked to the ``input_structure`` ``trail`` of step 2.
 
 .. code:: python
 
@@ -27,7 +27,7 @@ For example, the ``confirmed_structure`` of step 1 is linked to the ``input_stru
 
 In the configuration step, there are several panels.
 The parameters from these panels are generated and stored as a dictionary,
-which is linked to the ``input_parameters`` trailet of the next submit step.
+which is linked to the ``input_parameters`` ``trail`` of the next submit step.
 The dictionary has the following structure:
 
 .. code:: python
