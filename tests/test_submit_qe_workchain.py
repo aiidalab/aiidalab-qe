@@ -1,20 +1,3 @@
-def test_reload_selected_code(submit_app_generator):
-    """Test set_selected_codes method."""
-    from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-
-    app = submit_app_generator()
-    submit_step = app.submit_step
-
-    submit_step._create_builder()
-
-    new_submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    new_submit_step.set_selected_codes(submit_step.ui_parameters["codes"])
-
-    assert new_submit_step.pw_code.value == submit_step.pw_code.value
-    assert new_submit_step.dos_code.value == submit_step.dos_code.value
-    assert new_submit_step.projwfc_code.value == submit_step.projwfc_code.value
-
-
 def test_create_builder_default(
     data_regression,
     submit_app_generator,

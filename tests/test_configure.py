@@ -12,6 +12,7 @@ def test_protocol():
 
 
 def test_get_configuration_parameters():
+    """Test the get_configuration_parameters method."""
     from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()
@@ -23,13 +24,19 @@ def test_get_configuration_parameters():
     assert parameters == parameters_ref
 
 
-def test_set_configuration_parameters(submit_app_generator):
+def test_set_configuration_parameters():
+    """Test the set_configuration_parameters method."""
     from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()
     parameters = wg.get_configuration_parameters()
     parameters["workchain"]["relax_type"] = "positions"
     parameters["advanced"]["pseudo_family"] = "SSSP/1.2/PBE/efficiency"
+    wg.set_configuration_parameters(parameters)
+    new_parameters = wg.get_configuration_parameters()
+    assert parameters == new_parameters
+    # test pseudodojo
+    parameters["advanced"]["pseudo_family"] = "PseudoDojo/0.4/PBEsol/SR/standard/upf"
     wg.set_configuration_parameters(parameters)
     new_parameters = wg.get_configuration_parameters()
     assert parameters == new_parameters

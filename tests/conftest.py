@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import pathlib
 import tempfile
@@ -299,19 +301,12 @@ def app(pw_code, dos_code, projwfc_code):
     app = App(qe_auto_setup=False)
     # set up codes
     app.submit_step.pw_code.refresh()
-    app.submit_step.dos_code.refresh()
-    app.submit_step.projwfc_code.refresh()
-    app.submit_step.pw_code.value = (
-        app.submit_step.pw_code.code_select_dropdown.options[pw_code.full_label]
-    )
-    app.submit_step.dos_code.value = (
-        app.submit_step.dos_code.code_select_dropdown.options[dos_code.full_label]
-    )
-    app.submit_step.projwfc_code.value = (
-        app.submit_step.projwfc_code.code_select_dropdown.options[
-            projwfc_code.full_label
-        ]
-    )
+    app.submit_step.codes["dos"].refresh()
+    app.submit_step.codes["projwfc"].refresh()
+
+    app.submit_step.pw_code.value = pw_code.uuid
+    app.submit_step.codes["dos"].value = dos_code.uuid
+    app.submit_step.codes["projwfc"].value = projwfc_code.uuid
 
     yield app
 
@@ -363,6 +358,7 @@ def submit_app_generator(
         #
         submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
+        submit_step.resources_config.num_cpus.value = 2
 
         return app
 
@@ -559,12 +555,15 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app, generate_workchain, generate_pdos_workchain, generate_bands_workchain
+    app,
+    generate_workchain,
+    generate_pdos_workchain,
+    generate_bands_workchain,
 ):
     """Generate an instance of the WorkChain."""
 
     def _generate_qeapp_workchain(
-        structure=None,
+        structure: orm.StructureData | None = None,
         relax_type="positions_cell",
         run_bands=True,
         run_pdos=True,
@@ -581,17 +580,13 @@ def generate_qeapp_workchain(
         s1 = app.structure_step
         if structure is None:
             from_example = s1.manager.children[0].children[3]
+            # TODO: (unkpcz) using options to set value in test is cranky, instead, use fixture which will make the test more static and robust.
             from_example.children[0].value = from_example.children[0].options[1][1]
         else:
             structure.store()
             aiida_database = s1.manager.children[0].children[2]
             aiida_database.search()
-            key = [
-                key
-                for key in aiida_database.results.options
-                if key.startswith(f"PK: {structure.pk}")
-            ][0]
-            aiida_database.results.value = aiida_database.results.options[key]
+            aiida_database.results.value = structure
         s1.confirm()
         structure = s1.confirmed_structure
         # step 2 configure
@@ -629,19 +624,6 @@ def generate_qeapp_workchain(
             wkchain.out_many(
                 wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
             )
-            wkchain.out("nscf_parameters", pdos.node.outputs.nscf.output_parameters)
-            wkchain.out("dos", pdos.node.outputs.dos.output_dos)
-            if "projections_up" in pdos.node.outputs.projwfc:
-                wkchain.out(
-                    "projections_up",
-                    pdos.node.outputs.projwfc.projections_up,
-                )
-                wkchain.out(
-                    "projections_down",
-                    pdos.node.outputs.projwfc.projections_down,
-                )
-            else:
-                wkchain.out("projections", pdos.node.outputs.projwfc.projections)
         if run_bands:
             from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
@@ -649,8 +631,6 @@ def generate_qeapp_workchain(
             wkchain.out_many(
                 wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
             )
-            wkchain.out("band_structure", bands.node.outputs.band_structure)
-            wkchain.out("band_parameters", bands.node.outputs.band_parameters)
         wkchain.update_outputs()
         # set ui_parameters
         qeapp_node = wkchain.node

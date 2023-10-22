@@ -1,24 +1,28 @@
 from aiida import orm
 
 
-def test_pseudos_family_selector_widget_protocol():
-    """Test the pseudos widget."""
-    from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector
-
-    w = PseudoFamilySelector()
-    w.protocol = "precise"
-    assert w.protocol_selection.value == "SSSP precision"
-    assert w.value == "SSSP/1.2/PBEsol/precision"
-
-
 def test_pseudos_family_selector_widget():
     """Test the pseudos widget."""
     from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector
 
     w = PseudoFamilySelector()
-    w.override_protocol_pseudo_family.value = True
-    w.protocol_selection.value = "PseudoDojo stringent"
+    assert w.override.value is False
+
+    w.override.value = True
+
+    # test the default value
+    assert w.value == "SSSP/1.2/PBEsol/efficiency"
+
+    # Test if the protocol change the value will be updated
+    w.protocol = "precise"
+    assert w.value == "SSSP/1.2/PBEsol/precision"
+
+    # test the functional change will update the value
     w.dft_functional.value = "PBE"
+    assert w.value == "SSSP/1.2/PBE/precision"
+
+    # Test if selecet new pseudo library the value will be updated
+    w.library_selection.value = "PseudoDojo stringent"
     assert w.value == "PseudoDojo/0.4/PBE/SR/stringent/upf"
 
 

@@ -16,11 +16,12 @@ from aiidalab_widgets_base import ComputationalResourcesWidget, WizardAppWidgetS
 from IPython.display import display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
+from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 from .resource import ParallelizationSettings, ResourceSelectionWidget
-from .sssp import SSSPInstallWidget
 
 PROTOCOL_PSEUDO_MAP = {
     "fast": "SSSP/1.2/PBE/efficiency",
@@ -68,26 +69,31 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.pw_code = ComputationalResourcesWidget(
             description="pw.x:", default_calc_job_plugin="quantumespresso.pw"
         )
-        self.dos_code = ComputationalResourcesWidget(
-            description="dos.x:",
-            default_calc_job_plugin="quantumespresso.dos",
-        )
-        self.projwfc_code = ComputationalResourcesWidget(
-            description="projwfc.x:",
-            default_calc_job_plugin="quantumespresso.projwfc",
-        )
 
         self.resources_config = ResourceSelectionWidget()
         self.parallelization = ParallelizationSettings()
 
-        self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
         self.set_resource_defaults()
 
         self.pw_code.observe(self._update_state, "value")
         self.pw_code.observe(self._update_resources, "value")
-        self.dos_code.observe(self._update_state, "value")
-        self.projwfc_code.observe(self._update_state, "value")
 
+        # add plugin's entry points
+        self.codes = {"pw": self.pw_code}
+        self.code_children = [
+            self.codes_title,
+            self.codes_help,
+            self.pw_code,
+        ]
+        self.code_entries = get_entry_items("aiidalab_qe.properties", "code")
+        for _, entry_point in self.code_entries.items():
+            for name, code in entry_point.items():
+                self.codes[name] = code
+                code.observe(self._update_state, "value")
+                self.code_children.append(self.codes[name])
+        # set default codes
+        self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
+        #
         self.submit_button = ipw.Button(
             description="Submit",
             tooltip="Submit the calculation with the selected parameters.",
@@ -105,7 +111,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # in case that the installation was already triggered elsewhere, e.g.,
         # by the start up scripts.  The submission is blocked while the
         # potentials are not yet installed.
-        self.sssp_installation_status = SSSPInstallWidget(auto_start=qe_auto_setup)
+        self.sssp_installation_status = PseudosInstallWidget(auto_start=qe_auto_setup)
         self.sssp_installation_status.observe(self._update_state, ["busy", "installed"])
         self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
 
@@ -121,11 +127,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         super().__init__(
             children=[
-                self.codes_title,
-                self.codes_help,
-                self.pw_code,
-                self.dos_code,
-                self.projwfc_code,
+                *self.code_children,
                 self.resources_config,
                 self.parallelization,
                 self.message_area,
@@ -152,46 +154,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
 
-        # No code selected (this is ignored while the setup process is running).
+        # No pw code selected (this is ignored while the setup process is running).
         if self.pw_code.value is None and not self.qe_setup_status.busy:
             yield ("No pw code selected")
-
-        # No code selected for pdos (this is ignored while the setup process is running).
-        if (
-            "pdos" in self.input_parameters.get("workchain", {}).get("properties", [])
-            and (self.dos_code.value is None or self.projwfc_code.value is None)
-            and not self.qe_setup_status.busy
-        ):
-            yield "Calculating the PDOS requires both dos.x and projwfc.x to be set."
-
+        # code related to the selected property is not installed
+        properties = self.input_parameters.get("workchain", {}).get("properties", [])
+        for identifer in properties:
+            for name, code in self.code_entries.get(identifer, {}).items():
+                if code.value is None:
+                    yield f"Calculating the {identifer} property requires code {name} to be set."
         # SSSP library not installed
         if not self.sssp_installation_status.installed:
             yield "The SSSP library is not installed."
-
-        if (
-            "pdos" in self.input_parameters.get("workchain", {}).get("properties", [])
-            and not any(
-                [
-                    self.pw_code.value is None,
-                    self.dos_code.value is None,
-                    self.projwfc_code.value is None,
-                ]
-            )
-            and len(
-                set(
-                    (
-                        orm.load_code(self.pw_code.value).computer.pk,
-                        orm.load_code(self.dos_code.value).computer.pk,
-                        orm.load_code(self.projwfc_code.value).computer.pk,
-                    )
-                )
-            )
-            != 1
-        ):
-            yield (
-                "All selected codes must be installed on the same computer. This is because the "
-                "PDOS calculations rely on large files that are not retrieved by AiiDA."
-            )
 
     def _update_state(self, _=None):
         # If the previous step has failed, this should fail as well.
@@ -225,16 +199,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            for code in [
-                "pw",
-                "dos",
-                "projwfc",
-            ]:
+            for name, code_widget in self.codes.items():
                 try:
-                    code_widget = getattr(self, f"{code}_code")
                     code_widget.refresh()
                     code_widget.value = orm.load_code(
-                        DEFAULT_PARAMETERS["codes"][code]
+                        DEFAULT_PARAMETERS["codes"][name]
                     ).uuid
                 except NotExistent:
                     pass
@@ -342,7 +311,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @tl.observe("previous_step_state")
     def _observe_input_structure(self, _):
         self._update_state()
-        self.set_pdos_status()
+        self.udpate_codes_visibility()
 
     @tl.observe("process")
     def _observe_process(self, change):
@@ -361,11 +330,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         return: A dict with the code names as keys and the code UUIDs as values.
         """
-        codes = {
-            "pw": self.pw_code.value,
-            "dos": self.dos_code.value,
-            "projwfc": self.projwfc_code.value,
-        }
+        codes = {key: code.value for key, code in self.codes.items()}
         return codes
 
     def set_selected_codes(self, codes):
@@ -380,18 +345,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     return None
 
         with self.hold_trait_notifications():
-            # Codes
-            self.pw_code.value = _get_code_uuid(codes["pw"])
-            self.dos_code.value = _get_code_uuid(codes["dos"])
-            self.projwfc_code.value = _get_code_uuid(codes["projwfc"])
+            for name, code in self.codes.items():
+                code.value = _get_code_uuid(codes.get(name))
 
-    def set_pdos_status(self):
-        if "pdos" in self.input_parameters.get("workchain", {}).get("properties", []):
-            self.dos_code.code_select_dropdown.disabled = False
-            self.projwfc_code.code_select_dropdown.disabled = False
-        else:
-            self.dos_code.code_select_dropdown.disabled = True
-            self.projwfc_code.code_select_dropdown.disabled = True
+    def udpate_codes_visibility(self):
+        """Hide code if no related property is selected."""
+        # hide all codes except pw
+        for name, code in self.codes.items():
+            if name == "pw":
+                continue
+            code.layout.visibility = "hidden"
+        properties = self.input_parameters.get("workchain", {}).get("properties", [])
+        # show the code if the related property is selected.
+        for identifer in properties:
+            for code in self.code_entries.get(identifer, {}).values():
+                code.layout.visibility = "visible"
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
@@ -477,12 +445,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.set_selected_codes(parameters["codes"])
 
     def get_submission_parameters(self):
+        """Get the parameters for the submission step."""
         return {
             "codes": self.get_selected_codes(),
             "resources": self.get_resources(),
         }
 
     def reset(self):
+        """Reset the widget to its initial state."""
         with self.hold_trait_notifications():
             self.process = None
             self.input_structure = None
+            self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
+            self.set_resource_defaults()
