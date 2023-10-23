@@ -71,12 +71,6 @@ class App(ipw.VBox):
         )
         self.work_chain_selector.observe(self._observe_process_selection, "value")
 
-        ipw.dlink(
-            (self.submit_step, "process"),
-            (self.work_chain_selector, "value"),
-            transform=lambda node: None if node is None else node.pk,
-        )
-
         super().__init__(
             children=[
                 self.work_chain_selector,
