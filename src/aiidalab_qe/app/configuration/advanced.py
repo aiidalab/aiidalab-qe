@@ -39,6 +39,7 @@ class AdvancedSettings(Panel):
 
     # protocol interface
     protocol = tl.Unicode(allow_none=True)
+    # TODO: (unckpz) the DbNode persistence issue will be raised if using AiiDA Node as the trait.
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     spin_type = tl.Unicode()
     electronic_type = tl.Unicode()

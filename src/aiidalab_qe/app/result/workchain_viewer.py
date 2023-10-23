@@ -111,11 +111,11 @@ class WorkChainViewer(ipw.VBox):
             **kwargs,
         )
         self._process_monitor = ProcessMonitor(
-            process=self.node,
             callbacks=[
                 self._update_view,
             ],
         )
+        self._process_monitor.value = self.node.uuid
 
     def _update_view(self):
         with self.hold_trait_notifications():

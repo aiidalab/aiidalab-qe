@@ -76,5 +76,5 @@ def test_summary_view(generate_qeapp_workchain):
         "Initial Magnetic Moments": "",
     }
     for key, value in parameters.items():
-        td = parsed.find("td", text=key).find_next_sibling("td")
+        td = parsed.find("td", string=key).find_next_sibling("td")
         assert td.text == value
