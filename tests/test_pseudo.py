@@ -5,7 +5,7 @@ from aiidalab_qe.common.setup_pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
     _construct_cmd,
-    install_pseudos,
+    _install_pseudos,
     pseudos_to_install,
 )
 
@@ -79,7 +79,33 @@ def test_pseudos_installation():
     }
 
     # Install the pseudos
-    [_ for _ in install_pseudos(EXPECTED_PSEUDOS)]
+    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS)]
+
+    # Two pseudos are installed
+    assert len(pseudos_to_install()) == 6
+
+
+@pytest.mark.usefixtures("aiida_profile_clean")
+def test_download_and_install_pseudo_from_file(tmp_path):
+    """Test download and install pseudo from file."""
+    assert len(pseudos_to_install()) == 8
+    EXPECTED_PSEUDOS = {
+        f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/standard/upf",
+        f"SSSP/{SSSP_VERSION}/PBE/efficiency",
+    }
+
+    # raise error if the file does not exist
+    with pytest.raises(FileNotFoundError):
+        [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, cwd=tmp_path)]
+
+    # Download the pseudos to the tmp_path but not install
+    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, download_only=True, cwd=tmp_path)]
+
+    assert len(pseudos_to_install()) == 8
+    assert len(list(tmp_path.iterdir())) == 2
+
+    # Install the pseudos from the tmp_path
+    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, cwd=tmp_path)]
 
     # Two pseudos are installed
     assert len(pseudos_to_install()) == 6

@@ -158,33 +158,51 @@ def _construct_cmd(pseudo_family_string: str, download_only: bool = False) -> li
     return cmd
 
 
-def run_cmd(cmd: list, env=None, workdir=None):
+def run_cmd(cmd: list, env: dict | None = None, cwd: Path | None = None):
     """Run the command with specific env in the workdir specified."""
-    run(cmd, env=env, cwd=workdir, capture_output=True, check=True)
+    p = run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
+    print(p.stdout.decode())
+    print(p.stderr.decode())
 
 
-def install_pseudos(pseudo_families: set[str]) -> Iterable[float]:
+def _install_pseudos(
+    pseudo_families: set[str], download_only: bool = False, cwd: Path | None = None
+) -> Iterable[float]:
     """Go through the list of pseudo families and install them."""
     env = os.environ.copy()
-    env["PATH"] = f"{env['PATH']}:{Path.home().joinpath('.local', 'bin')}"
+    env["PATH"] = f"{env['PATH']}:{Path.home() / '.local' / 'bin'}"
     print("!!! test")
 
     mult = 1.0 / len(pseudo_families)
     yield mult * 0
     for i, pseudo_family in enumerate(pseudo_families):
-        cmd = _construct_cmd(pseudo_family)
-        run_cmd(cmd, env=env)
+        cmd = _construct_cmd(pseudo_family, download_only)
+
+        # if cwd source folder specified, then install the pseudos from the folder
+        # download file name is replace `/` with `_` of the pseudo family string with `.aiida_pseudo` extension
+        if not download_only and cwd is not None:
+            file_path = cwd / f"{pseudo_family.replace('/', '_')}.aiida_pseudo"
+            if not file_path.exists():
+                raise FileNotFoundError(
+                    f"File {file_path} does not exist, run `download_only` first."
+                )
+
+            cmd.extend(["--from-download", file_path])
+
+        run_cmd(cmd, env=env, cwd=cwd)
 
         yield mult * (i + 1)
 
 
-def install():
+def install(
+    download_only: bool = False, cwd: Path | None = None
+) -> Iterable[tuple[str, float]]:
     yield "Checking installation status...", 0.1
     try:
         with FileLock(FN_LOCKFILE, timeout=5):
-            if len(pseudos_to_install()) > 0:
+            if len(pseudos := pseudos_to_install()) > 0:
                 yield "Installing...", 0.1
-                for progress in install_pseudos(pseudos_to_install()):
+                for progress in _install_pseudos(pseudos, download_only, cwd):
                     yield "Installing...", progress
 
     except Timeout:
