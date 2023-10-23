@@ -15,6 +15,7 @@ workchain:
 
 ## Advanced pw settings
 advanced:
+    # XXX: 1.2 should be not needed to be specified here
     pseudo_family: SSSP/1.2/PBEsol/efficiency
     tot_charge: 0
 

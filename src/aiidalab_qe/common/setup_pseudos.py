@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from subprocess import run
 from threading import Thread
+from typing import Iterable
 
 import ipywidgets as ipw
 import traitlets
@@ -12,22 +16,87 @@ from filelock import FileLock, Timeout
 
 from aiidalab_qe.common.widgets import ProgressBar
 
+SSSP_VERSION = "1.2"
+PSEUDODOJO_VERSION = "0.4"
+
 EXPECTED_PSEUDOS = {
-    "SSSP/1.2/PBE/efficiency",
-    "SSSP/1.2/PBE/precision",
-    "SSSP/1.2/PBEsol/efficiency",
-    "SSSP/1.2/PBEsol/precision",
-    "PseudoDojo/0.4/PBE/SR/standard/upf",
-    "PseudoDojo/0.4/PBEsol/SR/standard/upf",
-    "PseudoDojo/0.4/PBE/SR/stringent/upf",
-    "PseudoDojo/0.4/PBEsol/SR/stringent/upf",
+    f"SSSP/{SSSP_VERSION}/PBE/efficiency",
+    f"SSSP/{SSSP_VERSION}/PBE/precision",
+    f"SSSP/{SSSP_VERSION}/PBEsol/efficiency",
+    f"SSSP/{SSSP_VERSION}/PBEsol/precision",
+    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/standard/upf",
+    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf",
+    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf",
+    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/stringent/upf",
 }
 
 
 FN_LOCKFILE = Path.home().joinpath(".install-sssp.lock")
 
 
-def pseudos_to_install():
+@dataclass(frozen=True)
+class PseudoFamily:
+    """The dataclass to deal with pseudo family strings.
+
+    Attributes:
+    library: the library name of the pseudo family, e.g. SSSP or PseudoDojo.
+    cmd_library_name: the sub command name used in aiida-pseudo command line.
+    version: the version of the pseudo family, e.g. 1.2
+    functional: the functional of the pseudo family, e.g. PBE, PBEsol.
+    accuracy: the accuracy of the pseudo family, which is protocol in aiida-pseudo, e.g. efficiency, precision, standard, stringent.
+    relativistic: the relativistic treatment of the pseudo family, e.g. SR, FR.
+    file_type: the file type of the pseudo family, e.g. upf, psml, currently only used for PseudoDojo.
+    """
+
+    library: str
+    cmd_library_name: str
+    version: str
+    functional: str
+    accuracy: str
+    relativistic: str | None = None
+    file_type: str | None = None
+
+    @classmethod
+    def from_string(cls, pseudo_family_string: str) -> PseudoFamily:
+        """Initialize from a pseudo family string."""
+        # We support two pseudo families: SSSP and PseudoDojo
+        # They are formatted as follows:
+        # SSSP: SSSP/<version>/<functional>/<accuracy>
+        # PseudoDojo: PseudoDojo/<version>/<functional>/<relativistic>/<accuracy>/<file_type>
+        # where <relativistic> is either 'SR' or 'FR' and <file_type> is either 'upf' or 'psml'
+        # Before we unify the format of family strings, the conditions below are necessary
+        # to distinguish between the two families
+        library = pseudo_family_string.split("/")[0]
+        if library == "SSSP":
+            version, functional, accuracy = pseudo_family_string.split("/")[1:]
+            relativistic = None
+            file_type = None
+            cmd_library_name = "sssp"
+        elif library == "PseudoDojo":
+            (
+                version,
+                functional,
+                relativistic,
+                accuracy,
+                file_type,
+            ) = pseudo_family_string.split("/")[1:]
+            cmd_library_name = "pseudo-dojo"
+        else:
+            raise ValueError(f"Unknown pseudo family {pseudo_family_string}")
+
+        return cls(
+            library=library,
+            version=version,
+            functional=functional,
+            accuracy=accuracy,
+            relativistic=relativistic,
+            file_type=file_type,
+            cmd_library_name=cmd_library_name,
+        )
+
+
+def pseudos_to_install() -> set[str]:
+    """Query the database and return the list of pseudopotentials that are not installed."""
     qb = QueryBuilder()
     qb.append(
         PseudoPotentialFamily,
@@ -43,47 +112,70 @@ def pseudos_to_install():
     return EXPECTED_PSEUDOS - labels
 
 
-def install_pseudos(pseudo_set):
+def _construct_cmd(pseudo_family_string: str, download_only: bool = False) -> list:
+    """Construct the command for installation of pseudopotentials.
+
+    If ``dir`` is not None, and download_only is True the, only download the
+    pseudopotential files to the `dir` folder.
+    If ``download_only`` is False and dir is not None, the the pseudos will be installed from the ``dir`` where the pseudos are downloaded to.
+    """
+    pseudo_family = PseudoFamily.from_string(pseudo_family_string)
+
+    # the library used in command line is lowercase
+    # e.g. SSSP -> sssp and PseudoDojo -> pseudo-dojo
+    library = pseudo_family.cmd_library_name
+    version = pseudo_family.version
+    functional = pseudo_family.functional
+    accuracy = pseudo_family.accuracy
+    cmd = [
+        "aiida-pseudo",
+        "install",
+        library,
+        "--functional",
+        functional,
+        "--version",
+        version,
+        "-p",  # p for protocol which is the accuracy of the library
+        accuracy,
+    ]
+
+    # extra arguments for PseudoDojo
+    if library == "pseudo-dojo":
+        relativistic = pseudo_family.relativistic
+        file_type = pseudo_family.file_type
+        cmd.extend(
+            [
+                "--relativistic",
+                relativistic,
+                "--pseudo-format",
+                file_type,
+            ]
+        )
+
+    if download_only:
+        cmd.append("--download-only")
+
+    return cmd
+
+
+def run_cmd(cmd: list, env=None, workdir=None):
+    """Run the command with specific env in the workdir specified."""
+    run(cmd, env=env, cwd=workdir, capture_output=True, check=True)
+
+
+def install_pseudos(pseudo_families: set[str]) -> Iterable[float]:
+    """Go through the list of pseudo families and install them."""
     env = os.environ.copy()
     env["PATH"] = f"{env['PATH']}:{Path.home().joinpath('.local', 'bin')}"
+    print("!!! test")
 
-    def run_(*args, **kwargs):
-        return run(*args, env=env, capture_output=True, check=True, **kwargs)
+    mult = 1.0 / len(pseudo_families)
+    yield mult * 0
+    for i, pseudo_family in enumerate(pseudo_families):
+        cmd = _construct_cmd(pseudo_family)
+        run_cmd(cmd, env=env)
 
-    mult = 1 / len(pseudo_set)
-    for i, pseudo in enumerate(pseudo_set):
-        yield mult * i
-        if pseudo.startswith("SSSP"):
-            p_family, p_version, p_func, p_type = pseudo.split("/")
-            cmds = [
-                "aiida-pseudo",
-                "install",
-                p_family.lower(),
-                "-x",
-                p_func,
-                "-p",
-                p_type,
-                "-v",
-                "1.2",
-            ]
-        elif pseudo.startswith("PseudoDojo"):
-            p_family, p_version, p_func, p_rel, p_type, p_format = pseudo.split("/")
-            cmds = [
-                "aiida-pseudo",
-                "install",
-                "pseudo-dojo",
-                "-x",
-                p_func,
-                "-r",
-                p_rel,
-                "-p",
-                p_type,
-                "-f",
-                p_format,
-                "-v",
-                "0.4",
-            ]
-        run_(cmds)
+        yield mult * (i + 1)
 
 
 def install():
