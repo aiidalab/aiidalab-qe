@@ -21,7 +21,6 @@ class App(ipw.VBox):
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
         self.structure_step = StructureSelectionStep(auto_advance=True)
-        self.structure_step.observe(self._observe_structure_selection, "structure")
         self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
         self.submit_step = SubmitQeAppWorkChainStep(
             auto_advance=True, qe_auto_setup=qe_auto_setup
@@ -84,15 +83,6 @@ class App(ipw.VBox):
                 self._wizard_app_widget,
             ]
         )
-
-    # Reset all subsequent steps in case that a new structure is selected
-    def _observe_structure_selection(self, change):
-        with self.structure_step.hold_sync():
-            if (
-                self.structure_step.confirmed_structure is not None
-                and self.structure_step.confirmed_structure != change["new"]
-            ):
-                self._wizard_app_widget.reset()
 
     def _observe_process_selection(self, change):
         from aiida.orm.utils.serialize import deserialize_unsafe
