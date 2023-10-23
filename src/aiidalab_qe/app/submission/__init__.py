@@ -23,12 +23,6 @@ from aiidalab_qe.workflows import QeAppWorkChain
 
 from .resource import ParallelizationSettings, ResourceSelectionWidget
 
-PROTOCOL_PSEUDO_MAP = {
-    "fast": "SSSP/1.2/PBE/efficiency",
-    "moderate": "SSSP/1.2/PBE/efficiency",
-    "precise": "SSSP/1.2/PBE/precision",
-}
-
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
