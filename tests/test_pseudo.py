@@ -136,6 +136,7 @@ def test_pseudos_family_selector_widget():
     assert w.value == "PseudoDojo/0.4/PBE/SR/stringent/upf"
 
 
+@pytest.mark.usefixtures("sssp")
 def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
     """Test the pseudo setter widget."""
     from aiidalab_qe.app.configuration.pseudos import PseudoSetter

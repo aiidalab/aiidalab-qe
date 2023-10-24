@@ -162,7 +162,7 @@ def generate_projection_data(generate_bands_data):
     return _generate_projection_data
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="function")
 def sssp(aiida_profile, generate_upf_data):
     """Create an SSSP pseudo potential family from scratch."""
     from aiida.common.constants import elements
@@ -222,7 +222,7 @@ def sssp(aiida_profile, generate_upf_data):
     return family
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def generate_upf_data():
     """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
 
