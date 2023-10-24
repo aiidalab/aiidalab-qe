@@ -189,6 +189,7 @@ def _install_pseudos(
 
             cmd.extend(["--from-download", file_path])
 
+        print(cmd)
         run_cmd(cmd, env=env, cwd=cwd)
 
         yield mult * (i + 1)
