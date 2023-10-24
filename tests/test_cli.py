@@ -9,7 +9,7 @@ import aiidalab_qe.__main__ as cli
 
 @pytest.mark.usefixtures("aiida_profile_clean")
 def test_download_and_install_pseudos(tmp_path):
-    """Test download pseudos to a specified directory.
+    """Test download pseudos to a specified directory and install them.
 
     Act: Run the command `aiidalab-qe download-pseudos --dest <tmp_path>`.
     Assert: All pseudos are downloaded to the specified directory.
@@ -39,6 +39,29 @@ def test_download_and_install_pseudos(tmp_path):
     result: Result = runner.invoke(
         cli.install_pseudos, ["--source", tmp_path, "--profile", profile.name]
     )
+    assert result.exit_code == 0
+    assert "Pseudopotentials are installed!" in result.output
+
+    assert len(pseudos_to_install()) == 0
+
+
+@pytest.mark.usefixtures("aiida_profile_clean")
+def test_install_pseudos_without_download():
+    """Test install pseudos without download.
+
+    Act: Run the command `aiidalab-qe install-pseudos`.
+    Assert: All pseudos are installed from the specified directory.
+    """
+    from aiidalab_qe.common.setup_pseudos import pseudos_to_install
+
+    runner: CliRunner = CliRunner()
+
+    # Check that the pseudos are not installed yet
+    assert len(pseudos_to_install()) == 8
+
+    profile = aiida.get_profile()
+    result: Result = runner.invoke(cli.install_pseudos, ["--profile", profile.name])
+    print(result.output)
     assert result.exit_code == 0
     assert "Pseudopotentials are installed!" in result.output
 

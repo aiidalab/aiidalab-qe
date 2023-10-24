@@ -39,13 +39,12 @@ def install_qe(force, profile):
     type=click.Path(exists=True, path_type=Path, resolve_path=True),
 )
 def install_pseudos(profile, source):
+    """Install pseudopotentials from a local folder if source is specified,
+    otherwise download from remote repositories.
+    """
     from aiidalab_qe.common.setup_pseudos import install
 
     load_profile(profile)
-
-    # if source not specified, use the directory the command is run from
-    if source is None:
-        source = Path.cwd()
 
     try:
         for msg, _ in install(cwd=source, download_only=False):
