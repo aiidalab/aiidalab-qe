@@ -117,6 +117,7 @@ class QeAppWorkChain(WorkChain):
             if value is not None
         }
         # update pseudos
+        print(parameters["advanced"]["pw"])
         for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
             parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
         #
