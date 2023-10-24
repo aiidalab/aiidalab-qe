@@ -36,7 +36,7 @@ def install_qe(force, profile):
     "--source",
     default=None,
     help="The source folder to install from local.",
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, path_type=Path, resolve_path=True),
 )
 def install_pseudos(profile, source):
     from aiidalab_qe.common.setup_pseudos import install

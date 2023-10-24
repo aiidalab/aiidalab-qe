@@ -12,6 +12,9 @@ RUN cd ${PREINSTALL_APP_FOLDER} && \
      # Remove all untracked files and directories. For example the setup lock flag file.
      git clean -fx && \
      # It is important to install from `aiidalab install` to mimic the same installation operation from the app store.
+     # The command wil first install the dependencies and then the app and restart the daemon in the end.
+     # But since the aiida profile not yet exists, the daemon restart will fail but it is not a problem.
+     # Because we only need the dependencies to be installed.
      aiidalab install --yes --python ${CONDA_DIR}/bin/python  "quantum-espresso@file://${PREINSTALL_APP_FOLDER}" && \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
@@ -29,9 +32,12 @@ RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
      fix-permissions "/home/${NB_USER}"
 
 # Download the QE pseudopotentials to the folder for afterware installation.
-# XXX: not working because aiida-pseudo install require aiida profile
-RUN python -m aiidalab_qe download-pseudos \
-     --dest ${CONDA_DIR}
+# XXX: a fix needed from aiida-pseudo
+RUN ${CONDA_DIR}/bin/pip uninstall -y aiida-pseudo && \
+     ${CONDA_DIR}/bin/pip install -U git+https://github.com/aiidateam/aiida-pseudo.git@feature/165/download-only-no-profile
+ENV PSEUDO_FOLDER ${CONDA_DIR}/pseudo
+RUN mkdir -p ${PSEUDO_FOLDER} && \
+    python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
 COPY before-notebook.d/* /usr/local/bin/before-notebook.d/
 
