@@ -171,7 +171,6 @@ def _install_pseudos(
     """Go through the list of pseudo families and install them."""
     env = os.environ.copy()
     env["PATH"] = f"{env['PATH']}:{Path.home() / '.local' / 'bin'}"
-    print("!!! test")
 
     mult = 1.0 / len(pseudo_families)
     yield mult * 0

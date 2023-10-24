@@ -61,7 +61,7 @@ def install_pseudos(profile, source):
     "--dest",
     default=None,
     help="The dest folder where to download the pseudos.",
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, path_type=Path, resolve_path=True),
 )
 def download_pseudos(dest):
     from aiidalab_qe.common.setup_pseudos import EXPECTED_PSEUDOS, _install_pseudos
