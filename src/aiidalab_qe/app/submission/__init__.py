@@ -308,7 +308,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
-    @tl.observe("previous_step_state","input_parameters")
+    @tl.observe("previous_step_state", "input_parameters")
     def _observe_input_structure(self, _):
         self._update_state()
         self.update_codes_display()
