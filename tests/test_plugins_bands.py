@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.usefixtures("sssp")
 def test_result(generate_qeapp_workchain):
     from widget_bandsplot import BandsPlotWidget
 
@@ -12,6 +16,7 @@ def test_result(generate_qeapp_workchain):
     assert isinstance(result.children[0], BandsPlotWidget)
 
 
+@pytest.mark.usefixtures("sssp")
 def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
     structure = generate_structure_data("silicon", pbc=(True, False, False))
     wkchain = generate_qeapp_workchain(structure=structure)
@@ -20,6 +25,7 @@ def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
     assert len(wkchain.inputs.bands.bands_kpoints.labels) == 2
 
 
+@pytest.mark.usefixtures("sssp")
 def test_structure_2d(generate_qeapp_workchain, generate_structure_data):
     structure = generate_structure_data("silicon", pbc=(True, True, False))
     wkchain = generate_qeapp_workchain(structure=structure)

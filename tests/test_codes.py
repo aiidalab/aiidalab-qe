@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.usefixtures("sssp")
 def test_code_not_selected(submit_app_generator):
     """Test if there is an error when the code is not selected."""
     app = submit_app_generator()
@@ -5,6 +9,7 @@ def test_code_not_selected(submit_app_generator):
     app.submit_step._create_builder()
 
 
+@pytest.mark.usefixtures("sssp")
 def test_set_selected_codes(submit_app_generator):
     """Test set_selected_codes method."""
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
@@ -34,6 +39,7 @@ def test_update_codes_display():
     assert submit.codes["dos"].layout.display == "block"
 
 
+@pytest.mark.usefixtures("sssp")
 def test_identify_submission_blockers(app):
     """Test identify_submission_blockers method."""
     submit = app.submit_step
