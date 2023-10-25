@@ -160,10 +160,7 @@ def _construct_cmd(pseudo_family_string: str, download_only: bool = False) -> li
 
 def run_cmd(cmd: list, env: dict | None = None, cwd: Path | None = None):
     """Run the command with specific env in the workdir specified."""
-    p = run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
-    # XXX remove me
-    print(p.stdout.decode())
-    print(p.stderr.decode())
+    run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
 
 
 def _install_pseudos(
