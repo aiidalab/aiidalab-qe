@@ -19,6 +19,7 @@ on:
             - src/**
             - docker/**
             - qe.ipynb
+            - tests_integration/**
             - setup.cfg
             - pyproject.toml
 
@@ -43,6 +44,7 @@ on:
             - src/**
             - docker/**
             - qe.ipynb
+            - tests_integration/**
             - setup.cfg
             - pyproject.toml
     workflow_dispatch:
