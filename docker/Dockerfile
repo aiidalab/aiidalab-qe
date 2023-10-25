@@ -32,9 +32,6 @@ RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
      fix-permissions "/home/${NB_USER}"
 
 # Download the QE pseudopotentials to the folder for afterware installation.
-# XXX: a fix needed from aiida-pseudo
-RUN ${CONDA_DIR}/bin/pip uninstall -y aiida-pseudo && \
-     ${CONDA_DIR}/bin/pip install -U git+https://github.com/aiidateam/aiida-pseudo.git@feature/165/download-only-no-profile
 ENV PSEUDO_FOLDER ${CONDA_DIR}/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
