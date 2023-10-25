@@ -18,10 +18,10 @@ from IPython.display import display
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
+from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 from .resource import ParallelizationSettings, ResourceSelectionWidget
-from .sssp import SSSPInstallWidget
 
 PROTOCOL_PSEUDO_MAP = {
     "fast": "SSSP/1.2/PBE/efficiency",
@@ -89,6 +89,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         for _, entry_point in self.code_entries.items():
             for name, code in entry_point.items():
                 self.codes[name] = code
+                code.observe(self._update_state, "value")
                 self.code_children.append(self.codes[name])
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
@@ -110,7 +111,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # in case that the installation was already triggered elsewhere, e.g.,
         # by the start up scripts.  The submission is blocked while the
         # potentials are not yet installed.
-        self.sssp_installation_status = SSSPInstallWidget(auto_start=qe_auto_setup)
+        self.sssp_installation_status = PseudosInstallWidget(auto_start=qe_auto_setup)
         self.sssp_installation_status.observe(self._update_state, ["busy", "installed"])
         self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
 
@@ -310,7 +311,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @tl.observe("previous_step_state")
     def _observe_input_structure(self, _):
         self._update_state()
-        self.udpate_codes_visibility()
+        self.update_codes_display()
 
     @tl.observe("process")
     def _observe_process(self, change):
@@ -347,18 +348,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             for name, code in self.codes.items():
                 code.value = _get_code_uuid(codes.get(name))
 
-    def udpate_codes_visibility(self):
+    def update_codes_display(self):
         """Hide code if no related property is selected."""
         # hide all codes except pw
         for name, code in self.codes.items():
             if name == "pw":
                 continue
-            code.layout.visibility = "hidden"
+            code.layout.display = "none"
         properties = self.input_parameters.get("workchain", {}).get("properties", [])
         # show the code if the related property is selected.
         for identifer in properties:
             for code in self.code_entries.get(identifer, {}).values():
-                code.layout.visibility = "visible"
+                code.layout.display = "block"
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
