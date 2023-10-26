@@ -48,6 +48,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
     def __init__(self, description=None, **kwargs):
+        self.is_confirmed = False
         importers = [
             StructureUploadWidget(title="Upload file"),
             OptimadeQueryWidget(embedded=False),
@@ -161,6 +162,11 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self.manager.store_structure()
         self.confirmed_structure = self.structure
         self.message_area.value = ""
+        self.is_confirmed = True
+
+    def has_unsaved_changes(self):
+        """Check if the current structure is unsaved."""
+        return self.confirmed_structure != self.structure
 
     def can_reset(self):
         return self.confirmed_structure is not None

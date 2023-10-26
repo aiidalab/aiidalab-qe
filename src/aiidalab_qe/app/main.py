@@ -65,6 +65,7 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
+        self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
 
         # Add process selection header
         self.work_chain_selector = QeAppWorkChainSelector(
@@ -84,6 +85,30 @@ class App(ipw.VBox):
                 self._wizard_app_widget,
             ]
         )
+
+    @property
+    def steps(self):
+        return self._wizard_app_widget.steps
+
+    # Check unsaved change in the step when leaving the step.
+    def _observe_selected_index(self, change):
+        # check if the step is confirmed before
+        # if not, we don't need to check the unsaved changes
+        print("changes: ", change["old"], change["new"])
+        print("state: ", self.steps[change["old"]][1].state)
+        if getattr(self.steps[change["old"]][1], "is_confirmed", False) is False:
+            print("The step has not been confirmed before.")
+            return
+        # check if the step is changed
+        print("check if the step is changed")
+        if self.steps[change["old"]][1].has_unsaved_changes():
+            print("The step is changed.")
+            # update the blocker message of the submit step
+            msg = f"Unsaved changes in the step: {self.steps[change['old']][0]}"
+            print(msg)
+            self.steps[2][1]._submission_blockers.append(
+                "Unsaved changes in the step: "
+            )
 
     # Reset all subsequent steps in case that a new structure is selected
     def _observe_structure_selection(self, change):

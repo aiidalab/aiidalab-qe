@@ -25,6 +25,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     configuration_parameters = tl.Dict()
 
     def __init__(self, **kwargs):
+        self.is_confirmed = False
         self.workchain_settings = WorkChainSettings()
         self.advanced_settings = AdvancedSettings()
 
@@ -145,6 +146,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.configuration_parameters = self.get_configuration_parameters()
         self.confirm_button.disabled = False
         self.state = self.State.SUCCESS
+        self.is_confirmed = True
+
+    def has_unsaved_changes(self):
+        """Check if the current configuration is unsaved."""
+        new_parameters = self.get_configuration_parameters()
+        print(new_parameters)
+        return new_parameters != self.configuration_parameters
 
     @tl.default("state")
     def _default_state(self):
