@@ -99,6 +99,7 @@ class ResultPanel(Panel):
     """
 
     title = "Result"
+    # to specify which plugins (outputs) are needed for this result panel.
     workchain_labels = []
 
     def __init__(self, node=None, **kwargs):
