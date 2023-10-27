@@ -27,7 +27,8 @@ class App(ipw.VBox):
         self.structure_step.observe(self._observe_structure_selection, "structure")
         self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
         self.submit_step = SubmitQeAppWorkChainStep(
-            auto_advance=True, qe_auto_setup=qe_auto_setup, parent=self
+            auto_advance=True,
+            qe_auto_setup=qe_auto_setup,
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep()
 
@@ -52,6 +53,10 @@ class App(ipw.VBox):
             (self.configure_step, "configuration_parameters"),
             (self.submit_step, "input_parameters"),
         )
+        ipw.dlink(
+            (self, "_submission_blockers"),
+            (self.submit_step, "_app_submission_blockers"),
+        )
 
         ipw.dlink(
             (self.submit_step, "process"),
@@ -69,7 +74,6 @@ class App(ipw.VBox):
             ]
         )
         self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
-        self.observe(self._observe_submission_blockers, "_submission_blockers")
 
         # Add process selection header
         self.work_chain_selector = QeAppWorkChainSelector(
@@ -113,13 +117,6 @@ class App(ipw.VBox):
                 self._submission_blockers = [
                     f"There are unconfirmed changes in the Step {change['old']+1}: {self.steps[change['old']][0]}"
                 ]
-
-    def _observe_submission_blockers(self, change):
-        if change["new"]:
-            # udpate the blocker message of the submit step
-            self.submit_step._submission_blockers = list(
-                self.submit_step._identify_submission_blockers()
-            )
 
     # Reset all subsequent steps in case that a new structure is selected
     def _observe_structure_selection(self, change):
