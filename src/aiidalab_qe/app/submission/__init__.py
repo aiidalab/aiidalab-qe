@@ -61,7 +61,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_parameters = tl.Dict()
     _submission_blockers = tl.List(tl.Unicode())
-    _app_submission_blockers = tl.Dict()
+    _outside_submission_blockers = tl.Dict()
 
     def __init__(self, qe_auto_setup=True, **kwargs):
         self.message_area = ipw.Output()
@@ -139,13 +139,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ]
         )
 
-    @tl.observe("_app_submission_blockers")
-    def _observe_app_submission_blockers(self, change):
-        """Observe the submission blockers from the app."""
+    @tl.observe("_outside_submission_blockers")
+    def _observe_outside_submission_blockers(self, _=None):
+        """Observe the submission blockers from the app, and update the
+        submission blockers of the submit step."""
         self._submission_blockers = list(self._identify_submission_blockers())
 
     @tl.observe("_submission_blockers")
     def _observe_submission_blockers(self, change):
+        """Observe the submission blockers and update the message area."""
         if change["new"]:
             fmt_list = "\n".join((f"<li>{item}</li>" for item in sorted(change["new"])))
             self._submission_blocker_messages.value = f"""
@@ -156,8 +158,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._submission_blocker_messages.value = ""
 
     def _identify_submission_blockers(self):
+        """Identify the blockers for the submission.
+        Include the blockers from the app and the blockers from the submit step itself.
+        """
         # blocker messages from the app
-        for msgs in self._app_submission_blockers.values():
+        for msgs in self._outside_submission_blockers.values():
             for msg in msgs:
                 yield msg
         # Do not submit while any of the background setup processes are running.

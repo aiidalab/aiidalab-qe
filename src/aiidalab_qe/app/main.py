@@ -55,7 +55,7 @@ class App(ipw.VBox):
         )
         ipw.dlink(
             (self, "_submission_blockers"),
-            (self.submit_step, "_app_submission_blockers"),
+            (self.submit_step, "_outside_submission_blockers"),
         )
 
         ipw.dlink(
@@ -73,6 +73,10 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
+        # init the blocker messages
+        self._submission_blockers = {
+            i: [] for i in range(len(self._wizard_app_widget.steps))
+        }
         self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
 
         # Add process selection header
@@ -99,38 +103,28 @@ class App(ipw.VBox):
         return self._wizard_app_widget.steps
 
     def _observe_selected_index(self, change):
-        """Check unconfirmed change in the step when leaving the step."""
+        """Check unsaved change in the step when leaving the step."""
         with self.submit_step.hold_sync():
-            if change["old"] is None:
+            if change["new"] is None:
                 return
-            # check if the step is confirmed before
-            # if not, we don't need to check the unconfirmed changes
-            old_idx_step = self.steps[change["old"]][1]
-            if not getattr(old_idx_step, "is_confirmed", False):
-                return
+            new_idx = change["new"]
+            # if entering the submit step, udpate the blocker messages
             blockers = self._submission_blockers.copy()
-            # check if the step is changed
-            if old_idx_step.has_unconfirmed_changes():
-                # reset the state of the step
-                old_idx_step.state = WizardAppWidgetStep.State.CONFIGURED
-                # update the blocker message, this will trigger the observer
-                # to update the blocker message of the submit step
-                blockers[change["old"]] = [
-                    f"There are unconfirmed changes in the Step {change['old']+1}: {self.steps[change['old']][0]}"
-                ]
+            if new_idx == 2:
+                # check the structure step is saved
+                for i in range(2):
+                    # check if the step is saved
+                    if not self.steps[i][1].is_saved():
+                        self.steps[i][1].state = WizardAppWidgetStep.State.CONFIGURED
+                        blockers[i] = [
+                            f"There are unsaved changes in the Step {i+1}: {self.steps[i][0]}"
+                        ]
+                        # update the blocker message, this will trigger the observer
+                        # to update the blocker message of the submit step
+                    else:
+                        # remove the blocker message if the step has all changes confirmed
+                        blockers[i] = []
                 self._submission_blockers = blockers
-            else:
-                # remove the blocker message if the step has all changes confirmed
-                if blockers[change["old"]] != []:
-                    blockers[change["old"]] = []
-                    self._submission_blockers = blockers
-
-    def _observe_submission_blockers(self, change):
-        if change["new"]:
-            # udpate the blocker message of the submit step
-            self.submit_step._submission_blockers = list(
-                self.submit_step._identify_submission_blockers()
-            )
 
     def _observe_process_selection(self, change):
         from aiida.orm.utils.serialize import deserialize_unsafe

@@ -148,10 +148,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.state = self.State.SUCCESS
         self.is_confirmed = True
 
-    def has_unconfirmed_changes(self):
-        """Check if the current step has unconfirmed changes"""
+    def is_saved(self):
+        """Check if the current step is saved.
+        That all changes are confirmed.
+        """
         new_parameters = self.get_configuration_parameters()
-        return new_parameters != self.configuration_parameters
+        return new_parameters == self.configuration_parameters
 
     @tl.default("state")
     def _default_state(self):

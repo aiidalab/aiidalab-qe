@@ -35,8 +35,8 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
     assert app.submit_step.resources_config.num_cpus.value == 1
 
 
-def test_unconfirmed_changes(app_to_submit):
-    """Test if the unconfirmed changes are handled correctly"""
+def test_unsaved_changes(app_to_submit):
+    """Test if the unsaved changes are handled correctly"""
     from aiidalab_widgets_base import WizardAppWidgetStep
 
     app = app_to_submit
