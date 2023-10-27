@@ -11,8 +11,8 @@ def test_electronic_structure(generate_qeapp_workchain):
     # find the tab with the identifier "electronic_structure"
     tab = [
         tab
-        for tab in wcv.result_tabs.children[2:]
+        for tab in wcv.result_tabs.children
         if tab.identifier == "electronic_structure"
     ][0]
     # check the content of the tab
-    assert "DOS grouped by:" == tab.children[0].children[0].children[0].value
+    assert "DOS grouped by:" == tab.children[0].children[0].value
