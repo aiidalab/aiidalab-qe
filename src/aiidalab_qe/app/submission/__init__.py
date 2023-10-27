@@ -376,7 +376,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process.base.extras.set("ui_parameters", serialize(self.ui_parameters))
             self.process = process
 
-        self.state = self.State.SUCCESS
+        self._update_state()
 
     def _generate_label(self) -> dict:
         """Generate a label for the work chain based on the input parameters."""
