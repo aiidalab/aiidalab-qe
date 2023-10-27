@@ -26,7 +26,8 @@ class App(ipw.VBox):
         self.structure_step = StructureSelectionStep(auto_advance=True)
         self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
         self.submit_step = SubmitQeAppWorkChainStep(
-            auto_advance=True, qe_auto_setup=qe_auto_setup, parent=self
+            auto_advance=True,
+            qe_auto_setup=qe_auto_setup,
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep()
 
@@ -51,6 +52,10 @@ class App(ipw.VBox):
             (self.configure_step, "configuration_parameters"),
             (self.submit_step, "input_parameters"),
         )
+        ipw.dlink(
+            (self, "_submission_blockers"),
+            (self.submit_step, "_app_submission_blockers"),
+        )
 
         ipw.dlink(
             (self.submit_step, "process"),
@@ -68,7 +73,6 @@ class App(ipw.VBox):
             ]
         )
         self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
-        self.observe(self._observe_submission_blockers, "_submission_blockers")
 
         # Add process selection header
         self.work_chain_selector = QeAppWorkChainSelector(
