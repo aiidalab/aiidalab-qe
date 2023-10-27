@@ -19,7 +19,7 @@ from aiidalab_qe.common import QeAppWorkChainSelector
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
 
-    _submission_blockers = tl.List(tl.Unicode())
+    _submission_blockers = tl.Dict()
 
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
@@ -98,25 +98,32 @@ class App(ipw.VBox):
     def steps(self):
         return self._wizard_app_widget.steps
 
-    # Check unconfirmed change in the step when leaving the step.
     def _observe_selected_index(self, change):
+        """Check unconfirmed change in the step when leaving the step."""
         with self.submit_step.hold_sync():
             if change["old"] is None:
                 return
             # check if the step is confirmed before
             # if not, we don't need to check the unconfirmed changes
-            previous_step = self.steps[change["old"]][1]
-            if getattr(previous_step, "is_confirmed", False) is False:
+            old_idx_step = self.steps[change["old"]][1]
+            if getattr(old_idx_step, "is_confirmed", False) is False:
                 return
+            blockers = self._submission_blockers.copy()
             # check if the step is changed
-            if previous_step.has_unconfirmed_changes():
+            if old_idx_step.has_unconfirmed_changes():
                 # reset the state of the step
-                previous_step.state = WizardAppWidgetStep.State.CONFIGURED
+                old_idx_step.state = WizardAppWidgetStep.State.CONFIGURED
                 # update the blocker message, this will trigger the observer
                 # to update the blocker message of the submit step
-                self._submission_blockers = [
+                blockers[change["old"]] = [
                     f"There are unconfirmed changes in the Step {change['old']+1}: {self.steps[change['old']][0]}"
                 ]
+                self._submission_blockers = blockers
+            else:
+                # remove the blocker message if the step has all changes confirmed
+                if blockers[change["old"]] != []:
+                    blockers[change["old"]] = []
+                    self._submission_blockers = blockers
 
     # Reset all subsequent steps in case that a new structure is selected
     def _observe_structure_selection(self, change):

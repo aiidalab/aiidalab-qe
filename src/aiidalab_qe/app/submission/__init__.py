@@ -61,7 +61,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_parameters = tl.Dict()
     _submission_blockers = tl.List(tl.Unicode())
-    _app_submission_blockers = tl.List(tl.Unicode())
+    _app_submission_blockers = tl.Dict()
 
     def __init__(self, qe_auto_setup=True, **kwargs):
         self.message_area = ipw.Output()
@@ -142,8 +142,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @tl.observe("_app_submission_blockers")
     def _observe_app_submission_blockers(self, change):
         """Observe the submission blockers from the app."""
-        if change["new"]:
-            self._submission_blockers = list(self._identify_submission_blockers())
+        self._submission_blockers = list(self._identify_submission_blockers())
 
     @tl.observe("_submission_blockers")
     def _observe_submission_blockers(self, change):
@@ -158,8 +157,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _identify_submission_blockers(self):
         # blocker messages from the app
-        for msg in self._app_submission_blockers:
-            yield msg
+        for msgs in self._app_submission_blockers.values():
+            for msg in msgs:
+                yield msg
         # Do not submit while any of the background setup processes are running.
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
