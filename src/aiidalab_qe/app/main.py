@@ -19,6 +19,7 @@ from aiidalab_qe.common import QeAppWorkChainSelector
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
 
+    # use to store the blocker messages for each step
     _submission_blockers = tl.Dict()
 
     def __init__(self, qe_auto_setup=True):
@@ -105,7 +106,7 @@ class App(ipw.VBox):
             # check if the step is confirmed before
             # if not, we don't need to check the unconfirmed changes
             old_idx_step = self.steps[change["old"]][1]
-            if getattr(old_idx_step, "is_confirmed", False) is False:
+            if not getattr(old_idx_step, "is_confirmed", False):
                 return
             blockers = self._submission_blockers.copy()
             # check if the step is changed
