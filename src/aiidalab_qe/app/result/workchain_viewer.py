@@ -49,19 +49,16 @@ class WorkChainViewer(ipw.VBox):
         self.workflows_summary = SummaryView(self.node)
 
         self.summary_tab = ipw.VBox(children=[self.workflows_summary])
-        self.structure_tab = ipw.VBox(
-            [ipw.Label("Structure not available.")],
-            layout=ipw.Layout(min_height="380px"),
-        )
+        # Only the summary tab is shown by default
         self.result_tabs = ipw.Tab(children=[self.summary_tab])
 
         self.result_tabs.set_title(0, "Workflow Summary")
 
-        # add plugin specific settings
-        entries = get_entry_items("aiidalab_qe.properties", "result")
+        # get plugin result panels
+        # and save them the results dictionary
         self.results = {}
+        entries = get_entry_items("aiidalab_qe.properties", "result")
         for identifier, entry_point in entries.items():
-            # all the plugins result panels are added to the results dictionary
             result = entry_point(self.node)
             self.results[identifier] = result
             self.results[identifier].identifier = identifier
@@ -103,35 +100,38 @@ class WorkChainViewer(ipw.VBox):
         with self.hold_trait_notifications():
             if self.node.is_finished:
                 self._show_workflow_output()
+            # if the structure is present in the workchain,
+            # the structure tab will be added.
             if (
                 "structure" not in self._results_shown
                 and "structure" in self.node.outputs
             ):
                 self._show_structure()
-                self._results_shown.add("structure")
                 self.result_tabs.children += (self.structure_tab,)
                 self.result_tabs.set_title(
                     len(self.result_tabs.children) - 1, "Final Geometry"
                 )
+                self._results_shown.add("structure")
 
             # update the plugin specific results
             for result in self.results.values():
                 # check if the result is already shown
-                # check if the plugin workchain result is in the outputs
                 if result.identifier not in self._results_shown:
+                    # check if the all required results are in the outputs
                     results_ready = [
                         label in self.node.outputs for label in result.workchain_labels
                     ]
                     if False not in results_ready:
                         result._update_view()
                         self._results_shown.add(result.identifier)
-                        # if the result is present in the workchain, the result will be added to the tab
+                        # add this plugin result panel
                         self.result_tabs.children += (result,)
                         self.result_tabs.set_title(
                             len(self.result_tabs.children) - 1, result.title
                         )
 
     def _show_structure(self):
+        """Show the structure of the workchain."""
         self.structure_tab = StructureDataViewer(structure=self.node.outputs.structure)
 
     def _show_workflow_output(self):
