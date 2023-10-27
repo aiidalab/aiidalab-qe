@@ -216,27 +216,16 @@ class Result(ResultPanel):
         super().__init__(node=node, **kwargs)
 
     def _observe_group_dos_by(self, change):
-        data = export_data(self.node, group_dos_by=change["new"])
-        bands_data = data.get("bands", None)
-        dos_data = data.get("dos", None)
-        _bands_plot_view = BandsPlotWidget(
-            bands=bands_data,
-            dos=dos_data,
-        )
-        self.children = [
-            self.settings,
-            _bands_plot_view,
-        ]
+        """Update the view of the widget when the group_dos_by value changes."""
+        self._update_view()
 
     def _update_view(self):
         """Update the view of the widget."""
         #
         data = export_data(self.node, group_dos_by=self.group_dos_by.value)
-        bands_data = data.get("bands", None)
-        dos_data = data.get("dos", None)
         _bands_plot_view = BandsPlotWidget(
-            bands=bands_data,
-            dos=dos_data,
+            bands=data.get("bands", None),
+            dos=data.get("dos", None),
         )
         # update the electronic structure tab
         self.children = [
