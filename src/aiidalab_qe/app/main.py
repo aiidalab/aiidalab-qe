@@ -105,8 +105,6 @@ class App(ipw.VBox):
     def _observe_selected_index(self, change):
         """Check unsaved change in the step when leaving the step."""
         with self.submit_step.hold_sync():
-            if change["new"] is None:
-                return
             new_idx = change["new"]
             # if entering the submit step, udpate the blocker messages
             blockers = self._submission_blockers.copy()

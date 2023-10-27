@@ -25,7 +25,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     configuration_parameters = tl.Dict()
 
     def __init__(self, **kwargs):
-        self.is_confirmed = False
         self.workchain_settings = WorkChainSettings()
         self.advanced_settings = AdvancedSettings()
 
@@ -146,7 +145,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.configuration_parameters = self.get_configuration_parameters()
         self.confirm_button.disabled = False
         self.state = self.State.SUCCESS
-        self.is_confirmed = True
 
     def is_saved(self):
         """Check if the current step is saved.
