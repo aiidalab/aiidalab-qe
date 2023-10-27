@@ -108,9 +108,9 @@ class WorkChainViewer(ipw.VBox):
             ):
                 self._show_structure()
                 self.result_tabs.children += (self.structure_tab,)
-                self.result_tabs.set_title(
-                    len(self.result_tabs.children) - 1, "Final Geometry"
-                )
+                # index of the last tab
+                index = len(self.result_tabs.children) - 1
+                self.result_tabs.set_title(index, "Final Geometry")
                 self._results_shown.add("structure")
 
             # update the plugin specific results
@@ -121,14 +121,14 @@ class WorkChainViewer(ipw.VBox):
                     results_ready = [
                         label in self.node.outputs for label in result.workchain_labels
                     ]
-                    if False not in results_ready:
+                    if all(results_ready):
                         result._update_view()
                         self._results_shown.add(result.identifier)
                         # add this plugin result panel
                         self.result_tabs.children += (result,)
-                        self.result_tabs.set_title(
-                            len(self.result_tabs.children) - 1, result.title
-                        )
+                        # index of the last tab
+                        index = len(self.result_tabs.children) - 1
+                        self.result_tabs.set_title(index, result.title)
 
     def _show_structure(self):
         """Show the structure of the workchain."""
