@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
+import traitlets as tl
 from aiida.orm import load_node
 from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
@@ -18,13 +19,15 @@ from aiidalab_qe.common import QeAppWorkChainSelector
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
 
+    _submission_blockers = tl.List(tl.Unicode())
+
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
         self.structure_step = StructureSelectionStep(auto_advance=True)
         self.structure_step.observe(self._observe_structure_selection, "structure")
         self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
         self.submit_step = SubmitQeAppWorkChainStep(
-            auto_advance=True, qe_auto_setup=qe_auto_setup
+            auto_advance=True, qe_auto_setup=qe_auto_setup, parent=self
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep()
 
@@ -66,6 +69,7 @@ class App(ipw.VBox):
             ]
         )
         self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
+        self.observe(self._observe_submission_blockers, "_submission_blockers")
 
         # Add process selection header
         self.work_chain_selector = QeAppWorkChainSelector(
@@ -90,26 +94,32 @@ class App(ipw.VBox):
     def steps(self):
         return self._wizard_app_widget.steps
 
-    # Check unsaved change in the step when leaving the step.
+    # Check unconfirmed change in the step when leaving the step.
     def _observe_selected_index(self, change):
         with self.submit_step.hold_sync():
             if change["old"] is None:
                 return
             # check if the step is confirmed before
-            # if not, we don't need to check the unsaved changes
+            # if not, we don't need to check the unconfirmed changes
             previous_step = self.steps[change["old"]][1]
             if getattr(previous_step, "is_confirmed", False) is False:
                 return
             # check if the step is changed
-            if previous_step.has_unsaved_changes():
-                # update the blocker message of the submit step
-                blockers = [
-                    f"Unsaved changes in the step: {self.steps[change['old']][0]}"
-                ]
+            if previous_step.has_unconfirmed_changes():
                 # reset the state of the step
                 previous_step.state = WizardAppWidgetStep.State.CONFIGURED
-                # udpate the blocker message of the submit step
-                self.steps[2][1]._submission_blockers = blockers
+                # update the blocker message, this will trigger the observer
+                # to update the blocker message of the submit step
+                self._submission_blockers = [
+                    f"There are unconfirmed changes in the Step {change['old']+1}: {self.steps[change['old']][0]}"
+                ]
+
+    def _observe_submission_blockers(self, change):
+        if change["new"]:
+            # udpate the blocker message of the submit step
+            self.submit_step._submission_blockers = list(
+                self.submit_step._identify_submission_blockers()
+            )
 
     # Reset all subsequent steps in case that a new structure is selected
     def _observe_structure_selection(self, change):

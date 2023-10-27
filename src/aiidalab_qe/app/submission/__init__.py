@@ -62,7 +62,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     input_parameters = tl.Dict()
     _submission_blockers = tl.List(tl.Unicode())
 
-    def __init__(self, qe_auto_setup=True, **kwargs):
+    def __init__(self, qe_auto_setup=True, parent=None, **kwargs):
+        self.parent = parent
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
@@ -150,6 +151,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._submission_blocker_messages.value = ""
 
     def _identify_submission_blockers(self):
+        # blocker messages from the app
+        for msg in self.parent._submission_blockers:
+            yield msg
         # Do not submit while any of the background setup processes are running.
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
