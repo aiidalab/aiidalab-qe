@@ -35,6 +35,15 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
     assert app.submit_step.resources_config.num_cpus.value == 1
 
 
+def test_select_new_structure(app_to_submit, generate_structure_data):
+    """Test if the new structure is selected, the confirmed structure is reset"""
+    app = app_to_submit
+    assert app.structure_step.confirmed_structure is not None
+    # select a new structure will reset the confirmed structure
+    app.structure_step.structure = generate_structure_data()
+    assert app.structure_step.confirmed_structure is None
+
+
 def test_unsaved_changes(app_to_submit):
     """Test if the unsaved changes are handled correctly"""
     from aiidalab_widgets_base import WizardAppWidgetStep

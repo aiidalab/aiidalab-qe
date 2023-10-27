@@ -25,6 +25,7 @@ class App(ipw.VBox):
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
         self.structure_step = StructureSelectionStep(auto_advance=True)
+        self.structure_step.observe(self._observe_structure_selection, "structure")
         self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
         self.submit_step = SubmitQeAppWorkChainStep(
             auto_advance=True,
@@ -101,6 +102,15 @@ class App(ipw.VBox):
     @property
     def steps(self):
         return self._wizard_app_widget.steps
+
+    # Reset the confirmed_structure in case that a new structure is selected
+    def _observe_structure_selection(self, change):
+        with self.structure_step.hold_sync():
+            if (
+                self.structure_step.confirmed_structure is not None
+                and self.structure_step.confirmed_structure != change["new"]
+            ):
+                self.structure_step.confirmed_structure = None
 
     def _observe_selected_index(self, change):
         """Check unsaved change in the step when leaving the step."""
