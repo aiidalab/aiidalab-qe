@@ -308,10 +308,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
-    @tl.observe("previous_step_state")
+    @tl.observe("previous_step_state", "input_parameters")
     def _observe_input_structure(self, _):
         self._update_state()
-        self.udpate_codes_visibility()
+        self.update_codes_display()
 
     @tl.observe("process")
     def _observe_process(self, change):
@@ -348,18 +348,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             for name, code in self.codes.items():
                 code.value = _get_code_uuid(codes.get(name))
 
-    def udpate_codes_visibility(self):
+    def update_codes_display(self):
         """Hide code if no related property is selected."""
         # hide all codes except pw
         for name, code in self.codes.items():
             if name == "pw":
                 continue
-            code.layout.visibility = "hidden"
+            code.layout.display = "none"
         properties = self.input_parameters.get("workchain", {}).get("properties", [])
         # show the code if the related property is selected.
         for identifer in properties:
             for code in self.code_entries.get(identifer, {}).values():
-                code.layout.visibility = "visible"
+                code.layout.display = "block"
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
