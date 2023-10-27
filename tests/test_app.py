@@ -51,3 +51,9 @@ def test_unconfirmed_changes(app_to_submit):
     assert app.configure_step.state == WizardAppWidgetStep.State.CONFIGURED
     # check if a new blocker is added
     assert len(app.submit_step._submission_blockers) == n + 1
+    # confirm the changes
+    app._wizard_app_widget.selected_index = 1
+    app.configure_step.confirm()
+    app._wizard_app_widget.selected_index = 2
+    # the blocker should be removed
+    assert len(app.submit_step._submission_blockers) == n
