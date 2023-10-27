@@ -164,8 +164,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self.message_area.value = ""
         self.is_confirmed = True
 
-    def has_unsaved_changes(self):
-        """Check if the current structure is unsaved."""
+    def has_unconfirmed_changes(self):
+        """Check if the current structure is unconfirmed."""
         return self.confirmed_structure != self.structure
 
     def can_reset(self):
