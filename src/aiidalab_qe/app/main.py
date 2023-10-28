@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 """
 
 import copy
+import typing as t
 
 import ipywidgets as ipw
 from aiida.orm import load_node
@@ -90,7 +91,7 @@ class App(ipw.VBox):
         )
 
     @property
-    def steps(self):
+    def steps(self) -> t.List[t.Tuple[str, WizardAppWidgetStep]]:
         return self._wizard_app_widget.steps
 
     # Reset the confirmed_structure in case that a new structure is selected
