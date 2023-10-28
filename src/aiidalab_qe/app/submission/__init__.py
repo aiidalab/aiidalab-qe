@@ -60,8 +60,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_parameters = tl.Dict()
-    _submission_blockers = tl.List(tl.Unicode())
-    _outside_submission_blockers = tl.Dict()
+    internal_submission_blockers = tl.List(tl.Unicode())
+    external_submission_blockers = tl.List(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
         self.message_area = ipw.Output()
@@ -139,13 +139,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ]
         )
 
-    @tl.observe("_outside_submission_blockers")
-    def _observe_outside_submission_blockers(self, _=None):
-        """Observe the submission blockers from the app, and update the
-        submission blockers of the submit step."""
-        self._submission_blockers = list(self._identify_submission_blockers())
-
-    @tl.observe("_submission_blockers")
+    @tl.observe("internal_submission_blockers", "external_submission_blockers")
     def _observe_submission_blockers(self, change):
         """Observe the submission blockers and update the message area."""
         if change["new"]:
@@ -158,13 +152,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._submission_blocker_messages.value = ""
 
     def _identify_submission_blockers(self):
-        """Identify the blockers for the submission.
-        Include the blockers from the app and the blockers from the submit step itself.
-        """
-        # blocker messages from the app
-        for msgs in self._outside_submission_blockers.values():
-            for msg in msgs:
-                yield msg
+        """Validate the inputs and identify blockers for the submission."""
         # Do not submit while any of the background setup processes are running.
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
@@ -199,11 +187,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         blockers = list(self._identify_submission_blockers())
         if any(blockers):
-            self._submission_blockers = blockers
+            self.internal_submission_blockers = blockers
             self.state = self.State.READY
             return
 
-        self._submission_blockers = []
+        self.internal_submission_blockers = []
         self.state = self.state.CONFIGURED
 
     def _toggle_install_widgets(self, change):

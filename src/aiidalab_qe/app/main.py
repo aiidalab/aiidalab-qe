@@ -4,8 +4,9 @@
 Authors: AiiDAlab team
 """
 
+import copy
+
 import ipywidgets as ipw
-import traitlets as tl
 from aiida.orm import load_node
 from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
@@ -18,9 +19,6 @@ from aiidalab_qe.common import QeAppWorkChainSelector
 
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
-
-    # use to store the blocker messages for each step
-    _submission_blockers = tl.Dict()
 
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
@@ -54,10 +52,6 @@ class App(ipw.VBox):
             (self.configure_step, "configuration_parameters"),
             (self.submit_step, "input_parameters"),
         )
-        ipw.dlink(
-            (self, "_submission_blockers"),
-            (self.submit_step, "_outside_submission_blockers"),
-        )
 
         ipw.dlink(
             (self.submit_step, "process"),
@@ -74,10 +68,6 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
-        # init the blocker messages
-        self._submission_blockers = {
-            i: [] for i in range(len(self._wizard_app_widget.steps))
-        }
         self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
 
         # Add process selection header
@@ -117,22 +107,25 @@ class App(ipw.VBox):
         with self.submit_step.hold_sync():
             new_idx = change["new"]
             # if entering the submit step, udpate the blocker messages
-            blockers = self._submission_blockers.copy()
             if new_idx == 2:
                 # check the structure step is saved
                 for i in range(2):
                     # check if the step is saved
+                    blockers = copy.deepcopy(
+                        self.submit_step.external_submission_blockers
+                    )
                     if not self.steps[i][1].is_saved():
                         self.steps[i][1].state = WizardAppWidgetStep.State.CONFIGURED
-                        blockers[i] = [
+                        blockers.append(
                             f"There are unsaved changes in the Step {i+1}: {self.steps[i][0]}"
-                        ]
+                        )
                         # update the blocker message, this will trigger the observer
                         # to update the blocker message of the submit step
                     else:
                         # remove the blocker message if the step has all changes confirmed
-                        blockers[i] = []
-                self._submission_blockers = blockers
+                        blockers = []
+
+                    self.submit_step.external_submission_blockers = blockers
 
     def _observe_process_selection(self, change):
         from aiida.orm.utils.serialize import deserialize_unsafe
