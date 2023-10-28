@@ -107,25 +107,25 @@ class App(ipw.VBox):
         with self.submit_step.hold_sync():
             new_idx = change["new"]
             # if entering the submit step, udpate the blocker messages
-            if new_idx == 2:
-                # check the structure step is saved
-                for i in range(2):
-                    # check if the step is saved
-                    blockers = copy.deepcopy(
-                        self.submit_step.external_submission_blockers
-                    )
-                    if not self.steps[i][1].is_saved():
-                        self.steps[i][1].state = WizardAppWidgetStep.State.CONFIGURED
-                        blockers.append(
-                            f"There are unsaved changes in the Step {i+1}: {self.steps[i][0]}"
-                        )
-                        # update the blocker message, this will trigger the observer
-                        # to update the blocker message of the submit step
-                    else:
-                        # remove the blocker message if the step has all changes confirmed
-                        blockers = []
+            _, step = self.steps[new_idx]
 
-                    self.submit_step.external_submission_blockers = blockers
+            if step is not self.submit_step:
+                return
+
+            # Loop over all steps before the submit step and check if they are ready.
+            for title, preceding_step in self.steps[:new_idx]:
+                # check if the step is saved
+                blockers = copy.deepcopy(self.submit_step.external_submission_blockers)
+                if not preceding_step.is_saved():
+                    preceding_step.state = WizardAppWidgetStep.State.CONFIGURED
+                    blockers.append(
+                        f"Unsaved changes in the {title} step. Please save the changes before submitting."
+                    )
+                else:
+                    # remove the blocker message if the step has all changes confirmed
+                    blockers = []
+
+                self.submit_step.external_submission_blockers = blockers
 
     def _observe_process_selection(self, change):
         from aiida.orm.utils.serialize import deserialize_unsafe
