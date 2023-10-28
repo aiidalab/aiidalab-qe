@@ -60,8 +60,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_parameters = tl.Dict()
-    internal_submission_blockers = tl.List(tl.Unicode())
-    external_submission_blockers = tl.List(tl.Unicode())
+    internal_submission_blockers = tl.Set(tl.Unicode())
+    external_submission_blockers = tl.Set(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
         self.message_area = ipw.Output()
@@ -185,13 +185,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.SUCCESS
             return
 
-        blockers = list(self._identify_submission_blockers())
+        blockers = set(self._identify_submission_blockers())
         if any(blockers):
             self.internal_submission_blockers = blockers
             self.state = self.State.READY
             return
 
-        self.internal_submission_blockers = []
+        self.internal_submission_blockers = set()
         self.state = self.state.CONFIGURED
 
     def _toggle_install_widgets(self, change):
