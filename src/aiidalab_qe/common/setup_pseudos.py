@@ -112,12 +112,17 @@ def pseudos_to_install() -> set[str]:
     return EXPECTED_PSEUDOS - labels
 
 
-def _construct_cmd(pseudo_family_string: str, download_only: bool = False) -> list:
+def _construct_cmd(
+    pseudo_family_string: str, download_only: bool = False, cwd: Path | None = None
+) -> list:
     """Construct the command for installation of pseudopotentials.
 
-    If ``dir`` is not None, and download_only is True the, only download the
-    pseudopotential files to the `dir` folder.
-    If ``download_only`` is False and dir is not None, the the pseudos will be installed from the ``dir`` where the pseudos are downloaded to.
+    If ``cwd`` is not None, and ``download_only`` is True the, only download the
+    pseudopotential files to the ``cwd`` folder.
+    If ``download_only`` is False and ``cwd`` is not None, the the pseudos will be installed from the ``cwd`` where the pseudos are downloaded to.
+
+    NOTE: download_only has nothing to do with cwd, it will not download the pseudos to cwd if cwd is specified.
+    The control to download to cwd is in the ``_install_pseudos`` function below.
     """
     pseudo_family = PseudoFamily.from_string(pseudo_family_string)
 
@@ -155,6 +160,13 @@ def _construct_cmd(pseudo_family_string: str, download_only: bool = False) -> li
     if download_only:
         cmd.append("--download-only")
 
+    # if cwd source folder specified, then install the pseudos from the folder
+    # download file name is replace `/` with `_` of the pseudo family string with `.aiida_pseudo` extension
+    if not download_only and cwd is not None:
+        file_path = cwd / f"{pseudo_family_string.replace('/', '_')}.aiida_pseudo"
+        if file_path.exists():
+            cmd.extend(["--from-download", str(file_path)])
+
     return cmd
 
 
@@ -173,18 +185,7 @@ def _install_pseudos(
     mult = 1.0 / len(pseudo_families)
     yield mult * 0
     for i, pseudo_family in enumerate(pseudo_families):
-        cmd = _construct_cmd(pseudo_family, download_only)
-
-        # if cwd source folder specified, then install the pseudos from the folder
-        # download file name is replace `/` with `_` of the pseudo family string with `.aiida_pseudo` extension
-        if not download_only and cwd is not None:
-            file_path = cwd / f"{pseudo_family.replace('/', '_')}.aiida_pseudo"
-            if not file_path.exists():
-                raise FileNotFoundError(
-                    f"File {file_path} does not exist, run `download_only` first."
-                )
-
-            cmd.extend(["--from-download", file_path])
+        cmd = _construct_cmd(pseudo_family, download_only, cwd=cwd)
 
         run_cmd(cmd, env=env, cwd=cwd)
 

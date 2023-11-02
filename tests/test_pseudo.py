@@ -10,7 +10,7 @@ from aiidalab_qe.common.setup_pseudos import (
 )
 
 
-def test_setup_pseudos_cmd():
+def test_setup_pseudos_cmd(tmp_path):
     """Test _construct_cmd function in setup_pseudos.py."""
 
     # SSSP family
@@ -67,6 +67,35 @@ def test_setup_pseudos_cmd():
         "--download-only",
     ]
 
+    # with cwd option to specify the source folder
+    pseudo_family = f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf"
+    cmd = _construct_cmd(pseudo_family, cwd=tmp_path)
+
+    # since the source file not exist, the cmd should be the same as above
+    assert "--from-download" not in cmd
+
+    # mock the source file
+    source_file = tmp_path / "PseudoDojo_0.4_PBEsol_SR_standard_upf.aiida_pseudo"
+    source_file.touch()
+    cmd = _construct_cmd(pseudo_family, cwd=tmp_path)
+    assert cmd == [
+        "aiida-pseudo",
+        "install",
+        "pseudo-dojo",
+        "--functional",
+        "PBEsol",
+        "--version",
+        "0.4",
+        "-p",
+        "standard",
+        "--relativistic",
+        "SR",
+        "--pseudo-format",
+        "upf",
+        "--from-download",
+        f"{str(tmp_path)}/PseudoDojo_0.4_PBEsol_SR_standard_upf.aiida_pseudo",
+    ]
+
 
 @pytest.mark.usefixtures("aiida_profile_clean")
 def test_pseudos_installation():
@@ -93,10 +122,6 @@ def test_download_and_install_pseudo_from_file(tmp_path):
         f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/standard/upf",
         f"SSSP/{SSSP_VERSION}/PBE/efficiency",
     }
-
-    # raise error if the file does not exist
-    with pytest.raises(FileNotFoundError):
-        [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, cwd=tmp_path)]
 
     # Download the pseudos to the tmp_path but not install
     [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, download_only=True, cwd=tmp_path)]
