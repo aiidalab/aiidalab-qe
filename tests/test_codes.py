@@ -44,17 +44,18 @@ def test_identify_submission_blockers(app):
     """Test identify_submission_blockers method."""
     submit = app.submit_step
     blockers = list(submit._identify_submission_blockers())
-    # there is one blocker: ['The SSSP library is not installed.']
-    assert len(blockers) == 1
+    assert len(blockers) == 0
+
     submit.input_parameters = {"workchain": {"properties": ["pdos"]}}
     blockers = list(submit._identify_submission_blockers())
-    assert len(blockers) == 1
+
+    assert len(blockers) == 0
     # set dos code to None, will introduce another blocker
     dos_value = submit.codes["dos"].value
     submit.codes["dos"].value = None
     blockers = list(submit._identify_submission_blockers())
-    assert len(blockers) == 2
+    assert len(blockers) == 1
     # set dos code back will remove the blocker
     submit.codes["dos"].value = dos_value
     blockers = list(submit._identify_submission_blockers())
-    assert len(blockers) == 1
+    assert len(blockers) == 0

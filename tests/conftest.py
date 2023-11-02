@@ -299,6 +299,7 @@ def app(pw_code, dos_code, projwfc_code):
     from aiidalab_qe.app.main import App
 
     app = App(qe_auto_setup=False)
+    app.submit_step.sssp_installation_status.installed = True
     # set up codes
     app.submit_step.pw_code.refresh()
     app.submit_step.codes["dos"].refresh()
