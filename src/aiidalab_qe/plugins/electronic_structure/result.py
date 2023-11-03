@@ -1,8 +1,13 @@
+"""Electronic structure results view widgets"""
 import json
 import random
 
+import ipywidgets as ipw
 from aiida import orm
 from monty.json import jsanitize
+from widget_bandsplot import BandsPlotWidget
+
+from aiidalab_qe.common.panel import ResultPanel
 
 
 def export_data(work_chain_node, group_dos_by="atom"):
@@ -182,3 +187,48 @@ def cmap(label: str) -> str:
     random.seed(ascn)
 
     return "#%06x" % random.randint(0, 0xFFFFFF)
+
+
+class Result(ResultPanel):
+    title = "Electronic Structure"
+    workchain_labels = ["bands", "pdos"]
+
+    def __init__(self, node=None, **kwargs):
+        self.dos_group_label = ipw.Label(
+            "DOS grouped by:",
+            layout=ipw.Layout(justify_content="flex-start", width="120px"),
+        )
+        self.group_dos_by = ipw.ToggleButtons(
+            options=[
+                ("Atom", "atom"),
+                ("Orbital", "angular"),
+            ],
+            value="atom",
+        )
+        self.settings = ipw.HBox(
+            children=[
+                self.dos_group_label,
+                self.group_dos_by,
+            ],
+            layout={"margin": "0 0 30px 30px"},
+        )
+        self.group_dos_by.observe(self._observe_group_dos_by, names="value")
+        super().__init__(node=node, **kwargs)
+
+    def _observe_group_dos_by(self, change):
+        """Update the view of the widget when the group_dos_by value changes."""
+        self._update_view()
+
+    def _update_view(self):
+        """Update the view of the widget."""
+        #
+        data = export_data(self.node, group_dos_by=self.group_dos_by.value)
+        _bands_plot_view = BandsPlotWidget(
+            bands=data.get("bands", None),
+            dos=data.get("dos", None),
+        )
+        # update the electronic structure tab
+        self.children = [
+            self.settings,
+            _bands_plot_view,
+        ]
