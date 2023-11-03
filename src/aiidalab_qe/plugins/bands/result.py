@@ -29,14 +29,15 @@ class Result(ResultPanel):
     """Result panel for the bands calculation."""
 
     title = "Bands"
+    workchain_labels = ["bands"]
 
     def __init__(self, node=None, **kwargs):
-        super().__init__(node=node, identifier="bands", **kwargs)
+        super().__init__(node=node, **kwargs)
 
     def _update_view(self):
         from widget_bandsplot import BandsPlotWidget
 
-        bands_data = export_bands_data(self.outputs)
+        bands_data = export_bands_data(self.outputs.bands)
         _bands_plot_view = BandsPlotWidget(
             bands=bands_data,
         )
