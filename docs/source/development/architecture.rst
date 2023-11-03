@@ -4,19 +4,19 @@
 Architecture
 ************************
 
-Wizards UI
+Wizards-like UI
 ==========
 
-QuantumESPRESSO app uses the Wizards UI, which divides one calculation into four steps.
-Each step may contain several sections (panels), as shown below.
+QuantumESPRESSO app uses the [Wizards-like UI design](https://en.wikipedia.org/wiki/Wizard_(software)), which divides one calculation into four steps.
+Each step may contain several sections (panels), as shown in the figure below.
 
 .. image:: ../_static/images/plugin_step.png
 
 Parameter transfer between steps
 ---------------------------------
 
-The data is passed to the next step by linking it to the corresponding ``trail`` of the step.
-For example, the ``confirmed_structure`` of step 1 is linked to the ``input_structure`` ``trail`` of step 2.
+The data is passed to the next step by linking it to the corresponding ``trait`` of the step widget.
+For example, the ``confirmed_structure`` of step 1 links to the ``input_structure`` trait of step 2.
 
 .. code:: python
 
@@ -25,9 +25,7 @@ For example, the ``confirmed_structure`` of step 1 is linked to the ``input_stru
             (self.configure_qe_app_work_chain_step, "input_structure"),
         )
 
-In the configuration step, there are several panels.
-The parameters from these panels are generated and stored as a dictionary,
-which is linked to the ``input_parameters`` ``trail`` of the next submit step.
+Each step widget can contains several panels. In the configuration step, the parameters from the panels are generated and stored as a dictionary, which is linked to the ``input_parameters`` trait of the next submit step.
 The dictionary has the following structure:
 
 .. code:: python
@@ -61,21 +59,20 @@ Plugin
 ======
 
 QuantumESPRESSO app supports running multiple properties (bands, pdos, etc.) calculations in one app.
-Please take into account the following facts:
+The individual properties to be developed and seamlessly integrated into the QuantumESPRESSO app as plugins. This integration is made possible due to several key aspects:
 
 - the configuration for a property calculation has its settings unrelated to other properties.
 - the sub-workchain of the properties can be run independently.
-- the analysis of the results of the properties is also independent.
+- the analysis of the results of the properties is independent.
 
-Thus, we can develop a property separately and integrate it into the QuantumESPRESSO app as a plugin.
 Each plugin responsible for one property calculation.
-For example, we could create a PDOS plugin, including its settings, workchain, and result analysis.
-The GUI of the PDOS plugin is only loaded when the user selects to run the PDOS property.
+For instance, we could create a PDOS plugin, including its settings, workchain, and result analysis.
+The GUI of the PDOS plugin is only loaded when the user selects to run it.
 Here is an example, where two new setting panels are shown when the user selects to run the properties.
 
 .. figure:: ../_static/images/plugin_example.png
 
 
-A QuantumESPRESSO app plugin will typically register new panels (setting, result), and workchain to extend the app's functionality.
+A QuantumESPRESSO app plugin will typically register new panels (setting, result), and workchain to extend the functionality of the app.
 The plugin design makes the QuantumESPRESSO app more modularized and pluggable.
-So the developer can maintain their plugin as a separate folder in the QuantumESPRESSO app (even a separate package).
+Consequently, developers have the flexibility to manage their plugins in a distinct folder within the QuantumESPRESSO application's codebase, or they may choose to maintain it as an independent package.
