@@ -5,7 +5,7 @@ Architecture
 ************************
 
 Wizards-like UI
-==========
+================
 
 QuantumESPRESSO app uses the [Wizards-like UI design](https://en.wikipedia.org/wiki/Wizard_(software)), which divides one calculation into four steps.
 Each step may contain several sections (panels), as shown in the figure below.
@@ -56,8 +56,7 @@ The dictionary has the following structure:
     }
 
 Plugin
-======
-
+=========
 QuantumESPRESSO app supports running multiple properties (bands, pdos, etc.) calculations in one app.
 The individual properties to be developed and seamlessly integrated into the QuantumESPRESSO app as plugins. This integration is made possible due to several key aspects:
 
@@ -70,7 +69,7 @@ For instance, we could create a PDOS plugin, including its settings, workchain, 
 The GUI of the PDOS plugin is only loaded when the user selects to run it.
 Here is an example, where two new setting panels are shown when the user selects to run the properties.
 
-.. figure:: ../_static/images/plugin_example.png
+.. figure:: ../_static/images/plugin_example.gif
 
 
 A QuantumESPRESSO app plugin will typically register new panels (setting, result), and workchain to extend the functionality of the app.
