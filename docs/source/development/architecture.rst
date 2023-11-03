@@ -71,7 +71,6 @@ Here is an example, where two new setting panels are shown when the user selects
 
 .. figure:: ../_static/images/plugin_example.gif
 
-
 A QuantumESPRESSO app plugin will typically register new panels (setting, result), and workchain to extend the functionality of the app.
 The plugin design makes the QuantumESPRESSO app more modularized and pluggable.
 Consequently, developers have the flexibility to manage their plugins in a distinct folder within the QuantumESPRESSO application's codebase, or they may choose to maintain it as an independent package.

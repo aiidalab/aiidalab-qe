@@ -112,7 +112,6 @@ Result
 A  :class:`~aiidalab_qe.common.panel.ResultPanel` widget will register a new panel in the results step.
 The ``EOS`` panel is shown below:
 
-
 .. image:: ../_static/images/plugin_result.png
 
 In this widget, you need to:
@@ -123,12 +122,10 @@ In this widget, you need to:
 The output of the workchain will be stored in ``self.outputs.plugin_name``.
 For example, you can access the ``output_parameters`` output of the ``EOSWorkChain`` by ``self.outputs.eos.output_parameters``.
 
-
 .. code-block:: python
 
     from aiidalab_qe.common.panel import ResultPanel
     import ipywidgets as ipw
-
 
     class Result(ResultPanel):
         title = "EOS"
@@ -269,7 +266,6 @@ Here is the entry point for this plugin.
     "result": Result,
     }
 
-
 Install the plugin
 -----------------------
 To install the plugin, you can creating a new package or adding it to the `aiidalab_qe.plugins` folder.
@@ -284,7 +280,6 @@ You need to add the path of ``eos`` to ``entry_points`` inside the setup file.
         },
 
 **Bringing It All Together**, you can find all the code above in the `aiidalab-qe-plugin-demos`_ repository.
-
 
 Advanced usage
 ================================
@@ -326,7 +321,6 @@ Here is the entry point for the `surface` plugin.
     from .importer import SurfaceImporter
     from .editor import SurfaceEditor
 
-
     surface ={
     "importer": SurfaceImporter,
     "editor": SurfaceEditor,
@@ -361,7 +355,6 @@ Here is the example of the built-in `pdos` plugins with codes `dos.x` and `projw
 
 For the moment, the app does not support set up the newly added codes automatically.
 Thus, the user needs to set up the codes manually.
-
 
 Further Reading
 ================================
