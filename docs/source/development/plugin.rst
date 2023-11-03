@@ -6,104 +6,188 @@ Create your plugin
 
 A QuantumESPRESSO app plugin will typically register new panels (setting, result), and workchain to extend the app's functionality.
 
-
 Your First Plugin
 ================================
 
-Here is the an example plugin to print the formula of the input structure:
+Here is the an example plugin to calculate the equation of state (EOS) of a material.
+This plugin will register the following items:
+
+- Outline
+- Setting
+- Result
+- Workchain
+
+Let's go through each item in detail.
 
 Outline
 -----------------------
-A  :class:`~aiidalab_qe.common.panel.Outline` widget can add an item in the properties section of the workflow panel.
-In this example, we add the ``Hello World`` outline.
+A  :class:`~aiidalab_qe.common.panel.Outline` widget can add an item, as a checkbox, in the properties section of the workflow panel in the configuration step.
+You only need to set the title of the outline.
 
 .. code-block:: python
 
     from aiidalab_qe.common.panel import OutlinePanel
 
-    class Outline(OutlinePanel):
-        title = "Hello World"
+    class EosOutline(OutlinePanel):
+        title = "Equation of State (EOS)"
 
-The outline is a checkbox, as shown below.
+The ``EOS`` outline is shown below.
 
 .. image:: ../_static/images/plugin_outline.png
     :align: center
 
 Setting
 -----------------------
-A setting :class:`~aiidalab_qe.common.panel.Panel` widget will register a new panel in the configuration step, e.g. the ``Hello world`` panel.
+A setting :class:`~aiidalab_qe.common.panel.Panel` widget will register a new panel in the configuration step, e.g. the ``EOS setting`` panel.
 
 .. image:: ../_static/images/plugin_setting.png
 
-In this class, you can add widgets to the GUI.
-The values of these widgets will be used in the WorkChain.
-you need to override the the following methods:
+In this panel, you can add widgets to set the input parameters for the plugin's WorkChain.
+For example, a ``FloatText`` widget to set the scale of the structure, and a ``IntText`` widget to set the number of points.
+Beside, you need to override the the following methods:
 
-- ``get_panel_value`` method to tell the app how to use the values from the widgets.
-- ``set_panel_value`` method to tell the app how to reload the panel values from the previous calculation.
-- ``reset`` method to reset the panel to the default values.
+- ``get_panel_value`` to tell the app how to get the values from the widgets.
+- ``set_panel_value`` to tell the app how to reload the panel values from the previous calculation.
+- ``reset`` to reset the panel to the default values.
 
 .. code-block:: python
 
+    import ipywidgets as ipw
     from aiidalab_qe.common.panel import Panel
 
     class Setting(Panel):
-        """"""
-        title = "Hello world"
+
+        title = "EOS Settings"
 
         def __init__(self, **kwargs):
-            self.name = ipw.Text(value="", description="Your name:")
-            self.children = [self.name]
+            self.settings_title = ipw.HTML(
+                """<div style="padding-top: 0px; padding-bottom: 0px">
+                <h4>Settings</h4></div>"""
+            )
+            self.settings_help = ipw.HTML(
+                """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+                Please set the value of scale and number of points.
+                </div>"""
+            )
+            self.scale = ipw.FloatText(
+                value=0.05,
+                description="Scale:",
+                disabled=False,
+                style={"description_width": "initial"},
+            )
+            self.npoint = ipw.IntText(
+                value=5,
+                description="Npoint:",
+                disabled=False,
+                style={"description_width": "initial"},
+            )
+
+            self.children=[
+                    self.settings_title,
+                    self.settings_help,
+                    self.scale,
+                    self.npoint,
+                ]
             super().__init__(**kwargs)
 
         def get_panel_value(self):
-            """Get the panel value"""
-            return {"name": Str(self.name.value)}
+            """Return a dictionary with the input parameters for the plugin."""
+            return {
+                "scale": self.scale.value,
+                "npoint": self.npoint.value,
+            }
 
         def set_panel_value(self, input_dict):
-            """Set the panel value"""
-            self.name.value = input_dict.get("name", 1)
+            """Set a dictionary with the input parameters for the plugin."""
+            self.scale.value = input_dict.get("scale", 0.05)
+            self.npoint.value = input_dict.get("npoint", 5)
 
         def reset(self):
-            """Reset the panel"""
-            self.name.value = ""
+            """Reset the input fields."""
+            self.scale.value = 0.05
+            self.npoint.value = 5
 
 Result
 -----------------------
-A  :class:`~aiidalab_qe.common.panel.ResultPanel` will register a new panel in the results step. The ``Hello world`` panel is shown below:
+A  :class:`~aiidalab_qe.common.panel.ResultPanel` widget will register a new panel in the results step.
+The ``EOS`` panel is shown below:
 
 
 .. image:: ../_static/images/plugin_result.png
 
-In this class, you need to:
+In this widget, you need to:
 
 - specify the `workchain_labels` to tell the app which workchains the panel is intended for.
 - implement the ``_update_view`` method to tell the app how to show the results of the workchain.
 
-The output of the workchain will be stored in ``self.outputs.hello_world``.
-For example, the ``name`` and ``structure`` are the outputs of the ``HelloWorldWorkChain``.
+The output of the workchain will be stored in ``self.outputs.plugin_name``.
+For example, you can access the ``output_parameters`` output of the ``EOSWorkChain`` by ``self.outputs.eos.output_parameters``.
 
 
 .. code-block:: python
 
     from aiidalab_qe.common.panel import ResultPanel
+    import ipywidgets as ipw
+
 
     class Result(ResultPanel):
-        title = "Hello world"
-        workchain_labels = ["hello_world"]
+        title = "EOS"
+        workchain_labels = ["eos"]
+
+        def __init__(self, node=None, **kwargs):
+            super().__init__(node=node, identifier="eos", **kwargs)
 
         def _update_view(self):
-            name = self.outputs.hello_world.name.value
-            formula = self.outputs.hello_world.structure.get_formula()
-            self.summary_view = ipw.HTML(
-                f"""<div> <h4>Hello {name}</h4> The input structure is: {formula} </div>""".format()
+            import plotly.graph_objects as go
+            from ase.eos import EquationOfState
+            # init figure
+            g = go.FigureWidget(
+                layout=go.Layout(
+                    title=dict(text="Equation of State"),
+                    barmode="overlay",
+                )
             )
-            self.children = [ipw.HBox(children=[self.summary_view])]
-
+            g.layout.xaxis.title = "Volume (A^3)"
+            g.layout.yaxis.title = "Energy (eV)"
+            # get the output parameters
+            eos = self.outputs.eos.output_parameters.get_dict()
+            volumes = eos["volumes"]
+            energies = eos["energies"]
+            eos = EquationOfState(volumes, energies, eos="birchmurnaghan")
+            v0, e0, B = eos.fit()
+            plotdata = eos.getplotdata()
+            g.add_scatter(x=volumes, y=energies, mode="markers", marker=dict(size=10), name="DFT")
+            g.add_scatter(x=plotdata[4], y=plotdata[5], mode="lines", name="Birch-Murnaghan")
+            #
+            self.summary_view = ipw.HTML(
+                """<div style="padding-top: 0px; padding-bottom: 0px">
+                <h4>Parameters</h4>
+                <table>
+                    <tr>
+                        <td>V0</td>
+                        <td>{:1.3f}</td>
+                    </tr>
+                    <tr>
+                        <td>E0</td>
+                        <td>{:1.3f}</td>
+                    </tr>
+                    <tr>
+                        <td>B</td>
+                        <td>{:1.3f}</td>
+                    </tr>
+                    </table>
+                </div>""".format(v0, e0, B)
+            )
+            self.children = [
+                ipw.HBox(
+                        children=[self.summary_view, g],
+                        layout=ipw.Layout(justify_content="space-between", margin="10px"),
+                    ),
+                ]
 
 WorkChain and Builder
 -----------------------
-you need to implement a ``get_builder`` function to tell QuantumESPRESSO app how to use the input parameters from the GUI.
+You need to implement a ``get_builder`` function to tell QuantumESPRESSO app how to use the input parameters from the GUI.
 
 The `parameters` passed to the `get_builder` function has the following structure:
 
@@ -130,76 +214,85 @@ The `parameters` passed to the `get_builder` function has the following structur
         },
         "bands": {"kpath_2d": "hexagonal"},
         "pdos": {...},
-        "hello_world": {...},
+        "eos": {...},
         "plugin_1": {...},
     }
 
-you need to decide which parameters are needed for the workchain, and how to use them.
-For example, the ``HelloWorldWorkChain`` needs the ``name`` parameter, which is defined in the ``Setting`` panel.
-The ``get_builder`` function will return a ``builder`` for the ``HelloWorldWorkChain``.
-The ``builder`` will be used to submit the workchain.
-
-
+You need to decide which parameters are needed for the workchain, and how to use them.
+For example, the ``EOSWorkChain`` needs the ``pw`` code and the ``advanced`` setting for the ``pw`` code.
+It also needs the ``parameters`` which are defined in the ``EOS Setting`` panel.
+The ``get_builder`` function will return a ``builder`` for the ``EOSWorkChain``, which will be attached to the main builder of the ``QeAppWorkchain``.
 
 .. code-block:: python
 
-    def get_builder(codes, structure, parameters):
-        """Get the workchain specific parameters
-        """
-        parameters = parameters.get("hello_world", {})
-        builder = HelloWorldWorkChain.get_builder_from_protocol(
-            codes=codes,
-            structure=structure,
-            parameters=parameters,
-        )
+    def get_builder(codes, structure, parameters, **kwargs):
+        protocol = parameters["workchain"].pop('protocol', "fast")
+        pw_code = codes.get("pw")
+        overrides = {
+            "pw": parameters["advanced"],
+        }
+        builder = EOSWorkChain.get_builder_from_protocol(
+                    pw_code=pw_code,
+                    structure=structure,
+                    protocol=protocol,
+                    electronic_type=ElectronicType(parameters["workchain"]  ["electronic_type"]),
+                    spin_type=SpinType(parameters["workchain"]["spin_type"]),
+                    initial_magnetic_moments=parameters["advanced"] ["initial_magnetic_moments"],
+                    parameters=parameters["eos"],
+                    overrides=overrides,
+                    **kwargs,
+                )
         return builder
 
-Then register the workchain and builder in the `workchain_and_builder` dict, so that the QuantumESPRESSO app can load them.
+Then add the workchain and builder into the `workchain_and_builder` dict, so that the QuantumESPRESSO app can load them.
 
 .. code-block:: python
 
     # register the workchain and builder
     workchain_and_builder = {
-        "workchain": HelloWorldWorkChain,
+        "workchain": EOSWorkChain,
         "get_builder": get_builder,
     }
 
 Entry point
 -----------------------
-Finally, you need to register the entry point of the plugin. Here is the entry point for this plugin.
+Finally, you need to register the entry point of the plugin.
+Here is the entry point for this plugin.
 
 .. code-block:: python
 
     # this is the entry point of the plugin
-    hello_world ={
-        "outline": Outline,
-        "setting": Setting,
-        "workchain": workchain_and_builder,
-        "result": Result,
+    eos ={
+    "outline": EosOutline,
+    "setting": Setting,
+    "workchain": workchain_and_builder,
+    "result": Result,
     }
+
 
 Install the plugin
 -----------------------
 To install the plugin, you can creating a new package or adding it to the `aiidalab_qe.plugins` folder.
-you need to add the path of ``hello_world`` to ``entry_points`` inside the setup file.
+You need to add the path of ``eos`` to ``entry_points`` inside the setup file.
 
 .. code-block:: python
 
     entry_points={
             "aiidalab_qe.properties": [
-                "hello_world = aiidalab_qe_hello_world:hello_world",
+                "eos = aiidalab_qe_plugin_demos.eos:eos",
             ],
         },
 
-**Bringing It All Together**, You can find all the code above in this github repository: https://github.com/superstar54/aiidalab-qe-hello-world
+**Bringing It All Together**, you can find all the code above in the `aiidalab-qe-plugin-demos`_ repository.
+
 
 Advanced usage
 ================================
 A plugin does not need to register all the items (settings, workchain, results).
-The panel in each step is pluggable, which means you could only register you item in a plugin.
-For example, you can only add a new `Result` panel without doing any property calculation.
-The built-in `electronic_structure` plugin only has a result panel, which needs the result from both `pdos`` and `bands`` plugins.
-This is set by the `workchain_labels` attribute.
+The panel in each step is pluggable, which means you could only register one item in a plugin.
+For example, the built-in `electronic_structure` plugin only has a result panel without doing any property calculation.
+The pupose of the `electronic_structure` plugin is to show the results of the `bands`` and `pdos`` plugins together.
+In order to do this, it set add both ``pdos`` and ``bands`` to the ``workchain_labels``.
 
 .. code-block:: python
 
@@ -207,7 +300,7 @@ This is set by the `workchain_labels` attribute.
         title = "Electronic Structure"
         workchain_labels = ["bands", "pdos"]
 
-Here is the entry point for this plugin.
+Here is the entry point for the `electronic_structure` plugin.
 
 .. code-block:: python
 
@@ -219,26 +312,60 @@ Here is the entry point for this plugin.
 
 Structure importer and editor
 ------------------------------
-The plugin API also allows the user to add a new structure importer and editor:
+The app also allows the user to add new panels in the structure selection step:
 
-- add structure `importer` specific for particular structures, e.g. surface,  adsorbate.
-- add a new `editor` to edit a structure for the plugin, e.g. edit tags, and cut surface.
+- structure ``importer``: specific for particular structures, e.g. surface,  adsorbate.
+- structure ``editor``: to edit a structure for the plugin, e.g. edit tags, and cut surface.
 
-Here is the example for such plugin.
+You can find an example plugin, ``surface``, in the `aiidalab-qe-plugin-demos`_ repository.
+It adds a new structure importer and editor to generate the surface structure.
+Here is the entry point for the `surface` plugin.
 
 .. code-block:: python
 
-    from .structure_importer import StructureImporter
-    from .structure_editor import StructureEditor
+    from .importer import SurfaceImporter
+    from .editor import SurfaceEditor
 
-    my_plugin ={
-        "importer": StructureImporter,
-        "editor": StructureEditor,
+
+    surface ={
+    "importer": SurfaceImporter,
+    "editor": SurfaceEditor,
     }
 
+Computational Resources
+------------------------------
+You can also add new code in the plugin.
+Here is the example of the built-in `pdos` plugins with codes `dos.x` and `projwfc.x`:
+
+.. code-block:: python
+
+    from aiidalab_widgets_base import ComputationalResourcesWidget
+
+    dos_code = ComputationalResourcesWidget(
+        description="dos.x",
+        default_calc_job_plugin="quantumespresso.dos",
+    )
+
+    projwfc_code = ComputationalResourcesWidget(
+        description="projwfc.x",
+        default_calc_job_plugin="quantumespresso.projwfc",
+    )
+
+    pdos = {
+        "outline": PdosOutline,
+        "code": {"dos": dos_code, "projwfc": projwfc_code},
+        "setting": Setting,
+        "result": Result,
+        "workchain": workchain_and_builder,
+    }
+
+For the moment, the app does not support set up the newly added codes automatically.
+Thus, the user needs to set up the codes manually.
 
 
 Further Reading
 ================================
-QuantumESPRESSO app comes with built-in plugins, which can be found in the ``aiidalab_qe.plugins`` folder.
+QuantumESPRESSO app comes with several built-in plugins, which can be found in the ``aiidalab_qe.plugins`` folder.
 You can also use them as a start point to create your own plugins.
+
+.. _aiidalab-qe-plugin-demos: https://github.com/aiidalab/aiidalab-qe-plugin-demos
