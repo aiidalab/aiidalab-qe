@@ -49,8 +49,6 @@ def test_unsaved_changes(app_to_submit):
     from aiidalab_widgets_base import WizardAppWidgetStep
 
     app = app_to_submit
-    # the number of blocker
-    n = len(app.submit_step._submission_blockers)
     # go to the configue step, and make some changes
     app._wizard_app_widget.selected_index = 1
     app.configure_step.workchain_settings.relax_type.value = "positions"
@@ -59,10 +57,10 @@ def test_unsaved_changes(app_to_submit):
     # the state of the configue step should be updated.
     assert app.configure_step.state == WizardAppWidgetStep.State.CONFIGURED
     # check if a new blocker is added
-    assert len(app.submit_step._submission_blockers) == n + 1
+    assert len(app.submit_step.external_submission_blockers) == 1
     # confirm the changes
     app._wizard_app_widget.selected_index = 1
     app.configure_step.confirm()
     app._wizard_app_widget.selected_index = 2
     # the blocker should be removed
-    assert len(app.submit_step._submission_blockers) == n
+    assert len(app.submit_step.external_submission_blockers) == 0
