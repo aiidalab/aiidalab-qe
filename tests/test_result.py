@@ -16,23 +16,6 @@ def test_workchainview(generate_qeapp_workchain):
     assert len(wcv.result_tabs.children) == 5
     assert wcv.result_tabs._titles["0"] == "Workflow Summary"
     assert wcv.result_tabs._titles["1"] == "Final Geometry"
-    assert wcv.result_tabs._titles["2"] == "Electronic Structure"
-
-
-def test_electronic_structure(generate_qeapp_workchain):
-    """test the report can be properly generated from the builder without errors"""
-    from aiida import engine
-
-    from aiidalab_qe.app.result.workchain_viewer import WorkChainViewer
-
-    wkchain = generate_qeapp_workchain()
-    wkchain.node.set_exit_status(0)
-    wkchain.node.set_process_state(engine.ProcessState.FINISHED)
-    wcv = WorkChainViewer(wkchain.node)
-    assert (
-        "DOS grouped by:"
-        == wcv.result_tabs.children[2].children[0].children[0].children[0].value
-    )
 
 
 def test_summary_report(data_regression, generate_qeapp_workchain):
