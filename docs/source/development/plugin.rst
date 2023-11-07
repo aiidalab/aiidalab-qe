@@ -260,10 +260,10 @@ Here is the entry point for this plugin.
 
     # this is the entry point of the plugin
     eos ={
-    "outline": EosOutline,
-    "setting": Setting,
-    "workchain": workchain_and_builder,
-    "result": Result,
+        "outline": EosOutline,
+        "setting": Setting,
+        "workchain": workchain_and_builder,
+        "result": Result,
     }
 
 Install the plugin
