@@ -274,10 +274,10 @@ You need to add the path of ``eos`` to ``entry_points`` inside the setup file.
 .. code-block:: python
 
     entry_points={
-            "aiidalab_qe.properties": [
-                "eos = aiidalab_qe_plugin_demos.eos:eos",
-            ],
-        },
+        "aiidalab_qe.properties": [
+            "eos = aiidalab_qe_plugin_demos.eos:eos",
+        ],
+    },
 
 **Bringing It All Together**, you can find all the code above in the `aiidalab-qe-plugin-demos`_ repository.
 
@@ -322,8 +322,8 @@ Here is the entry point for the `surface` plugin.
     from .editor import SurfaceEditor
 
     surface ={
-    "importer": SurfaceImporter,
-    "editor": SurfaceEditor,
+        "importer": SurfaceImporter,
+        "editor": SurfaceEditor,
     }
 
 Computational Resources

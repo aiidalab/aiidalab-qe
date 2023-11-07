@@ -7,7 +7,7 @@ Architecture
 Wizards-like UI
 ================
 
-QuantumESPRESSO app uses the [Wizards-like UI design](https://en.wikipedia.org/wiki/Wizard_(software)), which divides one calculation into four steps.
+QuantumESPRESSO app uses the `Wizards-like UI design <https://en.wikipedia.org/wiki/Wizard_(software)>`_, which divides one calculation into four steps.
 Each step may contain several sections (panels), as shown in the figure below.
 
 .. image:: ../_static/images/plugin_step.png
