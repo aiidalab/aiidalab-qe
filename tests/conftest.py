@@ -298,8 +298,12 @@ def smearing_settings_generator():
 def app(pw_code, dos_code, projwfc_code):
     from aiidalab_qe.app.main import App
 
+    # Since we use `qe_auto_setup=False`, which will skip the pseudo library installation
+    # we need to mock set the installation status to `True` to avoid the blocker message pop up in the
+    # submmision step.
     app = App(qe_auto_setup=False)
     app.submit_step.sssp_installation_status.installed = True
+
     # set up codes
     app.submit_step.pw_code.refresh()
     app.submit_step.codes["dos"].refresh()

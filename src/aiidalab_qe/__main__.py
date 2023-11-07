@@ -9,6 +9,9 @@ from aiida import load_profile
 from aiidalab_qe.common.setup_codes import codes_are_setup
 from aiidalab_qe.common.setup_codes import install as install_qe_codes
 
+# The default profile name of AiiDAlab container.
+_DEFAULT_PROFILE = "default"
+
 
 @click.group()
 def cli():
@@ -17,7 +20,7 @@ def cli():
 
 @cli.command()
 @click.option("-f", "--force", is_flag=True)
-@click.option("-p", "--profile", default="default")
+@click.option("-p", "--profile", default=_DEFAULT_PROFILE)
 def install_qe(force, profile):
     load_profile(profile)
     try:
@@ -30,7 +33,7 @@ def install_qe(force, profile):
 
 
 @cli.command()
-@click.option("-p", "--profile", default="default", help="AiiDA profile name.")
+@click.option("-p", "--profile", default=_DEFAULT_PROFILE, help="AiiDA profile name.")
 @click.option(
     "source",
     "--source",
