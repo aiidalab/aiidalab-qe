@@ -158,9 +158,10 @@ def export_pdos_data(outputs, group_dos_by="atom"):
 
 class Result(ResultPanel):
     title = "PDOS"
+    workchain_labels = ["pdos"]
 
     def __init__(self, node=None, **kwargs):
-        super().__init__(node=node, identifier="pdos", **kwargs)
+        super().__init__(node=node, **kwargs)
 
     def _update_view(self):
         """Update the view of the widget."""
@@ -190,13 +191,15 @@ class Result(ResultPanel):
             layout={"margin": "0 0 30px 30px"},
         )
         #
-        dos_data = export_pdos_data(self.outputs, group_dos_by=group_dos_by.value)
+        dos_data = export_pdos_data(self.outputs.pdos, group_dos_by=group_dos_by.value)
         _bands_plot_view = BandsPlotWidget(
             dos=dos_data,
         )
 
         def response(change):
-            dos_data = export_pdos_data(self.outputs, group_dos_by=group_dos_by.value)
+            dos_data = export_pdos_data(
+                self.outputs.pdos, group_dos_by=group_dos_by.value
+            )
             _bands_plot_view = BandsPlotWidget(
                 dos=dos_data,
             )

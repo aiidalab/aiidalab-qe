@@ -107,7 +107,7 @@ def install():
                 )
 
 
-class SSSPInstallWidget(ProgressBar):
+class PseudosInstallWidget(ProgressBar):
     installed = traitlets.Bool(allow_none=True).tag(readonly=True)
     busy = traitlets.Bool().tag(readonly=True)
     installing = traitlets.Bool().tag(readonly=True)

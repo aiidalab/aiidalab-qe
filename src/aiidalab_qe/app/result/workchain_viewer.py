@@ -15,12 +15,10 @@ from aiidalab_widgets_base.viewers import StructureDataViewer
 from filelock import FileLock, Timeout
 from IPython.display import HTML, display
 from jinja2 import Environment
-from widget_bandsplot import BandsPlotWidget
 
 from aiidalab_qe.app import static
 from aiidalab_qe.app.utils import get_entry_items
 
-from .electronic_structure import export_data
 from .summary_viewer import SummaryView
 
 
@@ -51,38 +49,19 @@ class WorkChainViewer(ipw.VBox):
         self.workflows_summary = SummaryView(self.node)
 
         self.summary_tab = ipw.VBox(children=[self.workflows_summary])
-        self.structure_tab = ipw.VBox(
-            [ipw.Label("Structure not available.")],
-            layout=ipw.Layout(min_height="380px"),
-        )
-        self.bands_tab = ipw.VBox(
-            [ipw.Label("Electronic Structure not available.")],
-            layout=ipw.Layout(min_height="380px"),
-        )
-        self.result_tabs = ipw.Tab(
-            children=[self.summary_tab, self.structure_tab, self.bands_tab]
-        )
+        # Only the summary tab is shown by default
+        self.result_tabs = ipw.Tab(children=[self.summary_tab])
 
         self.result_tabs.set_title(0, "Workflow Summary")
-        self.result_tabs.set_title(1, "Final Geometry (n/a)")
-        self.result_tabs.set_title(2, "Electronic Structure (n/a)")
 
-        # add plugin specific settings
-        entries = get_entry_items("aiidalab_qe.properties", "result")
+        # get plugin result panels
+        # and save them the results dictionary
         self.results = {}
+        entries = get_entry_items("aiidalab_qe.properties", "result")
         for identifier, entry_point in entries.items():
-            # only show the result tab if the property is selected to be run
-            # this will be repalced by the ui_parameters in the future PR
-            # if this is the old version without plugin specific ui_parameters, just skip
-            if identifier not in ui_parameters.get("workchain", {}).get(
-                "properties", []
-            ):
-                continue
             result = entry_point(self.node)
             self.results[identifier] = result
             self.results[identifier].identifier = identifier
-            self.result_tabs.children += (result,)
-            self.result_tabs.set_title(len(self.result_tabs.children) - 1, result.title)
 
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
@@ -90,13 +69,13 @@ class WorkChainViewer(ipw.VBox):
             index = change["new"]
             # Accessing the viewer only if the corresponding tab is present.
             if self.result_tabs._titles[str(index)] == "Final Geometry":
-                self._structure_view._viewer.handle_resize()
+                self.structure_tab._viewer.handle_resize()
 
                 def toggle_camera():
                     """Toggle camera between perspective and orthographic."""
-                    self._structure_view._viewer.camera = (
+                    self.structure_tab._viewer.camera = (
                         "perspective"
-                        if self._structure_view._viewer.camera == "orthographic"
+                        if self.structure_tab._viewer.camera == "orthographic"
                         else "orthographic"
                     )
 
@@ -121,89 +100,39 @@ class WorkChainViewer(ipw.VBox):
         with self.hold_trait_notifications():
             if self.node.is_finished:
                 self._show_workflow_output()
+            # if the structure is present in the workchain,
+            # the structure tab will be added.
             if (
                 "structure" not in self._results_shown
                 and "structure" in self.node.outputs
             ):
                 self._show_structure()
+                self.result_tabs.children += (self.structure_tab,)
+                # index of the last tab
+                index = len(self.result_tabs.children) - 1
+                self.result_tabs.set_title(index, "Final Geometry")
                 self._results_shown.add("structure")
 
-            if "electronic_structure" not in self._results_shown and (
-                "band_structure" in self.node.outputs or "dos" in self.node.outputs
-            ):
-                self._show_electronic_structure()
-                self._results_shown.add("electronic_structure")
             # update the plugin specific results
-            for result in self.result_tabs.children[3:]:
+            for result in self.results.values():
                 # check if the result is already shown
-                # check if the plugin workchain result is in the outputs
-                if (
-                    result.identifier not in self._results_shown
-                    and result.identifier in self.node.outputs
-                ):
-                    result._update_view()
-                    self._results_shown.add(result.identifier)
+                if result.identifier not in self._results_shown:
+                    # check if the all required results are in the outputs
+                    results_ready = [
+                        label in self.node.outputs for label in result.workchain_labels
+                    ]
+                    if all(results_ready):
+                        result._update_view()
+                        self._results_shown.add(result.identifier)
+                        # add this plugin result panel
+                        self.result_tabs.children += (result,)
+                        # index of the last tab
+                        index = len(self.result_tabs.children) - 1
+                        self.result_tabs.set_title(index, result.title)
 
     def _show_structure(self):
-        self._structure_view = StructureDataViewer(
-            structure=self.node.outputs.structure
-        )
-        self.result_tabs.children[1].children = [self._structure_view]
-        self.result_tabs.set_title(1, "Final Geometry")
-
-    def _show_electronic_structure(self):
-        group_dos_by = ipw.ToggleButtons(
-            options=[
-                ("Atom", "atom"),
-                ("Orbital", "angular"),
-            ],
-            value="atom",
-        )
-        settings = ipw.VBox(
-            children=[
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "DOS grouped by:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        group_dos_by,
-                    ]
-                ),
-            ],
-            layout={"margin": "0 0 30px 30px"},
-        )
-        #
-        data = export_data(self.node, group_dos_by=group_dos_by.value)
-        bands_data = data.get("bands", None)
-        dos_data = data.get("dos", None)
-        _bands_plot_view = BandsPlotWidget(
-            bands=bands_data,
-            dos=dos_data,
-        )
-
-        def response(change):
-            data = export_data(self.node, group_dos_by=group_dos_by.value)
-            bands_data = data.get("bands", None)
-            dos_data = data.get("dos", None)
-            _bands_plot_view = BandsPlotWidget(
-                bands=bands_data,
-                dos=dos_data,
-            )
-            self.result_tabs.children[2].children = [
-                settings,
-                _bands_plot_view,
-            ]
-
-        group_dos_by.observe(response, names="value")
-        # update the electronic structure tab
-        self.result_tabs.children[2].children = [
-            settings,
-            _bands_plot_view,
-        ]
-        self.result_tabs.set_title(2, "Electronic Structure")
+        """Show the structure of the workchain."""
+        self.structure_tab = StructureDataViewer(structure=self.node.outputs.structure)
 
     def _show_workflow_output(self):
         self.workflows_output = WorkChainOutputs(self.node)
