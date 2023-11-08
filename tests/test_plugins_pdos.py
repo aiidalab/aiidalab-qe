@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.usefixtures("sssp")
 def test_result(generate_qeapp_workchain):
     from aiidalab_qe.plugins.pdos.result import Result, export_pdos_data
 
@@ -10,6 +14,7 @@ def test_result(generate_qeapp_workchain):
     assert len(result.children) == 2
 
 
+@pytest.mark.usefixtures("sssp")
 def test_result_spin(generate_qeapp_workchain):
     from aiidalab_qe.plugins.pdos.result import Result, export_pdos_data
 
@@ -22,6 +27,7 @@ def test_result_spin(generate_qeapp_workchain):
     assert len(result.children) == 2
 
 
+@pytest.mark.usefixtures("sssp")
 def test_result_group_by(generate_qeapp_workchain):
     from aiidalab_qe.plugins.pdos.result import Result, export_pdos_data
 

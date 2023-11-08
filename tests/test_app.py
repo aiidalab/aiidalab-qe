@@ -1,3 +1,10 @@
+import pytest
+
+
+# TODO: (jusong.yu) I have to add this fixture after I change sssp fixture from session to function
+# The fixtures are a bit messy, we need to clean it up
+# Same for other tests that use sssp fixture
+@pytest.mark.usefixtures("sssp")
 def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
     """Test if the GUI paramters can be reload and reset properly"""
     wkchain = generate_qeapp_workchain(

@@ -16,6 +16,7 @@ from IPython.display import clear_output, display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.panel import Panel
+from aiidalab_qe.common.setup_pseudos import PseudoFamily
 
 from .pseudos import PseudoFamilySelector, PseudoSetter
 
@@ -262,8 +263,9 @@ class AdvancedSettings(Panel):
         """Set the panel value from the given parameters."""
 
         if "pseudo_family" in parameters:
+            pseudo_family_string = parameters["pseudo_family"]
             self.pseudo_family_selector.load_from_pseudo_family(
-                parameters.get("pseudo_family")
+                PseudoFamily.from_string(pseudo_family_string)
             )
         if "pseudos" in parameters["pw"]:
             self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], {})
@@ -295,11 +297,16 @@ class AdvancedSettings(Panel):
         with self.hold_trait_notifications():
             # Reset protocol dependent settings
             self._update_settings_from_protocol(self.protocol)
-            self.pseudo_family_selector.load_from_pseudo_family(
-                DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
-            )
+
+            # reset the pseudo family
+            pseudo_family_dict = DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
+            pseudo_family = PseudoFamily(**pseudo_family_dict)
+
+            self.pseudo_family_selector.load_from_pseudo_family(pseudo_family)
+
             # reset total charge
             self.total_charge.value = DEFAULT_PARAMETERS["advanced"]["tot_charge"]
+
             # reset the override checkbox
             self.override.value = False
             self.smearing.reset()
