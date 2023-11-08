@@ -19,6 +19,7 @@ def fixture_localhost(aiida_localhost):
 
 
 @pytest.fixture
+# XXX change me because I am duplicated with pw_code/dos_code/projwfc_code
 def fixture_code(fixture_localhost):
     """Return an ``InstalledCode`` instance configured to run calculations of given entry point on localhost."""
 
@@ -295,31 +296,27 @@ def smearing_settings_generator():
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code):
+def app():
+    """Return an bare initialized instance of the app."""
     from aiidalab_qe.app.main import App
 
     app = App(qe_auto_setup=False)
-    # set up codes
-    app.submit_step.pw_code.refresh()
-    app.submit_step.codes["dos"].refresh()
-    app.submit_step.codes["projwfc"].refresh()
-
-    app.submit_step.pw_code.value = pw_code.uuid
-    app.submit_step.codes["dos"].value = dos_code.uuid
-    app.submit_step.codes["projwfc"].value = projwfc_code.uuid
 
     yield app
 
 
 @pytest.fixture()
-@pytest.mark.usefixtures("sssp")
-def submit_app_generator(
+@pytest.mark.usefixtures("aiida_profile_clean")
+def app_generator(
     app,
     generate_structure_data,
+    pw_code,
+    dos_code,
+    projwfc_code,
 ):
-    """Return a function that generates a submit step widget."""
+    """This fixture give an app with all the steps configured and ready to submit."""
 
-    def _submit_app_generator(
+    def _app_generator(
         relax_type="positions_cell",
         spin_type="none",
         electronic_type="metal",
@@ -332,7 +329,6 @@ def submit_app_generator(
         initial_magnetic_moments=0.0,
     ):
         configure_step = app.configure_step
-        # Settings
         configure_step.input_structure = generate_structure_data()
         parameters = {
             "workchain": {
@@ -355,14 +351,23 @@ def submit_app_generator(
         configure_step.advanced_settings.smearing.smearing.value = smearing
         configure_step.advanced_settings.smearing.degauss.value = degauss
         configure_step.confirm()
-        #
+
+        # Submit step
         submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
         submit_step.resources_config.num_cpus.value = 2
+        # set up codes
+        submit_step.pw_code.refresh()
+        submit_step.codes["dos"].refresh()
+        submit_step.codes["projwfc"].refresh()
+
+        submit_step.pw_code.value = pw_code.uuid
+        submit_step.codes["dos"].value = dos_code.uuid
+        submit_step.codes["projwfc"].value = projwfc_code.uuid
 
         return app
 
-    return _submit_app_generator
+    return _app_generator
 
 
 @pytest.fixture
@@ -381,13 +386,15 @@ def app_to_submit(app):
 
 
 @pytest.fixture
-def generate_workchain():
-    """Generate an instance of a `WorkChain`."""
+def process_generator():
+    """Generate an instance of a `Process`, which can be further decorated with links to
+    construct workchain etc.
+    """
 
-    def _generate_workchain(process_class, inputs):
-        """Generate an instance of a `WorkChain` with the given entry point and inputs.
+    def _process_generator(entry_point, inputs):
+        """Generate an bare instance of a `Process` that can be given the given entry point and inputs.
 
-        :param entry_point: entry point name of the work chain subclass.
+        :param entry_point: entry point name of the work chain subclass or the class itself.
         :param inputs: inputs to be passed to process construction.
         :return: a `WorkChain` instance.
         """
@@ -395,11 +402,11 @@ def generate_workchain():
         from aiida.manage.manager import get_manager
 
         runner = get_manager().get_runner()
-        process = instantiate_process(runner, process_class, **inputs)
+        process = instantiate_process(runner, entry_point, **inputs)
 
         return process
 
-    return _generate_workchain
+    return _process_generator
 
 
 @pytest.fixture
@@ -408,7 +415,7 @@ def generate_pdos_workchain(
     fixture_code,
     generate_xy_data,
     generate_projection_data,
-    generate_workchain,
+    process_generator,
 ):
     """Generate an instance of a `XpsWorkChain`."""
 
@@ -426,7 +433,7 @@ def generate_pdos_workchain(
         }
         builder = PdosWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
-        wkchain = generate_workchain(PdosWorkChain, inputs)
+        wkchain = process_generator(PdosWorkChain, inputs)
         wkchain.setup()
         # wkchain.run_pdos()
         remote = RemoteData(remote_path="/tmp/aiida_run")
@@ -510,11 +517,9 @@ def generate_pdos_workchain(
 
 @pytest.fixture
 def generate_bands_workchain(
-    fixture_localhost,
     fixture_code,
-    generate_xy_data,
     generate_bands_data,
-    generate_workchain,
+    process_generator,
 ):
     """Generate an instance of a the WorkChain."""
 
@@ -532,23 +537,23 @@ def generate_bands_workchain(
         builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
-        wkchain = generate_workchain(PwBandsWorkChain, inputs)
-        wkchain.setup()
+        workchain: PwBandsWorkChain = process_generator(PwBandsWorkChain, inputs)
+        workchain.setup()
         # run bands and return the process
         output_parameters = Dict(dict={"fermi_energy": 2.0})
         output_parameters.store()
-        wkchain.out("scf_parameters", output_parameters)
-        wkchain.out("band_parameters", output_parameters)
-        #
+        workchain.out("scf_parameters", output_parameters)
+        workchain.out("band_parameters", output_parameters)
+
         band_structure = generate_bands_data()
         band_structure.store()
-        wkchain.out("band_structure", band_structure)
-        wkchain.update_outputs()
-        #
-        bands_node = wkchain.node
+        workchain.out("band_structure", band_structure)
+        workchain.update_outputs()
+
+        bands_node = workchain.node
         bands_node.set_exit_status(0)
         bands_node.set_process_state(engine.ProcessState.FINISHED)
-        return wkchain
+        return workchain
 
     return _generate_bands_workchain
 
@@ -556,7 +561,10 @@ def generate_bands_workchain(
 @pytest.fixture
 def generate_qeapp_workchain(
     app,
-    generate_workchain,
+    pw_code,
+    dos_code,
+    projwfc_code,
+    process_generator,
     generate_pdos_workchain,
     generate_bands_workchain,
 ):
@@ -605,6 +613,16 @@ def generate_qeapp_workchain(
         # step 3 setup code and resources
         s3 = app.submit_step
         s3.resources_config.num_cpus.value = 4
+
+        # XXX codes setup should be refactored with app_generator
+        s3.pw_code.refresh()
+        s3.codes["dos"].refresh()
+        s3.codes["projwfc"].refresh()
+
+        s3.pw_code.value = pw_code.uuid
+        s3.codes["dos"].value = dos_code.uuid
+        s3.codes["projwfc"].value = projwfc_code.uuid
+
         builder = s3._create_builder()
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
@@ -612,7 +630,7 @@ def generate_qeapp_workchain(
             inputs["properties"].append("bands")
         if run_pdos:
             inputs["properties"].append("pdos")
-        wkchain = generate_workchain(QeAppWorkChain, inputs)
+        wkchain = process_generator(QeAppWorkChain, inputs)
         wkchain.setup()
         # mock output
         if relax_type != "none":

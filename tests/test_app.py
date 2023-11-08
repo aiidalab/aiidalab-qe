@@ -1,9 +1,9 @@
-def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
+def test_reload_and_reset(app_generator, generate_qeapp_workchain):
     """Test if the GUI paramters can be reload and reset properly"""
     wkchain = generate_qeapp_workchain(
         relax_type="positions", run_bands=True, run_pdos=False, spin_type="collinear"
     )
-    app = submit_app_generator()
+    app = app_generator()
     # select the pk
     app.work_chain_selector.value = wkchain.node.pk
     # check if the value are reload correctly
