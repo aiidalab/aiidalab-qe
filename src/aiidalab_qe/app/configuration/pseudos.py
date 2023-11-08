@@ -148,7 +148,7 @@ class PseudoFamilySelector(ipw.VBox):
         """
         library, accuracy = self.library_selection.value.split()
         functional = self.dft_functional.value
-        # XXX (jusong.yu): a test is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
+        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
         if library == "PseudoDojo":
             pseudo_family_string = (
                 f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
@@ -200,13 +200,12 @@ class PseudoFamilySelector(ipw.VBox):
         pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
             "pseudo_family"
         ]
-
-        self.load_from_pseudo_family(pseudo_family_string)
-
-    def load_from_pseudo_family(self, pseudo_family_string: str):
-        """Reload the widget from the given pseudo family string."""
         pseudo_family = PseudoFamily.from_string(pseudo_family_string)
 
+        self.load_from_pseudo_family(pseudo_family)
+
+    def load_from_pseudo_family(self, pseudo_family: PseudoFamily):
+        """Reload the widget from the given pseudo family string."""
         with self.hold_trait_notifications():
             # will trigger the callback to set the value of widgets
             self.library_selection.value = (

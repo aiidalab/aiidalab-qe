@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from subprocess import run
 from threading import Thread
@@ -34,7 +34,7 @@ EXPECTED_PSEUDOS = {
 FN_LOCKFILE = Path.home().joinpath(".install-sssp.lock")
 
 
-@dataclass(frozen=True)
+@dataclass
 class PseudoFamily:
     """The dataclass to deal with pseudo family strings.
 
@@ -49,12 +49,21 @@ class PseudoFamily:
     """
 
     library: str
-    cmd_library_name: str
     version: str
     functional: str
     accuracy: str
+    cmd_library_name: str = field(init=False)
     relativistic: str | None = None
     file_type: str | None = None
+
+    def __post_init__(self):
+        """Post init operations and checks."""
+        if self.library == "SSSP":
+            self.cmd_library_name = "sssp"
+        elif self.library == "PseudoDojo":
+            self.cmd_library_name = "pseudo-dojo"
+        else:
+            raise ValueError(f"Unknown pseudo library {self.library}")
 
     @classmethod
     def from_string(cls, pseudo_family_string: str) -> PseudoFamily:
@@ -71,7 +80,6 @@ class PseudoFamily:
             version, functional, accuracy = pseudo_family_string.split("/")[1:]
             relativistic = None
             file_type = None
-            cmd_library_name = "sssp"
         elif library == "PseudoDojo":
             (
                 version,
@@ -80,9 +88,10 @@ class PseudoFamily:
                 accuracy,
                 file_type,
             ) = pseudo_family_string.split("/")[1:]
-            cmd_library_name = "pseudo-dojo"
         else:
-            raise ValueError(f"Unknown pseudo family {pseudo_family_string}")
+            raise ValueError(
+                f"Not able to parse valid library name from {pseudo_family_string}"
+            )
 
         return cls(
             library=library,
@@ -91,7 +100,6 @@ class PseudoFamily:
             accuracy=accuracy,
             relativistic=relativistic,
             file_type=file_type,
-            cmd_library_name=cmd_library_name,
         )
 
 
