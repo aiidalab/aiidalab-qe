@@ -140,7 +140,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
     @tl.observe("internal_submission_blockers", "external_submission_blockers")
-    def _observe_submission_blockers(self, change):
+    def _observe_submission_blockers(self, _change):
         """Observe the submission blockers and update the message area."""
         blockers = self.internal_submission_blockers + self.external_submission_blockers
         if any(blockers):
