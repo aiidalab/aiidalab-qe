@@ -146,6 +146,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.confirm_button.disabled = False
         self.state = self.State.SUCCESS
 
+    def is_saved(self):
+        """Check if the current step is saved.
+        That all changes are confirmed.
+        """
+        new_parameters = self.get_configuration_parameters()
+        return new_parameters == self.configuration_parameters
+
     @tl.default("state")
     def _default_state(self):
         return self.State.INIT
