@@ -57,7 +57,7 @@ bands:
           tot_charge: 0.0
       pseudos:
         Si: Si.upf
-clean_workdir: true
+clean_workdir: false
 pdos:
   dos:
     parameters:

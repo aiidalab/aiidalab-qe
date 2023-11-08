@@ -56,7 +56,7 @@ class AdvancedSettings(Panel):
         self.clean_workdir = ipw.Checkbox(
             description="",
             indent=False,
-            value=True,
+            value=False,
             layout=ipw.Layout(max_width="20px"),
         )
         self.clean_workdir_description = ipw.HTML(
