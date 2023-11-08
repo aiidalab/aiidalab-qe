@@ -21,7 +21,7 @@ def test_set_selected_codes(submit_app_generator):
 
 
 def test_update_codes_display():
-    """Test update_codes_visibility method.
+    """Test update_codes_display method.
     If the workchain property is not selected, the related code should be hidden.
     """
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
