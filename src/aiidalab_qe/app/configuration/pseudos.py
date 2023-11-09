@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import io
 import re
-from dataclasses import dataclass
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -14,56 +13,16 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base.utils import StatusHTML
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.setup_pseudos import (
+    PSEUDODOJO_VERSION,
+    SSSP_VERSION,
+    PseudoFamily,
+)
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")
 PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
 CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
-
-
-@dataclass(frozen=True)
-class PseudoFamily:
-    library: str
-    version: str
-    functional: str
-    accuracy: str
-    relativistic: str | None = None
-    file_type: str | None = None
-
-    @classmethod
-    def from_string(cls, pseudo_family_string: str) -> PseudoFamily:
-        """Initialize from a pseudo family string."""
-        # We support two pseudo families: SSSP and PseudoDojo
-        # They are formatted as follows:
-        # SSSP: SSSP/<version>/<functional>/<accuracy>
-        # PseudoDojo: PseudoDojo/<version>/<functional>/<relativistic>/<accuracy>/<file_type>
-        # where <relativistic> is either 'SR' or 'FR' and <file_type> is either 'upf' or 'psml'
-        # Before we unify the format of family strings, the conditions below are necessary
-        # to distinguish between the two families
-        library = pseudo_family_string.split("/")[0]
-        if library == "SSSP":
-            version, functional, accuracy = pseudo_family_string.split("/")[1:]
-            relativistic = None
-            file_type = None
-        elif library == "PseudoDojo":
-            (
-                version,
-                functional,
-                relativistic,
-                accuracy,
-                file_type,
-            ) = pseudo_family_string.split("/")[1:]
-        else:
-            raise ValueError(f"Unknown pseudo family {pseudo_family_string}")
-
-        return cls(
-            library=library,
-            version=version,
-            functional=functional,
-            accuracy=accuracy,
-            relativistic=relativistic,
-            file_type=file_type,
-        )
 
 
 class PseudoFamilySelector(ipw.VBox):
@@ -189,12 +148,13 @@ class PseudoFamilySelector(ipw.VBox):
         """
         library, accuracy = self.library_selection.value.split()
         functional = self.dft_functional.value
+        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
         if library == "PseudoDojo":
-            pseudo_family_string = f"PseudoDojo/0.4/{functional}/SR/{accuracy}/upf"
+            pseudo_family_string = (
+                f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
+            )
         elif library == "SSSP":
-            # XXX (unkcpz): the version is hard coded here which bring the
-            # the risk of inconsistency when the version is changed in the future, we want to have a centralized place to store the information.
-            pseudo_family_string = f"SSSP/1.2/{functional}/{accuracy}"
+            pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
         else:
             raise ValueError(
                 f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
@@ -240,13 +200,12 @@ class PseudoFamilySelector(ipw.VBox):
         pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
             "pseudo_family"
         ]
-
-        self.load_from_pseudo_family(pseudo_family_string)
-
-    def load_from_pseudo_family(self, pseudo_family_string: str):
-        """Reload the widget from the given pseudo family string."""
         pseudo_family = PseudoFamily.from_string(pseudo_family_string)
 
+        self.load_from_pseudo_family(pseudo_family)
+
+    def load_from_pseudo_family(self, pseudo_family: PseudoFamily):
+        """Reload the widget from the given pseudo family string."""
         with self.hold_trait_notifications():
             # will trigger the callback to set the value of widgets
             self.library_selection.value = (
