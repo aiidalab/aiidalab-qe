@@ -1,4 +1,5 @@
 import ipywidgets as ipw
+from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
@@ -22,14 +23,6 @@ PERIODICITY_MAPPING = {
     (True, True, False): "xy",
     (True, False, False): "x",
 }
-
-# Bands_kpoints_distance from protocol for x and xy from protocol bands (aiida-quantumespresso)
-BANDS_KPOINTS_DISTANCE = {
-    "fast": 0.1,
-    "moderate": 0.025,
-    "precise": 0.015,
-}
-
 
 def generate_report_parameters(qeapp_wc):
     """Generate the report parameters from the ui parameters and workchain's input.
@@ -118,14 +111,7 @@ def generate_report_parameters(qeapp_wc):
     )
     # hard code bands and pdos
     if "bands" in qeapp_wc.inputs:
-        if "bands_kpoints_distance" in qeapp_wc.inputs.bands:
-            report[
-                "bands_kpoints_distance"
-            ] = qeapp_wc.inputs.bands.bands_kpoints_distance.value
-        else:
-            report["bands_kpoints_distance"] = BANDS_KPOINTS_DISTANCE[
-                report["protocol"]
-            ]
+        report["bands_kpoints_distance"] = PwBandsWorkChain.get_protocol_inputs(report["protocol"])["bands_kpoints_distance"]
 
     if "pdos" in qeapp_wc.inputs:
         report[
