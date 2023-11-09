@@ -315,8 +315,8 @@ class AdvancedSettings(Panel):
         if self.input_structure is None:
             return
         if self.kpoints_distance.value > 0:
-            # use the function itself instead of the decorated calcfunction.
-            # to avoide creates an aiida node everytime we change the kpoints_distance
+            # To avoid creating an aiida node every time we change the kpoints_distance,
+            # we use the function itself instead of the decorated calcfunction.
             mesh = create_kpoints_from_distance.process_class._func(
                 self.input_structure,
                 orm.Float(self.kpoints_distance.value),
