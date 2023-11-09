@@ -18,7 +18,7 @@ NSCF_DISTANCE_MAP = {
 
 
 class Setting(Panel):
-    title = "Pdos Settings"
+    title = "PDOS"
     identifier = "pdos"
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     protocol = tl.Unicode(allow_none=True)
