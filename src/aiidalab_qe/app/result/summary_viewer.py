@@ -24,6 +24,7 @@ PERIODICITY_MAPPING = {
     (True, False, False): "x",
 }
 
+
 def generate_report_parameters(qeapp_wc):
     """Generate the report parameters from the ui parameters and workchain's input.
 
@@ -111,7 +112,9 @@ def generate_report_parameters(qeapp_wc):
     )
     # hard code bands and pdos
     if "bands" in qeapp_wc.inputs:
-        report["bands_kpoints_distance"] = PwBandsWorkChain.get_protocol_inputs(report["protocol"])["bands_kpoints_distance"]
+        report["bands_kpoints_distance"] = PwBandsWorkChain.get_protocol_inputs(
+            report["protocol"]
+        )["bands_kpoints_distance"]
 
     if "pdos" in qeapp_wc.inputs:
         report[
