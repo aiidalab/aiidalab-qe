@@ -54,7 +54,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             layout=ipw.Layout(min_height="250px"),
         )
 
-        self.tab.set_title(0, "Workflow")
+        self.tab.set_title(0, "Basic settings")
         self.tab.set_title(1, "Advanced settings")
 
         # store the property identifier and setting panel for all plugins
