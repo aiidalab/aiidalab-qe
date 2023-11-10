@@ -1,4 +1,0 @@
-graphviz
-postgresql
-quantum-espresso
-vim
