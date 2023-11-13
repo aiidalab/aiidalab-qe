@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script is executed after the app installation completes
+# triggered by the post install hook implemented in https://github.com/aiidalab/aiidalab/pull/295
+
 echo "Starting installation of QE..."
 python -m aiidalab_qe install-qe & disown
 
