@@ -25,6 +25,7 @@ CONDA_ENV_PREFIX = Path.home().joinpath(
     ".conda", "envs", f"quantum-espresso-{QE_VERSION}"
 )
 
+# Add all QE codes with the calcjob entry point in the aiida-quantumespresso.
 CODE_NAMES = (
     "pw",
     "projwfc",
