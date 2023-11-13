@@ -25,7 +25,23 @@ CONDA_ENV_PREFIX = Path.home().joinpath(
     ".conda", "envs", f"quantum-espresso-{QE_VERSION}"
 )
 
-CODE_NAMES = ("pw", "projwfc", "dos")
+# Add all QE codes with the calcjob entry point in the aiida-quantumespresso.
+CODE_NAMES = (
+    "pw",
+    "projwfc",
+    "dos",
+    "cp",
+    "epw",
+    "matdyn",
+    "neb",
+    "open_grid",
+    "ph",
+    "pp",
+    "pw2gw",
+    "pw2wannier90",
+    "q2r",
+    "xspectra",
+)
 
 
 def qe_installed():
