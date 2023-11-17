@@ -50,7 +50,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def __init__(self, description=None, **kwargs):
         importers = [
             StructureUploadWidget(title="Upload file"),
-            OptimadeQueryWidget(embedded=False),
+            # I disable optimade for now, because the version conflicts with aiida-core
+            # OptimadeQueryWidget(embedded=False),
             StructureBrowserWidget(title="AiiDA database"),
             StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
