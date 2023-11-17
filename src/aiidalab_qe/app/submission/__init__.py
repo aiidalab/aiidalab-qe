@@ -407,6 +407,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             structure=self.input_structure,
             parameters=deepcopy(self.ui_parameters),
         )
+        # add monitor
+        builder.relax.base.pw.monitors = {
+            "energy": orm.Dict(
+                {"entry_point": "aiidalab_qe.relax_pw", "minimum_poll_interval": 20}
+            ),
+        }
 
         self._update_builder(builder, self.MAX_MPI_PER_POOL)
 
