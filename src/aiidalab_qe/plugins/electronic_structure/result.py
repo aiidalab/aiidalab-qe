@@ -10,11 +10,11 @@ from widget_bandsplot import BandsPlotWidget
 from aiidalab_qe.common.panel import ResultPanel
 
 
-def export_data(work_chain_node, group_dos_by="atom"):
-    dos = export_pdos_data(work_chain_node, group_dos_by=group_dos_by)
+def export_data(workchain_nodes, group_dos_by="atom"):
+    dos = export_pdos_data(workchain_nodes["pdos"], group_dos_by=group_dos_by)
     fermi_energy = dos["fermi_energy"] if dos else None
 
-    bands = export_bands_data(work_chain_node, fermi_energy)
+    bands = export_bands_data(workchain_nodes["bands"], fermi_energy)
 
     return dict(
         bands=bands,
@@ -23,15 +23,15 @@ def export_data(work_chain_node, group_dos_by="atom"):
 
 
 def export_pdos_data(work_chain_node, group_dos_by="atom"):
-    if "pdos" in work_chain_node.outputs:
-        _, energy_dos, _ = work_chain_node.outputs.pdos.dos.output_dos.get_x()
+    if work_chain_node is not None:
+        _, energy_dos, _ = work_chain_node.outputs.dos.output_dos.get_x()
         tdos_values = {
-            f"{n}": v for n, v, _ in work_chain_node.outputs.pdos.dos.output_dos.get_y()
+            f"{n}": v for n, v, _ in work_chain_node.outputs.dos.output_dos.get_y()
         }
 
         dos = []
 
-        if "projections" in work_chain_node.outputs.pdos.projwfc:
+        if "projections" in work_chain_node.outputs.projwfc:
             # The total dos parsed
             tdos = {
                 "label": "Total DOS",
@@ -45,7 +45,7 @@ def export_pdos_data(work_chain_node, group_dos_by="atom"):
             dos.append(tdos)
 
             dos += _projections_curated(
-                work_chain_node.outputs.pdos.projwfc.projections,
+                work_chain_node.outputs.projwfc.projections,
                 group_dos_by=group_dos_by,
                 spin_type="none",
             )
@@ -74,21 +74,21 @@ def export_pdos_data(work_chain_node, group_dos_by="atom"):
 
             # spin-up (↑)
             dos += _projections_curated(
-                work_chain_node.outputs.pdos.projwfc.projections_up,
+                work_chain_node.outputs.projwfc.projections_up,
                 group_dos_by=group_dos_by,
                 spin_type="up",
             )
 
             # spin-dn (↓)
             dos += _projections_curated(
-                work_chain_node.outputs.pdos.projwfc.projections_down,
+                work_chain_node.outputs.projwfc.projections_down,
                 group_dos_by=group_dos_by,
                 spin_type="down",
                 line_style="dash",
             )
 
         data_dict = {
-            "fermi_energy": work_chain_node.outputs.pdos.nscf.output_parameters[
+            "fermi_energy": work_chain_node.outputs.nscf.output_parameters[
                 "fermi_energy"
             ],
             "dos": dos,
@@ -101,16 +101,15 @@ def export_pdos_data(work_chain_node, group_dos_by="atom"):
 
 
 def export_bands_data(work_chain_node, fermi_energy=None):
-    if "bands" in work_chain_node.outputs:
+    if work_chain_node is not None:
         data = json.loads(
-            work_chain_node.outputs.bands.band_structure._exportcontent(
+            work_chain_node.outputs.band_structure._exportcontent(
                 "json", comments=False
             )[0]
         )
         # The fermi energy from band calculation is not robust.
         data["fermi_level"] = (
-            fermi_energy
-            or work_chain_node.outputs.bands.band_parameters["fermi_energy"]
+            fermi_energy or work_chain_node.outputs.band_parameters["fermi_energy"]
         )
         return [
             jsanitize(data),
@@ -222,7 +221,7 @@ class Result(ResultPanel):
     def _update_view(self):
         """Update the view of the widget."""
         #
-        data = export_data(self.node, group_dos_by=self.group_dos_by.value)
+        data = export_data(self.workchain_nodes, group_dos_by=self.group_dos_by.value)
         _bands_plot_view = BandsPlotWidget(
             bands=data.get("bands", None),
             dos=data.get("dos", None),

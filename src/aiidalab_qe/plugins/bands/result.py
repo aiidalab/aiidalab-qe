@@ -37,7 +37,9 @@ class Result(ResultPanel):
     def _update_view(self):
         from widget_bandsplot import BandsPlotWidget
 
-        bands_data = export_bands_data(self.outputs.bands)
+        if self.workchain_nodes["bands"] is None:
+            return
+        bands_data = export_bands_data(self.workchain_nodes["bands"].outputs)
         _bands_plot_view = BandsPlotWidget(
             bands=bands_data,
         )

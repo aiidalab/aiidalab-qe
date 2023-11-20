@@ -119,8 +119,8 @@ In this widget, you need to:
 - specify the `workchain_labels` to tell the app which workchains the panel is intended for.
 - implement the ``_update_view`` method to tell the app how to show the results of the workchain.
 
-The output of the workchain will be stored in ``self.outputs.plugin_name``.
-For example, you can access the ``output_parameters`` output of the ``EOSWorkChain`` by ``self.outputs.eos.output_parameters``.
+The workchains specified in the `workchain_labels` will be stored in ``self.workchain_nodes`` attribute.
+For example, you can access the ``output_parameters`` output of the ``EOSWorkChain`` by ``self.workchain_nodes['eos'].outputs.output_parameters``.
 
 .. code-block:: python
 
@@ -147,7 +147,7 @@ For example, you can access the ``output_parameters`` output of the ``EOSWorkCha
             g.layout.xaxis.title = "Volume (A^3)"
             g.layout.yaxis.title = "Energy (eV)"
             # get the output parameters
-            eos = self.outputs.eos.output_parameters.get_dict()
+            eos = self.workchain_nodes['eos'].outputs.output_parameters.get_dict()
             volumes = eos["volumes"]
             energies = eos["energies"]
             eos = EquationOfState(volumes, energies, eos="birchmurnaghan")

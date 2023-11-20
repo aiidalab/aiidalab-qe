@@ -117,10 +117,20 @@ class WorkChainViewer(ipw.VBox):
             for result in self.results.values():
                 # check if the result is already shown
                 if result.identifier not in self._results_shown:
-                    # check if the all required results are in the outputs
-                    results_ready = [
-                        label in self.node.outputs for label in result.workchain_labels
+                    # get all required workchain nodes
+                    plugin_workchain_nodes = [
+                        link.node
+                        for link in self.node.base.links.get_outgoing().all()
+                        if link.link_label in result.workchain_labels
                     ]
+                    # if any of the workchains required has not started yet
+                    if len(plugin_workchain_nodes) < len(result.workchain_labels):
+                        continue
+                    results_ready = [
+                        node.process_state.value == "finished"
+                        for node in plugin_workchain_nodes
+                    ]
+                    # if all the workchains required have finished
                     if all(results_ready):
                         result._update_view()
                         self._results_shown.add(result.identifier)

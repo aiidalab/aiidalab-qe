@@ -120,6 +120,19 @@ class ResultPanel(Panel):
 
         return self.node.outputs
 
+    @property
+    def workchain_nodes(self):
+        """Workchain nodes of the calculation."""
+        workchain_nodes = {}
+        links = self.node.base.links.get_outgoing()
+        all_link_labels = links.all_link_labels()
+        for label in self.workchain_labels:
+            if label in all_link_labels:
+                workchain_nodes[label] = links.get_node_by_label(label)
+            else:
+                workchain_nodes[label] = None
+        return workchain_nodes
+
     def _update_view(self):
         """Update the result in the panel.
 

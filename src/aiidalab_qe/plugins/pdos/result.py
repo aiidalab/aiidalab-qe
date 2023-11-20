@@ -167,6 +167,8 @@ class Result(ResultPanel):
         """Update the view of the widget."""
         from widget_bandsplot import BandsPlotWidget
 
+        if self.workchain_nodes["pdos"] is None:
+            return
         group_dos_by = ipw.ToggleButtons(
             options=[
                 ("Atom", "atom"),
@@ -191,14 +193,16 @@ class Result(ResultPanel):
             layout={"margin": "0 0 30px 30px"},
         )
         #
-        dos_data = export_pdos_data(self.outputs.pdos, group_dos_by=group_dos_by.value)
+        dos_data = export_pdos_data(
+            self.workchain_nodes["pdos"].outputs, group_dos_by=group_dos_by.value
+        )
         _bands_plot_view = BandsPlotWidget(
             dos=dos_data,
         )
 
         def response(change):
             dos_data = export_pdos_data(
-                self.outputs.pdos, group_dos_by=group_dos_by.value
+                self.workchain_nodes["pdos"].outputs, group_dos_by=group_dos_by.value
             )
             _bands_plot_view = BandsPlotWidget(
                 dos=dos_data,
