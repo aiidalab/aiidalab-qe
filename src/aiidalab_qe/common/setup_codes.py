@@ -30,17 +30,19 @@ CODE_NAMES = (
     "pw",
     "projwfc",
     "dos",
-    "cp",
-    "epw",
-    "matdyn",
-    "neb",
-    "open_grid",
     "ph",
-    "pp",
-    "pw2gw",
-    "pw2wannier90",
     "q2r",
+    "matdyn",
     "xspectra",
+    # not install following codes, since not used in near future
+    # every code setup will take 2 seconds, so it is better to skip them
+    # "epw",
+    # "neb",
+    # "cp",
+    # "open_grid",
+    # "pp",
+    # "pw2gw",
+    # "pw2wannier90",
 )
 
 
