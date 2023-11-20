@@ -18,7 +18,10 @@ RUN cd ${PREINSTALL_APP_FOLDER} && \
      # and then the app and restart the daemon in the end.
      # But since the aiida profile not yet exists, the daemon restart will fail but it is not a problem.
      # Because we only need the dependencies to be installed.
-     aiidalab install --yes --python ${CONDA_DIR}/bin/python  "quantum-espresso@file://${PREINSTALL_APP_FOLDER}" && \
+     # aiidalab install --yes --python ${CONDA_DIR}/bin/python  "quantum-espresso@file://${PREINSTALL_APP_FOLDER}" && \
+     # However, have to use `pip install` explicitly because `aiidalab install` call `pip install --user` which will install the app to `/home/${NB_USER}/.local`.
+     # It won't cause issue for docker but for k8s deployment the home folder is not bind mounted to the pod and the dependencies won't be found. (see issue in `jupyter/docker-stacks` https://github.com/jupyter/docker-stacks/issues/815)
+     pip install . --no-cache-dir && \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
 
