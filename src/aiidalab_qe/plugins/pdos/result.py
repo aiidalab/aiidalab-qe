@@ -4,6 +4,7 @@
 
 import ipywidgets as ipw
 from aiida.orm import ProjectionData
+from aiidalab_widgets_base import register_viewer_widget
 
 from aiidalab_qe.common.panel import ResultPanel
 
@@ -80,9 +81,10 @@ def _projections_curated(
     return dos
 
 
-def export_pdos_data(outputs, group_dos_by="atom"):
+def export_pdos_data(work_chain_node, group_dos_by="atom"):
     import json
 
+    outputs = work_chain_node.outputs
     if "output_dos" in outputs.dos:
         _, energy_dos, _ = outputs.dos.output_dos.get_x()
         tdos_values = {f"{n}": v for n, v, _ in outputs.dos.output_dos.get_y()}
@@ -156,17 +158,31 @@ def export_pdos_data(outputs, group_dos_by="atom"):
         return None
 
 
+@register_viewer_widget("aiida.workflows:quantumespresso.pdos")
 class Result(ResultPanel):
     title = "PDOS"
     workchain_labels = ["pdos"]
 
     def __init__(self, node=None, **kwargs):
         super().__init__(node=node, **kwargs)
+        self.workchain_nodes = {}
+        if node.process_type == "aiida.workflows:quantumespresso.pdos":
+            self.workchain_nodes["pdos"] = node
+        elif node.process_type == "aiidalab_qe.workflows.QeAppWorkChain":
+            if "pdos" in node.base.links.get_outgoing().all_link_labels():
+                self.workchain_nodes[
+                    "pdos"
+                ] = node.base.links.get_outgoing().get_node_by_label("pdos")
+            else:
+                self.workchain_nodes["pdos"] = None
+        self._update_view()
 
     def _update_view(self):
         """Update the view of the widget."""
         from widget_bandsplot import BandsPlotWidget
 
+        if self.workchain_nodes["pdos"] is None:
+            return
         group_dos_by = ipw.ToggleButtons(
             options=[
                 ("Atom", "atom"),
@@ -191,14 +207,16 @@ class Result(ResultPanel):
             layout={"margin": "0 0 30px 30px"},
         )
         #
-        dos_data = export_pdos_data(self.outputs.pdos, group_dos_by=group_dos_by.value)
+        dos_data = export_pdos_data(
+            self.workchain_nodes["pdos"], group_dos_by=group_dos_by.value
+        )
         _bands_plot_view = BandsPlotWidget(
             dos=dos_data,
         )
 
         def response(change):
             dos_data = export_pdos_data(
-                self.outputs.pdos, group_dos_by=group_dos_by.value
+                self.workchain_nodes["pdos"], group_dos_by=group_dos_by.value
             )
             _bands_plot_view = BandsPlotWidget(
                 dos=dos_data,

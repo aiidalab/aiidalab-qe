@@ -22,7 +22,7 @@ from aiidalab_qe.app.utils import get_entry_items
 from .summary_viewer import SummaryView
 
 
-@register_viewer_widget("process.workflow.workchain.WorkChainNode.")
+@register_viewer_widget("aiidalab_qe.workflows.QeAppWorkChain")
 class WorkChainViewer(ipw.VBox):
     _results_shown = tl.Set()
 
