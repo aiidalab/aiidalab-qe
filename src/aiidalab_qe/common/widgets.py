@@ -17,7 +17,8 @@ import numpy as np
 import traitlets
 from aiida.orm import CalcJobNode
 from aiida.orm import Data as orm_Data
-from aiida.orm import load_node
+from aiida.orm import load_code, load_node
+from aiidalab_widgets_base import ComputationalResourcesWidget as AiiDACodeWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -617,3 +618,139 @@ class AddingTagsEditor(ipw.VBox):
         new_structure.set_pbc(periodicity_options[self.periodicity.value])
         self.structure = None
         self.structure = deepcopy(new_structure)
+
+
+class ComputationalResourcesWidget(AiiDACodeWidget):
+    nodes = traitlets.Int(default_value=1)
+    cpus = traitlets.Int(default_value=1)
+
+    def __init__(self, max_num_nodes=1000, **kwargs):
+        """Widget for the selection of compute resources.
+        max_num_nodes: maximum number of nodes allowed.
+        """
+        super().__init__(**kwargs)
+
+        self.num_nodes = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=max_num_nodes, description="Nodes", width="10%"
+        )
+        self.num_cpus = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="CPUs", width="10%"
+        )
+        # add nodes and cpus into the children of the widget
+        self.children[0].children += (
+            self.num_nodes,
+            self.num_cpus,
+        )
+
+    @traitlets.observe("value")
+    def _update_resources(self, change):
+        if change["new"] and (
+            change["old"] is None
+            or load_code(change["new"]).computer.pk
+            != load_code(change["old"]).computer.pk
+        ):
+            self.set_resource_defaults(load_code(change["new"]).computer)
+
+    def set_resource_defaults(self, computer=None):
+        import os
+
+        if computer is None or computer.hostname == "localhost":
+            self.num_nodes.disabled = True
+            self.num_nodes.value = 1
+            self.num_cpus.max = os.cpu_count()
+            self.num_cpus.value = 1
+            self.num_cpus.description = "CPUs"
+        else:
+            default_mpiprocs = computer.get_default_mpiprocs_per_machine()
+            self.num_nodes.disabled = False
+            self.num_cpus.max = default_mpiprocs
+            self.num_cpus.value = default_mpiprocs
+            self.num_cpus.description = "CPUs"
+
+    @property
+    def parameters(self):
+        return self.get_parameters()
+
+    def get_parameters(self):
+        return {
+            "code": self.value,
+            "nodes": self.num_nodes.value,
+            "cpus": self.num_cpus.value,
+        }
+
+    @parameters.setter
+    def set_parameters(self, parameters):
+        self.value = parameters["code"]
+        self.num_nodes.value = parameters["nodes"]
+        self.num_cpus.value = parameters["cpus"]
+
+
+class ParallelizationSettings(ipw.VBox):
+    """Widget for setting the parallelization settings."""
+
+    prompt = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the number of k-points pools for the pw.x calculations.
+        </p></div>"""
+    )
+
+    def __init__(self, **kwargs):
+        extra = {
+            "style": {"description_width": "150px"},
+            "layout": {"min_width": "180px"},
+        }
+        self.npool = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=128, description="Number of k-pools", **extra
+        )
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    children=[self.prompt, self.npool],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
+            ]
+        )
+
+    def reset(self):
+        self.npool.value = 1
+
+
+class PWscfWidget(ComputationalResourcesWidget):
+    nodes = traitlets.Int(default_value=1)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # By definition, npool must be a divisor of the total number of k-points
+        # thus we can not set a default value here, or from the computer.
+        self.parallelization = ParallelizationSettings()
+        # add nodes and cpus into the children of the widget
+        self.children += (self.parallelization,)
+
+    def get_parallelization(self):
+        parallelization = {
+            "npool": self.parallelization.npool.value,
+        }
+        return parallelization
+
+    def set_parallelization(self, parallelization):
+        self.parallelization.npool.value = parallelization["npool"]
+
+    @property
+    def parameters(self):
+        return self.get_parameters()
+
+    def get_parameters(self):
+        return {
+            "code": self.value,
+            "nodes": self.num_nodes.value,
+            "cpus": self.num_cpus.value,
+            "parallelization": self.get_parallelization(),
+        }
+
+    @parameters.setter
+    def set_parameters(self, parameters):
+        self.value = parameters["code"]
+        self.num_nodes.value = parameters["nodes"]
+        self.num_cpus.value = parameters["cpus"]
+        self.set_parallelization(parameters["parallelization"])
