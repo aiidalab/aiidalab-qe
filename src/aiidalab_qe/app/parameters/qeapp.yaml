@@ -22,8 +22,11 @@ advanced:
         accuracy: efficiency
     tot_charge: 0
 
-## Codes
+## Computational resources
 codes:
-    dos: dos-7.2@localhost
-    projwfc: projwfc-7.2@localhost
-    pw: pw-7.2@localhost
+    dos:
+        code: dos-7.2@localhost
+    projwfc:
+        code: projwfc-7.2@localhost
+    pw:
+        code: pw-7.2@localhost

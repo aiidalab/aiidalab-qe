@@ -1,3 +1,4 @@
+from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 
@@ -31,12 +32,33 @@ def check_codes(pw_code, dos_code, projwfc_code):
         )
 
 
+def update_resources(builder, codes):
+    builder.scf.pw.metadata.options.resources = {
+        "num_machines": codes.get("pw")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+    }
+    builder.scf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
+    builder.nscf.pw.metadata.options.resources = {
+        "num_machines": codes.get("pw")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+    }
+    builder.nscf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
+    builder.dos.metadata.options.resources = {
+        "num_machines": codes.get("dos")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("dos")["cpus"],
+    }
+    builder.projwfc.metadata.options.resources = {
+        "num_machines": codes.get("projwfc")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("projwfc")["cpus"],
+    }
+
+
 def get_builder(codes, structure, parameters, **kwargs):
     from copy import deepcopy
 
-    pw_code = codes.get("pw")
-    dos_code = codes.get("dos")
-    projwfc_code = codes.get("projwfc")
+    pw_code = codes.get("pw")["code"]
+    dos_code = codes.get("dos")["code"]
+    projwfc_code = codes.get("projwfc")["code"]
     check_codes(pw_code, dos_code, projwfc_code)
     protocol = parameters["workchain"]["protocol"]
 
@@ -66,6 +88,9 @@ def get_builder(codes, structure, parameters, **kwargs):
         # pop the inputs that are exclueded from the expose_inputs
         pdos.pop("structure", None)
         pdos.pop("clean_workdir", None)
+        # update resources
+        update_resources(pdos, codes)
+
     else:
         raise ValueError("The dos_code and projwfc_code are required.")
     return pdos

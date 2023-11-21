@@ -111,11 +111,10 @@ class QeAppWorkChain(WorkChain):
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
         codes = parameters.pop("codes", {})
-        codes = {
-            key: orm.load_node(value)
-            for key, value in codes.items()
-            if value is not None
-        }
+        # load codes from uuid
+        for _, value in codes.items():
+            if value["code"] is not None:
+                value["code"] = orm.load_node(value["code"])
         # update pseudos
         for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
             parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
@@ -127,7 +126,7 @@ class QeAppWorkChain(WorkChain):
         relax_overrides = {"base": parameters["advanced"]}
         protocol = parameters["workchain"]["protocol"]
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
-            code=codes.get("pw"),
+            code=codes.get("pw")["code"],
             structure=structure,
             protocol=protocol,
             relax_type=RelaxType(parameters["workchain"]["relax_type"]),

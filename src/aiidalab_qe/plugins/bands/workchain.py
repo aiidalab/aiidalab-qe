@@ -1,4 +1,5 @@
 import numpy as np
+from aiida import orm
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 
@@ -170,11 +171,24 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     return kpoints
 
 
+def update_resources(builder, codes):
+    builder.scf.pw.metadata.options.resources = {
+        "num_machines": codes.get("pw")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+    }
+    builder.scf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
+    builder.bands.pw.metadata.options.resources = {
+        "num_machines": codes.get("pw")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+    }
+    builder.bands.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
+
+
 def get_builder(codes, structure, parameters, **kwargs):
     """Get a builder for the PwBandsWorkChain."""
     from copy import deepcopy
 
-    pw_code = codes.get("pw")
+    pw_code = codes.get("pw")["code"]
     protocol = parameters["workchain"]["protocol"]
     scf_overrides = deepcopy(parameters["advanced"])
     bands_overrides = deepcopy(parameters["advanced"])
@@ -211,6 +225,9 @@ def get_builder(codes, structure, parameters, **kwargs):
     bands.pop("relax")
     bands.pop("structure", None)
     bands.pop("clean_workdir", None)
+    # update resources
+    update_resources(bands, codes)
+
     return bands
 
 

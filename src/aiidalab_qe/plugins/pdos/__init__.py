@@ -1,6 +1,5 @@
-from aiidalab_widgets_base import ComputationalResourcesWidget
-
 from aiidalab_qe.common.panel import OutlinePanel
+from aiidalab_qe.common.widgets import ComputationalResourcesWidget
 
 from .result import Result
 from .setting import Setting
