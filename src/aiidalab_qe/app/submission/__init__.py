@@ -77,8 +77,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.codes[name] = code
                 code.observe(self._update_state, "value")
                 self.code_children.append(self.codes[name])
-        # set default codes
-        self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
         #
         self.submit_button = ipw.Button(
             description="Submit",
@@ -121,6 +119,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.submit_button,
             ]
         )
+        # set default codes
+        self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
 
     @tl.observe("internal_submission_blockers", "external_submission_blockers")
     def _observe_submission_blockers(self, _change):
@@ -186,12 +186,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            for name, code_widget in self.codes.items():
+            for name, code in self.codes.items():
                 try:
-                    code_widget.refresh()
-                    code_widget.value = orm.load_code(
-                        DEFAULT_PARAMETERS["codes"][name]
-                    ).uuid
+                    code.refresh()
+                    code.value = orm.load_code(DEFAULT_PARAMETERS["codes"][name]).uuid
                 except NotExistent:
                     pass
 
@@ -284,7 +282,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             for name, code in self.codes.items():
-                code.value = _get_code_uuid(codes.get(name)["code"])
+                # get code uuid from code label in case of using DEFAULT_PARAMETERS
+                codes.get(name)["code"] = _get_code_uuid(codes.get(name)["code"])
+                code.parameters = codes.get(name)
 
     def update_codes_display(self):
         """Hide code if no related property is selected."""

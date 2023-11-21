@@ -628,14 +628,13 @@ class ComputationalResourcesWidget(AiiDACodeWidget):
         """Widget for the selection of compute resources.
         max_num_nodes: maximum number of nodes allowed.
         """
-        super().__init__(**kwargs)
-
         self.num_nodes = ipw.BoundedIntText(
             value=1, step=1, min=1, max=max_num_nodes, description="Nodes", width="10%"
         )
         self.num_cpus = ipw.BoundedIntText(
             value=1, step=1, min=1, description="CPUs", width="10%"
         )
+        super().__init__(**kwargs)
         # add nodes and cpus into the children of the widget
         self.children[0].children += (
             self.num_nodes,
@@ -672,6 +671,7 @@ class ComputationalResourcesWidget(AiiDACodeWidget):
         return self.get_parameters()
 
     def get_parameters(self):
+        """Return the parameters."""
         return {
             "code": self.value,
             "nodes": self.num_nodes.value,
@@ -679,10 +679,16 @@ class ComputationalResourcesWidget(AiiDACodeWidget):
         }
 
     @parameters.setter
+    def parameters(self, parameters):
+        self.set_parameters(parameters)
+
     def set_parameters(self, parameters):
+        """Set the parameters."""
         self.value = parameters["code"]
-        self.num_nodes.value = parameters["nodes"]
-        self.num_cpus.value = parameters["cpus"]
+        if "nodes" in parameters:
+            self.num_nodes.value = parameters["nodes"]
+        if "cpus" in parameters:
+            self.num_cpus.value = parameters["cpus"]
 
 
 class ParallelizationSettings(ipw.VBox):
@@ -713,6 +719,7 @@ class ParallelizationSettings(ipw.VBox):
         )
 
     def reset(self):
+        """Reset the parallelization settings."""
         self.npool.value = 1
 
 
@@ -720,37 +727,32 @@ class PWscfWidget(ComputationalResourcesWidget):
     nodes = traitlets.Int(default_value=1)
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         # By definition, npool must be a divisor of the total number of k-points
         # thus we can not set a default value here, or from the computer.
         self.parallelization = ParallelizationSettings()
+        super().__init__(**kwargs)
         # add nodes and cpus into the children of the widget
         self.children += (self.parallelization,)
 
     def get_parallelization(self):
+        """Return the parallelization settings."""
         parallelization = {
             "npool": self.parallelization.npool.value,
         }
         return parallelization
 
     def set_parallelization(self, parallelization):
+        """Set the parallelization settings."""
         self.parallelization.npool.value = parallelization["npool"]
 
-    @property
-    def parameters(self):
-        return self.get_parameters()
-
     def get_parameters(self):
-        return {
-            "code": self.value,
-            "nodes": self.num_nodes.value,
-            "cpus": self.num_cpus.value,
-            "parallelization": self.get_parallelization(),
-        }
+        """Return the parameters."""
+        parameters = super().get_parameters()
+        parameters.update({"parallelization": self.get_parallelization()})
+        return parameters
 
-    @parameters.setter
     def set_parameters(self, parameters):
-        self.value = parameters["code"]
-        self.num_nodes.value = parameters["nodes"]
-        self.num_cpus.value = parameters["cpus"]
-        self.set_parallelization(parameters["parallelization"])
+        """Set the parameters."""
+        super().set_parameters(parameters)
+        if "parallelization" in parameters:
+            self.set_parallelization(parameters["parallelization"])
