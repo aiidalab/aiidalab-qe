@@ -156,6 +156,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # check if the QEAppComputationalResourcesWidget is used
         for name, code in self.codes.items():
+            # skip if the code is not displayed, convenient for the plugin developer
+            if code.layout.display == "none":
+                continue
             if not isinstance(code, QEAppComputationalResourcesWidget):
                 yield (
                     f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {name}."
