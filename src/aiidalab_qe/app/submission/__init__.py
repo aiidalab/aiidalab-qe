@@ -269,7 +269,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         codes = {key: code.parameters for key, code in self.codes.items()}
         return codes
 
-    def set_selected_codes(self, codes):
+    def set_selected_codes(self, code_data):
         """Set the inputs in the GUI based on a set of codes."""
 
         # Codes
@@ -283,8 +283,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             for name, code in self.codes.items():
                 # get code uuid from code label in case of using DEFAULT_PARAMETERS
-                codes.get(name)["code"] = _get_code_uuid(codes.get(name)["code"])
-                code.parameters = codes.get(name)
+                if name not in code_data:
+                    continue
+                code_data.get(name)["code"] = _get_code_uuid(
+                    code_data.get(name)["code"]
+                )
+                code.parameters = code_data.get(name)
 
     def update_codes_display(self):
         """Hide code if no related property is selected."""
