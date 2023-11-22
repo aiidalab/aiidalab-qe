@@ -224,7 +224,7 @@ The ``get_builder`` function will return a ``builder`` for the ``EOSWorkChain``,
 
     def get_builder(codes, structure, parameters, **kwargs):
         protocol = parameters["workchain"].pop('protocol', "fast")
-        pw_code = codes.get("pw")
+        pw_code = codes.get("pw")['code']
         overrides = {
             "pw": parameters["advanced"],
         }
@@ -333,9 +333,9 @@ Here is the example of the built-in `pdos` plugins with codes `dos.x` and `projw
 
 .. code-block:: python
 
-    from aiidalab_widgets_base import ComputationalResourcesWidget
+    from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
-    dos_code = ComputationalResourcesWidget(
+    dos_code = QEAppComputationalResourcesWidget(
         description="dos.x",
         default_calc_job_plugin="quantumespresso.dos",
     )

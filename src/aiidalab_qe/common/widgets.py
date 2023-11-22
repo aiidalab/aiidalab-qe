@@ -724,6 +724,8 @@ class ParallelizationSettings(ipw.VBox):
 
 
 class PWscfWidget(QEAppComputationalResourcesWidget):
+    """ComputationalResources Widget for the pw.x calculation."""
+
     nodes = traitlets.Int(default_value=1)
 
     def __init__(self, **kwargs):

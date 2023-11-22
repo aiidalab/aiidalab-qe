@@ -276,7 +276,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         return: A dict with the code names as keys and the code UUIDs as values.
         """
-        codes = {key: code.parameters for key, code in self.codes.items()}
+        codes = {
+            key: code.parameters
+            for key, code in self.codes.items()
+            if code.layout.display != "none"
+        }
         return codes
 
     def set_selected_codes(self, code_data):
