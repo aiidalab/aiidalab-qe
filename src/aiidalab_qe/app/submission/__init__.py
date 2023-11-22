@@ -17,7 +17,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import PWscfWidget
+from aiidalab_qe.common.widgets import PWscfWidget, QEAppComputationalResourcesWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 
@@ -153,6 +153,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # SSSP library not installed
         if not self.sssp_installation_status.installed:
             yield "The SSSP library is not installed."
+
+        # check if the QEAppComputationalResourcesWidget is used
+        for name, code in self.codes.items():
+            if not isinstance(code, QEAppComputationalResourcesWidget):
+                yield (
+                    f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {name}."
+                )
 
     def _update_state(self, _=None):
         # If the previous step has failed, this should fail as well.

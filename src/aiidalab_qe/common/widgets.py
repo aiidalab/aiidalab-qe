@@ -620,7 +620,7 @@ class AddingTagsEditor(ipw.VBox):
         self.structure = deepcopy(new_structure)
 
 
-class ComputationalResourcesWidget(AiiDACodeWidget):
+class QEAppComputationalResourcesWidget(AiiDACodeWidget):
     nodes = traitlets.Int(default_value=1)
     cpus = traitlets.Int(default_value=1)
 
@@ -723,7 +723,7 @@ class ParallelizationSettings(ipw.VBox):
         self.npool.value = 1
 
 
-class PWscfWidget(ComputationalResourcesWidget):
+class PWscfWidget(QEAppComputationalResourcesWidget):
     nodes = traitlets.Int(default_value=1)
 
     def __init__(self, **kwargs):
