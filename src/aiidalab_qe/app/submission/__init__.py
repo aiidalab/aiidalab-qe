@@ -368,6 +368,19 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
     def set_submission_parameters(self, parameters):
+        # backward compatibility for v2023.11
+        # which have a separate "resources" section for pw code
+        if "resources" in parameters:
+            parameters["codes"] = {
+                key: {"code": value} for key, value in parameters["codes"].items()
+            }
+            parameters["codes"]["pw"]["nodes"] = parameters["resources"]["num_machines"]
+            parameters["codes"]["pw"]["cpus"] = parameters["resources"][
+                "num_mpiprocs_per_machine"
+            ]
+            parameters["codes"]["pw"]["parallelization"] = {
+                "npool": parameters["resources"]["npools"]
+            }
         self.set_selected_codes(parameters["codes"])
 
     def get_submission_parameters(self):
