@@ -51,6 +51,8 @@ def update_resources(builder, codes):
         "num_machines": codes.get("projwfc")["nodes"],
         "num_mpiprocs_per_machine": codes.get("projwfc")["cpus"],
     }
+    npool = codes["pw"]["parallelization"]["npool"]
+    builder.projwfc.settings = orm.Dict(dict={"cmdline": ["-nk", str(npool)]})
 
 
 def get_builder(codes, structure, parameters, **kwargs):
