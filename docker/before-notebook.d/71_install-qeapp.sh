@@ -13,11 +13,9 @@ else
 fi
 
 # Install the pseudo libraries if not already installed.
-# This can be simplified and accelerated once the following PR is merged:
-# https://github.com/aiidateam/aiida-pseudo/pull/135
 if aiida-pseudo list | grep -q "no pseudo potential families"; then
     echo "Installing pseudo potential families."
-    python -m aiidalab_qe install-sssp
+    python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER}
 else
     echo "Pseudo potential families are already installed."
 fi

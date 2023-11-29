@@ -1,8 +1,13 @@
+"""Electronic structure results view widgets"""
 import json
 import random
 
+import ipywidgets as ipw
 from aiida import orm
 from monty.json import jsanitize
+from widget_bandsplot import BandsPlotWidget
+
+from aiidalab_qe.common.panel import ResultPanel
 
 
 def export_data(work_chain_node, group_dos_by="atom"):
@@ -18,13 +23,15 @@ def export_data(work_chain_node, group_dos_by="atom"):
 
 
 def export_pdos_data(work_chain_node, group_dos_by="atom"):
-    if "dos" in work_chain_node.outputs:
-        _, energy_dos, _ = work_chain_node.outputs.dos.get_x()
-        tdos_values = {f"{n}": v for n, v, _ in work_chain_node.outputs.dos.get_y()}
+    if "pdos" in work_chain_node.outputs:
+        _, energy_dos, _ = work_chain_node.outputs.pdos.dos.output_dos.get_x()
+        tdos_values = {
+            f"{n}": v for n, v, _ in work_chain_node.outputs.pdos.dos.output_dos.get_y()
+        }
 
         dos = []
 
-        if "projections" in work_chain_node.outputs:
+        if "projections" in work_chain_node.outputs.pdos.projwfc:
             # The total dos parsed
             tdos = {
                 "label": "Total DOS",
@@ -38,7 +45,7 @@ def export_pdos_data(work_chain_node, group_dos_by="atom"):
             dos.append(tdos)
 
             dos += _projections_curated(
-                work_chain_node.outputs.projections,
+                work_chain_node.outputs.pdos.projwfc.projections,
                 group_dos_by=group_dos_by,
                 spin_type="none",
             )
@@ -67,21 +74,23 @@ def export_pdos_data(work_chain_node, group_dos_by="atom"):
 
             # spin-up (↑)
             dos += _projections_curated(
-                work_chain_node.outputs.projections_up,
+                work_chain_node.outputs.pdos.projwfc.projections_up,
                 group_dos_by=group_dos_by,
                 spin_type="up",
             )
 
             # spin-dn (↓)
             dos += _projections_curated(
-                work_chain_node.outputs.projections_down,
+                work_chain_node.outputs.pdos.projwfc.projections_down,
                 group_dos_by=group_dos_by,
                 spin_type="down",
                 line_style="dash",
             )
 
         data_dict = {
-            "fermi_energy": work_chain_node.outputs.nscf_parameters["fermi_energy"],
+            "fermi_energy": work_chain_node.outputs.pdos.nscf.output_parameters[
+                "fermi_energy"
+            ],
             "dos": dos,
         }
 
@@ -92,15 +101,16 @@ def export_pdos_data(work_chain_node, group_dos_by="atom"):
 
 
 def export_bands_data(work_chain_node, fermi_energy=None):
-    if "band_structure" in work_chain_node.outputs:
+    if "bands" in work_chain_node.outputs:
         data = json.loads(
-            work_chain_node.outputs.band_structure._exportcontent(
+            work_chain_node.outputs.bands.band_structure._exportcontent(
                 "json", comments=False
             )[0]
         )
         # The fermi energy from band calculation is not robust.
         data["fermi_level"] = (
-            fermi_energy or work_chain_node.outputs.band_parameters["fermi_energy"]
+            fermi_energy
+            or work_chain_node.outputs.bands.band_parameters["fermi_energy"]
         )
         return [
             jsanitize(data),
@@ -177,3 +187,48 @@ def cmap(label: str) -> str:
     random.seed(ascn)
 
     return "#%06x" % random.randint(0, 0xFFFFFF)
+
+
+class Result(ResultPanel):
+    title = "Electronic Structure"
+    workchain_labels = ["bands", "pdos"]
+
+    def __init__(self, node=None, **kwargs):
+        self.dos_group_label = ipw.Label(
+            "DOS grouped by:",
+            layout=ipw.Layout(justify_content="flex-start", width="120px"),
+        )
+        self.group_dos_by = ipw.ToggleButtons(
+            options=[
+                ("Atom", "atom"),
+                ("Orbital", "angular"),
+            ],
+            value="atom",
+        )
+        self.settings = ipw.HBox(
+            children=[
+                self.dos_group_label,
+                self.group_dos_by,
+            ],
+            layout={"margin": "0 0 30px 30px"},
+        )
+        self.group_dos_by.observe(self._observe_group_dos_by, names="value")
+        super().__init__(node=node, **kwargs)
+
+    def _observe_group_dos_by(self, change):
+        """Update the view of the widget when the group_dos_by value changes."""
+        self._update_view()
+
+    def _update_view(self):
+        """Update the view of the widget."""
+        #
+        data = export_data(self.node, group_dos_by=self.group_dos_by.value)
+        _bands_plot_view = BandsPlotWidget(
+            bands=data.get("bands", None),
+            dos=data.get("dos", None),
+        )
+        # update the electronic structure tab
+        self.children = [
+            self.settings,
+            _bands_plot_view,
+        ]

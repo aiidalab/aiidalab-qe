@@ -1,4 +1,5 @@
 import ipywidgets as ipw
+from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
@@ -8,12 +9,6 @@ FUNCTIONAL_LINK_MAP = {
 PSEUDO_LINK_MAP = {
     "SSSP": "https://www.materialscloud.org/discover/sssp/table/efficiency",
     "PseudoDojo": "http://www.pseudo-dojo.org/",
-}
-
-PROTOCOL_PSEUDO_MAP = {
-    "fast": "SSSP/1.2/PBE/efficiency",
-    "moderate": "SSSP/1.2/PBE/efficiency",
-    "precise": "SSSP/1.2/PBE/precision",
 }
 
 FUNCTIONAL_REPORT_MAP = {
@@ -69,8 +64,7 @@ def generate_report_parameters(qeapp_wc):
         }
     )
     # update pseudo family information to report
-    pseudo_family = ui_parameters["advanced"]["pseudo_family"]
-    pseudo_family = PROTOCOL_PSEUDO_MAP[ui_parameters["workchain"]["protocol"]]
+    pseudo_family = ui_parameters["advanced"].get("pseudo_family")
     pseudo_family_info = pseudo_family.split("/")
     pseudo_library = pseudo_family_info[0]
     functional = pseudo_family_info[2]
@@ -118,9 +112,10 @@ def generate_report_parameters(qeapp_wc):
     )
     # hard code bands and pdos
     if "bands" in qeapp_wc.inputs:
-        report[
-            "bands_kpoints_distance"
-        ] = qeapp_wc.inputs.bands.bands_kpoints_distance.value
+        report["bands_kpoints_distance"] = PwBandsWorkChain.get_protocol_inputs(
+            report["protocol"]
+        )["bands_kpoints_distance"]
+
     if "pdos" in qeapp_wc.inputs:
         report[
             "nscf_kpoints_distance"

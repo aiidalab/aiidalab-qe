@@ -13,6 +13,11 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base.utils import StatusHTML
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.setup_pseudos import (
+    PSEUDODOJO_VERSION,
+    SSSP_VERSION,
+    PseudoFamily,
+)
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -34,6 +39,7 @@ class PseudoFamilySelector(ipw.VBox):
         layout=ipw.Layout(max_width="60%"),
     )
 
+    # XXX: the link is not correct after add pseudo dojo
     pseudo_family_prompt = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;">
         <b><a href="https://www.materialscloud.org/discover/sssp/table/efficiency"
@@ -63,57 +69,43 @@ class PseudoFamilySelector(ipw.VBox):
     protocol = tl.Unicode(allow_none=True)
     disabled = tl.Bool()
 
-    value = tl.Unicode(
-        default_value=DEFAULT_PARAMETERS["advanced"]["pseudo_family"],
-    )
+    # output pseudo family widget which is the string of the pseudo family (of the AiiDA group).
+    value = tl.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
         # Enable manual setting of the pseudopotential family
-        self._default_protocol = DEFAULT_PARAMETERS["workchain"]["protocol"]
         self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
-        self.override_protocol_pseudo_family = ipw.Checkbox(
+        self.override = ipw.Checkbox(
             description="",
             indent=False,
             value=False,
             layout=ipw.Layout(max_width="10%"),
         )
         self.set_pseudo_family_box = ipw.HBox(
-            [self.set_pseudo_family_prompt, self.override_protocol_pseudo_family],
+            [self.set_pseudo_family_prompt, self.override],
             layout=ipw.Layout(max_width="20%"),
         )
         self.show_ui = ipw.Valid(value=True)
-        self.override_protocol_pseudo_family.observe(self.set_show_ui, "value")
-        self.override_protocol_pseudo_family.observe(self.set_text_color, "value")
-        self.override_protocol_pseudo_family.observe(self.set_value_trait, "value")
+        self.override.observe(self.set_show_ui, "value")
+        self.override.observe(self.set_text_color, "value")
+        self.override.observe(self.set_value, "value")
 
-        # Choose the DFT functional
+        # the widget for DFT functional selection
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
-            value=DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[2],
             style={"description_width": "initial"},
         )
-        self.dft_functional.observe(self.set_value_trait, "value")
-        #
-        pseudo_family_type = DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[
-            0
-        ]
-        if pseudo_family_type.upper() == "SSSP":
-            pseudo_family_type += (
-                " " + DEFAULT_PARAMETERS["advanced"]["pseudo_family"].split("/")[-1]
-            )
-        elif pseudo_family_type.upper() == "PSEUDODOJO":
-            pseudo_family_type = "PseudoDojo " + pseudo_family_type.split("_")[-2]
-        self.protocol_selection = ipw.ToggleButtons(
+        self.dft_functional.observe(self.set_value, "value")
+        self.library_selection = ipw.ToggleButtons(
             options=[
                 "SSSP efficiency",
                 "SSSP precision",
                 "PseudoDojo standard",
                 "PseudoDojo stringent",
             ],
-            value=pseudo_family_type,
             layout=ipw.Layout(max_width="80%"),
         )
-        self.protocol_selection.observe(self.set_value_trait, "value")
+        self.library_selection.observe(self.set_value, "value")
 
         self.dft_functional_box = ipw.VBox(
             children=[
@@ -123,18 +115,16 @@ class PseudoFamilySelector(ipw.VBox):
             ],
             layout=ipw.Layout(max_width="40%"),
         )
-        self.pseudo_protocol_box = ipw.VBox(
+        self.pseudo_setup_box = ipw.VBox(
             children=[
                 self.pseudo_family_prompt,
-                self.protocol_selection,
+                self.library_selection,
                 self.pseudo_family_help,
             ],
             layout=ipw.Layout(max_width="60%"),
         )
-        ipw.dlink((self.show_ui, "value"), (self.protocol_selection, "disabled"))
+        ipw.dlink((self.show_ui, "value"), (self.library_selection, "disabled"))
         ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
-
-        self.set_value_trait()
 
         super().__init__(
             children=[
@@ -143,22 +133,33 @@ class PseudoFamilySelector(ipw.VBox):
                     [self.description, self.set_pseudo_family_box],
                     layout=ipw.Layout(height="50px", justify_content="space-between"),
                 ),
-                ipw.HBox([self.dft_functional_box, self.pseudo_protocol_box]),
+                ipw.HBox([self.dft_functional_box, self.pseudo_setup_box]),
             ]
         )
+        # after the initialization, the protocol is set to the default
+        # this will trigger the callback to set the value of widgets to the default
+        self._default_protocol = DEFAULT_PARAMETERS["workchain"]["protocol"]
         self.protocol = self._default_protocol
 
-    def set_value_trait(self, _=None):
-        family, protocol = self.protocol_selection.value.split()
+    def set_value(self, _=None):
+        """The callback when the selection of pseudo family or dft functional is changed.
+        Also triggered when the override checkbox is changed.
+        This is the only method to set the value of the widget.
+        """
+        library, accuracy = self.library_selection.value.split()
         functional = self.dft_functional.value
-        if family == "PseudoDojo":
-            pseudo_family_string = f"PseudoDojo/0.4/{functional}/SR/{protocol}/upf"
-        elif family == "SSSP":
-            pseudo_family_string = f"SSSP/1.2/{functional}/{protocol}"
+        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
+        if library == "PseudoDojo":
+            pseudo_family_string = (
+                f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
+            )
+        elif library == "SSSP":
+            pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
         else:
             raise ValueError(
                 f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
             )
+
         self.value = pseudo_family_string
 
     def set_show_ui(self, change):
@@ -181,27 +182,36 @@ class PseudoFamilySelector(ipw.VBox):
             )
 
     def reset(self):
-        self.protocol_selection.value = "SSSP efficiency"
+        """Reset the widget to the initial state by reset protocol to default."""
+        self.protocol = self._default_protocol
+
+        # in case the protocol is not changed, the callback is not triggered
+        # so we trigger it explicitly. This will happened when the protocol
+        # stay the same while xc selection is changed.
+        self._update_settings_from_protocol(self.protocol)
 
     @tl.observe("protocol")
     def _protocol_changed(self, _):
-        """Input protocol changed, update the widget values."""
+        """Input protocol changed, update the value of widgets."""
         self._update_settings_from_protocol(self.protocol)
 
     def _update_settings_from_protocol(self, protocol):
         """Update the widget values from the given protocol, and trigger the callback."""
-        pseudo_family = PwBaseWorkChain.get_protocol_inputs(protocol)["pseudo_family"]
+        pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
+            "pseudo_family"
+        ]
+        pseudo_family = PseudoFamily.from_string(pseudo_family_string)
 
+        self.load_from_pseudo_family(pseudo_family)
+
+    def load_from_pseudo_family(self, pseudo_family: PseudoFamily):
+        """Reload the widget from the given pseudo family string."""
         with self.hold_trait_notifications():
-            # This changes will trigger callbacks
-            self.set_from_pseudo_family(pseudo_family)
-
-    def set_from_pseudo_family(self, pseudo_family):
-        """Set the widget values from the given pseudo family."""
-        family, _, functional, accuracy = pseudo_family.split("/")
-        protocol_selection = f"{family} {accuracy}"
-        self.protocol_selection.value = protocol_selection
-        self.dft_functional.value = functional
+            # will trigger the callback to set the value of widgets
+            self.library_selection.value = (
+                f"{pseudo_family.library} {pseudo_family.accuracy}"
+            )
+            self.dft_functional.value = pseudo_family.functional
 
 
 class PseudoSetter(ipw.VBox):

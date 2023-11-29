@@ -6,25 +6,13 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 from aiida.orm import load_node
-from aiidalab_widgets_base import (
-    BasicCellEditor,
-    BasicStructureEditor,
-    OptimadeQueryWidget,
-    StructureBrowserWidget,
-    StructureExamplesWidget,
-    StructureManagerWidget,
-    StructureUploadWidget,
-    WizardAppWidget,
-    WizardAppWidgetStep,
-)
+from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
-from aiidalab_qe.app.structure import Examples, StructureSelectionStep
+from aiidalab_qe.app.structure import StructureSelectionStep
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.common import AddingTagsEditor, QeAppWorkChainSelector
-
-OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
+from aiidalab_qe.common import QeAppWorkChainSelector
 
 
 class App(ipw.VBox):
@@ -32,30 +20,12 @@ class App(ipw.VBox):
 
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
-        self.structure_manager_widget = StructureManagerWidget(
-            importers=[
-                StructureUploadWidget(title="Upload file"),
-                OptimadeQueryWidget(embedded=False),
-                StructureBrowserWidget(title="AiiDA database"),
-                StructureExamplesWidget(title="From Examples", examples=Examples),
-            ],
-            editors=[
-                BasicCellEditor(title="Edit cell"),
-                BasicStructureEditor(title="Edit structure"),
-                AddingTagsEditor(title="Edit StructureData"),
-            ],
-            node_class="StructureData",
-            storable=False,
-            configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
-        )
-        self.structure_step = StructureSelectionStep(
-            manager=self.structure_manager_widget, auto_advance=True
-        )
+        self.structure_step = StructureSelectionStep(auto_advance=True)
         self.structure_step.observe(self._observe_structure_selection, "structure")
-
         self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
         self.submit_step = SubmitQeAppWorkChainStep(
-            auto_advance=True, qe_auto_setup=qe_auto_setup
+            auto_advance=True,
+            qe_auto_setup=qe_auto_setup,
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep()
 
@@ -80,7 +50,6 @@ class App(ipw.VBox):
             (self.configure_step, "configuration_parameters"),
             (self.submit_step, "input_parameters"),
         )
-
         ipw.dlink(
             (self.submit_step, "process"),
             (self.results_step, "process"),
@@ -96,6 +65,7 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
+        self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
 
         # Add process selection header
         self.work_chain_selector = QeAppWorkChainSelector(
@@ -116,14 +86,39 @@ class App(ipw.VBox):
             ]
         )
 
-    # Reset all subsequent steps in case that a new structure is selected
+    @property
+    def steps(self):
+        return self._wizard_app_widget.steps
+
+    # Reset the confirmed_structure in case that a new structure is selected
     def _observe_structure_selection(self, change):
         with self.structure_step.hold_sync():
             if (
                 self.structure_step.confirmed_structure is not None
                 and self.structure_step.confirmed_structure != change["new"]
             ):
-                self._wizard_app_widget.reset()
+                self.structure_step.confirmed_structure = None
+
+    def _observe_selected_index(self, change):
+        """Check unsaved change in the step when leaving the step."""
+        # no accordion tab is selected
+        if not change["new"]:
+            return
+        new_idx = change["new"]
+        # only when entering the submit step, check and udpate the blocker messages
+        # steps[new_idx][0] is the title of the step
+        if self.steps[new_idx][1] is not self.submit_step:
+            return
+        blockers = []
+        # Loop over all steps before the submit step
+        for title, step in self.steps[:new_idx]:
+            # check if the step is saved
+            if not step.is_saved():
+                step.state = WizardAppWidgetStep.State.CONFIGURED
+                blockers.append(
+                    f"Unsaved changes in the <b>{title}</b> step. Please save the changes before submitting."
+                )
+        self.submit_step.external_submission_blockers = blockers
 
     def _observe_process_selection(self, change):
         from aiida.orm.utils.serialize import deserialize_unsafe
@@ -136,10 +131,10 @@ class App(ipw.VBox):
             self._wizard_app_widget.selected_index = 0
         else:
             process = load_node(pk)
-            with self.structure_manager_widget.hold_sync():
+            with self.structure_step.manager.hold_sync():
                 with self.structure_step.hold_sync():
                     self._wizard_app_widget.selected_index = 3
-                    self.structure_manager_widget.viewer.structure = (
+                    self.structure_step.manager.viewer.structure = (
                         process.inputs.structure.get_ase()
                     )
                     self.structure_step.confirmed_structure = process.inputs.structure

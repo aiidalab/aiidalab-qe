@@ -16,6 +16,7 @@ from IPython.display import clear_output, display
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.panel import Panel
+from aiidalab_qe.common.setup_pseudos import PseudoFamily
 
 from .pseudos import PseudoFamilySelector, PseudoSetter
 
@@ -55,7 +56,7 @@ class AdvancedSettings(Panel):
         self.clean_workdir = ipw.Checkbox(
             description="",
             indent=False,
-            value=True,
+            value=False,
             layout=ipw.Layout(max_width="20px"),
         )
         self.clean_workdir_description = ipw.HTML(
@@ -175,6 +176,14 @@ class AdvancedSettings(Panel):
             self.magnetization._update_widget(change)
             self.pseudo_setter.structure = change["new"]
             self._display_mesh()
+        else:
+            self.magnetization.input_structure = None
+            self.pseudo_setter.structure = None
+
+    @tl.observe("electronic_type")
+    def _electronic_type_changed(self, change):
+        """Input electronic_type changed, update the widget values."""
+        self.magnetization.electronic_type = change["new"]
 
     @tl.observe("electronic_type")
     def _electronic_type_changed(self, change):
@@ -285,8 +294,9 @@ class AdvancedSettings(Panel):
         """Set the panel value from the given parameters."""
 
         if "pseudo_family" in parameters:
-            self.pseudo_family_selector.set_from_pseudo_family(
-                parameters.get("pseudo_family")
+            pseudo_family_string = parameters["pseudo_family"]
+            self.pseudo_family_selector.load_from_pseudo_family(
+                PseudoFamily.from_string(pseudo_family_string)
             )
         if "pseudos" in parameters["pw"]:
             self.pseudo_setter.set_pseudos(parameters["pw"]["pseudos"], {})
@@ -314,16 +324,20 @@ class AdvancedSettings(Panel):
 
     def reset(self):
         """Reset the widget and the traitlets"""
-        self.protocol = self._default_protocol
 
         with self.hold_trait_notifications():
             # Reset protocol dependent settings
             self._update_settings_from_protocol(self.protocol)
-            self.pseudo_family_selector.set_from_pseudo_family(
-                DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
-            )
+
+            # reset the pseudo family
+            pseudo_family_dict = DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
+            pseudo_family = PseudoFamily(**pseudo_family_dict)
+
+            self.pseudo_family_selector.load_from_pseudo_family(pseudo_family)
+
             # reset total charge
             self.total_charge.value = DEFAULT_PARAMETERS["advanced"]["tot_charge"]
+
             # reset the override checkbox
             self.override.value = False
             self.smearing.reset()
@@ -335,12 +349,17 @@ class AdvancedSettings(Panel):
                 self.pseudo_setter._reset()
             # reset the magnetization
             self.magnetization.reset()
+            # reset mesh grid
+            if self.input_structure is None:
+                self.mesh_grid.value = " "
 
     def _display_mesh(self, _=None):
         if self.input_structure is None:
             return
         if self.kpoints_distance.value > 0:
-            mesh = create_kpoints_from_distance(
+            # To avoid creating an aiida node every time we change the kpoints_distance,
+            # we use the function itself instead of the decorated calcfunction.
+            mesh = create_kpoints_from_distance.process_class._func(
                 self.input_structure,
                 orm.Float(self.kpoints_distance.value),
                 orm.Bool(True),

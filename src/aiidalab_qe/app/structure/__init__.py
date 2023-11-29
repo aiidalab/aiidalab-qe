@@ -8,7 +8,19 @@ import pathlib
 import aiida
 import ipywidgets as ipw
 import traitlets
-from aiidalab_widgets_base import WizardAppWidgetStep
+from aiidalab_widgets_base import (
+    BasicCellEditor,
+    BasicStructureEditor,
+    OptimadeQueryWidget,
+    StructureBrowserWidget,
+    StructureExamplesWidget,
+    StructureManagerWidget,
+    StructureUploadWidget,
+    WizardAppWidgetStep,
+)
+
+from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common import AddingTagsEditor
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
@@ -22,15 +34,45 @@ Examples = [
     ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
 ]
 
+OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
+
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
-    """Integrated widget for the selection of structures from different sources."""
+    """Integrated widget for the selection and edition of structure.
+    The widget includes a structure manager that allows to select a structure
+    from different sources. It also includes the structure editor. Both the
+    structure importers and the structure editors can be extended by plugins.
+    """
 
     structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
-    def __init__(self, manager, description=None, **kwargs):
-        self.manager = manager
+    def __init__(self, description=None, **kwargs):
+        importers = [
+            StructureUploadWidget(title="Upload file"),
+            OptimadeQueryWidget(embedded=False),
+            StructureBrowserWidget(title="AiiDA database"),
+            StructureExamplesWidget(title="From Examples", examples=Examples),
+        ]
+        # add plugin specific structure importers
+        entries = get_entry_items("aiidalab_qe.properties", "importer")
+        importers.extend([entry_point() for entry_point in entries.values()])
+        # add plugin specific structure editors
+        editors = [
+            BasicCellEditor(title="Edit cell"),
+            BasicStructureEditor(title="Edit structure"),
+            AddingTagsEditor(title="Edit StructureData"),
+        ]
+        entries = get_entry_items("aiidalab_qe.properties", "editor")
+        editors.extend([entry_point() for entry_point in entries.values()])
+        #
+        self.manager = StructureManagerWidget(
+            importers=importers,
+            editors=editors,
+            node_class="StructureData",
+            storable=False,
+            configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
+        )
 
         if description is None:
             description = ipw.HTML(
@@ -63,7 +105,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
         # Create directional link from the (read-only) 'structure_node' traitlet of the
         # structure manager to our 'structure' traitlet:
-        ipw.dlink((manager, "structure_node"), (self, "structure"))
+        ipw.dlink((self.manager, "structure_node"), (self, "structure"))
 
         super().__init__(
             children=[
@@ -119,6 +161,11 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self.manager.store_structure()
         self.confirmed_structure = self.structure
         self.message_area.value = ""
+
+    def is_saved(self):
+        """Check if the current structure is saved.
+        That all changes are confirmed."""
+        return self.confirmed_structure == self.structure
 
     def can_reset(self):
         return self.confirmed_structure is not None

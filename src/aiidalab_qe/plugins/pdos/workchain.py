@@ -4,12 +4,40 @@ from aiida_quantumespresso.common.types import ElectronicType, SpinType
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 
 
+def check_codes(pw_code, dos_code, projwfc_code):
+    """Check that the codes are installed on the same computer."""
+    if (
+        not any(
+            [
+                pw_code is None,
+                dos_code is None,
+                projwfc_code is None,
+            ]
+        )
+        and len(
+            set(
+                (
+                    pw_code.computer.pk,
+                    dos_code.computer.pk,
+                    projwfc_code.computer.pk,
+                )
+            )
+        )
+        != 1
+    ):
+        raise ValueError(
+            "All selected codes must be installed on the same computer. This is because the "
+            "PDOS calculations rely on large files that are not retrieved by AiiDA."
+        )
+
+
 def get_builder(codes, structure, parameters, **kwargs):
     from copy import deepcopy
 
-    pw_code = codes.get("pw", None)
-    dos_code = codes.get("dos", None)
-    projwfc_code = codes.get("projwfc", None)
+    pw_code = codes.get("pw")
+    dos_code = codes.get("dos")
+    projwfc_code = codes.get("projwfc")
+    check_codes(pw_code, dos_code, projwfc_code)
     protocol = parameters["workchain"]["protocol"]
 
     scf_overrides = deepcopy(parameters["advanced"])

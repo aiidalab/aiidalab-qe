@@ -17,6 +17,7 @@ on:
             - .github/actions/load-image/action.yml
 
             - src/**
+            - docker/**
             - qe.ipynb
             - setup.cfg
             - pyproject.toml
@@ -40,6 +41,7 @@ on:
             - .github/actions/load-image/action.yml
 
             - src/**
+            - docker/**
             - qe.ipynb
             - setup.cfg
             - pyproject.toml
