@@ -229,17 +229,17 @@ class AdvancedSettings(Panel):
         # create the the initial_magnetic_moments as None (Default)
         # XXX: start from parameters = {} and then bundle the settings by purposes (e.g. pw, bands, etc.)
         parameters = {
-        "initial_magnetic_moments": None,
-        "pw": {"parameters": {"SYSTEM": {}}},
-        "clean_workdir": self.clean_workdir.value,
-        "pseudo_family": self.pseudo_family_selector.value,
-        "kpoints_distance": self.value.get("kpoints_distance"),
+            "initial_magnetic_moments": None,
+            "pw": {"parameters": {"SYSTEM": {}}},
+            "clean_workdir": self.clean_workdir.value,
+            "pseudo_family": self.pseudo_family_selector.value,
+            "kpoints_distance": self.value.get("kpoints_distance"),
         }
 
-        #Set total charge
+        # Set total charge
         parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
 
-        # Set the pseudos 
+        # Set the pseudos
         if self.pseudo_setter.pseudos:
             parameters["pw"]["pseudos"] = self.pseudo_setter.pseudos
             parameters["pw"]["parameters"]["SYSTEM"][
@@ -259,8 +259,12 @@ class AdvancedSettings(Panel):
 
     def set_metal_parameters(self, parameters):
         """Set the parameters for metal calculation"""
-        parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = self.smearing.smearing_value
-        parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = self.smearing.degauss_value
+        parameters["pw"]["parameters"]["SYSTEM"][
+            "smearing"
+        ] = self.smearing.smearing_value
+        parameters["pw"]["parameters"]["SYSTEM"][
+            "degauss"
+        ] = self.smearing.degauss_value
         self.set_magnetization_logic(parameters)
 
     def set_insulator_parameters(self, parameters):
@@ -273,13 +277,14 @@ class AdvancedSettings(Panel):
         """Set the parameters for magnetization calculation in metals"""
         magnetization_type = self.magnetization.magnetization_type.value
         if magnetization_type == "tot_magnetization":
-            parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
-                self.magnetization.tot_magnetization.value
-            )
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "tot_magnetization"
+            ] = self.magnetization.tot_magnetization.value
         else:
-            parameters["initial_magnetic_moments"] = self.magnetization.get_magnetization()
+            parameters[
+                "initial_magnetic_moments"
+            ] = self.magnetization.get_magnetization()
 
-    
     def set_panel_value(self, parameters):
         """Set the panel value from the given parameters."""
 
