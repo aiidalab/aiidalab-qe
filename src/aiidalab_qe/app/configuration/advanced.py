@@ -185,11 +185,6 @@ class AdvancedSettings(Panel):
         """Input electronic_type changed, update the widget values."""
         self.magnetization.electronic_type = change["new"]
 
-    @tl.observe("electronic_type")
-    def _electronic_type_changed(self, change):
-        """Input electronic_type changed, update the widget values."""
-        self.magnetization.electronic_type = change["new"]
-
     @tl.observe("protocol")
     def _protocol_changed(self, _):
         """Input protocol changed, update the widget values."""
