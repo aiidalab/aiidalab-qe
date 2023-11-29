@@ -229,18 +229,17 @@ class AdvancedSettings(Panel):
         # create the the initial_magnetic_moments as None (Default)
         # XXX: start from parameters = {} and then bundle the settings by purposes (e.g. pw, bands, etc.)
         parameters = {
-            "initial_magnetic_moments": None,
-            "pw": {
-                "parameters": {
-                    "SYSTEM": {},
-                },
-            },
+        "initial_magnetic_moments": None,
+        "pw": {"parameters": {"SYSTEM": {}}},
+        "clean_workdir": self.clean_workdir.value,
+        "pseudo_family": self.pseudo_family_selector.value,
+        "kpoints_distance": self.value.get("kpoints_distance"),
         }
-        # add clean_workdir to the parameters
-        parameters["clean_workdir"] = self.clean_workdir.value
 
-        # add the pseudo_family to the parameters
-        parameters["pseudo_family"] = self.pseudo_family_selector.value
+        #Set total charge
+        parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
+
+        # Set the pseudos 
         if self.pseudo_setter.pseudos:
             parameters["pw"]["pseudos"] = self.pseudo_setter.pseudos
             parameters["pw"]["parameters"]["SYSTEM"][
@@ -249,47 +248,38 @@ class AdvancedSettings(Panel):
             parameters["pw"]["parameters"]["SYSTEM"][
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
-        # if override is not ticked, use the default value
-        parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
 
-        # add the kpoints_distance to the parameters
-        parameters["kpoints_distance"] = self.value.get("kpoints_distance")
-
-        if self.electronic_type == "metal":
-            # smearing type setting
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "smearing"
-            ] = self.smearing.smearing_value
-            # smearing degauss setting
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "degauss"
-            ] = self.smearing.degauss_value
-            # magnetization logic
-            if self.spin_type == "collinear":
-                # check if override is ticked to use widget inputs , else use default
-                if self.override.value:
-                    # according to the selection use tot_magnetization or initial_magnetic_moments
-                    if (
-                        self.magnetization.magnetization_type.value
-                        == "tot_magnetization"
-                    ):
-                        parameters["pw"]["parameters"]["SYSTEM"][
-                            "tot_magnetization"
-                        ] = self.magnetization.tot_magnetization.value
-                    else:
-                        parameters[
-                            "initial_magnetic_moments"
-                        ] = self.magnetization.get_magnetization()
-        else:
-            # magnetization in insulators
-            if self.spin_type == "collinear":
-                # Use tot_magnetization
-                parameters["pw"]["parameters"]["SYSTEM"][
-                    "tot_magnetization"
-                ] = self.magnetization.tot_magnetization.value
+        if self.spin_type == "collinear":
+            if self.electronic_type == "metal":
+                self.set_metal_parameters(parameters)
+            elif self.electronic_type == "insulator":
+                self.set_insulator_parameters(parameters)
 
         return parameters
 
+    def set_metal_parameters(self, parameters):
+        """Set the parameters for metal calculation"""
+        parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = self.smearing.smearing_value
+        parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = self.smearing.degauss_value
+        self.set_magnetization_logic(parameters)
+
+    def set_insulator_parameters(self, parameters):
+        """Set the parameters for collinear insulator calculation"""
+        parameters["pw"]["parameters"]["SYSTEM"][
+            "tot_magnetization"
+        ] = self.magnetization.tot_magnetization.value
+
+    def set_magnetization_logic(self, parameters):
+        """Set the parameters for magnetization calculation in metals"""
+        magnetization_type = self.magnetization.magnetization_type.value
+        if magnetization_type == "tot_magnetization":
+            parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+                self.magnetization.tot_magnetization.value
+            )
+        else:
+            parameters["initial_magnetic_moments"] = self.magnetization.get_magnetization()
+
+    
     def set_panel_value(self, parameters):
         """Set the panel value from the given parameters."""
 
@@ -383,6 +373,8 @@ class MagnetizationSettings(ipw.VBox):
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     electronic_type = tl.Unicode()
     disabled = tl.Bool()
+    _DEFAULT_TOT_MAGNETIZATION = 0.0
+    _DEFAULT_DESCRIPTION = "<b>Magnetization: Input structure not confirmed</b>"
 
     def __init__(self, **kwargs):
         self.input_structure = orm.StructureData()
@@ -391,7 +383,7 @@ class MagnetizationSettings(ipw.VBox):
             min=0,
             max=100,
             step=1,
-            value=0.0,
+            value=self._DEFAULT_TOT_MAGNETIZATION,
             disabled=True,
             description="Total magnetization:",
             style={"description_width": "initial"},
@@ -404,13 +396,11 @@ class MagnetizationSettings(ipw.VBox):
             value="tot_magnetization",
             style={"description_width": "initial"},
         )
-        self.description = ipw.HTML(
-            "<b>Magnetization: Input structure not confirmed</b>"
-        )
+        self.description = ipw.HTML(self._DEFAULT_DESCRIPTION)
         self.kinds = self.create_kinds_widget()
         self.kinds_widget_out = ipw.Output()
         self.magnetization_out = ipw.Output()
-        self.magnetization_type.observe(self._display_starting, "value")
+        self.magnetization_type.observe(self._render, "value")
         super().__init__(
             children=[
                 self.description,
@@ -432,12 +422,10 @@ class MagnetizationSettings(ipw.VBox):
 
     def reset(self):
         self.disabled = True
-        self.tot_magnetization.value = 0.0
+        self.tot_magnetization.value = self._DEFAULT_TOT_MAGNETIZATION
         #
         if self.input_structure is None:
-            self.description.value = (
-                "<b>Magnetization: Input structure not confirmed</b>"
-            )
+            self.description.value = self._DEFAULT_DESCRIPTION
             self.kinds = None
         else:
             self.description.value = "<b>Magnetization</b>"
@@ -468,7 +456,7 @@ class MagnetizationSettings(ipw.VBox):
             clear_output()
             if change["new"] == "metal":
                 display(self.magnetization_type)
-                self._display_starting({"new": self.magnetization_type.value})
+                self._render({"new": self.magnetization_type.value})
             else:
                 display(self.tot_magnetization)
                 with self.kinds_widget_out:
@@ -479,7 +467,7 @@ class MagnetizationSettings(ipw.VBox):
         self.kinds = self.create_kinds_widget()
         self.description.value = "<b>Magnetization</b>"
 
-    def _display_starting(self, value):
+    def _render(self, value):
         if value["new"] == "tot_magnetization":
             with self.kinds_widget_out:
                 clear_output()
