@@ -566,7 +566,7 @@ class AddingTagsEditor(ipw.VBox):
         else:
             selection = string_range_to_list(self.atom_selection.value)[0]
             new_structure = deepcopy(self.structure)
-            if new_structure.get_tags() == []:
+            if not new_structure.get_tags().any():
                 new_tags = np.zeros(len(new_structure))
             else:
                 new_tags = new_structure.get_tags()
