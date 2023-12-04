@@ -1,6 +1,7 @@
 import os
 import tarfile
 from importlib import resources
+from pathlib import Path
 
 import requests
 import yaml
@@ -16,7 +17,7 @@ pseudo_data_dict = PSEUDO_TOC["pseudos"]
 xch_elements = PSEUDO_TOC["xas_xch_elements"]
 
 base_url = "https://github.com/PNOGillespie/Core_Level_Spectra_Pseudos/raw/main"
-head_path = "/home/jovyan/Utils/QE/Pseudos"
+head_path = f"{Path.home()}/.local/lib"
 dir_header = "cls_pseudos"
 functionals = ["pbe"]
 core_wfc_dir = "core_wfc_data"
@@ -48,7 +49,7 @@ def _download_extract_pseudo_archive(func):
     local_archive_filename = f"{dir}/{archive_filename}"
 
     env = os.environ.copy()
-    env["PATH"] = f"{env['PATH']}:{dir}"
+    env["PATH"] = f"{env['PATH']}:{Path.home() / '.local' / 'lib'}"
 
     response = requests.get(remote_archive_filename, timeout=30)
     response.raise_for_status()
