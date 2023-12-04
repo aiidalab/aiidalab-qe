@@ -1,41 +1,19 @@
 import os
 import tarfile
+from importlib import resources
 
 import requests
+import yaml
 from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 
+from aiidalab_qe.plugins import xas as xas_folder
+
 XspectraCrystalWorkChain = WorkflowFactory("quantumespresso.xspectra.crystal")
-
-
-def load_or_create_group(group_label_string):
-    """Check for the existence of a group matching a label, and create one if not found."""
-
-    from aiida.orm import UpfFamily
-
-    try:
-        group = orm.load_group(group_label_string)
-    except BaseException:
-        group = UpfFamily(group_label_string)
-        group.store()
-
-    return group
-
-
-def check_ch_pseudos_for_elements(group_label):
-    """Check a set of core-hole pseudos for which elements are available."""
-
-    from aiida import orm
-
-    elements_list = []
-    group = orm.load_group()
-    for node in group.nodes:
-        element = node.label.split(".")[0]
-        elements_list.append(element)
-
-    return elements_list
-
+PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
+pseudo_data_dict = PSEUDO_TOC["pseudos"]
+xch_elements = PSEUDO_TOC["xas_xch_elements"]
 
 base_url = "https://github.com/PNOGillespie/Core_Level_Spectra_Pseudos/raw/main"
 head_path = "/home/jovyan/Utils/QE/Pseudos"
@@ -44,6 +22,43 @@ functionals = ["pbe"]
 core_wfc_dir = "core_wfc_data"
 gipaw_dir = "gipaw_pseudos"
 ch_pseudo_dir = "ch_pseudos/star1s"
+
+
+def _load_or_import_nodes_from_filenames(in_dict, path, core_wfc_data=False):
+    for filename in in_dict.values():
+        try:
+            orm.load_node(filename)
+        except BaseException:
+            if not core_wfc_data:
+                new_upf = orm.UpfData(f"{path}/{filename}", filename=filename)
+                new_upf.label = filename
+                new_upf.store()
+            else:
+                new_singlefile = orm.SinglefileData(
+                    f"{path}/{filename}", filename="stdout"
+                )
+                new_singlefile.label = filename
+                new_singlefile.store()
+
+
+def _download_extract_pseudo_archive(func):
+    dir = f"{head_path}/{dir_header}/{func}"
+    archive_filename = f"{func}_ch_pseudos.tgz"
+    remote_archive_filename = f"{base_url}/{func}/{archive_filename}"
+    local_archive_filename = f"{dir}/{archive_filename}"
+
+    env = os.environ.copy()
+    env["PATH"] = f"{env['PATH']}:{dir}"
+
+    response = requests.get(remote_archive_filename, timeout=30)
+    response.raise_for_status()
+    with open(local_archive_filename, "wb") as handle:
+        handle.write(response.content)
+        handle.flush()
+
+    with tarfile.open(local_archive_filename, "r:gz") as tarfil:
+        tarfil.extractall(dir)
+
 
 url = f"{base_url}"
 for func in functionals:
@@ -55,66 +70,42 @@ for func in functionals:
         if entry == archive_filename:
             archive_found = True
     if not archive_found:
-        remote_archive_filename = f"{base_url}/{func}/{archive_filename}"
-        local_archive_filename = f"{dir}/{archive_filename}"
+        _download_extract_pseudo_archive(func)
 
-        env = os.environ.copy()
-        env["PATH"] = f"{env['PATH']}:{dir}"
 
-        response = requests.get(remote_archive_filename, timeout=30)
-        response.raise_for_status()
-        with open(local_archive_filename, "wb") as handle:
-            handle.write(response.content)
-            handle.flush()
-
-        with tarfile.open(local_archive_filename, "r:gz") as tarfil:
-            tarfil.extractall(dir)
-
-cls_group_head = load_or_create_group(dir_header)
+# Check all the pseudos/core-wfc data files in the TOC dictionary
+# and load/check all of them before proceeding. Note that this
+# approach relies on there not being multiple instances of nodes
+# with the same label.
 for func in functionals:
-    func_group = load_or_create_group(f"{dir_header}/{func}")
-    # Strictly speaking, this one won't have UPF data in it, but it *is* related
-    # to the other UPF data anyway.
-    core_wfc_group = load_or_create_group(f"{dir_header}/{func}/{core_wfc_dir}")
-    core_wfc_node_labels = [node.label for node in core_wfc_group.nodes]
-    core_wfc_nodes = []
-    core_wfc_path = f"{head_path}/{core_wfc_group.label}"
-    for file in os.listdir(core_wfc_path):
-        if file not in core_wfc_node_labels:
-            new_singlefile = orm.SinglefileData(
-                f"{core_wfc_path}/{file}", filename="stdout"
-            )
-            new_singlefile.label = file
-            new_singlefile.store()
-            core_wfc_nodes.append(new_singlefile)
-    if len(core_wfc_nodes) > 0:
-        core_wfc_group.add_nodes(core_wfc_nodes)
+    gipaw_pseudo_dict = pseudo_data_dict[func]["gipaw_pseudos"]
+    core_wfc_dict = pseudo_data_dict[func]["core_wavefunction_data"]
+    core_hole_pseudo_dict = pseudo_data_dict[func]["core_hole_pseudos"]
+    main_path = f"{head_path}/{dir_header}/{func}"
+    core_wfc_dir = f"{main_path}/core_wfc_data"
+    gipaw_dir = f"{main_path}/gipaw_pseudos"
+    ch_pseudo_dir = f"{main_path}/ch_pseudos/star1s"
+    # First, check that the local directories contain what's in the pseudo_toc
+    for pseudo_dir, pseudo_dict in zip(
+        [gipaw_dir, core_wfc_dir, ch_pseudo_dir],
+        [gipaw_pseudo_dict, core_wfc_dict, core_hole_pseudo_dict],
+    ):
+        pseudo_toc_mismatch = os.listdir(pseudo_dir) != pseudo_dict.values()
 
-    gipaw_group = load_or_create_group(f"{dir_header}/{func}/{gipaw_dir}")
-    gipaw_node_labels = [node.label for node in gipaw_group.nodes]
-    gipaw_nodes = []
-    gipaw_path = f"{head_path}/{gipaw_group.label}"
-    for file in os.listdir(gipaw_path):
-        if file not in gipaw_node_labels:
-            new_upf = orm.UpfData(f"{gipaw_path}/{file}", filename=file)
-            new_upf.label = file
-            new_upf.store()
-            gipaw_nodes.append(new_upf)
-    if len(gipaw_nodes) > 0:
-        gipaw_group.add_nodes(gipaw_nodes)
+    # Re-download the relevant archive if there is a mismatch
+    if pseudo_toc_mismatch:
+        _download_extract_pseudo_archive(func)
 
-    ch_group = load_or_create_group(f"{dir_header}/{func}/{ch_pseudo_dir}")
-    ch_node_labels = [node.label for node in ch_group.nodes]
-    ch_nodes = []
-    ch_path = f"{head_path}/{ch_group.label}"
-    for file in os.listdir(ch_path):
-        if file not in ch_node_labels:
-            new_upf = orm.UpfData(f"{ch_path}/{file}", filename=file)
-            new_upf.label = file
-            new_upf.store()
-            ch_nodes.append(new_upf)
-    if len(ch_nodes) > 0:
-        ch_group.add_nodes(ch_nodes)
+    _load_or_import_nodes_from_filenames(
+        in_dict=gipaw_pseudo_dict,
+        path=gipaw_dir,
+    )
+    _load_or_import_nodes_from_filenames(
+        in_dict=core_wfc_dict, path=core_wfc_dir, core_wfc_data=True
+    )
+    _load_or_import_nodes_from_filenames(
+        in_dict=core_hole_pseudo_dict["1s"], path=ch_pseudo_dir
+    )
 
 
 def get_builder(codes, structure, parameters, **kwargs):
@@ -122,26 +113,18 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     protocol = parameters["workchain"]["protocol"]
     xas_parameters = parameters["xas"]
-    gipaw_pseudo_group = orm.load_group(xas_parameters["gipaw_pseudo_group"])
-    ch_pseudo_group = orm.load_group(xas_parameters["ch_pseudo_group"])
-    core_wfc_data_group = orm.load_group(xas_parameters["core_wfc_data_group"])
+    gipaw_pseudos_dict = pseudo_data_dict["pbe"]["gipaw_pseudos"]
+    ch_pseudos_dict = pseudo_data_dict["pbe"]["core_hole_pseudos"]["1s"]
+    core_wfc_data_dict = pseudo_data_dict["pbe"]["core_wavefunction_data"]
     # set pseudo for element
     pseudos = {}
     core_wfc_data = {}
     core_hole_treatments = xas_parameters["core_hole_treatments"]
     elements_list = xas_parameters["elements_list"]
     for element in elements_list:
-        gipaw_pseudo = [
-            gipaw_upf
-            for gipaw_upf in gipaw_pseudo_group.nodes
-            if gipaw_upf.element == element
-        ][0]
-        ch_pseudo = [
-            ch_upf for ch_upf in ch_pseudo_group.nodes if ch_upf.element == element
-        ][0]
-        core_wfc_node = [
-            sf for sf in core_wfc_data_group.nodes if sf.label.split(".")[0] == element
-        ][0]
+        gipaw_pseudo = orm.load_node(gipaw_pseudos_dict[element])
+        ch_pseudo = orm.load_node(ch_pseudos_dict[element])
+        core_wfc_node = orm.load_node(core_wfc_data_dict[element])
         pseudos[element] = {"gipaw": gipaw_pseudo, "core_hole": ch_pseudo}
         core_wfc_data[element] = core_wfc_node
 
@@ -192,18 +175,6 @@ def get_builder(codes, structure, parameters, **kwargs):
             },
         }
     }
-    # TODO: We need to ensure that the family used for selecting the pseudopotentials in
-    # the CrystalWorkChain is set to the same as the functional needed for the
-    # core-hole/gipaw pseudo pair. In the future, this should check which one it is
-    # and set the correct value if it isn't already.
-    # For now, I've tried to override the pseudo family automatically using the example below,
-    # but it seems that the override is being *overriden* by some other part of the App
-    # chosen_pseudo_family = overrides["core"]["scf"]["pseudo_family"]
-    # if "/PBE/" not in chosen_pseudo_family:
-    #     if chosen_pseudo_family.split("/")[0] == "PseudoDojo":
-    #         overrides["core"]["scf"]["pseudo_family"] = "PseudoDojo/0.4/PBE/SR/standard/upf"
-    #     elif chosen_pseudo_family.split("/")[0] == "SSSP":
-    #         overrides["core"]["scf"]["pseudo_family"] = "SSSP/1.2/PBE/efficiency"
 
     builder = XspectraCrystalWorkChain.get_builder_from_protocol(
         pw_code=pw_code,

@@ -2,19 +2,19 @@
 """Panel for XAS plugin.
 
 """
+from importlib import resources
+
 import ipywidgets as ipw
 import traitlets as tl
-from aiida import orm
+import yaml
 from aiida.orm import StructureData
 
 from aiidalab_qe.common.panel import Panel
+from aiidalab_qe.plugins import xas as xas_folder
 
-xch_elements = ["Li", "C"]
-dir_header = "cls_pseudos"
-functionals = ["pbe"]
-core_wfc_dir = "core_wfc_data"
-gipaw_dir = "gipaw_pseudos"
-ch_pseudo_dir = "ch_pseudos/star1s"
+PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
+pseudo_data_dict = PSEUDO_TOC["pseudos"]
+xch_elements = PSEUDO_TOC["xas_xch_elements"]
 
 
 class Setting(Panel):
@@ -75,11 +75,9 @@ class Setting(Panel):
     )
 
     def __init__(self, **kwargs):
-        self.gipaw_pseudo_group = orm.load_group("cls_pseudos/pbe/gipaw_pseudos")
-        self.core_hole_pseudos_group = orm.load_group(
-            "cls_pseudos/pbe/ch_pseudos/star1s"
-        )
-        self.core_wfc_group = orm.load_group("cls_pseudos/pbe/core_wfc_data")
+        self.gipaw_pseudos = pseudo_data_dict["pbe"]["gipaw_pseudos"]
+        self.core_hole_pseudos = pseudo_data_dict["pbe"]["core_hole_pseudos"]["1s"]
+        self.core_wfc_data = pseudo_data_dict["pbe"]["core_wavefunction_data"]
 
         self.element_and_ch_treatment = ipw.VBox(layout=ipw.Layout(width="100%"))
 
@@ -131,18 +129,18 @@ class Setting(Panel):
             "core_hole_treatments": core_hole_treatments,
             "elements_list": elements_list,
             "structure_type": self.structure_type.value,
-            "gipaw_pseudo_group": self.gipaw_pseudo_group.label,
-            "ch_pseudo_group": self.core_hole_pseudos_group.label,
-            "core_wfc_data_group": self.core_wfc_group.label,
+            "gipaw_pseudo": self.gipaw_pseudos,
+            "ch_pseudo": self.core_hole_pseudos,
+            "core_wfc_data": self.core_wfc_data,
         }
         return parameters
 
     def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
 
-        ch_group = self.core_hole_pseudos_group
+        ch_pseudos = self.core_hole_pseudos
         structure = self.input_structure
-        available_elements = [node.label.split(".")[0] for node in ch_group.nodes]
+        available_elements = [k for k in ch_pseudos]
         elements_to_select = sorted(
             [
                 kind.symbol
@@ -175,15 +173,9 @@ class Setting(Panel):
             ("XCH (Smearing)", "xch_smear"),
             ("XCH (Fixed)", "xch_fixed"),
         ]
-        ch_group = self.core_hole_pseudos_group
+        ch_pseudos = self.core_hole_pseudos
         structure = self.input_structure
-        # (21/11/23) Temporarilly block Li from the list until issues with the
-        # current pseudo are resolved:
-        available_elements = [
-            node.label.split(".")[0]
-            for node in ch_group.nodes
-            if node.label.split(".")[0] != "Li"
-        ]
+        available_elements = [k for k in ch_pseudos]
         elements_to_select = sorted(
             [
                 kind.symbol
