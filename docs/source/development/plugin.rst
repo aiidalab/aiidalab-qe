@@ -354,19 +354,19 @@ Here is the example of the built-in `pdos` plugins with codes `dos.x` and `projw
     }
 
 For the moment, the app does not support set up the newly added codes automatically.
-Thus, the user needs to set up the codes manually. However, the developer can provide console 
-scripts to make user life easier. Please read to following section for some instructions on how 
+Thus, the user needs to set up the codes manually. However, the developer can provide console
+scripts to make user life easier. Please read to following section for some instructions on how
 to do it.
 
 
 Setting up console scripts for automatic code installation
 ----------------------------------------------------------
-It is possible to provide console scripts in order to make new code installation almost automatic, 
-with only running an instruction from the command line. 
+It is possible to provide console scripts in order to make new code installation almost automatic,
+with only running an instruction from the command line.
 Console scripts can be defined in the `pyproject.toml`:
 
 .. code-block::
-    
+
     [project.scripts]
     phonopy_install = "phonopy_install:install_phonopy"
 
@@ -376,7 +376,7 @@ When the user, after the package installation, will execute the command
 
       phonopy_install
 
-this will invoke the function `install_phonopy`, contained in the phonopy_install.py file in the 
+this will invoke the function `install_phonopy`, contained in the phonopy_install.py file in the
 root directory of the package.
 
 or in the `setup.cfg` file (if you prefer):
@@ -387,7 +387,7 @@ or in the `setup.cfg` file (if you prefer):
     console_scripts=
         install_muon_codes = aiidalab_qe_muon.scripts.post_install:InstallCodes
 
-this will invoke the function `InstallCodes`, contained in the post_install.py file in the 
+this will invoke the function `InstallCodes`, contained in the post_install.py file in the
 {root-directory-of-the-package}/aiidalab_qe_muon/scripts/ directory.
 
 These examples are taken respectively from `aiidalab-qe-vibroscopy`_ and `aiidalab-qe-muon`_.
