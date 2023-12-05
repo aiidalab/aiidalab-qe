@@ -33,7 +33,7 @@ Access AiiDAlab
 
       ++++
 
-      .. button-ref:: docker
+      .. button-ref:: container
          :ref-type: doc
          :click-parent:
          :expand:
@@ -67,5 +67,5 @@ Access AiiDAlab
    :maxdepth: 1
    :hidden:
 
-   docker
+   container
    vm
