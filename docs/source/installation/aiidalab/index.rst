@@ -9,6 +9,22 @@ Access AiiDAlab
 .. grid:: 1 1 1 2
    :gutter: 3
 
+   .. grid-item-card:: Materials Cloud AiiDAlab Server
+      :text-align: center
+      :shadow: md
+
+      For researchers affiliated with Materials Cloud partners, log into the open AiiDAlab server hosted on the Materials Cloud.
+
+      ++++
+
+      .. button-link:: https://aiidalab.materialscloud.org/hub/login
+         :click-parent:
+         :expand:
+         :color: primary
+         :outline:
+
+         Launch the server
+
    .. grid-item-card:: Local Docker Instance
       :text-align: center
       :shadow: md
@@ -43,38 +59,6 @@ Access AiiDAlab
 
          To the download page
 
-   .. grid-item-card:: Materials Cloud AiiDAlab Server
-      :text-align: center
-      :shadow: md
-
-      For researchers affiliated with Materials Cloud partners, log into the open AiiDAlab server hosted on the Materials Cloud.
-
-      ++++
-
-      .. button-link:: https://aiidalab.materialscloud.org/hub/login
-         :click-parent:
-         :expand:
-         :color: primary
-         :outline:
-
-         Launch the server
-
-   .. grid-item-card:: Materials MarketPlace AiiDAlab Server
-      :text-align: center
-      :shadow: md
-
-      For members of the Materials Modeling MarketPlace, log into the open AiiDAlab server hosted on the Materials MarketPlace.
-
-      ++++
-
-      .. button-link:: https://aiidalab.materials-marketplace.eu/hub/login
-         :click-parent:
-         :expand:
-         :color: primary
-         :outline:
-
-         Launch the server
-
 .. div::
 
    \* The Quantum ESPRESSO app is included in these images. No further installation required!
@@ -84,5 +68,4 @@ Access AiiDAlab
    :hidden:
 
    docker
-   launch
    vm

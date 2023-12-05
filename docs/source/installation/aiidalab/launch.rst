@@ -28,7 +28,7 @@ AiiDAlab launch
 
    .. code-block:: console
 
-      aiidalab-launch profile add --image aiidalab/qe:edge QE
+      aiidalab-launch profile add --image aiidalab/qe:latest QE
 
    At the prompt, enter `n` to skip editing the profile settings.
 

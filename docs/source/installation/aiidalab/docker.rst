@@ -23,7 +23,7 @@ You have two options to launch the container:
 
    .. code-block:: console
 
-      docker run -p 8888:8888 aiidalab/qe:edge
+      docker run -p 8888:8888 aiidalab/qe:latest
 
 #.  Use the :doc:`aiidalab-launch <launch>` (**recommended**)
 
