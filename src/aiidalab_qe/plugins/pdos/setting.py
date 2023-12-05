@@ -6,15 +6,9 @@ from aiida import orm
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
+from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
 from aiidalab_qe.common.panel import Panel
-
-# nscf_kpoints_distance values from PdosWorkChain
-NSCF_DISTANCE_MAP = {
-    "fast": 0.5,
-    "moderate": 0.1,
-    "precise": 0.05,
-}
 
 
 class Setting(Panel):
@@ -48,7 +42,9 @@ class Setting(Panel):
 
     @tl.observe("protocol")
     def _procotol_changed(self, change):
-        self.nscf_kpoints_distance.value = NSCF_DISTANCE_MAP[change["new"]]
+        self.nscf_kpoints_distance.value = PdosWorkChain.get_protocol_inputs(
+            change["new"]
+        )["nscf"]["kpoints_distance"]
         self._display_mesh()
 
     @tl.observe("input_structure")
@@ -58,7 +54,7 @@ class Setting(Panel):
     def _display_mesh(self, _=None):
         if self.input_structure is None:
             return
-        mesh = create_kpoints_from_distance(
+        mesh = create_kpoints_from_distance.process_class._func(
             self.input_structure,
             orm.Float(self.nscf_kpoints_distance.value),
             orm.Bool(True),
