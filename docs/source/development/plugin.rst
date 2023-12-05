@@ -354,7 +354,83 @@ Here is the example of the built-in `pdos` plugins with codes `dos.x` and `projw
     }
 
 For the moment, the app does not support set up the newly added codes automatically.
-Thus, the user needs to set up the codes manually.
+Thus, the user needs to set up the codes manually. However, the developer can provide console 
+scripts to make user life easier. Please read to following section for some instructions on how 
+to do it.
+
+
+Setting up console scripts for automatic code installation
+----------------------------------------------------------
+It is possible to provide console scripts in order to make new code installation almost automatic, 
+with only running an instruction from the command line. 
+Console scripts can be defined in the `pyproject.toml`:
+
+.. code-block::
+    
+    [project.scripts]
+    phonopy_install = "phonopy_install:install_phonopy"
+
+When the user, after the package installation, will execute the command
+
+.. code-block:: console
+
+      phonopy_install
+
+this will invoke the function `install_phonopy`, contained in the phonopy_install.py file in the 
+root directory of the package.
+
+or in the `setup.cfg` file (if you prefer):
+
+.. code-block::
+
+    [options.entry_points]
+    console_scripts=
+        install_muon_codes = aiidalab_qe_muon.scripts.post_install:InstallCodes
+
+this will invoke the function `InstallCodes`, contained in the post_install.py file in the 
+{root-directory-of-the-package}/aiidalab_qe_muon/scripts/ directory.
+
+These examples are taken respectively from `aiidalab-qe-vibroscopy`_ and `aiidalab-qe-muon`_.
+The actual function to install the code should be something similar:
+
+.. code-block:: python
+
+    from aiida.common.exceptions import NotExistent
+    import subprocess
+    from aiida.orm import load_code
+    from aiida import load_profile
+
+    def install_phonopy():
+        load_profile()
+        try:
+            load_code("phonopy@localhost")
+        except NotExistent:
+            # Construct the command as a list of arguments
+            command = [
+                "verdi",
+                "code",
+                "create",
+                "core.code.installed",
+                "--non-interactive",
+                "--label",
+                "phonopy",
+                "--default-calc-job-plugin",
+                "phonopy.phonopy",
+                "--computer",
+                "localhost",
+                "--filepath-executable",
+                "/opt/conda/bin/phonopy",
+            ]
+
+            # Use subprocess.run to run the command
+            subprocess.run(command, check=True)
+        else:
+            raise Warning("Code phonopy@localhost already installed!")
+
+
+    # Called when the script is run directly
+    if __name__ == "__main__":
+        install_phonopy()
 
 Further Reading
 ================================
@@ -362,3 +438,5 @@ QuantumESPRESSO app comes with several built-in plugins, which can be found in t
 You can also use them as a start point to create your own plugins.
 
 .. _aiidalab-qe-plugin-demos: https://github.com/aiidalab/aiidalab-qe-plugin-demos
+.. _aiidalab-qe-vibroscopy: https://github.com/mikibonacci/aiidalab-qe-vibroscopy
+.. _aiidalab-qe-muon: https://github.com/mikibonacci/aiidalab-qe-muon
