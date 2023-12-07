@@ -17,6 +17,7 @@ from IPython.display import clear_output, display
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.panel import Panel
 from aiidalab_qe.common.setup_pseudos import PseudoFamily
+from aiidalab_qe.common.widgets import HubbardWidget
 
 from .pseudos import PseudoFamilySelector, PseudoSetter
 
@@ -105,6 +106,8 @@ class AdvancedSettings(Panel):
         )
         self.kpoints_distance.observe(self._callback_value_set, "value")
 
+        # Hubbard setting widget
+        self.hubbard_widget = HubbardWidget()
         # Total change setting widget
         self.total_charge = ipw.BoundedFloatText(
             min=-3,
@@ -153,6 +156,7 @@ class AdvancedSettings(Panel):
             # Kpoints setting widget
             self.kpoints_description,
             ipw.HBox([self.kpoints_distance, self.mesh_grid]),
+            self.hubbard_widget,
             self.pseudo_family_selector,
             self.pseudo_setter,
         ]
@@ -176,6 +180,7 @@ class AdvancedSettings(Panel):
             self.magnetization._update_widget(change)
             self.pseudo_setter.structure = change["new"]
             self._display_mesh()
+            self.hubbard_widget.update_widgets(change["new"])
         else:
             self.magnetization.input_structure = None
             self.pseudo_setter.structure = None
