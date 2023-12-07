@@ -860,6 +860,7 @@ class HubbardWidget(ipw.VBox):
         """
         self.input_structure = change
         self.hubbard_widget = self.create_hubbard_widget()
+        self.eigenvalues_label.value = False
         if self.hubbard.value:
             with self.hubbard_widget_out:
                 clear_output()

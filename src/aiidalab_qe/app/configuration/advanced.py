@@ -231,6 +231,13 @@ class AdvancedSettings(Panel):
                 },
             },
         }
+        if self.hubbard_widget.hubbard.value:
+            parameters["hubbard_parameters"] = self.hubbard_widget.hubbard_dict
+            if self.hubbard_widget.eigenvalues_label.value:
+                parameters["pw"]["parameters"]["SYSTEM"].update(
+                    self.hubbard_widget.eigenvalues_dict
+                )
+
         # add clean_workdir to the parameters
         parameters["clean_workdir"] = self.clean_workdir.value
 

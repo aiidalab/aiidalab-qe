@@ -6,6 +6,7 @@ from aiida.plugins import DataFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
 
@@ -121,8 +122,24 @@ class QeAppWorkChain(WorkChain):
             parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
         #
         builder = cls.get_builder()
-        # Set the structure.
-        builder.structure = structure
+        # Set a HubbardStructureData if hubbard_parameters is specified
+        hubbard_dict = parameters["advanced"].pop("hubbard_parameters", None)
+        if hubbard_dict is not None:
+            hubbard_parameters = hubbard_dict["hubbard_u"]
+            hubbard_structure = HubbardStructureData.from_structure(structure)
+            for key, value in hubbard_parameters.items():
+                kind, orbital = key.split(" - ")
+                hubbard_structure.initialize_onsites_hubbard(
+                    atom_name=kind,
+                    atom_manifold=orbital,
+                    value=value,
+                    hubbard_type="U",
+                    use_kinds=True,
+                )
+            hubbard_structure.store()
+            builder.structure = hubbard_structure
+        else:
+            builder.structure = structure
         # relax
         relax_overrides = {"base": parameters["advanced"]}
         protocol = parameters["workchain"]["protocol"]
