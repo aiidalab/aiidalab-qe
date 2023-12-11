@@ -104,6 +104,12 @@
         <td>Initial Magnetic Moments</td>
         <td>{{ initial_magnetic_moments }}</td>
       </tr>
+      {% if hubbard_u %}
+      <tr>
+        <td>DFT+U</td>
+        <td>{{ hubbard_u }}</td>
+      </tr>
+      {% endif %}
     </table>
   </div>
 </div>

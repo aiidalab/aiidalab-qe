@@ -110,6 +110,12 @@ def generate_report_parameters(qeapp_wc):
     report["periodicity"] = PERIODICITY_MAPPING.get(
         qeapp_wc.inputs.structure.pbc, "xyz"
     )
+
+    # DFT+U
+    hubbard_dict = ui_parameters["advanced"].pop("hubbard_parameters", None)
+    if hubbard_dict:
+        hubbard_parameters = hubbard_dict["hubbard_u"]
+        report["hubbard_u"] = hubbard_parameters
     # hard code bands and pdos
     if "bands" in qeapp_wc.inputs:
         report["bands_kpoints_distance"] = PwBandsWorkChain.get_protocol_inputs(

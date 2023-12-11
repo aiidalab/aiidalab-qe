@@ -153,7 +153,7 @@ def test_advanced_kpoints_mesh():
     assert w.mesh_grid.value == "Mesh [6, 6, 6]"
 
 
-def test_advanced_hubbard_():
+def test_advanced_hubbard_widget():
     """Test Hubbard widget."""
     from aiida import orm
 
@@ -193,7 +193,7 @@ def test_advanced_hubbard_():
     }
 
     # Check eigenvalues are empty
-    assert w.hubbard_widget.eigen_values_widget == {}
+    assert w.hubbard_widget.eigenvalues_dict == {}
 
     w.hubbard_widget.eigenvalues_label.value = True
 
