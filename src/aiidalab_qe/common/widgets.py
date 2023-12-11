@@ -747,6 +747,9 @@ class HubbardWidget(ipw.VBox):
         ]
         orbital_shells = [shell[:2] for shell in valence]
 
+        def is_condition_met(shell):
+            return condition and condition in shell
+
         # Conditions for determining the Hubbard manifold to be selected from the electronic structure
         hubbard_conditions = {
             element.is_transition_metal: "d",
@@ -763,8 +766,9 @@ class HubbardWidget(ipw.VBox):
             (shell for condition, shell in hubbard_conditions.items() if condition),
             None,
         )
+
         hubbard_manifold = next(
-            (shell for shell in orbital_shells if condition in shell), None
+            (shell for shell in orbital_shells if is_condition_met(shell)), None
         )
 
         return hubbard_manifold
