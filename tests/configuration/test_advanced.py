@@ -151,3 +151,72 @@ def test_advanced_kpoints_mesh():
     # change protocol
     w.protocol = "fast"
     assert w.mesh_grid.value == "Mesh [6, 6, 6]"
+
+
+def test_advanced_hubbard_():
+    """Test Hubbard widget."""
+    from aiida import orm
+
+    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
+
+    w = AdvancedSettings()
+
+    # Create a StructureData for AdvancedSettings (LiCoO2)
+
+    a, b, c, d = 1.4060463552647, 0.81178124180108, 4.6012019181836, 1.6235624832021
+    cell = [[a, -b, c], [0.0, d, c], [-a, -b, c]]
+    sites = [
+        ["Co", "Co", (0, 0, 0)],
+        ["O", "O", (0, 0, 3.6020728736387)],
+        ["O", "O", (0, 0, 10.201532881212)],
+        ["Li", "Li", (0, 0, 6.9018028772754)],
+    ]
+    structure = orm.StructureData(cell=cell)
+
+    for site in sites:
+        structure.append_atom(position=site[2], symbols=site[0], name=site[1])
+
+    w.input_structure = structure
+
+    # Activate Hubbard U widget
+    w.hubbard_widget.hubbard.value = True
+
+    assert w.hubbard_widget.input_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
+
+    # Change the value of the Hubbard U for Co, O and Li
+    w.hubbard_widget.hubbard_widget.children[1].children[0].value = 1
+    w.hubbard_widget.hubbard_widget.children[2].children[0].value = 2
+    w.hubbard_widget.hubbard_widget.children[3].children[0].value = 3
+
+    assert w.hubbard_widget.hubbard_dict == {
+        "hubbard_u": {"Co - 3d": 1.0, "O - 2p": 2.0, "Li - 2s": 3.0}
+    }
+
+    # Check eigenvalues are empty
+    assert w.hubbard_widget.eigen_values_widget == {}
+
+    w.hubbard_widget.eigenvalues_label.value = True
+
+    # Check there is only eigenvalues for Co (Transition metal)
+
+    assert len(w.hubbard_widget.eigen_values_widget.children) == 1
+
+    # The widget hierarchy for eigenvalues:
+    # - w.hubbard_widget.eigen_values_widget.children[0]: List of eigenvalues for Co
+    # - w.hubbard_widget.eigen_values_widget.children[0].children[1]: Widgets for up and down spin
+    # - w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0]: Widget for up spin
+    # - w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[1]: Widget for eigenvalue 1 (3d range: 1 to 5)
+
+    w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[
+        1
+    ].value = "1"
+    w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[
+        3
+    ].value = "1"
+    w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[
+        5
+    ].value = "1"
+
+    assert w.hubbard_widget.eigenvalues_dict == {
+        "starting_ns_eigenvalue": [[1, 1, "Co", 1], [3, 1, "Co", 1], [5, 1, "Co", 1]]
+    }
