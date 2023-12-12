@@ -11,7 +11,7 @@ Welcome Page
       :child-align: justify
       :class: sd-fs-5
 
-      .. rubric:: The Quantum ESPRESSO App - Version 23.10.0a0
+      .. rubric:: The Quantum ESPRESSO App - Version |release|
 
       The Quantum ESPRESSO (QE) app is an `AiiDAlab`_ Jupyter-based graphical user interface allowing users to conduct and streamline many of `Quantum ESPRESSO`_'s calculations by leveraging `AiiDA`_'s powerful workflows implemented in the AiiDA Quantum ESPRESSO plugin.
 
