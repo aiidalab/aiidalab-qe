@@ -168,6 +168,8 @@ def sssp(aiida_profile, generate_upf_data):
     from aiida.common.constants import elements
     from aiida.plugins import GroupFactory
 
+    from aiidalab_qe.common.setup_pseudos import SSSP_VERSION
+
     aiida_profile.clear_profile()
 
     SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -214,7 +216,7 @@ def sssp(aiida_profile, generate_upf_data):
                 "cutoff_rho": 240.0,
             }
 
-        label = "SSSP/1.2/PBEsol/efficiency"
+        label = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
         family = SsspFamily.create_from_folder(dirpath, label)
 
     family.set_cutoffs(cutoffs, stringency, unit="Ry")
@@ -515,9 +517,7 @@ def generate_pdos_workchain(
 
 @pytest.fixture
 def generate_bands_workchain(
-    fixture_localhost,
     fixture_code,
-    generate_xy_data,
     generate_bands_data,
     generate_workchain,
 ):
@@ -579,6 +579,8 @@ def generate_qeapp_workchain(
 
         from aiida.orm.utils.serialize import serialize
 
+        from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+        from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
         from aiidalab_qe.workflows import QeAppWorkChain
 
         # Step 1: select structure from example
@@ -595,7 +597,7 @@ def generate_qeapp_workchain(
         s1.confirm()
         structure = s1.confirmed_structure
         # step 2 configure
-        s2 = app.configure_step
+        s2: ConfigureQeAppWorkChainStep = app.configure_step
         s2.workchain_settings.relax_type.value = relax_type
         # In order to parepare a complete inputs, I set all the properties to true
         # this can be overrided later
@@ -606,9 +608,10 @@ def generate_qeapp_workchain(
         s2.advanced_settings.magnetization._set_magnetization_values(
             initial_magnetic_moments
         )
+        print(s2.advanced_settings.pseudo_family_selector.value)
         s2.confirm()
         # step 3 setup code and resources
-        s3 = app.submit_step
+        s3: SubmitQeAppWorkChainStep = app.submit_step
         s3.resources_config.num_cpus.value = 4
         builder = s3._create_builder()
         inputs = builder._inputs()

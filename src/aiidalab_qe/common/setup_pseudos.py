@@ -16,8 +16,8 @@ from filelock import FileLock, Timeout
 
 from aiidalab_qe.common.widgets import ProgressBar
 
-SSSP_VERSION = "1.2"
-PSEUDODOJO_VERSION = "0.4"
+SSSP_VERSION = "1.3"
+PSEUDODOJO_VERSION = "0.5"
 
 EXPECTED_PSEUDOS = {
     f"SSSP/{SSSP_VERSION}/PBE/efficiency",
