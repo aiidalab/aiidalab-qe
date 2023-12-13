@@ -268,7 +268,7 @@ class Result(ResultPanel):
             </b>
                 <p style="padding-bottom: 5px"> <i style="font-size:14pt;font-family:Times New Roman">&Gamma;<sub><em>hole</em></sub></i> - Defines a constant Lorenzian broadening width for the whole spectrum. In "variable" mode, defines the initial broadening width of the ArcTangent function. </p>
                 <p style="padding-bottom: 5px"> <i style="font-size:14pt;font-family:Times New Roman">&Gamma;<sub><em>max</em></sub></i> - Maximum Lorenzian broadening parameter at infinte energy in "variable" mode.</p>
-                <p style="padding-bottom: 5px"> <i style="font-size:14pt;font-family:Times New Roman"><emph>E<sub>max</em></sub></i> - Defines the inflection point of the variable-energy broadening function.</p>
+                <p style="padding-bottom: 5px"> <i style="font-size:14pt;font-family:Times New Roman"><emph>E<sub>center</em></sub></i> - Defines the inflection point of the variable-energy broadening function.</p>
             </div>
             <div style="line-height: 140%; padding-top: 5px; padding-bottom: 5px; opacity:0.5;"><b>
             Note that setting <i style="font-size:14pt;font-family:Times New Roman">&Gamma;<sub><em>hole</em></sub></i> to 0 eV will simply plot the raw spectrum.
