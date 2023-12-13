@@ -137,8 +137,8 @@ class App(ipw.VBox):
                     self.structure_step.manager.viewer.structure = (
                         process.inputs.structure.get_ase()
                     )
-                    self.structure_step.confirmed_structure = process.inputs.structure
-                    self.configure_step.state = WizardAppWidgetStep.State.SUCCESS
+                    self.structure_step.structure = process.inputs.structure
+                    self.structure_step.confirm()
                     self.submit_step.process = process
             # set ui_parameters
             # print out error message if yaml format ui_parameters is not reachable
@@ -146,6 +146,6 @@ class App(ipw.VBox):
             if ui_parameters and isinstance(ui_parameters, str):
                 ui_parameters = deserialize_unsafe(ui_parameters)
                 self.configure_step.set_configuration_parameters(ui_parameters)
-                self.configure_step.state = self.configure_step.State.SUCCESS
+                self.configure_step.confirm()
                 self.submit_step.set_submission_parameters(ui_parameters)
                 self.submit_step.state = self.submit_step.State.SUCCESS
