@@ -174,7 +174,7 @@ def get_builder(codes, structure, parameters, **kwargs):
                         }
                     }
                 }
-            }
+            },
         }
     }
 
