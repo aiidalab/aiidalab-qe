@@ -56,6 +56,7 @@ def _download_extract_pseudo_archive(func):
     with open(local_archive_filename, "wb") as handle:
         handle.write(response.content)
         handle.flush()
+        response.close()
 
     with tarfile.open(local_archive_filename, "r:gz") as tarfil:
         tarfil.extractall(dir)
@@ -173,7 +174,7 @@ def get_builder(codes, structure, parameters, **kwargs):
                         }
                     }
                 }
-            },
+            }
         }
     }
 

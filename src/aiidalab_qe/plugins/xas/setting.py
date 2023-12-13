@@ -149,14 +149,14 @@ class Setting(Panel):
             ]
         )
 
-        element_and_ch_treatment = {}
+        element_and_ch_treatment_options = {}
         for element in elements_to_select:
             if element in xch_elements:
-                element_and_ch_treatment[element] = "xch_smear"
+                element_and_ch_treatment_options[element] = "xch_smear"
             else:
-                element_and_ch_treatment[element] = "full"
+                element_and_ch_treatment_options[element] = "full"
 
-        self.element_and_ch_treatment = element_and_ch_treatment
+        self.element_and_ch_treatment_options = element_and_ch_treatment_options
         self.structure_type.value = input_dict.get("structure_type", "crystal")
 
     @tl.observe("input_structure")
