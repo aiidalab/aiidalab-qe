@@ -1,5 +1,6 @@
 bands:
   bands:
+    max_iterations: 5
     pw:
       parallelization:
         npool: 1
@@ -33,6 +34,7 @@ bands:
   scf:
     kpoints_distance: 0.12
     kpoints_force_parity: false
+    max_iterations: 5
     pw:
       parallelization:
         npool: 1
@@ -66,6 +68,7 @@ pdos:
   nscf:
     kpoints_distance: 0.1
     kpoints_force_parity: false
+    max_iterations: 5
     pw:
       parallelization:
         npool: 1
@@ -100,6 +103,7 @@ pdos:
   scf:
     kpoints_distance: 0.12
     kpoints_force_parity: false
+    max_iterations: 5
     pw:
       parallelization:
         npool: 1
@@ -133,6 +137,7 @@ relax:
   base:
     kpoints_distance: 0.12
     kpoints_force_parity: false
+    max_iterations: 5
     pw:
       parallelization:
         npool: 1
