@@ -197,7 +197,7 @@ class AdvancedSettings(Panel):
         self.kpoints_distance.value = parameters["kpoints_distance"]
 
         # The pseudo_family read from the protocol (aiida-quantumespresso plugin settings)
-        # The logic is the same as the pseudo_family_selector widget
+        # we override it with the value from the pseudo_family_selector widget
         parameters["pseudo_family"] = self.pseudo_family_selector.value
 
     def _callback_value_set(self, _=None):

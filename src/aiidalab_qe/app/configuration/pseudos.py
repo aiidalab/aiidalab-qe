@@ -197,6 +197,7 @@ class PseudoFamilySelector(ipw.VBox):
 
     def _update_settings_from_protocol(self, protocol):
         """Update the widget values from the given protocol, and trigger the callback."""
+        # FIXME: this rely on the aiida-quantumespresso, which is not ideal
         pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
             "pseudo_family"
         ]

@@ -177,6 +177,10 @@ def get_builder(codes, structure, parameters, **kwargs):
     pw_code = codes.get("pw")
     protocol = parameters["workchain"]["protocol"]
     scf_overrides = deepcopy(parameters["advanced"])
+    relax_overrides = {
+        "base": deepcopy(parameters["advanced"]),
+        "base_final_scf": deepcopy(parameters["advanced"]),
+    }
     bands_overrides = deepcopy(parameters["advanced"])
     bands_overrides.pop("kpoints_distance", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
@@ -184,6 +188,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     overrides = {
         "scf": scf_overrides,
         "bands": bands_overrides,
+        "relax": relax_overrides,
     }
     bands = PwBandsWorkChain.get_builder_from_protocol(
         code=pw_code,

@@ -7,6 +7,8 @@ import tempfile
 import pytest
 from aiida import orm
 
+from aiidalab_qe.common.setup_pseudos import SSSP_VERSION
+
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 
 
@@ -167,8 +169,6 @@ def sssp(aiida_profile, generate_upf_data):
     """Create an SSSP pseudo potential family from scratch."""
     from aiida.common.constants import elements
     from aiida.plugins import GroupFactory
-
-    from aiidalab_qe.common.setup_pseudos import SSSP_VERSION
 
     aiida_profile.clear_profile()
 
@@ -425,11 +425,21 @@ def generate_pdos_workchain(
         from aiida.orm import Dict, FolderData, RemoteData
         from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
+        pseudo_family = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+
         inputs = {
             "pw_code": fixture_code("quantumespresso.pw"),
             "dos_code": fixture_code("quantumespresso.dos"),
             "projwfc_code": fixture_code("quantumespresso.projwfc"),
             "structure": structure,
+            "overrides": {
+                "scf": {
+                    "pseudo_family": pseudo_family,
+                },
+                "nscf": {
+                    "pseudo_family": pseudo_family,
+                },
+            },
         }
         builder = PdosWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
@@ -530,9 +540,27 @@ def generate_bands_workchain(
         from aiida.orm import Dict
         from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
+        pseudo_family = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+
         inputs = {
             "code": fixture_code("quantumespresso.pw"),
             "structure": structure,
+            "overrides": {
+                "scf": {
+                    "pseudo_family": pseudo_family,
+                },
+                "bands": {
+                    "pseudo_family": pseudo_family,
+                },
+                "relax": {
+                    "base": {
+                        "pseudo_family": pseudo_family,
+                    },
+                    "base_final_scf": {
+                        "pseudo_family": pseudo_family,
+                    },
+                },
+            },
         }
         builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
@@ -608,7 +636,6 @@ def generate_qeapp_workchain(
         s2.advanced_settings.magnetization._set_magnetization_values(
             initial_magnetic_moments
         )
-        print(s2.advanced_settings.pseudo_family_selector.value)
         s2.confirm()
         # step 3 setup code and resources
         s3: SubmitQeAppWorkChainStep = app.submit_step
