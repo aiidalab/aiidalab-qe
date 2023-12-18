@@ -78,7 +78,6 @@ class PseudoFamilySelector(ipw.VBox):
         self.override = ipw.Checkbox(
             description="",
             indent=False,
-            value=False,
             layout=ipw.Layout(max_width="10%"),
         )
         self.set_pseudo_family_box = ipw.HBox(
@@ -140,6 +139,7 @@ class PseudoFamilySelector(ipw.VBox):
         # this will trigger the callback to set the value of widgets to the default
         self._default_protocol = DEFAULT_PARAMETERS["workchain"]["protocol"]
         self.protocol = self._default_protocol
+        self.override.value = False
 
     def set_value(self, _=None):
         """The callback when the selection of pseudo family or dft functional is changed.
@@ -197,6 +197,7 @@ class PseudoFamilySelector(ipw.VBox):
 
     def _update_settings_from_protocol(self, protocol):
         """Update the widget values from the given protocol, and trigger the callback."""
+        # FIXME: this rely on the aiida-quantumespresso, which is not ideal
         pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
             "pseudo_family"
         ]
