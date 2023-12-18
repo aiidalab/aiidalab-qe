@@ -52,7 +52,7 @@ runs:
 
         - name: Upload screenshots as artifacts
           if : ${{ inputs.architecture == 'amd64' }}
-          uses: actions/upload-artifact@v3
+          uses: actions/upload-artifact@v4
           with:
               name: Screenshots-CI-${{ inputs.architecture }}
               path: screenshots/
