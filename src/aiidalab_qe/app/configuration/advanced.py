@@ -343,6 +343,8 @@ class AdvancedSettings(Panel):
             self.pseudo_setter._reset()
             # reset the magnetization
             self.magnetization.reset()
+            # reset the hubbard widget
+            self.hubbard_widget.reset()
             # reset mesh grid
             if self.input_structure is None:
                 self.mesh_grid.value = " "

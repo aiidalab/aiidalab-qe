@@ -993,6 +993,18 @@ class HubbardWidget(ipw.VBox):
                     )
                     spin.children[eigenvalue].value = str(value)
 
+    def reset(self):
+        """Reset the widget."""
+        self.hubbard.value = False
+        self.eigenvalues_label.value = False
+        self.input_structure = None
+        self.hubbard_widget = self.create_hubbard_widget()
+        self.eigen_values_widget = self.create_eigenvalues_widget()
+        with self.hubbard_widget_out:
+            clear_output()
+        with self.eigen_values_widget_out:
+            clear_output()
+
     @property
     def hubbard_dict(self) -> dict:
         if self.hubbard.value:
