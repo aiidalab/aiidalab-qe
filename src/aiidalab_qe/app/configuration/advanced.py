@@ -307,6 +307,22 @@ class AdvancedSettings(Panel):
                 parameters.get("initial_magnetic_moments")
             )
 
+        if parameters.get("hubbard_parameters"):
+            self.hubbard_widget.hubbard.value = True
+            self.hubbard_widget.set_hubbard_widget(
+                parameters["hubbard_parameters"]["hubbard_u"]
+            )
+            starting_ns_eigenvalue = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("SYSTEM", {})
+                .get("starting_ns_eigenvalue")
+            )
+
+            if starting_ns_eigenvalue is not None:
+                self.hubbard_widget.eigenvalues_label.value = True
+                self.hubbard_widget.set_eigenvalues_widget(starting_ns_eigenvalue)
+
     def reset(self):
         """Reset the widget and the traitlets"""
 

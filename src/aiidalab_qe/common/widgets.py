@@ -956,6 +956,43 @@ class HubbardWidget(ipw.VBox):
 
         return starting_ns_eigenvalue
 
+    def set_hubbard_widget(self, parameters):
+        """
+        Set the Hubbard widget based on the given parameters.
+
+        Parameters:
+            parameters (dict): A dictionary containing the Hubbard U values for each input label.
+                               The dictionary format is {'kind_name - hubbard_manifold': U_value}
+        """
+        for index, label in enumerate(self.input_labels):
+            if label in parameters:
+                self.hubbard_widget.children[index + 1].children[0].value = parameters[
+                    label
+                ]
+
+    def set_eigenvalues_widget(self, parameters):
+        """
+        Set the eigenvalues widget based on the given parameters.
+
+        Parameters:
+            parameters (list): A list of starting ns eigenvalues for each element.
+                               Each element in the list is a list containing the following information:
+                               - The eigenvalue
+                               - The spin index
+                               - The element symbol
+                               - The value of the eigenvalue
+        """
+        for param in parameters:
+            eigenvalue, spin_index, element_symbol, value = param
+            for index, kind in enumerate(self.input_kinds_eigenvalues):
+                if kind[1] == element_symbol:
+                    spin = (
+                        self.eigen_values_widget.children[index]
+                        .children[1]
+                        .children[spin_index - 1]
+                    )
+                    spin.children[eigenvalue].value = str(value)
+
     @property
     def hubbard_dict(self) -> dict:
         if self.hubbard.value:

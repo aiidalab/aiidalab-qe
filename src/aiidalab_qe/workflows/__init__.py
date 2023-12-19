@@ -170,7 +170,7 @@ class QeAppWorkChain(WorkChain):
         for name, entry_point in plugin_entries.items():
             if name in properties:
                 plugin_builder = entry_point["get_builder"](
-                    codes, structure, copy.deepcopy(parameters), **kwargs
+                    codes, builder.structure, copy.deepcopy(parameters), **kwargs
                 )
                 setattr(builder, name, plugin_builder)
             else:
