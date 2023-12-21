@@ -4,40 +4,30 @@ Local Docker Instance
 
 .. note::
 
-   If you already have access to AiiDAlab but the Quantum ESPRESSO app is not installed, you need proceed to :doc:`install the app </installation/install>`.
+   If you used another method to access AiiDAlab, you may proceed to :doc:`install the app </installation/install>`.
 
 AiiDAlab is available as a Docker container - a self-contained, pre-configured environment including all the necessary software to access the AiiDAlab platform.
-We also provide container that includes the Quantum ESPRESSO app installed and ready to use.
-To run the container, you first need to install Docker on your local machine.
-If you have yet to do so, you may click `here <https://docs.docker.com/get-docker>`_ to follow the official Docker installation guide.
-
-We recommended to install the `Docker Desktop <https://docs.docker.com/desktop/>`_ which is available for all major operating systems.
+Conveniently, we provide a bluprint (image) for such a container with the Quantum ESPRESSO app pre-installed and ready for use. To run the container, you first need to `install Docker <https://docs.docker.com/get-docker>`_ on your local machine.
 
 .. important::
 
-   On Linux, if the docker is installed by `docker engine <https://docs.docker.com/engine/install/ubuntu/>`_, you need `root` privileges to perform the `post-installation steps for Docker Engine <https://docs.docker.com/engine/install/linux-postinstall/>`_. There is **NO NEED** to perform this step if the docker is installed by `docker desktop <https://docs.docker.com/docker-for-windows/install/>`_.
+   The Docker installation link above walks you through installing Docker Desktop - a convenient graphical user interface to Docker. However, if you have chosen instead to install the `docker engine <https://docs.docker.com/engine/install/ubuntu/>`_ directly for use via a terminal, if **(and only if)** you are on a Linux system, you will need `root` privileges to perform the `post-installation steps for Docker Engine <https://docs.docker.com/engine/install/linux-postinstall/>`_.
 
-Once Docker is installed, you can launch the container in one of several ways depending on your operating system.
-This is discussed in the following sections.
+Once Docker is installed, you can launch the container in one of several ways depending on your operating system. This is discussed in the following sections.
 
 Docker Desktop
 **************
 
-If you use Windows, this may be the easiest way to launch the container.
-For MacOS and Linux, you can also use Docker Desktop, but you may prefer to use the command line interface (CLI), see the next sections.
-
-Comming soon with video tutorial.
+Note that Docker Desktop is also available for MacOS and Linux. However, you may prefer to use the command line interface (CLI). If so, proceed to the following sections for instructions.
 
 AiiDAlab launch
 ***************
 
 .. important::
 
-   The following steps require a local installation of Docker.
-   You can check the docker is properly installed by running ``docker run hello-world`` in the terminal.
+   The following steps require a local installation of Docker. You can verify your Docker installation by running ``docker run hello-world`` in the terminal.
 
-`AiiDAlab launch`_ is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image.
-It helps to manage multiple AiiDAlab profiles, each with its own home directory for persistent storage, and allows to easily switch between them.
+`AiiDAlab launch`_ is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image. It helps to manage multiple AiiDAlab profiles, each with its own home directory for persistent storage, and allows to easily switch between them.
 To use AiiDAlab launch, you will have to
 
 #. Install AiiDAlab launch with `pipx <https://pypa.github.io/pipx/installation/>`_ (**recommended**):
