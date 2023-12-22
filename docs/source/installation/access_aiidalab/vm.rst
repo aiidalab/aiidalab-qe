@@ -20,7 +20,7 @@ Get AiiDAlab Quantum ESPRESSO virtual machine running on your computer in three 
 
 #. Download the virtual machine image (4.09 GB)
 
-   + URL: https://bit.ly/3Nyf4Dt
+   + URL: https://bit.ly/48qUay9 (Google drive: https://bit.ly/3Nyf4Dt)
    + Filename: `quantum_mobile_23.10.0-qeapp.ova`
    + MD5 hash: `5c80d9ab2458f2edac30e97dc2fe36e7`
 
@@ -41,7 +41,7 @@ If you have an Apple silicon Mac computer with M1/M2 chips, you can use `UTM <ht
 
 #. Download the compressed virtual machine image (5.9 GB)
 
-   + URL: https://bit.ly/486rKtP
+   + URL: https://bit.ly/477mMeR (Google Drive: https://bit.ly/486rKtP)
    + Filename: `quantum_mobile_23.10.0-qeapp.utm.zip`
    + MD5 hash: `44ea9189d788737459c31bf330366926`
 
