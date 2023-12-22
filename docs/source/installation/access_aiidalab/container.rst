@@ -7,18 +7,20 @@ Local Docker Instance
    If you used another method to access AiiDAlab, you may proceed to :doc:`install the app </installation/install>`.
 
 AiiDAlab is available as a Docker container - a self-contained, pre-configured environment including all the necessary software to access the AiiDAlab platform.
-Conveniently, we provide a bluprint (image) for such a container with the Quantum ESPRESSO app pre-installed and ready for use. To run the container, you first need to `install Docker <https://docs.docker.com/get-docker>`_ on your local machine.
+Conveniently, we provide a blueprint (image) for such a container with the Quantum ESPRESSO app pre-installed and ready for use. To run the container, you first need to `install Docker <https://docs.docker.com/get-docker>`_ on your local machine.
 
 .. important::
 
    The Docker installation link above walks you through installing Docker Desktop - a convenient graphical user interface to Docker. However, if you have chosen instead to install the `docker engine <https://docs.docker.com/engine/install/ubuntu/>`_ directly for use via a terminal, if **(and only if)** you are on a Linux system, you will need `root` privileges to perform the `post-installation steps for Docker Engine <https://docs.docker.com/engine/install/linux-postinstall/>`_.
 
-Once Docker is installed, you can launch the container in one of several ways depending on your operating system. This is discussed in the following sections.
+Once Docker is installed, you can launch the container in one of several ways depending on your operating system. 
+This is discussed in the following sections.
 
 Docker Desktop
 **************
 
-If you use Windows, you may choose to use the Docker Desktop interface to launch the container. Once Docker Desktop is installed (see above link), follow these instructions to spin up an AiiDAlab container.
+If you use Windows, you may choose to use the Docker Desktop interface to launch the container. 
+Once Docker Desktop is installed (see above link), follow these instructions to spin up an AiiDAlab container.
 
 #. Open the Docker Desktop app
 #. On the left sidebar, click on *Images*
@@ -62,7 +64,9 @@ If you use Windows, you may choose to use the Docker Desktop interface to launch
 
    To avoid losing your work when the container shuts down (manually, or when the machine is turned off), it is important to associate the container with a volume - a local directory - with which the container data's is mirrored. When set up, the container will restart from this mirrored volume.
 
-Note that Docker Desktop is also available for MacOS and Linux. However, you may prefer to use the command line interface (CLI). If so, proceed to the following sections for instructions.
+Note that Docker Desktop is also available for MacOS and Linux. 
+However, you may prefer to use the command line interface (CLI). 
+If so, proceed to the following sections for instructions.
 
 AiiDAlab launch
 ***************
@@ -71,7 +75,8 @@ AiiDAlab launch
 
    The following steps require a local installation of Docker. You can verify your Docker installation by running ``docker run hello-world`` in the terminal.
 
-`AiiDAlab launch`_ is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image. It helps to manage multiple AiiDAlab profiles, each with its own home directory for persistent storage, and allows to easily switch between them.
+`AiiDAlab launch`_ is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image. 
+It helps to manage multiple AiiDAlab profiles, each with its own home directory for persistent storage, and allows to easily switch between them.
 To use AiiDAlab launch, you will have to
 
 #. Install AiiDAlab launch with `pipx <https://pypa.github.io/pipx/installation/>`_ (**recommended**):
