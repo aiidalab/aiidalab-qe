@@ -167,11 +167,10 @@ class WorkChainOutputs(ipw.VBox):
         self._download_archive_button.on_click(self._download_archive)
         self._download_button_container = ipw.Box([self._download_archive_button])
 
-        if node.exit_status != 0:
+        if node.exit_status != 0 and (final_calcjob := self._get_final_calcjob(node)):
             title = ipw.HTML(
                 f"<h4>Workflow failed with exit status [{ node.exit_status }]</h4>"
             )
-            final_calcjob = self._get_final_calcjob(node)
             env = Environment()
             template = resources.read_text(static, "workflow_failure.jinja")
             style = resources.read_text(static, "style.css")
@@ -224,7 +223,9 @@ class WorkChainOutputs(ipw.VBox):
                     # Create archive file.
                     with TemporaryDirectory() as tmpdir:
                         self._prepare_calcjob_io(self.node, Path(tmpdir))
-                        shutil.make_archive(fn_archive.with_suffix(""), "zip", tmpdir)
+                        shutil.make_archive(
+                            str(fn_archive.with_suffix("")), "zip", tmpdir
+                        )
             Path(fn_lockfile).unlink()  # Delete lock file.
         except Timeout:
             # Failed to obtain lock, presuming some other process is working on it.

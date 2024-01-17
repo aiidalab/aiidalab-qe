@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import re
+import typing as t
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -18,6 +19,9 @@ from aiidalab_qe.common.setup_pseudos import (
     SSSP_VERSION,
     PseudoFamily,
 )
+
+if t.TYPE_CHECKING:
+    from aiida_pseudo.data.pseudo.upf import UpfData as TypeUpfData
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -174,9 +178,8 @@ class PseudoFamilySelector(ipw.VBox):
             self.dft_functional_help,
             self.dft_functional_prompt,
         ):
-            old_opacity = re.match(
-                r"[\s\S]+opacity:([\S]+);[\S\s]+", html.value
-            ).groups()[0]
+            matched = re.match(r"[\s\S]+opacity:([\S]+);[\S\s]+", html.value)
+            old_opacity = matched.group(1) if matched else 1.0
             html.value = html.value.replace(
                 f"opacity:{old_opacity};", f"opacity:{opacity};"
             )
@@ -344,7 +347,7 @@ class PseudoSetter(ipw.VBox):
             return
 
         try:
-            pseudos = pseudo_family.get_pseudos(structure=self.structure)
+            pseudos = pseudo_family.get_pseudos(structure=self.structure)  # type: ignore
             # get cutoffs dict of all elements
             cutoffs = self._get_cutoffs(pseudo_family)
         except ValueError as exception:
@@ -356,22 +359,22 @@ class PseudoSetter(ipw.VBox):
         self.pseudos = {kind: pseudo.uuid for kind, pseudo in pseudos.items()}
         self.set_pseudos(self.pseudos, cutoffs)
 
-    def _get_pseudos_family(self, pseudo_family: str) -> orm.Group:
+    def _get_pseudos_family(self, pseudo_family: str) -> t.Optional[orm.Group]:
         """Get the pseudo family from the database."""
         try:
             pseudo_set = (PseudoDojoFamily, SsspFamily, CutoffsPseudoPotentialFamily)
-            pseudo_family = (
+            pseudo_family_node = (
                 orm.QueryBuilder()
                 .append(pseudo_set, filters={"label": pseudo_family})
                 .one()[0]
             )
+            return pseudo_family_node
+
         except exceptions.NotExistent as exception:
             raise exceptions.NotExistent(
                 f"required pseudo family `{pseudo_family}` is not installed. Please use `aiida-pseudo install` to"
                 "install it."
             ) from exception
-
-        return pseudo_family
 
     def _get_cutoffs(self, pseudo_family):
         """Get the cutoffs from the pseudo family."""
@@ -462,7 +465,7 @@ class PseudoUploadWidget(ipw.HBox):
     def __init__(
         self,
         kind: str = "",
-        pseudo: UpfData | None = None,
+        pseudo: TypeUpfData | None = None,
         cutoffs: dict | None = None,
         **kwargs,
     ):

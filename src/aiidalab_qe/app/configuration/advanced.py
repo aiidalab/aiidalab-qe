@@ -7,6 +7,7 @@ import os
 
 import ipywidgets as ipw
 import traitlets as tl
+import typing as t
 from aiida import orm
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
@@ -222,7 +223,7 @@ class AdvancedSettings(Panel):
     def get_panel_value(self):
         # create the the initial_magnetic_moments as None (Default)
         # XXX: start from parameters = {} and then bundle the settings by purposes (e.g. pw, bands, etc.)
-        parameters = {
+        parameters: dict[str, t.Any] = {
             "initial_magnetic_moments": None,
             "pw": {
                 "parameters": {

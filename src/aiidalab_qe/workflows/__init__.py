@@ -84,9 +84,9 @@ class QeAppWorkChain(WorkChain):
             i += 1
         spec.outline(
             cls.setup,
-            if_(cls.should_run_relax)(
-                cls.run_relax,
-                cls.inspect_relax
+            if_(cls.should_run_relax)( # type: ignore
+                cls.run_relax,  # type: ignore
+                cls.inspect_relax   # type: ignore
             ),
             cls.run_plugin,
             cls.inspect_plugin,
