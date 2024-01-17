@@ -47,3 +47,23 @@ repos:
             args: [--fix]
         # Run the formatter.
           - id: ruff-format
+
+    - repo: local
+
+      hooks:
+
+          - id: mypy
+            name: mypy
+            entry: mypy
+            args: [--config-file=setup.cfg]
+            language: python
+            types: [python]
+            require_serial: true
+            pass_filenames: true
+            exclude: >-
+                (?x)^(
+                  .github/.*|
+                  docker/.*|
+                  docs/.*|
+
+                )$
