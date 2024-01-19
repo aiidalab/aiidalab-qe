@@ -213,8 +213,9 @@ def install(
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
-        yield "Installation was already started elsewhere, waiting for it to finish...", ProgressBar.AnimationRate(
-            1.0
+        yield (
+            "Installation was already started elsewhere, waiting for it to finish...",
+            ProgressBar.AnimationRate(1.0),
         )
         with FileLock(FN_LOCKFILE, timeout=120):
             if len(pseudos_to_install()) > 0:

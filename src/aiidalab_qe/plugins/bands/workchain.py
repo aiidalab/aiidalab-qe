@@ -102,8 +102,8 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
         a2 = reciprocal_cell[1]
         norm_a1 = np.linalg.norm(a1)
         norm_a2 = np.linalg.norm(a2)
-        cos_gamma = a1.dot(a2) / (
-            norm_a1 * norm_a2
+        cos_gamma = (
+            a1.dot(a2) / (norm_a1 * norm_a2)
         )  # Angle between a1 and a2 # like in https://pubs.acs.org/doi/10.1021/acs.jpclett.2c02972
         gamma = np.arccos(cos_gamma)
         eta = (1 - (norm_a1 / norm_a2) * cos_gamma) / (2 * np.power(np.sin(gamma), 2))
