@@ -103,7 +103,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         First kill the process, then update the kill button layout.
         """
         workchain = [orm.load_node(self.process)]
-        control.kill_processes(workchain)
+        control.kill_processes(workchain)  # type: ignore
 
         # update the kill button layout
         self._update_kill_button_layout()

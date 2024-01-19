@@ -191,7 +191,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _toggle_install_widgets(self, change):
         if change["new"]:
-            self.children = [
+            self.children = [  # type: ignore
                 child for child in self.children if child is not change["owner"]
             ]
 
@@ -224,8 +224,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_resources(self, change):
         if change["new"] and (
             change["old"] is None
-            or orm.load_code(change["new"]).computer.pk
-            != orm.load_code(change["old"]).computer.pk
+            or orm.load_code(change["new"]).computer.pk  # type: ignore
+            != orm.load_code(change["old"]).computer.pk  # type: ignore
         ):
             self.set_resource_defaults(orm.load_code(change["new"]).computer)
 
@@ -277,7 +277,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         num_cpus = self.resources_config.num_cpus.value
         on_localhost = (
-            orm.load_node(self.pw_code.value).computer.hostname == "localhost"
+            orm.load_node(self.pw_code.value).computer.hostname == "localhost"  # type: ignore
         )
         if self.pw_code.value and on_localhost and num_cpus > 1:
             self._show_alert_message(
@@ -376,7 +376,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self._update_state()
 
-    def _generate_label(self) -> dict:
+    def _generate_label(self) -> str:
         """Generate a label for the work chain based on the input parameters."""
         formula = self.input_structure.get_formula()
         properties = [
@@ -392,8 +392,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             properties_info = f"properties on {', '.join(properties)}"
 
-        label = "{} {} {}".format(formula, relax_info, properties_info)
-        return label
+        return f"{formula} {relax_info} {properties_info}"
 
     def _create_builder(self) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""

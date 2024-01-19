@@ -47,3 +47,40 @@ repos:
             args: [--fix]
         # Run the formatter.
           - id: ruff-format
+
+    - repo: local
+
+      hooks:
+
+          - id: mypy
+            name: mypy
+            entry: mypy
+            args: [--config-file=setup.cfg]
+            language: python
+            types: [python]
+            require_serial: true
+            pass_filenames: true
+            exclude: >-
+                (?x)^(
+                  .github/.*|
+                  docker/.*|
+                  docs/.*|
+
+                  tests/.*|
+                  tests_integration/.*|
+
+                  # Exclude the following files temporarily.
+                  src/aiidalab_qe/app/submission/__init__.py|
+                  src/aiidalab_qe/app/parameters/__init__.py|
+                  src/aiidalab_qe/__main__.py|
+                  src/aiidalab_qe/common/widgets.py|
+                  src/aiidalab_qe/common/setup_pseudos.py|
+                  src/aiidalab_qe/common/process.py|
+                  src/aiidalab_qe/common/setup_codes.py|
+
+                  # Exclude the following files temporarily for old plugins.
+                  src/aiidalab_qe/plugins/bands/.*.py|
+                  src/aiidalab_qe/plugins/pdos/.*.py|
+                  src/aiidalab_qe/plugins/electronic_structure/.*.py|
+
+                )$

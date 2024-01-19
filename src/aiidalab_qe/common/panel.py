@@ -5,9 +5,11 @@ Authors:
 
     AiiDAlab Team
 """
+from __future__ import annotations
+
 import ipywidgets as ipw
 
-DEFAULT_PARAMETERS = {}
+DEFAULT_PARAMETERS: dict = {}
 
 
 class Panel(ipw.VBox):
@@ -100,7 +102,7 @@ class ResultPanel(Panel):
 
     title = "Result"
     # to specify which plugins (outputs) are needed for this result panel.
-    workchain_labels = []
+    workchain_labels: list = []
 
     def __init__(self, node=None, **kwargs):
         self.node = node
