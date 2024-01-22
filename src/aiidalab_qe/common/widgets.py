@@ -654,11 +654,7 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
 
     @traitlets.observe("value")
     def _update_resources(self, change):
-        if change["new"] and (
-            change["old"] is None
-            or load_code(change["new"]).computer.pk
-            != load_code(change["old"]).computer.pk
-        ):
+        if change["new"]:
             self.set_resource_defaults(load_code(change["new"]).computer)
 
     def set_resource_defaults(self, computer=None):

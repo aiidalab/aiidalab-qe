@@ -1,8 +1,7 @@
 bands:
   bands:
     pw:
-      parallelization:
-        npool: 1
+      parallelization: {}
       parameters:
         CONTROL:
           calculation: bands
@@ -34,8 +33,7 @@ bands:
     kpoints_distance: 0.12
     kpoints_force_parity: false
     pw:
-      parallelization:
-        npool: 1
+      parallelization: {}
       parameters:
         CONTROL:
           calculation: scf
@@ -67,8 +65,7 @@ pdos:
     kpoints_distance: 0.1
     kpoints_force_parity: false
     pw:
-      parallelization:
-        npool: 1
+      parallelization: {}
       parameters:
         CONTROL:
           calculation: nscf
@@ -93,16 +90,11 @@ pdos:
     parameters:
       PROJWFC:
         DeltaE: 0.02
-    settings:
-      cmdline:
-      - -nk
-      - '1'
   scf:
     kpoints_distance: 0.12
     kpoints_force_parity: false
     pw:
-      parallelization:
-        npool: 1
+      parallelization: {}
       parameters:
         CONTROL:
           calculation: scf
@@ -134,8 +126,7 @@ relax:
     kpoints_distance: 0.12
     kpoints_force_parity: false
     pw:
-      parallelization:
-        npool: 1
+      parallelization: {}
       parameters:
         CELL:
           cell_dofree: all
