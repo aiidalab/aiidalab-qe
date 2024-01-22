@@ -75,7 +75,10 @@ def test_setup_pseudos_cmd(tmp_path):
     assert "--from-download" not in cmd
 
     # mock the source file
-    source_file = tmp_path / "PseudoDojo_0.4_PBEsol_SR_standard_upf.aiida_pseudo"
+    source_file = (
+        tmp_path
+        / f"PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo"
+    )
     source_file.touch()
     cmd = _construct_cmd(pseudo_family, cwd=tmp_path)
     assert cmd == [
@@ -85,7 +88,7 @@ def test_setup_pseudos_cmd(tmp_path):
         "--functional",
         "PBEsol",
         "--version",
-        "0.4",
+        f"{PSEUDODOJO_VERSION}",
         "-p",
         "standard",
         "--relativistic",
@@ -93,7 +96,7 @@ def test_setup_pseudos_cmd(tmp_path):
         "--pseudo-format",
         "upf",
         "--from-download",
-        f"{str(tmp_path)}/PseudoDojo_0.4_PBEsol_SR_standard_upf.aiida_pseudo",
+        f"{str(tmp_path)}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
     ]
 
 
@@ -146,19 +149,19 @@ def test_pseudos_family_selector_widget():
     w.override.value = True
 
     # test the default value
-    assert w.value == "SSSP/1.2/PBEsol/efficiency"
+    assert w.value == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
     # Test if the protocol change the value will be updated
     w.protocol = "precise"
-    assert w.value == "SSSP/1.2/PBEsol/precision"
+    assert w.value == f"SSSP/{SSSP_VERSION}/PBEsol/precision"
 
     # test the functional change will update the value
     w.dft_functional.value = "PBE"
-    assert w.value == "SSSP/1.2/PBE/precision"
+    assert w.value == f"SSSP/{SSSP_VERSION}/PBE/precision"
 
     # Test if selecet new pseudo library the value will be updated
     w.library_selection.value = "PseudoDojo stringent"
-    assert w.value == "PseudoDojo/0.4/PBE/SR/stringent/upf"
+    assert w.value == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
 
 
 @pytest.mark.usefixtures("sssp")
@@ -168,7 +171,9 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
 
     # test the widget is set with the elements of the structure
     silicon = generate_structure_data("silicon")
-    w = PseudoSetter(structure=silicon, pseudo_family="SSSP/1.2/PBEsol/efficiency")
+    w = PseudoSetter(
+        structure=silicon, pseudo_family=f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+    )
 
     assert "Si" in w.pseudos.keys()
     assert w.ecutwfc == 30

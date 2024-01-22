@@ -206,7 +206,7 @@ The `parameters` passed to the `get_builder` function has the following structur
                 },
                 "pseudos": {"Si": "eaef3352-2b0e-4205-b404-e6565a88aec8"},
             },
-            "pseudo_family": "SSSP/1.2/PBEsol/efficiency",
+            "pseudo_family": "SSSP/1.3/PBEsol/efficiency",
             "kpoints_distance": 0.5,
         },
         "bands": {"kpath_2d": "hexagonal"},

@@ -123,7 +123,10 @@ class QeAppWorkChain(WorkChain):
         # Set the structure.
         builder.structure = structure
         # relax
-        relax_overrides = {"base": parameters["advanced"]}
+        relax_overrides = {
+            "base": parameters["advanced"],
+            "base_final_scf": parameters["advanced"],
+        }
         protocol = parameters["workchain"]["protocol"]
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
             code=codes.get("pw")["code"],

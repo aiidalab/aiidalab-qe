@@ -24,6 +24,11 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
         )
         > 0
     )
+    assert app.configure_step.state == app.configure_step.State.SUCCESS
+    # in the reload case, go to the submit step should not
+    # trigger the reset of previous steps
+    app._wizard_app_widget.selected_index = 2
+    assert app.configure_step.state == app.configure_step.State.SUCCESS
     # new workflow, this will reset the GUI
     app.work_chain_selector.value = None
     # check if the value are reload correctly

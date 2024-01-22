@@ -18,6 +18,8 @@ import time
 
 # -- Project information -----------------------------------------------------
 
+version = "v23.10.0"
+release = f"{version}-dev"
 project = "Quantum ESPRESSO App"
 copyright_first_year = "2023"
 copyright_owners = "The AiiDAlab Team"

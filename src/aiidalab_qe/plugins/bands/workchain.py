@@ -103,8 +103,8 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
         a2 = reciprocal_cell[1]
         norm_a1 = np.linalg.norm(a1)
         norm_a2 = np.linalg.norm(a2)
-        cos_gamma = a1.dot(a2) / (
-            norm_a1 * norm_a2
+        cos_gamma = (
+            a1.dot(a2) / (norm_a1 * norm_a2)
         )  # Angle between a1 and a2 # like in https://pubs.acs.org/doi/10.1021/acs.jpclett.2c02972
         gamma = np.arccos(cos_gamma)
         eta = (1 - (norm_a1 / norm_a2) * cos_gamma) / (2 * np.power(np.sin(gamma), 2))
@@ -191,6 +191,10 @@ def get_builder(codes, structure, parameters, **kwargs):
     pw_code = codes.get("pw")["code"]
     protocol = parameters["workchain"]["protocol"]
     scf_overrides = deepcopy(parameters["advanced"])
+    relax_overrides = {
+        "base": deepcopy(parameters["advanced"]),
+        "base_final_scf": deepcopy(parameters["advanced"]),
+    }
     bands_overrides = deepcopy(parameters["advanced"])
     bands_overrides.pop("kpoints_distance", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
@@ -198,6 +202,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     overrides = {
         "scf": scf_overrides,
         "bands": bands_overrides,
+        "relax": relax_overrides,
     }
     bands = PwBandsWorkChain.get_builder_from_protocol(
         code=pw_code,
