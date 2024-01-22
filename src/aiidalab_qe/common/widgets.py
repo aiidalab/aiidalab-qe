@@ -18,7 +18,7 @@ import traitlets
 from aiida.orm import CalcJobNode
 from aiida.orm import Data as orm_Data
 from aiida.orm import load_code, load_node
-from aiidalab_widgets_base import ComputationalResourcesWidget as AiiDACodeWidget
+from aiidalab_widgets_base import ComputationalResourcesWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -620,26 +620,37 @@ class AddingTagsEditor(ipw.VBox):
         self.structure = deepcopy(new_structure)
 
 
-class QEAppComputationalResourcesWidget(AiiDACodeWidget):
+class QEAppComputationalResourcesWidget(ipw.VBox):
+    value = traitlets.Unicode(allow_none=True)
     nodes = traitlets.Int(default_value=1)
     cpus = traitlets.Int(default_value=1)
 
-    def __init__(self, max_num_nodes=1000, **kwargs):
-        """Widget for the selection of compute resources.
-        max_num_nodes: maximum number of nodes allowed.
+    def __init__(self, **kwargs):
+        """Widget to setup the compute resources, which include the code,
+        the number of nodes and the number of cpus.
         """
+        self.code_selection = ComputationalResourcesWidget(**kwargs)
+        self.code_selection.layout.width = "70%"
+
         self.num_nodes = ipw.BoundedIntText(
-            value=1, step=1, min=1, max=max_num_nodes, description="Nodes", width="10%"
+            value=1, step=1, min=1, max=1000, description="Nodes", width="10%"
         )
         self.num_cpus = ipw.BoundedIntText(
             value=1, step=1, min=1, description="CPUs", width="10%"
         )
-        super().__init__(**kwargs)
-        # add nodes and cpus into the children of the widget
-        self.children[0].children += (
-            self.num_nodes,
-            self.num_cpus,
-        )
+        # combine code, nodes and cpus
+        children = [
+            ipw.HBox(
+                children=[
+                    self.code_selection,
+                    self.num_nodes,
+                    self.num_cpus,
+                ]
+            )
+        ]
+        super().__init__(children=children, **kwargs)
+
+        traitlets.link((self.code_selection, "value"), (self, "value"))
 
     @traitlets.observe("value")
     def _update_resources(self, change):
@@ -673,7 +684,7 @@ class QEAppComputationalResourcesWidget(AiiDACodeWidget):
     def get_parameters(self):
         """Return the parameters."""
         return {
-            "code": self.value,
+            "code": self.code_selection.value,
             "nodes": self.num_nodes.value,
             "cpus": self.num_cpus.value,
         }
@@ -684,7 +695,7 @@ class QEAppComputationalResourcesWidget(AiiDACodeWidget):
 
     def set_parameters(self, parameters):
         """Set the parameters."""
-        self.value = parameters["code"]
+        self.code_selection.value = parameters["code"]
         if "nodes" in parameters:
             self.num_nodes.value = parameters["nodes"]
         if "cpus" in parameters:
@@ -697,7 +708,7 @@ class ParallelizationSettings(ipw.VBox):
     prompt = ipw.HTML(
         """<div style="line-height:120%; padding-top:0px">
         <p style="padding-bottom:10px">
-        Specify the number of k-points pools for the pw.x calculations.
+        Specify the number of k-points pools for the pw.x calculations (only for advanced user).
         </p></div>"""
     )
 
@@ -709,14 +720,29 @@ class ParallelizationSettings(ipw.VBox):
         self.npool = ipw.BoundedIntText(
             value=1, step=1, min=1, max=128, description="Number of k-pools", **extra
         )
+        self.override = ipw.Checkbox(
+            escription="",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="20px"),
+        )
+        self.override.observe(self.set_visibility, "value")
         super().__init__(
             children=[
                 ipw.HBox(
-                    children=[self.prompt, self.npool],
-                    layout=ipw.Layout(justify_content="space-between"),
+                    children=[self.override, self.prompt, self.npool],
+                    layout=ipw.Layout(justify_content="flex-start"),
                 ),
             ]
         )
+        # set the default visibility of the widget
+        self.npool.layout.display = "none"
+
+    def set_visibility(self, change):
+        if change["new"]:
+            self.npool.layout.display = "block"
+        else:
+            self.npool.layout.display = "none"
 
     def reset(self):
         """Reset the parallelization settings."""
@@ -738,14 +764,18 @@ class PWscfWidget(QEAppComputationalResourcesWidget):
 
     def get_parallelization(self):
         """Return the parallelization settings."""
-        parallelization = {
-            "npool": self.parallelization.npool.value,
-        }
+        parallelization = (
+            {"npool": self.parallelization.npool.value}
+            if self.parallelization.override.value
+            else {}
+        )
         return parallelization
 
     def set_parallelization(self, parallelization):
         """Set the parallelization settings."""
-        self.parallelization.npool.value = parallelization["npool"]
+        if "npool" in parallelization:
+            self.parallelization.override.value = True
+            self.parallelization.npool.value = parallelization["npool"]
 
     def get_parameters(self):
         """Return the parameters."""

@@ -307,9 +307,9 @@ def app(pw_code, dos_code, projwfc_code):
     app.submit_step.sssp_installation_status.installed = True
 
     # set up codes
-    app.submit_step.pw_code.refresh()
-    app.submit_step.codes["dos"].refresh()
-    app.submit_step.codes["projwfc"].refresh()
+    app.submit_step.pw_code.code_selection.refresh()
+    app.submit_step.codes["dos"].code_selection.refresh()
+    app.submit_step.codes["projwfc"].code_selection.refresh()
 
     app.submit_step.pw_code.value = pw_code.uuid
     app.submit_step.codes["dos"].value = dos_code.uuid
