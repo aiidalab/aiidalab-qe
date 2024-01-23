@@ -1,21 +1,17 @@
-========================
-Local Container Instance
-========================
+=====================
+Local Docker Instance
+=====================
 
 .. note::
 
-   If you already have access to AiiDAlab but the Quantum ESPRESSO app is not installed, you need proceed to :doc:`install the app </installation/install>`.
+   If you used another method to access AiiDAlab, you may proceed to :doc:`install the app </installation/install>`.
 
 AiiDAlab is available as a Docker container - a self-contained, pre-configured environment including all the necessary software to access the AiiDAlab platform.
-We also provide container that includes the Quantum ESPRESSO app installed and ready to use.
-To run the container, you first need to install Docker on your local machine.
-If you have yet to do so, you may click `here <https://docs.docker.com/get-docker>`_ to follow the official Docker installation guide.
-
-We recommended to install the `Docker Desktop <https://docs.docker.com/desktop/>`_ which is available for all major operating systems.
+Conveniently, we provide a blueprint (image) for such a container with the Quantum ESPRESSO app pre-installed and ready for use. To run the container, you first need to `install Docker <https://docs.docker.com/get-docker>`_ on your local machine.
 
 .. important::
 
-   On Linux, if the docker is installed by `docker engine <https://docs.docker.com/engine/install/ubuntu/>`_, you need `root` privileges to perform the `post-installation steps for Docker Engine <https://docs.docker.com/engine/install/linux-postinstall/>`_. There is **NO NEED** to perform this step if the docker is installed by `docker desktop <https://docs.docker.com/docker-for-windows/install/>`_.
+   The Docker installation link above walks you through installing Docker Desktop - a convenient graphical user interface to Docker. However, if you have chosen instead to install the `docker engine <https://docs.docker.com/engine/install/ubuntu/>`_ directly for use via a terminal, if **(and only if)** you are on a Linux system, you will need `root` privileges to perform the `post-installation steps for Docker Engine <https://docs.docker.com/engine/install/linux-postinstall/>`_.
 
 Once Docker is installed, you can launch the container in one of several ways depending on your operating system.
 This is discussed in the following sections.
@@ -23,18 +19,61 @@ This is discussed in the following sections.
 Docker Desktop
 **************
 
-If you use Windows, this may be the easiest way to launch the container.
-For MacOS and Linux, you can also use Docker Desktop, but you may prefer to use the command line interface (CLI), see the next sections.
+If you use Windows, you may choose to use the Docker Desktop interface to launch the container.
+Once Docker Desktop is installed (see above link), follow these instructions to spin up an AiiDAlab container.
 
-Comming soon with video tutorial.
+#. Open the Docker Desktop app
+#. On the left sidebar, click on *Images*
+#. In the search bar at the top of the app, type ``aiidalab/qe``
+#. Select ``latest`` from the *tag* dropdown menu
+#. Click *Pull* to download the image
+
+   * Once downloaded, the image will appear as a new line in the list of images
+   * Exit the search menu when done
+
+#. At the far right column of the new image line, under actions, click ▶️ to start a container instance
+#. In the pop-up window, expand *optional settings*
+#. You may choose to name the container for easy reference (randomly generated otherwise)
+#. Choose a local port from which to communicate with the container's 8888 port
+#. Set up the following local volumes: **see notes below**
+
+   * ``<local-docker-volumes-dir>\aiidalab_qe_home`` --> ``/home/jovyan``
+   * ``<local-docker-volumes-dir>\aiidalab_qe_conda`` --> ``/home/jovyan/.conda``
+
+   .. note::
+
+      ``local-docker-volumes-dir`` can be any local directory in which to store Docker volumes, for example ``C:\Users\<username>\Docker\``
+
+#. Click *Run* to start the container
+#. On the left sidebar, click on *Containers*
+#. Click on the name of your newly-created container
+#. Wait for the container build process to finish
+
+   * The log will show a line ``To access the notebook, open this file in a browser:``
+
+#. Click on the ``<port>:8888`` link at the top of the app to open AiiDAlab in the browser
+#. Copy and paste the container's token to the browser and submit to open AiiDAlab
+
+   * The token can be found at the bottom of the log in a line similar to ``...?token=<long-hash>``
+
+   .. note::
+
+      Subsequent connections to the port in the browser will not prompt for a token for some time. If and when it does, you may again retrieve the token from the log.
+
+.. important::
+
+   To avoid losing your work when the container shuts down (manually, or when the machine is turned off), it is important to associate the container with a volume - a local directory - with which the container data's is mirrored. When set up, the container will restart from this mirrored volume.
+
+Note that Docker Desktop is also available for MacOS and Linux.
+However, you may prefer to use the command line interface (CLI).
+If so, proceed to the following sections for instructions.
 
 AiiDAlab launch
 ***************
 
 .. important::
 
-   The following steps require a local installation of Docker.
-   You can check the docker is properly installed by running ``docker run hello-world`` in the terminal.
+   The following steps require a local installation of Docker. You can verify your Docker installation by running ``docker run hello-world`` in the terminal.
 
 `AiiDAlab launch`_ is a thin Docker wrapper which takes care of all the prerequisites to run the AiiDAlab Docker image.
 It helps to manage multiple AiiDAlab profiles, each with its own home directory for persistent storage, and allows to easily switch between them.
