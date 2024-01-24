@@ -123,6 +123,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     core_wfc_data = {}
     core_hole_treatments = xas_parameters["core_hole_treatments"]
     elements_list = xas_parameters["elements_list"]
+    supercell_min_parameter = xas_parameters["supercell_min_parameter"]
+
     for element in elements_list:
         gipaw_pseudo = orm.load_node(gipaw_pseudos_dict[element])
         ch_pseudo = orm.load_node(ch_pseudos_dict[element])
@@ -137,16 +139,18 @@ def get_builder(codes, structure, parameters, **kwargs):
     # (13/10/23) I'm keeping the part about molecules in for future reference,
     # but we need to establish the protocol & backend code for XAS of molecules
     # before thinking about a workflow.
-    is_molecule_input = (
-        True if xas_parameters.get("structure_type") == "molecule" else False
-    )
+    # (22/01/24) Commented out the code for molecules, just so the option doesn't
+    # appear in the UI and confuse the user.
+    # is_molecule_input = (
+    #     True if xas_parameters.get("structure_type") == "molecule" else False
+    # )
 
     # core_hole_treatment = xas_parameters["core_hole_treatment"]
     # core_hole_treatments = {element: core_hole_treatment for element in elements_list}
 
     structure_preparation_settings = {
-        # "supercell_min_parameter": Float(supercell_min_parameter_map[protocol]),
-        "is_molecule_input": orm.Bool(is_molecule_input),
+        "supercell_min_parameter": orm.Float(supercell_min_parameter),
+        # "is_molecule_input": orm.Bool(is_molecule_input),
     }
     spglib_settings = orm.Dict({"symprec": 1.0e-3})
 
@@ -187,7 +191,6 @@ def get_builder(codes, structure, parameters, **kwargs):
         elements_list=elements_list,
         core_hole_treatments=core_hole_treatments,
         core_wfc_data=core_wfc_data,
-        structure_preparation_settings=structure_preparation_settings,
         electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
         spin_type=SpinType(parameters["workchain"]["spin_type"]),
         # TODO: We will need to merge the changes in AiiDA-QE PR#969 in order
@@ -200,15 +203,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     builder.pop("relax")
     builder.pop("clean_workdir", None)
     builder.spglib_settings = spglib_settings
-    # there is a bug in aiida-quantumespresso xps, that one can not set the kpoints
-    # this is fxied in a PR, but we need to wait for the next release.
-    # we set a large kpoints_distance value to set the kpoints to 1x1x1
-    if is_molecule_input:
-        # kpoints = KpointsData()
-        # kpoints.set_kpoints_mesh([1, 1, 1])
-        # parameters["advanced"]["kpoints"] = kpoints
-        # builder.ch_scf.kpoints_distance = Float(5)
-        pass
+    builder.structure_preparation_settings = structure_preparation_settings
+
     return builder
 
 

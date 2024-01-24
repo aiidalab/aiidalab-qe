@@ -59,9 +59,7 @@ def write_csv(dataset):
 
     x_vals = dataset[0]["x"]
     df_data = {"energy_ev": x_vals}
-    # header = []
     for entry in dataset:
-        # df_data[f'{entry["name"]}(weight_{entry["weighting_string"]})'] = entry["y"]
         if "site" in entry["name"]:
             if entry["weighting"] != 1:
                 df_data[
@@ -74,7 +72,6 @@ def write_csv(dataset):
                 df_data[entry["name"].capitalize().replace("_", " ")] = entry["y"]
         else:
             df_data[entry["name"]] = entry["y"]
-        # header.append(f'weighting={str(entry["weighting_string"])}')
 
     df = DataFrame(data=df_data)
     df_energy_indexed = df.set_index("energy_ev")
@@ -132,7 +129,6 @@ def broaden_xas(
 
     x_vals = input_array[:, 0]
     y_vals = input_array[:, 1]
-    # y_vals_norm = np.array(y_vals/np.trapz(y_vals, x_vals))
 
     lorenz_y = np.zeros(len(x_vals))
 
@@ -147,7 +143,7 @@ def broaden_xas(
                     0.5 + np.arctan((e - 1) / (e**2)) / np.pi
                 )
 
-            if x <= 1.0e-6:  # do this to avoid trying to broaden values close to 0
+            if y <= 1.0e-6:  # do this to skip the calculation for very small values
                 lorenz_y = y
             else:
                 lorenz_y += (
@@ -346,7 +342,7 @@ class Result(ResultPanel):
             readout=True,
         )
         download_data = SpectrumDownloadButton(
-            filename="spectra.csv",
+            filename=f"{spectrum_select.value}_XAS_Spectra.csv",
             contents=None,
             description="Download CSV",
             icon="download",

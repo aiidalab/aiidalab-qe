@@ -51,16 +51,16 @@ class Setting(Panel):
     # I will leave these objects here for now (15/11/23), but since the calculation of molecular
     # systems is not really supported (neither in terms of XAS nor the main App itself) we should
     # not present this option that essentially does nothing.
-    structure_title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Structure</h4></div>"""
-    )
-    structure_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        Below you can indicate if the material should be treated as a molecule
-        or a crystal.
-        </div>"""
-    )
+    # structure_title = ipw.HTML(
+    #     """<div style="padding-top: 0px; padding-bottom: 0px">
+    #     <h4>Structure</h4></div>"""
+    # )
+    # structure_help = ipw.HTML(
+    #     """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+    #     Below you can indicate if the material should be treated as a molecule
+    #     or a crystal.
+    #     </div>"""
+    # )
     supercell_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Cell size</h4></div>"""
@@ -81,13 +81,13 @@ class Setting(Panel):
 
         self.element_and_ch_treatment = ipw.VBox(layout=ipw.Layout(width="100%"))
 
-        self.structure_type = ipw.ToggleButtons(
-            options=[
-                ("Molecule", "molecule"),
-                ("Crystal", "crystal"),
-            ],
-            value="crystal",
-        )
+        # self.structure_type = ipw.ToggleButtons(
+        #     options=[
+        #         ("Molecule", "molecule"),
+        #         ("Crystal", "crystal"),
+        #     ],
+        #     value="crystal",
+        # )
         self.supercell_min_parameter = ipw.FloatText(
             value=8.0,
             description="The minimum cell length (Å):",
@@ -128,10 +128,11 @@ class Setting(Panel):
         parameters = {
             "core_hole_treatments": core_hole_treatments,
             "elements_list": elements_list,
-            "structure_type": self.structure_type.value,
+            # "structure_type": self.structure_type.value,
             "gipaw_pseudo": self.gipaw_pseudos,
             "ch_pseudo": self.core_hole_pseudos,
             "core_wfc_data": self.core_wfc_data,
+            "supercell_min_parameter": self.supercell_min_parameter.value,
         }
         return parameters
 
@@ -157,7 +158,7 @@ class Setting(Panel):
                 element_and_ch_treatment_options[element] = "full"
 
         self.element_and_ch_treatment_options = element_and_ch_treatment_options
-        self.structure_type.value = input_dict.get("structure_type", "crystal")
+        # self.structure_type.value = input_dict.get("structure_type", "crystal")
 
     @tl.observe("input_structure")
     def _update_structure(self, _=None):
@@ -220,8 +221,6 @@ class Setting(Panel):
 
         self.element_and_ch_treatment.children = treatment_options
 
-        # TODO: Maybe find a way to cut back the nesting by 1 at least, since I don't think that there should be this much
-
         # For reference:
         # This is the whole widget:
         # print(f"{self.element_and_ch_treatment}\n")
@@ -241,4 +240,4 @@ class Setting(Panel):
     def reset(self):
         """Reset the panel to its initial state."""
         self.input_structure = None
-        self.structure_type.value = "crystal"
+        # self.structure_type.value = "crystal"
