@@ -67,7 +67,7 @@ def write_csv(dataset):
                 ] = entry["y"]
                 df_data[
                     f'{entry["name"].capitalize().replace("_", " ")} (Unweighted)'
-                ] = (entry["y"] / entry["weighting"])
+                ] = entry["y"] / entry["weighting"]
             else:
                 df_data[entry["name"].capitalize().replace("_", " ")] = entry["y"]
         else:
