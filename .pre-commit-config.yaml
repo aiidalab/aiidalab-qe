@@ -32,6 +32,8 @@ repos:
           - id: nbqa-isort
             args: [--profile=black]
           - id: nbqa-ruff
+            # suppress E402
+            args: [--ignore=E402]
 
     - repo: https://github.com/kynan/nbstripout
       rev: 0.6.1
