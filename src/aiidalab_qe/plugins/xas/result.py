@@ -26,7 +26,7 @@ class SpectrumDownloadButton(ipw.Button):
         self.on_click(self.__on_click)
 
     def __on_click(self, b):
-        if self.contents() is None:
+        if self.contents is None:
             pass  # to avoid a crash because NoneType obviously can't be processed here
         else:
             contents: bytes = self.contents().encode("utf-8")
