@@ -239,29 +239,23 @@ class Setting(Panel):
         }
         return parameters
 
-    def set_panel_value(self):
+    def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
 
-        # ch_pseudos = self.core_hole_pseudos
-        # structure = self.input_structure
-        # available_elements = [k for k in ch_pseudos]
-        # elements_to_select = sorted(
-        #     [
-        #         kind.symbol
-        #         for kind in structure.kinds
-        #         if kind.symbol in available_elements
-        #     ]
-        # )
-
-        # element_and_ch_treatment_options = {}
-        # for element in elements_to_select:
-        #     if element in xch_elements:
-        #         element_and_ch_treatment_options[element] = "xch_smear"
-        #     else:
-        #         element_and_ch_treatment_options[element] = "full"
-
-        # self.element_and_ch_treatment_options = element_and_ch_treatment_options
-        self._update_element_select_panel()
+        # set selected elements and core-hole treatments
+        elements_list = input_dict.get("elements_list", [])
+        for entry in self.element_and_ch_treatment.children:
+            element = entry.children[0].description
+            if element in elements_list:
+                entry.children[0].value = True
+                entry.children[1].value = input_dict["core_hole_treatments"][element]
+            else:
+                entry.children[0].value = False
+                entry.children[1].value = "full"
+        # set supercell min parameter
+        self.supercell_min_parameter.value = input_dict.get(
+            "supercell_min_parameter", 8.0
+        )
         # self.structure_type.value = input_dict.get("structure_type", "crystal")
 
     @tl.observe("input_structure")
