@@ -21,15 +21,7 @@ runs:
               python-version: 3.x
 
         - name: Install Dev Dependencies 📦
-          if: ${{ inputs.architecture == 'amd64' }}
           run: |
               pip install --upgrade pip
               pip install --upgrade -r docker/requirements-dev.txt
-          shell: bash
-
-        - name: Install Dev Dependencies 📦
-          if: ${{ inputs.architecture == 'arm64' }}
-          run: |
-              pip install --upgrade pip
-              pip install --upgrade -r docker/requirements-dev-arm64.txt
           shell: bash

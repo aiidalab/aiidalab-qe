@@ -17,6 +17,7 @@ on:
             - .github/actions/load-image/action.yml
 
             - src/**
+            - docker/**
             - qe.ipynb
             - setup.cfg
             - pyproject.toml
@@ -40,6 +41,7 @@ on:
             - .github/actions/load-image/action.yml
 
             - src/**
+            - docker/**
             - qe.ipynb
             - setup.cfg
             - pyproject.toml
@@ -69,6 +71,7 @@ jobs:
             image: qe
             architecture: arm64
             runsOn: ARM64
+        if: ${{ !github.event.pull_request.head.repo.fork }}
 
     amd64-push-ghcr:
         uses: ./.github/workflows/docker-push.yml
@@ -80,6 +83,7 @@ jobs:
             REGISTRY_USERNAME: ${{ github.actor }}
             REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         needs: [amd64]
+        if: ${{ !github.event.pull_request.head.repo.fork }}
 
     arm64-push-ghcr:
         uses: ./.github/workflows/docker-push.yml
@@ -91,6 +95,7 @@ jobs:
             REGISTRY_USERNAME: ${{ github.actor }}
             REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         needs: [arm64]
+        if: ${{ !github.event.pull_request.head.repo.fork }}
 
     merge-tags-ghcr:
         uses: ./.github/workflows/docker-merge-tags.yml
@@ -101,6 +106,7 @@ jobs:
             REGISTRY_USERNAME: ${{ github.actor }}
             REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         needs: [amd64-push-ghcr, arm64-push-ghcr]
+        if: ${{ !github.event.pull_request.head.repo.fork }}
 
     amd64-push-dockerhub:
         if: github.repository == 'aiidalab/aiidalab-qe' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))

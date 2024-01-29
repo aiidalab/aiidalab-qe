@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.usefixtures("sssp")
 def test_create_builder_default(
     data_regression,
     submit_app_generator,
@@ -19,6 +23,7 @@ def test_create_builder_default(
     data_regression.check(got)
 
 
+@pytest.mark.usefixtures("sssp")
 def test_create_builder_insulator(
     submit_app_generator,
 ):
@@ -41,6 +46,7 @@ def test_create_builder_insulator(
     assert "smearing" not in got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
 
 
+@pytest.mark.usefixtures("sssp")
 def test_create_builder_advanced_settings(
     submit_app_generator,
 ):

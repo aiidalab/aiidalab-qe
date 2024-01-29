@@ -54,7 +54,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             layout=ipw.Layout(min_height="250px"),
         )
 
-        self.tab.set_title(0, "Workflow")
+        self.tab.set_title(0, "Basic settings")
         self.tab.set_title(1, "Advanced settings")
 
         # store the property identifier and setting panel for all plugins
@@ -145,6 +145,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.configuration_parameters = self.get_configuration_parameters()
         self.confirm_button.disabled = False
         self.state = self.State.SUCCESS
+
+    def is_saved(self):
+        """Check if the current step is saved.
+        That all changes are confirmed.
+        """
+        new_parameters = self.get_configuration_parameters()
+        return new_parameters == self.configuration_parameters
 
     @tl.default("state")
     def _default_state(self):

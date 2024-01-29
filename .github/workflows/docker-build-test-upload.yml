@@ -27,7 +27,7 @@ jobs:
 
         steps:
             - name: Checkout Repo ⚡️
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
             - name: Create dev environment 📦
               uses: ./.github/actions/create-dev-env
               with:
@@ -66,10 +66,12 @@ jobs:
                   mkdir -p /tmp/aiidalab/
                   docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
               shell: bash
+              if: always()
 
             - name: Upload image as artifact 💾
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: ${{ inputs.image }}-${{ inputs.architecture }}
                   path: /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
                   retention-days: 3
+              if: always()

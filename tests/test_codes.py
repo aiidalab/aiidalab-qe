@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.usefixtures("sssp")
 def test_code_not_selected(submit_app_generator):
     """Test if there is an error when the code is not selected."""
     app = submit_app_generator()
@@ -5,6 +9,7 @@ def test_code_not_selected(submit_app_generator):
     app.submit_step._create_builder()
 
 
+@pytest.mark.usefixtures("sssp")
 def test_set_selected_codes(submit_app_generator):
     """Test set_selected_codes method."""
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
@@ -20,35 +25,37 @@ def test_set_selected_codes(submit_app_generator):
     assert new_submit_step.get_selected_codes() == submit_step.get_selected_codes()
 
 
-def test_udpate_codes_visibility():
-    """Test udpate_codes_visibility method.
+def test_update_codes_display():
+    """Test update_codes_display method.
     If the workchain property is not selected, the related code should be hidden.
     """
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     submit = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    submit.udpate_codes_visibility()
-    assert submit.codes["dos"].layout.visibility == "hidden"
+    submit.update_codes_display()
+    assert submit.codes["dos"].layout.display == "none"
     submit.input_parameters = {"workchain": {"properties": ["pdos"]}}
-    submit.udpate_codes_visibility()
-    assert submit.codes["dos"].layout.visibility == "visible"
+    submit.update_codes_display()
+    assert submit.codes["dos"].layout.display == "block"
 
 
+@pytest.mark.usefixtures("sssp")
 def test_identify_submission_blockers(app):
     """Test identify_submission_blockers method."""
     submit = app.submit_step
     blockers = list(submit._identify_submission_blockers())
-    # there is one blocker: ['The SSSP library is not installed.']
-    assert len(blockers) == 1
+    assert len(blockers) == 0
+
     submit.input_parameters = {"workchain": {"properties": ["pdos"]}}
     blockers = list(submit._identify_submission_blockers())
-    assert len(blockers) == 1
+
+    assert len(blockers) == 0
     # set dos code to None, will introduce another blocker
     dos_value = submit.codes["dos"].value
     submit.codes["dos"].value = None
     blockers = list(submit._identify_submission_blockers())
-    assert len(blockers) == 2
+    assert len(blockers) == 1
     # set dos code back will remove the blocker
     submit.codes["dos"].value = dos_value
     blockers = list(submit._identify_submission_blockers())
-    assert len(blockers) == 1
+    assert len(blockers) == 0

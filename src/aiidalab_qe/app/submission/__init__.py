@@ -23,12 +23,6 @@ from aiidalab_qe.workflows import QeAppWorkChain
 
 from .resource import ParallelizationSettings, ResourceSelectionWidget
 
-PROTOCOL_PSEUDO_MAP = {
-    "fast": "SSSP/1.2/PBE/efficiency",
-    "moderate": "SSSP/1.2/PBE/efficiency",
-    "precise": "SSSP/1.2/PBE/precision",
-}
-
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
@@ -60,7 +54,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_parameters = tl.Dict()
-    _submission_blockers = tl.List(tl.Unicode())
+    internal_submission_blockers = tl.List(tl.Unicode())
+    external_submission_blockers = tl.List(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
         self.message_area = ipw.Output()
@@ -138,10 +133,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             ]
         )
 
-    @tl.observe("_submission_blockers")
-    def _observe_submission_blockers(self, change):
-        if change["new"]:
-            fmt_list = "\n".join((f"<li>{item}</li>" for item in sorted(change["new"])))
+    @tl.observe("internal_submission_blockers", "external_submission_blockers")
+    def _observe_submission_blockers(self, _change):
+        """Observe the submission blockers and update the message area."""
+        blockers = self.internal_submission_blockers + self.external_submission_blockers
+        if any(blockers):
+            fmt_list = "\n".join((f"<li>{item}</li>" for item in sorted(blockers)))
             self._submission_blocker_messages.value = f"""
                 <div class="alert alert-info">
                 <strong>The submission is blocked, due to the following reason(s):</strong>
@@ -150,6 +147,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._submission_blocker_messages.value = ""
 
     def _identify_submission_blockers(self):
+        """Validate the resource inputs and identify blockers for the submission."""
         # Do not submit while any of the background setup processes are running.
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
@@ -184,11 +182,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         blockers = list(self._identify_submission_blockers())
         if any(blockers):
-            self._submission_blockers = blockers
+            self.internal_submission_blockers = blockers
             self.state = self.State.READY
             return
 
-        self._submission_blockers = []
+        self.internal_submission_blockers = []
         self.state = self.state.CONFIGURED
 
     def _toggle_install_widgets(self, change):
@@ -308,10 +306,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
-    @tl.observe("previous_step_state")
+    @tl.observe("previous_step_state", "input_parameters")
     def _observe_input_structure(self, _):
         self._update_state()
-        self.udpate_codes_visibility()
+        self.update_codes_display()
 
     @tl.observe("process")
     def _observe_process(self, change):
@@ -348,18 +346,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             for name, code in self.codes.items():
                 code.value = _get_code_uuid(codes.get(name))
 
-    def udpate_codes_visibility(self):
+    def update_codes_display(self):
         """Hide code if no related property is selected."""
         # hide all codes except pw
         for name, code in self.codes.items():
             if name == "pw":
                 continue
-            code.layout.visibility = "hidden"
+            code.layout.display = "none"
         properties = self.input_parameters.get("workchain", {}).get("properties", [])
         # show the code if the related property is selected.
         for identifer in properties:
             for code in self.code_entries.get(identifer, {}).values():
-                code.layout.visibility = "visible"
+                code.layout.display = "block"
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""

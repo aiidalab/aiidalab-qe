@@ -1,8 +1,0 @@
-#!/bin/bash
-set -ex
-
-# this also sets environment variables
-source activate kernel
-source .local/start-singleuser.sh
-
-exec "$@"

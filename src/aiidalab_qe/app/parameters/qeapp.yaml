@@ -15,7 +15,11 @@ workchain:
 
 ## Advanced pw settings
 advanced:
-    pseudo_family: SSSP/1.2/PBEsol/efficiency
+    pseudo_family:
+        library: SSSP
+        version: 1.3
+        functional: PBEsol
+        accuracy: efficiency
     tot_charge: 0
 
 ## Codes

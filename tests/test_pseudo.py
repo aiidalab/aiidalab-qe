@@ -1,4 +1,142 @@
+import pytest
 from aiida import orm
+
+from aiidalab_qe.common.setup_pseudos import (
+    PSEUDODOJO_VERSION,
+    SSSP_VERSION,
+    _construct_cmd,
+    _install_pseudos,
+    pseudos_to_install,
+)
+
+
+def test_setup_pseudos_cmd(tmp_path):
+    """Test _construct_cmd function in setup_pseudos.py."""
+
+    # SSSP family
+    pseudo_family = f"SSSP/{SSSP_VERSION}/PBE/efficiency"
+    cmd = _construct_cmd(pseudo_family)
+    assert cmd == [
+        "aiida-pseudo",
+        "install",
+        "sssp",
+        "--functional",
+        "PBE",
+        "--version",
+        f"{SSSP_VERSION}",
+        "-p",
+        "efficiency",
+    ]
+
+    # PseudoDojo family
+    pseudo_family = f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf"
+    cmd = _construct_cmd(pseudo_family)
+    assert cmd == [
+        "aiida-pseudo",
+        "install",
+        "pseudo-dojo",
+        "--functional",
+        "PBEsol",
+        "--version",
+        f"{PSEUDODOJO_VERSION}",
+        "-p",
+        "standard",
+        "--relativistic",
+        "SR",
+        "--pseudo-format",
+        "upf",
+    ]
+
+    # with download_only option
+    pseudo_family = f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf"
+    cmd = _construct_cmd(pseudo_family, download_only=True)
+    assert cmd == [
+        "aiida-pseudo",
+        "install",
+        "pseudo-dojo",
+        "--functional",
+        "PBEsol",
+        "--version",
+        f"{PSEUDODOJO_VERSION}",
+        "-p",
+        "standard",
+        "--relativistic",
+        "SR",
+        "--pseudo-format",
+        "upf",
+        "--download-only",
+    ]
+
+    # with cwd option to specify the source folder
+    pseudo_family = f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf"
+    cmd = _construct_cmd(pseudo_family, cwd=tmp_path)
+
+    # since the source file not exist, the cmd should be the same as above
+    assert "--from-download" not in cmd
+
+    # mock the source file
+    source_file = (
+        tmp_path
+        / f"PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo"
+    )
+    source_file.touch()
+    cmd = _construct_cmd(pseudo_family, cwd=tmp_path)
+    assert cmd == [
+        "aiida-pseudo",
+        "install",
+        "pseudo-dojo",
+        "--functional",
+        "PBEsol",
+        "--version",
+        f"{PSEUDODOJO_VERSION}",
+        "-p",
+        "standard",
+        "--relativistic",
+        "SR",
+        "--pseudo-format",
+        "upf",
+        "--from-download",
+        f"{str(tmp_path)}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
+    ]
+
+
+@pytest.mark.usefixtures("aiida_profile_clean")
+def test_pseudos_installation():
+    """Test install_pseudos"""
+    # Test by compare the pseudos_to_install before and after the installation
+    assert len(pseudos_to_install()) == 8
+    EXPECTED_PSEUDOS = {
+        f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/standard/upf",
+        f"SSSP/{SSSP_VERSION}/PBE/efficiency",
+    }
+
+    # Install the pseudos
+    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS)]
+
+    # Two pseudos are installed
+    assert len(pseudos_to_install()) == 6
+
+
+@pytest.mark.usefixtures("aiida_profile_clean")
+def test_download_and_install_pseudo_from_file(tmp_path):
+    """Test download and install pseudo from file."""
+    assert len(pseudos_to_install()) == 8
+    EXPECTED_PSEUDOS = {
+        f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/standard/upf",
+        f"SSSP/{SSSP_VERSION}/PBE/efficiency",
+    }
+
+    # Download the pseudos to the tmp_path but not install
+    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, download_only=True, cwd=tmp_path)]
+
+    assert len(pseudos_to_install()) == 8
+    assert len(list(tmp_path.iterdir())) == 2
+
+    # Install the pseudos from the tmp_path
+    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, cwd=tmp_path)]
+
+    # Two pseudos are installed
+    assert len(pseudos_to_install()) == 6
 
 
 def test_pseudos_family_selector_widget():
@@ -11,28 +149,31 @@ def test_pseudos_family_selector_widget():
     w.override.value = True
 
     # test the default value
-    assert w.value == "SSSP/1.2/PBEsol/efficiency"
+    assert w.value == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
     # Test if the protocol change the value will be updated
     w.protocol = "precise"
-    assert w.value == "SSSP/1.2/PBEsol/precision"
+    assert w.value == f"SSSP/{SSSP_VERSION}/PBEsol/precision"
 
     # test the functional change will update the value
     w.dft_functional.value = "PBE"
-    assert w.value == "SSSP/1.2/PBE/precision"
+    assert w.value == f"SSSP/{SSSP_VERSION}/PBE/precision"
 
     # Test if selecet new pseudo library the value will be updated
     w.library_selection.value = "PseudoDojo stringent"
-    assert w.value == "PseudoDojo/0.4/PBE/SR/stringent/upf"
+    assert w.value == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
 
 
+@pytest.mark.usefixtures("sssp")
 def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
     """Test the pseudo setter widget."""
     from aiidalab_qe.app.configuration.pseudos import PseudoSetter
 
     # test the widget is set with the elements of the structure
     silicon = generate_structure_data("silicon")
-    w = PseudoSetter(structure=silicon, pseudo_family="SSSP/1.2/PBEsol/efficiency")
+    w = PseudoSetter(
+        structure=silicon, pseudo_family=f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+    )
 
     assert "Si" in w.pseudos.keys()
     assert w.ecutwfc == 30
