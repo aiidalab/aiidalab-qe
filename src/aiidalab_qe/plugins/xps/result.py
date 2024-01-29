@@ -93,9 +93,10 @@ def xps_spectra_broadening(
 
 class Result(ResultPanel):
     title = "XPS"
+    workchain_labels = ["xps"]
 
     def __init__(self, node=None, **kwargs):
-        super().__init__(node=node, identifier="xps", **kwargs)
+        super().__init__(node=node, **kwargs)
 
     def _update_view(self):
         import plotly.graph_objects as go
@@ -148,7 +149,7 @@ class Result(ResultPanel):
             spectra_cls,
             spectra_be,
             equivalent_sites_data,
-        ) = export_xps_data(self.outputs)
+        ) = export_xps_data(self.outputs.xps)
         # init figure
         g = go.FigureWidget(
             layout=go.Layout(
