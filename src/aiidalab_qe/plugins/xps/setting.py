@@ -162,10 +162,10 @@ class Setting(Panel):
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
         peak_list = [peak.description for peak in self.peak_list.children if peak.value]
-        if len(peak_list) == 0:
-            raise Exception("Please select at least one peak.")
+        # if len(peak_list) == 0:
+        # raise Exception("Please select at least one peak.")
         parameters = {
-            "core_hole_treatment": self.core_hole_treatment.value,
+            # "core_hole_treatment": self.core_hole_treatment.value,
             "structure_type": self.structure_type.value,
             "pseudo_group": self.pseudo_group.value,
             "correction_energies": self.correction_energies,
@@ -176,13 +176,13 @@ class Setting(Panel):
     def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.pseudo_group.value = input_dict.get("pseudo_group", "pseudo_demo_pbe")
-        self.core_hole_treatment.value = input_dict.get(
-            "core_hole_treatment", "xch_smear"
-        )
+        # self.core_hole_treatment.value = input_dict.get(
+        #     "core_hole_treatment", "xch_smear"
+        # )
         self.structure_type.value = input_dict.get("structure_type", "crystal")
-        peak_list = input_dict.get("peak_list", {})
+        peak_list = input_dict.get("peak_list", [])
         for peak in self.peak_list.children:
-            if peak.value in peak_list:
+            if peak.description in peak_list:
                 peak.value = True
 
     @tl.observe("input_structure")

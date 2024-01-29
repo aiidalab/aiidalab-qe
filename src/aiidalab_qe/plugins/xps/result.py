@@ -7,6 +7,8 @@ from aiidalab_qe.common.panel import ResultPanel
 
 
 def export_xps_data(outputs):
+    """Export the data from the XPS workchain"""
+
     chemical_shifts = {}
     symmetry_analysis_data = outputs.symmetry_analysis_data.get_dict()
     equivalent_sites_data = symmetry_analysis_data["equivalent_sites_data"]
@@ -56,6 +58,8 @@ def export_xps_data(outputs):
 def xps_spectra_broadening(
     points, equivalent_sites_data, gamma=0.3, sigma=0.3, label=""
 ):
+    """Broadening the XPS spectra with Voigt function and return the spectra data"""
+
     import numpy as np
     from scipy.special import voigt_profile  # pylint: disable=no-name-in-module
 

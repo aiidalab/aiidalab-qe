@@ -4,6 +4,7 @@ from aiida_quantumespresso.common.types import ElectronicType, SpinType
 
 XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
+# supercell min parameter for different protocols
 supercell_min_parameter_map = {
     "fast": 4.0,
     "moderate": 8.0,
@@ -41,15 +42,16 @@ def get_builder(codes, structure, parameters, **kwargs):
         }
         correction_energies[element] = all_correction_energies[label]["core"]
         elements_list.append(element)
-    # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
+    #
     is_molecule_input = (
         True if xps_parameters.get("structure_type") == "molecule" else False
     )
-    # set core hole treatment for element
+    # set core hole treatment based on electronic type
     if parameters["workchain"]["electronic_type"] == "metal":
         core_hole_treatment = "xch_smear"
     else:
         core_hole_treatment = "xch_fixed"
+    # if molecule input, set core hole treatment to full
     if is_molecule_input:
         core_hole_treatment = "full"
     core_hole_treatments = {element: core_hole_treatment for element in elements_list}
@@ -83,9 +85,6 @@ def get_builder(codes, structure, parameters, **kwargs):
     # this is fxied in a PR, but we need to wait for the next release.
     # we set a large kpoints_distance value to set the kpoints to 1x1x1
     if is_molecule_input:
-        # kpoints = KpointsData()
-        # kpoints.set_kpoints_mesh([1, 1, 1])
-        # parameters["advanced"]["kpoints"] = kpoints
         builder.ch_scf.kpoints_distance = Float(5)
     return builder
 
