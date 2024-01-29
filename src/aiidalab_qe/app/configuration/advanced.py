@@ -196,6 +196,10 @@ class AdvancedSettings(Panel):
 
         self.kpoints_distance.value = parameters["kpoints_distance"]
 
+        # The pseudo_family read from the protocol (aiida-quantumespresso plugin settings)
+        # we override it with the value from the pseudo_family_selector widget
+        parameters["pseudo_family"] = self.pseudo_family_selector.value
+
     def _callback_value_set(self, _=None):
         """Callback function to set the parameters"""
         settings = {
@@ -299,10 +303,7 @@ class AdvancedSettings(Panel):
             self._update_settings_from_protocol(self.protocol)
 
             # reset the pseudo family
-            pseudo_family_dict = DEFAULT_PARAMETERS["advanced"]["pseudo_family"]
-            pseudo_family = PseudoFamily(**pseudo_family_dict)
-
-            self.pseudo_family_selector.load_from_pseudo_family(pseudo_family)
+            self.pseudo_family_selector.reset()
 
             # reset total charge
             self.total_charge.value = DEFAULT_PARAMETERS["advanced"]["tot_charge"]
@@ -327,7 +328,7 @@ class AdvancedSettings(Panel):
             mesh = create_kpoints_from_distance.process_class._func(
                 self.input_structure,
                 orm.Float(self.kpoints_distance.value),
-                orm.Bool(True),
+                orm.Bool(False),
             )
             self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
         else:

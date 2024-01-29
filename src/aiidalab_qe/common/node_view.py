@@ -74,9 +74,7 @@ class MinimalStructureViewer(ipw.VBox):
     def _update_structure_viewer(self, change):
         """Update the view if displayed_structure trait was modified."""
         with self.hold_trait_notifications():
-            for (
-                comp_id
-            ) in self._viewer._ngl_component_ids:  # pylint: disable=protected-access
+            for comp_id in self._viewer._ngl_component_ids:  # pylint: disable=protected-access
                 self._viewer.remove_component(comp_id)
             self.selection = list()
             if change["new"] is not None:

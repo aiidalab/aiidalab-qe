@@ -16,7 +16,7 @@ from filelock import FileLock, Timeout
 
 from aiidalab_qe.common.widgets import ProgressBar
 
-SSSP_VERSION = "1.2"
+SSSP_VERSION = "1.3"
 PSEUDODOJO_VERSION = "0.4"
 
 EXPECTED_PSEUDOS = {
@@ -213,8 +213,9 @@ def install(
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
-        yield "Installation was already started elsewhere, waiting for it to finish...", ProgressBar.AnimationRate(
-            1.0
+        yield (
+            "Installation was already started elsewhere, waiting for it to finish...",
+            ProgressBar.AnimationRate(1.0),
         )
         with FileLock(FN_LOCKFILE, timeout=120):
             if len(pseudos_to_install()) > 0:

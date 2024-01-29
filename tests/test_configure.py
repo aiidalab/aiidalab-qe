@@ -1,3 +1,6 @@
+from aiidalab_qe.common.setup_pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
+
+
 def test_protocol():
     """Test the protocol.
     The protocol from workchain_settings will trigger the
@@ -31,12 +34,14 @@ def test_set_configuration_parameters():
     wg = ConfigureQeAppWorkChainStep()
     parameters = wg.get_configuration_parameters()
     parameters["workchain"]["relax_type"] = "positions"
-    parameters["advanced"]["pseudo_family"] = "SSSP/1.2/PBE/efficiency"
+    parameters["advanced"]["pseudo_family"] = f"SSSP/{SSSP_VERSION}/PBE/efficiency"
     wg.set_configuration_parameters(parameters)
     new_parameters = wg.get_configuration_parameters()
     assert parameters == new_parameters
     # test pseudodojo
-    parameters["advanced"]["pseudo_family"] = "PseudoDojo/0.4/PBEsol/SR/standard/upf"
+    parameters["advanced"][
+        "pseudo_family"
+    ] = f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf"
     wg.set_configuration_parameters(parameters)
     new_parameters = wg.get_configuration_parameters()
     assert parameters == new_parameters
