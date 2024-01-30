@@ -61,6 +61,10 @@ def get_builder(codes, structure, parameters, **kwargs):
     }
     pw_code = codes.get("pw", None)
     overrides = {
+        "relax": {
+                "base": deepcopy(parameters["advanced"]),
+                "base_final_scf": deepcopy(parameters["advanced"]),
+            },
         "ch_scf": deepcopy(parameters["advanced"]),
     }
     builder = XpsWorkChain.get_builder_from_protocol(
