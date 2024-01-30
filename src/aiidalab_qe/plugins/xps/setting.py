@@ -8,13 +8,14 @@ from aiida.orm import Group, QueryBuilder, StructureData
 
 from aiidalab_qe.common.panel import Panel
 
+base_url = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
+
 
 def install_pseudos(pseudo_group="pseudo_demo_pbe"):
     import os
     from pathlib import Path
     from subprocess import run
 
-    base_url = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
     url = base_url + pseudo_group + ".aiida"
 
     env = os.environ.copy()
@@ -49,8 +50,8 @@ class Setting(Panel):
         <h4>Pseudopotential</h4></div>"""
     )
     pseudo_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        Please select a pseudopotential group. Ground-state and excited-state pseudopotentials for each absorbing element.
+        f"""<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
+        Please select a pseudopotential group, which provide the ground-state and excited-state pseudopotentials for the element. The pseudopotentials are downloaded from this <a href="{base_url}">repository</a>.
         </div>"""
     )
 
