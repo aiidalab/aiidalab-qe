@@ -10,3 +10,4 @@ How-to guides
    setup_computer_code
    import_structure
    upgrade_uninstall
+   xas
