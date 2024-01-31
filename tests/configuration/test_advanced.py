@@ -150,7 +150,6 @@ def test_advanced_kpoints_mesh():
 
     # change protocol
     w.protocol = "fast"
-<<<<<<< HEAD
     assert w.mesh_grid.value == "Mesh [5, 5, 5]"
 
 
@@ -221,6 +220,3 @@ def test_advanced_hubbard_widget():
     assert w.hubbard_widget.eigenvalues_dict == {
         "starting_ns_eigenvalue": [[1, 1, "Co", 1], [3, 1, "Co", 1], [5, 1, "Co", 1]]
     }
-=======
-    assert w.mesh_grid.value == "Mesh [5, 5, 5]"
->>>>>>> a17893e786a289341c94ad69e53e6905201d5899
