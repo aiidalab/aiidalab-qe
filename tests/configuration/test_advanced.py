@@ -151,7 +151,7 @@ def test_advanced_kpoints_mesh():
     # change protocol
     w.protocol = "fast"
 <<<<<<< HEAD
-    assert w.mesh_grid.value == "Mesh [6, 6, 6]"
+    assert w.mesh_grid.value == "Mesh [5, 5, 5]"
 
 
 def test_advanced_hubbard_widget():
