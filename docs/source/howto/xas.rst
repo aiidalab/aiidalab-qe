@@ -7,14 +7,14 @@ Overview
 
 Using the XSpectra module of Quantum Espresso, it is possible to calculate X-ray Absorption Near Edge Spectra (XANES) for many types of systems. Here we will compute XANES spectra for lithium carbonate (Li\ :sub:`2`\ CO\ :sub:`3`).
 
-Due to the number of calculation steps required, we will need to set up our environment to submit to a remote machine capable of handling the calculation. This will be covered in Step 3 of the guide.
-
-Start
------
+Due to the number of calculation steps required, we will need to set up our environment to submit to a remote machine capable of handling the calculation. Please refer to the relevant :doc:`How-To </howto/setup_computer_code>` section for this procedure.
 
 .. admonition:: Goal
 
     To submit an XANES calculation with XSpectra and post-process the results
+
+Start
+-----
 
 To start, go ahead and :doc:`launch </installation/launch>` the app, then follow the steps below.
 
@@ -33,7 +33,7 @@ Select `Full geometry` to relax the structure and set `ElectronicType` to `Insul
 For the protocol, select `fast` to quickly produce results, or, if you have enough resources, you can select the `moderate` protocol for increased accuracy.
 
 .. tip::
-    For this example of Li\ :sub:`2`\ CO\ :sub:`3` changing the **K-points distance** to 0.25 from 0.15 in the `advanced settings` tab will speed up calculations without compromising accuracy.
+    For this example of Li\ :sub:`2`\ CO\ :sub:`3` changing the **K-points distance** to 0.25 from 0.15 in the `advanced settings` tab while using the `moderate` protocol will speed up calculations without compromising accuracy.
 
 .. note::
     At present the pseudopotential set available for XAS calculations only covers the PBE functional. In order to run the workflow: select the `Advanced settings` tab, navigate to `Accuracy and precision`, tick the `Override` box on the right-hand-side and in the dropdown box under `Exchange-correlation functional` select `PBE`.
@@ -42,25 +42,23 @@ For the protocol, select `fast` to quickly produce results, or, if you have enou
         :scale: 55 %
         :align: center
 
-Open the `XAS Settings` tab. Selection of elements for XANES calculations is found below the explanatory text for the core-hole treatment. You may wish to test different treatments for each element to see how this changes the spectra at a later date.
+Open the `XAS Settings` tab. Selection of elements for XANES calculations is found below the explanatory text for the core-hole treatment. You may wish to test different treatments for each element to see how this changes the spectra at a later date, however for this example we will use the default values.
 
     .. image:: ../_static/images/XAS_Plugin_Setting_Panel-Annotated-Cropped.png
         :scale: 75 %
         :align: center
 
-For this example, tick the boxes for oxygen and carbon to select these for calculation. For this example, simply ignore the dropdown boxes as recommended core-hole treatment settings for both elements will pre-selected for you.
-
-Click `Confirm` to proceed.
+Tick the boxes for O and C to select these for calculation, then click `Confirm` to proceed.
 
 Step 3 - Choose computational resources
 ***************************************
 
-As mentioned above, our calculation will require more computational resources than the basic tutorial. As such, we will take a brief detour through the relevant :doc:`How-To </howto/setup_computer_code>` section to configure the environment with a remote machine.
+As mentioned in the overview, our calculation will require more computational resources than the basic tutorial. Please make sure to read the relevant :doc:`How-To </howto/setup_computer_code>` section to configure the environment with a remote machine.
 
-Remember that, since the workflow uses `xspectra.x` to calculate the XANES spectrum, a code for this will also be required. When you're done, click `Submit` to submit the calculation.
+Since the workflow uses `xspectra.x` to calculate the XANES spectrum, a code for this will also be required. When you're done, click `Submit` to submit the calculation.
 
 .. tip::
-    `xspectra.x` does not require additional conserdiations for installation or setup compared to `pw.x`, so re-using the configuration for the `pw.x` code and changing the executable/plugin will be sufficient.
+    `xspectra.x` does not require additional conserdiations for installation or setup compared to `pw.x`, so re-using the configuration for the `pw.x` code and changing the executable & plugin entry point will be sufficient.
 
 .. note::
     As the XSpectra module of Quantum Espresso is not currently able to exploit GPU accelleration, it is strongly recommend to configure this calculation for a non-GPU system if possible.
@@ -84,11 +82,11 @@ Once the calculation is finished, you can view the calculated spectra in the `XA
 .. note::
     You should notice that "C K-edge" and "Site 4" are listed in the legend to the right of the plot - this is because all carbon atoms in the structure are symmetrically equivalent and thus will produce the same spectrum. The workflow has accounted for this and only calculates the spectrum of the first carbon atom (site number 4 in the structure.)
 
-Immediately below the element selection box are the broadening parameters. The XANES spectrum returned by the workflow will initially have a Lorentzian broadening of 0.1 eV. As broadening parameters cannot be calculated from first-principles, we will tune these parameters by hand. We will compare to an experimentally-obtained C K-edge spectrum of Li\ :sub:`2`\ CO\ :sub:`3`.
+Immediately below the element selection box are the broadening parameters. The XANES spectrum returned by the workflow will initially have a Lorentzian broadening of 0.1 eV. As broadening parameters cannot be calculated from first-principles, we will tune these parameters by hand. We will first compare to an experimentally-obtained C K-edge spectrum of Li\ :sub:`2`\ CO\ :sub:`3`.
 
 Try changing the first slider (:math:`\Gamma_{hole}`). This will initially apply a constant Lorentzian broadening for the entire spectrum. Comparing to the experimental reference for carbon, we can see that it is difficult to effectively re-create the experimental spectrum with a constant Lorentzian broadening scheme. Setting this to 0 eV will plot the spectrum with no post-processing.
 
-Navigate to the upper center of the XAS panel and tick the box next to `use variable energy broadening`, which will change the behaviour of the broadening tools to use an arctangent-like function commonly used for broadening XANES spectra (see `Calandra & Bunau (2013)`_ [1]_ for further description). Set the three sliders in the following configuration:
+Navigate to the upper center of the XAS panel and tick the box next to `use variable energy broadening`, which will change the behaviour of the broadening tools to use an arctangent-like function commonly used for broadening XANES spectra (see `Calandra & Bunau (2013)`_ [1]_ for further discussion). Set the three sliders in the following configuration:
 
 * :math:`\Gamma_{hole} = 0.3`
 * :math:`\Gamma_{max} = 5.0`
@@ -105,8 +103,8 @@ The resulting spectrum should now more closely resemble the features seen in the
 .. tip::
     For advice with parameter tuning:
 
-    * :math:`\Gamma_{hole}` changes the initial Lorentzian broadening value (at the Fermi level (:math:`E_{F}`). The natural linewidth of the core-hole (if known) typically provides a good reference value (`reference for atomic numbers 10-110`_).
-    * :math:`\Gamma_{max}` changes the "sharpness" of the s-curve of the function - lower values give a smoother change at the inflexion point, while higher values cause the broadening to increase more quickly at the inflexion point.
+    * :math:`\Gamma_{hole}` sets the initial Lorentzian broadening value up to the Fermi level (:math:`E_{F}`, where :math:`E_{F} = 0` eV on the relative energy scale used here). The natural linewidth of the core-hole (if known) typically provides a good reference value (`reference for atomic numbers 10-110`_).
+    * :math:`\Gamma_{max}` sets the "sharpness" of the s-curve of the function - lower values give a smoother change at the inflexion point, while higher values cause the broadening to increase more quickly at the inflexion point.
     * :math:`E_{center}` sets the energy position of the inflexion point of the function.
 
    The variable energy function (:math:`\Gamma(\Omega)`) and its parameters can be visualised in the following plot (from Fig.1 of `Calandra & Bunau (2013)`_):
