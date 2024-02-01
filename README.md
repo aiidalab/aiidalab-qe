@@ -50,6 +50,8 @@ This will:
   1. Create a tagged release with bumped version and push it to the repository.
   2. Trigger a GitHub actions workflow that creates a GitHub release.
 
+For more details of the releases plan and management, please go to [the wiki](https://github.com/aiidalab/aiidalab-qe/wiki/Releases-management).
+
 Additional notes:
 
   - Use the `--dry` option to preview the release change.
