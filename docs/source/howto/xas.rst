@@ -15,6 +15,16 @@ Please refer to the relevant :doc:`How-To </howto/setup_computer_code>` section 
 
     To submit an XANES calculation with XSpectra and post-process the results
 
+.. note::
+    The XAS plugin feature is available in the official AiiDALab-QE App as of pre-release `v24.04.0a1` and upwards.
+    See the relevant :doc:`How-To </howto/upgrade_uninstall>` guide on upgrading and remember to tick `include prereleases` when searching for the latest version in the App Manager.
+
+    If installing `via` the terminal, simply give the version number using the correct `PEP 440 version specifier`_\ :
+
+    .. code-block:: console
+
+       $ aiidalab install quantum-espresso>=v24.04.0a1
+
 Start
 -----
 
@@ -177,3 +187,4 @@ Here, you learned how to submit an XANES calculation on a remote machine using t
 .. _reference for atomic numbers 10-110: https://dx.doi.org/10.1063/1.555595
 .. _inelastic mean free path: https://dx.doi.org/10.1002/sia.740010103
 .. _Calandra & Bunau (2013): https://dx.doi.org/10.1103/PhysRevB.87.205105
+.. _PEP 440 version specifier: https://www.python.org/dev/peps/pep-0440/#version-specifiers
