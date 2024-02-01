@@ -5,9 +5,11 @@ How to calculate XANES spectra
 Overview
 --------
 
-Using the XSpectra module of Quantum Espresso, it is possible to calculate X-ray Absorption Near Edge Spectra (XANES) for many types of systems. Here we will compute XANES spectra for lithium carbonate (Li\ :sub:`2`\ CO\ :sub:`3`).
+Using the XSpectra module of Quantum Espresso, it is possible to calculate X-ray Absorption Near Edge Spectra (XANES) for many types of systems.
+Here we will compute XANES spectra for lithium carbonate (Li\ :sub:`2`\ CO\ :sub:`3`).
 
-Due to the number of calculation steps required, we will need to set up our environment to submit to a remote machine capable of handling the calculation. Please refer to the relevant :doc:`How-To </howto/setup_computer_code>` section for this procedure.
+Due to the number of calculation steps required, we will need to set up our environment to submit to a remote machine capable of handling the calculation.
+Please refer to the relevant :doc:`How-To </howto/setup_computer_code>` section for this procedure.
 
 .. admonition:: Goal
 
@@ -36,13 +38,16 @@ For the protocol, select `fast` to quickly produce results, or, if you have enou
     For this example of Li\ :sub:`2`\ CO\ :sub:`3` changing the **K-points distance** to 0.25 from 0.15 in the `advanced settings` tab while using the `moderate` protocol will speed up calculations without compromising accuracy.
 
 .. note::
-    At present the pseudopotential set available for XAS calculations only covers the PBE functional. In order to run the workflow: select the `Advanced settings` tab, navigate to `Accuracy and precision`, tick the `Override` box on the right-hand-side and in the dropdown box under `Exchange-correlation functional` select `PBE`.
+    At present the pseudopotential set available for XAS calculations only covers the PBE functional.
+    In order to run the workflow: select the `Advanced settings` tab, navigate to `Accuracy and precision`, tick the `Override` box on the right-hand-side and in the dropdown box under `Exchange-correlation functional` select `PBE`.
 
     .. image:: ../_static/images/XAS_Plugin-Set_Adv_Options-Alt-Annotated-Cropped.png
         :scale: 55 %
         :align: center
 
-Open the `XAS Settings` tab. Selection of elements for XANES calculations is found below the explanatory text for the core-hole treatment. You may wish to test different treatments for each element to see how this changes the spectra at a later date, however for this example we will use the default values.
+Open the `XAS Settings` tab.
+Selection of elements for XANES calculations is found below the explanatory text for the core-hole treatment.
+You may wish to test different treatments for each element to see how this changes the spectra at a later date, however for this example we will use the default values.
 
     .. image:: ../_static/images/XAS_Plugin_Setting_Panel-Annotated-Cropped.png
         :scale: 75 %
@@ -53,9 +58,11 @@ Tick the boxes for O and C to select these for calculation, then click `Confirm`
 Step 3 - Choose computational resources
 ***************************************
 
-As mentioned in the overview, our calculation will require more computational resources than the basic tutorial. Please make sure to read the relevant :doc:`How-To </howto/setup_computer_code>` section to configure the environment with a remote machine.
+As mentioned in the overview, our calculation will require more computational resources than the basic tutorial.
+Please make sure to read the relevant :doc:`How-To </howto/setup_computer_code>` section to configure the environment with a remote machine.
 
-Since the workflow uses `xspectra.x` to calculate the XANES spectrum, a code for this will also be required. When you're done, click `Submit` to submit the calculation.
+Since the workflow uses `xspectra.x` to calculate the XANES spectrum, a code for this will also be required.
+When you're done, click `Submit` to submit the calculation.
 
 .. tip::
     `xspectra.x` does not require additional conserdiations for installation or setup compared to `pw.x`, so re-using the configuration for the `pw.x` code and changing the executable & plugin entry point will be sufficient.
@@ -66,12 +73,15 @@ Since the workflow uses `xspectra.x` to calculate the XANES spectrum, a code for
 Step 4: Check the status
 ************************
 
-While the calculation is running, you can monitor its status as shown in the :ref:`basic tutorial <basic_status>`. You can view the results once the calculation is finished.
+While the calculation is running, you can monitor its status as shown in the :ref:`basic tutorial <basic_status>`.
+You can view the results once the calculation is finished.
 
 Step 5: Spectrum view and post-processing
 *****************************************
 
-Once the calculation is finished, you can view the calculated spectra in the `XAS` tab of the results panel. You can change which element to view XANES spectra for using the dropdown box in the top left. Select carbon from the dropdown box.
+Once the calculation is finished, you can view the calculated spectra in the `XAS` tab of the results panel.
+You can change which element to view XANES spectra for using the dropdown box in the top left.
+Select carbon from the dropdown box.
 
     .. figure:: ../_static/images/XAS_Plugin_Result_Panel-Carbon-Annotated-Cropped.png
         :scale: 65 %
@@ -80,13 +90,21 @@ Once the calculation is finished, you can view the calculated spectra in the `XA
         XAS result panel for carbon K-edge of Li\ :sub:`2`\ CO\ :sub:`3`.
 
 .. note::
-    You should notice that "C K-edge" and "Site 4" are listed in the legend to the right of the plot - this is because all carbon atoms in the structure are symmetrically equivalent and thus will produce the same spectrum. The workflow has accounted for this and only calculates the spectrum of the first carbon atom (site number 4 in the structure.)
+    You should notice that "C K-edge" and "Site 4" are listed in the legend to the right of the plot - this is because all carbon atoms in the structure are symmetrically equivalent and thus will produce the same spectrum.
+    The workflow has accounted for this and only calculates the spectrum of the first carbon atom (site number 4 in the structure.)
 
-Immediately below the element selection box are the broadening parameters. The XANES spectrum returned by the workflow will initially have a Lorentzian broadening of 0.1 eV. As broadening parameters cannot be calculated from first-principles, we will tune these parameters by hand. We will first compare to an experimentally-obtained C K-edge spectrum of Li\ :sub:`2`\ CO\ :sub:`3`.
+Immediately below the element selection box are the broadening parameters.
+The XANES spectrum returned by the workflow will initially have a Lorentzian broadening of 0.1 eV.
+As broadening parameters cannot be calculated from first-principles, we will tune these parameters by hand.
+We will first compare to an experimentally-obtained C K-edge spectrum of Li\ :sub:`2`\ CO\ :sub:`3`.
 
-Try changing the first slider (:math:`\Gamma_{hole}`). This will initially apply a constant Lorentzian broadening for the entire spectrum. Comparing to the experimental reference for carbon, we can see that it is difficult to effectively re-create the experimental spectrum with a constant Lorentzian broadening scheme. Setting this to 0 eV will plot the spectrum with no post-processing.
+Try changing the first slider (:math:`\Gamma_{hole}`).
+This will initially apply a constant Lorentzian broadening for the entire spectrum.
+Comparing to the experimental reference for carbon, we can see that it is difficult to effectively re-create the experimental spectrum with a constant Lorentzian broadening scheme.
+Setting this to 0 eV will plot the spectrum with no post-processing.
 
-Navigate to the upper center of the XAS panel and tick the box next to `use variable energy broadening`, which will change the behaviour of the broadening tools to use an arctangent-like function commonly used for broadening XANES spectra (see `Calandra & Bunau (2013)`_ [1]_ for further discussion). Set the three sliders in the following configuration:
+Navigate to the upper center of the XAS panel and tick the box next to `use variable energy broadening`, which will change the behaviour of the broadening tools to use an arctangent-like function commonly used for broadening XANES spectra (see `Calandra & Bunau (2013)`_\ [1]_ for further discussion).
+Set the three sliders in the following configuration:
 
 * :math:`\Gamma_{hole} = 0.3`
 * :math:`\Gamma_{max} = 5.0`
@@ -98,7 +116,8 @@ The resulting spectrum should now more closely resemble the features seen in the
     :scale: 75 %
     :align: center
 
-    Carbon K-edge XRS (low-q)\ [2]_ of Li\ :sub:`2`\ CO\ :sub:`3` compared to the XANES dipole computed with the XCH approximation. Note that computed and experimental spectra are aligned according to the first peak of the signal in this case.
+    Carbon K-edge XRS (low-q)\ [2]_ of Li\ :sub:`2`\ CO\ :sub:`3` compared to the XANES dipole computed with the XCH approximation.
+    Note that computed and experimental spectra are aligned according to the first peak of the signal in this case.
 
 .. tip::
     For advice with parameter tuning:
@@ -107,31 +126,39 @@ The resulting spectrum should now more closely resemble the features seen in the
     * :math:`\Gamma_{max}` sets the "sharpness" of the s-curve of the function - lower values give a smoother change at the inflexion point, while higher values cause the broadening to increase more quickly at the inflexion point.
     * :math:`E_{center}` sets the energy position of the inflexion point of the function.
 
-   The variable energy function (:math:`\Gamma(\Omega)`) and its parameters can be visualised in the following plot (from Fig.1 of `Calandra & Bunau (2013)`_):
+   The variable energy function (:math:`\Gamma(\Omega)`) and its parameters can be visualised in the following plot (from Fig.1 of `Calandra & Bunau (2013)`_\ [1]_):
 
     .. image:: ../_static/images/Calandra_Bunau-PRB-205105-2013-gamma_func_plot.png
         :scale: 33 %
         :align: center
 
 
-Next, select the oxygen K-edge spectrum using the dropdown box in the upper left. With the broadening scheme used for carbon, the spectrum should already resemble the experimental spectrum quite well, though you may try to tune the parameters further if desired - particularly increasing the initial broadening (:math:`\Gamma_{hole}`):
+Next, select the oxygen K-edge spectrum using the dropdown box in the upper left.
+With the broadening scheme used for carbon, the spectrum should already resemble the experimental spectrum quite well, though you may try to tune the parameters further if desired - particularly increasing the initial broadening (:math:`\Gamma_{hole}`):
 
 .. figure:: ../_static/images/Li2CO3_Example-O_K-edge-FCH_Only-Cropped.png
     :scale: 75 %
     :align: center
 
-    O K-edge total electron yield (TEY)\ [3]_ XAS spectrum compared to the XANES dipole computed with the FCH approximation. Here, the broadening scheme used for carbon is modified such that :math:`\Gamma_{hole} = 0.8` eV. Note that computed and experimental spectra are aligned according to the first peak of the signal in this case.
+    O K-edge total electron yield (TEY)\ [3]_ XAS spectrum compared to the XANES dipole computed with the FCH approximation.
+    Here, the broadening scheme used for carbon is modified such that :math:`\Gamma_{hole} = 0.8` eV.
+    Note that computed and experimental spectra are aligned according to the first peak of the signal in this case.
 
-In the plot window, you should be able to see three different plots: One for the full O K-edge and one for each of the two symmetrically-inequivalent oxygen atoms. The component spectra in each case are first normalised, then the intensities are scaled according to the site multiplicity.
+In the plot window, you should be able to see three different plots: One for the full O K-edge and one for each of the two symmetrically-inequivalent oxygen atoms.
+The component spectra in each case are first normalised, then the intensities are scaled according to the site multiplicity.
 
 .. image:: ../_static/images/XAS_Plugin_Result_Panel-Oxygen.png
 
-Click on a spectrum in the legend to show/hide it in the viewer. Click and drag a box over the plot area to zoom in to the selected region. Double-click to zoom out to the full spectrum.
+Click on a spectrum in the legend to show/hide it in the viewer.
+Click and drag a box over the plot area to zoom in to the selected region.
+Double-click to zoom out to the full spectrum.
 
 Finally, click on the "Download CSV" button to the upper left of the plot area to download a CSV file of the XAS plots for the selected element in order to export the spectrum for further analysis.
 
 .. note::
-    The CSV file will contain all component spectra for the selected element. Any broadening applied to the spectrum *via* the available tools will be applied to the data in the CSV file. If multiple inequivalent absorbing atoms are present, the CSV file will contain one column for the total and two for each component:
+    The CSV file will contain all component spectra for the selected element.
+    Any broadening applied to the spectrum *via* the available tools will be applied to the data in the CSV file.
+    If multiple inequivalent absorbing atoms are present, the CSV file will contain one column for the total and two for each component:
 
     * The normalised & weighted spectrum. (with respect to ratio of site multiplicity to total multiplicity)
     * The normalised & un-weighted spectrum.
