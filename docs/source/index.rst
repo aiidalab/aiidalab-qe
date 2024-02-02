@@ -146,7 +146,7 @@ We also acknowledge support from:
 - the European Union's Horizon 2020 research and innovation programme (Grant No. 957189, `project BIG-MAP <https://www.big-map.eu>`_);
 - the `MARVEL National Centre for Competency in Research <http://nccr-marvel.ch>`_ funded by the `Swiss National Science Foundation <http://www.snf.ch/en>`_;
 - the MARKETPLACE project funded by `Horizon 2020 <https://ec.europa.eu/programmes/horizon2020/>`_ under the H2020-NMBP-25-2017 call (Grant No. 760173);
-- the `MaX European Centre of Excellence <http://www.max-centre.eu/>`_ funded by the Horizon 2020 EINFRA-5 program, Grant No. 676598.
+- the `MaX European Centre of Excellence <http://www.max-centre.eu/>`_ funded by the Horizon 2020 EINFRA-5 program (Grant No. 676598).
 
 .. raw:: html
 
