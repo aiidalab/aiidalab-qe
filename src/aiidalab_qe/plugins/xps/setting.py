@@ -47,7 +47,7 @@ class Setting(Panel):
 
     pseudo_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Pseudopotential</h4></div>"""
+        <h4>Core-Hole pseudopotential group</h4></div>"""
     )
     pseudo_help = ipw.HTML(
         f"""<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
@@ -140,9 +140,6 @@ class Setting(Panel):
             ipw.HBox(
                 [self.structure_type],
             ),
-            # self.core_hole_treatment_title,
-            # self.core_hole_treatment_help,
-            # self.core_hole_treatment,
             self.pseudo_title,
             self.pseudo_help,
             self.pseudo_group,
@@ -151,11 +148,6 @@ class Setting(Panel):
             ipw.HBox(
                 [self.peak_list],
             ),
-            # self.supercell_title,
-            # self.supercell_help,
-            # ipw.HBox(
-            # [self.supercell_min_parameter],
-            # ),
         ]
         self.pseudo_group.observe(self._update_pseudo, names="value")
         super().__init__(**kwargs)
