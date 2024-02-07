@@ -217,3 +217,11 @@ class Result(ResultPanel):
             fill,
             g,
         ]
+        self._get_corrections()
+
+    def _get_corrections(self):
+        from aiida.orm.utils.serialize import deserialize_unsafe
+
+        ui_parameters = self.node.base.extras.get("ui_parameters", {})
+        ui_parameters = deserialize_unsafe(ui_parameters)
+        print("ui_parameters: ", ui_parameters["xps"]["correction_energies"])
