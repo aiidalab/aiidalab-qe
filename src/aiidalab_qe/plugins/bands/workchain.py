@@ -70,11 +70,11 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
         "hexagonal": {
             "path": [
                 [0.0, 0.0, 0.0],
+                [0.5, 0.0, 0.0],
                 [0.33333, 0.33333, 0.0],
-                [0.5, 0.5, 0.0],
                 [1.0, 0.0, 0.0],
             ],
-            "labels": [GAMMA, "K", "M", GAMMA],
+            "labels": [GAMMA, "M", "K", GAMMA],
         },
         "square": {
             "path": [
