@@ -61,17 +61,17 @@ Additional notes:
 
 ## Acknowledgements
 We acknowledge support from:
-* the European Union\'s Horizon 2020 research and innovation programme (Grant No. 957189, [project BIG-MAP](https://www.big-map.eu))
-* the [MARVEL National Centre for Competency in Research](<http://nccr-marvel.ch>) funded by the [Swiss National Science Foundation](<http://www.snf.ch/en>)
-* the MARKETPLACE project funded by [Horizon 2020](https://ec.europa.eu/programmes/horizon2020/) under the H2020-NMBP-25-2017 call (Grant No. 760173),
-* the [MaX European Centre of Excellence](<http://www.max-centre.eu/>) funded by the Horizon 2020 EINFRA-5 program, Grant No. 676598.
+* the European Union\'s Horizon 2020 research and innovation programme (Grant No. 957189, [project BIG-MAP](https://www.big-map.eu)).
+* the [MARVEL National Centre for Competency in Research](<http://nccr-marvel.ch>) funded by the [Swiss National Science Foundation](<http://www.snf.ch/en>).
+* the MARKETPLACE project funded by [Horizon 2020](https://ec.europa.eu/programmes/horizon2020/) under the H2020-NMBP-25-2017 call (Grant No. 760173).
+* the [MaX European Centre of Excellence](<http://www.max-centre.eu/>) funded by the Horizon 2020 EINFRA-5 program (Grant No. 676598).
 
 <div style="text-align:left">
- <img src="docs/source/_static/logos/MARVEL.png" alt="MARVEL" height="75px">
- <img src="docs/source/_static/logos/MaX.png" alt="MaX" height="75px">
- <img src="docs/source/_static/logos/MarketPlace.png" alt="MarketPlace" height="75px">
+ <img src="miscellaneous/logos/MARVEL.png" alt="MARVEL" height="75px">
+ <img src="miscellaneous/logos/MaX.png" alt="MaX" height="75px">
+ <img src="miscellaneous/logos/MarketPlace.png" alt="MarketPlace" height="75px">
 </div>
 <div style="text-align:left">
- <img src="docs/source/_static/logos/bigmap_logo.png" alt="BIG-MAP" height="75px">
- <img src="docs/source/_static/logos/EU_flag.png" alt="EU" height="75px">
+ <img src="miscellaneous/logos/bigmap_logo.png" alt="BIG-MAP" height="75px">
+ <img src="miscellaneous/logos/EU_flag.png" alt="EU" height="75px">
 </div>
