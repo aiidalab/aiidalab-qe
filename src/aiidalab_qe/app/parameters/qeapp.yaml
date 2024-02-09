@@ -21,6 +21,7 @@ advanced:
         functional: PBEsol
         accuracy: efficiency
     tot_charge: 0
+    vdw_corr: none
 
 ## Codes
 codes:
