@@ -19,12 +19,6 @@ Please refer to the relevant :doc:`How-To </howto/setup_computer_code>` section 
     The XAS plugin feature is available in the official AiiDALab-QE App as of pre-release `v24.04.0a1` and upwards.
     See the relevant :doc:`How-To </howto/upgrade_uninstall>` guide on upgrading and remember to tick `include prereleases` when searching for the latest version in the App Manager.
 
-    If installing `via` the terminal, simply give the version number using the correct `PEP 440 version specifier`_\ :
-
-    .. code-block:: console
-
-       $ aiidalab install quantum-espresso>=v24.04.0a1
-
 Start
 -----
 
