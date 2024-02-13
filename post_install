@@ -2,9 +2,10 @@
 
 # This script is executed after the app installation completes
 # triggered by the post install hook implemented in https://github.com/aiidalab/aiidalab/pull/295
+# TODO: this script is not yet properly tested. The integration tests are run from the qeapp docker image, this script is executed when the app is installed by `aiidalab install`. Therefore, we need to bring original di test (which removed in https://github.com/aiidalab/aiidalab-qe/pull/449/files#diff-83993fe9ad162677c85ae244400df2469b6d666c2a28d7b8d179785e87beb7f3) back.
 
 echo "Starting installation of QE..."
 python -m aiidalab_qe install-qe & disown
 
 echo "Starting installation of pseudo-potentials..."
-python -m aiidalab_qe install-sssp & disown
+python -m aiidalab_qe install-pseudos & disown

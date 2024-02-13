@@ -11,7 +11,7 @@ Welcome Page
       :child-align: justify
       :class: sd-fs-5
 
-      .. rubric:: The Quantum ESPRESSO App - Version 23.10.0a0
+      .. rubric:: The Quantum ESPRESSO App - Version |release|
 
       The Quantum ESPRESSO (QE) app is an `AiiDAlab`_ Jupyter-based graphical user interface allowing users to conduct and streamline many of `Quantum ESPRESSO`_'s calculations by leveraging `AiiDA`_'s powerful workflows implemented in the AiiDA Quantum ESPRESSO plugin.
 
@@ -140,3 +140,22 @@ Acknowledgements
 ================
 
 We acknowledge the `AiiDAlab`_ team for the development of the Quantum ESPRESSO app.
+
+We also acknowledge support from:
+
+- the European Union's Horizon 2020 research and innovation programme (Grant No. 957189, `project BIG-MAP <https://www.big-map.eu>`_);
+- the `MARVEL National Centre for Competency in Research <http://nccr-marvel.ch>`_ funded by the `Swiss National Science Foundation <http://www.snf.ch/en>`_;
+- the MARKETPLACE project funded by `Horizon 2020 <https://ec.europa.eu/programmes/horizon2020/>`_ under the H2020-NMBP-25-2017 call (Grant No. 760173);
+- the `MaX European Centre of Excellence <http://www.max-centre.eu/>`_ funded by the Horizon 2020 EINFRA-5 program (Grant No. 676598).
+
+.. raw:: html
+
+   <div style="text-align:left">
+    <img src="../_static/logos/MARVEL.png" alt="MARVEL" height="75px">
+    <img src="../_static/logos/MaX.png" alt="MaX" height="75px">
+    <img src="../_static/logos/MarketPlace.png" alt="MarketPlace" height="75px">
+   </div>
+   <div style="text-align:left">
+    <img src="../_static/logos/bigmap_logo.png" alt="BIG-MAP" height="75px">
+    <img src="../_static/logos/EU_flag.png" alt="EU" height="75px">
+   </div>
