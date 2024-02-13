@@ -602,9 +602,9 @@ def generate_qeapp_workchain(
         run_pdos=True,
         spin_type="none",
         electronic_type="metal",
-        magnetization_type="starting_magnetization", #Options: "starting_magnetization", "tot_magnetization"
+        magnetization_type="starting_magnetization",  # Options: "starting_magnetization", "tot_magnetization"
         initial_magnetic_moments=0.0,
-        tot_magnetization = 0.0,
+        tot_magnetization=0.0,
     ):
         from copy import deepcopy
 
@@ -639,9 +639,17 @@ def generate_qeapp_workchain(
         s2.workchain_settings.electronic_type.value = electronic_type
         if spin_type == "collinear":
             s2.advanced_settings.override.value = True
-            magnetization_values = (initial_magnetic_moments if magnetization_type == "starting_magnetization" else tot_magnetization)
-            s2.advanced_settings.magnetization._set_tot_magnetization(total_magnetization) if electronic_type == "insulator" else s2.advanced_settings.magnetization._set_magnetization_values(magnetization_values)
-           
+            magnetization_values = (
+                initial_magnetic_moments
+                if magnetization_type == "starting_magnetization"
+                else tot_magnetization
+            )
+            s2.advanced_settings.magnetization._set_tot_magnetization(
+                total_magnetization
+            ) if electronic_type == "insulator" else s2.advanced_settings.magnetization._set_magnetization_values(
+                magnetization_values
+            )
+
         s2.confirm()
         # step 3 setup code and resources
         s3: SubmitQeAppWorkChainStep = app.submit_step

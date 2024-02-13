@@ -248,11 +248,10 @@ class AdvancedSettings(Panel):
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
 
-
-        #Set conditions for metallic systems (Smearing and degauss values)
+        # Set conditions for metallic systems (Smearing and degauss values)
         if self.electronic_type == "metal":
             parameters["pw"]["parameters"]["SYSTEM"][
-            "smearing"
+                "smearing"
             ] = self.smearing.smearing_value
             parameters["pw"]["parameters"]["SYSTEM"][
                 "degauss"
@@ -268,7 +267,6 @@ class AdvancedSettings(Panel):
                 self.set_insulator_magnetization(parameters)
 
         return parameters
-
 
     def set_insulator_magnetization(self, parameters):
         """Set the parameters for collinear insulator calculation. Total magnetization."""
@@ -396,7 +394,7 @@ class MagnetizationSettings(ipw.VBox):
         self.magnetization_type = ipw.ToggleButtons(
             options=[
                 ("Starting Magnetization", "starting_magnetization"),
-                ("Tot. Magnetization", "tot_magnetization"),  
+                ("Tot. Magnetization", "tot_magnetization"),
             ],
             value="starting_magnetization",
             style={"description_width": "initial"},
