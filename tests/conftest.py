@@ -645,7 +645,7 @@ def generate_qeapp_workchain(
                 else tot_magnetization
             )
             s2.advanced_settings.magnetization._set_tot_magnetization(
-                total_magnetization
+                tot_magnetization
             ) if electronic_type == "insulator" else s2.advanced_settings.magnetization._set_magnetization_values(
                 magnetization_values
             )
