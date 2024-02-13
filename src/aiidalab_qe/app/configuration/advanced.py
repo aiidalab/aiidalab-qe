@@ -248,31 +248,35 @@ class AdvancedSettings(Panel):
                 "ecutrho"
             ] = self.pseudo_setter.ecutrho
 
+
+        #Set conditions for metallic systems (Smearing and degauss values)
+        if self.electronic_type == "metal":
+            parameters["pw"]["parameters"]["SYSTEM"][
+            "smearing"
+            ] = self.smearing.smearing_value
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "degauss"
+            ] = self.smearing.degauss_value
+
+        # Set tot_magnetization for collinear simulations.
         if self.spin_type == "collinear":
-            if self.electronic_type == "metal":
-                self.set_metal_parameters(parameters)
+            # Conditions for metallic systems. Select the magnetization type and set the value if override is True
+            if self.electronic_type == "metal" and self.override.value is True:
+                self.set_metallic_magnetization(parameters)
+            # Conditions for insulator systems. Default value is 0.0
             elif self.electronic_type == "insulator":
-                self.set_insulator_parameters(parameters)
+                self.set_insulator_magnetization(parameters)
 
         return parameters
 
-    def set_metal_parameters(self, parameters):
-        """Set the parameters for metal calculation"""
-        parameters["pw"]["parameters"]["SYSTEM"][
-            "smearing"
-        ] = self.smearing.smearing_value
-        parameters["pw"]["parameters"]["SYSTEM"][
-            "degauss"
-        ] = self.smearing.degauss_value
-        self.set_magnetization_logic(parameters)
 
-    def set_insulator_parameters(self, parameters):
-        """Set the parameters for collinear insulator calculation"""
+    def set_insulator_magnetization(self, parameters):
+        """Set the parameters for collinear insulator calculation. Total magnetization."""
         parameters["pw"]["parameters"]["SYSTEM"][
             "tot_magnetization"
         ] = self.magnetization.tot_magnetization.value
 
-    def set_magnetization_logic(self, parameters):
+    def set_metallic_magnetization(self, parameters):
         """Set the parameters for magnetization calculation in metals"""
         magnetization_type = self.magnetization.magnetization_type.value
         if magnetization_type == "tot_magnetization":
@@ -391,10 +395,10 @@ class MagnetizationSettings(ipw.VBox):
         )
         self.magnetization_type = ipw.ToggleButtons(
             options=[
-                ("Tot. Magnetization", "tot_magnetization"),
-                ("Starting Magnetization", "atomic_type"),
+                ("Starting Magnetization", "starting_magnetization"),
+                ("Tot. Magnetization", "tot_magnetization"),  
             ],
-            value="tot_magnetization",
+            value="starting_magnetization",
             style={"description_width": "initial"},
         )
         self.description = ipw.HTML(self._DEFAULT_DESCRIPTION)
@@ -504,6 +508,10 @@ class MagnetizationSettings(ipw.VBox):
                     )
                 else:
                     self.kinds.children[i].value = magnetic_moments
+
+    def _set_tot_magnetization(self, tot_magnetization):
+        """Set the total magnetization"""
+        self.tot_magnetization.value = tot_magnetization
 
 
 class SmearingSettings(ipw.VBox):

@@ -34,7 +34,7 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
     from aiidalab_qe.app.result.summary_viewer import SummaryView
 
     wkchain = generate_qeapp_workchain(
-        spin_type="collinear", initial_magnetic_moments=0.1
+        spin_type="collinear", electronic_type="metal", initial_magnetic_moments=0.1
     )
     viewer = SummaryView(wkchain.node)
     report = viewer.report
