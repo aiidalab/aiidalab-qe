@@ -182,23 +182,20 @@ class Result(ResultPanel):
                         "site": site,
                     }
                 )
-
+            fill_type = "tozeroy" if fill.value else None
             with g.batch_update():
                 if len(g.data) == len(data):
                     for i in range(len(data)):
                         g.data[i].x = data[i]["x"]
                         g.data[i].y = data[i]["y"]
-                        if fill.value:
-                            g.data[i].fill = "tozeroy"
-                        else:
-                            g.data[i].fill = None
+                        g.data[i].fill = fill_type
                         g.data[i].name = data[i]["site"].replace("_", " ")
 
                 else:
                     g.data = []
                     for d in data:
                         g.add_scatter(
-                            x=d["x"], y=d["y"], fill=fill.value, name=d["site"]
+                            x=d["x"], y=d["y"], fill=fill_type, name=d["site"]
                         )
                 g.layout.barmode = "overlay"
                 g.layout.xaxis.title = xaxis
@@ -240,8 +237,9 @@ class Result(ResultPanel):
             element = core_level.split("_")[0]
             if element not in self.spectrum_select_options:
                 continue
-            exp = value["exp"]
+            exp = -value["exp"]
+            sign = "" if exp < 0 else "+"
             correction_energies_table.value += (
-                f"<tr><td>{core_level}</td><td>{exp}</td></tr>"
+                f"<tr><td>{core_level}</td><td>{sign}{exp}</td></tr>"
             )
         return correction_energies_table
