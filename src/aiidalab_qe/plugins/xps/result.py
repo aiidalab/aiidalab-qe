@@ -228,9 +228,10 @@ class Result(ResultPanel):
         ui_parameters = deserialize_unsafe(ui_parameters)
         correction_energies = ui_parameters["xps"]["correction_energies"]
         # create a table for the correction energies using ipywidgets
+        # These offsets mainly depend on chemical element and core level, and are determined by comparing the calculated core electron binding energy to the experimental one.
         correction_energies_table = ipw.HTML(
             """<h4>Offset Energies (δ)</h4>
-            <div>The binding energies should be corrected by these constant offsets. These offsets mainly depend on chemical element and core level, and are determined by comparing the calculated core electron binding energy to the experimental one.</div>
+            <div>When comparing the calculated binding energies to the experimental data, these should be corrected by the given offset listed below.</div>
             <table><tr><th>Core-level</th><th>Value (eV)</th></tr>"""
         )
         for core_level, value in correction_energies.items():
