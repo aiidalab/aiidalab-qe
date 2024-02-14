@@ -56,10 +56,12 @@ def xps_spectra_broadening(
         for site in point:
             # Weight for the spectra of every atom
             intensity = equivalent_sites_data[site]["multiplicity"]
-            relative_peak_position = point[site]
+            relative_core_level_position = point[site]
             y = (
                 intensity
-                * voigt_profile(x_energy_range - relative_peak_position, sigma, gamma)
+                * voigt_profile(
+                    x_energy_range - relative_core_level_position, sigma, gamma
+                )
                 / total_multiplicity
             )
             result_spectra[element][site] = [x_energy_range, y]
@@ -231,13 +233,15 @@ class Result(ResultPanel):
         # create a table for the correction energies using ipywidgets
         correction_energies_table = ipw.HTML(
             """<h4>Offset Energies (δ)</h4>
-            <div>The binding energies should be corrected by these constant offsets. These offsets mainly depends on chemical element and core level, and are determined by comparing the calculated core electron binding energy to experimental one.</div>
-            <table><tr><th>Peak</th><th>Value (eV)</th></tr>"""
+            <div>The binding energies should be corrected by these constant offsets. These offsets mainly depend on chemical element and core level, and are determined by comparing the calculated core electron binding energy to the experimental one.</div>
+            <table><tr><th>Core-level</th><th>Value (eV)</th></tr>"""
         )
-        for peak, value in correction_energies.items():
-            element = peak.split("_")[0]
+        for core_level, value in correction_energies.items():
+            element = core_level.split("_")[0]
             if element not in self.spectrum_select_options:
                 continue
             exp = value["exp"]
-            correction_energies_table.value += f"<tr><td>{peak}</td><td>{exp}</td></tr>"
+            correction_energies_table.value += (
+                f"<tr><td>{core_level}</td><td>{exp}</td></tr>"
+            )
         return correction_energies_table

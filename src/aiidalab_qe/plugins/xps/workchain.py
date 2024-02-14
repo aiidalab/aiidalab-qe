@@ -7,8 +7,8 @@ XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 # supercell min parameter for different protocols
 supercell_min_parameter_map = {
     "fast": 4.0,
-    "moderate": 8.0,
-    "precise": 12.0,
+    "moderate": 6.0,
+    "precise": 8.0,
 }
 
 
@@ -18,7 +18,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     protocol = parameters["workchain"]["protocol"]
     xps_parameters = parameters.get("xps", {})
     all_correction_energies = xps_parameters.pop("correction_energies", {})
-    peak_list = xps_parameters.pop("peak_list", None)
+    core_level_list = xps_parameters.pop("core_level_list", None)
     # load pseudo for excited-state and group-state.
     pseudo_group = xps_parameters.pop("pseudo_group")
     pseudo_group = (
@@ -28,7 +28,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     pseudos = {}
     elements_list = []
     correction_energies = {}
-    for label in peak_list:
+    for label in core_level_list:
         element = label.split("_")[0]
         pseudos[element] = {
             "core_hole": [

@@ -55,13 +55,13 @@ class Setting(Panel):
         </div>"""
     )
 
-    peak_title = ipw.HTML(
+    core_level_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Select peak</h4></div>"""
+        <h4>Select core-level</h4></div>"""
     )
-    peak_help = ipw.HTML(
+    core_level_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
-        The list of peaks to be considered for analysis.
+        The list of core-levels to be considered for analysis.
         </div>"""
     )
     structure_title = ipw.HTML(
@@ -113,7 +113,7 @@ class Setting(Panel):
             disabled=False,
             style={"description_width": "initial"},
         )
-        self.peak_list = ipw.VBox()
+        self.core_level_list = ipw.VBox()
 
         self.structure_type = ipw.ToggleButtons(
             options=[
@@ -143,10 +143,10 @@ class Setting(Panel):
             self.pseudo_title,
             self.pseudo_help,
             self.pseudo_group,
-            self.peak_title,
-            self.peak_help,
+            self.core_level_title,
+            self.core_level_help,
             ipw.HBox(
-                [self.peak_list],
+                [self.core_level_list],
             ),
         ]
         self.pseudo_group.observe(self._update_pseudo, names="value")
@@ -154,15 +154,19 @@ class Setting(Panel):
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
-        peak_list = [peak.description for peak in self.peak_list.children if peak.value]
-        # if len(peak_list) == 0:
-        # raise Exception("Please select at least one peak.")
+        core_level_list = [
+            core_level.description
+            for core_level in self.core_level_list.children
+            if core_level.value
+        ]
+        # if len(core_level_list) == 0:
+        # raise Exception("Please select at least one core_level.")
         parameters = {
             # "core_hole_treatment": self.core_hole_treatment.value,
             "structure_type": self.structure_type.value,
             "pseudo_group": self.pseudo_group.value,
             "correction_energies": self.correction_energies,
-            "peak_list": peak_list,
+            "core_level_list": core_level_list,
         }
         return parameters
 
@@ -173,16 +177,16 @@ class Setting(Panel):
         #     "core_hole_treatment", "xch_smear"
         # )
         self.structure_type.value = input_dict.get("structure_type", "crystal")
-        peak_list = input_dict.get("peak_list", [])
-        for peak in self.peak_list.children:
-            if peak.description in peak_list:
-                peak.value = True
+        core_level_list = input_dict.get("core_level_list", [])
+        for core_level in self.core_level_list.children:
+            if core_level.description in core_level_list:
+                core_level.value = True
 
     @tl.observe("input_structure")
     def _update_structure(self, _=None):
-        self._update_peak_list()
+        self._update_core_level_list()
 
-    def _update_peak_list(self):
+    def _update_core_level_list(self):
         if self.input_structure is None:
             return
         structure = self.input_structure
@@ -194,17 +198,17 @@ class Setting(Panel):
             install_pseudos(self.pseudo_group.value)
         group = qb.all()[0][0]
         self.correction_energies = group.base.extras.get("correction")
-        supported_peaks = {}
+        supported_core_levels = {}
         for key in self.correction_energies:
             ele, orbital = key.split("_")
-            if ele not in supported_peaks:
-                supported_peaks[ele] = [key]
+            if ele not in supported_core_levels:
+                supported_core_levels[ele] = [key]
             else:
-                supported_peaks[ele].append(key)
-        # print("supported_peaks: ", supported_peaks)
+                supported_core_levels[ele].append(key)
+        # print("supported_core_levels: ", supported_core_levels)
         for ele in kind_list:
-            if ele in supported_peaks:
-                for orbital in supported_peaks[ele]:
+            if ele in supported_core_levels:
+                for orbital in supported_core_levels[ele]:
                     checkbox_list += (
                         ipw.Checkbox(
                             description=orbital,
@@ -224,7 +228,7 @@ class Setting(Panel):
                         layout=ipw.Layout(max_width="100%"),
                     ),
                 )
-        self.peak_list.children = checkbox_list
+        self.core_level_list.children = checkbox_list
 
     def _update_pseudo(self, change):
         pseudo_group = change["new"]
@@ -232,7 +236,7 @@ class Setting(Panel):
         qb.append(Group, filters={"label": pseudo_group})
         if len(qb.all()) == 0:
             install_pseudos(pseudo_group)
-        self._update_peak_list()
+        self._update_core_level_list()
 
     def reset(self):
         """Reset the panel to its initial state."""
