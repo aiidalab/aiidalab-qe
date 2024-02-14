@@ -132,12 +132,14 @@ class Result(ResultPanel):
             binding_energies,
             equivalent_sites_data,
         ) = export_xps_data(self.outputs.xps)
-        spectrum_select_options = [key.split("_")[0] for key in chemical_shifts.keys()]
+        self.spectrum_select_options = [
+            key.split("_")[0] for key in chemical_shifts.keys()
+        ]
         spectrum_select = ipw.Dropdown(
             description="",
             disabled=False,
-            value=spectrum_select_options[0],
-            options=spectrum_select_options,
+            value=self.spectrum_select_options[0],
+            options=self.spectrum_select_options,
             layout=ipw.Layout(width="20%"),
         )
         # init figure
@@ -204,6 +206,7 @@ class Result(ResultPanel):
         gamma.observe(response, names="value")
         sigma.observe(response, names="value")
         fill.observe(response, names="value")
+        correction_energies_table = self._get_corrections()
         self.children = [
             spectra_type,
             ipw.HBox(
@@ -216,12 +219,25 @@ class Result(ResultPanel):
             paras,
             fill,
             g,
+            correction_energies_table,
         ]
-        self._get_corrections()
 
     def _get_corrections(self):
         from aiida.orm.utils.serialize import deserialize_unsafe
 
         ui_parameters = self.node.base.extras.get("ui_parameters", {})
         ui_parameters = deserialize_unsafe(ui_parameters)
-        print("ui_parameters: ", ui_parameters["xps"]["correction_energies"])
+        correction_energies = ui_parameters["xps"]["correction_energies"]
+        # create a table for the correction energies using ipywidgets
+        correction_energies_table = ipw.HTML(
+            """<h4>Offset Energies (δ)</h4>
+            <div>The binding energies should be corrected by these constant offsets. These offsets mainly depends on chemical element and core level, and are determined by comparing the calculated core electron binding energy to experimental one.</div>
+            <table><tr><th>Peak</th><th>Value (eV)</th></tr>"""
+        )
+        for peak, value in correction_energies.items():
+            element = peak.split("_")[0]
+            if element not in self.spectrum_select_options:
+                continue
+            exp = value["exp"]
+            correction_energies_table.value += f"<tr><td>{peak}</td><td>{exp}</td></tr>"
+        return correction_energies_table
