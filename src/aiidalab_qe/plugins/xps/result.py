@@ -104,7 +104,7 @@ class Result(ResultPanel):
             value=0.3,
             min=0.1,
             max=1,
-            description="Lorentzian profile (γ)",
+            description="Lorentzian profile ($\gamma$)",
             disabled=False,
             style={"description_width": "initial"},
         )
@@ -112,7 +112,7 @@ class Result(ResultPanel):
             value=0.3,
             min=0.1,
             max=1,
-            description="Gaussian profile (σ)",
+            description="Gaussian profile ($\sigma$)",
             disabled=False,
             style={"description_width": "initial"},
         )
