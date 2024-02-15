@@ -32,6 +32,7 @@ Examples = [
     ("Gallium arsenide", file_path / "examples" / "GaAs.xyz"),
     ("Gold (fcc)", file_path / "examples" / "Au.cif"),
     ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
+    ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
 ]
 
 OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
