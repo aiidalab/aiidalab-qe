@@ -26,6 +26,7 @@ bands:
           occupations: smearing
           smearing: cold
           tot_charge: 0.0
+          vdw_corr: none
       pseudos:
         Si: Si.upf
   bands_kpoints_distance: 0.025
@@ -55,6 +56,7 @@ bands:
           occupations: smearing
           smearing: methfessel-paxton
           tot_charge: 0.0
+          vdw_corr: none
       pseudos:
         Si: Si.upf
 clean_workdir: false
@@ -87,6 +89,7 @@ pdos:
           nosym: true
           occupations: tetrahedra
           tot_charge: 0.0
+          vdw_corr: none
       pseudos:
         Si: Si.upf
   projwfc:
@@ -123,6 +126,7 @@ pdos:
           occupations: smearing
           smearing: methfessel-paxton
           tot_charge: 0.0
+          vdw_corr: none
       pseudos:
         Si: Si.upf
 properties:
@@ -158,6 +162,7 @@ relax:
           occupations: smearing
           smearing: methfessel-paxton
           tot_charge: 0.0
+          vdw_corr: none
       pseudos:
         Si: Si.upf
   base_final_scf:
