@@ -39,6 +39,12 @@ class AdvancedSettings(Panel):
         Tick the box to override the default, smaller is more accurate and costly. </div>"""
     )
 
+    dftd3_version = {
+        "dft-d3": 3,
+        "dft-d3bj": 4,
+        "dft-d3m": 5,
+        "dft-d3mbj": 6,
+    }
     # protocol interface
     protocol = tl.Unicode(allow_none=True)
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
@@ -124,6 +130,28 @@ class AdvancedSettings(Panel):
         )
         self.total_charge.observe(self._callback_value_set, "value")
 
+        # Van der Waals setting widget
+        self.van_der_waals = ipw.Dropdown(
+            options=[
+                ("None", "none"),
+                ("Grimme-D3", "dft-d3"),
+                ("Grimme-D3BJ", "dft-d3bj"),
+                ("Grimme-D3M", "dft-d3m"),
+                ("Grimme-D3MBJ", "dft-d3mbj"),
+                ("Tkatchenko-Scheffler", "ts-vdw"),
+            ],
+            description="Van der Waals correction:",
+            value="none",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+
+        ipw.dlink(
+            (self.override, "value"),
+            (self.van_der_waals, "disabled"),
+            lambda override: not override,
+        )
+
         self.magnetization = MagnetizationSettings()
         ipw.dlink(
             (self.override, "value"),
@@ -149,6 +177,8 @@ class AdvancedSettings(Panel):
             ),
             # total charge setting widget
             self.total_charge,
+            # van der waals setting widget
+            self.van_der_waals,
             # magnetization setting widget
             self.magnetization,
             # smearing setting widget
@@ -257,6 +287,17 @@ class AdvancedSettings(Panel):
             ] = self.pseudo_setter.ecutrho
         # if override is not ticked, use the default value
         parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
+
+        if self.van_der_waals.value in ["none", "ts-vdw"]:
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "vdw_corr"
+            ] = self.van_der_waals.value
+        else:
+            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
+            parameters["pw"]["parameters"]["SYSTEM"][
+                "dftd3_version"
+            ] = self.dftd3_version[self.van_der_waals.value]
+
         # there are two choose, use link or parent
         if self.spin_type == "collinear":
             parameters[
@@ -302,6 +343,12 @@ class AdvancedSettings(Panel):
             self.total_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
                 "tot_charge", 0
             )
+            # van der waals correction
+            self.van_der_waals.value = self.dftd3_version.get(
+                system.get("dftd3_version"),
+                parameters["pw"]["parameters"]["SYSTEM"].get("vdw_corr", "none"),
+            )
+
         if parameters.get("initial_magnetic_moments"):
             self.magnetization._set_magnetization_values(
                 parameters.get("initial_magnetic_moments")
@@ -335,6 +382,9 @@ class AdvancedSettings(Panel):
 
             # reset total charge
             self.total_charge.value = DEFAULT_PARAMETERS["advanced"]["tot_charge"]
+
+            # reset the van der waals correction
+            self.van_der_waals.value = DEFAULT_PARAMETERS["advanced"]["vdw_corr"]
 
             # reset the override checkbox
             self.override.value = False

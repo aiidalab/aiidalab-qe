@@ -59,6 +59,7 @@ def generate_kpath_1d(structure, kpoints_distance):
 def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     """Return a kpoints object for two dimensional systems based on the selected 2D symmetry path
     The number of kpoints is calculated based on the kpoints_distance (as in the PwBandsWorkChain protocol)
+    The 2D symmetry paths are defined as in The Journal of Physical Chemistry Letters 2022 13 (50), 11581-11594 (https://pubs.acs.org/doi/10.1021/acs.jpclett.2c02972)
     """
     kpoints = KpointsData()
     kpoints.set_cell_from_structure(structure)
@@ -70,11 +71,11 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
         "hexagonal": {
             "path": [
                 [0.0, 0.0, 0.0],
+                [0.5, 0.0, 0.0],
                 [0.33333, 0.33333, 0.0],
-                [0.5, 0.5, 0.0],
                 [1.0, 0.0, 0.0],
             ],
-            "labels": [GAMMA, "K", "M", GAMMA],
+            "labels": [GAMMA, "M", "K", GAMMA],
         },
         "square": {
             "path": [
