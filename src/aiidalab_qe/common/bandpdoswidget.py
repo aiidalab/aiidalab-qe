@@ -30,10 +30,11 @@ class BandPdosPlotly:
         "horizontal_range_pdos": [-10, 10],
     }
 
-    def __init__(self, bands_data=None, pdos_data=None):
+    def __init__(self, bands_data=None, pdos_data=None, project_bands=False):
         self.bands_data = bands_data
         self.pdos_data = pdos_data
         self.fermi_energy = self._get_fermi_energy()
+        self.project_bands = project_bands and "projected_bands" in self.bands_data
 
         # Plotly Axis
         # Plotly settings
@@ -313,6 +314,10 @@ class BandPdosPlotly:
             cols = [1] * len(scatter_objects)
             fig.add_traces(scatter_objects, rows=rows, cols=cols)
 
+        # Add projected bands, if specified
+        if self.project_bands:
+            self._add_projection_traces(fig, plot_type)
+
     def _add_dos_traces(self, fig, plot_type):
         # Extract DOS data
         dos_data = self.pdos_data["dos"]
@@ -337,12 +342,40 @@ class BandPdosPlotly:
                 fill=fill,
                 name=trace["label"],
                 line=dict(color=trace["borderColor"], shape="spline", smoothing=1.0),
+                legendgroup=trace["label"],
             )
         if plot_type == "dos_only":
             fig.add_traces(scatter_objects)
         else:
             rows = [1] * len(scatter_objects)
             cols = [2] * len(scatter_objects)
+            fig.add_traces(scatter_objects, rows=rows, cols=cols)
+
+    def _add_projection_traces(self, fig, plot_type):
+        """Function to add the projected bands traces to the bands plot."""
+        projected_bands = self.bands_data["projected_bands"]
+
+        scatter_objects = []
+        for proj_bands in projected_bands:
+            scatter_objects.append(
+                go.Scatter(
+                    x=proj_bands["x"],
+                    y=np.array(proj_bands["y"]) - self.fermi_energy,
+                    fill="toself",
+                    legendgroup=proj_bands["name"],
+                    mode="lines",
+                    line=dict(width=0, color=proj_bands["color"]),
+                    name=proj_bands["name"],
+                    # If DOS is present, use those legend entries
+                    showlegend=True if plot_type == "bands_only" else False,
+                )
+            )
+
+        if plot_type == "bands_only":
+            fig.add_traces(scatter_objects)
+        else:
+            rows = [1] * len(scatter_objects)
+            cols = [1] * len(scatter_objects)
             fig.add_traces(scatter_objects, rows=rows, cols=cols)
 
     def _customize_combined_layout(self, fig):
@@ -385,6 +418,7 @@ class BandPdosWidget(ipw.VBox):
     - selected_atoms: Text widget to select specific atoms for PDOS plotting.
     - update_plot_button: Button widget to update the plot.
     - download_button: Button widget to download the data.
+    - project_bands_box: Checkbox widget to choose whether projected bands should be plotted.
     - dos_data: PDOS data.
     - bands_data: Band structure data.
     - bandsplot_widget: Plotly widget for band structure and PDOS plot.
@@ -397,6 +431,7 @@ class BandPdosWidget(ipw.VBox):
         Select the style of plotting the projected density of states.
         </div>"""
     )
+    projected_bands_width = 0.5
 
     def __init__(self, bands=None, pdos=None, **kwargs):
         if bands is None and pdos is None:
@@ -443,6 +478,10 @@ class BandPdosWidget(ipw.VBox):
             disabled=False,
             layout=ipw.Layout(visibility="hidden"),
         )
+        self.project_bands_box = ipw.Checkbox(
+            value=False,
+            description="Project bands",
+        )
 
         # Information for the plot
         self.dos_data = self._get_dos_data()
@@ -463,6 +502,7 @@ class BandPdosWidget(ipw.VBox):
                 self.dos_plot_group,
                 ipw.HBox([self.selected_atoms, self._wrong_syntax]),
                 self.update_plot_button,
+                self.project_bands_box,
             ]
         )
 
@@ -480,7 +520,8 @@ class BandPdosWidget(ipw.VBox):
             ],
             **kwargs,
         )
-        if self.pdos:
+
+        if self.pdos or "projected_bands" in self.bands_data:
             with self.pdos_options_out:
                 display(self.pdos_options)
 
@@ -528,20 +569,31 @@ class BandPdosWidget(ipw.VBox):
                 selected_atoms=expanded_selection,
             )
             return dos
-        else:
-            return None
+        return None
 
     def _get_bands_data(self):
         if not self.bands:
             return None
 
-        bands = export_bands_data(self.bands)
-        return bands
+        expanded_selection, syntax_ok = string_range_to_list(
+            self.selected_atoms.value, shift=-1
+        )
+        if syntax_ok:
+            bands = get_bands_projections_data(
+                self.bands,
+                group_tag=self.dos_atoms_group.value,
+                plot_tag=self.dos_plot_group.value,
+                selected_atoms=expanded_selection,
+                bands_width=self.projected_bands_width,
+            )
+            return bands
+        return None
 
     def _initial_view(self):
         with self.bands_widget:
             self._clear_output_and_display(self.bandsplot_widget)
             self.download_button.layout.visibility = "visible"
+            self.project_bands_box.layout.visibility = "visible"
 
     def _update_plot(self, _=None):
         with self.bands_widget:
@@ -553,8 +605,11 @@ class BandPdosWidget(ipw.VBox):
                 clear_output(wait=True)
             else:
                 self.dos_data = self._get_dos_data()
+                self.bands_data = self._get_bands_data()
                 self.bandsplot_widget = BandPdosPlotly(
-                    bands_data=self.bands_data, pdos_data=self.dos_data
+                    bands_data=self.bands_data,
+                    pdos_data=self.dos_data,
+                    project_bands=self.project_bands_box.value,
                 ).bandspdosfigure
                 self._clear_output_and_display(self.bandsplot_widget)
 
@@ -562,6 +617,109 @@ class BandPdosWidget(ipw.VBox):
         clear_output(wait=True)
         if widget:
             display(widget)
+
+
+def _prepare_projections_to_plot(bands_data, projections, bands_width):
+    """Prepare the projected bands to be plotted.
+
+    This function concatenates the different bands in a single list and adds a np.nan as a separator.
+    This way, all the bands are plotted in a single trace. To use the fill option `toself`,
+    a band needs to be concatenated with its mirror image, first.
+    """
+    projected_bands = []
+    for spin in [0, 1]:
+        # In case of non-spin-polarized calculations, the spin index is only 0
+        if spin not in bands_data["band_type_idx"]:
+            continue
+
+        x_bands = bands_data["x"]
+        # New shape: (number of bands, number of kpoints)
+        y_bands = bands_data["y"][:, bands_data["band_type_idx"] == spin].T
+
+        for proj in projections[spin]:
+            # Create the upper and lower boundary of the fat bands based on the orbital projections
+            y_bands_proj_upper = y_bands + bands_width * proj["projections"].T
+            y_bands_proj_lower = y_bands - bands_width * proj["projections"].T
+            # As mentioned above, the bands need to be concatenated with their mirror image
+            # to create the filled areas properly
+            y_bands_proj_transf = np.hstack(
+                [y_bands_proj_upper, y_bands_proj_lower[:, ::-1]]
+            )
+            # Add a np.nan column as a separator
+            y_bands_proj_transf = np.hstack(
+                [
+                    y_bands_proj_transf,
+                    np.full((y_bands_proj_transf.shape[0], 1), np.nan),
+                ]
+            ).flatten()
+            # Same logic for the energy axis
+            x_bands_transf = np.concatenate([x_bands, x_bands[::-1]]).reshape(1, -1)
+            x_bands_transf = x_bands_transf * np.ones(y_bands.shape[0]).reshape(-1, 1)
+            x_bands_transf = np.hstack(
+                [x_bands_transf, np.full((y_bands.shape[0], 1), np.nan)]
+            ).flatten()
+
+            projected_bands.append(
+                {
+                    "x": x_bands_transf.tolist(),
+                    "y": y_bands_proj_transf.tolist(),
+                    "name": proj["label"],
+                    "color": proj["color"],
+                }
+            )
+    return projected_bands
+
+
+def get_bands_projections_data(
+    outputs, group_tag, plot_tag, selected_atoms, bands_width, fermi_energy=None
+):
+    """Extract the bandstructure and possibly the projections along the bands."""
+    if "band_structure" not in outputs:
+        return None
+
+    bands_data = outputs.band_structure._get_bandplot_data(
+        cartesian=True, prettify_format=None, join_symbol=None, get_segments=True
+    )
+    # The fermi energy from band calculation is not robust.
+    bands_data["fermi_energy"] = outputs.band_parameters["fermi_energy"] or fermi_energy
+    bands_data["pathlabels"] = get_bands_labeling(bands_data)
+
+    if "projwfc" in outputs:
+        projections = []
+
+        if "projections" in outputs.projwfc:
+            projections.append(
+                _projections_curated_options(
+                    outputs.projwfc.projections,
+                    spin_type="none",
+                    group_tag=group_tag,
+                    plot_tag=plot_tag,
+                    selected_atoms=selected_atoms,
+                    projections_pdos="projections",
+                )
+            )
+        else:
+            for spin_proj in [
+                outputs.projwfc.projections_up,
+                outputs.projwfc.projections_down,
+            ]:
+                projections.append(
+                    _projections_curated_options(
+                        spin_proj,
+                        spin_type="up"
+                        if spin_proj == outputs.projwfc.projections_up
+                        else "down",
+                        group_tag=group_tag,
+                        plot_tag=plot_tag,
+                        selected_atoms=selected_atoms,
+                        projections_pdos="projections",
+                    )
+                )
+
+        bands_data["projected_bands"] = _prepare_projections_to_plot(
+            bands_data, projections, bands_width
+        )
+    return bands_data
 
 
 def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
@@ -639,17 +797,39 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
     return json.loads(json.dumps(data_dict))
 
 
-def _projections_curated_options(
-    projections: ProjectionData,
+def _get_grouping__key(
     group_tag,
     plot_tag,
-    selected_atoms,
-    spin_type="none",
-    line_style="solid",
+    atom_position,
+    kind_name,
+    orbital_name_plotly,
+    orbital_angular_momentum,
 ):
-    _pdos = {}
-    list_positions = []
+    """Generates the grouping key based on group_tag and plot_tag."""
 
+    key_formats = {
+        ("atoms", "total"): r"{var1}-{var}",
+        ("kinds", "total"): r"{var1}",
+        ("atoms", "orbital"): r"{var1}-{var}<br>{var2}",
+        ("kinds", "orbital"): r"{var1}-{var2}",
+        ("atoms", "angular_momentum"): r"{var1}-{var}<br>{var3}",
+        ("kinds", "angular_momentum"): r"{var1}-{var3}",
+    }
+
+    key = key_formats.get((group_tag, plot_tag))
+    if key is not None:
+        return key.format(
+            var=atom_position,
+            var1=kind_name,
+            var2=orbital_name_plotly,
+            var3=orbital_angular_momentum,
+        )
+    else:
+        return None
+
+
+def _curate_orbitals(orbital):
+    """Curate and transform the orbital data into the desired format."""
     # Constants for HTML tags
     HTML_TAGS = {
         "s": "s",
@@ -676,141 +856,123 @@ def _projections_curated_options(
         -2.5: "<sup>-5</sup>/<sub>2</sub>",
     }
 
+    orbital_data = orbital.get_orbital_dict()
+    kind_name = orbital_data["kind_name"]
+    atom_position = [round(i, 2) for i in orbital_data["position"]]
+
+    try:
+        orbital_name = orbital.get_name_from_quantum_numbers(
+            orbital_data["angular_momentum"], orbital_data["magnetic_number"]
+        ).lower()
+        orbital_name_plotly = HTML_TAGS.get(orbital_name, orbital_name)
+        orbital_angular_momentum = orbital_name[0]
+    except AttributeError:
+        # Set quanutum numbers
+        qn_j = orbital_data["total_angular_momentum"]
+        qn_l = orbital_data["angular_momentum"]
+        qn_m_j = orbital_data["magnetic_number"]
+        orbital_name = "j {j} l {l} m_j{m_j}".format(j=qn_j, l=qn_l, m_j=qn_m_j)
+        orbital_name_plotly = "j={j} <i>l</i>={l} m<sub>j</sub>={m_j}".format(
+            j=HTML_TAGS.get(qn_j, qn_j),
+            l=qn_l,
+            m_j=HTML_TAGS.get(qn_m_j, qn_m_j),
+        )
+        orbital_angular_momentum = "l {l} ".format(l=qn_l)
+
+    return orbital_name_plotly, orbital_angular_momentum, kind_name, atom_position
+
+
+def _projections_curated_options(
+    projections: ProjectionData,
+    group_tag,
+    plot_tag,
+    selected_atoms,
+    projections_pdos="pdos",
+    spin_type="none",
+    line_style="solid",
+):
+    """Extract and curate the projections.
+
+    This function can be used to extract the PDOS or the projections data.
+    """
+    _proj_pdos = {}
+    list_positions = []
+
     # Constants for spin types
     SPIN_LABELS = {"up": "(↑)", "down": "(↓)", "none": ""}
+    SPIN_PDOS_FACTORS = {"up": 1, "down": -1, "none": 1}
 
-    def get_key(
-        group_tag,
-        plot_tag,
-        atom_position,
-        kind_name,
-        orbital_name_plotly,
-        orbital_angular_momentum,
-    ):
-        """Generates the key based on group_tag and plot_tag."""
+    if projections_pdos == "pdos":
+        proj_data = projections.get_pdos()
+    elif projections_pdos == "projections":
+        proj_data = projections.get_projections()
+    else:
+        raise ValueError(f"Invalid value for `projections_pdos`: {projections_pdos}")
 
-        key_formats = {
-            ("atoms", "total"): r"{var1}-{var}",
-            ("kinds", "total"): r"{var1}",
-            ("atoms", "orbital"): r"{var1}-{var}<br>{var2}",
-            ("kinds", "orbital"): r"{var1}-{var2}",
-            ("atoms", "angular_momentum"): r"{var1}-{var}<br>{var3}",
-            ("kinds", "angular_momentum"): r"{var1}-{var3}",
-        }
+    for orb_proj in proj_data:
+        if projections_pdos == "pdos":
+            orbital, proj_pdos, energy = orb_proj
+        elif projections_pdos == "projections":
+            orbital, proj_pdos = orb_proj
+            energy = None
 
-        key = key_formats.get((group_tag, plot_tag))
-        if key is not None:
-            return key.format(
-                var=atom_position,
-                var1=kind_name,
-                var2=orbital_name_plotly,
-                var3=orbital_angular_momentum,
-            )
-        else:
-            return None
-
-    for orbital, pdos, energy in projections.get_pdos():
-        orbital_data = orbital.get_orbital_dict()
-        kind_name = orbital_data["kind_name"]
-        atom_position = [round(i, 2) for i in orbital_data["position"]]
+        (
+            orbital_name_plotly,
+            orbital_angular_momentum,
+            kind_name,
+            atom_position,
+        ) = _curate_orbitals(orbital)
 
         if atom_position not in list_positions:
             list_positions.append(atom_position)
 
-        try:
-            orbital_name = orbital.get_name_from_quantum_numbers(
-                orbital_data["angular_momentum"], orbital_data["magnetic_number"]
-            ).lower()
-            orbital_name_plotly = HTML_TAGS.get(orbital_name, orbital_name)
-            orbital_angular_momentum = orbital_name[0]
-        except AttributeError:
-            orbital_name = "j {j} l {l} m_j{m_j}".format(
-                j=orbital_data["total_angular_momentum"],
-                l=orbital_data["angular_momentum"],
-                m_j=orbital_data["magnetic_number"],
-            )
-            orbital_name_plotly = "j={j} <i>l</i>={l} m<sub>j</sub>={m_j}".format(
-                j=HTML_TAGS.get(
-                    orbital_data["total_angular_momentum"],
-                    orbital_data["total_angular_momentum"],
-                ),
-                l=orbital_data["angular_momentum"],
-                m_j=HTML_TAGS.get(
-                    orbital_data["magnetic_number"], orbital_data["magnetic_number"]
-                ),
-            )
-            orbital_angular_momentum = "l {l} ".format(
-                l=orbital_data["angular_momentum"],
-            )
-
+        key = _get_grouping__key(
+            group_tag,
+            plot_tag,
+            atom_position,
+            kind_name,
+            orbital_name_plotly,
+            orbital_angular_momentum,
+        )
         if not selected_atoms:
-            key = get_key(
-                group_tag,
-                plot_tag,
-                atom_position,
-                kind_name,
-                orbital_name_plotly,
-                orbital_angular_momentum,
-            )
-
             if key:
-                _pdos.setdefault(key, [energy, 0])[1] += pdos
+                _proj_pdos.setdefault(key, [energy, 0])[1] += proj_pdos
 
         else:
             try:
                 index = list_positions.index(atom_position)
                 if index in selected_atoms:
-                    key = get_key(
-                        group_tag,
-                        plot_tag,
-                        atom_position,
-                        kind_name,
-                        orbital_name_plotly,
-                        orbital_angular_momentum,
-                    )
-
                     if key:
-                        _pdos.setdefault(key, [energy, 0])[1] += pdos
+                        _proj_pdos.setdefault(key, [energy, 0])[1] += proj_pdos
 
             except ValueError:
                 pass
 
-    dos = []
-    for label, (energy, pdos) in _pdos.items():
-        if spin_type == "down":
-            pdos = -pdos
-            label += SPIN_LABELS[spin_type]
+    curated_proj = []
+    for label, (energy, proj_pdos) in _proj_pdos.items():
+        if projections_pdos == "pdos":
+            orbital_proj_pdos = {
+                "label": label + SPIN_LABELS[spin_type],
+                "x": energy.tolist(),
+                "y": (SPIN_PDOS_FACTORS[spin_type] * proj_pdos).tolist(),
+                "borderColor": cmap(label),
+                "lineStyle": line_style,
+            }
+        else:
+            orbital_proj_pdos = {
+                "label": label + SPIN_LABELS[spin_type],
+                "projections": proj_pdos,
+                "color": cmap(label),
+            }
+        curated_proj.append(orbital_proj_pdos)
 
-        if spin_type == "up":
-            label += SPIN_LABELS[spin_type]
-
-        orbital_pdos = {
-            "label": label,
-            "x": energy.tolist(),
-            "y": pdos.tolist(),
-            "borderColor": cmap(label),
-            "lineStyle": line_style,
-        }
-        dos.append(orbital_pdos)
-
-    return dos
-
-
-def export_bands_data(outputs, fermi_energy=None):
-    if "band_structure" not in outputs:
-        return None
-
-    data = json.loads(outputs.band_structure._exportcontent("json", comments=False)[0])
-    # The fermi energy from band calculation is not robust.
-    data["fermi_energy"] = outputs.band_parameters["fermi_energy"] or fermi_energy
-    data["pathlabels"] = get_bands_labeling(data)
-    return data
+    return curated_proj
 
 
 def get_bands_labeling(bandsdata: dict) -> list:
     """Function to return two lists containing the labels and values (kpoint) for plotting.
     params:
-    - bandsdata: dictionary from export_bands_data function
+    - bandsdata: dictionary from `get_bands_projections_data` function
     output:  update bandsdata with a new key "pathlabels" including (list of str), label_values (list of float)
     """
     UNICODE_SYMBOL = {
