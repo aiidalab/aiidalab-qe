@@ -114,6 +114,11 @@ class AdvancedSettings(Panel):
 
         # Hubbard setting widget
         self.hubbard_widget = HubbardWidget()
+        ipw.dlink(
+            (self.override, "value"),
+            (self.hubbard_widget.hubbard, "disabled"),
+            lambda override: not override,
+        )
         # Total change setting widget
         self.total_charge = ipw.BoundedFloatText(
             min=-3,
