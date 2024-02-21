@@ -336,6 +336,7 @@ def submit_app_generator(
         smearing="methfessel-paxton",
         degauss=0.015,
         tot_charge=0.0,
+        vdw_corr="none",
         initial_magnetic_moments=0.0,
     ):
         configure_step = app.configure_step
@@ -354,6 +355,7 @@ def submit_app_generator(
         # Advanced settings
         configure_step.advanced_settings.override.value = True
         configure_step.advanced_settings.total_charge.value = tot_charge
+        configure_step.advanced_settings.van_der_waals.value = vdw_corr
         configure_step.advanced_settings.kpoints_distance.value = kpoints_distance
         configure_step.advanced_settings.magnetization._set_magnetization_values(
             initial_magnetic_moments

@@ -24,6 +24,15 @@ PERIODICITY_MAPPING = {
     (True, False, False): "x",
 }
 
+VDW_CORRECTION_VERSION = {
+    3: "Grimme-D3",
+    4: "Grimme-D3BJ",
+    5: "Grimme-D3M",
+    6: "Grimme-D3MBJ",
+    "ts-vdw": "Tkatchenko-Scheffler",
+    "none": "None",
+}
+
 
 def generate_report_parameters(qeapp_wc):
     """Generate the report parameters from the ui parameters and workchain's input.
@@ -107,6 +116,10 @@ def generate_report_parameters(qeapp_wc):
         report["degauss"] = pw_parameters["SYSTEM"]["degauss"]
         report["smearing"] = pw_parameters["SYSTEM"]["smearing"]
     report["tot_charge"] = pw_parameters["SYSTEM"].get("tot_charge", 0.0)
+    report["vdw_corr"] = VDW_CORRECTION_VERSION.get(
+        pw_parameters["SYSTEM"].get("dftd3_version"),
+        pw_parameters["SYSTEM"].get("vdw_corr", "none"),
+    )
     report["periodicity"] = PERIODICITY_MAPPING.get(
         qeapp_wc.inputs.structure.pbc, "xyz"
     )
