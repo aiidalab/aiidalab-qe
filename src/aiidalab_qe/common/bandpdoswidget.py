@@ -430,7 +430,7 @@ class BandPdosWidget(ipw.VBox):
         )
         self.project_bands_box = ipw.Checkbox(
             value=False,
-            description="Project bands",
+            description="Add `fat bands` projections",
         )
 
         # Information for the plot
@@ -451,8 +451,8 @@ class BandPdosWidget(ipw.VBox):
                 self.dos_atoms_group,
                 self.dos_plot_group,
                 ipw.HBox([self.selected_atoms, self._wrong_syntax]),
-                self.update_plot_button,
                 self.project_bands_box,
+                self.update_plot_button,
             ]
         )
 
@@ -869,7 +869,7 @@ def _projections_curated_options(
 
     # Constants for spin types
     SPIN_LABELS = {"up": "(↑)", "down": "(↓)", "none": ""}
-    SPIN_PDOS_FACTORS = {"up": 1, "down": -1, "none": 1}
+    SIGN_MULT_FACTOR = {"up": 1, "down": -1, "none": 1}
 
     if projections_pdos == "pdos":
         proj_data = projections.get_pdos()
@@ -924,7 +924,7 @@ def _projections_curated_options(
             orbital_proj_pdos = {
                 "label": label,
                 "x": energy.tolist(),
-                "y": (SPIN_PDOS_FACTORS[spin_type] * proj_pdos).tolist(),
+                "y": (SIGN_MULT_FACTOR[spin_type] * proj_pdos).tolist(),
                 "borderColor": cmap(label),
                 "lineStyle": line_style,
             }
