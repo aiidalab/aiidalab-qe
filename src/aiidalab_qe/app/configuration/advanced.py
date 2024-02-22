@@ -366,9 +366,16 @@ class AdvancedSettings(Panel):
                 parameters["pw"]["parameters"]["SYSTEM"].get("vdw_corr", "none"),
             )
 
+        # Logic to set the magnetization
         if parameters.get("initial_magnetic_moments"):
             self.magnetization._set_magnetization_values(
                 parameters.get("initial_magnetic_moments")
+            )
+
+        if "tot_magnetization" in parameters["pw"]["parameters"]["SYSTEM"]:
+            self.magnetization.magnetization_type.value = "tot_magnetization"
+            self.magnetization._set_tot_magnetization(
+                parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"]
             )
 
     def reset(self):

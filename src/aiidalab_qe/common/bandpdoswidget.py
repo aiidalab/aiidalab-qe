@@ -58,7 +58,6 @@ class BandPdosPlotly:
             else:
                 fermi_data["fermi_energy"] = self.bands_data["fermi_energy"]
         return fermi_data
-                
 
     def _band_xaxis(self):
         """Function to return the xaxis for the bands plot."""
@@ -315,9 +314,13 @@ class BandPdosPlotly:
                             )
                         )
                 else:
-
                     for bands, color, fermi_energy in zip(
-                        (first_half, second_half), (color_first_half, color_second_half), (self.fermi_energy["fermi_energy_up"], self.fermi_energy["fermi_energy_down"])
+                        (first_half, second_half),
+                        (color_first_half, color_second_half),
+                        (
+                            self.fermi_energy["fermi_energy_up"],
+                            self.fermi_energy["fermi_energy_down"],
+                        ),
                     ):
                         for band_values in bands:
                             bands_np = np.array(band_values)
@@ -357,25 +360,37 @@ class BandPdosPlotly:
 
             if "fermi_energy" in self.fermi_energy:
                 y_data = (
-                    dos_np - self.fermi_energy["fermi_energy"] if plot_type == "combined" else trace["y"]
+                    dos_np - self.fermi_energy["fermi_energy"]
+                    if plot_type == "combined"
+                    else trace["y"]
                 )
                 x_data = (
-                    trace["y"] if plot_type == "combined" else dos_np - self.fermi_energy["fermi_energy"]
+                    trace["y"]
+                    if plot_type == "combined"
+                    else dos_np - self.fermi_energy["fermi_energy"]
                 )
             else:
                 if trace["label"].endswith("(↑)"):
                     y_data = (
-                        dos_np - self.fermi_energy["fermi_energy_up"] if plot_type == "combined" else trace["y"]
+                        dos_np - self.fermi_energy["fermi_energy_up"]
+                        if plot_type == "combined"
+                        else trace["y"]
                     )
                     x_data = (
-                        trace["y"] if plot_type == "combined" else dos_np - self.fermi_energy["fermi_energy_up"]
+                        trace["y"]
+                        if plot_type == "combined"
+                        else dos_np - self.fermi_energy["fermi_energy_up"]
                     )
                 else:
                     y_data = (
-                        dos_np - self.fermi_energy["fermi_energy_down"] if plot_type == "combined" else trace["y"]
+                        dos_np - self.fermi_energy["fermi_energy_down"]
+                        if plot_type == "combined"
+                        else trace["y"]
                     )
                     x_data = (
-                        trace["y"] if plot_type == "combined" else dos_np - self.fermi_energy["fermi_energy_down"]
+                        trace["y"]
+                        if plot_type == "combined"
+                        else dos_np - self.fermi_energy["fermi_energy_down"]
                     )
             scatter_objects[i] = go.Scatter(
                 x=x_data,
@@ -682,10 +697,12 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
     }
     if "fermi_energy_up" in pdos.nscf.output_parameters:
         data_dict["fermi_energy_up"] = pdos.nscf.output_parameters["fermi_energy_up"]
-        data_dict["fermi_energy_down"] = pdos.nscf.output_parameters["fermi_energy_down"]
+        data_dict["fermi_energy_down"] = pdos.nscf.output_parameters[
+            "fermi_energy_down"
+        ]
     else:
         data_dict["fermi_energy"] = pdos.nscf.output_parameters["fermi_energy"]
-    
+
     return json.loads(json.dumps(data_dict))
 
 
