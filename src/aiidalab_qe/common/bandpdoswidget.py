@@ -173,9 +173,10 @@ class BandPdosPlotly:
             self._add_band_traces(fig)
 
             band_labels = self.bands_data.get("pathlabels")
-            for lab in band_labels[1]:
+            for label in band_labels[1]:
                 fig.add_vline(
-                    x=lab, line=dict(color=self.SETTINGS["vertical_linecolor"], width=1)
+                    x=label,
+                    line=dict(color=self.SETTINGS["vertical_linecolor"], width=1),
                 )
 
             if self.project_bands:
@@ -245,14 +246,14 @@ class BandPdosPlotly:
             # New shape: (number of bands, number of kpoints)
             y_bands = bands_data["y"][:, bands_data["band_type_idx"] == spin].T
             # Concatenate the bands and prepare the traces
-            x_bands_transf, y_bands_transf = _prepare_comb_plotly_traces(
+            x_bands_comb, y_bands_comb = _prepare_combined_plotly_traces(
                 x_bands, y_bands
             )
 
             scatter_objects.append(
                 go.Scatter(
-                    x=x_bands_transf,
-                    y=y_bands_transf - self.fermi_energy,
+                    x=x_bands_comb,
+                    y=y_bands_comb - self.fermi_energy,
                     mode="lines",
                     line=dict(
                         color=colors[(spin_polarized, spin)],
@@ -480,10 +481,17 @@ class BandPdosWidget(ipw.VBox):
         file_name_bands = "bands_data.json"
         file_name_pdos = "dos_data.json"
         if self.bands_data:
-            json_str = json.dumps(self.bands_data)
+            bands_data_export = {}
+            for key, value in self.bands_data.items():
+                if isinstance(value, np.ndarray):
+                    bands_data_export[key] = value.tolist()
+                else:
+                    bands_data_export[key] = value
+
+            json_str = json.dumps(bands_data_export)
             b64_str = base64.b64encode(json_str.encode()).decode()
             self._download(payload=b64_str, filename=file_name_bands)
-        if self.dos_data:
+        if self.pdos_data:
             json_str = json.dumps(self.pdos_data)
             b64_str = base64.b64encode(json_str.encode()).decode()
             self._download(payload=b64_str, filename=file_name_pdos)
@@ -569,7 +577,7 @@ class BandPdosWidget(ipw.VBox):
             display(widget)
 
 
-def _prepare_comb_plotly_traces(x_to_conc, y_to_conc):
+def _prepare_combined_plotly_traces(x_to_conc, y_to_conc):
     """Combine multiple lines into a single trace.
 
     The rows of y are concatenated with a np.nan column as a separator. Moreover,
@@ -624,14 +632,14 @@ def _prepare_projections_to_plot(bands_data, projections, bands_width):
             )
             # Same logic for the energy axis
             x_bands_mirror = np.concatenate([x_bands, x_bands[::-1]]).reshape(1, -1)
-            x_bands_transf, y_bands_proj_transf = _prepare_comb_plotly_traces(
+            x_bands_comb, y_bands_proj_comb = _prepare_combined_plotly_traces(
                 x_bands_mirror, y_bands_mirror
             )
 
             projected_bands.append(
                 {
-                    "x": x_bands_transf.tolist(),
-                    "y": y_bands_proj_transf.tolist(),
+                    "x": x_bands_comb.tolist(),
+                    "y": y_bands_proj_comb.tolist(),
                     "label": proj["label"],
                     "color": proj["color"],
                 }
@@ -766,7 +774,7 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
     return json.loads(json.dumps(data_dict))
 
 
-def _get_grouping__key(
+def _get_grouping_key(
     group_tag,
     plot_tag,
     atom_position,
@@ -895,7 +903,7 @@ def _projections_curated_options(
         if atom_position not in list_positions:
             list_positions.append(atom_position)
 
-        key = _get_grouping__key(
+        key = _get_grouping_key(
             group_tag,
             plot_tag,
             atom_position,
