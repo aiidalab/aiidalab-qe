@@ -40,8 +40,22 @@ class BandPdosPlotly:
         # Plotly settings
         self._bands_xaxis = self._band_xaxis()
         self._bands_yaxis = self._band_yaxis()
-        self._dos_xaxis = self._dos_xaxis()
-        self._dos_yaxis = self._dos_yaxis()
+        self._pdos_xaxis = self._pdos_xaxis()
+        self._pdos_yaxis = self._pdos_yaxis()
+
+    @property
+    def plot_type(self):
+        """Define the plot type."""
+        if self.bands_data and self.pdos_data:
+            return "combined"
+        elif self.bands_data:
+            return "bands"
+        elif self.pdos_data:
+            return "pdos"
+
+    @property
+    def bandspdosfigure(self):
+        return self._get_bandspdos_plot()
 
     def _get_fermi_energy(self):
         fermi_energy = (
@@ -104,133 +118,94 @@ class BandPdosPlotly:
 
         return bandyaxis
 
-    def _dos_xaxis(self):
-        """Function to return the xaxis for the dos plot."""
+    def _pdos_xaxis(self):
+        """Function to return the xaxis for the pdos plot."""
+
+        if not self.pdos_data:
+            return None
+        # For combined plot
+        axis_settings = {
+            "showgrid": True,
+            "showline": True,
+            "mirror": "ticks",
+            "ticks": "inside",
+            "linewidth": 2,
+            "tickwidth": 2,
+            "linecolor": self.SETTINGS["axis_linecolor"],
+            "title": "Density of states",
+            "side": "bottom",
+            "automargin": True,
+        }
+
+        if self.plot_type != "combined":
+            axis_settings["title"] = "Density of states (eV)"
+            axis_settings["range"] = self.SETTINGS["horizontal_range_pdos"]
+            axis_settings.pop("side")
+            axis_settings.pop("automargin")
+
+        return go.layout.XAxis(**axis_settings)
+
+    def _pdos_yaxis(self):
+        """Function to return the yaxis for the pdos plot."""
 
         if not self.pdos_data:
             return None
 
-        if self.bands_data:
-            dosxaxis = go.layout.XAxis(
-                title="Density of states",
-                side="bottom",
-                showgrid=True,
-                showline=True,
-                linecolor=self.SETTINGS["axis_linecolor"],
-                mirror="ticks",
-                ticks="inside",
-                linewidth=2,
-                tickwidth=2,
-                automargin=True,
-            )
+        axis_settings = {
+            "showgrid": True,
+            "showline": True,
+            "side": "right" if self.plot_type == "combined" else "left",
+            "mirror": "ticks",
+            "ticks": "inside",
+            "linewidth": 2,
+            "tickwidth": 2,
+            "linecolor": self.SETTINGS["axis_linecolor"],
+            "zerolinewidth": 2,
+        }
 
-        else:
-            dosxaxis = go.layout.XAxis(
-                title="Density of states (eV)",
-                showgrid=True,
-                showline=True,
-                linecolor=self.SETTINGS["axis_linecolor"],
-                mirror="ticks",
-                ticks="inside",
-                linewidth=2,
-                tickwidth=2,
-                range=self.SETTINGS["horizontal_range_pdos"],
-            )
-
-        return dosxaxis
-
-    def _dos_yaxis(self):
-        """Function to return the yaxis for the dos plot."""
-
-        if not self.pdos_data:
-            return None
-
-        if self.bands_data:
-            dosyaxis = go.layout.YAxis(
-                # title= {"text":"Density of states (eV)", "standoff": 1},
-                showgrid=True,
-                showline=True,
-                side="right",
-                mirror="ticks",
-                ticks="inside",
-                linewidth=2,
-                tickwidth=2,
-                linecolor=self.SETTINGS["axis_linecolor"],
-                zerolinewidth=2,
-            )
-
-        else:
-            dosyaxis = go.layout.YAxis(
-                # title="Density of states (eV)",
-                showgrid=True,
-                showline=True,
-                side="left",
-                mirror="ticks",
-                ticks="inside",
-                linewidth=2,
-                tickwidth=2,
-                linecolor=self.SETTINGS["axis_linecolor"],
-                zerolinewidth=2,
-            )
-
-        return dosyaxis
+        return go.layout.YAxis(**axis_settings)
 
     def _get_bandspdos_plot(self):
         """Function to return the bands plot widget."""
-        conditions = {
-            (True, False): self._create_bands_only_plot,
-            (False, True): self._create_dos_only_plot,
-            (True, True): self._create_combined_plot,
-        }
 
-        return conditions.get((bool(self.bands_data), bool(self.pdos_data)), None)()
+        fig = self._create_fig()
+        if self.bands_data:
+            self._add_band_traces(fig)
 
-    def _create_bands_only_plot(self):
-        """Function to return the bands plot widget."""
+            band_labels = self.bands_data.get("pathlabels")
+            for lab in band_labels[1]:
+                fig.add_vline(
+                    x=lab, line=dict(color=self.SETTINGS["vertical_linecolor"], width=1)
+                )
 
-        fig = go.Figure()
-        paths = self.bands_data.get("paths")
+            if self.project_bands:
+                self._add_projection_traces(fig)
 
-        self._add_band_traces(fig, paths, "bands_only")
+        if self.pdos_data:
+            self._add_pdos_traces(fig)
+            if self.plot_type == "pdos":
+                fig.add_vline(
+                    x=0,
+                    line=dict(
+                        color=self.SETTINGS["vertical_linecolor"], width=1, dash="dot"
+                    ),
+                )
 
-        band_labels = self.bands_data.get("pathlabels")
-        for i in band_labels[1]:
-            fig.add_vline(
-                x=i, line=dict(color=self.SETTINGS["vertical_linecolor"], width=1)
-            )
-        fig.update_layout(
-            xaxis=self._bands_xaxis,
-            yaxis=self._bands_yaxis,
-            plot_bgcolor="white",
-            height=self.SETTINGS["bands_plot_height"],
-            width=self.SETTINGS["bands_plot_width"],
-        )
-        return go.FigureWidget(fig)
-
-    def _create_dos_only_plot(self):
-        """Function to return the pdos plot widget."""
-
-        fig = go.Figure()
-        # Extract DOS data
-        self._add_dos_traces(fig, plot_type="dos_only")
-        # Add a vertical line at zero energy
-        fig.add_vline(
-            x=0,
-            line=dict(color=self.SETTINGS["vertical_linecolor"], width=1, dash="dot"),
-        )
-
-        # Update the layout of the Figure
-        fig.update_layout(
-            xaxis=self._dos_xaxis,
-            yaxis=self._dos_yaxis,
-            plot_bgcolor="white",
-            height=self.SETTINGS["pdos_plot_height"],
-            width=self.SETTINGS["pdos_plot_width"],
-        )
+        if self.plot_type == "combined":
+            self._customize_combined_layout(fig)
+        else:
+            self._customize_single_layout(fig)
 
         return go.FigureWidget(fig)
 
-    def _create_combined_plot(self):
+    def _create_fig(self):
+        """Create a plotly figure.
+
+        The figure layout is different depending on the plot type.
+        """
+        if self.plot_type != "combined":
+            return go.Figure()
+
         fig = make_subplots(
             rows=1,
             cols=2,
@@ -238,87 +213,59 @@ class BandPdosPlotly:
             column_widths=self.SETTINGS["combined_column_widths"],
             horizontal_spacing=0.015,
         )
-        paths = self.bands_data.get("paths")
-        self._add_band_traces(fig, paths, plot_type="combined")
-        self._add_dos_traces(fig, plot_type="combined")
-        band_labels = self.bands_data.get("pathlabels")
-        for i in band_labels[1]:
-            fig.add_vline(
-                x=i,
-                line=dict(color=self.SETTINGS["vertical_linecolor"], width=1),
-                row=1,
-                col=1,
-            )
-        self._customize_combined_layout(fig)
-        return go.FigureWidget(fig)
+        return fig
 
-    def _add_band_traces(self, fig, paths, plot_type):
-        paths = self.bands_data.get("paths")
+    def _add_traces_to_fig(self, fig, traces, col):
+        """Add a list of traces to a figure."""
+        if self.plot_type == "combined":
+            rows = [1] * len(traces)
+            cols = [col] * len(traces)
+            fig.add_traces(traces, rows=rows, cols=cols)
+        else:
+            fig.add_traces(traces)
 
-        # Spin condition: True if spin-polarized False if not
-        spin_type = paths[0].get("two_band_types")
+    def _add_band_traces(self, fig):
+        """Generate the band traces and add them to the figure."""
+        colors = {
+            (True, 0): self.SETTINGS["bands_up_linecolor"],
+            (True, 1): self.SETTINGS["bands_down_linecolor"],
+            (False, 0): self.SETTINGS["bands_linecolor"],
+        }
+        bands_data = self.bands_data
         # Convert paths to a list of Scatter objects
         scatter_objects = []
 
-        for band in paths:
-            if not spin_type:
-                # Non-spin-polarized case
-                for bands in band["values"]:
-                    bands_np = np.array(bands)
-                    scatter_objects.append(
-                        go.Scatter(
-                            x=band["x"],
-                            y=bands_np - self.fermi_energy,
-                            mode="lines",
-                            line=dict(
-                                color=self.SETTINGS["bands_linecolor"],
-                                shape="spline",
-                                smoothing=1.3,
-                            ),
-                            showlegend=False,
-                        )
-                    )
-            else:
-                half_len = len(band["values"]) // 2
-                first_half = band["values"][:half_len]
-                second_half = band["values"][half_len:]
+        spin_polarized = 1 in bands_data["band_type_idx"]
+        for spin in [0, 1]:
+            # In case of non-spin-polarized or SOC calculations, the spin index is only 0
+            if spin not in bands_data["band_type_idx"]:
+                continue
 
-                # Red line for the Spin up
-                color_first_half = self.SETTINGS["bands_up_linecolor"]
-                # Blue line for the Spin down
-                color_second_half = self.SETTINGS["bands_down_linecolor"]
+            x_bands = np.array(bands_data["x"]).reshape(1, -1)
+            # New shape: (number of bands, number of kpoints)
+            y_bands = bands_data["y"][:, bands_data["band_type_idx"] == spin].T
+            # Concatenate the bands and prepare the traces
+            x_bands_transf, y_bands_transf = _prepare_comb_plotly_traces(
+                x_bands, y_bands
+            )
 
-                for bands, color in zip(
-                    (first_half, second_half), (color_first_half, color_second_half)
-                ):
-                    for band_values in bands:
-                        bands_np = np.array(band_values)
-                        scatter_objects.append(
-                            go.Scatter(
-                                x=band["x"],
-                                y=bands_np - self.fermi_energy,
-                                mode="lines",
-                                line=dict(
-                                    color=color,
-                                    shape="spline",
-                                    smoothing=1.3,
-                                ),
-                                showlegend=False,
-                            )
-                        )
+            scatter_objects.append(
+                go.Scatter(
+                    x=x_bands_transf,
+                    y=y_bands_transf - self.fermi_energy,
+                    mode="lines",
+                    line=dict(
+                        color=colors[(spin_polarized, spin)],
+                        shape="spline",
+                        smoothing=1.3,
+                    ),
+                    showlegend=False,
+                )
+            )
 
-        if plot_type == "bands_only":
-            fig.add_traces(scatter_objects)
-        else:
-            rows = [1] * len(scatter_objects)
-            cols = [1] * len(scatter_objects)
-            fig.add_traces(scatter_objects, rows=rows, cols=cols)
+        self._add_traces_to_fig(fig, scatter_objects, 1)
 
-        # Add projected bands, if specified
-        if self.project_bands:
-            self._add_projection_traces(fig, plot_type)
-
-    def _add_dos_traces(self, fig, plot_type):
+    def _add_pdos_traces(self, fig):
         # Extract DOS data
         dos_data = self.pdos_data["dos"]
 
@@ -329,12 +276,16 @@ class BandPdosPlotly:
         # Vectorize Scatter object creation
         for i, trace in enumerate(dos_data):
             dos_np = np.array(trace["x"])
-            fill = "tozerox" if plot_type == "combined" else "tozeroy"
+            fill = "tozerox" if self.plot_type == "combined" else "tozeroy"
             x_data = (
-                trace["y"] if plot_type == "combined" else dos_np - self.fermi_energy
+                trace["y"]
+                if self.plot_type == "combined"
+                else dos_np - self.fermi_energy
             )
             y_data = (
-                dos_np - self.fermi_energy if plot_type == "combined" else trace["y"]
+                dos_np - self.fermi_energy
+                if self.plot_type == "combined"
+                else trace["y"]
             )
             scatter_objects[i] = go.Scatter(
                 x=x_data,
@@ -344,14 +295,10 @@ class BandPdosPlotly:
                 line=dict(color=trace["borderColor"], shape="spline", smoothing=1.0),
                 legendgroup=trace["label"],
             )
-        if plot_type == "dos_only":
-            fig.add_traces(scatter_objects)
-        else:
-            rows = [1] * len(scatter_objects)
-            cols = [2] * len(scatter_objects)
-            fig.add_traces(scatter_objects, rows=rows, cols=cols)
 
-    def _add_projection_traces(self, fig, plot_type):
+        self._add_traces_to_fig(fig, scatter_objects, 2)
+
+    def _add_projection_traces(self, fig):
         """Function to add the projected bands traces to the bands plot."""
         projected_bands = self.bands_data["projected_bands"]
 
@@ -362,25 +309,20 @@ class BandPdosPlotly:
                     x=proj_bands["x"],
                     y=np.array(proj_bands["y"]) - self.fermi_energy,
                     fill="toself",
-                    legendgroup=proj_bands["name"],
+                    legendgroup=proj_bands["label"],
                     mode="lines",
                     line=dict(width=0, color=proj_bands["color"]),
-                    name=proj_bands["name"],
-                    # If DOS is present, use those legend entries
-                    showlegend=True if plot_type == "bands_only" else False,
+                    name=proj_bands["label"],
+                    # If PDOS is present, use those legend entries
+                    showlegend=True if self.plot_type == "bands" else False,
                 )
             )
 
-        if plot_type == "bands_only":
-            fig.add_traces(scatter_objects)
-        else:
-            rows = [1] * len(scatter_objects)
-            cols = [1] * len(scatter_objects)
-            fig.add_traces(scatter_objects, rows=rows, cols=cols)
+        self._add_traces_to_fig(fig, scatter_objects, 1)
 
     def _customize_combined_layout(self, fig):
         self._customize_layout(fig, self._bands_xaxis, self._bands_yaxis)
-        self._customize_layout(fig, self._dos_xaxis, self._dos_yaxis, col=2)
+        self._customize_layout(fig, self._pdos_xaxis, self._pdos_yaxis, col=2)
         fig.update_layout(
             legend=dict(xanchor="left", x=1.06),
             height=self.SETTINGS["combined_plot_height"],
@@ -398,9 +340,17 @@ class BandPdosPlotly:
             col=col,
         )
 
-    @property
-    def bandspdosfigure(self):
-        return self._get_bandspdos_plot()
+    def _customize_single_layout(self, fig):
+        xaxis = getattr(self, f"_{self.plot_type}_xaxis")
+        yaxis = getattr(self, f"_{self.plot_type}_yaxis")
+
+        fig.update_layout(
+            xaxis=xaxis,
+            yaxis=yaxis,
+            plot_bgcolor="white",
+            height=self.SETTINGS[f"{self.plot_type}_plot_height"],
+            width=self.SETTINGS[f"{self.plot_type}_plot_width"],
+        )
 
 
 class BandPdosWidget(ipw.VBox):
@@ -484,11 +434,11 @@ class BandPdosWidget(ipw.VBox):
         )
 
         # Information for the plot
-        self.dos_data = self._get_dos_data()
+        self.pdos_data = self._get_pdos_data()
         self.bands_data = self._get_bands_data()
         # Plotly widget
         self.bandsplot_widget = BandPdosPlotly(
-            bands_data=self.bands_data, pdos_data=self.dos_data
+            bands_data=self.bands_data, pdos_data=self.pdos_data
         ).bandspdosfigure
         # Output widget to display the bandsplot widget
         self.bands_widget = ipw.Output()
@@ -528,15 +478,15 @@ class BandPdosWidget(ipw.VBox):
     def download_data(self, _=None):
         """Function to download the data."""
         file_name_bands = "bands_data.json"
-        file_name_dos = "dos_data.json"
+        file_name_pdos = "dos_data.json"
         if self.bands_data:
             json_str = json.dumps(self.bands_data)
             b64_str = base64.b64encode(json_str.encode()).decode()
             self._download(payload=b64_str, filename=file_name_bands)
         if self.dos_data:
-            json_str = json.dumps(self.dos_data)
+            json_str = json.dumps(self.pdos_data)
             b64_str = base64.b64encode(json_str.encode()).decode()
-            self._download(payload=b64_str, filename=file_name_dos)
+            self._download(payload=b64_str, filename=file_name_pdos)
 
     @staticmethod
     def _download(payload, filename):
@@ -555,20 +505,20 @@ class BandPdosWidget(ipw.VBox):
         )
         display(javas)
 
-    def _get_dos_data(self):
+    def _get_pdos_data(self):
         if not self.pdos:
             return None
         expanded_selection, syntax_ok = string_range_to_list(
             self.selected_atoms.value, shift=-1
         )
         if syntax_ok:
-            dos = get_pdos_data(
+            pdos = get_pdos_data(
                 self.pdos,
                 group_tag=self.dos_atoms_group.value,
                 plot_tag=self.dos_plot_group.value,
                 selected_atoms=expanded_selection,
             )
-            return dos
+            return pdos
         return None
 
     def _get_bands_data(self):
@@ -604,11 +554,11 @@ class BandPdosWidget(ipw.VBox):
                 self._wrong_syntax.message = """<div class='alert alert-danger'> ERROR: Invalid syntax for selected atoms</div>"""
                 clear_output(wait=True)
             else:
-                self.dos_data = self._get_dos_data()
+                self.pdos_data = self._get_pdos_data()
                 self.bands_data = self._get_bands_data()
                 self.bandsplot_widget = BandPdosPlotly(
                     bands_data=self.bands_data,
-                    pdos_data=self.dos_data,
+                    pdos_data=self.pdos_data,
                     project_bands=self.project_bands_box.value,
                 ).bandspdosfigure
                 self._clear_output_and_display(self.bandsplot_widget)
@@ -619,11 +569,38 @@ class BandPdosWidget(ipw.VBox):
             display(widget)
 
 
+def _prepare_comb_plotly_traces(x_to_conc, y_to_conc):
+    """Combine multiple lines into a single trace.
+
+    The rows of y are concatenated with a np.nan column as a separator. Moreover,
+    the x values are ajduced to match the shape of the concatenated y values. These
+    transfomred arrays, representing multiple datasets/lines, can be plotted in a single trace.
+    """
+    if y_to_conc.ndim != 2:
+        raise ValueError("y must be a 2D array")
+
+    y_dim0 = y_to_conc.shape[0]
+
+    # Add a np.nan column as a separator
+    y_transf = np.hstack(
+        [
+            y_to_conc,
+            np.full((y_dim0, 1), np.nan),
+        ]
+    ).flatten()
+
+    # Same logic for the x axis
+    x_transf = x_to_conc.reshape(1, -1) * np.ones(y_dim0).reshape(-1, 1)
+    x_transf = np.hstack([x_transf, np.full((y_dim0, 1), np.nan)]).flatten()
+
+    return x_transf, y_transf
+
+
 def _prepare_projections_to_plot(bands_data, projections, bands_width):
     """Prepare the projected bands to be plotted.
 
-    This function concatenates the different bands in a single list and adds a np.nan as a separator.
-    This way, all the bands are plotted in a single trace. To use the fill option `toself`,
+    This function transforms the projected bands into a format that can be plotted
+    in a single trace. To use the fill option `toself`,
     a band needs to be concatenated with its mirror image, first.
     """
     projected_bands = []
@@ -642,28 +619,20 @@ def _prepare_projections_to_plot(bands_data, projections, bands_width):
             y_bands_proj_lower = y_bands - bands_width * proj["projections"].T
             # As mentioned above, the bands need to be concatenated with their mirror image
             # to create the filled areas properly
-            y_bands_proj_transf = np.hstack(
+            y_bands_mirror = np.hstack(
                 [y_bands_proj_upper, y_bands_proj_lower[:, ::-1]]
             )
-            # Add a np.nan column as a separator
-            y_bands_proj_transf = np.hstack(
-                [
-                    y_bands_proj_transf,
-                    np.full((y_bands_proj_transf.shape[0], 1), np.nan),
-                ]
-            ).flatten()
             # Same logic for the energy axis
-            x_bands_transf = np.concatenate([x_bands, x_bands[::-1]]).reshape(1, -1)
-            x_bands_transf = x_bands_transf * np.ones(y_bands.shape[0]).reshape(-1, 1)
-            x_bands_transf = np.hstack(
-                [x_bands_transf, np.full((y_bands.shape[0], 1), np.nan)]
-            ).flatten()
+            x_bands_mirror = np.concatenate([x_bands, x_bands[::-1]]).reshape(1, -1)
+            x_bands_transf, y_bands_proj_transf = _prepare_comb_plotly_traces(
+                x_bands_mirror, y_bands_mirror
+            )
 
             projected_bands.append(
                 {
                     "x": x_bands_transf.tolist(),
                     "y": y_bands_proj_transf.tolist(),
-                    "name": proj["label"],
+                    "label": proj["label"],
                     "color": proj["color"],
                 }
             )
@@ -950,9 +919,10 @@ def _projections_curated_options(
 
     curated_proj = []
     for label, (energy, proj_pdos) in _proj_pdos.items():
+        label += SPIN_LABELS[spin_type]
         if projections_pdos == "pdos":
             orbital_proj_pdos = {
-                "label": label + SPIN_LABELS[spin_type],
+                "label": label,
                 "x": energy.tolist(),
                 "y": (SPIN_PDOS_FACTORS[spin_type] * proj_pdos).tolist(),
                 "borderColor": cmap(label),
@@ -960,7 +930,7 @@ def _projections_curated_options(
             }
         else:
             orbital_proj_pdos = {
-                "label": label + SPIN_LABELS[spin_type],
+                "label": label,
                 "projections": proj_pdos,
                 "color": cmap(label),
             }
