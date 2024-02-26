@@ -4,7 +4,7 @@ How to calculate XPS spectra
 
 Overview
 ========
-This tutorial will guide you through the process of setting up and running a XPS calculation for CH\ :sub:`3`\CHO molecule.
+This tutorial will guide you through the process of setting up and running an XPS calculation for CH\ :sub:`3`\CHO molecule.
 
 
 Steps
