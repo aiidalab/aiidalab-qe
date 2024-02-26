@@ -41,7 +41,7 @@ Then go to the **Advanced settings** tab, navigate to `Accuracy and precision`, 
 
 
 .. note::
-    At present, the core-hole pseudopotential for Si and O only available in PBE functional.
+    At present, core-hole pseudopotentials for Si and O are only available for the PBE functional.
 
 Then go to the **XPS setting** tab, and the set the parameters which are highlighted as follows:
 
