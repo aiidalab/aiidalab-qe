@@ -45,7 +45,7 @@ Then go to the **Advanced settings** tab, navigate to `Accuracy and precision`, 
 
 Then go to the **XPS setting** tab, and the set the parameters which are highlighted as follows:
 
-- In the **Select core-level** section, select ``C_1s``.
+- In the **Select core-level** section, select ``C_1s`` by ticking the appropriate box.
 
 
 Then, lick the **Confirm** button.
