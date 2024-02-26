@@ -34,6 +34,7 @@ Examples = [
     ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
     ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
     ("CH3CHO molecule", file_path / "examples" / "CH3CHO.xyz"),
+    ("ETFA molecule", file_path / "examples" / "ETFA.xyz"),
 ]
 
 OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch

@@ -122,6 +122,7 @@ ETFA is commonly used as example for XPS measurements and calculations due to th
 
 .. tip::
 
+   One can select the ETFA molecule from the `From Example` tab, and follow the same steps as above to run the XPS calculation for this molecule.
    One need use a high-performance computer to run XPS calculation for this system. Please read the relevant :doc:`How-To </howto/setup_computer_code>` section to setup code on a remote machine.
 
 
