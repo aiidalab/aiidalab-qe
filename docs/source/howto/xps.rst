@@ -54,7 +54,7 @@ Then, lick the **Confirm** button.
 Step 3 Choose computational resources
 ---------------------------------------
 
-For this small system, we can use the local computer (``localhost``) to run the calculation. The code ``pw-7.2@localhost`` is already selected by default.
+For this small system, we can use the local computer (``localhost``) to run the calculation. The code ``pw-7.2@localhost`` should already be selected by default.
 
 In the **Resources** section, you can set the number of CPUs to 4 for the test.
 
