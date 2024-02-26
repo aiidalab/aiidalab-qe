@@ -15,7 +15,7 @@ To start, go ahead and :doc:`launch </installation/launch>` the app, then follow
 
 Step 1 Select a structure
 --------------------------------
-For this tutorial task, please use the `From Exmple` tab, and select the CH\ :sub:`3`\CHO molecule structure.
+For this tutorial task, please use the `From Example` tab, and select the CH\ :sub:`3`\CHO molecule structure.
 
 In the end, click the `Confirm` button.
 
