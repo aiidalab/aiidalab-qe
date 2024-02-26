@@ -47,6 +47,9 @@ Then go to the **XPS setting** tab, and the set the parameters which are highlig
 
 - In the **Select core-level** section, select ``C_1s`` by ticking the appropriate box.
 
+.. image:: ../_static/images/xps_step_2_setting_tab.png
+   :align: center
+
 
 Then, lick the **Confirm** button.
 
@@ -87,33 +90,66 @@ You can change which element to view XPS spectra for using the dropdown box in t
 
 .. tip::
 
-   When comparing the calculated binding energies to the experimental data, please correct the energies by the given offset listed in the ``Offset Energies`` table.
+   One can read the exact binding energies from the the output of the calculation, by clicking the `outputs` tab on the node tree of the WorkChain, as shown below.
+
+   .. figure:: /_static/images/xps_step_4_output.png
+      :align: center
+
+
+   When comparing the these binding energies to the experimental data, please correct the energies by the given offset listed in the ``Offset Energies`` table in the button of the XPS result tab.
    Besides, the DFT calculated binding energies do not include spin-orbit splitting of the core level state.
    We can include the spin-orbit splitting using its experimental value.
-   Take `f` orbit as a example, we need subtracting :math:`3/7` of the experimental spin-orbit splitting or adding :math:`4/7` of the DFT calculated value, to get the position of the :math:`4f_{7/2}` and :math:`4f_{5/2}` peaks, respectively.
+   Take `f` orbit as a example, we need subtracting :math:`3/7` of the experimental spin-orbit splitting or adding :math:`4/7` of the DFT calculated value, to get the position of the :math:`4f_{7/2}` and :math:`4f_{5/2}` peaks, respectively. Here is a table of the spin-orbit splitting for different orbitals.
 
+   +----------------+-------------------+-------------------+
+   | Orbit          | Substracting      | Adding            |
+   +================+===================+===================+
+   | 1s             | 0                 | 0                 |
+   +----------------+-------------------+-------------------+
+   | 2p             |   :math:`1/3`     |  :math:`2/3`      |
+   +----------------+-------------------+-------------------+
+   | 3d             | :math:`2/5`       |  :math:`3/5`      |
+   +----------------+-------------------+-------------------+
+   | 4f             | :math:`3/7`       |  :math:`4/7`      |
+   +----------------+-------------------+-------------------+
 
 Congratulations, you have finished this tutorial!
 
 
 A real world example
 ====================
+ETFA is commonly used as example for XPS measurements and calculations due to the extreme chemical shifts of its four different carbon atoms. [1]
 
-Here is a XPS calculation for ETFA molecule, which is also referred to as the “ESCA molecule” in the literature. [1]
+.. tip::
+
+   One need use a high-performance computer to run XPS calculation for this system. Please read the relevant :doc:`How-To </howto/setup_computer_code>` section to setup code on a remote machine.
+
+
+Here is the result of the XPS calculation for the ETFA molecule.
+
 
 .. figure:: /_static/images/xps_etfa_dft.png
    :align: center
 
-One can compared the calculated chemical shift with the experimental data.
+Here is the chemical shift from experiment. [1]
 
 .. figure:: /_static/images/xps_etfa_exp.jpg
    :align: center
 
+
+The calculated relative shifts show the same clear trend compared to the experimental data.
+However, there are slight differences in the absolute values of the shifts.
+This is a well known issue in DFT calculations due to the level of approximations made in the exchange-correlation functional.
+Highly accurate first-principles methods based on many-body perturbation theory have recently emerged to address this.
+However, these methods are computationally expensive and are limited to small systems. [2]
+Thus, the simulation method used in the QEapp remain essential workhorses for highly complex spectroscopy simulations with applications in a wide range of fields.
 
 Questions
 =========
 
 If you have any questions, please, do not hesitate to ask on the AiiDA discourse forum: https://aiida.discourse.group/.
 
-[1] Travnikova, O. et al., Relat. Phenom. 2012, 185, 191-197
+[1] O. Travnikova *et al.*, , *Relat. Phenom.* 185, 191 (2012)
 https://doi.org/10.1016/j.elspec.2012.05.009
+[2] B.P. Klein  *et al.*, , *J. Phys. Condens. Matter* 33, 154005 (2021)
+https://doi.org/10.1088/1361-648X/abdf00
