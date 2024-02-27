@@ -85,11 +85,9 @@ def get_builder(codes, structure, parameters, **kwargs):
     )
     builder.pop("relax")
     builder.pop("clean_workdir", None)
-    # there is a bug in aiida-quantumespresso xps, that one can not set the kpoints
-    # this is fxied in a PR, but we need to wait for the next release.
-    # we set a large kpoints_distance value to set the kpoints to 1x1x1
     if is_molecule_input:
-        builder.ch_scf.kpoints_distance = Float(5)
+        builder.ch_scf.pw.parameters.base.attributes.all['SYSTEM']['assume_isolated']='mt'
+        builder.ch_scf.pw.settings=Dict(dict={'gamma_only':True})
     return builder
 
 
