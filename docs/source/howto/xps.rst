@@ -138,12 +138,8 @@ Here is the chemical shift from experiment. [1]
    :align: center
 
 
-The calculated relative shifts show the same clear trend compared to the experimental data.
-However, there are slight differences in the absolute values of the shifts.
-This is a well known issue in DFT calculations due to the level of approximations made in the exchange-correlation functional.
-Highly accurate first-principles methods based on many-body perturbation theory have recently emerged to address this.
-However, these methods are computationally expensive and are limited to small systems. [2]
-Thus, the simulation method used in the QEapp remain essential workhorses for highly complex spectroscopy simulations with applications in a wide range of fields.
+The calculated relative shifts align well with the trends observed in experimental data, underscoring the reliability of DFT calculations.
+Although there are minor discrepancies in the absolute shift values, this is a recognized limitation stemming from the approximations in the exchange-correlation functional within DFT frameworks. [2]
 
 Questions
 =========
