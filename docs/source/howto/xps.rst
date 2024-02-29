@@ -26,7 +26,7 @@ Click the `Confirm` button to proceed.
 Step 2 Configure workflow
 --------------------------------
 
-In the **Basic Setting** tab, set the parameters which are highlighted as follows:
+In the **Basic Settings** tab, set the following parameters:
 
 - In the **Structure optimization** section, select ``Structure as is``.
 - Set **Electronic Type** to ``Insulator``
