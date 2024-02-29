@@ -48,7 +48,7 @@ Then go to the **XPS setting** tab and, in the **Select core-level** section, se
    :align: center
 
 
-Then, lick the **Confirm** button.
+Click the **Confirm** button to proceed.
 
 
 Step 3 Choose computational resources
