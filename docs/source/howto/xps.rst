@@ -17,7 +17,7 @@ Step 1 Select a structure
 --------------------------------
 For this tutorial task, please use the `From Examples` tab, and select the Phenylacetylene molecule structure.
 
-In the end, click the `Confirm` button.
+Click the `Confirm` button to proceed.
 
 .. figure:: /_static/images/xps_step_1.png
    :align: center
