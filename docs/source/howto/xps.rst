@@ -56,8 +56,6 @@ Step 3 Choose computational resources
 We need to use a `pw` code on the high-performance computer to run XPS calculation for this system.
 Please read the relevant :doc:`How-To </howto/setup_computer_code>` section to setup code on a remote machine.
 
-In the **Resources** section, you can set the number of CPUs to 16.
-
 .. image:: ../_static/images/xps_step_3.png
    :align: center
 
