@@ -40,7 +40,10 @@ def get_builder(codes, structure, parameters, **kwargs):
                 if pseudo.label == f"{element}_gs"
             ][0],
         }
-        correction_energies[element] = all_correction_energies[label]["core"]
+        correction_energies[element] = (
+            all_correction_energies[label]["core"]
+            - all_correction_energies[label]["exp"]
+        )
         elements_list.append(element)
     #
     is_molecule_input = (
