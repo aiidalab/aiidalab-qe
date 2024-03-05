@@ -66,6 +66,8 @@ def get_builder(codes, structure, parameters, **kwargs):
         # pop the inputs that are exclueded from the expose_inputs
         pdos.pop("structure", None)
         pdos.pop("clean_workdir", None)
+        # run the scf workchain from the app's workchain
+        pdos.pop("scf")
     else:
         raise ValueError("The dos_code and projwfc_code are required.")
     return pdos
@@ -75,4 +77,6 @@ workchain_and_builder = {
     "workchain": PdosWorkChain,
     "exclude": ("clean_workdir", "structure", "relax"),
     "get_builder": get_builder,
+    "requires_scf": True,
+    "input_from_ctx": {"nscf.pw.parent_folder": "scf_folder"},
 }
