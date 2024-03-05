@@ -224,6 +224,7 @@ class AdvancedSettings(Panel):
             # magnetization setting widget
             self.magnetization,
             # convergence threshold setting widget
+            ipw.HTML("<b>Convergence Thresholds:</b>"),
             ipw.HBox(
                 [self.forc_conv_thr, self.etot_conv_thr, self.scf_conv_thr],
                 layout=ipw.Layout(height="50px", justify_content="flex-start"),
@@ -385,7 +386,7 @@ class AdvancedSettings(Panel):
 
     def set_panel_value(self, parameters):
         """Set the panel value from the given parameters."""
-
+        #protocol_parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
         if "pseudo_family" in parameters:
             pseudo_family_string = parameters["pseudo_family"]
             self.pseudo_family_selector.load_from_pseudo_family(
@@ -417,16 +418,10 @@ class AdvancedSettings(Panel):
             )
 
             # convergence threshold setting
-            self.forc_conv_thr.value = parameters["pw"]["parameters"]["CONTROL"].get(
-                "forc_conv_thr"
-            )
-            self.scf_conv_thr.value = parameters["pw"]["parameters"]["ELECTRONS"].get(
-                "conv_thr"
-            )
-            self.etot_conv_thr.value = parameters["pw"]["parameters"]["CONTROL"].get(
-                "etot_conv_thr"
-            )
-
+            self.forc_conv_thr.value = parameters.get("pw", {}).get("parameters", {}).get("CONTROL", {}).get("forc_conv_thr", 0.0)
+            self.etot_conv_thr.value = parameters.get("pw", {}).get("parameters", {}).get("CONTROL", {}).get("etot_conv_thr", 0.0)
+            self.scf_conv_thr.value = parameters.get("pw", {}).get("parameters", {}).get("ELECTRONS", {}).get("conv_thr", 0.0)
+            
         if parameters.get("initial_magnetic_moments"):
             self.magnetization._set_magnetization_values(
                 parameters.get("initial_magnetic_moments")
