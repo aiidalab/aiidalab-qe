@@ -6,20 +6,18 @@ Authors: AiiDAlab team
 import pathlib
 
 import aiida
-import ase
 import ipywidgets as ipw
 import traitlets as tl
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
+    OptimadeQueryWidget,
     StructureBrowserWidget,
     StructureExamplesWidget,
     StructureManagerWidget,
     StructureUploadWidget,
     WizardAppWidgetStep,
 )
-
-from ipyoptimade import default_parameters, query_filter, query_provider
 
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common import AddingTagsEditor
@@ -38,81 +36,6 @@ Examples = [
     ("Phenylacetylene molecule", file_path / "examples" / "Phenylacetylene.xyz"),
     ("ETFA molecule", file_path / "examples" / "ETFA.xyz"),
 ]
-
-
-class OptimadeQueryWidget(ipw.VBox):
-    """AiiDAlab-specific OPTIMADE Query widget
-
-    Useful as a widget to integrate with the
-    :class:`aiidalab_widgets_base.structures.StructureManagerWidget`,
-    embedded into applications.
-
-    NOTE: `embedded` for `OptimadeQueryFilterWidget` was introduced in `optimade-client`
-    version 2020.11.5.
-
-    :param embedded: Whether or not to show extra database and provider information.
-        When set to `True`, the extra information will be hidden, this is useful
-        in situations where the widget is used in a Tab or similar, e.g., for the
-        class :class:`aiidalab_widgets_base.structures.StructureManagerWidget`.
-    :type embedded: bool
-    :param title: Title used for Tab header if employed in
-        :class:`aiidalab_widgets_base.structures.StructureManagerWidget`.
-    :type title: str
-    """
-
-    structure = tl.Instance(ase.Atoms, allow_none=True)
-
-    def __init__(
-        self,
-        embedded: bool = True,
-        title: str = None,
-        **kwargs,
-    ) -> None:
-        providers_header = ipw.HTML("<h4>Select a provider</h4>")
-        providers = query_provider.OptimadeQueryProviderWidget(
-            embedded=embedded,
-            width_ratio=kwargs.pop("width_ratio", None),
-            width_space=kwargs.pop("width_space", None),
-            database_limit=kwargs.pop("database_limit", None),
-            disable_providers=kwargs.pop(
-                "disable_providers", default_parameters.DISABLE_PROVIDERS
-            ),
-            skip_databases=kwargs.pop(
-                "skip_databases", default_parameters.SKIP_DATABASE
-            ),
-            skip_providers=kwargs.pop(
-                "skip_providers", default_parameters.SKIP_DATABASE
-            ),
-            provider_database_groupings=kwargs.pop(
-                "provider_database_groupings",
-                default_parameters.PROVIDER_DATABASE_GROUPINGS,
-            ),
-        )
-        filters = query_filter.OptimadeQueryFilterWidget(
-            embedded=embedded,
-            button_style=kwargs.pop("button_style", None),
-            result_limit=kwargs.pop("results_limit", None),
-            subparts_order=kwargs.pop("subparts_order", None),
-        )
-
-        ipw.dlink((providers, "database"), (filters, "database"))
-
-        filters.observe(self._update_structure, names="structure")
-
-        self.title = title or "OPTIMADE"
-        layout = kwargs.pop("layout", {"width": "auto", "height": "auto"})
-
-        super().__init__(
-            children=(providers_header, providers, filters),
-            layout=layout,
-            **kwargs,
-        )
-
-    def _update_structure(self, change: dict) -> None:
-        """New structure chosen"""
-        self.structure = (
-            change["new"].as_aiida_structuredata.get_ase() if change["new"] else None
-        )
 
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
