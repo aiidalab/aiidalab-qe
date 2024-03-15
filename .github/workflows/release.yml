@@ -2,24 +2,23 @@
 name: Release
 
 on:
-    push:
-        tags:
-            - v*
+    pull_request:
         branches:
-            - release/*
+            - release/**
+    release:
 
 jobs:
 
-    build:
+    test-build:
 
         runs-on: ubuntu-latest
 
         steps:
 
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
 
             - name: Set up Python 3.10
-              uses: actions/setup-python@v2
+              uses: actions/setup-python@v5
               with:
                   python-version: '3.10'
 
@@ -39,23 +38,3 @@ jobs:
               with:
                   name: release
                   path: dist/
-
-    publish:
-
-        needs: [build]
-        runs-on: ubuntu-latest
-
-        steps:
-            - uses: actions/download-artifact@v4
-              name: Download distribution artifact
-              with:
-                  name: release
-                  path: dist/
-
-            - uses: softprops/action-gh-release@v0.1.14
-              name: Create release
-              if: startsWith(github.ref, 'refs/tags/v')
-              with:
-                  files: |
-                      dist/*
-                  generate_release_notes: true
