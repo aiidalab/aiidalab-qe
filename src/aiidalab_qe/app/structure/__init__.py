@@ -7,7 +7,7 @@ import pathlib
 
 import aiida
 import ipywidgets as ipw
-import traitlets
+import traitlets as tl
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
@@ -32,9 +32,10 @@ Examples = [
     ("Gallium arsenide", file_path / "examples" / "GaAs.xyz"),
     ("Gold (fcc)", file_path / "examples" / "Au.cif"),
     ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
+    ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
+    ("Phenylacetylene molecule", file_path / "examples" / "Phenylacetylene.xyz"),
+    ("ETFA molecule", file_path / "examples" / "ETFA.xyz"),
 ]
-
-OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
 
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
@@ -44,8 +45,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     structure importers and the structure editors can be extended by plugins.
     """
 
-    structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
-    confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
+    structure = tl.Instance(aiida.orm.StructureData, allow_none=True)
+    confirmed_structure = tl.Instance(aiida.orm.StructureData, allow_none=True)
 
     def __init__(self, description=None, **kwargs):
         importers = [
@@ -118,7 +119,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             **kwargs,
         )
 
-    @traitlets.default("state")
+    @tl.default("state")
     def _default_state(self):
         return self.State.INIT
 
@@ -134,7 +135,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             else:
                 self.state = self.State.SUCCESS
 
-    @traitlets.observe("structure")
+    @tl.observe("structure")
     def _observe_structure(self, change):
         structure = change["new"]
         with self.hold_trait_notifications():
@@ -145,12 +146,12 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.structure_name_text.value = str(self.structure.get_formula())
             self._update_state()
 
-    @traitlets.observe("confirmed_structure")
+    @tl.observe("confirmed_structure")
     def _observe_confirmed_structure(self, _):
         with self.hold_trait_notifications():
             self._update_state()
 
-    @traitlets.observe("state")
+    @tl.observe("state")
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             state = change["new"]

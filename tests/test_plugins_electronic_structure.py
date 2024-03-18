@@ -3,6 +3,9 @@ def test_electronic_structure(generate_qeapp_workchain):
     from aiida import engine
 
     from aiidalab_qe.app.result.workchain_viewer import WorkChainViewer
+    from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
+    import plotly.graph_objects as go
+    from aiidalab_qe.plugins.electronic_structure.result import Result
 
     wkchain = generate_qeapp_workchain()
     wkchain.node.set_exit_status(0)
@@ -16,5 +19,34 @@ def test_electronic_structure(generate_qeapp_workchain):
         for tab in wcv.result_tabs.children
         if getattr(tab, "identifier", "") == "electronic_structure"
     ][0]
-    # It should have two children: settings and the _bands_plot_view
-    assert len(tab.children) == 2
+    # It should have one children: the _bands_plot_view
+    assert len(tab.children) == 1
+
+    result = Result(node=wkchain.node)
+    result._update_view()
+
+    assert isinstance(result.children[0], BandPdosWidget)
+    assert isinstance(result.children[0].bandsplot_widget, go.FigureWidget)
+
+    # Check if data is correct
+    assert result.children[0].bands_data is not None
+    assert result.children[0].bands_data["pathlabels"] is not None
+    assert result.children[0].dos_data is not None
+
+    # Check Bands axis
+    assert result.children[0].bandsplot_widget.layout.xaxis.title.text == "k-points"
+    assert (
+        result.children[0].bandsplot_widget.layout.xaxis2.title.text
+        == "Density of states"
+    )
+    assert (
+        result.children[0].bandsplot_widget.layout.yaxis.title.text
+        == "Electronic Bands (eV)"
+    )
+    assert isinstance(
+        result.children[0].bandsplot_widget.layout.xaxis.rangeslider,
+        go.layout.xaxis.Rangeslider,
+    )
+    assert result.children[0].bands_data["pathlabels"][0] == list(
+        result.children[0].bandsplot_widget.layout.xaxis.ticktext
+    )

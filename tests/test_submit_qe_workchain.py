@@ -62,6 +62,7 @@ def test_create_builder_advanced_settings(
         electronic_type="metal",
         spin_type="collinear",
         tot_charge=1.0,
+        vdw_corr="dft-d3bj",
         initial_magnetic_moments=0.1,
         properties=["bands", "pdos"],
     )
@@ -80,6 +81,8 @@ def test_create_builder_advanced_settings(
         got["pdos"]["nscf"],
     ]:
         assert parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
+        assert parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] == "dft-d3"
+        assert parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] == 4
 
     # test initial_magnetic_moments set 'starting_magnetization' in pw.in
     assert (
