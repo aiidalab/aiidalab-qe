@@ -30,7 +30,7 @@ def export_xps_data(outputs):
 
 
 def xps_spectra_broadening(
-    points, equivalent_sites_data, gamma=0.3, sigma=0.3, label=""
+    points, equivalent_sites_data, gamma=0.3, sigma=0.3, label="", intensity=1.0
 ):
     """Broadening the XPS spectra with Voigt function and return the spectra data"""
 
@@ -55,7 +55,7 @@ def xps_spectra_broadening(
         )
         for site in point:
             # Weight for the spectra of every atom
-            intensity = equivalent_sites_data[site]["multiplicity"]
+            intensity = equivalent_sites_data[site]["multiplicity"] * intensity
             relative_core_level_position = point[site]
             y = (
                 intensity
@@ -117,6 +117,13 @@ class Result(ResultPanel):
             disabled=False,
             style={"description_width": "initial"},
         )
+        intensity = ipw.FloatText(
+            value=1.0,
+            min=0.001,
+            description="Adjustable Intensity Factor",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
         fill = ipw.Checkbox(
             description="Fill",
             value=True,
@@ -125,7 +132,7 @@ class Result(ResultPanel):
         )
         # Create a description label
         upload_description = ipw.HTML(
-            value="<b>Upload Experimental Data (csv format):</b>",
+            value="Upload Experimental Data (<b>csv format, without header</b>):",
             placeholder="",
             description="",
         )
@@ -135,7 +142,7 @@ class Result(ResultPanel):
             description="Choose File",
             multiple=False,
         )
-        upload_container = ipw.VBox([upload_description, upload_btn])
+        upload_container = ipw.VBox([upload_description, upload_btn, intensity])
         upload_btn.observe(self._handle_upload, names="value")
 
         paras = ipw.HBox(
@@ -171,7 +178,11 @@ class Result(ResultPanel):
         self.g.layout.xaxis.autorange = "reversed"
         #
         spectra = xps_spectra_broadening(
-            chemical_shifts, equivalent_sites_data, gamma=gamma.value, sigma=sigma.value
+            chemical_shifts,
+            equivalent_sites_data,
+            gamma=gamma.value,
+            sigma=sigma.value,
+            intensity=intensity.value,
         )
         # only plot the selected spectrum
         for site, d in spectra[spectrum_select.value].items():
@@ -189,7 +200,11 @@ class Result(ResultPanel):
                 xaxis = "Binding Energy (eV)"
             #
             spectra = xps_spectra_broadening(
-                points, equivalent_sites_data, gamma=gamma.value, sigma=sigma.value
+                points,
+                equivalent_sites_data,
+                gamma=gamma.value,
+                sigma=sigma.value,
+                intensity=intensity.value,
             )
 
             for site, d in spectra[spectrum_select.value].items():
@@ -223,6 +238,7 @@ class Result(ResultPanel):
         spectrum_select.observe(response, names="value")
         gamma.observe(response, names="value")
         sigma.observe(response, names="value")
+        intensity.observe(response, names="value")
         fill.observe(response, names="value")
         self.children = [
             spectra_type,
