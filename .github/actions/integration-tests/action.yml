@@ -15,13 +15,19 @@ inputs:
 runs:
     using: composite
 
+    strategy:
+        matrix:
+            aiida-core-version: [2.3, 2.4.3]          # test on the latest and the oldest supported version
+
     steps:
         - name: Set jupyter token env
           run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
           shell: bash
 
         - name: Run pytest to test image is working
-          run: TAG=newly-baked pytest tests_integration/test_image.py
+          run: pytest tests_integration/test_image.py
+          env:
+              TAG: aiida-${{ matrix.aiida-core-version }}
           shell: bash
 
         # The Firefox and its engine geckodrive need do be installed manually to run
@@ -42,12 +48,16 @@ runs:
 
         - name: Run pytest for firefox
           if : ${{ inputs.architecture == 'amd64' }}
-          run: TAG=newly-baked pytest --driver Firefox tests_integration/test_app.py
+          run: pytest --driver Firefox tests_integration/test_app.py
+          env:
+              TAG: aiida-${{ matrix.aiida-core-version }}
           shell: bash
 
         - name: Run pytest for Chrome
           if : ${{ inputs.architecture == 'amd64' }}
-          run: TAG=newly-baked pytest --driver Chrome tests_integration/test_app.py
+          run: pytest --driver Chrome tests_integration/test_app.py
+          env:
+              TAG: aiida-${{ matrix.aiida-core-version }}
           shell: bash
 
         - name: Upload screenshots as artifacts
