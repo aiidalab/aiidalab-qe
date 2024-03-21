@@ -23,6 +23,5 @@ target "qe" {
   }
   args = {
     "QE_VERSION" = "${QE_VERSION}"
-    "BASE_IMAGE" = "${BASE_IMAGE}"
   }
 }
