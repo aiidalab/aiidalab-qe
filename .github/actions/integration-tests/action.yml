@@ -11,10 +11,6 @@ inputs:
         description: GitHub Actions Runner image
         required: true
         type: string
-    aiidaCoreVersion: # Define aiida-core-version as an input
-        description: aiida-core version
-        required: true
-        type: string
 
 runs:
     using: composite
@@ -25,9 +21,7 @@ runs:
           shell: bash
 
         - name: Run pytest to test image is working
-          run: pytest tests_integration/test_image.py
-          env:
-              TAG: ${{ inputs.aiidaCoreVersion }}
+          run: TAG=newly-baked pytest tests_integration/test_image.py
           shell: bash
 
         # The Firefox and its engine geckodrive need do be installed manually to run
@@ -48,16 +42,12 @@ runs:
 
         - name: Run pytest for firefox
           if : ${{ inputs.architecture == 'amd64' }}
-          run: pytest --driver Firefox tests_integration/test_app.py
-          env:
-              TAG: ${{ inputs.aiidaCoreVersion }}
+          run: TAG=newly-baked pytest --driver Firefox tests_integration/test_app.py
           shell: bash
 
         - name: Run pytest for Chrome
           if : ${{ inputs.architecture == 'amd64' }}
-          run: pytest --driver Chrome tests_integration/test_app.py
-          env:
-              TAG: ${{ inputs.aiidaCoreVersion }}
+          run: TAG=newly-baked pytest --driver Chrome tests_integration/test_app.py
           shell: bash
 
         - name: Upload screenshots as artifacts

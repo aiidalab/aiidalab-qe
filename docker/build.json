@@ -1,8 +1,5 @@
 {
   "variable": {
-    "AIIDALAB_BASE_IMAGE": {
-      "default": "aiidalab/full-stack:latest"
-    },
     "QE_VERSION": {
       "default": "7.2"
     }
