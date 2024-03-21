@@ -20,7 +20,7 @@ Welcome Page
 
       .. image:: _static/images/icon.svg
          :width: 200px
-         :class: sd-m-auto
+         :class: sd-m-auto dark-light
 
 ----
 
