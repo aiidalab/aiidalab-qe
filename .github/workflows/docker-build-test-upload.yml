@@ -23,6 +23,9 @@ on:
 jobs:
     build-test-upload:
         runs-on: ${{ inputs.runsOn }}
+        strategy:
+            matrix:
+                aiida-core-version: [2.3, newly-baked]
         continue-on-error: true
 
         steps:
@@ -60,18 +63,20 @@ jobs:
               with:
                   architecture: ${{ inputs.architecture }}
                   runsOn: ${{ inputs.runsOn }}
+                  aiidaCoreVersion: ${{ matrix.aiida-core-version }}
 
             - name: Save image as a tar for later use 💾
               run: |
                   mkdir -p /tmp/aiidalab/
-                  docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
+                  docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}-${{ matrix.aiida-core-version }}.tar
               shell: bash
               if: always()
 
             - name: Upload image as artifact 💾
               uses: actions/upload-artifact@v4
               with:
-                  name: ${{ inputs.image }}-${{ inputs.architecture }}
+                  # Include aiida-core-version in the artifact name
+                  name: ${{ inputs.image }}-${{ inputs.architecture }}-${{ matrix.aiida-core-version }}
                   path: /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
                   retention-days: 3
               if: always()

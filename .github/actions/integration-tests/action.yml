@@ -11,13 +11,13 @@ inputs:
         description: GitHub Actions Runner image
         required: true
         type: string
+    aiidaCoreVersion: # Define aiida-core-version as an input
+        description: aiida-core version
+        required: true
+        type: string
 
 runs:
     using: composite
-
-    strategy:
-        matrix:
-            aiida-core-version: [2.3, 2.4.3]          # test on the latest and the oldest supported version
 
     steps:
         - name: Set jupyter token env
@@ -27,7 +27,7 @@ runs:
         - name: Run pytest to test image is working
           run: pytest tests_integration/test_image.py
           env:
-              TAG: aiida-${{ matrix.aiida-core-version }}
+              TAG: ${{ inputs.aiidaCoreVersion }}
           shell: bash
 
         # The Firefox and its engine geckodrive need do be installed manually to run
@@ -50,14 +50,14 @@ runs:
           if : ${{ inputs.architecture == 'amd64' }}
           run: pytest --driver Firefox tests_integration/test_app.py
           env:
-              TAG: aiida-${{ matrix.aiida-core-version }}
+              TAG: ${{ inputs.aiidaCoreVersion }}
           shell: bash
 
         - name: Run pytest for Chrome
           if : ${{ inputs.architecture == 'amd64' }}
           run: pytest --driver Chrome tests_integration/test_app.py
           env:
-              TAG: aiida-${{ matrix.aiida-core-version }}
+              TAG: ${{ inputs.aiidaCoreVersion }}
           shell: bash
 
         - name: Upload screenshots as artifacts
