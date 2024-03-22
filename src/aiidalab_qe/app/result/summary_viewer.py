@@ -123,6 +123,10 @@ def generate_report_parameters(qeapp_wc):
     report["periodicity"] = PERIODICITY_MAPPING.get(
         qeapp_wc.inputs.structure.pbc, "xyz"
     )
+    report["tot_magnetization"] = pw_parameters["SYSTEM"].get(
+        "tot_magnetization", False
+    )
+
     # hard code bands and pdos
     if "bands" in qeapp_wc.inputs:
         report["bands_kpoints_distance"] = PwBandsWorkChain.get_protocol_inputs(
