@@ -204,7 +204,8 @@ class QeAppWorkChain(WorkChain):
                 f"PwRelaxWorkChain failed with exit status {workchain.exit_status}"
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_RELAX
-
+        # save the remote folder so that the next workchain can use it
+        self.ctx.scf_folder = workchain.outputs.remote_folder
         if "output_structure" in workchain.outputs:
             self.ctx.current_structure = workchain.outputs.output_structure
             self.ctx.current_number_of_bands = (
@@ -228,6 +229,9 @@ class QeAppWorkChain(WorkChain):
             )
             inputs.metadata.call_link_label = name
             inputs.structure = self.ctx.current_structure
+            # set the scf parent folder and other inputs from the context
+            for key, value in entry_point.get("input_from_ctx", {}).items():
+                setattr(inputs, key, self.ctx[value])
             inputs = prepare_process_inputs(plugin_workchain, inputs)
             running = self.submit(plugin_workchain, **inputs)
             self.report(f"launching plugin {name} <{running.pk}>")
