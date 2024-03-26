@@ -20,7 +20,7 @@ jobs:
             matrix:
                 tag: [latest]
                 python-version: ['3.9', '3.10']
-                aiida-core-version: [2.3, 2.4.3]
+                aiida-core-version: [2.3, 2.5]
             fail-fast: false
 
         runs-on: ubuntu-latest
