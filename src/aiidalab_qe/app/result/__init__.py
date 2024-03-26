@@ -13,6 +13,10 @@ from aiidalab_widgets_base import (
 # trigger registration of the viewer widget:
 from .workchain_viewer import WorkChainViewer  # noqa: F401
 
+PROCESS_COMPLETED = "<h4>Workflow completed successfully!</h4>"
+PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
+PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
+
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     process = tl.Unicode(allow_none=True)
@@ -50,8 +54,15 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             layout=ipw.Layout(width="120px", height="40px"),
         )
         self.kill_button.on_click(self._on_click_kill_button)
+        self.process_info = ipw.HTML()
 
-        super().__init__([self.kill_button, self.process_status], **kwargs)
+        super().__init__(
+            [
+                ipw.HBox(children=[self.kill_button, self.process_info]),
+                self.process_status,
+            ],
+            **kwargs,
+        )
 
         self._update_kill_button_layout()
 
@@ -75,15 +86,18 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 ProcessState.WAITING,
             ):
                 self.state = self.State.ACTIVE
+                self.process_info.value = PROCESS_RUNNING
             elif (
                 process_state in (ProcessState.EXCEPTED, ProcessState.KILLED)
                 or process.is_failed
             ):
                 self.state = self.State.FAIL
                 self.kill_button.layout.display = "none"
+                self.process_info.value = PROCESS_EXCEPTED
             elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
                 self.kill_button.layout.display = "none"
+                self.process_info.value = PROCESS_COMPLETED
 
     def _update_kill_button_layout(self):
         """Update the layout of the kill button."""
