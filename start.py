@@ -9,7 +9,7 @@ def get_start_widget(appbase, jupbase, notebase):
         <th style="text-align:center">Preferences</th>
         <tr>
         <td valign="top"><ul>
-            <li><a href="{appbase}/plugin_list.ipynb" target="_blank">Plugin list</a></li>
+            <li><a href="{appbase}/plugin_list.ipynb" target="_blank">Plugins</a></li>
         </ul></td>
         </tr>
         </table>
