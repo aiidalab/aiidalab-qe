@@ -99,8 +99,8 @@ Beside, you need to override the the following methods:
 
         def set_panel_value(self, input_dict):
             """Set the value of the widgets in the panel from the input dictionary.
-            This method is called when the user wants to reload the panel from the previous calculation.
-            Or reset the panel to the default values."""
+            This method is called when the user wants to reload the panel from the previous calculation,
+            or reset the panel to the default values."""
             self.scale.value = input_dict.get("scale", 0.05)
             self.npoint.value = input_dict.get("npoint", 5)
 
