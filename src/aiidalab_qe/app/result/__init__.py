@@ -80,16 +80,23 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 or process.is_failed
             ):
                 self.state = self.State.FAIL
+                self.kill_button.layout.display = "none"
             elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
+                self.kill_button.layout.display = "none"
 
     def _update_kill_button_layout(self):
         """Update the layout of the kill button."""
         # If no process is selected, hide the button.
-        if self.process is None:
+        if self.process is None or self.process == "":
             self.kill_button.layout.display = "none"
         else:
-            self.kill_button.layout.display = "block"
+            process = orm.load_node(self.process)
+            # If the process is finished or excepted, hide the button.
+            if process.is_finished or process.is_excepted:
+                self.kill_button.layout.display = "none"
+            else:
+                self.kill_button.layout.display = "block"
 
         # If the step is not activated, no point to click the button, so disable it.
         # Only enable it if the process is on (RUNNING, CREATED, WAITING).
