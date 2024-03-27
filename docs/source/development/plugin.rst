@@ -98,14 +98,15 @@ Beside, you need to override the the following methods:
             }
 
         def set_panel_value(self, input_dict):
-            """Set a dictionary with the input parameters for the plugin."""
+            """Set the value of the widgets in the panel from the input dictionary.
+            This method is called when the user wants to reload the panel from the previous calculation,
+            or reset the panel to the default values."""
             self.scale.value = input_dict.get("scale", 0.05)
             self.npoint.value = input_dict.get("npoint", 5)
 
         def reset(self):
             """Reset the input fields."""
-            self.scale.value = 0.05
-            self.npoint.value = 5
+            self.set_panel_value({"scale": 0.05, "npoint": 5})
 
 Result
 -----------------------
