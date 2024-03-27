@@ -18,6 +18,7 @@ on:
 
             - src/**
             - docker/**
+            - tests_integration/**
             - qe.ipynb
             - setup.cfg
             - pyproject.toml
@@ -42,6 +43,7 @@ on:
 
             - src/**
             - docker/**
+            - tests_integration/**
             - qe.ipynb
             - setup.cfg
             - pyproject.toml
