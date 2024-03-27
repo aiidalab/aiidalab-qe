@@ -59,8 +59,8 @@ def notebook_service(docker_ip, docker_services):
     token = os.environ.get("JUPYTER_TOKEN", "testtoken")
     docker_services.wait_until_responsive(
         # The timeout is very high for this test, because the installation of pseudo libraries.
-        timeout=180.0,
-        pause=0.1,
+        timeout=300.0,
+        pause=2.0,
         check=lambda: is_responsive(url),
     )
     return url, token
