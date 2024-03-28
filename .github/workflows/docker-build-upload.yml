@@ -1,22 +1,22 @@
 ---
-name: Build a new image and then upload the image, tags and manifests to GitHub artifacts
+name: Build and upload Docker image as artifact
 
 env:
-    OWNER: ${{ github.repository_owner }}
+    TMP_FOLDER_NAME: ${{ github.repository }}
 
 on:
     workflow_call:
         inputs:
-            image:
-                description: Image name
-                required: true
-                type: string
             architecture:
                 description: Image architecture, e.g. amd64, arm64
                 required: true
                 type: string
             runsOn:
                 description: GitHub Actions Runner image
+                required: true
+                type: string
+            bakeFile:
+                description: Path to the bake file
                 required: true
                 type: string
 
@@ -42,12 +42,12 @@ jobs:
                   docker kill $(docker ps --quiet) || true
                   docker rm $(docker ps --all --quiet) || true
                   docker system prune --all --force
-                  rm -rf /tmp/aiidalab/
+                  rm -rf /tmp/${{ env.TMP_FOLDER_NAME }}/
               shell: bash
 
             - name: Build image 🛠
               working-directory: docker
-              run: docker buildx bake --set qe.platform=linux/${{ inputs.architecture }} -f docker-bake.hcl -f build.json --load
+              run: docker buildx bake --set *.platform=linux/${{ inputs.architecture }} -f docker-bake.hcl -f build.json --load
               env:
                   # Use buildx
                   DOCKER_BUILDKIT: 1
@@ -55,23 +55,20 @@ jobs:
                   BUILDKIT_PROGRESS: plain
               shell: bash
 
-            - name: Run tests ✅
-              uses: ./.github/actions/integration-tests
-              with:
-                  architecture: ${{ inputs.architecture }}
-                  runsOn: ${{ inputs.runsOn }}
-
-            - name: Save image as a tar for later use 💾
+            - name: Save images as a tar for later use 💾
               run: |
-                  mkdir -p /tmp/aiidalab/
-                  docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
+                  mkdir -p /tmp/${{ env.TMP_FOLDER_NAME }}
+                  grep 'target "' ${{ inputs.bakeFile }} | awk -F'"' '{print $2}' | while read image; do
+                      docker save ${{ github.repository_owner }}/$image -o /tmp/${{ env.TMP_FOLDER_NAME }}/$image-${{ inputs.architecture }}.tar
+                  done
               shell: bash
               if: always()
 
             - name: Upload image as artifact 💾
               uses: actions/upload-artifact@v4
               with:
-                  name: ${{ inputs.image }}-${{ inputs.architecture }}
-                  path: /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
+                  name: ${{ inputs.architecture }}-images
+                  path: |
+                      /tmp/${{ env.TMP_FOLDER_NAME }}/*.tar
                   retention-days: 3
               if: always()
