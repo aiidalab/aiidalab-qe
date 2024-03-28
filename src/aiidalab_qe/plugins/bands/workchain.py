@@ -215,6 +215,8 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     # pop the inputs that are excluded from the expose_inputs
     bands.pop("relax")
+    # run the scf workchain from the app's workchain
+    bands.pop("scf")
     bands.pop("structure", None)
     bands.pop("clean_workdir", None)
     return bands
@@ -224,4 +226,6 @@ workchain_and_builder = {
     "workchain": PwBandsWorkChain,
     "exclude": ("clean_workdir", "structure", "relax"),
     "get_builder": get_builder,
+    "requires_scf": True,
+    "input_from_ctx": {"bands.pw.parent_folder": "scf_folder"},
 }
