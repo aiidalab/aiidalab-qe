@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Panel for Pdos plugin."""
+
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm

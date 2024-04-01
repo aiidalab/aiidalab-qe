@@ -3,6 +3,7 @@
 
 Authors: AiiDAlab team
 """
+
 from __future__ import annotations
 
 import os

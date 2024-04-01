@@ -1,6 +1,5 @@
-"""XPS results view widgets
+"""XPS results view widgets"""
 
-"""
 import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import ResultPanel
