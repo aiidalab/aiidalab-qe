@@ -117,7 +117,7 @@ class Result(ResultPanel):
             disabled=False,
             style={"description_width": "initial"},
         )
-        intensity = ipw.FloatText(
+        self.intensity = ipw.FloatText(
             value=1.0,
             min=0.001,
             description="Adjustable Intensity Factor",
@@ -142,7 +142,7 @@ class Result(ResultPanel):
             description="Choose File",
             multiple=False,
         )
-        upload_container = ipw.VBox([upload_description, upload_btn, intensity])
+        upload_container = ipw.VBox([upload_description, upload_btn, self.intensity])
         upload_btn.observe(self._handle_upload, names="value")
 
         paras = ipw.HBox(
@@ -160,7 +160,7 @@ class Result(ResultPanel):
         self.spectrum_select_options = [
             key.split("_")[0] for key in chemical_shifts.keys()
         ]
-        spectrum_select = ipw.Dropdown(
+        self.spectrum_select = ipw.Dropdown(
             description="",
             disabled=False,
             value=self.spectrum_select_options[0],
@@ -177,15 +177,15 @@ class Result(ResultPanel):
         self.g.layout.xaxis.title = "Chemical shift (eV)"
         self.g.layout.xaxis.autorange = "reversed"
         #
-        spectra = xps_spectra_broadening(
+        self.spectra = xps_spectra_broadening(
             chemical_shifts,
             equivalent_sites_data,
             gamma=gamma.value,
             sigma=sigma.value,
-            intensity=intensity.value,
+            intensity=self.intensity.value,
         )
         # only plot the selected spectrum
-        for site, d in spectra[spectrum_select.value].items():
+        for site, d in self.spectra[self.spectrum_select.value].items():
             self.g.add_scatter(
                 x=d[0], y=d[1], fill="tozeroy", name=site.replace("_", " ")
             )
@@ -204,10 +204,10 @@ class Result(ResultPanel):
                 equivalent_sites_data,
                 gamma=gamma.value,
                 sigma=sigma.value,
-                intensity=intensity.value,
+                intensity=self.intensity.value,
             )
 
-            for site, d in spectra[spectrum_select.value].items():
+            for site, d in spectra[self.spectrum_select.value].items():
                 data.append(
                     {
                         "x": d[0],
@@ -235,17 +235,17 @@ class Result(ResultPanel):
             self.plot_experimental_data()
 
         spectra_type.observe(response, names="value")
-        spectrum_select.observe(response, names="value")
+        self.spectrum_select.observe(response, names="value")
         gamma.observe(response, names="value")
         sigma.observe(response, names="value")
-        intensity.observe(response, names="value")
+        self.intensity.observe(response, names="value")
         fill.observe(response, names="value")
         self.children = [
             spectra_type,
             ipw.HBox(
                 children=[
                     spectrum_select_prompt,
-                    spectrum_select,
+                    self.spectrum_select,
                 ]
             ),
             voigt_profile_help,
@@ -268,7 +268,12 @@ class Result(ResultPanel):
         df = pd.read_csv(StringIO(content_str), header=None)
 
         self.experimental_data = df
-        self.plot_experimental_data()
+        # Calculate an initial guess for the intensity factor
+        total = self.spectra[self.spectrum_select.value]["total"]
+        # Align the max value of the total spectra with the max value of the experimental data
+        max_exp = max(self.experimental_data[1])
+        max_total = max(total[1])
+        self.intensity.value = max_exp / max_total
 
     def plot_experimental_data(self):
         """Plot the experimental data alongside the calculated data."""
