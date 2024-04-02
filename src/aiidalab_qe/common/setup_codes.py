@@ -41,6 +41,7 @@ CODE_NAMES = (
     "pw2wannier90",
     "q2r",
     "xspectra",
+    "hp",
 )
 
 
