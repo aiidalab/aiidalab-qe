@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Panel for XPS plugin.
+"""Panel for XPS plugin."""
 
-"""
 import ipywidgets as ipw
 import traitlets as tl
 from aiida.orm import Group, QueryBuilder, StructureData
@@ -24,7 +23,7 @@ def install_pseudos(pseudo_group="pseudo_demo_pbe"):
     def run_(*args, **kwargs):
         return run(*args, env=env, capture_output=True, check=True, **kwargs)
 
-    run_(["verdi", "archive", "import", url])
+    run_(["verdi", "archive", "import", url, "--no-import-group"])
 
 
 class Setting(Panel):
