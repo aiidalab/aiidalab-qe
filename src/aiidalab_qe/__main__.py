@@ -1,5 +1,4 @@
-"""For running the app from the command line used for post_install script.
-"""
+"""For running the app from the command line used for post_install script."""
 
 from pathlib import Path
 

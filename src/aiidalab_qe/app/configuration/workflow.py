@@ -3,6 +3,7 @@
 
 Authors: AiiDAlab team
 """
+
 import ipywidgets as ipw
 from aiida_quantumespresso.common.types import RelaxType
 
