@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Panel for XPS plugin.
+"""Panel for XPS plugin."""
 
-"""
 import ipywidgets as ipw
 import traitlets as tl
 from aiida.orm import Group, QueryBuilder, StructureData
