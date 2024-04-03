@@ -1,6 +1,4 @@
-"""PDOS results view widgets
-
-"""
+"""PDOS results view widgets"""
 
 from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
 from aiidalab_qe.common.panel import ResultPanel
