@@ -298,7 +298,6 @@ class AdvancedSettings(Panel):
             )
         parameters["kpoints_distance"] = self.value.get("kpoints_distance")
         if self.electronic_type == "metal":
-
             # smearing type setting
             parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = (
                 self.smearing.smearing_value
@@ -321,21 +320,21 @@ class AdvancedSettings(Panel):
 
     def set_insulator_magnetization(self, parameters):
         """Set the parameters for collinear insulator calculation. Total magnetization."""
-        parameters["pw"]["parameters"]["SYSTEM"][
-            "tot_magnetization"
-        ] = self.magnetization.tot_magnetization.value
+        parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+            self.magnetization.tot_magnetization.value
+        )
 
     def set_metallic_magnetization(self, parameters):
         """Set the parameters for magnetization calculation in metals"""
         magnetization_type = self.magnetization.magnetization_type.value
         if magnetization_type == "tot_magnetization":
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "tot_magnetization"
-            ] = self.magnetization.tot_magnetization.value
+            parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+                self.magnetization.tot_magnetization.value
+            )
         else:
-            parameters[
-                "initial_magnetic_moments"
-            ] = self.magnetization.get_magnetization()
+            parameters["initial_magnetic_moments"] = (
+                self.magnetization.get_magnetization()
+            )
 
     def set_panel_value(self, parameters):
         """Set the panel value from the given parameters."""
