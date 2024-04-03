@@ -35,6 +35,7 @@ Examples = [
     ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
     ("Phenylacetylene molecule", file_path / "examples" / "Phenylacetylene.xyz"),
     ("ETFA molecule", file_path / "examples" / "ETFA.xyz"),
+    ("LiCoO2", file_path / "examples" / "LiCoO2.cif"),
 ]
 
 
