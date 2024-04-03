@@ -28,3 +28,6 @@ codes:
     dos: dos-7.2@localhost
     projwfc: projwfc-7.2@localhost
     pw: pw-7.2@localhost
+    pp: pp-7.2@localhost
+    xspectra: xspectra-7.2@localhost
+    hp: hp-7.2@localhost
