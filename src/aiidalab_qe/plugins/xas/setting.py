@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Panel for XAS plugin.
+"""Panel for XAS plugin."""
 
-"""
 import os
 import tarfile
 from importlib import resources
