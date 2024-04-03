@@ -887,8 +887,8 @@ def get_bands_labeling(bandsdata: dict) -> list:
     UNICODE_SYMBOL = {
         "GAMMA": "\u0393",
         "DELTA": "\u0394",
-        "LAMBDA": "\u039B",
-        "SIGMA": "\u03A3",
+        "LAMBDA": "\u039b",
+        "SIGMA": "\u03a3",
         "EPSILON": "\u0395",
     }
     paths = bandsdata.get("paths")

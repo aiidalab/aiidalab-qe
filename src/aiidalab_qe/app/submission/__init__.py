@@ -3,6 +3,7 @@
 
 Authors: AiiDAlab team
 """
+
 from __future__ import annotations
 
 import os
@@ -198,6 +199,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
             for name, code_widget in self.codes.items():
+                if not DEFAULT_PARAMETERS["codes"].get(name):
+                    continue
                 try:
                     code_widget.refresh()
                     code_widget.value = orm.load_code(

@@ -134,9 +134,9 @@ def generate_report_parameters(qeapp_wc):
         )["bands_kpoints_distance"]
 
     if "pdos" in qeapp_wc.inputs:
-        report[
-            "nscf_kpoints_distance"
-        ] = qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
+        report["nscf_kpoints_distance"] = (
+            qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
+        )
     return report
 
 

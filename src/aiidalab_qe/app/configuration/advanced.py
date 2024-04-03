@@ -3,6 +3,7 @@
 
 Authors: AiiDAlab team
 """
+
 import os
 
 import ipywidgets as ipw
@@ -271,38 +272,41 @@ class AdvancedSettings(Panel):
         # Set the pseudos
         if self.pseudo_setter.pseudos:
             parameters["pw"]["pseudos"] = self.pseudo_setter.pseudos
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "ecutwfc"
-            ] = self.pseudo_setter.ecutwfc
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "ecutrho"
-            ] = self.pseudo_setter.ecutrho
+            parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = (
+                self.pseudo_setter.ecutwfc
+            )
+            parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = (
+                self.pseudo_setter.ecutrho
+            )
         # if override is not ticked, use the default value
         parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
 
         if self.van_der_waals.value in ["none", "ts-vdw"]:
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "vdw_corr"
-            ] = self.van_der_waals.value
+            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = (
+                self.van_der_waals.value
+            )
         else:
             parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "dftd3_version"
-            ] = self.dftd3_version[self.van_der_waals.value]
+            parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] = (
+                self.dftd3_version[self.van_der_waals.value]
+            )
 
         # there are two choose, use link or parent
         if self.spin_type == "collinear":
-            parameters[
-                "initial_magnetic_moments"
-            ] = self.magnetization.get_magnetization()
+            parameters["initial_magnetic_moments"] = (
+                self.magnetization.get_magnetization()
+            )
         parameters["kpoints_distance"] = self.value.get("kpoints_distance")
         if self.electronic_type == "metal":
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "smearing"
-            ] = self.smearing.smearing_value
-            parameters["pw"]["parameters"]["SYSTEM"][
-                "degauss"
-            ] = self.smearing.degauss_value
+
+            # smearing type setting
+            parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = (
+                self.smearing.smearing_value
+            )
+            # smearing degauss setting
+            parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = (
+                self.smearing.degauss_value
+            )
 
         # Set tot_magnetization for collinear simulations.
         if self.spin_type == "collinear":
