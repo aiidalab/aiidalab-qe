@@ -23,7 +23,7 @@ def install_pseudos(pseudo_group="pseudo_demo_pbe"):
     def run_(*args, **kwargs):
         return run(*args, env=env, capture_output=True, check=True, **kwargs)
 
-    run_(["verdi", "archive", "import", url])
+    run_(["verdi", "archive", "import", url, "--no-import-group"])
 
 
 class Setting(Panel):
