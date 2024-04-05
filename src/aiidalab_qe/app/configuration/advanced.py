@@ -465,7 +465,7 @@ class MagnetizationSettings(ipw.VBox):
                 ("Starting Magnetization", "starting_magnetization"),
                 ("Tot. Magnetization", "tot_magnetization"),
             ],
-            value="tot_magnetization",
+            value="starting_magnetization",
             style={"description_width": "initial"},
         )
         self.description = ipw.HTML(self._DEFAULT_DESCRIPTION)
