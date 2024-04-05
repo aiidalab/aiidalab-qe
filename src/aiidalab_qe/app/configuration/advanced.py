@@ -451,7 +451,7 @@ class MagnetizationSettings(ipw.VBox):
     def __init__(self, **kwargs):
         self.input_structure = orm.StructureData()
         self.input_structure_labels = []
-        self.tot_magnetization = ipw.BoundedFloatText(
+        self.tot_magnetization = ipw.BoundedIntText(
             min=0,
             max=100,
             step=1,
