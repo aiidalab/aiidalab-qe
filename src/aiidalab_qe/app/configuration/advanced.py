@@ -465,7 +465,7 @@ class MagnetizationSettings(ipw.VBox):
                 ("Starting Magnetization", "starting_magnetization"),
                 ("Tot. Magnetization", "tot_magnetization"),
             ],
-            value="starting_magnetization",
+            value="tot_magnetization",
             style={"description_width": "initial"},
         )
         self.description = ipw.HTML(self._DEFAULT_DESCRIPTION)
@@ -523,7 +523,7 @@ class MagnetizationSettings(ipw.VBox):
         return kinds_widget
 
     @tl.observe("electronic_type")
-    def _spin_type_changed(self, change):
+    def _electronic_type_changed(self, change):
         with self.magnetization_out:
             clear_output()
             if change["new"] == "metal":
