@@ -556,6 +556,7 @@ class MagnetizationSettings(ipw.VBox):
     def _update_widget(self, change):
         self.input_structure = change["new"]
         self.update_kinds_widget()
+        self.display_kinds()
 
     def get_magnetization(self):
         """Method to generate the dictionary with the initial magnetic moments"""
