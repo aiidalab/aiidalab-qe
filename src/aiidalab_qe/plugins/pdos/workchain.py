@@ -94,7 +94,6 @@ def get_builder(codes, structure, parameters, **kwargs):
         # update resources
         update_resources(pdos, codes)
 
-
         if (
             scf_overrides["pw"]["parameters"]["SYSTEM"].get("tot_magnetization")
             is not None
