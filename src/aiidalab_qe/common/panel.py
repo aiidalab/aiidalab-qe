@@ -5,6 +5,7 @@ Authors:
 
     AiiDAlab Team
 """
+
 import ipywidgets as ipw
 
 DEFAULT_PARAMETERS = {}

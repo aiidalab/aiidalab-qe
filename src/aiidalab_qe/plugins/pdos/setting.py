@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Panel for Pdos plugin."""
+
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
@@ -57,7 +58,7 @@ class Setting(Panel):
         mesh = create_kpoints_from_distance.process_class._func(
             self.input_structure,
             orm.Float(self.nscf_kpoints_distance.value),
-            orm.Bool(True),
+            orm.Bool(False),
         )
         self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
 

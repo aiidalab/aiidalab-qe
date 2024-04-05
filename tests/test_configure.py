@@ -39,9 +39,9 @@ def test_set_configuration_parameters():
     new_parameters = wg.get_configuration_parameters()
     assert parameters == new_parameters
     # test pseudodojo
-    parameters["advanced"][
-        "pseudo_family"
-    ] = f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf"
+    parameters["advanced"]["pseudo_family"] = (
+        f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf"
+    )
     wg.set_configuration_parameters(parameters)
     new_parameters = wg.get_configuration_parameters()
     assert parameters == new_parameters

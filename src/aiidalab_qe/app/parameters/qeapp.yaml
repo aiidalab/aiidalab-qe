@@ -21,12 +21,13 @@ advanced:
         functional: PBEsol
         accuracy: efficiency
     tot_charge: 0
+    vdw_corr: none
 
 ## Computational resources
 codes:
-    dos:
-        code: dos-7.2@localhost
-    projwfc:
-        code: projwfc-7.2@localhost
-    pw:
-        code: pw-7.2@localhost
+    dos: dos-7.2@localhost
+    projwfc: projwfc-7.2@localhost
+    pw: pw-7.2@localhost
+    pp: pp-7.2@localhost
+    xspectra: xspectra-7.2@localhost
+    hp: hp-7.2@localhost

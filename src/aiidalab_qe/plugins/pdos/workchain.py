@@ -94,6 +94,13 @@ def get_builder(codes, structure, parameters, **kwargs):
         # update resources
         update_resources(pdos, codes)
 
+
+        if (
+            scf_overrides["pw"]["parameters"]["SYSTEM"].get("tot_magnetization")
+            is not None
+        ):
+            pdos.scf["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
+            pdos.nscf["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
     else:
         raise ValueError("The dos_code and projwfc_code are required.")
     return pdos

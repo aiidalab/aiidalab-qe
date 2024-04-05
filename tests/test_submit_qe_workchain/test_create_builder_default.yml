@@ -1,159 +1,34 @@
+advanced:
+  clean_workdir: false
+  initial_magnetic_moments: null
+  kpoints_distance: 0.12
+  pseudo_family: SSSP/1.3/PBEsol/efficiency
+  pw:
+    parameters:
+      SYSTEM:
+        degauss: 0.015
+        ecutrho: 240.0
+        ecutwfc: 30.0
+        smearing: methfessel-paxton
+        tot_charge: 0.0
+        vdw_corr: none
+    pseudos: {}
 bands:
-  bands:
-    pw:
-      parallelization: {}
-      parameters:
-        CONTROL:
-          calculation: bands
-          etot_conv_thr: 2.0e-05
-          forc_conv_thr: 0.0001
-          restart_mode: from_scratch
-          tprnfor: true
-          tstress: true
-        ELECTRONS:
-          conv_thr: 4.0e-10
-          diago_full_acc: true
-          diagonalization: paro
-          electron_maxstep: 80
-          mixing_beta: 0.4
-          startingpot: file
-        SYSTEM:
-          degauss: 0.01
-          ecutrho: 240.0
-          ecutwfc: 30.0
-          nosym: false
-          occupations: smearing
-          smearing: cold
-          tot_charge: 0.0
-      pseudos:
-        Si: Si.upf
-  bands_kpoints_distance: 0.025
-  nbands_factor: 3.0
-  scf:
-    kpoints_distance: 0.12
-    kpoints_force_parity: false
-    pw:
-      parallelization: {}
-      parameters:
-        CONTROL:
-          calculation: scf
-          etot_conv_thr: 2.0e-05
-          forc_conv_thr: 0.0001
-          tprnfor: true
-          tstress: true
-        ELECTRONS:
-          conv_thr: 4.0e-10
-          electron_maxstep: 80
-          mixing_beta: 0.4
-        SYSTEM:
-          degauss: 0.015
-          ecutrho: 240.0
-          ecutwfc: 30.0
-          nosym: false
-          occupations: smearing
-          smearing: methfessel-paxton
-          tot_charge: 0.0
-      pseudos:
-        Si: Si.upf
-clean_workdir: false
+  kpath_2d: hexagonal
+codes:
+  xspectra: null
 pdos:
-  dos:
-    parameters:
-      DOS:
-        DeltaE: 0.02
-  nscf:
-    kpoints_distance: 0.1
-    kpoints_force_parity: false
-    pw:
-      parallelization: {}
-      parameters:
-        CONTROL:
-          calculation: nscf
-          etot_conv_thr: 2.0e-05
-          forc_conv_thr: 0.0001
-          restart_mode: from_scratch
-          tprnfor: true
-          tstress: true
-        ELECTRONS:
-          conv_thr: 4.0e-10
-          electron_maxstep: 80
-          mixing_beta: 0.4
-        SYSTEM:
-          ecutrho: 240.0
-          ecutwfc: 30.0
-          nosym: true
-          occupations: tetrahedra
-          tot_charge: 0.0
-      pseudos:
-        Si: Si.upf
-  projwfc:
-    parameters:
-      PROJWFC:
-        DeltaE: 0.02
-  scf:
-    kpoints_distance: 0.12
-    kpoints_force_parity: false
-    pw:
-      parallelization: {}
-      parameters:
-        CONTROL:
-          calculation: scf
-          etot_conv_thr: 2.0e-05
-          forc_conv_thr: 0.0001
-          restart_mode: from_scratch
-          tprnfor: true
-          tstress: true
-        ELECTRONS:
-          conv_thr: 4.0e-10
-          electron_maxstep: 80
-          mixing_beta: 0.4
-        SYSTEM:
-          degauss: 0.015
-          ecutrho: 240.0
-          ecutwfc: 30.0
-          nosym: false
-          occupations: smearing
-          smearing: methfessel-paxton
-          tot_charge: 0.0
-      pseudos:
-        Si: Si.upf
-properties:
-- bands
-- pdos
-- relax
-relax:
-  base:
-    kpoints_distance: 0.12
-    kpoints_force_parity: false
-    pw:
-      parallelization: {}
-      parameters:
-        CELL:
-          cell_dofree: all
-          press_conv_thr: 0.5
-        CONTROL:
-          calculation: vc-relax
-          etot_conv_thr: 2.0e-05
-          forc_conv_thr: 0.0001
-          tprnfor: true
-          tstress: true
-        ELECTRONS:
-          conv_thr: 4.0e-10
-          electron_maxstep: 80
-          mixing_beta: 0.4
-        SYSTEM:
-          degauss: 0.015
-          ecutrho: 240.0
-          ecutwfc: 30.0
-          nosym: false
-          occupations: smearing
-          smearing: methfessel-paxton
-          tot_charge: 0.0
-      pseudos:
-        Si: Si.upf
-  base_final_scf:
-    pw:
-      pseudos: {}
-  max_meta_convergence_iterations: 5
-  meta_convergence: true
-  volume_convergence: 0.02
+  nscf_kpoints_distance: 0.1
+resources:
+  npools: 1
+  num_machines: 1
+  num_mpiprocs_per_machine: 2
+workchain:
+  electronic_type: metal
+  properties:
+  - bands
+  - pdos
+  - relax
+  protocol: moderate
+  relax_type: positions_cell
+  spin_type: none
