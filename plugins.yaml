@@ -8,7 +8,7 @@ aiida-bader:
 
 aiidalab-qe-vibroscopy:
     description: Plugin to compute vibrational properties of materials via the aiida-vibroscopy AiiDA plugin
-    author: Miki Bonacci
+    author: Miki Bonacci, Andres Ortega Guerrero
     github: https://github.com/mikibonacci/aiidalab-qe-vibroscopy
 
 aiidalab-qe-muon:
