@@ -100,6 +100,6 @@ def get_builder(codes, structure, parameters, **kwargs):
 
 workchain_and_builder = {
     "workchain": XpsWorkChain,
-    "exclude": ("clean_workdir", "structure", "relax"),
+    "exclude": ("structure", "relax"),
     "get_builder": get_builder,
 }
