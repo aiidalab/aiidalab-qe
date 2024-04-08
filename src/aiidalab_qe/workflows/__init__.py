@@ -158,20 +158,20 @@ class QeAppWorkChain(WorkChain):
         if properties is None:
             properties = []
         builder.properties = orm.List(list=properties)
+        # clean workdir
+        clean_workdir = orm.Bool(parameters["advanced"]["clean_workdir"])
+        builder.clean_workdir = clean_workdir
         # add plugin workchain
         for name, entry_point in plugin_entries.items():
             if name in properties:
                 plugin_builder = entry_point["get_builder"](
                     codes, structure, copy.deepcopy(parameters), **kwargs
                 )
+                # assume all builder has a input "clean_workdir"
+                plugin_builder.clean_workdir = clean_workdir
                 setattr(builder, name, plugin_builder)
             else:
                 builder.pop(name, None)
-
-        # XXX (unkcpz) I smell not proper design here since I have to look at
-        # configuration step to know what show be set here.
-        clean_workdir = parameters["advanced"]["clean_workdir"]
-        builder.clean_workdir = orm.Bool(clean_workdir)
 
         return builder
 
