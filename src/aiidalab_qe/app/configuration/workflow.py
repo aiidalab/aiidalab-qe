@@ -104,9 +104,11 @@ class WorkChainSettings(Panel):
             )
 
             # observer change to update the reminder text
-            def update_reminder_text(change, reminder_text=reminder_text):
+            def update_reminder_text(change, reminder_text=reminder_text, name=name):
                 if change["new"]:
-                    reminder_text.value = """(There is a setting panel available for this property on the top.)"""
+                    reminder_text.value = (
+                        f"""Customize {name} settings in the panel above if needed."""
+                    )
                 else:
                     reminder_text.value = ""
 
