@@ -217,6 +217,11 @@ def get_builder(codes, structure, parameters, **kwargs):
     bands.pop("relax")
     bands.pop("structure", None)
     bands.pop("clean_workdir", None)
+
+    if scf_overrides["pw"]["parameters"]["SYSTEM"].get("tot_magnetization") is not None:
+        bands.scf["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
+        bands.bands["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
+
     return bands
 
 
