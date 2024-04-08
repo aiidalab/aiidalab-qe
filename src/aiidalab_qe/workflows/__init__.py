@@ -167,8 +167,10 @@ class QeAppWorkChain(WorkChain):
                 plugin_builder = entry_point["get_builder"](
                     codes, structure, copy.deepcopy(parameters), **kwargs
                 )
-                # assume all builder has a input "clean_workdir"
-                plugin_builder.clean_workdir = clean_workdir
+                # check if the plugin has a clean_workdir input
+                plugin_workchain = entry_point["workchain"]
+                if plugin_workchain.spec().has_input("clean_workdir"):
+                    plugin_builder.clean_workdir = clean_workdir
                 setattr(builder, name, plugin_builder)
             else:
                 builder.pop(name, None)
