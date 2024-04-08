@@ -362,4 +362,8 @@ Further Reading
 QuantumESPRESSO app comes with several built-in plugins, which can be found in the ``aiidalab_qe.plugins`` folder.
 You can also use them as a start point to create your own plugins.
 
+
+You can register your plugin to facilitate its discovery and use by the community.
+Please refer to the :doc:`Plugin registry </development/plugin_registry>` for more details.
+
 .. _aiidalab-qe-plugin-demos: https://github.com/aiidalab/aiidalab-qe-plugin-demos
