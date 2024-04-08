@@ -111,7 +111,7 @@ def update_inputs(inputs, ctx):
 
 workchain_and_builder = {
     "workchain": XspectraCrystalWorkChain,
-    "exclude": ("clean_workdir", "structure", "relax"),
+    "exclude": ("structure", "relax"),
     "get_builder": get_builder,
     "update_inputs": update_inputs,
 }
