@@ -350,7 +350,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 # check if the code is installed and usable
                 # note: if code is imported from another user, it is not usable and thus will not be
                 # treated as an option in the ComputationalResourcesWidget.
-                if _get_code_uuid(codes.get(name)) in code.code_select_dropdown.options:
+                code_options = [o[1] for o in self.pw_code.code_select_dropdown.options]
+                if _get_code_uuid(codes.get(name)) in code_options:
                     code.value = _get_code_uuid(codes.get(name))
 
     def update_codes_display(self):
