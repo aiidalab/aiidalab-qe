@@ -117,7 +117,7 @@ class AdvancedSettings(Panel):
         self.hubbard_widget = HubbardWidget()
         ipw.dlink(
             (self.override, "value"),
-            (self.hubbard_widget.hubbard, "disabled"),
+            (self.hubbard_widget.activate_hubbard, "disabled"),
             lambda override: not override,
         )
         # Total change setting widget
@@ -279,7 +279,7 @@ class AdvancedSettings(Panel):
         # Set total charge
         parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
 
-        if self.hubbard_widget.hubbard.value:
+        if self.hubbard_widget.activate_hubbard.value:
             parameters["hubbard_parameters"] = self.hubbard_widget.hubbard_dict
             if self.hubbard_widget.eigenvalues_label.value:
                 parameters["pw"]["parameters"]["SYSTEM"].update(
@@ -299,8 +299,6 @@ class AdvancedSettings(Panel):
             parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = (
                 self.pseudo_setter.ecutrho
             )
-        # if override is not ticked, use the default value
-        parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] = self.total_charge.value
 
         if self.van_der_waals.value in ["none", "ts-vdw"]:
             parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = (
@@ -403,7 +401,7 @@ class AdvancedSettings(Panel):
             )
 
         if parameters.get("hubbard_parameters"):
-            self.hubbard_widget.hubbard.value = True
+            self.hubbard_widget.activate_hubbard.value = True
             self.hubbard_widget.set_hubbard_widget(
                 parameters["hubbard_parameters"]["hubbard_u"]
             )

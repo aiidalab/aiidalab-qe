@@ -153,7 +153,7 @@ def test_advanced_kpoints_mesh():
     assert w.mesh_grid.value == "Mesh [5, 5, 5]"
 
 
-def test_advanced_hubbard_widget():
+def test_advanced_hubbard_widget(generate_structure_data):
     """Test Hubbard widget."""
     from aiida import orm
 
@@ -161,25 +161,12 @@ def test_advanced_hubbard_widget():
 
     w = AdvancedSettings()
 
-    # Create a StructureData for AdvancedSettings (LiCoO2)
-
-    a, b, c, d = 1.4060463552647, 0.81178124180108, 4.6012019181836, 1.6235624832021
-    cell = [[a, -b, c], [0.0, d, c], [-a, -b, c]]
-    sites = [
-        ["Co", "Co", (0, 0, 0)],
-        ["O", "O", (0, 0, 3.6020728736387)],
-        ["O", "O", (0, 0, 10.201532881212)],
-        ["Li", "Li", (0, 0, 6.9018028772754)],
-    ]
-    structure = orm.StructureData(cell=cell)
-
-    for site in sites:
-        structure.append_atom(position=site[2], symbols=site[0], name=site[1])
+    structure = generate_structure_data(name="LiCoO2")
 
     w.input_structure = structure
 
     # Activate Hubbard U widget
-    w.hubbard_widget.hubbard.value = True
+    w.hubbard_widget.activate_hubbard.value = True
 
     assert w.hubbard_widget.input_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
 

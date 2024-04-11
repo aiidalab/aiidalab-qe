@@ -629,7 +629,7 @@ class HubbardWidget(ipw.VBox):
             value="For transition metals and lanthanoids, the starting eigenvalues can be defined (Magnetic calculation).",
             layout=ipw.Layout(width="auto"),
         )
-        self.hubbard = ipw.Checkbox(
+        self.activate_hubbard = ipw.Checkbox(
             description="",
             tooltip="Use Hubbard DFT+U.",
             indent=False,
@@ -653,14 +653,14 @@ class HubbardWidget(ipw.VBox):
                 ipw.HBox(
                     children=[
                         ipw.HTML("<b>Hubbard (DFT+U)</b>"),
-                        self.hubbard,
+                        self.activate_hubbard,
                     ]
                 ),
                 self.hubbard_widget_out,
                 self.eigen_values_widget_out,
             ]
         )
-        self.hubbard.observe(self.toggle_hubbard_widgets, names="value")
+        self.activate_hubbard.observe(self.toggle_hubbard_widgets, names="value")
         self.eigenvalues_label.observe(self.toggle_eigenvalues_widgets, names="value")
 
     def create_hubbard_widget(self):
@@ -865,7 +865,7 @@ class HubbardWidget(ipw.VBox):
         self.input_structure = change
         self.hubbard_widget = self.create_hubbard_widget()
         self.eigenvalues_label.value = False
-        if self.hubbard.value:
+        if self.activate_hubbard.value:
             with self.hubbard_widget_out:
                 clear_output()
                 display(self.hubbard_widget)
@@ -995,7 +995,7 @@ class HubbardWidget(ipw.VBox):
 
     def reset(self):
         """Reset the widget."""
-        self.hubbard.value = False
+        self.activate_hubbard.value = False
         self.eigenvalues_label.value = False
         self.input_structure = None
         self.hubbard_widget = self.create_hubbard_widget()
@@ -1007,7 +1007,7 @@ class HubbardWidget(ipw.VBox):
 
     @property
     def hubbard_dict(self) -> dict:
-        if self.hubbard.value:
+        if self.activate_hubbard.value:
             hubbard_dict = {
                 "hubbard_u": self._get_hubbard_u(),
             }
