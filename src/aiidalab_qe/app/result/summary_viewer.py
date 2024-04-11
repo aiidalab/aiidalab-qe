@@ -129,6 +129,10 @@ def generate_report_parameters(qeapp_wc):
     if hubbard_dict:
         hubbard_parameters = hubbard_dict["hubbard_u"]
         report["hubbard_u"] = hubbard_parameters
+    report["tot_magnetization"] = pw_parameters["SYSTEM"].get(
+        "tot_magnetization", False
+    )
+
     # hard code bands and pdos
     if "bands" in qeapp_wc.inputs:
         report["bands_kpoints_distance"] = PwBandsWorkChain.get_protocol_inputs(
