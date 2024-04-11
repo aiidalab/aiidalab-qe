@@ -155,7 +155,6 @@ def test_advanced_kpoints_mesh():
 
 def test_advanced_hubbard_widget(generate_structure_data):
     """Test Hubbard widget."""
-    from aiida import orm
 
     from aiidalab_qe.app.configuration.advanced import AdvancedSettings
 
