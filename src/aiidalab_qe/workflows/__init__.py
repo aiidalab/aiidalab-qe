@@ -128,7 +128,7 @@ class QeAppWorkChain(WorkChain):
             hubbard_parameters = hubbard_dict["hubbard_u"]
             hubbard_structure = HubbardStructureData.from_structure(structure)
             for key, value in hubbard_parameters.items():
-                kind, orbital = key.split(" - ")
+                kind, orbital = key.rsplit("-", 1)
                 hubbard_structure.initialize_onsites_hubbard(
                     atom_name=kind,
                     atom_manifold=orbital,
