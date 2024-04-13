@@ -43,12 +43,21 @@ class BandPdosPlotly:
         self._dos_yaxis = self._dos_yaxis()
 
     def _get_fermi_energy(self):
-        fermi_energy = (
-            self.pdos_data["fermi_energy"]
-            if self.pdos_data
-            else self.bands_data["fermi_energy"]
-        )
-        return fermi_energy
+        """Function to return the Fermi energy information depending on the data available."""
+        fermi_data = {}
+        if self.pdos_data:
+            if "fermi_energy_up" in self.pdos_data:
+                fermi_data["fermi_energy_up"] = self.pdos_data["fermi_energy_up"]
+                fermi_data["fermi_energy_down"] = self.pdos_data["fermi_energy_down"]
+            else:
+                fermi_data["fermi_energy"] = self.pdos_data["fermi_energy"]
+        else:
+            if "fermi_energy_up" in self.bands_data:
+                fermi_data["fermi_energy_up"] = self.bands_data["fermi_energy_up"]
+                fermi_data["fermi_energy_down"] = self.bands_data["fermi_energy_down"]
+            else:
+                fermi_data["fermi_energy"] = self.bands_data["fermi_energy"]
+        return fermi_data
 
     def _band_xaxis(self):
         """Function to return the xaxis for the bands plot."""
@@ -267,7 +276,7 @@ class BandPdosPlotly:
                     scatter_objects.append(
                         go.Scatter(
                             x=band["x"],
-                            y=bands_np - self.fermi_energy,
+                            y=bands_np - self.fermi_energy["fermi_energy"],
                             mode="lines",
                             line=dict(
                                 color=self.SETTINGS["bands_linecolor"],
@@ -286,16 +295,15 @@ class BandPdosPlotly:
                 color_first_half = self.SETTINGS["bands_up_linecolor"]
                 # Blue line for the Spin down
                 color_second_half = self.SETTINGS["bands_down_linecolor"]
-
-                for bands, color in zip(
-                    (first_half, second_half), (color_first_half, color_second_half)
-                ):
-                    for band_values in bands:
-                        bands_np = np.array(band_values)
+                if "fermi_energy" in self.fermi_energy:
+                    for bands, color in zip(
+                        (first_half, second_half), (color_first_half, color_second_half)
+                    ):
+                        bands_np = np.array(bands)
                         scatter_objects.append(
                             go.Scatter(
                                 x=band["x"],
-                                y=bands_np - self.fermi_energy,
+                                y=bands_np - self.fermi_energy["fermi_energy"],
                                 mode="lines",
                                 line=dict(
                                     color=color,
@@ -305,6 +313,30 @@ class BandPdosPlotly:
                                 showlegend=False,
                             )
                         )
+                else:
+                    for bands, color, fermi_energy in zip(
+                        (first_half, second_half),
+                        (color_first_half, color_second_half),
+                        (
+                            self.fermi_energy["fermi_energy_up"],
+                            self.fermi_energy["fermi_energy_down"],
+                        ),
+                    ):
+                        for band_values in bands:
+                            bands_np = np.array(band_values)
+                            scatter_objects.append(
+                                go.Scatter(
+                                    x=band["x"],
+                                    y=bands_np - fermi_energy,
+                                    mode="lines",
+                                    line=dict(
+                                        color=color,
+                                        shape="spline",
+                                        smoothing=1.3,
+                                    ),
+                                    showlegend=False,
+                                )
+                            )
 
         if plot_type == "bands_only":
             fig.add_traces(scatter_objects)
@@ -325,12 +357,41 @@ class BandPdosPlotly:
         for i, trace in enumerate(dos_data):
             dos_np = np.array(trace["x"])
             fill = "tozerox" if plot_type == "combined" else "tozeroy"
-            x_data = (
-                trace["y"] if plot_type == "combined" else dos_np - self.fermi_energy
-            )
-            y_data = (
-                dos_np - self.fermi_energy if plot_type == "combined" else trace["y"]
-            )
+
+            if "fermi_energy" in self.fermi_energy:
+                y_data = (
+                    dos_np - self.fermi_energy["fermi_energy"]
+                    if plot_type == "combined"
+                    else trace["y"]
+                )
+                x_data = (
+                    trace["y"]
+                    if plot_type == "combined"
+                    else dos_np - self.fermi_energy["fermi_energy"]
+                )
+            else:
+                if trace["label"].endswith("(↑)"):
+                    y_data = (
+                        dos_np - self.fermi_energy["fermi_energy_up"]
+                        if plot_type == "combined"
+                        else trace["y"]
+                    )
+                    x_data = (
+                        trace["y"]
+                        if plot_type == "combined"
+                        else dos_np - self.fermi_energy["fermi_energy_up"]
+                    )
+                else:
+                    y_data = (
+                        dos_np - self.fermi_energy["fermi_energy_down"]
+                        if plot_type == "combined"
+                        else trace["y"]
+                    )
+                    x_data = (
+                        trace["y"]
+                        if plot_type == "combined"
+                        else dos_np - self.fermi_energy["fermi_energy_down"]
+                    )
             scatter_objects[i] = go.Scatter(
                 x=x_data,
                 y=y_data,
@@ -632,9 +693,15 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
         )
 
     data_dict = {
-        "fermi_energy": pdos.nscf.output_parameters["fermi_energy"],
         "dos": dos,
     }
+    if "fermi_energy_up" in pdos.nscf.output_parameters:
+        data_dict["fermi_energy_up"] = pdos.nscf.output_parameters["fermi_energy_up"]
+        data_dict["fermi_energy_down"] = pdos.nscf.output_parameters[
+            "fermi_energy_down"
+        ]
+    else:
+        data_dict["fermi_energy"] = pdos.nscf.output_parameters["fermi_energy"]
 
     return json.loads(json.dumps(data_dict))
 
@@ -802,7 +869,11 @@ def export_bands_data(outputs, fermi_energy=None):
 
     data = json.loads(outputs.band_structure._exportcontent("json", comments=False)[0])
     # The fermi energy from band calculation is not robust.
-    data["fermi_energy"] = outputs.band_parameters["fermi_energy"] or fermi_energy
+    if "fermi_energy_up" in outputs.band_parameters:
+        data["fermi_energy_up"] = outputs.band_parameters["fermi_energy_up"]
+        data["fermi_energy_down"] = outputs.band_parameters["fermi_energy_down"]
+    else:
+        data["fermi_energy"] = outputs.band_parameters["fermi_energy"] or fermi_energy
     data["pathlabels"] = get_bands_labeling(data)
     return data
 
@@ -816,8 +887,8 @@ def get_bands_labeling(bandsdata: dict) -> list:
     UNICODE_SYMBOL = {
         "GAMMA": "\u0393",
         "DELTA": "\u0394",
-        "LAMBDA": "\u039B",
-        "SIGMA": "\u03A3",
+        "LAMBDA": "\u039b",
+        "SIGMA": "\u03a3",
         "EPSILON": "\u0395",
     }
     paths = bandsdata.get("paths")

@@ -11,3 +11,4 @@ This guide explains the architecture of the application and how to extend the fu
 
     architecture
     plugin
+    plugin_registry
