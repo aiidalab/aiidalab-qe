@@ -238,7 +238,8 @@ class QeAppWorkChain(WorkChain):
                 self.exposed_inputs(plugin_workchain, namespace=name)
             )
             inputs.metadata.call_link_label = name
-            inputs.structure = self.ctx.current_structure
+            if entry_point.get("update_inputs"):
+                entry_point["update_inputs"](inputs, self.ctx)
             inputs = prepare_process_inputs(plugin_workchain, inputs)
             running = self.submit(plugin_workchain, **inputs)
             self.report(f"launching plugin {name} <{running.pk}>")
