@@ -35,21 +35,25 @@ def check_codes(pw_code, dos_code, projwfc_code):
 def update_resources(builder, codes):
     builder.scf.pw.metadata.options.resources = {
         "num_machines": codes.get("pw")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
     }
     builder.scf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
     builder.nscf.pw.metadata.options.resources = {
         "num_machines": codes.get("pw")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
     }
     builder.nscf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
     builder.dos.metadata.options.resources = {
         "num_machines": codes.get("dos")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("dos")["cpus"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
     }
     builder.projwfc.metadata.options.resources = {
         "num_machines": codes.get("projwfc")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("projwfc")["cpus"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
     }
     # disable the parallelization setting for projwfc
     # npool = codes["pw"]["parallelization"]["npool"]

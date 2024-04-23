@@ -175,12 +175,14 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
 def update_resources(builder, codes):
     builder.scf.pw.metadata.options.resources = {
         "num_machines": codes.get("pw")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
     }
     builder.scf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
     builder.bands.pw.metadata.options.resources = {
         "num_machines": codes.get("pw")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
     }
     builder.bands.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
 

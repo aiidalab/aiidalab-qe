@@ -385,7 +385,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # update resources
         builder.relax.base.pw.metadata.options.resources = {
             "num_machines": codes.get("pw")["nodes"],
-            "num_mpiprocs_per_machine": codes.get("pw")["cpus"],
+            "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+            "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
         }
         builder.relax.base.pw.parallelization = orm.Dict(
             dict=codes["pw"]["parallelization"]

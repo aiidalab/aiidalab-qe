@@ -630,7 +630,7 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         the number of nodes and the number of cpus.
         """
         self.code_selection = ComputationalResourcesWidget(**kwargs)
-        self.code_selection.layout.width = "70%"
+        self.code_selection.layout.width = "80%"
 
         self.num_nodes = ipw.BoundedIntText(
             value=1, step=1, min=1, max=1000, description="Nodes", width="10%"
@@ -638,6 +638,10 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         self.num_cpus = ipw.BoundedIntText(
             value=1, step=1, min=1, description="CPUs", width="10%"
         )
+        self.btn_setup_resource_detail = ipw.ToggleButton(description="More")
+        self.btn_setup_resource_detail.observe(self._setup_resource_detail, "value")
+        self._setup_resource_detail_output = ipw.Output(layout={"width": "500px"})
+
         # combine code, nodes and cpus
         children = [
             ipw.HBox(
@@ -645,11 +649,15 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
                     self.code_selection,
                     self.num_nodes,
                     self.num_cpus,
+                    self.btn_setup_resource_detail,
                 ]
-            )
+            ),
+            self._setup_resource_detail_output,
         ]
         super().__init__(children=children, **kwargs)
 
+        self.resource_detail = ResourceDetailSettings()
+        traitlets.dlink((self.num_cpus, "value"), (self.resource_detail.ntasks_per_node, "value"))
         traitlets.link((self.code_selection, "value"), (self, "value"))
 
     @traitlets.observe("value")
@@ -679,11 +687,13 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
 
     def get_parameters(self):
         """Return the parameters."""
-        return {
+        parameters = {
             "code": self.code_selection.value,
             "nodes": self.num_nodes.value,
             "cpus": self.num_cpus.value,
         }
+        parameters.update(self.resource_detail.parameters)
+        return parameters
 
     @parameters.setter
     def parameters(self, parameters):
@@ -696,7 +706,79 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             self.num_nodes.value = parameters["nodes"]
         if "cpus" in parameters:
             self.num_cpus.value = parameters["cpus"]
+        if "ntasks_per_node" in parameters:
+            self.resource_detail.ntasks_per_node = parameters["ntasks_per_node"]
+        if "cpus_per_task" in parameters:
+            self.resource_detail.cpus_per_task = parameters["cpus_per_task"]
 
+    def _setup_resource_detail(self, _=None):
+        with self._setup_resource_detail_output:
+            clear_output()
+            if self.btn_setup_resource_detail.value:
+                self._setup_resource_detail_output.layout = {
+                    "width": "500px",
+                    "border": "1px solid gray",
+                }
+
+                children = [
+                    self.resource_detail,
+                ]
+                display(*children)
+            else:
+                self._setup_resource_detail_output.layout = {
+                    "width": "500px",
+                    "border": "none",
+                }
+
+
+class ResourceDetailSettings(ipw.VBox):
+    """Widget for setting the Resource detail."""
+
+    prompt = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the parameters for the scheduler (only for advanced user).
+        </p></div>"""
+    )
+
+    def __init__(self, **kwargs):
+        self.ntasks_per_node = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=1000, description="ntasks-per-node",
+            style={"description_width": "100px"},
+        )
+        self.cpus_per_task = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="cpus-per-task",
+            style={"description_width": "100px"},
+        )
+        super().__init__(
+            children=[
+                self.prompt,
+                self.ntasks_per_node,
+                self.cpus_per_task
+            ],
+            **kwargs
+        )
+    
+    @property
+    def parameters(self):
+        return self.get_parameters()
+    
+    def get_parameters(self):
+        """Return the parameters."""
+        return {
+            "ntasks_per_node": self.ntasks_per_node.value,
+            "cpus_per_task": self.cpus_per_task.value,
+        }
+    
+    @parameters.setter
+    def parameters(self, parameters):
+        self.ntasks_per_node.value = parameters.get("ntasks_per_node", 1)
+        self.cpus_per_task.value = parameters.get("cpus_per_task", 1)
+
+    def reset(self):
+        """Reset the settings."""
+        self.ntasks_per_node.value = 1
+        self.cpus_per_task.value = 1
 
 class ParallelizationSettings(ipw.VBox):
     """Widget for setting the parallelization settings."""
