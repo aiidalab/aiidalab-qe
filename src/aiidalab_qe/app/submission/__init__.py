@@ -18,7 +18,10 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget, QEAppComputationalResourcesWidget
+from aiidalab_qe.common.widgets import (
+    PwCodeResourceSetupWidget,
+    QEAppComputationalResourcesWidget,
+)
 from aiidalab_qe.workflows import QeAppWorkChain
 
 
