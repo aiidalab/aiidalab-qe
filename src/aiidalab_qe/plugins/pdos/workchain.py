@@ -105,8 +105,19 @@ def get_builder(codes, structure, parameters, **kwargs):
     return pdos
 
 
+def update_inputs(inputs, ctx):
+    """Update the inputs using context."""
+    inputs.structure = ctx.current_structure
+    inputs.nscf.pw.parameters = inputs.nscf.pw.parameters.get_dict()
+    if ctx.current_number_of_bands:
+        inputs.nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+            "nbnd", ctx.current_number_of_bands
+        )
+
+
 workchain_and_builder = {
     "workchain": PdosWorkChain,
-    "exclude": ("clean_workdir", "structure", "relax"),
+    "exclude": ("structure", "relax"),
     "get_builder": get_builder,
+    "update_inputs": update_inputs,
 }

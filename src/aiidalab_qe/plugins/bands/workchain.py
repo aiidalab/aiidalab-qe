@@ -241,8 +241,19 @@ def get_builder(codes, structure, parameters, **kwargs):
     return bands
 
 
+def update_inputs(inputs, ctx):
+    """Update the inputs using context."""
+    inputs.structure = ctx.current_structure
+    inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
+    if ctx.current_number_of_bands:
+        inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+            "nbnd", ctx.current_number_of_bands
+        )
+
+
 workchain_and_builder = {
     "workchain": PwBandsWorkChain,
-    "exclude": ("clean_workdir", "structure", "relax"),
+    "exclude": ("structure", "relax"),
     "get_builder": get_builder,
+    "update_inputs": update_inputs,
 }

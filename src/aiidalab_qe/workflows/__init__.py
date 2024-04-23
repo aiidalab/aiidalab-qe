@@ -157,20 +157,22 @@ class QeAppWorkChain(WorkChain):
         if properties is None:
             properties = []
         builder.properties = orm.List(list=properties)
+        # clean workdir
+        clean_workdir = orm.Bool(parameters["advanced"]["clean_workdir"])
+        builder.clean_workdir = clean_workdir
         # add plugin workchain
         for name, entry_point in plugin_entries.items():
             if name in properties:
                 plugin_builder = entry_point["get_builder"](
                     codes, structure, copy.deepcopy(parameters), **kwargs
                 )
+                # check if the plugin has a clean_workdir input
+                plugin_workchain = entry_point["workchain"]
+                if plugin_workchain.spec().has_input("clean_workdir"):
+                    plugin_builder.clean_workdir = clean_workdir
                 setattr(builder, name, plugin_builder)
             else:
                 builder.pop(name, None)
-
-        # XXX (unkcpz) I smell not proper design here since I have to look at
-        # configuration step to know what show be set here.
-        clean_workdir = parameters["advanced"]["clean_workdir"]
-        builder.clean_workdir = orm.Bool(clean_workdir)
 
         return builder
 
@@ -235,7 +237,8 @@ class QeAppWorkChain(WorkChain):
                 self.exposed_inputs(plugin_workchain, namespace=name)
             )
             inputs.metadata.call_link_label = name
-            inputs.structure = self.ctx.current_structure
+            if entry_point.get("update_inputs"):
+                entry_point["update_inputs"](inputs, self.ctx)
             inputs = prepare_process_inputs(plugin_workchain, inputs)
             running = self.submit(plugin_workchain, **inputs)
             self.report(f"launching plugin {name} <{running.pk}>")

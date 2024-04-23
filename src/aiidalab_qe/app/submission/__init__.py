@@ -299,13 +299,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         with self.hold_trait_notifications():
             for name, code in self.codes.items():
-                # get code uuid from code label in case of using DEFAULT_PARAMETERS
                 if name not in code_data:
                     continue
-                code_data.get(name)["code"] = _get_code_uuid(
+                # check if the code is installed and usable
+                # note: if code is imported from another user, it is not usable and thus will not be
+                # treated as an option in the ComputationalResourcesWidget.
+                code_options = [o[1] for o in code.code_select_dropdown.options]
+                if _get_code_uuid(code_data.get(name)["code"]) in code_options:
+                    # get code uuid from code label in case of using DEFAULT_PARAMETERS
+                    code_data.get(name)["code"] = _get_code_uuid(
                     code_data.get(name)["code"]
                 )
-                code.parameters = code_data.get(name)
+                    code.parameters = code_data.get(name)
 
     def update_codes_display(self):
         """Hide code if no related property is selected."""
