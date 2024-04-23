@@ -43,7 +43,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Labeling Your Job</h4>
         <p style="line-height: 140%; padding-top: 0px; padding-bottom:
-        10px"> Give your job a label and a brief description. These details not only aid in identifying the job later but also streamline your search process. Adding a description is optional but highly recommended for better clarity.</p>
+        10px"> Label your job and provide a brief description. These details help identify the job later and make the search process easier. While optional, adding a description is recommended for better clarity.</p>
         </div>"""
     )
 
