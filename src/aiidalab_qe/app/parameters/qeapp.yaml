@@ -25,15 +25,15 @@ advanced:
 
 ## Computational resources
 codes:
-    dos: 
+    dos:
         code: dos-7.2@localhost
-    projwfc: 
+    projwfc:
         code: projwfc-7.2@localhost
-    pw: 
+    pw:
         code: pw-7.2@localhost
-    pp: 
+    pp:
         code: pp-7.2@localhost
-    xspectra: 
+    xspectra:
         code: xspectra-7.2@localhost
-    hp: 
+    hp:
         code: hp-7.2@localhost
