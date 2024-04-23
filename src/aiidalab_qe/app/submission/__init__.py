@@ -18,7 +18,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import PWscfWidget, QEAppComputationalResourcesWidget
+from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget, QEAppComputationalResourcesWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
 
@@ -59,7 +59,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
-        self.pw_code = PWscfWidget(
+        self.pw_code = PwCodeResourceSetupWidget(
             description="pw.x:", default_calc_job_plugin="quantumespresso.pw"
         )
 

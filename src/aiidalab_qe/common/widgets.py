@@ -832,7 +832,7 @@ class ParallelizationSettings(ipw.VBox):
         self.npool.value = 1
 
 
-class PWscfWidget(QEAppComputationalResourcesWidget):
+class PwCodeResourceSetupWidget(QEAppComputationalResourcesWidget):
     """ComputationalResources Widget for the pw.x calculation."""
 
     nodes = traitlets.Int(default_value=1)
