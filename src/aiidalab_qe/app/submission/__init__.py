@@ -308,8 +308,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if _get_code_uuid(code_data.get(name)["code"]) in code_options:
                     # get code uuid from code label in case of using DEFAULT_PARAMETERS
                     code_data.get(name)["code"] = _get_code_uuid(
-                    code_data.get(name)["code"]
-                )
+                        code_data.get(name)["code"]
+                    )
                     code.parameters = code_data.get(name)
 
     def update_codes_display(self):
