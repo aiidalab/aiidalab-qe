@@ -71,7 +71,27 @@ def generate_structure_data():
             structure.append_atom(position=(1.28, 1.28, 0.0), symbols="O")
             structure.append_atom(position=(2.9, 2.9, 0.0), symbols="O")
             structure.append_atom(position=(0.81, 3.37, 1.33), symbols="O")
+
+        elif name == "LiCoO2":
+            a, b, c, d = (
+                1.4060463552647,
+                0.81178124180108,
+                4.6012019181836,
+                1.6235624832021,
+            )
+            cell = [[a, -b, c], [0.0, d, c], [-a, -b, c]]
+            sites = [
+                ["Co", "Co", (0, 0, 0)],
+                ["O", "O", (0, 0, 3.6020728736387)],
+                ["O", "O", (0, 0, 10.201532881212)],
+                ["Li", "Li", (0, 0, 6.9018028772754)],
+            ]
+            structure = orm.StructureData(cell=cell)
+
+            for site in sites:
+                structure.append_atom(position=site[2], symbols=site[0], name=site[1])
         structure.pbc = pbc
+
         return structure
 
     return _generate_structure_data

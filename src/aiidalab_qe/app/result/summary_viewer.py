@@ -123,6 +123,12 @@ def generate_report_parameters(qeapp_wc):
     report["periodicity"] = PERIODICITY_MAPPING.get(
         qeapp_wc.inputs.structure.pbc, "xyz"
     )
+
+    # DFT+U
+    hubbard_dict = ui_parameters["advanced"].pop("hubbard_parameters", None)
+    if hubbard_dict:
+        hubbard_parameters = hubbard_dict["hubbard_u"]
+        report["hubbard_u"] = hubbard_parameters
     report["tot_magnetization"] = pw_parameters["SYSTEM"].get(
         "tot_magnetization", False
     )

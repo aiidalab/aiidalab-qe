@@ -39,6 +39,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         configure new ones on potentially more powerful machines by clicking on
         "Setup new code".</div>"""
     )
+    process_label_help = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Labeling Your Job</h4>
+        <p style="line-height: 140%; padding-top: 0px; padding-bottom:
+        10px"> Label your job and provide a brief description. These details help identify the job later and make the search process easier. While optional, adding a description is recommended for better clarity.</p>
+        </div>"""
+    )
 
     # This number provides a rough estimate for how many MPI tasks are needed
     # for a given structure.
@@ -81,6 +88,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.codes[name] = code
                 code.observe(self._update_state, "value")
                 self.code_children.append(self.codes[name])
+        # set process label and description
+        self.process_label = ipw.Text(
+            description="Label:", layout=ipw.Layout(width="auto", indent="0px")
+        )
+        self.process_description = ipw.Textarea(
+            description="Description", layout=ipw.Layout(width="auto", indent="0px")
+        )
         #
         self.submit_button = ipw.Button(
             description="Submit",
@@ -120,6 +134,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.sssp_installation_status,
                 self.qe_setup_status,
                 self._submission_blocker_messages,
+                self.process_label_help,
+                self.process_label,
+                self.process_description,
                 self.submit_button,
             ]
         )
@@ -264,6 +281,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _observe_input_structure(self, _):
         self._update_state()
         self.update_codes_display()
+        self._update_process_label()
 
     @tl.observe("process")
     def _observe_process(self, change):
@@ -339,16 +357,21 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             process = submit(builder)
 
-            process.label = self._generate_label()
+            process.label = self.process_label.value
+            process.description = self.process_description.value
             # since AiiDA data node may exist in the ui_parameters,
             # we serialize it to yaml
             process.base.extras.set("ui_parameters", serialize(self.ui_parameters))
+            # store the workchain name in extras, this will help to filter the workchain in the future
+            process.base.extras.set("workchain", self.ui_parameters["workchain"])
             self.process = process
 
         self._update_state()
 
-    def _generate_label(self) -> dict:
+    def _update_process_label(self) -> dict:
         """Generate a label for the work chain based on the input parameters."""
+        if not self.input_structure:
+            return ""
         formula = self.input_structure.get_formula()
         properties = [
             p for p in self.input_parameters["workchain"]["properties"] if p != "realx"
@@ -361,10 +384,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if not properties:
             properties_info = ""
         else:
-            properties_info = f"properties on {', '.join(properties)}"
+            properties_info = f", properties on {', '.join(properties)}"
 
         label = "{} {} {}".format(formula, relax_info, properties_info)
-        return label
+        self.process_label.value = label
 
     def _create_builder(self) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
@@ -410,6 +433,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "npool": parameters["resources"]["npools"]
             }
         self.set_selected_codes(parameters["codes"])
+        # label and description are not stored in the parameters, but in the process directly
+        if self.process:
+            self.process_label.value = self.process.label
+            self.process_description.value = self.process.description
 
     def get_submission_parameters(self):
         """Get the parameters for the submission step."""
