@@ -873,6 +873,7 @@ class PwCodeResourceSetupWidget(QEAppComputationalResourcesWidget):
         if "parallelization" in parameters:
             self.set_parallelization(parameters["parallelization"])
 
+
 class HubbardWidget(ipw.VBox):
     """Widget for setting up Hubbard parameters."""
 
