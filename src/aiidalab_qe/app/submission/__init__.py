@@ -201,7 +201,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if not DEFAULT_PARAMETERS["codes"].get(name):
                     continue
                 try:
-                    code.refresh()
+                    code.code_selection.refresh()
                     code.value = orm.load_code(DEFAULT_PARAMETERS["codes"][name]).uuid
                 except NotExistent:
                     pass
@@ -304,7 +304,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 # check if the code is installed and usable
                 # note: if code is imported from another user, it is not usable and thus will not be
                 # treated as an option in the ComputationalResourcesWidget.
-                code_options = [o[1] for o in code.code_select_dropdown.options]
+                code_options = [o[1] for o in code.code_selection.code_select_dropdown.options]
                 if _get_code_uuid(code_data.get(name)["code"]) in code_options:
                     # get code uuid from code label in case of using DEFAULT_PARAMETERS
                     code_data.get(name)["code"] = _get_code_uuid(
