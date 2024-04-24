@@ -91,8 +91,8 @@ class QueryInterface:
             lambda x: [] if x is None else x
         )
         self.job_state_dropdown = ipw.Dropdown(
-            options=["finished", "except", "killed"],
-            value="finished",
+            options=["", "finished", "waiting", "except", "killed"],
+            value="",
             description="Job State:",
         )
         self.label_search_field = ipw.Text(
