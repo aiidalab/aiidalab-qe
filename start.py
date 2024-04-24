@@ -6,9 +6,10 @@ def get_start_widget(appbase, jupbase, notebase):
         f"""
         <table>
         <tr>
-        <th style="text-align:center">Preferences</th>
+        <th style="text-align:center">Utils</th>
         <tr>
         <td valign="top"><ul>
+            <li><a href="{appbase}/job_list.ipynb" target="_blank">Job List</a></li>
             <li><a href="{appbase}/plugin_list.ipynb" target="_blank">Plugins</a></li>
         </ul></td>
         </tr>
