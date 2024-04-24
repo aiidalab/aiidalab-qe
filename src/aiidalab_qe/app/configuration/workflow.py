@@ -97,8 +97,7 @@ class WorkChainSettings(Panel):
         setting_entries = get_entry_items("aiidalab_qe.properties", "setting")
         for name, entry_point in entries.items():
             self.properties[name] = entry_point()
-            if name in setting_entries:
-                reminder_text = ipw.HTML()
+            reminder_text = ipw.HTML()
             self.property_children.append(
                 ipw.HBox([self.properties[name], reminder_text])
             )
@@ -112,7 +111,8 @@ class WorkChainSettings(Panel):
                 else:
                     reminder_text.value = ""
 
-            self.properties[name].run.observe(update_reminder_text, "value")
+            if name in setting_entries:
+                self.properties[name].run.observe(update_reminder_text, "value")
 
         self.property_children.append(self.properties_help)
         self.children = [
