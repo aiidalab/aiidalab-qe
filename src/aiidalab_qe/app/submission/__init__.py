@@ -364,6 +364,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process.base.extras.set("ui_parameters", serialize(self.ui_parameters))
             # store the workchain name in extras, this will help to filter the workchain in the future
             process.base.extras.set("workchain", self.ui_parameters["workchain"])
+            process.base.extras.set("structure", self.input_structure.get_formula())
             self.process = process
 
         self._update_state()
