@@ -1,7 +1,7 @@
 from importlib import resources
 
 import yaml
-from aiidalab_widgets_base import ComputationalResourcesWidget
+from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
 from aiidalab_qe.common.panel import OutlinePanel
 from aiidalab_qe.plugins import xas as xas_folder
@@ -18,7 +18,7 @@ class XasOutline(OutlinePanel):
     help = """"""
 
 
-xs_code = ComputationalResourcesWidget(
+xs_code = QEAppComputationalResourcesWidget(
     description="xspectra.x", default_calc_job_plugin="quantumespresso.xspectra"
 )
 

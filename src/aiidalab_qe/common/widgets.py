@@ -17,7 +17,8 @@ import numpy as np
 import traitlets
 from aiida.orm import CalcJobNode
 from aiida.orm import Data as orm_Data
-from aiida.orm import load_node
+from aiida.orm import load_code, load_node
+from aiidalab_widgets_base import ComputationalResourcesWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -618,6 +619,259 @@ class AddingTagsEditor(ipw.VBox):
         new_structure.set_pbc(periodicity_options[self.periodicity.value])
         self.structure = None
         self.structure = deepcopy(new_structure)
+
+
+class QEAppComputationalResourcesWidget(ipw.VBox):
+    value = traitlets.Unicode(allow_none=True)
+    nodes = traitlets.Int(default_value=1)
+    cpus = traitlets.Int(default_value=1)
+
+    def __init__(self, **kwargs):
+        """Widget to setup the compute resources, which include the code,
+        the number of nodes and the number of cpus.
+        """
+        self.code_selection = ComputationalResourcesWidget(**kwargs)
+        self.code_selection.layout.width = "80%"
+
+        self.num_nodes = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=1000, description="Nodes", width="10%"
+        )
+        self.num_cpus = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="CPUs", width="10%"
+        )
+        self.btn_setup_resource_detail = ipw.ToggleButton(description="More")
+        self.btn_setup_resource_detail.observe(self._setup_resource_detail, "value")
+        self._setup_resource_detail_output = ipw.Output(layout={"width": "500px"})
+
+        # combine code, nodes and cpus
+        children = [
+            ipw.HBox(
+                children=[
+                    self.code_selection,
+                    self.num_nodes,
+                    self.num_cpus,
+                    self.btn_setup_resource_detail,
+                ]
+            ),
+            self._setup_resource_detail_output,
+        ]
+        super().__init__(children=children, **kwargs)
+
+        self.resource_detail = ResourceDetailSettings()
+        traitlets.dlink(
+            (self.num_cpus, "value"), (self.resource_detail.ntasks_per_node, "value")
+        )
+        traitlets.link((self.code_selection, "value"), (self, "value"))
+
+    @traitlets.observe("value")
+    def _update_resources(self, change):
+        if change["new"]:
+            self.set_resource_defaults(load_code(change["new"]).computer)
+
+    def set_resource_defaults(self, computer=None):
+        import os
+
+        if computer is None or computer.hostname == "localhost":
+            self.num_nodes.disabled = True
+            self.num_nodes.value = 1
+            self.num_cpus.max = os.cpu_count()
+            self.num_cpus.value = 1
+            self.num_cpus.description = "CPUs"
+        else:
+            default_mpiprocs = computer.get_default_mpiprocs_per_machine()
+            self.num_nodes.disabled = False
+            self.num_cpus.max = default_mpiprocs
+            self.num_cpus.value = default_mpiprocs
+            self.num_cpus.description = "CPUs"
+
+    @property
+    def parameters(self):
+        return self.get_parameters()
+
+    def get_parameters(self):
+        """Return the parameters."""
+        parameters = {
+            "code": self.code_selection.value,
+            "nodes": self.num_nodes.value,
+            "cpus": self.num_cpus.value,
+        }
+        parameters.update(self.resource_detail.parameters)
+        return parameters
+
+    @parameters.setter
+    def parameters(self, parameters):
+        self.set_parameters(parameters)
+
+    def set_parameters(self, parameters):
+        """Set the parameters."""
+        self.code_selection.value = parameters["code"]
+        if "nodes" in parameters:
+            self.num_nodes.value = parameters["nodes"]
+        if "cpus" in parameters:
+            self.num_cpus.value = parameters["cpus"]
+        if "ntasks_per_node" in parameters:
+            self.resource_detail.ntasks_per_node.value = parameters["ntasks_per_node"]
+        if "cpus_per_task" in parameters:
+            self.resource_detail.cpus_per_task.value = parameters["cpus_per_task"]
+
+    def _setup_resource_detail(self, _=None):
+        with self._setup_resource_detail_output:
+            clear_output()
+            if self.btn_setup_resource_detail.value:
+                self._setup_resource_detail_output.layout = {
+                    "width": "500px",
+                    "border": "1px solid gray",
+                }
+
+                children = [
+                    self.resource_detail,
+                ]
+                display(*children)
+            else:
+                self._setup_resource_detail_output.layout = {
+                    "width": "500px",
+                    "border": "none",
+                }
+
+
+class ResourceDetailSettings(ipw.VBox):
+    """Widget for setting the Resource detail."""
+
+    prompt = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the parameters for the scheduler (only for advanced user).
+        </p></div>"""
+    )
+
+    def __init__(self, **kwargs):
+        self.ntasks_per_node = ipw.BoundedIntText(
+            value=1,
+            step=1,
+            min=1,
+            max=1000,
+            description="ntasks-per-node",
+            style={"description_width": "100px"},
+        )
+        self.cpus_per_task = ipw.BoundedIntText(
+            value=1,
+            step=1,
+            min=1,
+            description="cpus-per-task",
+            style={"description_width": "100px"},
+        )
+        super().__init__(
+            children=[self.prompt, self.ntasks_per_node, self.cpus_per_task], **kwargs
+        )
+
+    @property
+    def parameters(self):
+        return self.get_parameters()
+
+    def get_parameters(self):
+        """Return the parameters."""
+        return {
+            "ntasks_per_node": self.ntasks_per_node.value,
+            "cpus_per_task": self.cpus_per_task.value,
+        }
+
+    @parameters.setter
+    def parameters(self, parameters):
+        self.ntasks_per_node.value = parameters.get("ntasks_per_node", 1)
+        self.cpus_per_task.value = parameters.get("cpus_per_task", 1)
+
+    def reset(self):
+        """Reset the settings."""
+        self.ntasks_per_node.value = 1
+        self.cpus_per_task.value = 1
+
+
+class ParallelizationSettings(ipw.VBox):
+    """Widget for setting the parallelization settings."""
+
+    prompt = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the number of k-points pools for the pw.x calculations (only for advanced user).
+        </p></div>"""
+    )
+
+    def __init__(self, **kwargs):
+        extra = {
+            "style": {"description_width": "150px"},
+            "layout": {"min_width": "180px"},
+        }
+        self.npool = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=128, description="Number of k-pools", **extra
+        )
+        self.override = ipw.Checkbox(
+            escription="",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="20px"),
+        )
+        self.override.observe(self.set_visibility, "value")
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    children=[self.override, self.prompt, self.npool],
+                    layout=ipw.Layout(justify_content="flex-start"),
+                ),
+            ]
+        )
+        # set the default visibility of the widget
+        self.npool.layout.display = "none"
+
+    def set_visibility(self, change):
+        if change["new"]:
+            self.npool.layout.display = "block"
+        else:
+            self.npool.layout.display = "none"
+
+    def reset(self):
+        """Reset the parallelization settings."""
+        self.npool.value = 1
+
+
+class PwCodeResourceSetupWidget(QEAppComputationalResourcesWidget):
+    """ComputationalResources Widget for the pw.x calculation."""
+
+    nodes = traitlets.Int(default_value=1)
+
+    def __init__(self, **kwargs):
+        # By definition, npool must be a divisor of the total number of k-points
+        # thus we can not set a default value here, or from the computer.
+        self.parallelization = ParallelizationSettings()
+        super().__init__(**kwargs)
+        # add nodes and cpus into the children of the widget
+        self.children += (self.parallelization,)
+
+    def get_parallelization(self):
+        """Return the parallelization settings."""
+        parallelization = (
+            {"npool": self.parallelization.npool.value}
+            if self.parallelization.override.value
+            else {}
+        )
+        return parallelization
+
+    def set_parallelization(self, parallelization):
+        """Set the parallelization settings."""
+        if "npool" in parallelization:
+            self.parallelization.override.value = True
+            self.parallelization.npool.value = parallelization["npool"]
+
+    def get_parameters(self):
+        """Return the parameters."""
+        parameters = super().get_parameters()
+        parameters.update({"parallelization": self.get_parallelization()})
+        return parameters
+
+    def set_parameters(self, parameters):
+        """Set the parameters."""
+        super().set_parameters(parameters)
+        if "parallelization" in parameters:
+            self.set_parallelization(parameters["parallelization"])
 
 
 class HubbardWidget(ipw.VBox):
