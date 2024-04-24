@@ -22,7 +22,7 @@ Introducing a suite of new plugins:
 
 Plugin management page
 ----------------------
-We foresee more QEApp plugins coming, and they may be developed by other developers and in other repositories. To help users easily find and manage the plugins, the new release adds a new plugin management page.
+To help users easily find and manage the plugins, the new release adds a new plugin management page.
 
 
 .. figure:: /_static/images/qeapp_release_202404_plugin_management.gif
@@ -37,16 +37,15 @@ Job search page
 
 New widget
 ----------------------
-DFT+U
-computational resources
+Add new widgets for DFT+U, magnetic settings, and computational resources setup.
+
+.. figure:: /_static/images/qeapp_release_202404_new_widgets.png
+   :align: center
 
 
 
+Explore the :ref:`blogs:release_202404_details` for an in-depth look at what's new.
 
-
-
-
-Explore the release notes for an in-depth look at what's new.
 
 Thank you!
 ================================
