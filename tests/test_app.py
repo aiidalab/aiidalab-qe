@@ -44,7 +44,7 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
         )
         == 0
     )
-    assert app.submit_step.resources_config.num_cpus.value == 1
+    assert app.submit_step.pw_code.num_cpus.value == 4
 
 
 def test_select_new_structure(app_to_submit, generate_structure_data):

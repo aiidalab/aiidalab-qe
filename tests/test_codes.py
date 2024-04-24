@@ -59,3 +59,22 @@ def test_identify_submission_blockers(app):
     submit.codes["dos"].value = dos_value
     blockers = list(submit._identify_submission_blockers())
     assert len(blockers) == 0
+
+
+def test_qeapp_computational_resources_widget():
+    """Test QEAppComputationalResourcesWidget."""
+    from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
+
+    new_submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
+    assert new_submit_step.codes["pw"].parallelization.npool.layout.display == "none"
+    new_submit_step.codes["pw"].parallelization.override.value = True
+    new_submit_step.codes["pw"].parallelization.npool.value = 2
+    assert new_submit_step.codes["pw"].parallelization.npool.layout.display == "block"
+    assert new_submit_step.codes["pw"].parameters == {
+        "code": None,
+        "cpus": 1,
+        "cpus_per_task": 1,
+        "nodes": 1,
+        "ntasks_per_node": 1,
+        "parallelization": {"npool": 2},
+    }
