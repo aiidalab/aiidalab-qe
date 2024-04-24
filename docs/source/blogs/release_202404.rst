@@ -6,50 +6,49 @@ QEApp 2024.04 Release
 
 AiiDAlab team and the online developers community are proud to present QEApp 2024.04!
 
+This version represents a significant milestone in the evolution of QEApp, delivering numerous features and improvements across various aspects of the application.
+
 What's New
 ================================
-QEApp 2024.04 marks a significant milestone in the evolution of QEApp, and delivers a number of new feature and improvements across all areas.
 
-To highlight a few:
-
-
-New plugins
+New Plugins
 ----------------------
-Introducing a suite of new plugins:
+We are introducing a range of new plugins that expand the capabilities of QEApp.
+These plugins cater to diverse computational needs and enhance the overall user experience.
 
 .. figure:: /_static/images/qeapp_release_202404_plugins.png
    :align: center
+   :alt: New plugins for QEApp 2024.04
 
-Plugin management page
+Plugin Management Page
 ----------------------
-To help users easily find and manage the plugins, the new release adds a plugin management page.
-
+The new plugin management page simplifies how users find and manage their plugins, making it easier to customize and enhance their computational environment.
 
 .. figure:: /_static/images/qeapp_release_202404_plugin_management.gif
    :align: center
+   :alt: Plugin management interface
 
-
-Job search page
+Job Search Page
 ----------------------
+To facilitate better job management, we have added a new job search page that allows users to efficiently search and manage their computational jobs.
 
+.. figure:: /_static/images/qeapp_release_202404_job_list.gif
+   :align: center
+   :alt: New job management page
 
-
-
-New widget
+New Widgets
 ----------------------
-Add new widgets for DFT+U, magnetic settings, and computational resources setup.
+This release also introduces several new widgets, including tools for DFT+U, magnetic settings, and computational resources setup, further enhancing the functionality and user flexibility of QEApp.
 
 .. figure:: /_static/images/qeapp_release_202404_new_widgets.png
    :align: center
+   :alt: New widgets in QEApp
 
+For a deeper dive into all the updates, please visit the :ref:`blogs:release_202404_details` for an in-depth look at what's new.
 
-
-Explore the :ref:`blogs:release_202404_details` for an in-depth look at what's new.
-
-
-Thank you!
+Acknowledgments
 ================================
-This work is made possible thanks to the outstanding contributions of the AiiDAlab community, and the support of the organizations.
+We extend our heartfelt thanks to all contributors from the AiiDAlab community and our supporting organizations. Your dedication and contributions make these advancements possible.
 
 Happy calculation!
 
