@@ -8,22 +8,25 @@ AiiDAlab team and the online developers community are proud to present QEApp 202
 
 What's New
 ================================
-QEApp 2024.04 is the first step towards a new iteration of QEApp, and delivers a number of new feature and workflow improvements across all areas.
+QEApp 2024.04 marks a significant milestone in the evolution of QEApp, and delivers a number of new feature and improvements across all areas.
 
 To highlight a few:
 
 
 New plugins
 ----------------------
+Introducing a suite of new plugins:
 
-
-
+.. figure:: /_static/images/qeapp_release_202404_plugins.png
+   :align: center
 
 Plugin management page
 ----------------------
 We foresee more QEApp plugins coming, and they may be developed by other developers and in other repositories. To help users easily find and manage the plugins, the new release adds a new plugin management page.
 
 
+.. figure:: /_static/images/qeapp_release_202404_plugin_management.gif
+   :align: center
 
 
 Job search page
