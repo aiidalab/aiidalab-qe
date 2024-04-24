@@ -22,7 +22,7 @@ Introducing a suite of new plugins:
 
 Plugin management page
 ----------------------
-To help users easily find and manage the plugins, the new release adds a new plugin management page.
+To help users easily find and manage the plugins, the new release adds a plugin management page.
 
 
 .. figure:: /_static/images/qeapp_release_202404_plugin_management.gif
