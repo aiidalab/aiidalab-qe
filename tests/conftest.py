@@ -327,9 +327,9 @@ def app(pw_code, dos_code, projwfc_code):
     app.submit_step.sssp_installation_status.installed = True
 
     # set up codes
-    app.submit_step.pw_code.refresh()
-    app.submit_step.codes["dos"].refresh()
-    app.submit_step.codes["projwfc"].refresh()
+    app.submit_step.pw_code.code_selection.refresh()
+    app.submit_step.codes["dos"].code_selection.refresh()
+    app.submit_step.codes["projwfc"].code_selection.refresh()
 
     app.submit_step.pw_code.value = pw_code.uuid
     app.submit_step.codes["dos"].value = dos_code.uuid
@@ -387,7 +387,7 @@ def submit_app_generator(
         #
         submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
-        submit_step.resources_config.num_cpus.value = 2
+        submit_step.pw_code.num_cpus.value = 2
 
         return app
 
@@ -675,7 +675,7 @@ def generate_qeapp_workchain(
         s2.confirm()
         # step 3 setup code and resources
         s3: SubmitQeAppWorkChainStep = app.submit_step
-        s3.resources_config.num_cpus.value = 4
+        s3.pw_code.num_cpus.value = 4
         builder = s3._create_builder()
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
