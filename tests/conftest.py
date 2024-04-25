@@ -71,7 +71,27 @@ def generate_structure_data():
             structure.append_atom(position=(1.28, 1.28, 0.0), symbols="O")
             structure.append_atom(position=(2.9, 2.9, 0.0), symbols="O")
             structure.append_atom(position=(0.81, 3.37, 1.33), symbols="O")
+
+        elif name == "LiCoO2":
+            a, b, c, d = (
+                1.4060463552647,
+                0.81178124180108,
+                4.6012019181836,
+                1.6235624832021,
+            )
+            cell = [[a, -b, c], [0.0, d, c], [-a, -b, c]]
+            sites = [
+                ["Co", "Co", (0, 0, 0)],
+                ["O", "O", (0, 0, 3.6020728736387)],
+                ["O", "O", (0, 0, 10.201532881212)],
+                ["Li", "Li", (0, 0, 6.9018028772754)],
+            ]
+            structure = orm.StructureData(cell=cell)
+
+            for site in sites:
+                structure.append_atom(position=site[2], symbols=site[0], name=site[1])
         structure.pbc = pbc
+
         return structure
 
     return _generate_structure_data
@@ -307,9 +327,9 @@ def app(pw_code, dos_code, projwfc_code):
     app.submit_step.sssp_installation_status.installed = True
 
     # set up codes
-    app.submit_step.pw_code.refresh()
-    app.submit_step.codes["dos"].refresh()
-    app.submit_step.codes["projwfc"].refresh()
+    app.submit_step.pw_code.code_selection.refresh()
+    app.submit_step.codes["dos"].code_selection.refresh()
+    app.submit_step.codes["projwfc"].code_selection.refresh()
 
     app.submit_step.pw_code.value = pw_code.uuid
     app.submit_step.codes["dos"].value = dos_code.uuid
@@ -367,7 +387,7 @@ def submit_app_generator(
         #
         submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
-        submit_step.resources_config.num_cpus.value = 2
+        submit_step.pw_code.num_cpus.value = 2
 
         return app
 
@@ -603,7 +623,10 @@ def generate_qeapp_workchain(
         run_bands=True,
         run_pdos=True,
         spin_type="none",
+        electronic_type="metal",
+        magnetization_type="starting_magnetization",  # Options: "starting_magnetization", "tot_magnetization"
         initial_magnetic_moments=0.0,
+        tot_magnetization=0.0,
     ):
         from copy import deepcopy
 
@@ -635,13 +658,24 @@ def generate_qeapp_workchain(
         s2.workchain_settings.properties["pdos"].run.value = run_pdos
         s2.workchain_settings.workchain_protocol.value = "fast"
         s2.workchain_settings.spin_type.value = spin_type
-        s2.advanced_settings.magnetization._set_magnetization_values(
-            initial_magnetic_moments
-        )
+        s2.workchain_settings.electronic_type.value = electronic_type
+        if spin_type == "collinear":
+            s2.advanced_settings.override.value = True
+            magnetization_values = (
+                initial_magnetic_moments
+                if magnetization_type == "starting_magnetization"
+                else tot_magnetization
+            )
+            s2.advanced_settings.magnetization._set_tot_magnetization(
+                tot_magnetization
+            ) if electronic_type == "insulator" else s2.advanced_settings.magnetization._set_magnetization_values(
+                magnetization_values
+            )
+
         s2.confirm()
         # step 3 setup code and resources
         s3: SubmitQeAppWorkChainStep = app.submit_step
-        s3.resources_config.num_cpus.value = 4
+        s3.pw_code.num_cpus.value = 4
         builder = s3._create_builder()
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])

@@ -98,8 +98,14 @@ def get_builder(codes, structure, parameters, **kwargs):
     return builder
 
 
+def update_inputs(inputs, ctx):
+    """Update the inputs using context."""
+    inputs.structure = ctx.current_structure
+
+
 workchain_and_builder = {
     "workchain": XpsWorkChain,
-    "exclude": ("clean_workdir", "structure", "relax"),
+    "exclude": ("structure", "relax"),
     "get_builder": get_builder,
+    "update_inputs": update_inputs,
 }

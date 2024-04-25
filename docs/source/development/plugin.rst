@@ -98,14 +98,15 @@ Beside, you need to override the the following methods:
             }
 
         def set_panel_value(self, input_dict):
-            """Set a dictionary with the input parameters for the plugin."""
+            """Set the value of the widgets in the panel from the input dictionary.
+            This method is called when the user wants to reload the panel from the previous calculation,
+            or reset the panel to the default values."""
             self.scale.value = input_dict.get("scale", 0.05)
             self.npoint.value = input_dict.get("npoint", 5)
 
         def reset(self):
             """Reset the input fields."""
-            self.scale.value = 0.05
-            self.npoint.value = 5
+            self.set_panel_value({"scale": 0.05, "npoint": 5})
 
 Result
 -----------------------
@@ -224,7 +225,7 @@ The ``get_builder`` function will return a ``builder`` for the ``EOSWorkChain``,
 
     def get_builder(codes, structure, parameters, **kwargs):
         protocol = parameters["workchain"].pop('protocol', "fast")
-        pw_code = codes.get("pw")
+        pw_code = codes.get("pw")['code']
         overrides = {
             "pw": parameters["advanced"],
         }
@@ -333,9 +334,9 @@ Here is the example of the built-in `pdos` plugins with codes `dos.x` and `projw
 
 .. code-block:: python
 
-    from aiidalab_widgets_base import ComputationalResourcesWidget
+    from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
-    dos_code = ComputationalResourcesWidget(
+    dos_code = QEAppComputationalResourcesWidget(
         description="dos.x",
         default_calc_job_plugin="quantumespresso.dos",
     )
@@ -360,5 +361,9 @@ Further Reading
 ================================
 QuantumESPRESSO app comes with several built-in plugins, which can be found in the ``aiidalab_qe.plugins`` folder.
 You can also use them as a start point to create your own plugins.
+
+
+You can register your plugin to facilitate its discovery and use by the community.
+Please refer to the :doc:`Plugin registry </development/plugin_registry>` for more details.
 
 .. _aiidalab-qe-plugin-demos: https://github.com/aiidalab/aiidalab-qe-plugin-demos

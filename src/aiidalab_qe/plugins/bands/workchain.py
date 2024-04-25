@@ -1,4 +1,5 @@
 import numpy as np
+from aiida import orm
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 
@@ -171,11 +172,26 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     return kpoints
 
 
+def update_resources(builder, codes):
+    builder.scf.pw.metadata.options.resources = {
+        "num_machines": codes.get("pw")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
+    }
+    builder.scf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
+    builder.bands.pw.metadata.options.resources = {
+        "num_machines": codes.get("pw")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
+    }
+    builder.bands.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
+
+
 def get_builder(codes, structure, parameters, **kwargs):
     """Get a builder for the PwBandsWorkChain."""
     from copy import deepcopy
 
-    pw_code = codes.get("pw")
+    pw_code = codes.get("pw")["code"]
     protocol = parameters["workchain"]["protocol"]
     scf_overrides = deepcopy(parameters["advanced"])
     relax_overrides = {
@@ -217,11 +233,29 @@ def get_builder(codes, structure, parameters, **kwargs):
     bands.pop("relax")
     bands.pop("structure", None)
     bands.pop("clean_workdir", None)
+    # update resources
+    update_resources(bands, codes)
+
+    if scf_overrides["pw"]["parameters"]["SYSTEM"].get("tot_magnetization") is not None:
+        bands.scf["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
+        bands.bands["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
+
     return bands
+
+
+def update_inputs(inputs, ctx):
+    """Update the inputs using context."""
+    inputs.structure = ctx.current_structure
+    inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
+    if ctx.current_number_of_bands:
+        inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+            "nbnd", ctx.current_number_of_bands
+        )
 
 
 workchain_and_builder = {
     "workchain": PwBandsWorkChain,
-    "exclude": ("clean_workdir", "structure", "relax"),
+    "exclude": ("structure", "relax"),
     "get_builder": get_builder,
+    "update_inputs": update_inputs,
 }

@@ -3,6 +3,7 @@
 
 Authors: AiiDAlab team
 """
+
 import ipywidgets as ipw
 from aiida_quantumespresso.common.types import RelaxType
 
@@ -88,14 +89,34 @@ class WorkChainSettings(Panel):
             value="moderate",
         )
         self.properties = {}
+        self.reminder_info = {}
         self.property_children = [
             self.properties_title,
             ipw.HTML("Select which properties to calculate:"),
         ]
         entries = get_entry_items("aiidalab_qe.properties", "outline")
+        setting_entries = get_entry_items("aiidalab_qe.properties", "setting")
         for name, entry_point in entries.items():
             self.properties[name] = entry_point()
-            self.property_children.append(self.properties[name])
+            self.reminder_info[name] = ipw.HTML()
+            self.property_children.append(
+                ipw.HBox([self.properties[name], self.reminder_info[name]])
+            )
+
+            # observer change to update the reminder text
+            def update_reminder_info(change, name=name):
+                if change["new"]:
+                    self.reminder_info[
+                        name
+                    ].value = (
+                        f"""Customize {name} settings in the panel above if needed."""
+                    )
+                else:
+                    self.reminder_info[name].value = ""
+
+            if name in setting_entries:
+                self.properties[name].run.observe(update_reminder_info, "value")
+
         self.property_children.append(self.properties_help)
         self.children = [
             self.structure_title,

@@ -104,10 +104,24 @@
         <td>Van der Waals Correction</td>
         <td>{{ vdw_corr }}</td>
       </tr>
+
+      {% if tot_magnetization %}
+      <tr>
+        <td>Total magnetization</td>
+        <td>{{ tot_magnetization }} </td>
+      </tr>
+      {% else %}
       <tr>
         <td>Initial Magnetic Moments</td>
         <td>{{ initial_magnetic_moments }}</td>
       </tr>
+      {% endif %}
+      {% if hubbard_u %}
+      <tr>
+        <td>DFT+U</td>
+        <td>{{ hubbard_u }}</td>
+      </tr>
+      {% endif %}
     </table>
   </div>
 </div>

@@ -1,6 +1,5 @@
-"""Bands results view widgets
+"""Bands results view widgets"""
 
-"""
 from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
 from aiidalab_qe.common.panel import ResultPanel
 

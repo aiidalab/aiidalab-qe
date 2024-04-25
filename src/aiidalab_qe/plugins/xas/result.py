@@ -1,6 +1,5 @@
-"""XAS results view widgets
+"""XAS results view widgets"""
 
-"""
 import base64
 import hashlib
 from typing import Callable
