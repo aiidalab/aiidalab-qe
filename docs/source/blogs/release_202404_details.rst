@@ -60,3 +60,9 @@ Documentation:
 - Link logos to docs folder by @superstar54 in `#518 <https://github.com/aiidalab/aiidalab-qe/pull/616>`_
 - Add Lithium Carbonate to List of Examples by @PNOGillespie in `#518 <https://github.com/aiidalab/aiidalab-qe/pull/622>`_
 - Update docstrings and documentation consistent by @superstar54 in `#518 <https://github.com/aiidalab/aiidalab-qe/pull/649>`_
+
+Dependency updates:
+
+- Support aiida-quantumespresso plugin to 4.5.0 by @unkcpz in `#601 <https://github.com/aiidalab/aiidalab-qe/pull/601>`_
+- Bump aiidalab-widgets-base with new ipyoptimade by @unkcpz in `#632 <https://github.com/aiidalab/aiidalab-qe/pull/632/files>`_
+- Deprecate py3.8 where AWB already deprecated it by @unkcpz in `#633 <https://github.com/aiidalab/aiidalab-qe/pull/633/files>`_
