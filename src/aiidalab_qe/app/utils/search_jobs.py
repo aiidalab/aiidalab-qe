@@ -37,14 +37,22 @@ class QueryInterface:
         results = qb.all()
 
         df = pd.DataFrame(results, columns=headers)
-        for index, row in df.iterrows():
-            df.at[index, "Creation time"] = row["ctime"].strftime("%Y-%m-%d %H:%M:%S")
-            df.at[index, "Delete"] = (
-                f"""<a href="./delete.ipynb?pk={row['PK']}" target="_blank">Delete</a>"""
+        # Check if DataFrame is not empty
+        if not df.empty:
+            df["Creation time"] = df["ctime"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S")
             )
-            df.at[index, "Inspect"] = (
-                f"""<a href="./qe.ipynb?pk={row['PK']}" target="_blank">Inspect</a>"""
+            df["Delete"] = df["PK"].apply(
+                lambda pk: f'<a href="./delete.ipynb?pk={pk}" target="_blank">Delete</a>'
             )
+            df["Inspect"] = df["PK"].apply(
+                lambda pk: f'<a href="./qe.ipynb?pk={pk}" target="_blank">Inspect</a>'
+            )
+        else:
+            # Initialize empty columns for an empty DataFrame
+            df["Creation time"] = pd.Series(dtype="str")
+            df["Delete"] = pd.Series(dtype="str")
+            df["Inspect"] = pd.Series(dtype="str")
         return df[
             [
                 "PK",
