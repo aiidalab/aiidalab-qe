@@ -166,7 +166,7 @@ def install(force=False):
     except Timeout:
         # Assume that the installation was triggered by a different process.
         yield "Installation was already started, waiting for it to finish..."
-        with FileLock(FN_LOCKFILE, timeout=120):
+        with FileLock(FN_LOCKFILE, timeout=300):
             if not codes_are_setup():
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
