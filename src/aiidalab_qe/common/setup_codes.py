@@ -7,7 +7,10 @@ from threading import Thread
 import ipywidgets as ipw
 import traitlets
 from aiida.common.exceptions import NotExistent
-from aiida.orm import load_code
+from aiida.orm import load_code, load_computer
+from aiida.orm.nodes.data.code.installed import InstalledCode
+from aiida import load_profile
+from aiida.manage.manager import get_manager
 from filelock import FileLock, Timeout
 
 from aiidalab_qe.common.widgets import ProgressBar
@@ -84,29 +87,33 @@ def _setup_code(code_name, computer_name="localhost"):
     try:
         load_code(f"{code_name}-{QE_VERSION}@localhost")
     except NotExistent:
-        run(
-            [
-                "verdi",
-                "code",
-                "create",
-                "core.code.installed",
-                "--non-interactive",
-                "--label",
-                f"{code_name}-{QE_VERSION}",
-                "--description",
-                f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab.",
-                "--default-calc-job-plugin",
-                f"quantumespresso.{code_name}",
-                "--computer",
-                computer_name,
-                "--prepend-text",
-                f'eval "$(conda shell.posix hook)"\nconda activate {CONDA_ENV_PREFIX}\nexport OMP_NUM_THREADS=1',
-                "--filepath-executable",
-                CONDA_ENV_PREFIX.joinpath("bin", f"{code_name}.x"),
-            ],
-            check=True,
-            capture_output=True,
-        )
+        # Obtain a new manager instance per thread for isolation
+        load_profile()
+        manager = get_manager()
+        session = manager.get_backend().get_session()
+        try:
+            computer = load_computer(computer_name)
+            label = f"{code_name}-{QE_VERSION}"
+            description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
+            filepath_executable = str(
+                CONDA_ENV_PREFIX.joinpath("bin", f"{code_name}.x")
+            )
+            default_calc_job_plugin = f"quantumespresso.{code_name}"
+            prepend_text = f'eval "$(conda shell.posix hook)"\\nconda activate {CONDA_ENV_PREFIX}\\nexport OMP_NUM_THREADS=1'
+            code = InstalledCode(
+                computer=computer,
+                label=label,
+                description=description,
+                filepath_executable=filepath_executable,
+                default_calc_job_plugin=default_calc_job_plugin,
+                prepend_text=prepend_text,
+            )
+            session.add(code._backend_entity.model)  # Directly manipulate the model
+            session.commit()
+        except Exception as e:
+            raise RuntimeError(f"Error storing code {label}: {e}")
+        finally:
+            session.close()
     else:
         raise RuntimeError(f"Code {code_name} (v{QE_VERSION}) is already setup!")
 
