@@ -59,3 +59,25 @@ def test_panel():
     assert len(wg.tab.children) == 3
     parameters = wg.get_configuration_parameters()
     assert "bands" in parameters
+
+
+def test_reminder_info():
+    """Dynamic add/remove the reminder text based on the workchain settings."""
+    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+
+    wg = ConfigureQeAppWorkChainStep()
+    assert wg.workchain_settings.reminder_info["bands"].value == ""
+    # select bands
+    wg.workchain_settings.properties["bands"].run.value = True
+    for name in wg.workchain_settings.reminder_info:
+        if name == "bands":
+            assert (
+                wg.workchain_settings.reminder_info["bands"].value
+                == "Customize bands settings in the panel above if needed."
+            )
+        else:
+            # all other reminder texts should be empty
+            assert wg.workchain_settings.reminder_info[name].value == ""
+    # unselect bands
+    wg.workchain_settings.properties["bands"].run.value = False
+    assert wg.workchain_settings.reminder_info["bands"].value == ""

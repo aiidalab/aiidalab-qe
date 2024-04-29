@@ -17,13 +17,15 @@ import numpy as np
 import traitlets
 from aiida.orm import CalcJobNode
 from aiida.orm import Data as orm_Data
-from aiida.orm import load_node
+from aiida.orm import load_code, load_node
+from aiidalab_widgets_base import ComputationalResourcesWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
     string_range_to_list,
 )
 from IPython.display import HTML, Javascript, clear_output, display
+from pymatgen.core.periodic_table import Element
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -617,3 +619,662 @@ class AddingTagsEditor(ipw.VBox):
         new_structure.set_pbc(periodicity_options[self.periodicity.value])
         self.structure = None
         self.structure = deepcopy(new_structure)
+
+
+class QEAppComputationalResourcesWidget(ipw.VBox):
+    value = traitlets.Unicode(allow_none=True)
+    nodes = traitlets.Int(default_value=1)
+    cpus = traitlets.Int(default_value=1)
+
+    def __init__(self, **kwargs):
+        """Widget to setup the compute resources, which include the code,
+        the number of nodes and the number of cpus.
+        """
+        self.code_selection = ComputationalResourcesWidget(**kwargs)
+        self.code_selection.layout.width = "80%"
+
+        self.num_nodes = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=1000, description="Nodes", width="10%"
+        )
+        self.num_cpus = ipw.BoundedIntText(
+            value=1, step=1, min=1, description="CPUs", width="10%"
+        )
+        self.btn_setup_resource_detail = ipw.ToggleButton(description="More")
+        self.btn_setup_resource_detail.observe(self._setup_resource_detail, "value")
+        self._setup_resource_detail_output = ipw.Output(layout={"width": "500px"})
+
+        # combine code, nodes and cpus
+        children = [
+            ipw.HBox(
+                children=[
+                    self.code_selection,
+                    self.num_nodes,
+                    self.num_cpus,
+                    self.btn_setup_resource_detail,
+                ]
+            ),
+            self._setup_resource_detail_output,
+        ]
+        super().__init__(children=children, **kwargs)
+
+        self.resource_detail = ResourceDetailSettings()
+        traitlets.dlink(
+            (self.num_cpus, "value"), (self.resource_detail.ntasks_per_node, "value")
+        )
+        traitlets.link((self.code_selection, "value"), (self, "value"))
+
+    @traitlets.observe("value")
+    def _update_resources(self, change):
+        if change["new"]:
+            self.set_resource_defaults(load_code(change["new"]).computer)
+
+    def set_resource_defaults(self, computer=None):
+        import os
+
+        if computer is None or computer.hostname == "localhost":
+            self.num_nodes.disabled = True
+            self.num_nodes.value = 1
+            self.num_cpus.max = os.cpu_count()
+            self.num_cpus.value = 1
+            self.num_cpus.description = "CPUs"
+        else:
+            default_mpiprocs = computer.get_default_mpiprocs_per_machine()
+            self.num_nodes.disabled = False
+            self.num_cpus.max = default_mpiprocs
+            self.num_cpus.value = default_mpiprocs
+            self.num_cpus.description = "CPUs"
+
+    @property
+    def parameters(self):
+        return self.get_parameters()
+
+    def get_parameters(self):
+        """Return the parameters."""
+        parameters = {
+            "code": self.code_selection.value,
+            "nodes": self.num_nodes.value,
+            "cpus": self.num_cpus.value,
+        }
+        parameters.update(self.resource_detail.parameters)
+        return parameters
+
+    @parameters.setter
+    def parameters(self, parameters):
+        self.set_parameters(parameters)
+
+    def set_parameters(self, parameters):
+        """Set the parameters."""
+        self.code_selection.value = parameters["code"]
+        if "nodes" in parameters:
+            self.num_nodes.value = parameters["nodes"]
+        if "cpus" in parameters:
+            self.num_cpus.value = parameters["cpus"]
+        if "ntasks_per_node" in parameters:
+            self.resource_detail.ntasks_per_node.value = parameters["ntasks_per_node"]
+        if "cpus_per_task" in parameters:
+            self.resource_detail.cpus_per_task.value = parameters["cpus_per_task"]
+
+    def _setup_resource_detail(self, _=None):
+        with self._setup_resource_detail_output:
+            clear_output()
+            if self.btn_setup_resource_detail.value:
+                self._setup_resource_detail_output.layout = {
+                    "width": "500px",
+                    "border": "1px solid gray",
+                }
+
+                children = [
+                    self.resource_detail,
+                ]
+                display(*children)
+            else:
+                self._setup_resource_detail_output.layout = {
+                    "width": "500px",
+                    "border": "none",
+                }
+
+
+class ResourceDetailSettings(ipw.VBox):
+    """Widget for setting the Resource detail."""
+
+    prompt = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the parameters for the scheduler (only for advanced user).
+        </p></div>"""
+    )
+
+    def __init__(self, **kwargs):
+        self.ntasks_per_node = ipw.BoundedIntText(
+            value=1,
+            step=1,
+            min=1,
+            max=1000,
+            description="ntasks-per-node",
+            style={"description_width": "100px"},
+        )
+        self.cpus_per_task = ipw.BoundedIntText(
+            value=1,
+            step=1,
+            min=1,
+            description="cpus-per-task",
+            style={"description_width": "100px"},
+        )
+        super().__init__(
+            children=[self.prompt, self.ntasks_per_node, self.cpus_per_task], **kwargs
+        )
+
+    @property
+    def parameters(self):
+        return self.get_parameters()
+
+    def get_parameters(self):
+        """Return the parameters."""
+        return {
+            "ntasks_per_node": self.ntasks_per_node.value,
+            "cpus_per_task": self.cpus_per_task.value,
+        }
+
+    @parameters.setter
+    def parameters(self, parameters):
+        self.ntasks_per_node.value = parameters.get("ntasks_per_node", 1)
+        self.cpus_per_task.value = parameters.get("cpus_per_task", 1)
+
+    def reset(self):
+        """Reset the settings."""
+        self.ntasks_per_node.value = 1
+        self.cpus_per_task.value = 1
+
+
+class ParallelizationSettings(ipw.VBox):
+    """Widget for setting the parallelization settings."""
+
+    prompt = ipw.HTML(
+        """<div style="line-height:120%; padding-top:0px">
+        <p style="padding-bottom:10px">
+        Specify the number of k-points pools for the pw.x calculations (only for advanced user).
+        </p></div>"""
+    )
+
+    def __init__(self, **kwargs):
+        extra = {
+            "style": {"description_width": "150px"},
+            "layout": {"min_width": "180px"},
+        }
+        self.npool = ipw.BoundedIntText(
+            value=1, step=1, min=1, max=128, description="Number of k-pools", **extra
+        )
+        self.override = ipw.Checkbox(
+            escription="",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="20px"),
+        )
+        self.override.observe(self.set_visibility, "value")
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    children=[self.override, self.prompt, self.npool],
+                    layout=ipw.Layout(justify_content="flex-start"),
+                ),
+            ]
+        )
+        # set the default visibility of the widget
+        self.npool.layout.display = "none"
+
+    def set_visibility(self, change):
+        if change["new"]:
+            self.npool.layout.display = "block"
+        else:
+            self.npool.layout.display = "none"
+
+    def reset(self):
+        """Reset the parallelization settings."""
+        self.npool.value = 1
+
+
+class PwCodeResourceSetupWidget(QEAppComputationalResourcesWidget):
+    """ComputationalResources Widget for the pw.x calculation."""
+
+    nodes = traitlets.Int(default_value=1)
+
+    def __init__(self, **kwargs):
+        # By definition, npool must be a divisor of the total number of k-points
+        # thus we can not set a default value here, or from the computer.
+        self.parallelization = ParallelizationSettings()
+        super().__init__(**kwargs)
+        # add nodes and cpus into the children of the widget
+        self.children += (self.parallelization,)
+
+    def get_parallelization(self):
+        """Return the parallelization settings."""
+        parallelization = (
+            {"npool": self.parallelization.npool.value}
+            if self.parallelization.override.value
+            else {}
+        )
+        return parallelization
+
+    def set_parallelization(self, parallelization):
+        """Set the parallelization settings."""
+        if "npool" in parallelization:
+            self.parallelization.override.value = True
+            self.parallelization.npool.value = parallelization["npool"]
+
+    def get_parameters(self):
+        """Return the parameters."""
+        parameters = super().get_parameters()
+        parameters.update({"parallelization": self.get_parallelization()})
+        return parameters
+
+    def set_parameters(self, parameters):
+        """Set the parameters."""
+        super().set_parameters(parameters)
+        if "parallelization" in parameters:
+            self.set_parallelization(parameters["parallelization"])
+
+
+class HubbardWidget(ipw.VBox):
+    """Widget for setting up Hubbard parameters."""
+
+    def __init__(self, input_structure=None):
+        self.input_structure = input_structure
+        self.eigenvalues_help = ipw.HTML(
+            value="For transition metals and lanthanoids, the starting eigenvalues can be defined (Magnetic calculation).",
+            layout=ipw.Layout(width="auto"),
+        )
+        self.activate_hubbard = ipw.Checkbox(
+            description="",
+            tooltip="Use Hubbard DFT+U.",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="10%"),
+        )
+        self.eigenvalues_label = ipw.Checkbox(
+            description="Define eigenvalues",
+            tooltip="Define eigenvalues",
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="30%"),
+        )
+        self.hubbard_widget = self.create_hubbard_widget()
+        self.hubbard_widget_out = ipw.Output()
+        self.eigen_values_widget = self.create_eigenvalues_widget()
+        self.eigen_values_widget_out = ipw.Output()
+
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    children=[
+                        ipw.HTML("<b>Hubbard (DFT+U)</b>"),
+                        self.activate_hubbard,
+                    ]
+                ),
+                self.hubbard_widget_out,
+                self.eigen_values_widget_out,
+            ]
+        )
+        self.activate_hubbard.observe(self.toggle_hubbard_widgets, names="value")
+        self.eigenvalues_label.observe(self.toggle_eigenvalues_widgets, names="value")
+
+    def create_hubbard_widget(self):
+        """
+        Creates a widget for defining Hubbard U values for each atomic species in the input structure.
+
+        Returns:
+            hubbard_widget (ipywidgets.VBox): The widget containing the input fields for defining Hubbard U values.
+        """
+
+        def _display_checkbox(symbols):
+            return any(
+                Element(symbol).is_transition_metal
+                or Element(symbol).is_lanthanoid
+                or Element(symbol).is_actinoid
+                for symbol in symbols
+            )
+
+        condition = False
+        if self.input_structure is None:
+            self.input_labels = []
+        else:
+            self.input_labels = self._hubbard_widget_labels()
+            condition = _display_checkbox(self.input_structure.get_symbols_set())
+        widgets_list = []
+        for label in self.input_labels:
+            hbox_container = ipw.HBox()
+            float_widget = ipw.BoundedFloatText(
+                description=label,
+                min=0,
+                max=20,
+                step=0.1,
+                value=0.0,
+                layout={"width": "160px"},
+            )
+            hbox_container.children = [float_widget]
+            widgets_list.append(hbox_container)
+
+        if condition:
+            hubbard_widget = ipw.VBox(
+                [ipw.HTML("Define U value [eV] ")]
+                + widgets_list
+                + [self.eigenvalues_help, self.eigenvalues_label]
+            )
+        else:
+            hubbard_widget = ipw.VBox([ipw.HTML("Define U value [eV] ")] + widgets_list)
+        return hubbard_widget
+
+    def _hubbard_widget_labels(self):
+        """
+        Returns a list of labels for the Hubbard widget.
+
+        The labels are generated based on the kind names and the corresponding Hubbard manifolds
+        of the input structure.
+
+        Returns:
+            list: A list of labels in the format "{kind} - {manifold}".
+        """
+        kind_list = self.input_structure.get_kind_names()
+        hubbard_manifold_list = [
+            self._get_hubbard_manifold(Element(x.symbol))
+            for x in self.input_structure.kinds
+        ]
+        result = [
+            f"{kind} - {manifold}"
+            for kind, manifold in zip(kind_list, hubbard_manifold_list)
+        ]
+        return result
+
+    def _get_hubbard_manifold(self, element):
+        """
+        Get the Hubbard manifold for a given element.
+
+        Parameters:
+        element (Element): The element for which to determine the Hubbard manifold.
+
+        Returns:
+        str: The Hubbard manifold for the given element.
+        """
+        valence = [
+            orbital
+            for orbital in element.electronic_structure.split(".")
+            if "[" not in orbital
+        ]
+        orbital_shells = [shell[:2] for shell in valence]
+
+        def is_condition_met(shell):
+            return condition and condition in shell
+
+        # Conditions for determining the Hubbard manifold to be selected from the electronic structure
+        hubbard_conditions = {
+            element.is_transition_metal: "d",
+            element.is_lanthanoid or element.is_actinoid: "f",
+            element.is_post_transition_metal
+            or element.is_metalloid
+            or element.is_halogen
+            or element.is_chalcogen
+            or element.symbol in ["C", "N", "P"]: "p",
+            element.is_alkaline or element.is_alkali or element.is_noble_gas: "s",
+        }
+
+        condition = next(
+            (shell for condition, shell in hubbard_conditions.items() if condition),
+            None,
+        )
+
+        hubbard_manifold = next(
+            (shell for shell in orbital_shells if is_condition_met(shell)), None
+        )
+
+        return hubbard_manifold
+
+    def create_eigenvalues_widget(self):
+        """
+        Creates and returns a widget for selecting eigenvalues of different kinds of atoms.
+
+        Returns:
+        occup_kinds_widget (ipywidgets.VBox): Widget for selecting eigenvalues.
+        """
+
+        if self.input_structure is None:
+            self.input_kinds_eigenvalues = []
+        else:
+            list_of_kinds = [
+                [index + 1, value.name, Element(value.symbol)]
+                for index, value in enumerate(self.input_structure.kinds)
+            ]
+            self.input_kinds_eigenvalues = [
+                x
+                for x in list_of_kinds
+                if x[2].is_transition_metal or x[2].is_lanthanoid
+            ]
+
+        kind_list = []
+        for kind in self.input_kinds_eigenvalues:
+            if kind[2].is_transition_metal:
+                num_states = 5  # d states
+            if kind[2].is_lanthanoid:
+                num_states = 7  # f states
+            if kind[2].is_transition_metal or kind[2].is_lanthanoid:
+                widgets_list_up = []
+                widgets_list_down = []
+                for i in range(num_states):
+                    eigenvalues_up = ipw.Dropdown(
+                        description=f"{i+1}",
+                        options=["-1", "0", "1"],
+                        layout=ipw.Layout(width="65px"),
+                        style={"description_width": "initial"},
+                    )
+                    eigenvalues_down = ipw.Dropdown(
+                        description=f"{i+1}",
+                        options=["-1", "0", "1"],
+                        layout=ipw.Layout(width="65px"),
+                        style={"description_width": "initial"},
+                    )
+                    widgets_list_up.append(eigenvalues_up)
+                    widgets_list_down.append(eigenvalues_down)
+
+                row_up = ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Up:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="50px"
+                            ),
+                        )
+                    ]
+                    + widgets_list_up,
+                )
+
+                row_down = ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            "Down:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="50px"
+                            ),
+                        )
+                    ]
+                    + widgets_list_down,
+                )
+                eigenvalues_container = ipw.VBox(children=[row_up, row_down])
+                kind_container = ipw.HBox(
+                    children=[
+                        ipw.Label(
+                            kind[1],
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="50px"
+                            ),
+                        ),
+                        eigenvalues_container,
+                    ]
+                )
+                kind_list.append(kind_container)
+        occup_kinds_widget = ipw.VBox(kind_list)
+        return occup_kinds_widget
+
+    def update_widgets(self, change):
+        """
+        Update the widgets based on the given change.
+        """
+        self.input_structure = change
+        self.hubbard_widget = self.create_hubbard_widget()
+        self.eigenvalues_label.value = False
+        if self.activate_hubbard.value:
+            with self.hubbard_widget_out:
+                clear_output()
+                display(self.hubbard_widget)
+
+        self.eigen_values_widget = self.create_eigenvalues_widget()
+        if self.eigenvalues_label.value:
+            with self.eigen_values_widget_out:
+                clear_output()
+                display(self.eigen_values_widget)
+
+    def toggle_hubbard_widgets(self, change):
+        """
+        Toggle the visibility of the Hubbard widgets based on the value of check box.
+        """
+        if change["new"]:
+            with self.hubbard_widget_out:
+                clear_output()
+                display(self.hubbard_widget)
+            if self.eigenvalues_label.value:
+                with self.eigen_values_widget_out:
+                    clear_output()
+                    display(self.eigen_values_widget)
+        else:
+            with self.hubbard_widget_out:
+                clear_output()
+            with self.eigen_values_widget_out:
+                clear_output()
+
+    def toggle_eigenvalues_widgets(self, change):
+        """
+        Toggle the visibility of eigenvalues widgets based on the value of the eigenvalues check box.
+        """
+        if change["new"]:
+            with self.eigen_values_widget_out:
+                clear_output()
+                display(self.eigen_values_widget)
+        else:
+            with self.eigen_values_widget_out:
+                clear_output()
+
+    def _get_hubbard_u(self) -> dict:
+        """
+        Get the Hubbard U values for each input label.
+
+        Returns:
+            dict: A dictionary containing the Hubbard U values for each input label.
+                    The dictionary format is {'kind_name - hubbard_manifold': U_value}
+
+        """
+        hubbard_u = {}
+        for index, label in enumerate(self.input_labels):
+            value_hubbard = self.hubbard_widget.children[index + 1].children[0].value
+            if value_hubbard != 0:
+                hubbard_u[label] = (
+                    self.hubbard_widget.children[index + 1].children[0].value
+                )
+        return hubbard_u
+
+    def _get_starting_ns_eigenvalue(self) -> list:
+        """
+        Get the starting ns eigenvalues for transition metal and lanthanoid elements.
+
+        Returns:
+            list: A list of starting ns eigenvalues for each element.
+                  Each element in the list is a list containing the following information:
+                  - The eigenvalue
+                  - The spin index
+                  - The element symbol
+                  - The value of the eigenvalue
+        """
+        starting_ns_eigenvalue = []
+        for index, kind in enumerate(self.input_kinds_eigenvalues):
+            if kind[2].is_transition_metal or kind[2].is_lanthanoid:
+                if kind[2].is_transition_metal:
+                    num_states = 5
+                else:
+                    num_states = 7
+                for i in range(2):  # up and down
+                    spin = (
+                        self.eigen_values_widget.children[index].children[1].children[i]
+                    )
+                    for j in range(num_states):
+                        value_eigenvalue = int(spin.children[j + 1].value)
+                        if value_eigenvalue != -1:
+                            starting_ns_eigenvalue.append(
+                                [j + 1, i + 1, kind[1], value_eigenvalue]
+                            )
+
+        return starting_ns_eigenvalue
+
+    def set_hubbard_widget(self, parameters):
+        """
+        Set the Hubbard widget based on the given parameters.
+
+        Parameters:
+            parameters (dict): A dictionary containing the Hubbard U values for each input label.
+                               The dictionary format is {'kind_name - hubbard_manifold': U_value}
+        """
+        for index, label in enumerate(self.input_labels):
+            if label in parameters:
+                self.hubbard_widget.children[index + 1].children[0].value = parameters[
+                    label
+                ]
+
+    def set_eigenvalues_widget(self, parameters):
+        """
+        Set the eigenvalues widget based on the given parameters.
+
+        Parameters:
+            parameters (list): A list of starting ns eigenvalues for each element.
+                               Each element in the list is a list containing the following information:
+                               - The eigenvalue
+                               - The spin index
+                               - The element symbol
+                               - The value of the eigenvalue
+        """
+        for param in parameters:
+            eigenvalue, spin_index, element_symbol, value = param
+            for index, kind in enumerate(self.input_kinds_eigenvalues):
+                if kind[1] == element_symbol:
+                    spin = (
+                        self.eigen_values_widget.children[index]
+                        .children[1]
+                        .children[spin_index - 1]
+                    )
+                    spin.children[eigenvalue].value = str(value)
+
+    def reset(self):
+        """Reset the widget."""
+        self.activate_hubbard.value = False
+        self.eigenvalues_label.value = False
+        self.input_structure = None
+        self.hubbard_widget = self.create_hubbard_widget()
+        self.eigen_values_widget = self.create_eigenvalues_widget()
+        with self.hubbard_widget_out:
+            clear_output()
+        with self.eigen_values_widget_out:
+            clear_output()
+
+    @property
+    def hubbard_dict(self) -> dict:
+        if self.activate_hubbard.value:
+            hubbard_dict = {
+                "hubbard_u": self._get_hubbard_u(),
+            }
+        else:
+            hubbard_dict = {}
+        return hubbard_dict
+
+    @property
+    def eigenvalues_dict(self) -> dict:
+        if self.eigenvalues_label.value:
+            eigenvalues_dict = {
+                "starting_ns_eigenvalue": self._get_starting_ns_eigenvalue()
+            }
+        else:
+            eigenvalues_dict = {}
+        return eigenvalues_dict

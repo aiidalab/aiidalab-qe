@@ -6,6 +6,7 @@ from aiida.plugins import DataFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
 
@@ -111,18 +112,33 @@ class QeAppWorkChain(WorkChain):
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
         codes = parameters.pop("codes", {})
-        codes = {
-            key: orm.load_node(value)
-            for key, value in codes.items()
-            if value is not None
-        }
+        # load codes from uuid
+        for _, value in codes.items():
+            if value["code"] is not None:
+                value["code"] = orm.load_node(value["code"])
         # update pseudos
         for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
             parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
         #
         builder = cls.get_builder()
-        # Set the structure.
-        builder.structure = structure
+        # Set a HubbardStructureData if hubbard_parameters is specified
+        hubbard_dict = parameters["advanced"].pop("hubbard_parameters", None)
+        if hubbard_dict is not None:
+            hubbard_parameters = hubbard_dict["hubbard_u"]
+            hubbard_structure = HubbardStructureData.from_structure(structure)
+            for key, value in hubbard_parameters.items():
+                kind, orbital = key.rsplit(" - ", 1)
+                hubbard_structure.initialize_onsites_hubbard(
+                    atom_name=kind,
+                    atom_manifold=orbital,
+                    value=value,
+                    hubbard_type="U",
+                    use_kinds=True,
+                )
+            hubbard_structure.store()
+            builder.structure = hubbard_structure
+        else:
+            builder.structure = structure
         # relax
         relax_overrides = {
             "base": parameters["advanced"],
@@ -130,7 +146,7 @@ class QeAppWorkChain(WorkChain):
         }
         protocol = parameters["workchain"]["protocol"]
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
-            code=codes.get("pw"),
+            code=codes.get("pw")["code"],
             structure=structure,
             protocol=protocol,
             relax_type=RelaxType(parameters["workchain"]["relax_type"]),
@@ -165,7 +181,7 @@ class QeAppWorkChain(WorkChain):
         for name, entry_point in plugin_entries.items():
             if name in properties:
                 plugin_builder = entry_point["get_builder"](
-                    codes, structure, copy.deepcopy(parameters), **kwargs
+                    codes, builder.structure, copy.deepcopy(parameters), **kwargs
                 )
                 # check if the plugin has a clean_workdir input
                 plugin_workchain = entry_point["workchain"]
@@ -238,7 +254,8 @@ class QeAppWorkChain(WorkChain):
                 self.exposed_inputs(plugin_workchain, namespace=name)
             )
             inputs.metadata.call_link_label = name
-            inputs.structure = self.ctx.current_structure
+            if entry_point.get("update_inputs"):
+                entry_point["update_inputs"](inputs, self.ctx)
             inputs = prepare_process_inputs(plugin_workchain, inputs)
             running = self.submit(plugin_workchain, **inputs)
             self.report(f"launching plugin {name} <{running.pk}>")
