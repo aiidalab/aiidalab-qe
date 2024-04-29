@@ -9,6 +9,7 @@ import os
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
+import numpy as np
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
@@ -255,6 +256,21 @@ class AdvancedSettings(Panel):
         # Default settings to trigger the callback
         self.reset()
 
+    def set_value_and_step(self, attribute, value):
+        """
+        Sets the value and adjusts the step based on the order of magnitude of the value.
+        This is used for the thresolds values (etot_conv_thr, scf_conv_thr, forc_conv_thr).
+        Parameters:
+            attribute: The attribute whose values are to be set (e.g., self.etot_conv_thr).
+            value: The numerical value to set.
+        """
+        attribute.value = value
+        if value != 0:
+            order_of_magnitude = np.floor(np.log10(abs(value)))
+            attribute.step = 10 ** (order_of_magnitude - 1)
+        else:
+            attribute.step = 0.1  # Default step if value is zero
+
     def _override_changed(self, change):
         """Callback function to set the override value"""
         if change["new"] is False:
@@ -296,15 +312,16 @@ class AdvancedSettings(Panel):
 
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
-        self.etot_conv_thr.value = (
-            num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
-        )
-        self.scf_conv_thr.value = (
-            num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
-        )
-        self.forc_conv_thr.value = parameters["pw"]["parameters"]["CONTROL"][
-            "forc_conv_thr"
-        ]
+        etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
+        self.set_value_and_step(self.etot_conv_thr, etot_value)
+
+        # Set SCF conversion threshold
+        scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
+        self.set_value_and_step(self.scf_conv_thr, scf_value)
+
+        # Set force conversion threshold
+        forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
+        self.set_value_and_step(self.forc_conv_thr, forc_value)
 
         # The pseudo_family read from the protocol (aiida-quantumespresso plugin settings)
         # we override it with the value from the pseudo_family_selector widget
