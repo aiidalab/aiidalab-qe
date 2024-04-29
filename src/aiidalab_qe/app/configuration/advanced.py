@@ -419,17 +419,6 @@ class AdvancedSettings(Panel):
             self.etot_conv_thr.value
         )
 
-        # convergence threshold setting
-        parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"] = (
-            self.forc_conv_thr.value
-        )
-        parameters["pw"]["parameters"]["ELECTRONS"]["conv_thr"] = (
-            self.scf_conv_thr.value
-        )
-        parameters["pw"]["parameters"]["CONTROL"]["etot_conv_thr"] = (
-            self.etot_conv_thr.value
-        )
-
         return parameters
 
     def set_insulator_magnetization(self, parameters):
