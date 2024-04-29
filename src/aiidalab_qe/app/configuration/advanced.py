@@ -169,7 +169,7 @@ class AdvancedSettings(Panel):
         self.scf_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            step=0.000001,
+            step=1e-10,
             description="SCF conv.:",
             disabled=False,
             style={"description_width": "initial"},
@@ -183,7 +183,7 @@ class AdvancedSettings(Panel):
         self.forc_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            step=0.00001,
+            step=0.0001,
             description="Force conv.:",
             disabled=False,
             style={"description_width": "initial"},
@@ -294,10 +294,7 @@ class AdvancedSettings(Panel):
 
         self.kpoints_distance.value = parameters["kpoints_distance"]
 
-        num_atoms = 1
-        if self.input_structure is not None:
-            ase_structure = self.input_structure.get_ase()
-            num_atoms = ase_structure.get_global_number_of_atoms()
+        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
         self.etot_conv_thr.value = (
             num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
@@ -441,7 +438,7 @@ class AdvancedSettings(Panel):
 
     def set_panel_value(self, parameters):
         """Set the panel value from the given parameters."""
-        # protocol_parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
+        
         if "pseudo_family" in parameters:
             pseudo_family_string = parameters["pseudo_family"]
             self.pseudo_family_selector.load_from_pseudo_family(
