@@ -455,7 +455,7 @@ class AdvancedSettings(Panel):
 
     def set_panel_value(self, parameters):
         """Set the panel value from the given parameters."""
-        
+
         if "pseudo_family" in parameters:
             pseudo_family_string = parameters["pseudo_family"]
             self.pseudo_family_selector.load_from_pseudo_family(
