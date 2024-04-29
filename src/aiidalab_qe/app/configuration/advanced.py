@@ -337,8 +337,13 @@ class AdvancedSettings(Panel):
         # XXX: start from parameters = {} and then bundle the settings by purposes (e.g. pw, bands, etc.)
         parameters = {
             "initial_magnetic_moments": None,
-            "pw": {"parameters": {"SYSTEM": {}, "CONTROL": {},
-                    "ELECTRONS": {},}},
+            "pw": {
+                "parameters": {
+                    "SYSTEM": {},
+                    "CONTROL": {},
+                    "ELECTRONS": {},
+                }
+            },
             "clean_workdir": self.clean_workdir.value,
             "pseudo_family": self.pseudo_family_selector.value,
             "kpoints_distance": self.value.get("kpoints_distance"),
@@ -404,26 +409,26 @@ class AdvancedSettings(Panel):
                 self.set_insulator_magnetization(parameters)
 
         # convergence threshold setting
-        parameters["pw"]["parameters"]["CONTROL"][
-            "forc_conv_thr"
-        ] = self.forc_conv_thr.value
-        parameters["pw"]["parameters"]["ELECTRONS"][
-            "conv_thr"
-        ] = self.scf_conv_thr.value
-        parameters["pw"]["parameters"]["CONTROL"][
-            "etot_conv_thr"
-        ] = self.etot_conv_thr.value
+        parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"] = (
+            self.forc_conv_thr.value
+        )
+        parameters["pw"]["parameters"]["ELECTRONS"]["conv_thr"] = (
+            self.scf_conv_thr.value
+        )
+        parameters["pw"]["parameters"]["CONTROL"]["etot_conv_thr"] = (
+            self.etot_conv_thr.value
+        )
 
         # convergence threshold setting
-        parameters["pw"]["parameters"]["CONTROL"][
-            "forc_conv_thr"
-        ] = self.forc_conv_thr.value
-        parameters["pw"]["parameters"]["ELECTRONS"][
-            "conv_thr"
-        ] = self.scf_conv_thr.value
-        parameters["pw"]["parameters"]["CONTROL"][
-            "etot_conv_thr"
-        ] = self.etot_conv_thr.value
+        parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"] = (
+            self.forc_conv_thr.value
+        )
+        parameters["pw"]["parameters"]["ELECTRONS"]["conv_thr"] = (
+            self.scf_conv_thr.value
+        )
+        parameters["pw"]["parameters"]["CONTROL"]["etot_conv_thr"] = (
+            self.etot_conv_thr.value
+        )
 
         return parameters
 
@@ -447,7 +452,7 @@ class AdvancedSettings(Panel):
 
     def set_panel_value(self, parameters):
         """Set the panel value from the given parameters."""
-        #protocol_parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
+        # protocol_parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
         if "pseudo_family" in parameters:
             pseudo_family_string = parameters["pseudo_family"]
             self.pseudo_family_selector.load_from_pseudo_family(
@@ -479,10 +484,25 @@ class AdvancedSettings(Panel):
             )
 
             # convergence threshold setting
-            self.forc_conv_thr.value = parameters.get("pw", {}).get("parameters", {}).get("CONTROL", {}).get("forc_conv_thr", 0.0)
-            self.etot_conv_thr.value = parameters.get("pw", {}).get("parameters", {}).get("CONTROL", {}).get("etot_conv_thr", 0.0)
-            self.scf_conv_thr.value = parameters.get("pw", {}).get("parameters", {}).get("ELECTRONS", {}).get("conv_thr", 0.0)
-            
+            self.forc_conv_thr.value = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("CONTROL", {})
+                .get("forc_conv_thr", 0.0)
+            )
+            self.etot_conv_thr.value = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("CONTROL", {})
+                .get("etot_conv_thr", 0.0)
+            )
+            self.scf_conv_thr.value = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("ELECTRONS", {})
+                .get("conv_thr", 0.0)
+            )
+
         # Logic to set the magnetization
         if parameters.get("initial_magnetic_moments"):
             self.magnetization._set_magnetization_values(
