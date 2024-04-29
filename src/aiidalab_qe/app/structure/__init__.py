@@ -26,10 +26,10 @@ from aiidalab_qe.common import AddingTagsEditor
 # StructureExamplesWidget.
 file_path = pathlib.Path(__file__).parent
 Examples = [
-    ("Silicon (diamond)", file_path / "examples" / "Si.xyz"),
-    ("Silicon oxide", file_path / "examples" / "SiO2.xyz"),
-    ("Diamond", file_path / "examples" / "diamond.cif"),
-    ("Gallium arsenide", file_path / "examples" / "GaAs.xyz"),
+    ("Bulk silicon", file_path / "examples" / "Si.cif"),
+    ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
+    ("Diamond", file_path / "examples" / "Diamond.cif"),
+    ("Gallium arsenide", file_path / "examples" / "GaAs.cif"),
     ("Gold (fcc)", file_path / "examples" / "Au.cif"),
     ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
     ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
