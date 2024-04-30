@@ -38,7 +38,7 @@ To facilitate better job management, we have added a new job search page that al
 
 New Widgets
 ----------------------
-This release also introduces several new widgets, including tools for DFT+U, magnetic settings, and computational resources setup, further enhancing the functionality and user flexibility of QEApp.
+This release also introduces several new widgets, including tools for DFT+U, magnetic settings, computational resources and pseudopotential setup, further enhancing the functionality and user flexibility of QEApp.
 
 .. figure:: /_static/images/qeapp_release_202404_new_widgets.png
    :align: center
