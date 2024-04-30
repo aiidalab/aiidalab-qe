@@ -217,7 +217,7 @@ def install(
             "Installation was already started elsewhere, waiting for it to finish...",
             ProgressBar.AnimationRate(1.0),
         )
-        with FileLock(FN_LOCKFILE, timeout=120):
+        with FileLock(FN_LOCKFILE, timeout=300):
             if len(pseudos_to_install()) > 0:
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
