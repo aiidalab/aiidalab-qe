@@ -124,6 +124,10 @@ def generate_report_parameters(qeapp_wc):
         qeapp_wc.inputs.structure.pbc, "xyz"
     )
 
+    #Spin-Oribit coupling
+    report["spin_orbit"] = pw_parameters["SYSTEM"].get("lspinorb", False)
+
+
     # DFT+U
     hubbard_dict = ui_parameters["advanced"].pop("hubbard_parameters", None)
     if hubbard_dict:

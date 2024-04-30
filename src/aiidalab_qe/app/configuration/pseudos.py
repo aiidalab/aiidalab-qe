@@ -30,7 +30,22 @@ class PseudoFamilySelector(ipw.VBox):
         """<div style="padding-top: 0px; padding-bottom: 10px">
         <h4>Accuracy and precision</h4></div>"""
     )
+    PSEUDO_HELP_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
+            Spin-orbit coupling (SOC) calculations are supported exclusively with PseudoDojo pseudopotentials.
+            PseudoDojo offers these pseudopotentials in two versions: standard and stringent.
+            Here, we utilize the FR (fully relativistic) type from PseudoDojo.
+            Please ensure you choose appropriate cutoff values for your calculations.
+        </div>"""
 
+       
+    PSEUDO_HELP_WO_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
+        If you are unsure, select 'SSSP efficiency', which for
+        most calculations will produce sufficiently accurate results at
+        comparatively small computational costs. If your calculations require a
+        higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
+        more expensive. SSSP is the standard solid-state pseudopotentials.
+        The PseudoDojo used here has the SR relativistic type.</div>"""
+    
     description = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
         The exchange-correlation functional and pseudopotential library is set by
@@ -45,15 +60,8 @@ class PseudoFamilySelector(ipw.VBox):
         <b><a href="https://www.materialscloud.org/discover/sssp/table/efficiency"
         target="_blank">Pseudopotential family</b></div>"""
     )
-    pseudo_family_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
-        If you are unsure, select 'SSSP efficiency', which for
-        most calculations will produce sufficiently accurate results at
-        comparatively small computational costs. If your calculations require a
-        higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
-        more expensive. SSSP is the standard solid-state pseudopotentials.
-        The PseudoDojo used here has the SR relativistic type.</div>"""
-    )
+    pseudo_family_help = ipw.HTML(PSEUDO_HELP_WO_SOC)
+    
 
     dft_functional_prompt = ipw.HTML(
         """
@@ -68,6 +76,7 @@ class PseudoFamilySelector(ipw.VBox):
     )
     protocol = tl.Unicode(allow_none=True)
     disabled = tl.Bool()
+    spin_orbit = tl.Unicode()
 
     # output pseudo family widget which is the string of the pseudo family (of the AiiDA group).
     value = tl.Unicode(allow_none=True)
@@ -150,9 +159,14 @@ class PseudoFamilySelector(ipw.VBox):
         functional = self.dft_functional.value
         # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
         if library == "PseudoDojo":
-            pseudo_family_string = (
-                f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
-            )
+            if self.spin_orbit == "soc":
+                pseudo_family_string = (
+                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/FR/{accuracy}/upf"
+                )
+            else:
+                pseudo_family_string = (
+                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
+                )
         elif library == "SSSP":
             pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
         else:
@@ -190,6 +204,24 @@ class PseudoFamilySelector(ipw.VBox):
         # stay the same while xc selection is changed.
         self._update_settings_from_protocol(self.protocol)
 
+    @tl.observe("spin_orbit")
+    def _update_library_selection(self, _):
+        """Update the library selection according to the spin orbit value."""
+        if self.spin_orbit == "soc":
+            self.library_selection.options = [
+                "PseudoDojo standard",
+                "PseudoDojo stringent",
+            ]
+            self.pseudo_family_help.value = self.PSEUDO_HELP_SOC
+        else:
+            self.library_selection.options = [
+                "SSSP efficiency",
+                "SSSP precision",
+                "PseudoDojo standard",
+                "PseudoDojo stringent",
+            ]
+            self.pseudo_family_help.value = self.PSEUDO_HELP_WO_SOC
+            
     @tl.observe("protocol")
     def _protocol_changed(self, _):
         """Input protocol changed, update the value of widgets."""
@@ -198,9 +230,17 @@ class PseudoFamilySelector(ipw.VBox):
     def _update_settings_from_protocol(self, protocol):
         """Update the widget values from the given protocol, and trigger the callback."""
         # FIXME: this rely on the aiida-quantumespresso, which is not ideal
-        pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
-            "pseudo_family"
-        ]
+
+        if self.spin_orbit == "soc":
+            if protocol in ["fast", "moderate"]:
+                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
+            else:
+                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
+        else:
+            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
+                "pseudo_family"
+            ]
+      
         pseudo_family = PseudoFamily.from_string(pseudo_family_string)
 
         self.load_from_pseudo_family(pseudo_family)
