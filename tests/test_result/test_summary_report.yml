@@ -26,6 +26,7 @@ relax_method: positions_cell
 relaxed: positions_cell
 scf_kpoints_distance: 0.5
 smearing: cold
+spin_orbit: false
 tot_charge: 0.0
 tot_magnetization: false
 vdw_corr: none
