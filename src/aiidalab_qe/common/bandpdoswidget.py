@@ -241,6 +241,11 @@ class BandPdosPlotly:
             (True, 1): self.SETTINGS["bands_down_linecolor"],
             (False, 0): self.SETTINGS["bands_linecolor"],
         }
+        fermi_energy_mapping = {
+            (False, 0): self.fermi_energy.get("fermi_energy_up", None),
+            (False, 1): self.fermi_energy.get("fermi_energy_down", None),
+        }
+
         bands_data = self.bands_data
         # Convert paths to a list of Scatter objects
         scatter_objects = []
@@ -259,10 +264,15 @@ class BandPdosPlotly:
                 x_bands, y_bands
             )
 
+            fermi_energy = fermi_energy_mapping.get(
+                ("fermi_energy" in self.fermi_energy, spin),
+                self.fermi_energy.get("fermi_energy"),
+            )
+
             scatter_objects.append(
                 go.Scatter(
                     x=x_bands_comb,
-                    y=y_bands_comb - self.fermi_energy,
+                    y=y_bands_comb - fermi_energy,
                     mode="lines",
                     line=dict(
                         color=colors[(spin_polarized, spin)],
@@ -283,19 +293,26 @@ class BandPdosPlotly:
         num_traces = len(dos_data)
         scatter_objects = [None] * num_traces
 
+        # dictionary with keys (bool(spin polarized), bool(spin up))
+        fermi_energy_spin_mapping = {
+            (False, True): self.fermi_energy.get("fermi_energy_up", None),
+            (False, False): self.fermi_energy.get("fermi_energy_down", None),
+        }
+
         # Vectorize Scatter object creation
         for i, trace in enumerate(dos_data):
             dos_np = np.array(trace["x"])
             fill = "tozerox" if self.plot_type == "combined" else "tozeroy"
+            fermi_energy = fermi_energy_spin_mapping.get(
+                ("fermi_energy" in self.fermi_energy, trace["label"].endswith("(↑)")),
+                self.fermi_energy.get("fermi_energy"),
+            )
+
             x_data = (
-                trace["y"]
-                if self.plot_type == "combined"
-                else dos_np - self.fermi_energy
+                trace["y"] if self.plot_type == "combined" else dos_np - fermi_energy
             )
             y_data = (
-                dos_np - self.fermi_energy
-                if self.plot_type == "combined"
-                else trace["y"]
+                dos_np - fermi_energy if self.plot_type == "combined" else trace["y"]
             )
             scatter_objects[i] = go.Scatter(
                 x=x_data,
@@ -311,13 +328,25 @@ class BandPdosPlotly:
     def _add_projection_traces(self, fig):
         """Function to add the projected bands traces to the bands plot."""
         projected_bands = self.bands_data["projected_bands"]
+        # dictionary with keys (bool(spin polarized), bool(spin up))
+        fermi_energy_spin_mapping = {
+            (False, True): self.fermi_energy.get("fermi_energy_up", None),
+            (False, False): self.fermi_energy.get("fermi_energy_down", None),
+        }
 
         scatter_objects = []
         for proj_bands in projected_bands:
+            fermi_energy = fermi_energy_spin_mapping.get(
+                (
+                    "fermi_energy" in self.fermi_energy,
+                    proj_bands["label"].endswith("(↑)"),
+                ),
+                self.fermi_energy.get("fermi_energy"),
+            )
             scatter_objects.append(
                 go.Scatter(
                     x=proj_bands["x"],
-                    y=np.array(proj_bands["y"]) - self.fermi_energy,
+                    y=np.array(proj_bands["y"]) - fermi_energy,
                     fill="toself",
                     legendgroup=proj_bands["label"],
                     mode="lines",
@@ -667,7 +696,14 @@ def get_bands_projections_data(
         cartesian=True, prettify_format=None, join_symbol=None, get_segments=True
     )
     # The fermi energy from band calculation is not robust.
-    bands_data["fermi_energy"] = outputs.band_parameters["fermi_energy"] or fermi_energy
+    if "fermi_energy_up" in outputs.band_parameters:
+        bands_data["fermi_energy_up"] = outputs.band_parameters["fermi_energy_up"]
+        bands_data["fermi_energy_down"] = outputs.band_parameters["fermi_energy_down"]
+    else:
+        bands_data["fermi_energy"] = (
+            outputs.band_parameters["fermi_energy"] or fermi_energy
+        )
+
     bands_data["pathlabels"] = get_bands_labeling(bands_data)
 
     if "projwfc" in outputs:
@@ -685,16 +721,17 @@ def get_bands_projections_data(
                 )
             )
         else:
-            for spin_proj in [
-                outputs.projwfc.projections_up,
-                outputs.projwfc.projections_down,
-            ]:
+            for spin_proj, spin_type in zip(
+                [
+                    outputs.projwfc.projections_up,
+                    outputs.projwfc.projections_down,
+                ],
+                ["up", "down"],
+            ):
                 projections.append(
                     _projections_curated_options(
                         spin_proj,
-                        spin_type="up"
-                        if spin_proj == outputs.projwfc.projections_up
-                        else "down",
+                        spin_type=spin_type,
                         group_tag=group_tag,
                         plot_tag=plot_tag,
                         selected_atoms=selected_atoms,
