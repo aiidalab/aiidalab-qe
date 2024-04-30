@@ -163,14 +163,11 @@ def test_pseudos_family_selector_widget():
     w.library_selection.value = "PseudoDojo stringent"
     assert w.value == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
 
-    # Test spin-orbit change will update 
+    # Test spin-orbit change will update
 
     w.spin_orbit = "soc"
     w.protocol = "moderate"
     assert w.value == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/standard/upf"
-
-
-
 
 
 @pytest.mark.usefixtures("sssp")

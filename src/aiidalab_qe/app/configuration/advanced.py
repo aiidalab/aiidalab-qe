@@ -52,7 +52,7 @@ class AdvancedSettings(Panel):
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     spin_type = tl.Unicode()
     electronic_type = tl.Unicode()
-  
+
     # output dictionary
     value = tl.Dict()
 
@@ -209,7 +209,7 @@ class AdvancedSettings(Panel):
             (self.etot_conv_thr, "disabled"),
             lambda override: not override,
         )
-        #Spin-Orbit calculation 
+        # Spin-Orbit calculation
         self.spin_orbit = ipw.ToggleButtons(
             options=[
                 ("W/o SOC", "wo_soc"),
@@ -225,7 +225,6 @@ class AdvancedSettings(Panel):
             lambda override: not override,
         )
 
-        
         self.pseudo_family_selector = PseudoFamilySelector()
         self.pseudo_setter = PseudoSetter()
         ipw.dlink(

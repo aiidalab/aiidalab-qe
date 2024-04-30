@@ -37,7 +37,6 @@ class PseudoFamilySelector(ipw.VBox):
             Please ensure you choose appropriate cutoff values for your calculations.
         </div>"""
 
-       
     PSEUDO_HELP_WO_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
         If you are unsure, select 'SSSP efficiency', which for
         most calculations will produce sufficiently accurate results at
@@ -45,7 +44,7 @@ class PseudoFamilySelector(ipw.VBox):
         higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
         more expensive. SSSP is the standard solid-state pseudopotentials.
         The PseudoDojo used here has the SR relativistic type.</div>"""
-    
+
     description = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
         The exchange-correlation functional and pseudopotential library is set by
@@ -61,7 +60,6 @@ class PseudoFamilySelector(ipw.VBox):
         target="_blank">Pseudopotential family</b></div>"""
     )
     pseudo_family_help = ipw.HTML(PSEUDO_HELP_WO_SOC)
-    
 
     dft_functional_prompt = ipw.HTML(
         """
@@ -221,7 +219,7 @@ class PseudoFamilySelector(ipw.VBox):
                 "PseudoDojo stringent",
             ]
             self.pseudo_family_help.value = self.PSEUDO_HELP_WO_SOC
-            
+
     @tl.observe("protocol")
     def _protocol_changed(self, _):
         """Input protocol changed, update the value of widgets."""
@@ -240,7 +238,7 @@ class PseudoFamilySelector(ipw.VBox):
             pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
                 "pseudo_family"
             ]
-      
+
         pseudo_family = PseudoFamily.from_string(pseudo_family_string)
 
         self.load_from_pseudo_family(pseudo_family)
