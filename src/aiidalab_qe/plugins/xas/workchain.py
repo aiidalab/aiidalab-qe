@@ -4,6 +4,7 @@ import yaml
 from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
+from aiidalab_qe.plugins.utils import set_component_resources
 
 from aiidalab_qe.plugins import xas as xas_folder
 
@@ -15,17 +16,8 @@ xch_elements = PSEUDO_TOC["xas_xch_elements"]
 
 def update_resources(builder, codes):
     """Update the resources for the builder."""
-    builder.core.scf.pw.metadata.options.resources = {
-        "num_machines": codes.get("pw")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
-        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
-    }
-    builder.core.scf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
-    builder.core.xs_prod.xspectra.metadata.options.resources = {
-        "num_machines": codes.get("xspectra")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("xspectra")["ntasks_per_node"],
-        "num_cores_per_mpiproc": codes.get("xspectra")["cpus_per_task"],
-    }
+    set_component_resources(builder.core.scf.pw, codes.get("pw"))
+    set_component_resources(builder.core.xs_prod.xspectra, codes.get("xspectra"))
 
 
 def get_builder(codes, structure, parameters, **kwargs):

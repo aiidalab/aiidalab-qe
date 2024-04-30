@@ -1,6 +1,6 @@
-from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
+from aiidalab_qe.plugins.utils import set_component_resources
 
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 
@@ -33,28 +33,10 @@ def check_codes(pw_code, dos_code, projwfc_code):
 
 
 def update_resources(builder, codes):
-    builder.scf.pw.metadata.options.resources = {
-        "num_machines": codes.get("pw")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
-        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
-    }
-    builder.scf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
-    builder.nscf.pw.metadata.options.resources = {
-        "num_machines": codes.get("pw")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
-        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
-    }
-    builder.nscf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
-    builder.dos.metadata.options.resources = {
-        "num_machines": codes.get("dos")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("dos")["ntasks_per_node"],
-        "num_cores_per_mpiproc": codes.get("dos")["cpus_per_task"],
-    }
-    builder.projwfc.metadata.options.resources = {
-        "num_machines": codes.get("projwfc")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("projwfc")["ntasks_per_node"],
-        "num_cores_per_mpiproc": codes.get("projwfc")["cpus_per_task"],
-    }
+    set_component_resources(builder.scf.pw, codes.get("pw"))
+    set_component_resources(builder.nscf.pw, codes.get("pw"))
+    set_component_resources(builder.dos, codes.get("dos"))
+    set_component_resources(builder.projwfc, codes.get("projwfc"))
     # disable the parallelization setting for projwfc
     # npool = codes["pw"]["parallelization"]["npool"]
     # builder.projwfc.settings = orm.Dict(dict={"cmdline": ["-nk", str(npool)]})

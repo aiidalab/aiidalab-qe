@@ -1,6 +1,7 @@
 from aiida.orm import Bool, Dict, Float, Group, QueryBuilder
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
+from aiidalab_qe.plugins.utils import set_component_resources
 
 XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
@@ -14,12 +15,7 @@ supercell_min_parameter_map = {
 
 def update_resources(builder, codes):
     """Update the resources for the builder."""
-    builder.ch_scf.pw.metadata.options.resources = {
-        "num_machines": codes.get("pw")["nodes"],
-        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
-        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
-    }
-    builder.ch_scf.pw.parallelization = Dict(dict=codes["pw"]["parallelization"])
+    set_component_resources(builder.ch_scf.pw, codes.get("pw"))
 
 
 def get_builder(codes, structure, parameters, **kwargs):
