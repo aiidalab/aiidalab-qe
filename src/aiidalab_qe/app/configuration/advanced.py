@@ -9,6 +9,7 @@ import os
 import ipywidgets as ipw
 import traitlets as tl
 from aiida import orm
+import numpy as np
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
@@ -164,6 +165,51 @@ class AdvancedSettings(Panel):
             (self.magnetization, "disabled"),
             lambda override: not override,
         )
+
+        # Convergence Threshold settings
+        self.scf_conv_thr = ipw.BoundedFloatText(
+            min=1e-15,
+            max=1.0,
+            step=1e-10,
+            description="SCF conv.:",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        self.scf_conv_thr.observe(self._callback_value_set, "value")
+        ipw.dlink(
+            (self.override, "value"),
+            (self.scf_conv_thr, "disabled"),
+            lambda override: not override,
+        )
+        self.forc_conv_thr = ipw.BoundedFloatText(
+            min=1e-15,
+            max=1.0,
+            step=0.0001,
+            description="Force conv.:",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        self.forc_conv_thr.observe(self._callback_value_set, "value")
+        ipw.dlink(
+            (self.override, "value"),
+            (self.forc_conv_thr, "disabled"),
+            lambda override: not override,
+        )
+        self.etot_conv_thr = ipw.BoundedFloatText(
+            min=1e-15,
+            max=1.0,
+            step=0.00001,
+            description="Energy conv.:",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        self.etot_conv_thr.observe(self._callback_value_set, "value")
+        ipw.dlink(
+            (self.override, "value"),
+            (self.etot_conv_thr, "disabled"),
+            lambda override: not override,
+        )
+
         self.pseudo_family_selector = PseudoFamilySelector()
         self.pseudo_setter = PseudoSetter()
         ipw.dlink(
@@ -187,6 +233,12 @@ class AdvancedSettings(Panel):
             self.van_der_waals,
             # magnetization setting widget
             self.magnetization,
+            # convergence threshold setting widget
+            ipw.HTML("<b>Convergence Thresholds:</b>"),
+            ipw.HBox(
+                [self.forc_conv_thr, self.etot_conv_thr, self.scf_conv_thr],
+                layout=ipw.Layout(height="50px", justify_content="flex-start"),
+            ),
             # smearing setting widget
             self.smearing,
             # Kpoints setting widget
@@ -204,6 +256,21 @@ class AdvancedSettings(Panel):
         # Default settings to trigger the callback
         self.reset()
 
+    def set_value_and_step(self, attribute, value):
+        """
+        Sets the value and adjusts the step based on the order of magnitude of the value.
+        This is used for the thresolds values (etot_conv_thr, scf_conv_thr, forc_conv_thr).
+        Parameters:
+            attribute: The attribute whose values are to be set (e.g., self.etot_conv_thr).
+            value: The numerical value to set.
+        """
+        attribute.value = value
+        if value != 0:
+            order_of_magnitude = np.floor(np.log10(abs(value)))
+            attribute.step = 10 ** (order_of_magnitude - 1)
+        else:
+            attribute.step = 0.1  # Default step if value is zero
+
     def _override_changed(self, change):
         """Callback function to set the override value"""
         if change["new"] is False:
@@ -215,6 +282,7 @@ class AdvancedSettings(Panel):
         if self.input_structure is not None:
             self.magnetization._update_widget(change)
             self.pseudo_setter.structure = change["new"]
+            self._update_settings_from_protocol(self.protocol)
             self._display_mesh()
             self.hubbard_widget.update_widgets(change["new"])
         else:
@@ -241,6 +309,19 @@ class AdvancedSettings(Panel):
         parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
 
         self.kpoints_distance.value = parameters["kpoints_distance"]
+
+        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
+
+        etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
+        self.set_value_and_step(self.etot_conv_thr, etot_value)
+
+        # Set SCF conversion threshold
+        scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
+        self.set_value_and_step(self.scf_conv_thr, scf_value)
+
+        # Set force conversion threshold
+        forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
+        self.set_value_and_step(self.forc_conv_thr, forc_value)
 
         # The pseudo_family read from the protocol (aiida-quantumespresso plugin settings)
         # we override it with the value from the pseudo_family_selector widget
@@ -270,7 +351,13 @@ class AdvancedSettings(Panel):
         # XXX: start from parameters = {} and then bundle the settings by purposes (e.g. pw, bands, etc.)
         parameters = {
             "initial_magnetic_moments": None,
-            "pw": {"parameters": {"SYSTEM": {}}},
+            "pw": {
+                "parameters": {
+                    "SYSTEM": {},
+                    "CONTROL": {},
+                    "ELECTRONS": {},
+                }
+            },
             "clean_workdir": self.clean_workdir.value,
             "pseudo_family": self.pseudo_family_selector.value,
             "kpoints_distance": self.value.get("kpoints_distance"),
@@ -335,6 +422,17 @@ class AdvancedSettings(Panel):
             elif self.electronic_type == "insulator":
                 self.set_insulator_magnetization(parameters)
 
+        # convergence threshold setting
+        parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"] = (
+            self.forc_conv_thr.value
+        )
+        parameters["pw"]["parameters"]["ELECTRONS"]["conv_thr"] = (
+            self.scf_conv_thr.value
+        )
+        parameters["pw"]["parameters"]["CONTROL"]["etot_conv_thr"] = (
+            self.etot_conv_thr.value
+        )
+
         return parameters
 
     def set_insulator_magnetization(self, parameters):
@@ -386,6 +484,26 @@ class AdvancedSettings(Panel):
             self.van_der_waals.value = self.dftd3_version.get(
                 system.get("dftd3_version"),
                 parameters["pw"]["parameters"]["SYSTEM"].get("vdw_corr", "none"),
+            )
+
+            # convergence threshold setting
+            self.forc_conv_thr.value = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("CONTROL", {})
+                .get("forc_conv_thr", 0.0)
+            )
+            self.etot_conv_thr.value = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("CONTROL", {})
+                .get("etot_conv_thr", 0.0)
+            )
+            self.scf_conv_thr.value = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("ELECTRONS", {})
+                .get("conv_thr", 0.0)
             )
 
         # Logic to set the magnetization
