@@ -13,6 +13,21 @@ pseudo_data_dict = PSEUDO_TOC["pseudos"]
 xch_elements = PSEUDO_TOC["xas_xch_elements"]
 
 
+def update_resources(builder, codes):
+    """Update the resources for the builder."""
+    builder.core.scf.pw.metadata.options.resources = {
+        "num_machines": codes.get("pw")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
+    }
+    builder.core.scf.pw.parallelization = orm.Dict(dict=codes["pw"]["parallelization"])
+    builder.core.xs_prod.xspectra.metadata.options.resources = {
+        "num_machines": codes.get("xspectra")["nodes"],
+        "num_mpiprocs_per_machine": codes.get("xspectra")["ntasks_per_node"],
+        "num_cores_per_mpiproc": codes.get("xspectra")["cpus_per_task"],
+    }
+
+
 def get_builder(codes, structure, parameters, **kwargs):
     from copy import deepcopy
 
@@ -50,8 +65,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     }
     spglib_settings = orm.Dict({"symprec": 1.0e-3})
 
-    pw_code = codes["pw"]
-    xs_code = codes["xspectra"]
+    pw_code = codes["pw"]["code"]
+    xs_code = codes["xspectra"]["code"]
     overrides = {
         "core": {
             "scf": deepcopy(parameters["advanced"]),
@@ -100,6 +115,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     builder.pop("clean_workdir", None)
     builder.spglib_settings = spglib_settings
     builder.structure_preparation_settings = structure_preparation_settings
+    # update resources
+    update_resources(builder, codes)
 
     return builder
 
