@@ -93,9 +93,11 @@ load_profile()
 
 
 def _generate_string_to_setup_code(code_name, computer_name="localhost"):
-    """Generate the python string to setup a code for a given computer."""
+    """Generate the Python string to setup an AiiDA code for a given computer.
+    Tries to load an existing code and if not existent,
+    generates Python code to create and store a new code setup."""
     try:
-        load_code(f"{code_name}-{QE_VERSION}@localhost")
+        load_code(f"{code_name}-{QE_VERSION}@{computer_name}")
         return ""
     except NotExistent:
         label = f"{code_name}-{QE_VERSION}"
