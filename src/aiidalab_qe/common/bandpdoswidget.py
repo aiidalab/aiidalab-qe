@@ -58,12 +58,21 @@ class BandPdosPlotly:
         return self._get_bandspdos_plot()
 
     def _get_fermi_energy(self):
-        fermi_energy = (
-            self.pdos_data["fermi_energy"]
-            if self.pdos_data
-            else self.bands_data["fermi_energy"]
-        )
-        return fermi_energy
+        """Function to return the Fermi energy information depending on the data available."""
+        fermi_data = {}
+        if self.pdos_data:
+            if "fermi_energy_up" in self.pdos_data:
+                fermi_data["fermi_energy_up"] = self.pdos_data["fermi_energy_up"]
+                fermi_data["fermi_energy_down"] = self.pdos_data["fermi_energy_down"]
+            else:
+                fermi_data["fermi_energy"] = self.pdos_data["fermi_energy"]
+        else:
+            if "fermi_energy_up" in self.bands_data:
+                fermi_data["fermi_energy_up"] = self.bands_data["fermi_energy_up"]
+                fermi_data["fermi_energy_down"] = self.bands_data["fermi_energy_down"]
+            else:
+                fermi_data["fermi_energy"] = self.bands_data["fermi_energy"]
+        return fermi_data
 
     def _band_xaxis(self):
         """Function to return the xaxis for the bands plot."""
@@ -767,9 +776,15 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
         )
 
     data_dict = {
-        "fermi_energy": pdos.nscf.output_parameters["fermi_energy"],
         "dos": dos,
     }
+    if "fermi_energy_up" in pdos.nscf.output_parameters:
+        data_dict["fermi_energy_up"] = pdos.nscf.output_parameters["fermi_energy_up"]
+        data_dict["fermi_energy_down"] = pdos.nscf.output_parameters[
+            "fermi_energy_down"
+        ]
+    else:
+        data_dict["fermi_energy"] = pdos.nscf.output_parameters["fermi_energy"]
 
     return json.loads(json.dumps(data_dict))
 
@@ -956,8 +971,8 @@ def get_bands_labeling(bandsdata: dict) -> list:
     UNICODE_SYMBOL = {
         "GAMMA": "\u0393",
         "DELTA": "\u0394",
-        "LAMBDA": "\u039B",
-        "SIGMA": "\u03A3",
+        "LAMBDA": "\u039b",
+        "SIGMA": "\u03a3",
         "EPSILON": "\u0395",
     }
     paths = bandsdata.get("paths")

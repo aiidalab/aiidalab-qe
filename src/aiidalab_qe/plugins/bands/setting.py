@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Panel for Bands plugin."""
+
 import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import Panel

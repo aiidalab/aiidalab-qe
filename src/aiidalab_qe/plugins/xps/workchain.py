@@ -7,8 +7,8 @@ XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 # supercell min parameter for different protocols
 supercell_min_parameter_map = {
     "fast": 4.0,
-    "moderate": 6.0,
-    "precise": 8.0,
+    "moderate": 8.0,
+    "precise": 12.0,
 }
 
 
@@ -40,7 +40,10 @@ def get_builder(codes, structure, parameters, **kwargs):
                 if pseudo.label == f"{element}_gs"
             ][0],
         }
-        correction_energies[element] = all_correction_energies[label]["core"]
+        correction_energies[element] = (
+            all_correction_energies[label]["core"]
+            - all_correction_energies[label]["exp"]
+        )
         elements_list.append(element)
     #
     is_molecule_input = (
@@ -60,12 +63,15 @@ def get_builder(codes, structure, parameters, **kwargs):
         "is_molecule_input": Bool(is_molecule_input),
     }
     pw_code = codes.get("pw", None)
+    overrides_ch_scf = deepcopy(parameters["advanced"])
+    if is_molecule_input:
+        overrides_ch_scf["pw"]["parameters"]["SYSTEM"]["assume_isolated"] = "mt"
     overrides = {
         "relax": {
             "base": deepcopy(parameters["advanced"]),
             "base_final_scf": deepcopy(parameters["advanced"]),
         },
-        "ch_scf": deepcopy(parameters["advanced"]),
+        "ch_scf": overrides_ch_scf,
     }
     builder = XpsWorkChain.get_builder_from_protocol(
         code=pw_code,
@@ -85,16 +91,21 @@ def get_builder(codes, structure, parameters, **kwargs):
     )
     builder.pop("relax")
     builder.pop("clean_workdir", None)
-    # there is a bug in aiida-quantumespresso xps, that one can not set the kpoints
-    # this is fxied in a PR, but we need to wait for the next release.
-    # we set a large kpoints_distance value to set the kpoints to 1x1x1
     if is_molecule_input:
+        # set a large kpoints_distance value to set the kpoints to 1x1x1
         builder.ch_scf.kpoints_distance = Float(5)
+        builder.ch_scf.pw.settings = Dict(dict={"gamma_only": True})
     return builder
+
+
+def update_inputs(inputs, ctx):
+    """Update the inputs using context."""
+    inputs.structure = ctx.current_structure
 
 
 workchain_and_builder = {
     "workchain": XpsWorkChain,
-    "exclude": ("clean_workdir", "structure", "relax"),
+    "exclude": ("structure", "relax"),
     "get_builder": get_builder,
+    "update_inputs": update_inputs,
 }

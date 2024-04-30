@@ -11,3 +11,4 @@ How-to guides
    import_structure
    upgrade_uninstall
    xas
+   xps

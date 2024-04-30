@@ -1,6 +1,5 @@
-"""XPS results view widgets
+"""XPS results view widgets"""
 
-"""
 import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import ResultPanel
@@ -30,7 +29,7 @@ def export_xps_data(outputs):
 
 
 def xps_spectra_broadening(
-    points, equivalent_sites_data, gamma=0.3, sigma=0.3, label=""
+    points, equivalent_sites_data, gamma=0.3, sigma=0.3, label="", intensity=1.0
 ):
     """Broadening the XPS spectra with Voigt function and return the spectra data"""
 
@@ -55,7 +54,7 @@ def xps_spectra_broadening(
         )
         for site in point:
             # Weight for the spectra of every atom
-            intensity = equivalent_sites_data[site]["multiplicity"]
+            intensity = equivalent_sites_data[site]["multiplicity"] * intensity
             relative_core_level_position = point[site]
             y = (
                 intensity
@@ -77,6 +76,7 @@ class Result(ResultPanel):
 
     def __init__(self, node=None, **kwargs):
         super().__init__(node=node, **kwargs)
+        self.experimental_data = None  # Placeholder for experimental data
 
     def _update_view(self):
         import plotly.graph_objects as go
@@ -101,18 +101,25 @@ class Result(ResultPanel):
             value="chemical_shift",
         )
         gamma = ipw.FloatSlider(
-            value=0.3,
-            min=0.1,
-            max=1,
+            value=0.1,
+            min=0.01,
+            max=0.5,
             description="Lorentzian profile ($\gamma$)",
             disabled=False,
             style={"description_width": "initial"},
         )
         sigma = ipw.FloatSlider(
-            value=0.3,
-            min=0.1,
-            max=1,
+            value=0.1,
+            min=0.01,
+            max=0.5,
             description="Gaussian profile ($\sigma$)",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        self.intensity = ipw.FloatText(
+            value=1.0,
+            min=0.001,
+            description="Adjustable Intensity Factor",
             disabled=False,
             style={"description_width": "initial"},
         )
@@ -122,6 +129,21 @@ class Result(ResultPanel):
             disabled=False,
             style={"description_width": "initial"},
         )
+        # Create a description label
+        upload_description = ipw.HTML(
+            value="Upload Experimental Data (<b>csv format, without header</b>):",
+            placeholder="",
+            description="",
+        )
+
+        # Create the upload button
+        upload_btn = ipw.FileUpload(
+            description="Choose File",
+            multiple=False,
+        )
+        upload_container = ipw.VBox([upload_description, upload_btn, self.intensity])
+        upload_btn.observe(self._handle_upload, names="value")
+
         paras = ipw.HBox(
             children=[
                 gamma,
@@ -137,7 +159,7 @@ class Result(ResultPanel):
         self.spectrum_select_options = [
             key.split("_")[0] for key in chemical_shifts.keys()
         ]
-        spectrum_select = ipw.Dropdown(
+        self.spectrum_select = ipw.Dropdown(
             description="",
             disabled=False,
             value=self.spectrum_select_options[0],
@@ -145,21 +167,27 @@ class Result(ResultPanel):
             layout=ipw.Layout(width="20%"),
         )
         # init figure
-        g = go.FigureWidget(
+        self.g = go.FigureWidget(
             layout=go.Layout(
                 title=dict(text="XPS"),
                 barmode="overlay",
             )
         )
-        g.layout.xaxis.title = "Chemical shift (eV)"
-        g.layout.xaxis.autorange = "reversed"
+        self.g.layout.xaxis.title = "Chemical shift (eV)"
+        self.g.layout.xaxis.autorange = "reversed"
         #
-        spectra = xps_spectra_broadening(
-            chemical_shifts, equivalent_sites_data, gamma=gamma.value, sigma=sigma.value
+        self.spectra = xps_spectra_broadening(
+            chemical_shifts,
+            equivalent_sites_data,
+            gamma=gamma.value,
+            sigma=sigma.value,
+            intensity=self.intensity.value,
         )
         # only plot the selected spectrum
-        for site, d in spectra[spectrum_select.value].items():
-            g.add_scatter(x=d[0], y=d[1], fill="tozeroy", name=site.replace("_", " "))
+        for site, d in self.spectra[self.spectrum_select.value].items():
+            self.g.add_scatter(
+                x=d[0], y=d[1], fill="tozeroy", name=site.replace("_", " ")
+            )
 
         def response(change):
             data = []
@@ -171,10 +199,14 @@ class Result(ResultPanel):
                 xaxis = "Binding Energy (eV)"
             #
             spectra = xps_spectra_broadening(
-                points, equivalent_sites_data, gamma=gamma.value, sigma=sigma.value
+                points,
+                equivalent_sites_data,
+                gamma=gamma.value,
+                sigma=sigma.value,
+                intensity=self.intensity.value,
             )
 
-            for site, d in spectra[spectrum_select.value].items():
+            for site, d in spectra[self.spectrum_select.value].items():
                 data.append(
                     {
                         "x": d[0],
@@ -183,64 +215,68 @@ class Result(ResultPanel):
                     }
                 )
             fill_type = "tozeroy" if fill.value else None
-            with g.batch_update():
-                if len(g.data) == len(data):
+            with self.g.batch_update():
+                if len(self.g.data) == len(data):
                     for i in range(len(data)):
-                        g.data[i].x = data[i]["x"]
-                        g.data[i].y = data[i]["y"]
-                        g.data[i].fill = fill_type
-                        g.data[i].name = data[i]["site"].replace("_", " ")
+                        self.g.data[i].x = data[i]["x"]
+                        self.g.data[i].y = data[i]["y"]
+                        self.g.data[i].fill = fill_type
+                        self.g.data[i].name = data[i]["site"].replace("_", " ")
 
                 else:
-                    g.data = []
+                    self.g.data = []
                     for d in data:
-                        g.add_scatter(
+                        self.g.add_scatter(
                             x=d["x"], y=d["y"], fill=fill_type, name=d["site"]
                         )
-                g.layout.barmode = "overlay"
-                g.layout.xaxis.title = xaxis
+                self.g.layout.barmode = "overlay"
+                self.g.layout.xaxis.title = xaxis
+            self.plot_experimental_data()
 
         spectra_type.observe(response, names="value")
-        spectrum_select.observe(response, names="value")
+        self.spectrum_select.observe(response, names="value")
         gamma.observe(response, names="value")
         sigma.observe(response, names="value")
+        self.intensity.observe(response, names="value")
         fill.observe(response, names="value")
-        correction_energies_table = self._get_corrections()
         self.children = [
             spectra_type,
             ipw.HBox(
                 children=[
                     spectrum_select_prompt,
-                    spectrum_select,
+                    self.spectrum_select,
                 ]
             ),
             voigt_profile_help,
             paras,
             fill,
-            g,
-            correction_energies_table,
+            self.g,
+            upload_container,
         ]
 
-    def _get_corrections(self):
-        from aiida.orm.utils.serialize import deserialize_unsafe
+    def _handle_upload(self, change):
+        """Process the uploaded experimental data file."""
+        import pandas as pd
 
-        ui_parameters = self.node.base.extras.get("ui_parameters", {})
-        ui_parameters = deserialize_unsafe(ui_parameters)
-        correction_energies = ui_parameters["xps"]["correction_energies"]
-        # create a table for the correction energies using ipywidgets
-        # These offsets mainly depend on chemical element and core level, and are determined by comparing the calculated core electron binding energy to the experimental one.
-        correction_energies_table = ipw.HTML(
-            """<h4>Offset Energies (δ)</h4>
-            <div>When comparing the calculated binding energies to the experimental data, these should be corrected by the given offset listed below.</div>
-            <table><tr><th>Core-level</th><th>Value (eV)</th></tr>"""
-        )
-        for core_level, value in correction_energies.items():
-            element = core_level.split("_")[0]
-            if element not in self.spectrum_select_options:
-                continue
-            exp = -value["exp"]
-            sign = "" if exp < 0 else "+"
-            correction_energies_table.value += (
-                f"<tr><td>{core_level}</td><td>{sign}{exp}</td></tr>"
-            )
-        return correction_energies_table
+        uploaded_file = next(iter(change.new.values()))
+        content = uploaded_file["content"]
+        content_str = content.decode("utf-8")
+
+        from io import StringIO
+
+        df = pd.read_csv(StringIO(content_str), header=None)
+
+        self.experimental_data = df
+        # Calculate an initial guess for the intensity factor
+        total = self.spectra[self.spectrum_select.value]["total"]
+        # Align the max value of the total spectra with the max value of the experimental data
+        max_exp = max(self.experimental_data[1])
+        max_total = max(total[1])
+        self.intensity.value = max_exp / max_total
+
+    def plot_experimental_data(self):
+        """Plot the experimental data alongside the calculated data."""
+        if self.experimental_data is not None:
+            x = self.experimental_data[0]
+            y = self.experimental_data[1]
+            self.g.add_scatter(x=x, y=y, mode="lines", name="Experimental Data")
