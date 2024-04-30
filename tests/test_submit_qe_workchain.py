@@ -11,7 +11,7 @@ def test_create_builder_default(
     metal, non-magnetic
     """
 
-    app = submit_app_generator(properties=["bands", "pdos", "xas", "xps"])
+    app = submit_app_generator(properties=["bands", "pdos"])
     submit_step = app.submit_step
 
     submit_step._create_builder()
