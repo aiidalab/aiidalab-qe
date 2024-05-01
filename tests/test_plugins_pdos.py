@@ -16,7 +16,7 @@ def test_result(generate_qeapp_workchain):
 
     # Check if data is correct
     assert result.children[0].bands_data is None
-    assert result.children[0].dos_data is not None
+    assert result.children[0].pdos_data is not None
 
     # Check PDOS settings is not None
 
