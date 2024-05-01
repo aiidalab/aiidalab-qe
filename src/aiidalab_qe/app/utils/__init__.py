@@ -7,7 +7,13 @@ def get_entries(entry_point_name="aiidalab_qe.properties"):
 
     entries = {}
     for entry_point in entry_points().get(entry_point_name, []):
-        entries[entry_point.name] = entry_point.load()
+        try:
+            # Attempt to load the entry point
+            loaded_entry_point = entry_point.load()
+            entries[entry_point.name] = loaded_entry_point
+        except Exception as e:
+            # Handle loading errors
+            print(f"Failed to load entry point {entry_point.name}: {e}")
 
     return entries
 
