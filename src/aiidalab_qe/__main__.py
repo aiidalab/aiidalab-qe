@@ -90,7 +90,6 @@ def test_plugin(plugin_name, profile):
 
     try:
         success, message = test_plugin_functionality(plugin_name)
-        print(f"success: {success}, message: {message}")
         if success:
             click.secho("Plugin is loaded successfully!", fg="green")
         else:

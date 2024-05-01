@@ -48,9 +48,7 @@ def get_entry_points_for_package(
         (d for d in distributions() if d.metadata["Name"] == package_name), None
     )
     if not dist:
-        print(f"No distribution found for package '{package_name}'.")
-        return entry_points_list
-
+        raise ValueError(f"Package '{package_name}' not found.")
     # Retrieve all entry points associated with this distribution
     if dist.entry_points:
         for ep in dist.entry_points:
@@ -62,15 +60,24 @@ def get_entry_points_for_package(
 
 
 def test_plugin_functionality(plugin_name):
-    """Test the functionality of the plugin by loading all entry points."""
+    """Test the functionality of the plugin.
+    1) loading all entry points.
+    2) check if the plugin use correct QEAppComputationalResourcesWidget
+    """
+    from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
+
     try:
         eps = get_entry_points_for_package(plugin_name)
         # check if we can load all entry points
-        try:
-            for ep in eps:
-                ep.load()
-        except Exception as e:
-            return False, f"Failed to load entry point {ep.name}: {e}"
+        for ep in eps:
+            loaded_ep = ep.load()
+            # check if the code uses the correct widget
+            for name, code in loaded_ep.get("code", {}).items():
+                if not isinstance(code, QEAppComputationalResourcesWidget):
+                    return (
+                        False,
+                        f"\nPlugin {plugin_name} code {name} must use QEAppComputationalResourcesWidget class",
+                    )
     except Exception as e:
         return False, f"Failed to get entry points for package {plugin_name}: {e}"
     return True, ""
