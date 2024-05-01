@@ -6,7 +6,7 @@ QEApp 2024.04 Release Details
 
 New Feature:
 
-
+- Support using total magnetization by @AndresOrtegaGuerrero in `#512 <https://github.com/aiidalab/aiidalab-qe/pull/512>`_
 - Add plugin: XPS by @superstar54 in `#518 <https://github.com/aiidalab/aiidalab-qe/pull/518>`_
 - Add new computational resource widget by @superstar54 in `#566 <https://github.com/aiidalab/aiidalab-qe/pull/566>`_
 - Support DFT+U by @AndresOrtegaGuerrero in `#577 <https://github.com/aiidalab/aiidalab-qe/pull/577>`_
@@ -45,7 +45,6 @@ Development improvements:
 
 Bug fixes:
 
-- Fix tot magnetization by @AndresOrtegaGuerrero in `#512 <https://github.com/aiidalab/aiidalab-qe/pull/512>`_
 - Remove force_parity from create_kpoints_from_distance by @AndresOrtegaGuerrero in `#598 <https://github.com/aiidalab/aiidalab-qe/pull/598>`_
 - Include xas yaml in package data by @superstar54 in `#609 <https://github.com/aiidalab/aiidalab-qe/pull/609>`_
 - Fix Hexagonal 2D path order by @AndresOrtegaGuerrero in `#619 <https://github.com/aiidalab/aiidalab-qe/pull/619>`_
