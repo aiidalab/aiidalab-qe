@@ -1,7 +1,7 @@
 """For running the app from the command line used for post_install script."""
 
 from pathlib import Path
-
+import sys
 import click
 from aiida import load_profile
 
@@ -76,6 +76,29 @@ def download_pseudos(dest):
 
     except Exception as error:
         raise click.ClickException(f"Failed to download pseudo potentials: {error}")
+
+
+@cli.command()
+@click.argument(
+    "plugin_name",
+    default="aiidalab_qe",
+)
+@click.option("-p", "--profile", default=_DEFAULT_PROFILE)
+def test_plugin(plugin_name, profile):
+    load_profile(profile)
+    from aiidalab_qe.app.utils import test_plugin_functionality
+
+    try:
+        success, message = test_plugin_functionality(plugin_name)
+        print(f"success: {success}, message: {message}")
+        if success:
+            click.secho("Plugin is loaded successfully!", fg="green")
+        else:
+            click.secho(f"Failed to load plugin: {message}", fg="red", err=True)
+            sys.exit(1)  # Exit with status 1 to indicate failure
+    except Exception as error:
+        click.secho(f"Failed to load plugin: {error}", fg="red", err=True)
+        sys.exit(1)  # Exit with status 1 to indicate failure
 
 
 if __name__ == "__main__":
