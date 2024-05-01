@@ -1,6 +1,18 @@
 from importlib.metadata import distributions
 
 
+def print_error(entry_point, e):
+    print(f"\033[91mFailed to load plugin entry point {entry_point.name}.\033[0m")
+    print(
+        "\033[93mThis may be due to compatibility issues with the current QEApp version.\033[0m"
+    )
+    print("\033[93mPlease contact the plugin author for further assistance.\033[0m")
+    print(
+        "\033[93mThus, the plugin will not be available. However, you can still use the rest of the app.\033[0m"
+    )
+    print(f"\033[91mError message: {e}\033[0m\n")
+
+
 # load entry points
 def get_entries(entry_point_name="aiidalab_qe.properties"):
     from importlib.metadata import entry_points
@@ -12,8 +24,7 @@ def get_entries(entry_point_name="aiidalab_qe.properties"):
             loaded_entry_point = entry_point.load()
             entries[entry_point.name] = loaded_entry_point
         except Exception as e:
-            # Handle loading errors
-            print(f"Failed to load entry point {entry_point.name}: {e}")
+            print_error(entry_point, e)
 
     return entries
 
