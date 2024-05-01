@@ -52,6 +52,8 @@ Bug fixes:
 - Check code exist in the DEFAULT_PARAMETERS or not by @superstar54 in `#660 <https://github.com/aiidalab/aiidalab-qe/pull/660>`_
 - Assgin clean_workdir to plugin's builder by @superstar54 in `#667 <https://github.com/aiidalab/aiidalab-qe/pull/667>`_
 - Check if the code is installed and usable by @superstar54 in `#669 <https://github.com/aiidalab/aiidalab-qe/pull/669>`_
+- Update page footer by @AndresOrtegaGuerrero in `#710 <https://github.com/aiidalab/aiidalab-qe/pull/710>`_
+
 
 Documentation:
 
