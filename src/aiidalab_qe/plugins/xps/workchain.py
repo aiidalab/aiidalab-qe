@@ -1,6 +1,7 @@
 from aiida.orm import Bool, Dict, Float, Group, QueryBuilder
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
+from aiidalab_qe.plugins.utils import set_component_resources
 
 XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
@@ -10,6 +11,11 @@ supercell_min_parameter_map = {
     "moderate": 8.0,
     "precise": 12.0,
 }
+
+
+def update_resources(builder, codes):
+    """Update the resources for the builder."""
+    set_component_resources(builder.ch_scf.pw, codes.get("pw"))
 
 
 def get_builder(codes, structure, parameters, **kwargs):
@@ -62,7 +68,7 @@ def get_builder(codes, structure, parameters, **kwargs):
         "supercell_min_parameter": Float(supercell_min_parameter_map[protocol]),
         "is_molecule_input": Bool(is_molecule_input),
     }
-    pw_code = codes.get("pw", None)
+    pw_code = codes["pw"]["code"]
     overrides_ch_scf = deepcopy(parameters["advanced"])
     if is_molecule_input:
         overrides_ch_scf["pw"]["parameters"]["SYSTEM"]["assume_isolated"] = "mt"
@@ -91,6 +97,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     )
     builder.pop("relax")
     builder.pop("clean_workdir", None)
+    # update resources
+    update_resources(builder, codes)
     if is_molecule_input:
         # set a large kpoints_distance value to set the kpoints to 1x1x1
         builder.ch_scf.kpoints_distance = Float(5)

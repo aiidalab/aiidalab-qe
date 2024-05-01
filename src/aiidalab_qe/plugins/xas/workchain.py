@@ -4,6 +4,7 @@ import yaml
 from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
+from aiidalab_qe.plugins.utils import set_component_resources
 
 from aiidalab_qe.plugins import xas as xas_folder
 
@@ -11,6 +12,12 @@ XspectraCrystalWorkChain = WorkflowFactory("quantumespresso.xspectra.crystal")
 PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
 pseudo_data_dict = PSEUDO_TOC["pseudos"]
 xch_elements = PSEUDO_TOC["xas_xch_elements"]
+
+
+def update_resources(builder, codes):
+    """Update the resources for the builder."""
+    set_component_resources(builder.core.scf.pw, codes.get("pw"))
+    set_component_resources(builder.core.xs_prod.xspectra, codes.get("xspectra"))
 
 
 def get_builder(codes, structure, parameters, **kwargs):
@@ -50,8 +57,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     }
     spglib_settings = orm.Dict({"symprec": 1.0e-3})
 
-    pw_code = codes["pw"]
-    xs_code = codes["xspectra"]
+    pw_code = codes["pw"]["code"]
+    xs_code = codes["xspectra"]["code"]
     overrides = {
         "core": {
             "scf": deepcopy(parameters["advanced"]),
@@ -100,6 +107,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     builder.pop("clean_workdir", None)
     builder.spglib_settings = spglib_settings
     builder.structure_preparation_settings = structure_preparation_settings
+    # update resources
+    update_resources(builder, codes)
 
     return builder
 
