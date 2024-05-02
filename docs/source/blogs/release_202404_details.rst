@@ -26,7 +26,7 @@ New registered plugins:
 - `aiidalab-qe-vibroscopy <https://github.com/mikibonacci/aiidalab-qe-vibroscopy>`_ by @mikibonacci and @AndresOrtegaGuerrero
 
 
-User friendly improvements:
+User-friendliness improvements:
 
 - Remove the load_profile warning by move it to front by @unkcpz in `#599 <https://github.com/aiidalab/aiidalab-qe/pull/599>`_
 - Add an adjustable intensity factor for XPS spectra by @superstar54 in `#642 <https://github.com/aiidalab/aiidalab-qe/pull/642>`_
