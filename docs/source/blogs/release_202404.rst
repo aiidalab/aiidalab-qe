@@ -48,9 +48,9 @@ For a deeper dive into all the updates, please visit the :ref:`blogs:release_202
 
 Acknowledgments
 ================================
-We extend our heartfelt thanks to all contributors from the AiiDAlab community and our supporting organizations. Your dedication and contributions make these advancements possible.
+We extend our heartfelt thanks to all contributors from the AiiDAlab community, to the AiiDA developers, and to our supporting organizations. Your dedication and contributions make these advancements possible.
 
-Happy calculation!
+Happy calculations!
 
 The AiiDAlab Team
 April 25th, 2024
