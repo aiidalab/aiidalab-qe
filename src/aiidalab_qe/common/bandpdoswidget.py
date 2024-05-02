@@ -525,7 +525,7 @@ class BandPdosWidget(ipw.VBox):
         # Check for 'projected_bands' in 'bands_data'
         if self.bands_data is not None and "projected_bands" in self.bands_data:
             with self.project_bands_out:
-                display(self.project_bands_out)
+                display(self.project_bands_box)
             # Set the flag to display pdos_options if not already displayed
             display_pdos_options = True
 
