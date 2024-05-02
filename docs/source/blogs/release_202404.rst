@@ -13,8 +13,8 @@ What's New
 
 New Plugins
 ----------------------
-We are introducing a range of new plugins that expand the capabilities of QEApp.
-These plugins cater to diverse computational needs and enhance the overall user experience.
+After the introduction of a plugin interface in the previous release of QEApp, we are now introducing several new plugins that expand the capabilities of QEApp.
+These plugins focus on addressing several diverse computational needs, significantly enhancing the range of properties that are now offered to the QEApp users.
 
 .. figure:: /_static/images/qeapp_release_202404_plugins.png
    :align: center
