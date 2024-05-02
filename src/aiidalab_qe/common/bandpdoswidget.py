@@ -484,18 +484,18 @@ class BandPdosWidget(ipw.VBox):
         # Output widget to clear the specific widgets
         self.pdos_options_out = ipw.Output()
 
-        self.project_bands_out = ipw.Output()
+        pdos_options_list = [
+            self.description,
+            self.dos_atoms_group,
+            self.dos_plot_group,
+            ipw.HBox([self.selected_atoms, self._wrong_syntax]),
+            self.update_plot_button,
+        ]
+        # If projections are available in the bands data, include the box to plot fat-bands
+        if self.bands_data and "projected_bands" in self.bands_data:
+            pdos_options_list.insert(4, self.project_bands_box)
 
-        self.pdos_options = ipw.VBox(
-            [
-                self.description,
-                self.dos_atoms_group,
-                self.dos_plot_group,
-                self.project_bands_out,
-                ipw.HBox([self.selected_atoms, self._wrong_syntax]),
-                self.update_plot_button,
-            ]
-        )
+        self.pdos_options = ipw.VBox(pdos_options_list)
 
         self._initial_view()
 
@@ -506,31 +506,14 @@ class BandPdosWidget(ipw.VBox):
         super().__init__(
             children=[
                 self.pdos_options_out,
-                self.project_bands_out,
                 self.download_button,
                 self.bands_widget,  # Add the output widget to the VBox
             ],
             **kwargs,
         )
 
-        # Initialize a flag to track whether pdos_options should be displayed
-        display_pdos_options = False
-
-        # Check for PDOS and set the flag
-        if self.pdos:
-            with self.pdos_options_out:
-                display(self.pdos_options)
-            display_pdos_options = True
-
-        # Check for 'projected_bands' in 'bands_data'
-        if self.bands_data is not None and "projected_bands" in self.bands_data:
-            with self.project_bands_out:
-                display(self.project_bands_box)
-            # Set the flag to display pdos_options if not already displayed
-            display_pdos_options = True
-
-        # Display pdos_options only if not already displayed and the flag is true
-        if display_pdos_options and not self.pdos:
+        # Plot the options only if the pdos is provided or in case the bands data contains projections
+        if self.pdos or (self.bands_data and "projected_bands" in self.bands_data):
             with self.pdos_options_out:
                 display(self.pdos_options)
 
