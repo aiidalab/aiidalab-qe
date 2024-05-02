@@ -4,7 +4,7 @@
 QEApp 2024.04 Release
 ************************
 
-The AiiDAlab team and the broader developer community is proud to present the AiiDAlab Quantum Espresso app (QEApp) version 2024.04!
+The AiiDAlab team and the broader developer community are proud to present the AiiDAlab Quantum Espresso app (QEApp) version 2024.04!
 
 This version represents a significant milestone in the evolution of QEApp, delivering several features and improvements on various aspects of the app.
 
@@ -48,9 +48,9 @@ For a deeper dive into all the updates, please visit the :ref:`blogs:release_202
 
 Acknowledgments
 ================================
-We extend our heartfelt thanks to all contributors from the AiiDAlab community, to the AiiDA developers, and to our supporting organizations. Your dedication and contributions make these advancements possible.
+We extend our heartfelt thanks to all contributors from the AiiDAlab community, to the AiiDA developers, and to our supporting `organizations <https://www.aiidalab.net/about/#:~:text=Ole%20Schuett-,Our%20sponsors,-This%20work%20is>`_. Your dedication and contributions make these advancements possible.
 
 Happy calculations!
 
 The AiiDAlab Team
-April 25th, 2024
+May 4th, 2024
