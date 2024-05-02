@@ -484,13 +484,14 @@ class BandPdosWidget(ipw.VBox):
         # Output widget to clear the specific widgets
         self.pdos_options_out = ipw.Output()
 
+        self.project_bands_out = ipw.Output()
+
         self.pdos_options = ipw.VBox(
             [
                 self.description,
                 self.dos_atoms_group,
                 self.dos_plot_group,
                 ipw.HBox([self.selected_atoms, self._wrong_syntax]),
-                self.project_bands_box,
                 self.update_plot_button,
             ]
         )
@@ -504,13 +505,21 @@ class BandPdosWidget(ipw.VBox):
         super().__init__(
             children=[
                 self.pdos_options_out,
+                self.project_bands_out,
+                self.project_bands_box,
                 self.download_button,
                 self.bands_widget,  # Add the output widget to the VBox
             ],
             **kwargs,
         )
 
-        if self.pdos or "projected_bands" in self.bands_data:
+        if self.pdos:
+            with self.pdos_options_out:
+                display(self.pdos_options)
+
+        if self.bands_data is not None and "projected_bands" in self.bands_data:
+            with self.project_bands_out:
+                display(self.project_bands_box)
             with self.pdos_options_out:
                 display(self.pdos_options)
 
