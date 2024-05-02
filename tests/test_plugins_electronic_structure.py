@@ -31,7 +31,7 @@ def test_electronic_structure(generate_qeapp_workchain):
     # Check if data is correct
     assert result.children[0].bands_data is not None
     assert result.children[0].bands_data["pathlabels"] is not None
-    assert result.children[0].dos_data is not None
+    assert result.children[0].pdos_data is not None
 
     # Check Bands axis
     assert result.children[0].bandsplot_widget.layout.xaxis.title.text == "k-points"
