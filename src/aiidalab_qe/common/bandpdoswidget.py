@@ -491,7 +491,7 @@ class BandPdosWidget(ipw.VBox):
                 self.description,
                 self.dos_atoms_group,
                 self.dos_plot_group,
-                self.project_bands_box,
+                self.project_bands_out,
                 ipw.HBox([self.selected_atoms, self._wrong_syntax]),
                 self.update_plot_button,
             ]
@@ -525,7 +525,7 @@ class BandPdosWidget(ipw.VBox):
         # Check for 'projected_bands' in 'bands_data'
         if self.bands_data is not None and "projected_bands" in self.bands_data:
             with self.project_bands_out:
-                display(self.project_bands_box)
+                display(self.project_bands_out)
             # Set the flag to display pdos_options if not already displayed
             display_pdos_options = True
 
