@@ -18,7 +18,7 @@ import time
 
 # -- Project information -----------------------------------------------------
 
-version = "v24.04.0a3"
+version = "v24.04.0rc2"
 release = f"{version}-dev"
 project = "Quantum ESPRESSO App"
 copyright_first_year = "2023"

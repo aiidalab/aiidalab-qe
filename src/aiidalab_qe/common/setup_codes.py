@@ -80,40 +80,61 @@ def codes_are_setup():
     return all(_code_is_setup(code_name) for code_name in CODE_NAMES)
 
 
-def _setup_code(code_name, computer_name="localhost"):
+def _generate_header_to_setup_code():
+    """Generate the header string to setup a code for a given computer."""
+    header_code = """
+from aiida.orm.nodes.data.code.installed import InstalledCode
+from aiida.orm import load_computer
+from aiida import load_profile
+load_profile()
+
+"""
+    return header_code
+
+
+def _generate_string_to_setup_code(code_name, computer_name="localhost"):
+    """Generate the Python string to setup an AiiDA code for a given computer.
+    Tries to load an existing code and if not existent,
+    generates Python code to create and store a new code setup."""
     try:
-        load_code(f"{code_name}-{QE_VERSION}@localhost")
+        load_code(f"{code_name}-{QE_VERSION}@{computer_name}")
+        return ""
     except NotExistent:
-        run(
-            [
-                "verdi",
-                "code",
-                "create",
-                "core.code.installed",
-                "--non-interactive",
-                "--label",
-                f"{code_name}-{QE_VERSION}",
-                "--description",
-                f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab.",
-                "--default-calc-job-plugin",
-                f"quantumespresso.{code_name}",
-                "--computer",
-                computer_name,
-                "--prepend-text",
-                f'eval "$(conda shell.posix hook)"\nconda activate {CONDA_ENV_PREFIX}\nexport OMP_NUM_THREADS=1',
-                "--filepath-executable",
-                CONDA_ENV_PREFIX.joinpath("bin", f"{code_name}.x"),
-            ],
-            check=True,
-            capture_output=True,
+        label = f"{code_name}-{QE_VERSION}"
+        description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
+        filepath_executable = str(CONDA_ENV_PREFIX.joinpath("bin", f"{code_name}.x"))
+        default_calc_job_plugin = f"quantumespresso.{code_name}"
+        prepend_text = f'eval "$(conda shell.posix hook)"\\nconda activate {CONDA_ENV_PREFIX}\\nexport OMP_NUM_THREADS=1'
+        python_code = """
+computer = load_computer('{}')
+code = InstalledCode(computer=computer,
+                    label='{}',
+                    description='{}',
+                    filepath_executable='{}',
+                    default_calc_job_plugin='{}',
+                    prepend_text='{}'
+                    )
+
+code.store()
+""".format(
+            computer_name,
+            label,
+            description,
+            filepath_executable,
+            default_calc_job_plugin,
+            prepend_text,
         )
-    else:
-        raise RuntimeError(f"Code {code_name} (v{QE_VERSION}) is already setup!")
+        return python_code
 
 
 def setup_codes():
+    python_code = _generate_header_to_setup_code()
     for code_name in CODE_NAMES:
-        _setup_code(code_name)
+        python_code += _generate_string_to_setup_code(code_name)
+    try:
+        run(["python", "-c", python_code], capture_output=True, check=True)
+    except CalledProcessError as error:
+        raise RuntimeError(f"Failed to setup codes: {error}")
 
 
 def install(force=False):
@@ -158,10 +179,17 @@ def install(force=False):
 
             # After installing QE, we install the corresponding
             # AiiDA codes:
+            python_code = _generate_header_to_setup_code()
             for code_name in CODE_NAMES:
                 if not _code_is_setup(code_name):
-                    yield f"Setting up AiiDA code ({code_name})..."
-                    _setup_code(code_name)
+                    yield f"Preparing setup script for ({code_name})..."
+                    code_string = _generate_string_to_setup_code(code_name)
+                    python_code += code_string
+            try:
+                yield "Setting up all codes..."
+                run(["python", "-c", python_code], capture_output=True, check=True)
+            except CalledProcessError as error:
+                raise RuntimeError(f"Failed to setup codes: {error}")
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
