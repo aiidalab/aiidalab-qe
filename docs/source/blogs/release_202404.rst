@@ -22,7 +22,7 @@ These plugins focus on addressing several diverse computational needs, significa
 
 Plugin Management Page
 ----------------------
-The new plugin management page simplifies how users find and manage their plugins, making it easier to customize and enhance their computational environment.
+The new plugin management page simplifies how users can find and manage their plugins, making it easier to customize and enhance their computational environment.
 
 .. figure:: /_static/images/qeapp_release_202404_plugin_management.gif
    :align: center
