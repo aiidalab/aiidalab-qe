@@ -513,13 +513,24 @@ class BandPdosWidget(ipw.VBox):
             **kwargs,
         )
 
+        # Initialize a flag to track whether pdos_options should be displayed
+        display_pdos_options = False
+
+        # Check for PDOS and set the flag
         if self.pdos:
             with self.pdos_options_out:
                 display(self.pdos_options)
+            display_pdos_options = True
 
+        # Check for 'projected_bands' in 'bands_data'
         if self.bands_data is not None and "projected_bands" in self.bands_data:
             with self.project_bands_out:
                 display(self.project_bands_box)
+            # Set the flag to display pdos_options if not already displayed
+            display_pdos_options = True
+
+        # Display pdos_options only if not already displayed and the flag is true
+        if display_pdos_options and not self.pdos:
             with self.pdos_options_out:
                 display(self.pdos_options)
 
