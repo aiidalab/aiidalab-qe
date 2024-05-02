@@ -30,7 +30,7 @@ The new plugin management page simplifies how users can find and manage their pl
 
 Job Search Page
 ----------------------
-To facilitate better job management, we have added a new job search page that allows users to efficiently search and manage their computational jobs.
+To facilitate better job management, we now provide a new job search page that allows users to efficiently search and manage their computational jobs run by the QEApp.
 
 .. figure:: /_static/images/qeapp_release_202404_job_list.gif
    :align: center
