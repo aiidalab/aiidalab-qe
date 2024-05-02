@@ -491,6 +491,7 @@ class BandPdosWidget(ipw.VBox):
                 self.description,
                 self.dos_atoms_group,
                 self.dos_plot_group,
+                self.project_bands_box,
                 ipw.HBox([self.selected_atoms, self._wrong_syntax]),
                 self.update_plot_button,
             ]
@@ -506,7 +507,6 @@ class BandPdosWidget(ipw.VBox):
             children=[
                 self.pdos_options_out,
                 self.project_bands_out,
-                self.project_bands_box,
                 self.download_button,
                 self.bands_widget,  # Add the output widget to the VBox
             ],
