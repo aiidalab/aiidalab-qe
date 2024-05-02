@@ -17,6 +17,7 @@ New Feature:
 - Add job search page by @superstar54 in `#657 <https://github.com/aiidalab/aiidalab-qe/pull/657>`_
 - Add label and description for the job by @superstar54 in `#670 <https://github.com/aiidalab/aiidalab-qe/pull/670>`_
 - Add converge thresholds by @AndresOrtegaGuerrero in `#699 <https://github.com/aiidalab/aiidalab-qe/pull/699>`_
+- Add fat bands and optimize the BandPdosWidget by @t-reents in `#624 <https://github.com/aiidalab/aiidalab-qe/pull/624>`_
 - Support using customize pseudopotential by @unkcpz in `#435 <https://github.com/aiidalab/aiidalab-qe/pull/435>`_
 
 New registered plugins:
