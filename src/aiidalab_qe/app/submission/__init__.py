@@ -368,7 +368,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return ""
         formula = self.input_structure.get_formula()
         properties = [
-            p for p in self.input_parameters["workchain"]["properties"] if p != "realx"
+            p for p in self.input_parameters["workchain"]["properties"] if p != "relax"
         ]
         relax_type = self.input_parameters["workchain"].get("relax_type")
         if relax_type != "none":
