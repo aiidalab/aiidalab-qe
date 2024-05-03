@@ -141,8 +141,11 @@ class QeAppWorkChain(WorkChain):
                     hubbard_type="U",
                     use_kinds=True,
                 )
-            hubbard_structure.store()
-            builder.structure = hubbard_structure
+            if hubbard_structure.hubbard == structure.hubbard:
+                builder.structure = structure
+            else:
+                hubbard_structure.store()
+                builder.structure = hubbard_structure
 
         # No Hubbard parameters specified
         else:
