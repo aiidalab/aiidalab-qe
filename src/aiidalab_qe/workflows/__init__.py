@@ -129,9 +129,16 @@ class QeAppWorkChain(WorkChain):
         builder = cls.get_builder()
         # Set a HubbardStructureData if hubbard_parameters is specified
         hubbard_dict = parameters["advanced"].pop("hubbard_parameters", None)
+
+
+        # Determine whether to store and assign the new structure
+        should_store_and_assign = False
+        # Check if hubbard_dict is provided
         if hubbard_dict is not None:
             hubbard_parameters = hubbard_dict["hubbard_u"]
             hubbard_structure = HubbardStructureData.from_structure(structure)
+            
+            # Initialize on-site Hubbard values
             for key, value in hubbard_parameters.items():
                 kind, orbital = key.rsplit(" - ", 1)
                 hubbard_structure.initialize_onsites_hubbard(
@@ -141,22 +148,25 @@ class QeAppWorkChain(WorkChain):
                     hubbard_type="U",
                     use_kinds=True,
                 )
-            if hubbard_structure.hubbard == structure.hubbard:
-                builder.structure = structure
-            else:
-                hubbard_structure.store()
-                builder.structure = hubbard_structure
+            
+            # Check if structure matches the new hubbard structure and assign accordingly
+            should_store_and_assign = not isinstance(structure, HubbardStructureData) or \
+                                    hubbard_structure.hubbard != structure.hubbard
 
-        # No Hubbard parameters specified
+        elif isinstance(structure, HubbardStructureData):
+            # Convert HubbardStructureData to a simple StructureData
+            temp_structure = structure.get_ase()
+            new_structure = StructureData(ase=temp_structure)
+            new_structure.store()
+            builder.structure = new_structure
         else:
-            # If using a HubbardStructureData create a new StructureData
-            if isinstance(structure, HubbardStructureData):
-                temp_structure = structure.get_ase()
-                new_structure = StructureData(ase=temp_structure)
-                new_structure.store()
-                builder.structure = new_structure
-            else:
-                builder.structure = structure
+            builder.structure = structure
+
+        # Common logic to store and assign the new structure if conditions are met
+        if should_store_and_assign and 'hubbard_structure' in locals():
+            hubbard_structure.store()
+            builder.structure = hubbard_structure
+            
         # relax
         relax_overrides = {
             "base": parameters["advanced"],
