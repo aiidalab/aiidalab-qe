@@ -26,6 +26,8 @@ from aiidalab_widgets_base.utils import (
 )
 from IPython.display import HTML, Javascript, clear_output, display
 from pymatgen.core.periodic_table import Element
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -1129,6 +1131,16 @@ class HubbardWidget(ipw.VBox):
             with self.eigen_values_widget_out:
                 clear_output()
                 display(self.eigen_values_widget)
+
+        if isinstance(self.input_structure, HubbardStructureData):
+            parameters = self.set_parameters_from_hubbardstructe(self.input_structure)
+            self.set_hubbard_widget(parameters)
+            self.activate_hubbard.value = True
+
+    def set_parameters_from_hubbardstructe(self, hubbard_structure):
+        hubbard_parameters = hubbard_structure.hubbard.dict()["parameters"]
+        parameters = {f"{hubbard_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item['value'] for item in hubbard_parameters}
+        return parameters
 
     def toggle_hubbard_widgets(self, change):
         """
