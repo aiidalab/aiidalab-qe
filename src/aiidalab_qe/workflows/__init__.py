@@ -130,8 +130,6 @@ class QeAppWorkChain(WorkChain):
         # Set a HubbardStructureData if hubbard_parameters is specified
         hubbard_dict = parameters["advanced"].pop("hubbard_parameters", None)
 
-        # Determine whether to store and assign the new structure
-        should_store_and_assign = False
         # Check if hubbard_dict is provided
         if hubbard_dict is not None:
             hubbard_parameters = hubbard_dict["hubbard_u"]
@@ -148,11 +146,25 @@ class QeAppWorkChain(WorkChain):
                     use_kinds=True,
                 )
 
-            # Check if structure matches the new hubbard structure and assign accordingly
-            should_store_and_assign = (
-                not isinstance(structure, HubbardStructureData)
-                or hubbard_structure.hubbard != structure.hubbard
-            )
+            # Initialize flag to determine when to store hubbard_structure
+            should_store_and_assign = False
+
+            if not isinstance(structure, HubbardStructureData):
+                #Store the HubbardStructureData is structure is not a HubbardStructureData
+                should_store_and_assign = True
+            else:
+                #Check if hubbard parameters are different from the structure
+                if hubbard_structure.hubbard != structure.hubbard:
+                    should_store_and_assign = True
+                else:
+                    #If criteria is not met, assign the structure to the builder
+                    builder.structure = structure
+
+            # Common logic to store and assign hubbard_structure if conditions are met
+            if should_store_and_assign:
+                hubbard_structure.store()
+                builder.structure = hubbard_structure
+                
 
         elif isinstance(structure, HubbardStructureData):
             # Convert HubbardStructureData to a simple StructureData
@@ -162,11 +174,6 @@ class QeAppWorkChain(WorkChain):
             builder.structure = new_structure
         else:
             builder.structure = structure
-
-        # Common logic to store and assign the new structure if conditions are met
-        if should_store_and_assign and "hubbard_structure" in locals():
-            hubbard_structure.store()
-            builder.structure = hubbard_structure
 
         # relax
         relax_overrides = {
