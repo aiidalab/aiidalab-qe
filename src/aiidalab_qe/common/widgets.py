@@ -1133,9 +1133,7 @@ class HubbardWidget(ipw.VBox):
                 display(self.eigen_values_widget)
 
         if isinstance(self.input_structure, HubbardStructureData):
-            parameters = self.set_parameters_from_hubbardstructure(self.input_structure)
-            self.set_hubbard_widget(parameters)
-            self.activate_hubbard.value = True
+            self.set_parameters_from_hubbardstructure(self.input_structure)
 
     def set_parameters_from_hubbardstructure(self, hubbard_structure):
         hubbard_parameters = hubbard_structure.hubbard.dict()["parameters"]
@@ -1145,7 +1143,9 @@ class HubbardWidget(ipw.VBox):
             ]
             for item in hubbard_parameters
         }
-        return parameters
+        self.set_hubbard_widget(parameters)
+        self.activate_hubbard.value = True
+
 
     def toggle_hubbard_widgets(self, change):
         """
@@ -1268,13 +1268,14 @@ class HubbardWidget(ipw.VBox):
         """Reset the widget."""
         self.activate_hubbard.value = False
         self.eigenvalues_label.value = False
-        self.input_structure = None
         self.hubbard_widget = self.create_hubbard_widget()
         self.eigen_values_widget = self.create_eigenvalues_widget()
         with self.hubbard_widget_out:
             clear_output()
         with self.eigen_values_widget_out:
             clear_output()
+        if isinstance(self.input_structure, HubbardStructureData):
+            self.set_parameters_from_hubbardstructure(self.input_structure) 
 
     @property
     def hubbard_dict(self) -> dict:
