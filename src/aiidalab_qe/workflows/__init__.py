@@ -130,14 +130,13 @@ class QeAppWorkChain(WorkChain):
         # Set a HubbardStructureData if hubbard_parameters is specified
         hubbard_dict = parameters["advanced"].pop("hubbard_parameters", None)
 
-
         # Determine whether to store and assign the new structure
         should_store_and_assign = False
         # Check if hubbard_dict is provided
         if hubbard_dict is not None:
             hubbard_parameters = hubbard_dict["hubbard_u"]
             hubbard_structure = HubbardStructureData.from_structure(structure)
-            
+
             # Initialize on-site Hubbard values
             for key, value in hubbard_parameters.items():
                 kind, orbital = key.rsplit(" - ", 1)
@@ -148,10 +147,12 @@ class QeAppWorkChain(WorkChain):
                     hubbard_type="U",
                     use_kinds=True,
                 )
-            
+
             # Check if structure matches the new hubbard structure and assign accordingly
-            should_store_and_assign = not isinstance(structure, HubbardStructureData) or \
-                                    hubbard_structure.hubbard != structure.hubbard
+            should_store_and_assign = (
+                not isinstance(structure, HubbardStructureData)
+                or hubbard_structure.hubbard != structure.hubbard
+            )
 
         elif isinstance(structure, HubbardStructureData):
             # Convert HubbardStructureData to a simple StructureData
@@ -163,10 +164,10 @@ class QeAppWorkChain(WorkChain):
             builder.structure = structure
 
         # Common logic to store and assign the new structure if conditions are met
-        if should_store_and_assign and 'hubbard_structure' in locals():
+        if should_store_and_assign and "hubbard_structure" in locals():
             hubbard_structure.store()
             builder.structure = hubbard_structure
-            
+
         # relax
         relax_overrides = {
             "base": parameters["advanced"],
