@@ -143,8 +143,17 @@ class QeAppWorkChain(WorkChain):
                 )
             hubbard_structure.store()
             builder.structure = hubbard_structure
+
+        # No Hubbard parameters specified
         else:
-            builder.structure = structure
+            #If using a HubbardStructureData create a new StructureData 
+            if isinstance(structure, HubbardStructureData):
+                temp_structure = structure.get_ase()
+                new_structure = StructureData(ase=temp_structure)
+                new_structure.store()
+                builder.structure = new_structure
+            else:
+                builder.structure = structure
         # relax
         relax_overrides = {
             "base": parameters["advanced"],
