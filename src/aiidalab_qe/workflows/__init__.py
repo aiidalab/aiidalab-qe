@@ -146,7 +146,7 @@ class QeAppWorkChain(WorkChain):
 
         # No Hubbard parameters specified
         else:
-            #If using a HubbardStructureData create a new StructureData 
+            # If using a HubbardStructureData create a new StructureData
             if isinstance(structure, HubbardStructureData):
                 temp_structure = structure.get_ase()
                 new_structure = StructureData(ase=temp_structure)
