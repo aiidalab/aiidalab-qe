@@ -1139,7 +1139,12 @@ class HubbardWidget(ipw.VBox):
 
     def set_parameters_from_hubbardstructe(self, hubbard_structure):
         hubbard_parameters = hubbard_structure.hubbard.dict()["parameters"]
-        parameters = {f"{hubbard_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item['value'] for item in hubbard_parameters}
+        parameters = {
+            f"{hubbard_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item[
+                "value"
+            ]
+            for item in hubbard_parameters
+        }
         return parameters
 
     def toggle_hubbard_widgets(self, change):
