@@ -1133,11 +1133,11 @@ class HubbardWidget(ipw.VBox):
                 display(self.eigen_values_widget)
 
         if isinstance(self.input_structure, HubbardStructureData):
-            parameters = self.set_parameters_from_hubbardstructe(self.input_structure)
+            parameters = self.set_parameters_from_hubbardstructure(self.input_structure)
             self.set_hubbard_widget(parameters)
             self.activate_hubbard.value = True
 
-    def set_parameters_from_hubbardstructe(self, hubbard_structure):
+    def set_parameters_from_hubbardstructure(self, hubbard_structure):
         hubbard_parameters = hubbard_structure.hubbard.dict()["parameters"]
         parameters = {
             f"{hubbard_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item[
