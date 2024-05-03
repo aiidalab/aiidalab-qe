@@ -1146,7 +1146,6 @@ class HubbardWidget(ipw.VBox):
         self.set_hubbard_widget(parameters)
         self.activate_hubbard.value = True
 
-
     def toggle_hubbard_widgets(self, change):
         """
         Toggle the visibility of the Hubbard widgets based on the value of check box.
@@ -1275,7 +1274,7 @@ class HubbardWidget(ipw.VBox):
         with self.eigen_values_widget_out:
             clear_output()
         if isinstance(self.input_structure, HubbardStructureData):
-            self.set_parameters_from_hubbardstructure(self.input_structure) 
+            self.set_parameters_from_hubbardstructure(self.input_structure)
 
     @property
     def hubbard_dict(self) -> dict:
