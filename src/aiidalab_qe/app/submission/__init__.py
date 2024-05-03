@@ -367,10 +367,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if not self.input_structure:
             return ""
         formula = self.input_structure.get_formula()
-        properties = [
-            p for p in self.input_parameters["workchain"]["properties"] if p != "relax"
-        ]
-        relax_type = self.input_parameters["workchain"].get("relax_type")
+        workchain_data = self.input_parameters.get("workchain", {"properties": []})
+        properties = [p for p in workchain_data["properties"] if p != "relax"]
+        relax_type = workchain_data.get("relax_type", "none")
         if relax_type != "none":
             relax_info = "structure is relaxed"
         else:
