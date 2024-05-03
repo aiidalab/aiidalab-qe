@@ -147,7 +147,10 @@ class QeAppWorkChain(WorkChain):
                 )
 
             # Determine whether to store and use hubbard_structure based on conditions
-            if isinstance(structure, HubbardStructureData) and hubbard_structure.hubbard == structure.hubbard:
+            if (
+                isinstance(structure, HubbardStructureData)
+                and hubbard_structure.hubbard == structure.hubbard
+            ):
                 # If the structure is HubbardStructureData and hubbard parameters match, assign the original structure
                 builder.structure = structure
             else:
