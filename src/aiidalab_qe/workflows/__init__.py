@@ -146,22 +146,12 @@ class QeAppWorkChain(WorkChain):
                     use_kinds=True,
                 )
 
-            # Initialize flag to determine when to store hubbard_structure
-            should_store_and_assign = False
-
-            if not isinstance(structure, HubbardStructureData):
-                # Store the HubbardStructureData is structure is not a HubbardStructureData
-                should_store_and_assign = True
+            # Determine whether to store and use hubbard_structure based on conditions
+            if isinstance(structure, HubbardStructureData) and hubbard_structure.hubbard == structure.hubbard:
+                # If the structure is HubbardStructureData and hubbard parameters match, assign the original structure
+                builder.structure = structure
             else:
-                # Check if hubbard parameters are different from the structure
-                if hubbard_structure.hubbard != structure.hubbard:
-                    should_store_and_assign = True
-                else:
-                    # If criteria is not met, assign the structure to the builder
-                    builder.structure = structure
-
-            # Common logic to store and assign hubbard_structure if conditions are met
-            if should_store_and_assign:
+                # In all other cases, store and assign hubbard_structure
                 hubbard_structure.store()
                 builder.structure = hubbard_structure
 
