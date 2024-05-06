@@ -13,11 +13,13 @@ New Feature:
 - Add plugin: XAS Plugin by @PNOGillespie in `#580 <https://github.com/aiidalab/aiidalab-qe/pull/580>`_
 - New BandsPdosWidget by @AndresOrtegaGuerrero in `#581 <https://github.com/aiidalab/aiidalab-qe/pull/581>`_
 - Add Van del Waals Correction widget by @AndresOrtegaGuerrero in `#620 <https://github.com/aiidalab/aiidalab-qe/pull/620>`_
+- Add fat bands and optimize the BandPdosWidget by @t-reents in `#624 <https://github.com/aiidalab/aiidalab-qe/pull/624>`_
+- Update the logo by @edan-bainglass  in `#635 <https://github.com/aiidalab/aiidalab-qe/pull/635>`_
 - Add plugin management page by @superstar54 in `#646 <https://github.com/aiidalab/aiidalab-qe/pull/646>`_
 - Add job search page by @superstar54 in `#657 <https://github.com/aiidalab/aiidalab-qe/pull/657>`_
 - Add label and description for the job by @superstar54 in `#670 <https://github.com/aiidalab/aiidalab-qe/pull/670>`_
 - Add converge thresholds by @AndresOrtegaGuerrero in `#699 <https://github.com/aiidalab/aiidalab-qe/pull/699>`_
-- Add fat bands and optimize the BandPdosWidget by @t-reents in `#624 <https://github.com/aiidalab/aiidalab-qe/pull/624>`_
+- Allow QEApp to use HubbardStructureData by @AndresOrtegaGuerrero in `#718 <https://github.com/aiidalab/aiidalab-qe/pull/718>`_
 - Support using customize pseudopotential by @unkcpz in `#435 <https://github.com/aiidalab/aiidalab-qe/pull/435>`_
 
 New registered plugins:

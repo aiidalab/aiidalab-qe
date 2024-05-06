@@ -18,7 +18,7 @@ These plugins focus on addressing several diverse computational needs, significa
 
 .. figure:: /_static/images/qeapp_release_202404_plugins.png
    :align: center
-   :alt: New plugins for QEApp 2024.04
+   :alt: New plugins for AiiDAlab QEApp 2024.04
 
 Plugin Management Page
 ----------------------
@@ -42,7 +42,7 @@ This release also introduces several new widgets, including tools for dealing wi
 
 .. figure:: /_static/images/qeapp_release_202404_new_widgets.png
    :align: center
-   :alt: New widgets in QEApp
+   :alt: New widgets in AiiDAlab QEApp
 
 For a deeper dive into all the updates, please visit the :ref:`blogs:release_202404_details` for an in-depth look at what's new.
 
@@ -53,4 +53,4 @@ We extend our heartfelt thanks to all contributors from the AiiDAlab community, 
 Happy calculations!
 
 The AiiDAlab Team
-May 4th, 2024
+May 6th, 2024
