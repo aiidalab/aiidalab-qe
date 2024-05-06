@@ -21,6 +21,7 @@ from aiidalab_widgets_base import (
 
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common import AddingTagsEditor
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
@@ -53,7 +54,14 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         importers = [
             StructureUploadWidget(title="Upload file"),
             OptimadeQueryWidget(embedded=False),
-            StructureBrowserWidget(title="AiiDA database"),
+            StructureBrowserWidget(
+                title="AiiDA database",
+                query_types=(
+                    aiida.orm.StructureData,
+                    aiida.orm.CifData,
+                    HubbardStructureData,
+                ),
+            ),
             StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
         # add plugin specific structure importers

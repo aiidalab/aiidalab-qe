@@ -20,7 +20,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.panel import Panel
 from aiidalab_qe.common.setup_pseudos import PseudoFamily
 from aiidalab_qe.common.widgets import HubbardWidget
-
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from .pseudos import PseudoFamilySelector, PseudoSetter
 
 
@@ -285,9 +285,12 @@ class AdvancedSettings(Panel):
             self._update_settings_from_protocol(self.protocol)
             self._display_mesh()
             self.hubbard_widget.update_widgets(change["new"])
+            if isinstance(self.input_structure, HubbardStructureData):
+                self.override.value = True
         else:
             self.magnetization.input_structure = None
             self.pseudo_setter.structure = None
+            self.hubbard_widget.update_widgets(None)
 
     @tl.observe("electronic_type")
     def _electronic_type_changed(self, change):
