@@ -463,6 +463,7 @@ class AdvancedSettings(Panel):
         if self.spin_orbit.value == "soc":
             parameters["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
             parameters["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
+            parameters["pw"]["parameters"]["SYSTEM"]["nspin"] = 4
 
         return parameters
 
