@@ -22,7 +22,6 @@ Orbital = DataFactory("core.orbital")
 # load entry points
 
 
-
 def get_entries(entry_point_name="aiidalab_qe.property"):
     from importlib.metadata import entry_points
 
