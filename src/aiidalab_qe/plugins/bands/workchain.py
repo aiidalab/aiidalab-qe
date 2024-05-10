@@ -2,7 +2,6 @@ import numpy as np
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
-from collections import OrderedDict
 
 GAMMA = "\u0393"
 
@@ -17,7 +16,9 @@ def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distanc
     reciprocal_vector_a = scaled_vector_a.dot(reciprocal_cell)
     reciprocal_vector_b = scaled_vector_b.dot(reciprocal_cell)
     distance = np.linalg.norm(reciprocal_vector_a - reciprocal_vector_b)
-    return max(2, int(np.round(distance / bands_kpoints_distance))) #at least two points for each segment, including both endpoints explicitly
+    return max(
+        2, int(np.round(distance / bands_kpoints_distance))
+    )  # at least two points for each segment, including both endpoints explicitly
 
 
 def calculate_bands_kpoints_distance(kpoints_distance):
@@ -144,11 +145,15 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     # Calculate the number of points per branch and generate the kpoints
     index_offset = 0  # Start index for each segment
     for (start, end), label_start, label_end in zip(branches, labels[:-1], labels[1:]):
-        num_points_per_branch = points_per_branch(start, end, reciprocal_cell, bands_kpoints_distance)
+        num_points_per_branch = points_per_branch(
+            start, end, reciprocal_cell, bands_kpoints_distance
+        )
         # Exclude endpoint except for the last segment to prevent duplication
         points = np.linspace(start, end, num=num_points_per_branch, endpoint=False)
         all_kpoints.extend(points)
-        label_map.append((index_offset, label_start))  # Label for the start of the segment
+        label_map.append(
+            (index_offset, label_start)
+        )  # Label for the start of the segment
         index_offset += len(points)
 
     # Include the last point and its label
