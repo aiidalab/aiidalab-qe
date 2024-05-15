@@ -25,10 +25,6 @@ RUN cd ${PREINSTALL_APP_FOLDER} && \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
 
-# The app version is used for installing the app when first time the container is started.
-ARG APP_VERSION
-ENV APP_VERSION ${APP_VERSION}
-
 ARG QE_VERSION
 ENV QE_VERSION ${QE_VERSION}
 RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
