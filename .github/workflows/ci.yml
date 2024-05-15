@@ -64,6 +64,10 @@ jobs:
         with:
             runsOn: ubuntu-22.04
             platforms: linux/amd64
+        secrets:
+            GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+            GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+
 
     #test-amd64:
     #    needs: build-amd64
