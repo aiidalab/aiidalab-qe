@@ -1,21 +1,21 @@
-# docker-bake.hcl for building QeApp images
-group "default" {
-  targets = ["qe"]
-}
+# docker-bake.hcl
 
 variable "QE_VERSION" {
 }
 
 variable "BASE_IMAGE" {
-  default = "aiidalab/full-stack:latest"
 }
 
 variable "ORGANIZATION" {
   default = "aiidalab"
 }
 
+group "default" {
+  targets = ["qe"]
+}
+
 target "qe" {
-  tags = ["${ORGANIZATION}/qe:newly-baked"]
+  tags = ["${REGISTRY}/${ORGANIZATION}/qe"]
   context = "."
   contexts = {
     src = ".."
