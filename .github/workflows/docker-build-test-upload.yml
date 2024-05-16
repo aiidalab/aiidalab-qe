@@ -37,7 +37,7 @@ jobs:
             # Also, they might have running or stopped containers,
             # which are not cleaned up by `docker system prun`
             - name: Reset docker state and cleanup artifacts 🗑️
-              if: ${{ inputs.platform != 'x86_64' }}
+              if: ${{ inputs.architecture == 'arm64' }}
               run: |
                   docker kill $(docker ps --quiet) || true
                   docker rm $(docker ps --all --quiet) || true

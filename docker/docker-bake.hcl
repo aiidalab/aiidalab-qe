@@ -7,7 +7,6 @@ variable "QE_VERSION" {
 }
 
 variable "BASE_IMAGE" {
-  default = "aiidalab/full-stack:latest"
 }
 
 variable "ORGANIZATION" {
