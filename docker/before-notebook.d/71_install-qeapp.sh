@@ -12,10 +12,6 @@ else
     mv ${PREINSTALL_APP_FOLDER} /home/${NB_USER}/apps/quantum-espresso
 fi
 
-# Install the pseudo libraries if not already installed.
-if aiida-pseudo list | grep -q "no pseudo potential families"; then
-    echo "Installing pseudo potential families."
-    python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER}
-else
-    echo "Pseudo potential families are already installed."
-fi
+# Install the pseudo:
+# If the group exist, the command will skip that library
+python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER}

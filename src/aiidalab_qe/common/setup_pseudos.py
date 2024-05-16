@@ -180,6 +180,7 @@ def _construct_cmd(
 
 def run_cmd(cmd: list, env: dict | None = None, cwd: Path | None = None):
     """Run the command with specific env in the workdir specified."""
+    # TODO: check the output of run
     run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
 
 
@@ -195,6 +196,7 @@ def _install_pseudos(
     for i, pseudo_family in enumerate(pseudo_families):
         cmd = _construct_cmd(pseudo_family, download_only, cwd=cwd)
 
+        print(cmd)
         run_cmd(cmd, env=env, cwd=cwd)
 
         yield mult * (i + 1)
