@@ -38,4 +38,4 @@ fi
 # With database up, we can now start the AiiDA daemon
 # Start the AiiDA daemon
 echo "Starting the AiiDA daemon..."
-nohup verdi daemon start & 
+nohup verdi daemon start &
