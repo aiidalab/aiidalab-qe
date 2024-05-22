@@ -407,7 +407,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
             "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
         }
-        #builder.relax.base.pw.metadata.options['max_wallclock_seconds'] = codes.get("pw")["max_wallclock_seconds"]
+        builder.relax.base.pw.metadata.options['max_wallclock_seconds'] = codes.get("pw")["max_wallclock_seconds"]
         builder.relax.base.pw.parallelization = orm.Dict(
             dict=codes["pw"]["parallelization"]
         )
