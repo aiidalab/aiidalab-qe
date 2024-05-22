@@ -785,7 +785,7 @@ class ResourceDetailSettings(ipw.VBox):
         return {
             "ntasks_per_node": self.ntasks_per_node.value,
             "cpus_per_task": self.cpus_per_task.value,
-            "max_wallclock_seconds":self.max_wallclock_seconds,
+            "max_wallclock_seconds":self.max_wallclock_seconds.value,
         }
 
     @parameters.setter
