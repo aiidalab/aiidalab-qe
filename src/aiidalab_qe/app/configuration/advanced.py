@@ -212,8 +212,8 @@ class AdvancedSettings(Panel):
         # Spin-Orbit calculation
         self.spin_orbit = ipw.ToggleButtons(
             options=[
-                ("W/o SOC", "wo_soc"),
-                ("SOC", "soc"),
+                ("Off", "wo_soc"),
+                ("On", "soc"),
             ],
             description="Spin-Orbit:",
             value="wo_soc",
