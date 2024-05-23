@@ -28,6 +28,10 @@ EXPECTED_PSEUDOS = {
     f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf",
     f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf",
     f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/stringent/upf",
+    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/standard/upf",
+    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/standard/upf",
+    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/stringent/upf",
+    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/stringent/upf",
 }
 
 
