@@ -746,7 +746,8 @@ class ResourceDetailSettings(ipw.VBox):
     prompt = ipw.HTML(
         """<div style="line-height:120%; padding-top:0px">
         <p style="padding-bottom:10px">
-        Specify the parameters for the scheduler (only for advanced user).
+        Specify the parameters for the scheduler (only for advanced user). <br>
+        These should be specified accordingly to the computer where the code will run.
         </p></div>"""
     )
 
@@ -769,9 +770,9 @@ class ResourceDetailSettings(ipw.VBox):
         self.max_wallclock_seconds = ipw.BoundedIntText(
             value=3600 * 12,
             step=3600,
-            min=1800,
-            max=3600 * 24 * 10,
-            description="max-wallclock-time (seconds)",
+            min=60 * 10,
+            max=3600 * 24,
+            description="max seconds",
             style={"description_width": "100px"},
         )
         super().__init__(
