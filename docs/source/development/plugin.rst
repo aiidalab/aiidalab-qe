@@ -254,7 +254,7 @@ feed the `metadata` of each Calcjob which is submitted in the workchain. For exa
     def update_resources(builder, codes):
         set_component_resources(builder.pw, codes.get("pw"))
 
-This function can and should be adapted for each plugin specific case. 
+This function can and should be adapted for each plugin specific case.
 Then add the workchain and builder into the `workchain_and_builder` dict, so that the QuantumESPRESSO app can load them.
 
 .. code-block:: python
