@@ -43,7 +43,7 @@ jobs:
                   path: /tmp/aiidalab
 
             - name: Login to Container Registry 🔑
-              uses: docker/login-action@v2
+              uses: docker/login-action@v3
               with:
                   registry: ${{ inputs.registry }}
                   username: ${{ secrets.REGISTRY_USERNAME }}
