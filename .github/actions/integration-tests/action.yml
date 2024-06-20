@@ -3,6 +3,10 @@ name: Downstream tests
 description: Integration downstream tests the bulid image
 
 inputs:
+    image:
+        description: Image name
+        required: false
+        type: string
     architecture:
         description: Image architecture
         required: true
