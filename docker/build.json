@@ -1,7 +1,7 @@
 {
   "variable": {
     "AIIDALAB_BASE_IMAGE": {
-      "default": "ghcr.io/aiidalab/full-stack:2024.1019"
+      "default": "ghcr.io/aiidalab/full-stack:pr-455"
     },
     "QE_VERSION": {
       "default": "7.2"
