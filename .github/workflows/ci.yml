@@ -20,8 +20,7 @@ jobs:
 
         strategy:
             matrix:
-                tag: [latest]
-                python-version: ['3.9', '3.10']
+                python-version: ['3.9', '3.11']
                 aiida-core-version: [2.3, 2.5]
             fail-fast: false
 
@@ -52,8 +51,6 @@ jobs:
 
             - name: Run pytest
               run: pytest -v tests --cov=aiidalab_qe
-              env:
-                  TAG: ${{ matrix.tag }}
 
             - name: Upload coverage reports to Codecov
               uses: codecov/codecov-action@v4
