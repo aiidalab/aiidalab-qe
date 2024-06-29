@@ -715,6 +715,10 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             self.resource_detail.ntasks_per_node.value = parameters["ntasks_per_node"]
         if "cpus_per_task" in parameters:
             self.resource_detail.cpus_per_task.value = parameters["cpus_per_task"]
+        if "max_wallclock_seconds" in parameters:
+            self.resource_detail.max_wallclock_seconds.value = parameters[
+                "max_wallclock_seconds"
+            ]
 
     def _setup_resource_detail(self, _=None):
         with self._setup_resource_detail_output:
@@ -742,7 +746,8 @@ class ResourceDetailSettings(ipw.VBox):
     prompt = ipw.HTML(
         """<div style="line-height:120%; padding-top:0px">
         <p style="padding-bottom:10px">
-        Specify the parameters for the scheduler (only for advanced user).
+        Specify the parameters for the scheduler (only for advanced user). <br>
+        These should be specified accordingly to the computer where the code will run.
         </p></div>"""
     )
 
@@ -762,8 +767,22 @@ class ResourceDetailSettings(ipw.VBox):
             description="cpus-per-task",
             style={"description_width": "100px"},
         )
+        self.max_wallclock_seconds = ipw.BoundedIntText(
+            value=3600 * 12,
+            step=3600,
+            min=60 * 10,
+            max=3600 * 24,
+            description="max seconds",
+            style={"description_width": "100px"},
+        )
         super().__init__(
-            children=[self.prompt, self.ntasks_per_node, self.cpus_per_task], **kwargs
+            children=[
+                self.prompt,
+                self.ntasks_per_node,
+                self.cpus_per_task,
+                self.max_wallclock_seconds,
+            ],
+            **kwargs,
         )
 
     @property
@@ -775,17 +794,22 @@ class ResourceDetailSettings(ipw.VBox):
         return {
             "ntasks_per_node": self.ntasks_per_node.value,
             "cpus_per_task": self.cpus_per_task.value,
+            "max_wallclock_seconds": self.max_wallclock_seconds.value,
         }
 
     @parameters.setter
     def parameters(self, parameters):
         self.ntasks_per_node.value = parameters.get("ntasks_per_node", 1)
         self.cpus_per_task.value = parameters.get("cpus_per_task", 1)
+        self.max_wallclock_seconds.value = parameters.get(
+            "max_wallclock_seconds", 3600 * 12
+        )
 
     def reset(self):
         """Reset the settings."""
         self.ntasks_per_node.value = 1
         self.cpus_per_task.value = 1
+        self.max_wallclock_seconds.value = 3600 * 12
 
 
 class ParallelizationSettings(ipw.VBox):

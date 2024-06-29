@@ -240,8 +240,21 @@ The ``get_builder`` function will return a ``builder`` for the ``EOSWorkChain``,
                     overrides=overrides,
                     **kwargs,
                 )
+        # update resources
+        update_resources(builder, codes)
         return builder
 
+The `update_resources` function is used to set the computational resources of the builder. It will basically
+feed the `metadata` of each Calcjob which is submitted in the workchain. For example, in the EOSWorkChain case:
+
+.. code-block:: python
+
+    from aiidalab_qe.plugins.utils import set_component_resources
+
+    def update_resources(builder, codes):
+        set_component_resources(builder.pw, codes.get("pw"))
+
+This function can and should be adapted for each plugin specific case.
 Then add the workchain and builder into the `workchain_and_builder` dict, so that the QuantumESPRESSO app can load them.
 
 .. code-block:: python

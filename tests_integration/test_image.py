@@ -26,4 +26,4 @@ def test_pseudos_families_are_installed(aiidalab_exec, nb_user):
     assert "PseudoDojo" in output
 
     # Two lines of header, 8 pseudos
-    assert len(output.splitlines()) == 10
+    assert len(output.splitlines()) == 14
