@@ -1,4 +1,4 @@
-.. _develop-apps:
+.. _blog:
 
 ###################
 Blogs

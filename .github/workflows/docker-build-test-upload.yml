@@ -3,6 +3,7 @@ name: Build a new image and then upload the image, tags and manifests to GitHub 
 
 env:
     OWNER: ${{ github.repository_owner }}
+    FORCE_COLOR: 1
 
 on:
     workflow_call:
