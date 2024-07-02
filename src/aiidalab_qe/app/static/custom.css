@@ -39,7 +39,10 @@
   line-height: 24px;
 }
 
-.guide p:first-of-type {
+.guide ol {
+  list-style: none;
+}
+.guide p:not(:last-of-type) {
   margin-bottom: 0.5em;
 }
 

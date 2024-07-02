@@ -41,7 +41,11 @@
 }
 
 .guide {
-  p:first-of-type {
+  ol {
+    list-style: none;
+  }
+
+  p:not(:last-of-type) {
     margin-bottom: 0.5em;
   }
 }
