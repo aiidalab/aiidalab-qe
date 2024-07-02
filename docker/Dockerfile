@@ -21,7 +21,7 @@ RUN cd ${PREINSTALL_APP_FOLDER} && \
      # aiidalab install --yes --python ${CONDA_DIR}/bin/python  "quantum-espresso@file://${PREINSTALL_APP_FOLDER}" && \
      # However, have to use `pip install` explicitly because `aiidalab install` call `pip install --user` which will install the app to `/home/${NB_USER}/.local`.
      # It won't cause issue for docker but for k8s deployment the home folder is not bind mounted to the pod and the dependencies won't be found. (see issue in `jupyter/docker-stacks` https://github.com/jupyter/docker-stacks/issues/815)
-     pip install . --no-cache-dir && \
+     pip install . --no-user --no-cache-dir && \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
 
