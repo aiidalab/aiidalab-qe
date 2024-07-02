@@ -2,12 +2,38 @@ import numpy as np
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
+from aiida import orm
 
 GAMMA = "\u0393"
 
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
+ProjwfcBandsWorkChain = WorkflowFactory("wannier90_workflows.projwfcbands")
 KpointsData = DataFactory("core.array.kpoints")
 
+
+def check_codes(pw_code, projwfc_code):
+    """Check that the codes are installed on the same computer."""
+    if (
+        not any(
+            [
+                pw_code is None,
+                projwfc_code is None,
+            ]
+        )
+        and len(
+            set(
+                (
+                    pw_code.computer.pk,
+                    projwfc_code.computer.pk,
+                )
+            )
+        )
+        != 1
+    ):
+        raise ValueError(
+            "All selected codes must be installed on the same computer. This is because the "
+            "PDOS calculations rely on large files that are not retrieved by AiiDA."
+        )
 
 def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distance):
     """function to calculate the number of points per branch depending on the kpoints_distance and the reciprocal cell"""
@@ -167,9 +193,11 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     return kpoints
 
 
-def update_resources(builder, codes):
+def update_resources(builder, codes, projwfc_bands=False):
     set_component_resources(builder.scf.pw, codes.get("pw"))
     set_component_resources(builder.bands.pw, codes.get("pw"))
+    if projwfc_bands:
+        set_component_resources(builder.projwfc, codes.get("projwfc_bands"))
 
 
 def get_builder(codes, structure, parameters, **kwargs):
@@ -192,16 +220,32 @@ def get_builder(codes, structure, parameters, **kwargs):
         "bands": bands_overrides,
         "relax": relax_overrides,
     }
-    bands = PwBandsWorkChain.get_builder_from_protocol(
-        code=pw_code,
-        structure=structure,
-        protocol=protocol,
-        electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
-        spin_type=SpinType(parameters["workchain"]["spin_type"]),
-        initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
-        overrides=overrides,
-        **kwargs,
-    )
+
+    if parameters["bands"]["projwfc_bands"]:
+        check_codes(pw_code, codes.get("projwfc_bands")["code"])
+        overrides["scf"]["kpoints_distance"] = orm.Float(overrides["scf"]["kpoints_distance"]) #To be removed once the issue is fixed
+        bands = ProjwfcBandsWorkChain.get_builder_from_protocol(
+            pw_code=pw_code,
+            projwfc_code=codes.get("projwfc_bands")["code"],
+            structure=structure,
+            protocol=protocol,
+            electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
+            spin_type=SpinType(parameters["workchain"]["spin_type"]),
+            initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
+            overrides=overrides,
+            **kwargs,
+        )
+    else: # Use the PwBandsWorkChain
+        bands = PwBandsWorkChain.get_builder_from_protocol(
+            code=pw_code,
+            structure=structure,
+            protocol=protocol,
+            electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
+            spin_type=SpinType(parameters["workchain"]["spin_type"]),
+            initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
+            overrides=overrides,
+            **kwargs,
+        )
 
     if structure.pbc != (True, True, True):
         kpoints_distance = parameters["advanced"]["kpoints_distance"]
@@ -219,11 +263,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     bands.pop("structure", None)
     bands.pop("clean_workdir", None)
     # update resources
-    update_resources(bands, codes)
+    update_resources(bands, codes, parameters["bands"]["projwfc_bands"])
 
-    if scf_overrides["pw"]["parameters"]["SYSTEM"].get("tot_magnetization") is not None:
-        bands.scf["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
-        bands.bands["pw"]["parameters"]["SYSTEM"].pop("starting_magnetization", None)
 
     return bands
 
