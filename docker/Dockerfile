@@ -8,6 +8,14 @@ COPY --chown=${NB_UID}:${NB_GID} --from=src . ${PREINSTALL_APP_FOLDER}
 
 USER ${NB_USER}
 
+ARG QE_VERSION
+ENV QE_VERSION ${QE_VERSION}
+RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
+        qe=${QE_VERSION} \
+     && mamba clean --all -f -y && \
+     fix-permissions "${CONDA_DIR}" && \
+     fix-permissions "/home/${NB_USER}"
+
 RUN cd ${PREINSTALL_APP_FOLDER} && \
      # Remove all untracked files and directories. For example the setup lock flag file.
      git clean -fx && \
@@ -25,23 +33,16 @@ RUN cd ${PREINSTALL_APP_FOLDER} && \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
 
-# The app version is used for installing the app when first time the container is started.
-ARG APP_VERSION
-ENV APP_VERSION ${APP_VERSION}
-
-ARG QE_VERSION
-ENV QE_VERSION ${QE_VERSION}
-RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
-        qe=${QE_VERSION} \
-     && mamba clean --all -f -y && \
-     fix-permissions "${CONDA_DIR}" && \
-     fix-permissions "/home/${NB_USER}"
-
 # Download the QE pseudopotentials to the folder for afterware installation.
 ENV PSEUDO_FOLDER ${CONDA_DIR}/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
+RUN mkdir -p /tmp/before-notebook.d
 COPY before-notebook.d/* /usr/local/bin/before-notebook.d/
+
+# Run it in the build phase to prepare user home
+# TODO: k8s??
+RUN run-parts --regex=".*" /usr/local/bin/before-notebook.d/
 
 WORKDIR "/home/${NB_USER}"
