@@ -50,7 +50,7 @@ jobs:
               run: uv pip install --system -e .[dev] aiida-core==${{ matrix.aiida-core-version }}
 
             - name: Run pytest
-              run: pytest -v tests --cov=aiidalab_qe
+              run: pytest -v tests ${{ matrix.aiida-core-version == '2.3' && '--cov=aiidalab_qe' || '' }}
 
             - name: Upload coverage reports to Codecov
               uses: codecov/codecov-action@v4
