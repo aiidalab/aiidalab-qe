@@ -1,5 +1,5 @@
 ---
-name: Build, and push Docker Image
+name: Docker Image
 
 on:
     pull_request:
