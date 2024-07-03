@@ -4,11 +4,10 @@ from datetime import datetime
 
 import ipywidgets as ipw
 import traitlets
-from importlib_resources import files
-from IPython.display import Image, display
-from jinja2 import Environment
-
 from aiidalab_widgets_base.infobox import InfoBox
+from importlib_resources import files
+from IPython.display import Image, Javascript, display
+from jinja2 import Environment
 
 from aiidalab_qe.app import static
 from aiidalab_qe.version import __version__
@@ -62,7 +61,14 @@ class AppWrapperContoller:
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
-        self._view.info_container.children = [self._view.guide] if change["new"] else []
+        self._view.info_container.children = (
+            [
+                self._view.guide,
+                self._view.guide_selection,
+            ]
+            if change["new"]
+            else []
+        )
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
     @without_triggering("guide_toggle")
@@ -70,6 +76,24 @@ class AppWrapperContoller:
         """Toggle the about section."""
         self._view.info_container.children = [self._view.about] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
+
+    def _on_guide_select(self, change: dict):
+        """Toggle the guide section."""
+        display(
+            Javascript(f"""
+                document.querySelectorAll('.{change["old"]}').forEach((guide) => {'{'}
+                    guide.classList.remove('show');
+                {'}'});
+            """)
+        )
+        if (guide_class := change["new"]) != "none":
+            display(
+                Javascript(f"""
+                    document.querySelectorAll('.{guide_class}').forEach((guide) => {'{'}
+                        guide.classList.add('show');
+                    {'}'});
+                """)
+            )
 
     def _on_close_first_time_info(self, _=None):
         """Close the first time info box."""
@@ -81,6 +105,7 @@ class AppWrapperContoller:
         """Set up event handlers."""
         self._view.guide_toggle.observe(self._on_guide_toggle, "value")
         self._view.about_toggle.observe(self._on_about_toggle, "value")
+        self._view.guide_selection.observe(self._on_guide_select, "value")
         self._view.close_first_time_info_button.on_click(self._on_close_first_time_info)
 
 
@@ -163,6 +188,16 @@ class AppWrapperView(ipw.VBox):
 
         self.guide = ipw.HTML(env.from_string(guide_template).render())
         self.about = ipw.HTML(env.from_string(about_template).render())
+
+        self.guide_selection = ipw.RadioButtons(
+            options=[
+                "none",
+                "relaxation",
+                "bands",
+            ],
+            description="Guides",
+            value="none",
+        )
 
         self.info_container = InfoBox()
 
