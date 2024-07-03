@@ -1,5 +1,5 @@
 ---
-name: Build a new image and then upload the image, tags and manifests to GitHub artifacts
+name: Build and test a new image, upload it as artifact
 
 env:
     OWNER: ${{ github.repository_owner }}
@@ -56,18 +56,12 @@ jobs:
                   BUILDKIT_PROGRESS: plain
               shell: bash
 
-            - name: Run tests ✅
-              uses: ./.github/actions/integration-tests
-              with:
-                  architecture: ${{ inputs.architecture }}
-                  runsOn: ${{ inputs.runsOn }}
-
             - name: Save image as a tar for later use 💾
               run: |
                   mkdir -p /tmp/aiidalab/
                   docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
               shell: bash
-              if: always()
+              if: ${{ !github.event.pull_request.head.repo.fork }}
 
             - name: Upload image as artifact 💾
               uses: actions/upload-artifact@v4
@@ -75,4 +69,10 @@ jobs:
                   name: ${{ inputs.image }}-${{ inputs.architecture }}
                   path: /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
                   retention-days: 3
-              if: always()
+              if: ${{ !github.event.pull_request.head.repo.fork }}
+
+            - name: Run tests ✅
+              uses: ./.github/actions/integration-tests
+              with:
+                  architecture: ${{ inputs.architecture }}
+                  runsOn: ${{ inputs.runsOn }}
