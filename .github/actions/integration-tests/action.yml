@@ -1,6 +1,6 @@
 ---
 name: Downstream tests
-description: Integration downstream tests the bulid image
+description: Integration downstream tests of the freshly built image
 
 inputs:
     architecture:
@@ -22,27 +22,6 @@ runs:
 
         - name: Run pytest to test image is working
           run: TAG=newly-baked pytest tests_integration/test_image.py
-          shell: bash
-
-        # The Firefox and its engine geckodrive need do be installed manually to run
-        # selenium tests. This only works on amd64 architecture and it should be enough only test this
-        # on one architecture.
-        - name: Install Firefox
-          if : ${{ inputs.architecture == 'amd64' }}
-          uses: browser-actions/setup-firefox@latest
-          with:
-              firefox-version: '96.0'
-
-        - name: Install geckodriver
-          if : ${{ inputs.architecture == 'amd64' }}
-          run: |
-              wget -c https://github.com/mozilla/geckodriver/releases/download/v0.30.0/geckodriver-v0.30.0-linux64.tar.gz
-              tar xf geckodriver-v0.30.0-linux64.tar.gz -C /usr/local/bin
-          shell: bash
-
-        - name: Run pytest for firefox
-          if : ${{ inputs.architecture == 'amd64' }}
-          run: TAG=newly-baked pytest --driver Firefox tests_integration/test_app.py
           shell: bash
 
         - name: Run pytest for Chrome
