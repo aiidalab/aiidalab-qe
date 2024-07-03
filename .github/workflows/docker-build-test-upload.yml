@@ -4,6 +4,7 @@ name: Build and test a new image, upload it as artifact
 env:
     OWNER: ${{ github.repository_owner }}
     FORCE_COLOR: 1
+    BUILDKIT_PROGRESS: plain
 
 on:
     workflow_call:
@@ -38,7 +39,7 @@ jobs:
             # Also, they might have running or stopped containers,
             # which are not cleaned up by `docker system prun`
             - name: Reset docker state and cleanup artifacts 🗑️
-              if: ${{ startsWith(inputs.runsOn, 'ubuntu') }}
+              if: ${{ ! startsWith(inputs.runsOn, 'ubuntu') }}
               run: |
                   docker kill $(docker ps --quiet) || true
                   docker rm $(docker ps --all --quiet) || true
@@ -46,15 +47,24 @@ jobs:
                   rm -rf /tmp/aiidalab/
               shell: bash
 
-            - name: Build image 🛠
-              working-directory: docker
-              run: docker buildx bake --set qe.platform=linux/${{ inputs.architecture }} -f docker-bake.hcl -f build.json --load
-              env:
-                  # Use buildx
-                  DOCKER_BUILDKIT: 1
-                  # Full logs for CI build
-                  BUILDKIT_PROGRESS: plain
-              shell: bash
+            - name: Set up Docker Buildx
+              if: ${{ startsWith(inputs.runsOn, 'ubuntu') }}
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build and load to Docker
+              id: build-upload
+              uses: docker/bake-action@v5
+              with:
+                  # Load locally into Docker for testing
+                  load: true
+                  workdir: docker/
+                  set: |
+                      *.platform=linux/${{ inputs.architecture }}
+                      *.cache-to=type=gha,scope=${{ github.workflow }},mode=max
+                      *.cache-from=type=gha,scope=${{ github.workflow }}
+                  files: |
+                      docker-bake.hcl
+                      build.json
 
             - name: Save image as a tar for later use 💾
               run: |
@@ -63,7 +73,7 @@ jobs:
               shell: bash
               if: ${{ !github.event.pull_request.head.repo.fork }}
 
-            - name: Upload image as artifact 💾
+            - name: Upload image as artifact 📤
               uses: actions/upload-artifact@v4
               with:
                   name: ${{ inputs.image }}-${{ inputs.architecture }}
