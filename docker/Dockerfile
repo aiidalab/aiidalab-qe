@@ -11,11 +11,6 @@ RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
 
-# Download the QE pseudopotentials to the folder for afterware installation.
-ENV PSEUDO_FOLDER ${CONDA_DIR}/pseudo
-RUN mkdir -p ${PSEUDO_FOLDER} && \
-    python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
-
 # Copy whole repo and pre-install the dependencies and app to the tmp folder.
 # In the before notebook scripts the app will be re-installed by moving it to the app folder.
 ENV PREINSTALL_APP_FOLDER ${CONDA_DIR}/aiidalab-qe
@@ -46,6 +41,11 @@ RUN  --mount=from=uv,source=/uv,target=/bin/uv \
 # The app version is used for installing the app when first time the container is started.
 ARG APP_VERSION
 ENV APP_VERSION ${APP_VERSION}
+
+# Download the QE pseudopotentials to the folder for afterware installation.
+ENV PSEUDO_FOLDER ${CONDA_DIR}/pseudo
+RUN mkdir -p ${PSEUDO_FOLDER} && \
+    python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
 COPY before-notebook.d/* /usr/local/bin/before-notebook.d/
 
