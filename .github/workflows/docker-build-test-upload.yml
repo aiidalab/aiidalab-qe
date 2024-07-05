@@ -60,7 +60,7 @@ jobs:
                   workdir: docker/
                   set: |
                       *.platform=linux/${{ inputs.architecture }}
-                      *.cache-to=type=gha,scope=${{ github.workflow }},mode=max
+                      *.cache-to=type=gha,scope=${{ github.workflow }},mode=min
                       *.cache-from=type=gha,scope=${{ github.workflow }}
                   files: |
                       docker-bake.hcl
