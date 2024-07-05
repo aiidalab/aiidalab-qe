@@ -6,4 +6,4 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
-addopts = '--strict-config --strict-markers --durations=20 -ra'
+addopts = '--strict-config --strict-markers --durations=30 -ra'
