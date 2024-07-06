@@ -14,7 +14,7 @@ babel==2.12.1
     #   sphinx
 beautifulsoup4==4.12.2
     # via pydata-sphinx-theme
-certifi==2023.5.7
+certifi==2024.7.4
     # via requests
 charset-normalizer==3.1.0
     # via requests
@@ -37,7 +37,7 @@ packaging==23.1
     #   pydata-sphinx-theme
     #   sphinx
 pydata-sphinx-theme==0.13.3
-    # via -r docs/requirements.in
+    # via -r requirements.in
 pygments==2.15.1
     # via
     #   accessible-pygments
@@ -51,11 +51,11 @@ soupsieve==2.4.1
     # via beautifulsoup4
 sphinx==4.5.0
     # via
-    #   -r docs/requirements.in
+    #   -r requirements.in
     #   pydata-sphinx-theme
     #   sphinx-design
 sphinx-design==0.4.1
-    # via -r docs/requirements.in
+    # via -r requirements.in
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
 sphinxcontrib-devhelp==1.0.2
