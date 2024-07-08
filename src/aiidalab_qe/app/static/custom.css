@@ -26,6 +26,31 @@
   outline: none !important;
 }
 
+.first-time-users-infobox {
+  display: flex;
+  max-width: 500px;
+  margin: 2px auto;
+}
+.first-time-users-infobox button {
+  width: -moz-fit-content;
+  width: fit-content;
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  padding: 0;
+  background: none;
+  color: red;
+  font-size: x-large;
+  cursor: pointer;
+}
+.first-time-users-infobox button:hover, .first-time-users-infobox button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.first-time-users-infobox .widget-html {
+  padding-right: 20px;
+}
+
 .guide ol {
   list-style: none;
 }

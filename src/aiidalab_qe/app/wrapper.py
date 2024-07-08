@@ -71,10 +71,17 @@ class AppWrapperContoller:
         self._view.info_container.children = [self._view.about] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
+    def _on_close_first_time_info(self, _=None):
+        """Close the first time info box."""
+        self._view.first_time_users_infobox.layout.display = "none"
+        with open("first-time-user", "w") as file:
+            file.write("existing user")
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._view.guide_toggle.observe(self._on_guide_toggle, "value")
         self._view.about_toggle.observe(self._on_about_toggle, "value")
+        self._view.close_first_time_info_button.on_click(self._on_close_first_time_info)
 
 
 class AppWrapperModel(traitlets.HasTraits):
@@ -101,6 +108,28 @@ class AppWrapperView(ipw.VBox):
         logo.add_class("logo")
 
         subtitle = ipw.HTML("<h3 id='subtitle'>🎉 Happy computing 🎉</h3>")
+
+        self.close_first_time_info_button = ipw.Button(
+            icon="times",
+            tooltip="Close",
+        )
+
+        self.first_time_users_infobox = InfoBox(
+            title="First time users",
+            children=[
+                self.close_first_time_info_button,
+                ipw.HTML("""
+                    <p>
+                        If you are <strong>new to the Quantum ESPRESSO app</strong>,
+                        click on the guide button below to learn the basics of the
+                        app and/or follow along to the tutorials.
+                    </p>
+                """),
+            ],
+            **{"custom-css": "first-time-users-infobox"},
+        )
+
+        self._check_if_first_time_user()
 
         self.guide_toggle = ipw.ToggleButton(
             button_style="",
@@ -141,6 +170,7 @@ class AppWrapperView(ipw.VBox):
             children=[
                 logo,
                 subtitle,
+                self.first_time_users_infobox,
                 info_toggles,
                 self.info_container,
             ],
@@ -172,3 +202,13 @@ class AppWrapperView(ipw.VBox):
                 footer,
             ],
         )
+
+    def _check_if_first_time_user(self):
+        """Check if the user is a first time user."""
+        try:
+            with open("first-time-user") as file:
+                first_time_user = file.read().find("existing user") == -1
+        except FileNotFoundError:
+            first_time_user = True
+
+        self.first_time_users_infobox.layout.display = "flex" if first_time_user else "none"

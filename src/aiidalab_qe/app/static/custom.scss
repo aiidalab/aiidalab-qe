@@ -27,6 +27,34 @@
   }
 }
 
+.first-time-users-infobox {
+  display: flex;
+  max-width: 500px;
+  margin: 2px auto;
+
+  button {
+    width: fit-content;
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    padding: 0;
+    background: none;
+    color: red;
+    font-size: x-large;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+  }
+
+  .widget-html {
+    padding-right: 20px;
+  }
+}
+
 .guide {
   ol {
     list-style: none;

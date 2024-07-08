@@ -12,3 +12,6 @@ export/
 # Sphinx documentation
 docs/html
 screenshots/
+
+# Used to determine if first-time user
+first-time-user
