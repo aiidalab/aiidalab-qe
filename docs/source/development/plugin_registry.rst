@@ -47,10 +47,7 @@ At least one of ``github`` or ``pip`` is required. ``pip`` installation will be 
 
 How to define a post install command in your plugin
 ---------------------------------------------------------------------
-
-If you need to run a post-install command, you can define it in the CLI of your package, meant to be run as ``package-name post-install-command``.
-You can define the CLI  in the ``__main__.py``  (in your source folder) and ``pyproject.toml`` files. Have a look at the  ``aiidalab-qe-vibroscopy`` plugin for an example on how to do this.
-There, the automatic setup the phonopy code in the AiiDA database is implemented.
-The command will be then triggered after the installation of the plugin (only) from the plugin list page of the Quantum ESPRESSO app.
-
-By following these guidelines, you can ensure your plugin is correctly listed and accessible within the AiiDAlab Quantum ESPRESSO app, facilitating its discovery and use by the community.
+If you need to run a post-install command, you can define it in the CLI of your package. The command should be designed to be run as ``package-name post-install-command``.
+To define the CLI, you can use the ``__main__.py`` file in your source folder and the ``pyproject.toml`` file. You can refer to the `aiidalab-qe-vibroscopy <https://github.com/mikibonacci/aiidalab-qe-vibroscopy>`_ plugin for an example of how to do this.
+In that plugin, the automatic setup for the phonopy code is implemented. It assumes that the ``phonopy`` binary is already present on the machine, as the plugin will install it as a dependency.
+The post-install command will be triggered after the installation of the plugin (only) from the plugin list page of the Quantum ESPRESSO app.
