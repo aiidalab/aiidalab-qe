@@ -9,7 +9,7 @@ aiida-bader:
 aiidalab-qe-vibroscopy:
     description: Plugin to compute vibrational properties of materials via the aiida-vibroscopy AiiDA plugin
     author: Miki Bonacci, Andres Ortega Guerrero
-    github: https://github.com/mikibonacci/aiidalab-qe-vibroscopy@automatic_installation_codes
+    pip: aiidalab-qe-vibroscopy==1.0.1
     post_install: setup-phonopy
 
 aiidalab-qe-muon:
