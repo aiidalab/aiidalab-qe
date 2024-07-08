@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1
+FROM ghcr.io/astral-sh/uv:0.2.18 as uv
 FROM base-image
 
 # Copy whole repo and pre-install the dependencies and app to the tmp folder.
@@ -8,7 +9,12 @@ COPY --chown=${NB_UID}:${NB_GID} --from=src . ${PREINSTALL_APP_FOLDER}
 
 USER ${NB_USER}
 
-RUN cd ${PREINSTALL_APP_FOLDER} && \
+# Using uv to speed up installation, per docs:
+# https://github.com/astral-sh/uv/blob/main/docs/guides/docker.md#using-uv-temporarily
+# Use the same constraint file as PIP
+ENV UV_CONSTRAINT ${PIP_CONSTRAINT}
+RUN  --mount=from=uv,source=/uv,target=/bin/uv \
+     cd ${PREINSTALL_APP_FOLDER} && \
      # Remove all untracked files and directories. For example the setup lock flag file.
      git clean -fx && \
      # It is important to install from `aiidalab install` to mimic the exact installation operation as
@@ -21,7 +27,7 @@ RUN cd ${PREINSTALL_APP_FOLDER} && \
      # aiidalab install --yes --python ${CONDA_DIR}/bin/python  "quantum-espresso@file://${PREINSTALL_APP_FOLDER}" && \
      # However, have to use `pip install` explicitly because `aiidalab install` call `pip install --user` which will install the app to `/home/${NB_USER}/.local`.
      # It won't cause issue for docker but for k8s deployment the home folder is not bind mounted to the pod and the dependencies won't be found. (see issue in `jupyter/docker-stacks` https://github.com/jupyter/docker-stacks/issues/815)
-     pip install . --no-cache-dir && \
+     uv pip install --system --no-cache . && \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
 
