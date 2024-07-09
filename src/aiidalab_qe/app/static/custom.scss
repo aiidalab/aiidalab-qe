@@ -1,0 +1,75 @@
+.output_subarea {
+  max-width: none !important;
+}
+
+.app-header {
+  margin-bottom: 1em;
+}
+.logo {
+  text-align: center;
+}
+
+#subtitle {
+  text-align: center;
+  font-style: italic;
+}
+
+.info-toggles {
+  margin: 0 auto;
+
+  button {
+    width: 100px;
+    margin: 1em 0.5em;
+
+    &:focus {
+      outline: none !important;
+    }
+  }
+}
+
+.first-time-users-infobox {
+  display: flex;
+  max-width: 500px;
+  margin: 2px auto;
+
+  button {
+    width: fit-content;
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    padding: 0;
+    background: none;
+    color: red;
+    font-size: x-large;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+  }
+
+  .widget-html {
+    padding-right: 20px;
+  }
+}
+
+.guide {
+  ol {
+    list-style: none;
+  }
+
+  p:not(:last-of-type) {
+    margin-bottom: 0.5em;
+  }
+}
+
+#loading {
+  text-align: center;
+  font-size: large;
+}
+
+footer {
+  text-align: right;
+}
