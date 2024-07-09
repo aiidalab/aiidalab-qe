@@ -246,4 +246,6 @@ class AppWrapperView(ipw.VBox):
         except FileNotFoundError:
             first_time_user = True
 
-        self.first_time_users_infobox.layout.display = "flex" if first_time_user else "none"
+        self.first_time_users_infobox.layout.display = (
+            "flex" if first_time_user else "none"
+        )
