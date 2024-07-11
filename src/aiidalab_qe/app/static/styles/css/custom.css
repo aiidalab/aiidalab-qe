@@ -1,0 +1,73 @@
+.output_subarea {
+  max-width: none !important;
+}
+
+.app-header {
+  margin-bottom: 1em;
+}
+
+.logo {
+  text-align: center;
+}
+
+#subtitle {
+  text-align: center;
+  font-style: italic;
+}
+
+.info-toggles {
+  margin: 0 auto;
+}
+.info-toggles button {
+  width: 100px;
+  margin: 1em 0.5em;
+}
+.info-toggles button:focus {
+  outline: none !important;
+}
+
+.first-time-users-infobox {
+  display: flex;
+  max-width: 500px;
+  margin: 2px auto !important;
+}
+.first-time-users-infobox button {
+  width: fit-content;
+  position: absolute;
+  top: 0;
+  right: 6px;
+  padding: 0;
+  background: none;
+  color: black;
+  font-size: large;
+  cursor: pointer !important;
+}
+.first-time-users-infobox button:hover, .first-time-users-infobox button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  color: orangered;
+  transform: scale(1.1);
+  -webkit-transform: scale(1.1);
+  -moz-transform: scale(1.1);
+  -ms-transform: scale(1.1);
+  -o-transform: scale(1.1);
+}
+.first-time-users-infobox .widget-html {
+  padding-right: 20px;
+}
+
+.guide ol {
+  list-style: none;
+}
+.guide p:not(:last-of-type) {
+  margin-bottom: 0.5em;
+}
+
+#loading {
+  text-align: center;
+  font-size: large;
+}
+
+footer {
+  text-align: right;
+}

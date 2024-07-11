@@ -1,6 +1,6 @@
 import shutil
 import typing as t
-from importlib import resources
+from importlib.resources import files
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -16,7 +16,7 @@ from filelock import FileLock, Timeout
 from IPython.display import HTML, display
 from jinja2 import Environment
 
-from aiidalab_qe.app import static
+from aiidalab_qe.app.static import templates
 from aiidalab_qe.app.utils import get_entry_items
 
 from .summary_viewer import SummaryView
@@ -102,10 +102,7 @@ class WorkChainViewer(ipw.VBox):
                 self._show_workflow_output()
             # if the structure is present in the workchain,
             # the structure tab will be added.
-            if (
-                "structure" not in self._results_shown
-                and "structure" in self.node.outputs
-            ):
+            if "structure" not in self._results_shown and "structure" in self.node.outputs:
                 self._show_structure()
                 self.result_tabs.children += (self.structure_tab,)
                 # index of the last tab
@@ -168,16 +165,12 @@ class WorkChainOutputs(ipw.VBox):
         self._download_button_container = ipw.Box([self._download_archive_button])
 
         if node.exit_status != 0:
-            title = ipw.HTML(
-                f"<h4>Workflow failed with exit status [{ node.exit_status }]</h4>"
-            )
+            title = ipw.HTML(f"<h4>Workflow failed with exit status [{ node.exit_status }]</h4>")
             final_calcjob = self._get_final_calcjob(node)
             env = Environment()
-            template = resources.read_text(static, "workflow_failure.jinja")
-            style = resources.read_text(static, "style.css")
+            template = files(templates).joinpath("workflow_failure.jinja").read_text()
             output = ipw.HTML(
                 env.from_string(template).render(
-                    style=style,
                     process_report=get_workchain_report(node, "REPORT"),
                     calcjob_exit_message=final_calcjob.exit_message,
                 )
@@ -204,9 +197,7 @@ class WorkChainOutputs(ipw.VBox):
     @tl.observe("_busy")
     def _observe_busy(self, change):
         self._download_button_container.children = [
-            self._create_archive_indicator
-            if change["new"]
-            else self._download_archive_button
+            self._create_archive_indicator if change["new"] else self._download_archive_button
         ]
 
     def _download_archive(self, _):
