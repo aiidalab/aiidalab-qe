@@ -12,3 +12,6 @@ export/
 # Sphinx documentation
 docs/html
 screenshots/
+
+# User config (used to mark first-time users as existing)
+.app-user-config
