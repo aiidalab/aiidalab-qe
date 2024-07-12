@@ -1,6 +1,6 @@
 import shutil
 import typing as t
-from importlib import resources
+from importlib.resources import files
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -16,7 +16,7 @@ from filelock import FileLock, Timeout
 from IPython.display import HTML, display
 from jinja2 import Environment
 
-from aiidalab_qe.app import static
+from aiidalab_qe.app.static import styles, templates
 from aiidalab_qe.app.utils import get_entry_items
 
 from .summary_viewer import SummaryView
@@ -173,8 +173,8 @@ class WorkChainOutputs(ipw.VBox):
             )
             final_calcjob = self._get_final_calcjob(node)
             env = Environment()
-            template = resources.read_text(static, "workflow_failure.jinja")
-            style = resources.read_text(static, "style.css")
+            template = files(templates).joinpath("workflow_failure.jinja").read_text()
+            style = files(styles).joinpath("style.css").read_text()
             output = ipw.HTML(
                 env.from_string(template).render(
                     style=style,
