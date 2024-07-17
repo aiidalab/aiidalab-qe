@@ -46,5 +46,7 @@ COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 RUN fix-permissions "${CONDA_DIR}" && \
     fix-permissions "/home/${NB_USER}"
 
-USER ${NB_USER}
 WORKDIR "/home/${NB_USER}"
+RUN tar -cf /opt/home.tar.gz .
+
+USER ${NB_USER}
