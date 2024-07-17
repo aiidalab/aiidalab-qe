@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
-FROM ghcr.io/astral-sh/uv:0.2.18 as uv
+FROM ghcr.io/astral-sh/uv:0.2.18 AS uv
 FROM ghcr.io/aiidalab/full-stack:2024.1021
 
 USER ${NB_USER}
 
-ENV QE_VERSION "7.2"
+ENV QE_VERSION="7.2"
 
 # 1. Install Quantum Espresso into a conda environment
 RUN mamba create -n quantum-espresso --yes qe=${QE_VERSION} && \
@@ -18,7 +18,7 @@ RUN bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
     mamba run -n aiida-core-services pg_ctl stop
 
 # 3. Copy the whole repo
-ENV QE_APP_FOLDER ${AIIDALAB_APPS}/quantum-espresso
+ENV QE_APP_FOLDER=${AIIDALAB_APPS}/quantum-espresso
 COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
 
 WORKDIR ${QE_APP_FOLDER}
@@ -26,7 +26,7 @@ WORKDIR ${QE_APP_FOLDER}
 # Use uv instead of pip to speed up installation, per docs:
 # https://github.com/astral-sh/uv/blob/main/docs/guides/docker.md#using-uv-temporarily
 # Use the same constraint file as pip
-ENV UV_CONSTRAINT ${PIP_CONSTRAINT}
+ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     # Remove all untracked files and directories.
     git clean -fx && \
