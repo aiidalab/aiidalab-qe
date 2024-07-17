@@ -24,7 +24,7 @@ RUN bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
 ENV QE_APP_FOLDER=${AIIDALAB_APPS}/quantum-espresso
 COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
 
-WORKDIR ${QE_APP_FOLDER}
+WORKDIR "${QE_APP_FOLDER}"
 # 4.Install python dependencies
 # Use uv instead of pip to speed up installation, per docs:
 # https://github.com/astral-sh/uv/blob/main/docs/guides/docker.md#using-uv-temporarily
@@ -32,7 +32,7 @@ WORKDIR ${QE_APP_FOLDER}
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     # Remove all untracked files and directories.
-    git clean -fx && \
+    git clean -dffx && \
     uv pip install --system --no-cache .
 
 # 5. Install the QE pseudopotentials and codes
