@@ -53,18 +53,16 @@ jobs:
 
             - name: Build and load to Docker
               id: build-upload
-              uses: docker/bake-action@v5
+              uses: docker/build-push-action@v5
               with:
                   # Load locally into Docker for testing
                   load: true
-                  workdir: docker/
-                  set: |
-                      *.platform=linux/${{ inputs.architecture }}
-                      *.cache-to=type=gha,scope=${{ github.workflow }},mode=min
-                      *.cache-from=type=gha,scope=${{ github.workflow }}
-                  files: |
-                      docker-bake.hcl
-                      build.json
+                  platforms: linux/${{ inputs.architecture }}
+                  cache-to: |
+                      type=gha,scope=${{ github.workflow }},mode=min
+                  cache-from: |
+                      type=gha,scope=${{ github.workflow }}
+                  tags: aiidalab/aiidalab-qe:newbuild
 
             - name: Save image as a tar for later use 💾
               run: |

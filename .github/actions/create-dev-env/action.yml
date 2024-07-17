@@ -21,7 +21,5 @@ runs:
               python-version: 3.x
 
         - name: Install Dev Dependencies 📦
-          run: |
-              pip install --upgrade pip
-              pip install --upgrade -r docker/requirements-dev.txt
+          run: pip install -r requirements-docker.txt
           shell: bash

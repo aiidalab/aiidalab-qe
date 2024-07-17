@@ -1,0 +1,19 @@
+#!/bin/bash
+#
+set -euo pipefail
+
+home="/home/${NB_USER}"
+
+if [[ ! -d ${home} ]]; then
+    echo "Directory $home does not exist!"
+    exit 1
+fi
+
+# Untar home archive file to restore home directory if it is empty
+if [[ $(ls -A ${home} | wc -l) = "0" ]];then
+  if [ -f /opt/home.tar ]; then
+    # untar /opt/home.tar to /home/jovyan to restore home directory
+    echo "Untarring /opt/home.tar to /home/jovyan"
+    tar -xf /opt/home.tar -C /home/jovyan
+  fi
+fi
