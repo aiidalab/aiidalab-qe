@@ -7,7 +7,10 @@ USER ${NB_USER}
 ENV QE_VERSION="7.2"
 
 # 1. Install Quantum Espresso into a conda environment
-RUN mamba create -n quantum-espresso --yes qe=${QE_VERSION} && \
+RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
+    qe=${QE_VERSION} && \
+    mkdir -p /home/${NB_USER}/.conda/envs && \
+    ln -s /opt/conda/envs/quantum-espresso /home/${NB_USER}/.conda/envs/quantum-espresso-${QE_VERSION} && \
     mamba clean --all -f -y
 
 # 2. Prepare AiiDA profile and localhost computer

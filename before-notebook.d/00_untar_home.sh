@@ -1,7 +1,5 @@
 #!/bin/bash
 #
-set -euo pipefail
-
 home="/home/${NB_USER}"
 
 if [[ ! -d ${home} ]]; then
