@@ -10,8 +10,12 @@ fi
 # Untar home archive file to restore home directory if it is empty
 if [[ $(ls -A ${home} | wc -l) = "0" ]];then
   if [ -f /opt/home.tar.gz ]; then
-    # untar /opt/home.tar to /home/jovyan to restore home directory
-    echo "Untarring /opt/home.tar to /home/jovyan"
+    echo "Untarring /opt/home.tar to /home/${NB_USER}"
     tar -xf /opt/home.tar.gz -C /home/${NB_USER}
   fi
+# THIS IS ONLY FOR TESTING!
+else
+    echo "Creating home2!"
+    mkdir -p /home/${NB_USER}/home2
+    tar -xzf /opt/home.tar.gz -C /home/${NB_USER}/home2
 fi

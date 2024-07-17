@@ -47,6 +47,6 @@ RUN fix-permissions "${CONDA_DIR}" && \
     fix-permissions "/home/${NB_USER}"
 
 WORKDIR "/home/${NB_USER}"
-RUN tar -cf /opt/home.tar.gz .
+RUN tar -czf /opt/home.tar.gz .
 
 USER ${NB_USER}
