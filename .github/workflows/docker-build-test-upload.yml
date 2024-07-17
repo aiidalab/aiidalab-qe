@@ -60,6 +60,7 @@ jobs:
               with:
                   # Load locally into Docker for testing
                   load: true
+                  context: .
                   platforms: linux/${{ inputs.architecture }}
                   cache-to: |
                       type=gha,scope=${{ github.workflow }},mode=min
