@@ -3,48 +3,11 @@ name: Docker Image
 
 on:
     pull_request:
-        paths:
-            - .github/workflows/docker.yml
-            # We use local reusable workflows to make architecture clean an simple
-            # https://docs.github.com/en/actions/using-workflows/reusing-workflows
-            - .github/workflows/docker-build-test-upload.yml
-            - .github/workflows/docker-merge-tags.yml
-            - .github/workflows/docker-push.yml
-
-            # We use local composite actions to combine multiple workflow steps within one action
-            # https://docs.github.com/en/actions/creating-actions/about-custom-actions#composite-actions
-            - .github/actions/create-dev-env/action.yml
-            - .github/actions/load-image/action.yml
-
-            - src/**
-            - docker/**
-            - qe.ipynb
-            - setup.cfg
-            - pyproject.toml
-
     push:
         branches:
             - main
         tags:
             - v*
-        paths:
-            - .github/workflows/docker.yml
-            # We use local reusable workflows to make architecture clean an simple
-            # https://docs.github.com/en/actions/using-workflows/reusing-workflows
-            - .github/workflows/docker-build-test-upload.yml
-            - .github/workflows/docker-merge-tags.yml
-            - .github/workflows/docker-push.yml
-
-            # We use local composite actions to combine multiple workflow steps within one action
-            # https://docs.github.com/en/actions/creating-actions/about-custom-actions#composite-actions
-            - .github/actions/create-dev-env/action.yml
-            - .github/actions/load-image/action.yml
-
-            - src/**
-            - docker/**
-            - qe.ipynb
-            - setup.cfg
-            - pyproject.toml
     workflow_dispatch:
     schedule:
       # Periodically build and test the image and keep `edge` always up-to-date
