@@ -26,7 +26,8 @@ WORKDIR "${QE_APP_FOLDER}"
 # Use the same constraint file as pip
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    uv pip install --system --no-cache .
+    uv pip install --system --no-cache . && \
+    rm -rf build/
 
 # 4. Prepare AiiDA profile and localhost computer
 # 5. Install the QE pseudopotentials and codes
@@ -41,7 +42,7 @@ RUN bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
 # 6. Copy the whole repo
 COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
 # Remove all untracked files and directories.
-RUN git clean -dffx
+RUN git clean -dffx || true
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/

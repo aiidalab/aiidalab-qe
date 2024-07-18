@@ -4,6 +4,7 @@
 *.code-workspace
 .*.ipynb
 .ipynb*
+.venv/
 build/
 export/
 .do-not-setup-on-localhost
