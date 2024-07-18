@@ -1,11 +1,6 @@
 docker
 requests
-pre-commit
-pytest
-pytest-docker
-
-# test dependencies
-pytest-selenium
-pytest-html<4.0
-selenium~=4.9.0
-webdriver-manager
+pytest~=8.2.0
+pytest-docker~=3.0
+pytest-selenium~=4.1
+selenium==4.20.0

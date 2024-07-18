@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
-FROM ghcr.io/astral-sh/uv:0.2.18 as uv
+FROM ghcr.io/astral-sh/uv:0.2.18 AS uv
 FROM ghcr.io/aiidalab/full-stack:2024.1019
 
 # Copy whole repo and pre-install the dependencies and app to the tmp folder.
 # In the before notebook scripts the app will be re-installed by moving it to the app folder.
-ENV PREINSTALL_APP_FOLDER ${CONDA_DIR}/aiidalab-qe
+ENV PREINSTALL_APP_FOLDER=${CONDA_DIR}/aiidalab-qe
 COPY --chown=${NB_UID}:${NB_GID} . ${PREINSTALL_APP_FOLDER}
 
 USER ${NB_USER}
@@ -12,7 +12,7 @@ USER ${NB_USER}
 # Using uv to speed up installation, per docs:
 # https://github.com/astral-sh/uv/blob/main/docs/guides/docker.md#using-uv-temporarily
 # Use the same constraint file as PIP
-ENV UV_CONSTRAINT ${PIP_CONSTRAINT}
+ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN  --mount=from=uv,source=/uv,target=/bin/uv \
      cd ${PREINSTALL_APP_FOLDER} && \
      # Remove all untracked files and directories. For example the setup lock flag file.
@@ -39,7 +39,7 @@ RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
      fix-permissions "/home/${NB_USER}"
 
 # Download the QE pseudopotentials to the folder for afterware installation.
-ENV PSEUDO_FOLDER ${CONDA_DIR}/pseudo
+ENV PSEUDO_FOLDER=${CONDA_DIR}/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 

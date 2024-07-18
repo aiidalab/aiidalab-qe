@@ -12,6 +12,8 @@ on:
 
 env:
     FORCE_COLOR: 1
+    IMAGE: ghcr.io/aiidalab/qe
+    BUILDKIT_PROGRESS: plain
 
 # https://docs.github.com/en/actions/using-jobs/using-concurrency
 concurrency:
@@ -45,14 +47,14 @@ jobs:
               uses: docker/metadata-action@v4
               with:
                   images: |
-                      name=ghcr.io/aiidalab/qe
+                      name=${{ env.IMAGE }}
                   tags: |
                       type=edge,enable={{is_default_branch}}
                       type=ref,event=pr
                       type=match,pattern=v(\d{2}\.\d{2}.\d+.*),group=1
                       type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-            - name: Build and load to Docker
+            - name: Build and push image
               id: build-upload
               uses: docker/build-push-action@v5
               with:
@@ -73,3 +75,19 @@ jobs:
 
             - name: Install Dev Dependencies 📦
               run: pip install -r requirements-docker.txt
+
+            - name: Set jupyter token env
+              run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
+            - name: Run pytest for Chrome
+              run: pytest --driver Chrome tests_integration/
+              env:
+                  QE_IMAGE: ${{ env.IMAGE }}@${{ steps.build-upload.outputs.digest }}
+
+            - name: Upload screenshots as artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Screenshots
+                  path: screenshots/
+                  if-no-files-found: error
