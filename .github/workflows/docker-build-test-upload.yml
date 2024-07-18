@@ -72,4 +72,4 @@ jobs:
                   python-version: 3.11
 
             - name: Install Dev Dependencies 📦
-              run: pip install -r docker/requirements-dev.txt
+              run: pip install -r requirements-docker.txt

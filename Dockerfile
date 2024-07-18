@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 FROM ghcr.io/astral-sh/uv:0.2.18 as uv
-FROM base-image
+FROM ghcr.io/aiidalab/full-stack:2024.1019
 
 # Copy whole repo and pre-install the dependencies and app to the tmp folder.
 # In the before notebook scripts the app will be re-installed by moving it to the app folder.
 ENV PREINSTALL_APP_FOLDER ${CONDA_DIR}/aiidalab-qe
-COPY --chown=${NB_UID}:${NB_GID} --from=src . ${PREINSTALL_APP_FOLDER}
+COPY --chown=${NB_UID}:${NB_GID} . ${PREINSTALL_APP_FOLDER}
 
 USER ${NB_USER}
 
@@ -31,12 +31,7 @@ RUN  --mount=from=uv,source=/uv,target=/bin/uv \
      fix-permissions "${CONDA_DIR}" && \
      fix-permissions "/home/${NB_USER}"
 
-# The app version is used for installing the app when first time the container is started.
-ARG APP_VERSION
-ENV APP_VERSION ${APP_VERSION}
-
-ARG QE_VERSION
-ENV QE_VERSION ${QE_VERSION}
+ENV QE_VERSION="7.2"
 RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
         qe=${QE_VERSION} \
      && mamba clean --all -f -y && \
