@@ -27,7 +27,7 @@ WORKDIR "${QE_APP_FOLDER}"
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --system --no-cache . && \
-    rm -rf build/
+    rm -rf build/ src/aiidalab_qe.egg-info/
 
 # 4. Prepare AiiDA profile and localhost computer
 # 5. Install the QE pseudopotentials and codes
