@@ -1,10 +1,8 @@
 ---
-version: '3.4'
-
 services:
 
     aiidalab:
-        image: ${REGISTRY:-}${QE_IMAGE:-aiidalab/qe}${TAG}
+        image: ${REGISTRY:-}${QE_IMAGE:-aiidalab/qe}${TAG:-}
         environment:
             TZ: Europe/Zurich
             DOCKER_STACKS_JUPYTER_CMD: notebook
