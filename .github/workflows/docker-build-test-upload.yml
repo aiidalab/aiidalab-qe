@@ -57,8 +57,8 @@ jobs:
               uses: docker/build-push-action@v5
               with:
                   tags: ${{ steps.meta.outputs.tags }}
-                  load: ${{ github.event.pull_request.head.repo.fork }}
-                  push: ${{ ! github.event.pull_request.head.repo.fork }}
+                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+                  push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
                   context: .
                   platforms: linux/amd64
                   cache-to: |
