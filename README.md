@@ -32,15 +32,14 @@ pytest -sv tests
 To run the integration tests, you need to build the Docker image first:
 
 ```
-cd docker/
-docker buildx bake -f build.json -f docker-bake.hcl --set "*.platform=linux/amd64" --load
+docker build . -t aiidalab/qe
 ```
 
 Then, you can run the integration tests with:
 
 ```bash
-JUPYTER_TOKEN=max TAG=newly-baked pytest --driver Chrome tests_integration -sv
-``````
+pytest --driver Chrome tests_integration
+```
 
 ## For maintainers
 
@@ -57,7 +56,7 @@ Additional notes:
   - Use the `--dry` option to preview the release change.
   - The release tag (e.g. a/b/rc) is determined from the last release.
     Use the `--tag` option to switch the release tag.
-  - For making "outdate" release since we fix minor version to `2x.04.xx` and `2x.10.xx`, use e.g. `bumpver update --set-version v23.10.0rc4 --ignore-vcs-tag` to make the release.
+  - For making "outdated" release since we fix minor version to `2x.04.xx` and `2x.10.xx`, use e.g. `bumpver update --set-version v23.10.0rc4 --ignore-vcs-tag` to make the release.
 
 ## Acknowledgements
 We acknowledge support from:
