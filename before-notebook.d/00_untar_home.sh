@@ -11,6 +11,6 @@ fi
 if [[ $(ls -A ${home} | wc -l) = "0" ]];then
   if [ -f /opt/home.tar.gz ]; then
     echo "Extracting /opt/home.tar to /home/${NB_USER}"
-    tar -xf /opt/home.tar -C /home/${NB_USER}
+    tar -xf /opt/conda/home.tar -C /home/${NB_USER}
   fi
 fi

@@ -31,18 +31,20 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 
 # 4. Prepare AiiDA profile and localhost computer
 # 5. Install the QE pseudopotentials and codes
+# TODO: Remove PGSQL and daemon log files, and other unneeded files
 RUN bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
     python -m aiidalab_qe install-qe && \
     python -m aiidalab_qe install-pseudos && \
     verdi daemon stop && \
-    mamba run -n aiida-core-services pg_ctl stop
-
+    mamba run -n aiida-core-services pg_ctl stop && \
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar . && \
+    rm -rf *
 
 # 6. Copy the whole repo
-COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
+#COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
 # Remove all untracked files and directories.
-RUN git clean -dffx || true
+#RUN git clean -dffx || true
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
@@ -50,6 +52,4 @@ RUN fix-permissions "${CONDA_DIR}" && \
     fix-permissions "/home/${NB_USER}"
 
 WORKDIR "/home/${NB_USER}"
-RUN tar -cf /opt/home.tar .
-
 USER ${NB_USER}
