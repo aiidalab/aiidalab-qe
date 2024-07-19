@@ -9,5 +9,8 @@ def set_component_resources(component, code_info):
             "num_mpiprocs_per_machine": code_info["ntasks_per_node"],
             "num_cores_per_mpiproc": code_info["cpus_per_task"],
         }
+        component.metadata.options["max_wallclock_seconds"] = code_info[
+            "max_wallclock_seconds"
+        ]
         if "parallelization" in code_info:
             component.parallelization = orm.Dict(dict=code_info["parallelization"])
