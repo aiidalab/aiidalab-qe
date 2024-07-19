@@ -20,7 +20,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.panel import Panel
 from aiidalab_qe.common.setup_pseudos import PseudoFamily
 from aiidalab_qe.common.widgets import HubbardWidget
-
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from .pseudos import PseudoFamilySelector, PseudoSetter
 
 
@@ -209,6 +209,21 @@ class AdvancedSettings(Panel):
             (self.etot_conv_thr, "disabled"),
             lambda override: not override,
         )
+        # Spin-Orbit calculation
+        self.spin_orbit = ipw.ToggleButtons(
+            options=[
+                ("Off", "wo_soc"),
+                ("On", "soc"),
+            ],
+            description="Spin-Orbit:",
+            value="wo_soc",
+            style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self.override, "value"),
+            (self.spin_orbit, "disabled"),
+            lambda override: not override,
+        )
 
         self.pseudo_family_selector = PseudoFamilySelector()
         self.pseudo_setter = PseudoSetter()
@@ -217,6 +232,12 @@ class AdvancedSettings(Panel):
             (self.pseudo_setter, "pseudo_family"),
         )
         self.kpoints_distance.observe(self._display_mesh, "value")
+
+        # Link with PseudoWidget
+        ipw.dlink(
+            (self.spin_orbit, "value"),
+            (self.pseudo_family_selector, "spin_orbit"),
+        )
         self.children = [
             self.title,
             ipw.HBox(
@@ -245,6 +266,8 @@ class AdvancedSettings(Panel):
             self.kpoints_description,
             ipw.HBox([self.kpoints_distance, self.mesh_grid]),
             self.hubbard_widget,
+            # Spin-Orbit calculation
+            self.spin_orbit,
             self.pseudo_family_selector,
             self.pseudo_setter,
         ]
@@ -285,9 +308,12 @@ class AdvancedSettings(Panel):
             self._update_settings_from_protocol(self.protocol)
             self._display_mesh()
             self.hubbard_widget.update_widgets(change["new"])
+            if isinstance(self.input_structure, HubbardStructureData):
+                self.override.value = True
         else:
             self.magnetization.input_structure = None
             self.pseudo_setter.structure = None
+            self.hubbard_widget.update_widgets(None)
 
     @tl.observe("electronic_type")
     def _electronic_type_changed(self, change):
@@ -433,6 +459,12 @@ class AdvancedSettings(Panel):
             self.etot_conv_thr.value
         )
 
+        # Spin-Orbit calculation
+        if self.spin_orbit.value == "soc":
+            parameters["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
+            parameters["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
+            parameters["pw"]["parameters"]["SYSTEM"]["nspin"] = 4
+
         return parameters
 
     def set_insulator_magnetization(self, parameters):
@@ -480,6 +512,10 @@ class AdvancedSettings(Panel):
             self.total_charge.value = parameters["pw"]["parameters"]["SYSTEM"].get(
                 "tot_charge", 0
             )
+            if "lspinorb" in system:
+                self.spin_orbit.value = "soc"
+            else:
+                self.spin_orbit.value = "wo_soc"
             # van der waals correction
             self.van_der_waals.value = self.dftd3_version.get(
                 system.get("dftd3_version"),

@@ -26,6 +26,8 @@ from aiidalab_widgets_base.utils import (
 )
 from IPython.display import HTML, Javascript, clear_output, display
 from pymatgen.core.periodic_table import Element
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -713,6 +715,10 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             self.resource_detail.ntasks_per_node.value = parameters["ntasks_per_node"]
         if "cpus_per_task" in parameters:
             self.resource_detail.cpus_per_task.value = parameters["cpus_per_task"]
+        if "max_wallclock_seconds" in parameters:
+            self.resource_detail.max_wallclock_seconds.value = parameters[
+                "max_wallclock_seconds"
+            ]
 
     def _setup_resource_detail(self, _=None):
         with self._setup_resource_detail_output:
@@ -740,7 +746,8 @@ class ResourceDetailSettings(ipw.VBox):
     prompt = ipw.HTML(
         """<div style="line-height:120%; padding-top:0px">
         <p style="padding-bottom:10px">
-        Specify the parameters for the scheduler (only for advanced user).
+        Specify the parameters for the scheduler (only for advanced user). <br>
+        These should be specified accordingly to the computer where the code will run.
         </p></div>"""
     )
 
@@ -760,8 +767,22 @@ class ResourceDetailSettings(ipw.VBox):
             description="cpus-per-task",
             style={"description_width": "100px"},
         )
+        self.max_wallclock_seconds = ipw.BoundedIntText(
+            value=3600 * 12,
+            step=3600,
+            min=60 * 10,
+            max=3600 * 24,
+            description="max seconds",
+            style={"description_width": "100px"},
+        )
         super().__init__(
-            children=[self.prompt, self.ntasks_per_node, self.cpus_per_task], **kwargs
+            children=[
+                self.prompt,
+                self.ntasks_per_node,
+                self.cpus_per_task,
+                self.max_wallclock_seconds,
+            ],
+            **kwargs,
         )
 
     @property
@@ -773,17 +794,22 @@ class ResourceDetailSettings(ipw.VBox):
         return {
             "ntasks_per_node": self.ntasks_per_node.value,
             "cpus_per_task": self.cpus_per_task.value,
+            "max_wallclock_seconds": self.max_wallclock_seconds.value,
         }
 
     @parameters.setter
     def parameters(self, parameters):
         self.ntasks_per_node.value = parameters.get("ntasks_per_node", 1)
         self.cpus_per_task.value = parameters.get("cpus_per_task", 1)
+        self.max_wallclock_seconds.value = parameters.get(
+            "max_wallclock_seconds", 3600 * 12
+        )
 
     def reset(self):
         """Reset the settings."""
         self.ntasks_per_node.value = 1
         self.cpus_per_task.value = 1
+        self.max_wallclock_seconds.value = 3600 * 12
 
 
 class ParallelizationSettings(ipw.VBox):
@@ -1130,6 +1156,20 @@ class HubbardWidget(ipw.VBox):
                 clear_output()
                 display(self.eigen_values_widget)
 
+        if isinstance(self.input_structure, HubbardStructureData):
+            self.set_parameters_from_hubbardstructure(self.input_structure)
+
+    def set_parameters_from_hubbardstructure(self, hubbard_structure):
+        hubbard_parameters = hubbard_structure.hubbard.dict()["parameters"]
+        parameters = {
+            f"{hubbard_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item[
+                "value"
+            ]
+            for item in hubbard_parameters
+        }
+        self.set_hubbard_widget(parameters)
+        self.activate_hubbard.value = True
+
     def toggle_hubbard_widgets(self, change):
         """
         Toggle the visibility of the Hubbard widgets based on the value of check box.
@@ -1251,13 +1291,14 @@ class HubbardWidget(ipw.VBox):
         """Reset the widget."""
         self.activate_hubbard.value = False
         self.eigenvalues_label.value = False
-        self.input_structure = None
         self.hubbard_widget = self.create_hubbard_widget()
         self.eigen_values_widget = self.create_eigenvalues_widget()
         with self.hubbard_widget_out:
             clear_output()
         with self.eigen_values_widget_out:
             clear_output()
+        if isinstance(self.input_structure, HubbardStructureData):
+            self.set_parameters_from_hubbardstructure(self.input_structure)
 
     @property
     def hubbard_dict(self) -> dict:

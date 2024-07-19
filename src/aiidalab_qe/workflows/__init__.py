@@ -20,12 +20,20 @@ Orbital = DataFactory("core.orbital")
 # because we want to decouple the workflows from the app, so I copied it here
 # instead of importing it.
 # load entry points
+
+
 def get_entries(entry_point_name="aiidalab_qe.property"):
     from importlib.metadata import entry_points
 
     entries = {}
     for entry_point in entry_points().get(entry_point_name, []):
-        entries[entry_point.name] = entry_point.load()
+        try:
+            # Attempt to load the entry point
+            loaded_entry_point = entry_point.load()
+            entries[entry_point.name] = loaded_entry_point
+        except Exception as e:
+            # Handle loading errors
+            print(f"Failed to load entry point {entry_point.name}: {e}")
 
     return entries
 
@@ -123,9 +131,13 @@ class QeAppWorkChain(WorkChain):
         builder = cls.get_builder()
         # Set a HubbardStructureData if hubbard_parameters is specified
         hubbard_dict = parameters["advanced"].pop("hubbard_parameters", None)
+
+        # Check if hubbard_dict is provided
         if hubbard_dict is not None:
             hubbard_parameters = hubbard_dict["hubbard_u"]
             hubbard_structure = HubbardStructureData.from_structure(structure)
+
+            # Initialize on-site Hubbard values
             for key, value in hubbard_parameters.items():
                 kind, orbital = key.rsplit(" - ", 1)
                 hubbard_structure.initialize_onsites_hubbard(
@@ -135,10 +147,28 @@ class QeAppWorkChain(WorkChain):
                     hubbard_type="U",
                     use_kinds=True,
                 )
-            hubbard_structure.store()
-            builder.structure = hubbard_structure
+
+            # Determine whether to store and use hubbard_structure based on conditions
+            if (
+                isinstance(structure, HubbardStructureData)
+                and hubbard_structure.hubbard == structure.hubbard
+            ):
+                # If the structure is HubbardStructureData and hubbard parameters match, assign the original structure
+                builder.structure = structure
+            else:
+                # In all other cases, store and assign hubbard_structure
+                hubbard_structure.store()
+                builder.structure = hubbard_structure
+
+        elif isinstance(structure, HubbardStructureData):
+            # Convert HubbardStructureData to a simple StructureData
+            temp_structure = structure.get_ase()
+            new_structure = StructureData(ase=temp_structure)
+            new_structure.store()
+            builder.structure = new_structure
         else:
             builder.structure = structure
+
         # relax
         relax_overrides = {
             "base": parameters["advanced"],
@@ -162,15 +192,6 @@ class QeAppWorkChain(WorkChain):
         relax_builder.pop("base_final_scf", None)  # never run a final scf
         builder.relax = relax_builder
 
-        # remove starting magnetization if tot_magnetization is set
-        if (
-            relax_builder["base"]["pw"]["parameters"]["SYSTEM"].get("tot_magnetization")
-            is not None
-        ):
-            builder.relax["base"]["pw"]["parameters"]["SYSTEM"].pop(
-                "starting_magnetization", None
-            )
-
         if properties is None:
             properties = []
         builder.properties = orm.List(list=properties)
@@ -183,7 +204,6 @@ class QeAppWorkChain(WorkChain):
                 plugin_builder = entry_point["get_builder"](
                     codes, builder.structure, copy.deepcopy(parameters), **kwargs
                 )
-                # check if the plugin has a clean_workdir input
                 plugin_workchain = entry_point["workchain"]
                 if plugin_workchain.spec().has_input("clean_workdir"):
                     plugin_builder.clean_workdir = clean_workdir
