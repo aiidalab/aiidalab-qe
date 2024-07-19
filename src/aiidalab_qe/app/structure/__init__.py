@@ -21,17 +21,18 @@ from aiidalab_widgets_base import (
 
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common import AddingTagsEditor
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
 file_path = pathlib.Path(__file__).parent
 Examples = [
-    ("Silicon (diamond)", file_path / "examples" / "Si.xyz"),
-    ("Silicon oxide", file_path / "examples" / "SiO2.xyz"),
-    ("Diamond", file_path / "examples" / "diamond.cif"),
-    ("Gallium arsenide", file_path / "examples" / "GaAs.xyz"),
-    ("Gold (fcc)", file_path / "examples" / "Au.cif"),
-    ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
+    ("Bulk silicon (primitive cell)", file_path / "examples" / "Si.cif"),
+    ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
+    ("Diamond (primitive cell)", file_path / "examples" / "Diamond.cif"),
+    ("Gallium arsenide (primitive cell)", file_path / "examples" / "GaAs.cif"),
+    ("Gold (conventional cell)", file_path / "examples" / "Au.cif"),
+    ("Cobalt (primitive cell)", file_path / "examples" / "Co.cif"),
     ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
     ("Phenylacetylene molecule", file_path / "examples" / "Phenylacetylene.xyz"),
     ("ETFA molecule", file_path / "examples" / "ETFA.xyz"),
@@ -53,7 +54,14 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         importers = [
             StructureUploadWidget(title="Upload file"),
             OptimadeQueryWidget(embedded=False),
-            StructureBrowserWidget(title="AiiDA database"),
+            StructureBrowserWidget(
+                title="AiiDA database",
+                query_types=(
+                    aiida.orm.StructureData,
+                    aiida.orm.CifData,
+                    HubbardStructureData,
+                ),
+            ),
             StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
         # add plugin specific structure importers

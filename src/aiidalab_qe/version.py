@@ -3,4 +3,4 @@
 
 """This module contains project version information for both the app and the workflow."""
 
-__version__ = "v24.04.0a3"
+__version__ = "v24.10.0a1"

@@ -20,7 +20,7 @@ Welcome Page
 
       .. image:: _static/images/icon.svg
          :width: 200px
-         :class: sd-m-auto
+         :class: sd-m-auto dark-light
 
 ----
 
@@ -95,6 +95,23 @@ Welcome Page
 
          To the development guide
 
+   .. grid-item-card:: Blogs
+      :text-align: center
+      :shadow: md
+
+      Learn how to develop the app
+
+      ++++
+
+      .. button-ref:: blogs/index
+         :ref-type: doc
+         :click-parent:
+         :expand:
+         :color: primary
+         :outline:
+
+         To the blogs
+
    .. grid-item-card:: Report an Issue
       :text-align: center
       :shadow: md
@@ -120,6 +137,7 @@ Welcome Page
    tutorials/index
    howto/index
    development/index
+   blogs/index
    report_issue
 
 ----

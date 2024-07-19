@@ -1,0 +1,37 @@
+
+##########################################################################
+#               Crystallographic Information Format file
+#               Produced by PyCifRW module
+#
+#  From Materials cloud: https://mc3d.materialscloud.org/#/details/O6Si3/mc3d-39110/pbe
+#  Modified using experimental lattice constants
+##########################################################################
+
+data_0
+
+loop_
+  _atom_site_label
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_type_symbol
+         Si1       0.47712909575306034           0.4771290957385052  0.0       Si
+         Si2       0.5228709042418711  0.0       0.6666666666847871  Si
+         Si3       5.068439702542783e-12         0.5228709042614949  0.33333333333333337          Si
+         O1        0.25459298917216666           0.8398983384689859  0.46225430374647286          O
+         O2        0.1601016615162286  0.41469465066118705           0.12892097039501907          O
+         O3        0.5853053493200082  0.7454070108468681  0.7955876370979267  O
+         O4        0.8398983384782023  0.2545929891531319  0.5377456962535272  O
+         O5        0.41469465068648104           0.1601016615310142  0.871079029604981  O
+         O6        0.7454070108666793  0.585305349338813   0.20441236292019382           O
+_cell_angle_alpha                       90.0
+_cell_angle_beta                        90.0
+_cell_angle_gamma                       120.00000000057742
+_cell_length_a                          4.993
+_cell_length_b                          4.993
+_cell_length_c                          5.428
+loop_
+  _symmetry_equiv_pos_as_xyz
+         'x, y, z'
+_symmetry_int_tables_number             1
+_symmetry_space_group_name_H-M          'P 1'

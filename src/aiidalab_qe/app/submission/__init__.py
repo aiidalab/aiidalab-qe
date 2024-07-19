@@ -217,14 +217,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            for name, code in self.codes.items():
-                if not DEFAULT_PARAMETERS["codes"].get(name):
-                    continue
-                try:
-                    code.code_selection.refresh()
-                    code.value = orm.load_code(DEFAULT_PARAMETERS["codes"][name]).uuid
-                except NotExistent:
-                    pass
+            self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
 
     _ALERT_MESSAGE = """
         <div class="alert alert-{alert_class} alert-dismissible">
@@ -374,10 +367,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if not self.input_structure:
             return ""
         formula = self.input_structure.get_formula()
-        properties = [
-            p for p in self.input_parameters["workchain"]["properties"] if p != "realx"
-        ]
-        relax_type = self.input_parameters["workchain"].get("relax_type")
+        workchain_data = self.input_parameters.get("workchain", {"properties": []})
+        properties = [p for p in workchain_data["properties"] if p != "relax"]
+        relax_type = workchain_data.get("relax_type", "none")
         if relax_type != "none":
             relax_info = "structure is relaxed"
         else:
@@ -415,6 +407,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
             "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
         }
+        builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = codes.get(
+            "pw"
+        )["max_wallclock_seconds"]
         builder.relax.base.pw.parallelization = orm.Dict(
             dict=codes["pw"]["parallelization"]
         )
