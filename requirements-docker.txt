@@ -1,0 +1,6 @@
+docker
+requests
+pytest~=8.2.0
+pytest-docker~=3.0
+pytest-selenium~=4.1
+selenium==4.20.0

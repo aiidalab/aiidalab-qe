@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
-import selenium.webdriver.support.expected_conditions as EC
+import selenium.webdriver.support.expected_conditions as ec
 from requests.exceptions import ConnectionError
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
@@ -85,7 +85,7 @@ def selenium_driver(selenium, notebook_service):
         selenium.find_element(By.ID, "ipython-main-app")
         selenium.find_element(By.ID, "notebook-container")
         WebDriverWait(selenium, 100).until(
-            EC.invisibility_of_element((By.ID, "appmode-busy"))
+            ec.invisibility_of_element((By.ID, "appmode-busy"))
         )
 
         return selenium
@@ -114,12 +114,6 @@ def screenshot_dir():
     except FileExistsError:
         pass
     return sdir
-
-
-@pytest.fixture
-def firefox_options(firefox_options):
-    firefox_options.add_argument("--headless")
-    return firefox_options
 
 
 @pytest.fixture
