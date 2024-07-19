@@ -74,6 +74,7 @@ def test_qeapp_computational_resources_widget():
         "code": None,
         "cpus": 1,
         "cpus_per_task": 1,
+        "max_wallclock_seconds": 43200,
         "nodes": 1,
         "ntasks_per_node": 1,
         "parallelization": {"npool": 2},

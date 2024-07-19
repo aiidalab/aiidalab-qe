@@ -1,7 +1,7 @@
 ---
 # Run basic tests for this app
 
-name: continuous-integration
+name: CI
 
 on: [push, pull_request]
 
@@ -11,10 +11,12 @@ concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
 
+env:
+    FORCE_COLOR: 1
+
 jobs:
 
     test-package:
-
 
         strategy:
             matrix:
@@ -35,26 +37,26 @@ jobs:
         steps:
 
             - name: Check out app
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
 
             - name: Set up Python
-              uses: actions/setup-python@v4
+              uses: actions/setup-python@v5
               with:
                   python-version: ${{ matrix.python-version }}
-                  cache: pip
-                  cache-dependency-path: |
-                      **/setup.cfg
-                      **/pyproject.toml
-                      **/requirements*.txt
+
+            - name: Install uv
+              run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/0.2.13/uv-installer.sh | sh
+
             - name: Install package
-              run: pip install -e .[dev] aiida-core==${{ matrix.aiida-core-version }}
+              run: uv pip install --system -e .[dev] aiida-core==${{ matrix.aiida-core-version }}
 
             - name: Run pytest
-              run: pytest -v tests --cov
+              run: pytest -v tests --cov=aiidalab_qe
               env:
                   TAG: ${{ matrix.tag }}
 
             - name: Upload coverage reports to Codecov
-              uses: codecov/codecov-action@v3
+              uses: codecov/codecov-action@v4
               with:
                   flags: python-${{ matrix.python-version }}
+                  token: ${{ secrets.CODECOV_TOKEN }}
