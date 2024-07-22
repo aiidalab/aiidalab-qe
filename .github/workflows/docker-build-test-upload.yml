@@ -78,7 +78,7 @@ jobs:
               run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
             - name: Run pytest for Chrome
-              run: pytest --driver Chrome tests_integration/
+              run: pytest -sv --driver Chrome tests_integration/
               env:
                   QE_IMAGE: ${{ env.IMAGE }}@${{ steps.build-upload.outputs.digest }}
 
