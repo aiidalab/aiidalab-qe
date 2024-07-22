@@ -1,18 +1,24 @@
 #!/bin/bash
-home="/home/${NB_USER}"
+set -u
 
-if [[ ! -d ${home} ]]; then
-    echo "Directory $home does not exist!"
-    exit 1
-fi
+home="/home/${NB_USER}"
+HOME_TAR="/opt/conda/home.tar"
 
 # Untar home archive file to restore home directory if it is empty
-if [[ $(ls -A ${home} | wc -l) = "0" ]];then
-  if [[ -f /opt/home.tar.gz ]]; then
-    echo "Extracting /opt/home.tar to /home/${NB_USER}"
-    tar -xf /opt/conda/home.tar -C /home/${NB_USER}
+if [[ $(ls -A ${home} | wc -l) = "0" ]]; then
+  if [[ ! -f $HOME_TAR ]]; then
+    echo "File $HOME_TAR does not exist!"
+    exit 1
   fi
-  if [[ -n ${QE_APP_FOLDER} && -f ${QE_APP_FOLDER} ]]; then
-    cp -r "$QE_APP_FOLDER" "$home/apps/"
+  if [[ ! -d ${QE_APP_FOLDER} ]]; then
+    echo "Folder $QE_APP_FOLDER does not exist!"
+    exit 1
   fi
+
+  echo "Extracting $HOME_TAR to $home"
+  tar -xf $HOME_TAR -C $home
+
+  echo "Copying directory '$QE_APP_FOLDER' to '$home/apps/'"
+  cp -r "$QE_APP_FOLDER" "$home/apps/"
 fi
+set +u

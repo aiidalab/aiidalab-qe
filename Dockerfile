@@ -1,13 +1,17 @@
 # syntax=docker/dockerfile:1
-FROM ghcr.io/astral-sh/uv:0.2.18 AS uv
+ARG FULL_STACK_VERSION=2024.1021
+ARG QE_VERSION=7.2
+ARG UV_VERSION=0.2.27
 
-FROM ghcr.io/aiidalab/full-stack:2024.1021 AS conda_build
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
+
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VERSION} AS conda_build
+ARG QE_VERSION
 
 USER ${NB_USER}
 # Install QE into conda environment in /opt/conda
 # We need to do this first, otherwise QE gets installed into home folder as part of
 # python -m aiidalab_qe install-qe
-ENV QE_VERSION="7.2"
 RUN mamba create -p /opt/conda/envs/quantum-espresso-${QE_VERSION} --yes \
     qe=${QE_VERSION} && \
     mamba clean --all -f -y
@@ -35,18 +39,16 @@ RUN mkdir -p ${PSEUDO_FOLDER} && \
 RUN bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
     python -m aiidalab_qe install-qe && \
-    python -m aiidalab_qe install-pseudos && \
+    python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
 
 
-# TODO: Deduplicate the name of the full-stack image
-FROM ghcr.io/aiidalab/full-stack:2024.1021
-
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VERSION}
+ARG QE_VERSION
 USER ${NB_USER}
 
-ENV QE_VERSION="7.2"
 COPY --from=conda_build /opt/conda/envs/quantum-espresso-${QE_VERSION}/ /opt/conda/envs/quantum-espresso-${QE_VERSION}
 
 COPY --from=home_build /opt/conda/home.tar /opt/conda
@@ -63,13 +65,16 @@ RUN git clean -dffx || true
 # Use the same constraint file as pip
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    uv pip install --system --compile-bytecode --no-cache . && \
+    uv pip install --strict --system --compile-bytecode --no-cache . && \
     rm -rf build/ src/aiidalab_qe.egg-info/
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 RUN fix-permissions "${CONDA_DIR}" && \
     fix-permissions "/home/${NB_USER}"
+
+# REMOVE HOME
+RUN find /home/${NB_USER}/ -delete
 
 WORKDIR "/home/${NB_USER}"
 USER ${NB_USER}
