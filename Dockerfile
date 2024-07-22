@@ -92,9 +92,9 @@ USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 RUN fix-permissions "${CONDA_DIR}"
 
-# REMOVE HOME
-RUN find /home/${NB_USER}/ -delete
+# Remove content of $HOME
+# '-mindepth=1' ensures that we do not remove the home directory itself.
+RUN find /home/${NB_USER}/ -mindepth 1 -delete
 
-WORKDIR "/home/${NB_USER}"
-RUN fix-permissions "/home/${NB_USER}"
 USER ${NB_USER}
+WORKDIR "/home/${NB_USER}"
