@@ -39,14 +39,14 @@ RUN  --mount=from=uv,source=/uv,target=/bin/uv \
      uv pip install --system --no-cache . && \
      fix-permissions "${CONDA_DIR}"
 
-COPY --from=qe_conda_env "${QE_DIR}" "${QE_DIR}"
-# TODO: Remove this once we get rid of 70_prepare-qe-executable.sh
-ENV QE_VERSION="$QE_VER"
-
 # Download the QE pseudopotentials to the folder for afterware installation.
 ENV PSEUDO_FOLDER=${CONDA_DIR}/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
+
+COPY --from=qe_conda_env "${QE_DIR}" "${QE_DIR}"
+# TODO: Remove this once we get rid of 70_prepare-qe-executable.sh
+ENV QE_VERSION="$QE_VER"
 
 COPY before-notebook.d/* /usr/local/bin/before-notebook.d/
 
