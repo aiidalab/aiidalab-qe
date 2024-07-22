@@ -62,7 +62,7 @@ jobs:
                   context: .
                   platforms: linux/amd64
                   cache-to: |
-                      type=gha,scope=${{ github.workflow }},mode=min
+                      type=gha,scope=${{ github.workflow }},mode=max
                   cache-from: |
                       type=gha,scope=${{ github.workflow }}
 
