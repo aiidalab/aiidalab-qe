@@ -25,13 +25,17 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --system --no-cache . && \
     rm -rf build/ src/aiidalab_qe.egg-info/
 
+ENV PSEUDO_FOLDER=/tmp/pseudo
+RUN mkdir -p ${PSEUDO_FOLDER} && \
+    python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
+
 # 4. Prepare AiiDA profile and localhost computer
 # 5. Install the QE pseudopotentials and codes
 # TODO: Remove PGSQL and daemon log files, and other unneeded files
 RUN bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
     python -m aiidalab_qe install-qe && \
-    #python -m aiidalab_qe install-pseudos && \
+    python -m aiidalab_qe install-pseudos && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
