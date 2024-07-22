@@ -50,19 +50,22 @@ def nb_user(aiidalab_exec):
 
 
 @pytest.fixture(scope="session")
-def notebook_service(docker_ip, docker_services):
+def notebook_service(docker_compose, docker_ip, docker_services):
     """Ensure that HTTP service is up and responsive."""
 
     # `port_for` takes a container port and returns the corresponding host port
     port = docker_services.port_for("aiidalab", 8888)
     url = f"http://{docker_ip}:{port}"
     token = os.environ.get("JUPYTER_TOKEN", "testtoken")
-    docker_services.wait_until_responsive(
-        # The timeout is very high for this test, because the installation of pseudo libraries.
-        timeout=180.0,
-        pause=0.1,
-        check=lambda: is_responsive(url),
-    )
+    try:
+        docker_services.wait_until_responsive(
+            timeout=30.0,
+            pause=0.5,
+            check=lambda: is_responsive(url),
+        )
+    except Exception as e:
+        print(docker_compose.execute("logs").decode().strip())
+        pytest.exit(e)
     return url, token
 
 
