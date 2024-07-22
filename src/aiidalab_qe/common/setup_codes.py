@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from pathlib import Path
 from shutil import which
 from subprocess import CalledProcessError, run
@@ -21,9 +20,15 @@ FN_DO_NOT_SETUP = Path.cwd().joinpath(".do-not-setup-on-localhost")
 
 QE_VERSION = "7.2"
 
-CONDA_ENV_PREFIX = Path.home().joinpath(
-    ".conda", "envs", f"quantum-espresso-{QE_VERSION}"
-)
+
+def get_qe_env():
+    # QE is already pre-installed in the QE image
+    path = Path(f"/opt/conda/envs/quantum-espresso-{QE_VERSION}")
+    if path.exists():
+        return path
+    else:
+        return Path.home().joinpath(".conda", "envs", f"quantum-espresso-{QE_VERSION}")
+
 
 # Add all QE codes with the calcjob entry point in the aiida-quantumespresso.
 CODE_NAMES = (
@@ -46,7 +51,7 @@ CODE_NAMES = (
 
 
 def qe_installed():
-    return CONDA_ENV_PREFIX.exists()
+    return get_qe_env().exists()
 
 
 def install_qe():
@@ -59,7 +64,7 @@ def install_qe():
             "--channel",
             "conda-forge",
             "--prefix",
-            str(CONDA_ENV_PREFIX),
+            str(get_qe_env()),
             f"qe={QE_VERSION}",
         ],
         capture_output=True,
@@ -102,9 +107,9 @@ def _generate_string_to_setup_code(code_name, computer_name="localhost"):
     except NotExistent:
         label = f"{code_name}-{QE_VERSION}"
         description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
-        filepath_executable = str(CONDA_ENV_PREFIX.joinpath("bin", f"{code_name}.x"))
+        filepath_executable = get_qe_env().joinpath("bin", f"{code_name}.x")
         default_calc_job_plugin = f"quantumespresso.{code_name}"
-        prepend_text = f'eval "$(conda shell.posix hook)"\\nconda activate {CONDA_ENV_PREFIX}\\nexport OMP_NUM_THREADS=1'
+        prepend_text = f'eval "$(conda shell.posix hook)"\\nconda activate {get_qe_env()}\\nexport OMP_NUM_THREADS=1'
         python_code = """
 computer = load_computer('{}')
 code = InstalledCode(computer=computer,
@@ -116,7 +121,7 @@ code = InstalledCode(computer=computer,
                     )
 
 code.store()
-""".format(
+""".format(  # noqa: UP032
             computer_name,
             label,
             description,
@@ -134,7 +139,7 @@ def setup_codes():
     try:
         run(["python", "-c", python_code], capture_output=True, check=True)
     except CalledProcessError as error:
-        raise RuntimeError(f"Failed to setup codes: {error}")
+        raise RuntimeError(f"Failed to setup codes: {error}") from None
 
 
 def install(force=False):
@@ -175,7 +180,9 @@ def install(force=False):
                 try:
                     install_qe()
                 except CalledProcessError as error:
-                    raise RuntimeError(f"Failed to create conda environment: {error}")
+                    raise RuntimeError(
+                        f"Failed to create conda environment: {error}"
+                    ) from None
 
             # After installing QE, we install the corresponding
             # AiiDA codes:
@@ -189,7 +196,7 @@ def install(force=False):
                 yield "Setting up all codes..."
                 run(["python", "-c", python_code], capture_output=True, check=True)
             except CalledProcessError as error:
-                raise RuntimeError(f"Failed to setup codes: {error}")
+                raise RuntimeError(f"Failed to setup codes: {error}") from None
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
@@ -198,7 +205,7 @@ def install(force=False):
             if not codes_are_setup():
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
-                )
+                ) from None
 
 
 class QESetupWidget(ipw.VBox):
@@ -311,7 +318,7 @@ class QESetupWidget(ipw.VBox):
     @traitlets.observe("busy")
     @traitlets.observe("error")
     @traitlets.observe("installed")
-    def _update(self, change):
+    def _update(self, _change):
         with self.hold_trait_notifications():
             if self.hide_by_default:
                 self.layout.visibility = (
