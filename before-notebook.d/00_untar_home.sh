@@ -18,8 +18,8 @@ if [[ $(ls -A ${home} | wc -l) = "0" ]]; then
   echo "Extracting $HOME_TAR to $home"
   tar -xf $HOME_TAR -C "$home"
 
-  echo "Copying directory '$QE_APP_FOLDER' to '$home/apps/'"
-  cp -r "$QE_APP_FOLDER" "$home/apps/"
+  echo "Copying directory '$QE_APP_FOLDER' to '$AIIDALAB_APPS'"
+  cp -r "$QE_APP_FOLDER" "$AIIDALAB_APPS"
 else
   echo "$home folder is not empty!"
   ls -lrta "$home"
