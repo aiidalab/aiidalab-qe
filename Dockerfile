@@ -3,6 +3,7 @@ ARG FULL_STACK_VERSION=2024.1021
 ARG QE_VERSION=7.2
 ARG UV_VERSION=0.2.27
 
+ARG UV_CACHE_DIR=/tmp/uv_cache
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
 
 # STAGE 1
@@ -17,9 +18,11 @@ RUN mamba create -p /opt/conda/envs/quantum-espresso-${QE_VERSION} --yes \
     qe=${QE_VERSION} && \
     mamba clean --all -f -y
 
+
 # STAGE 2
 # Install python dependencies, needed to run aiidalab_qe CLI commands
 FROM conda_build AS build_deps
+ARG UV_CACHE_DIR
 ENV QE_APP_FOLDER=/tmp/quantum-espresso
 WORKDIR ${QE_APP_FOLDER}
 
@@ -28,8 +31,7 @@ COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml *yaml README.md ${QE_A
 
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    uv pip install --system --no-cache . && \
-    rm -rf build/ src/aiidalab_qe.egg-info/
+    uv pip install --strict --system --cache-dir=${UV_CACHE_DIR} .
 
 
 # STAGE 3:
@@ -59,6 +61,7 @@ RUN bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
 # - Remove all content of home folder
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VERSION}
 ARG QE_VERSION
+ARG UV_CACHE_DIR
 USER ${NB_USER}
 
 COPY --from=conda_build /opt/conda/envs/quantum-espresso-${QE_VERSION}/ /opt/conda/envs/quantum-espresso-${QE_VERSION}
@@ -76,13 +79,13 @@ RUN git clean -dffx || true
 # Use the same constraint file as pip
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    uv pip install --strict --system --compile-bytecode --no-cache . && \
+    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} . && \
     rm -rf build/ src/aiidalab_qe.egg-info/
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
-RUN fix-permissions "${CONDA_DIR}" && \
-    fix-permissions "/home/${NB_USER}"
+RUN fix-permissions "${CONDA_DIR}"
 
 # REMOVE HOME
 RUN find /home/${NB_USER}/ -delete
