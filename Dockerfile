@@ -90,7 +90,8 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
-RUN fix-permissions "${CONDA_DIR}"
+RUN fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
 
 # REMOVE HOME
 RUN find /home/${NB_USER}/ -delete

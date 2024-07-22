@@ -1,5 +1,5 @@
 #!/bin/bash
-set -u
+set -eux
 
 home="/home/${NB_USER}"
 HOME_TAR="/opt/conda/home.tar"
@@ -16,9 +16,12 @@ if [[ $(ls -A ${home} | wc -l) = "0" ]]; then
   fi
 
   echo "Extracting $HOME_TAR to $home"
-  tar -xf $HOME_TAR -C $home
+  tar -xf $HOME_TAR -C "$home"
 
   echo "Copying directory '$QE_APP_FOLDER' to '$home/apps/'"
   cp -r "$QE_APP_FOLDER" "$home/apps/"
+else
+  echo "$home folder is not empty!"
+  ls -lrta "$home"
 fi
-set +u
+set +eux
