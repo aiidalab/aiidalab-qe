@@ -80,7 +80,7 @@ jobs:
             - name: Run pytest for Chrome
               run: pytest -sv --driver Chrome tests_integration/
               env:
-                  QE_IMAGE: ${{ env.IMAGE }}@${{ steps.build-upload.outputs.digest }}
+                  QE_IMAGE: ${{ steps.meta.outputs.tags }}
 
             - name: Upload screenshots as artifacts
               if: always()
