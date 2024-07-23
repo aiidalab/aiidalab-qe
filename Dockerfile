@@ -32,7 +32,7 @@ ARG QE_APP_SRC
 
 WORKDIR ${QE_APP_SRC}
 COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
-COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml *yaml README.md ${QE_APP_SRC}
+COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
 # Use uv instead of pip to speed up installation, per docs:
 # https://github.com/astral-sh/uv/blob/main/docs/guides/docker.md#using-uv-temporarily
@@ -62,11 +62,11 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
 
 # STAGE 3 - Final stage
-# - Copy QE env environment
-# - Copy home folder archive
-# - Copy the whole repo content into the container
 # - Install python dependencies
+# - Copy QE env environment
 # - Remove all content of home folder
+# - Copy the whole repo content into the container
+# - Copy home folder archive
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
 ARG QE_DIR
 ARG QE_APP_SRC
@@ -74,7 +74,7 @@ ARG UV_CACHE_DIR
 USER ${NB_USER}
 
 WORKDIR /tmp
-# 3.Install python dependencies
+# Install python dependencies
 # Use uv cache from the previous build step
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
