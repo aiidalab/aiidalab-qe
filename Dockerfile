@@ -1,30 +1,34 @@
 # syntax=docker/dockerfile:1
-ARG FULL_STACK_VERSION=2024.1021
-ARG QE_VERSION=7.2
-ARG UV_VERSION=0.2.27
+ARG FULL_STACK_VER=2024.1021
+ARG QE_VER=7.2
+ARG UV_VER=0.2.27
 
 ARG UV_CACHE_DIR=/tmp/uv_cache
-ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VERSION}
-FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
+ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
+FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
 # STAGE 1
 # Install QE into conda environment in /opt/conda
 # We need to do this first, otherwise QE gets installed into home folder as part of
 # python -m aiidalab_qe install-qe
-FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VERSION} AS qe_conda_env
-ARG QE_VERSION
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS qe_conda_env
+ARG QE_VER
 ARG QE_DIR
 
 USER ${NB_USER}
 RUN mamba create -p ${QE_DIR} --yes \
-    qe=${QE_VERSION} && \
+    qe=${QE_VER} && \
     mamba clean --all -f -y
 
-
 # STAGE 2
-# Install python dependencies needed to run aiidalab_qe CLI commands
-FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VERSION} AS build_deps
+# - Install python dependencies needed to run aiidalab_qe CLI commands
+# - Prepare AiiDA profile and localhost computer
+# - Install QE codes and pseudopotentials
+# - Archive home folder
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS home_build
 ARG UV_CACHE_DIR
+ARG QE_DIR
+
 ENV QE_APP_FOLDER=/tmp/quantum-espresso
 WORKDIR ${QE_APP_FOLDER}
 
@@ -37,14 +41,6 @@ COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml *yaml README.md ${QE_A
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --strict --system --cache-dir=${UV_CACHE_DIR} .
-
-
-# STAGE 3:
-# - Prepare AiiDA profile and localhost computer
-# - Install QE codes and pseudopotentials
-# - Archive home folder
-FROM build_deps AS home_build
-ARG QE_DIR
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
@@ -60,13 +56,13 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     mamba run -n aiida-core-services pg_ctl stop && \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
 
-# STAGE 4 - Final stage
+# STAGE 3 - Final stage
 # - Copy QE env environment
 # - Copy home folder archive
 # - Copy the whole repo content into the container
 # - Install python dependencies
 # - Remove all content of home folder
-FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VERSION}
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
 ARG QE_DIR
 ARG UV_CACHE_DIR
 USER ${NB_USER}
