@@ -1,7 +1,26 @@
 # syntax=docker/dockerfile:1
-FROM ghcr.io/astral-sh/uv:0.2.18 AS uv
-FROM ghcr.io/aiidalab/full-stack:2024.1019
+ARG FULL_STACK_VER=2024.1021
+ARG UV_VER=0.2.27
+ARG QE_VER=7.2
+ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 
+FROM ghcr.io/astral-sh/uv:0.2.27 AS uv
+
+# STAGE 1
+# Install QE into conda environment in /opt/conda
+# This step is independent from the others and can be run in parallel.
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS qe_conda_env
+ARG QE_VER
+ARG QE_DIR
+RUN mamba create -p "${QE_DIR}" --yes qe="${QE_VER}" && \
+     mamba clean --all -f -y && \
+     fix-permissions "${CONDA_DIR}"
+
+
+# STAGE 2
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
+ARG QE_VER
+ARG QE_DIR
 # Copy whole repo and pre-install the dependencies and app to the tmp folder.
 # In the before notebook scripts the app will be re-installed by moving it to the app folder.
 ENV PREINSTALL_APP_FOLDER=${CONDA_DIR}/aiidalab-qe
@@ -17,31 +36,17 @@ RUN  --mount=from=uv,source=/uv,target=/bin/uv \
      cd ${PREINSTALL_APP_FOLDER} && \
      # Remove all untracked files and directories. For example the setup lock flag file.
      git clean -fx && \
-     # It is important to install from `aiidalab install` to mimic the exact installation operation as
-     # from the app store.
-     # The command wil first install the dependencies from list by parsing setup config files,
-     # (for `aiidalab/aiidalab<23.03.2` the `setup.py` should be in the root folder of the app https://github.com/aiidalab/aiidalab/pull/382).
-     # and then the app and restart the daemon in the end.
-     # But since the aiida profile not yet exists, the daemon restart will fail but it is not a problem.
-     # Because we only need the dependencies to be installed.
-     # aiidalab install --yes --python ${CONDA_DIR}/bin/python  "quantum-espresso@file://${PREINSTALL_APP_FOLDER}" && \
-     # However, have to use `pip install` explicitly because `aiidalab install` call `pip install --user` which will install the app to `/home/${NB_USER}/.local`.
-     # It won't cause issue for docker but for k8s deployment the home folder is not bind mounted to the pod and the dependencies won't be found. (see issue in `jupyter/docker-stacks` https://github.com/jupyter/docker-stacks/issues/815)
      uv pip install --system --no-cache . && \
-     fix-permissions "${CONDA_DIR}" && \
-     fix-permissions "/home/${NB_USER}"
-
-ENV QE_VERSION="7.2"
-RUN mamba create -p /opt/conda/envs/quantum-espresso --yes \
-        qe=${QE_VERSION} \
-     && mamba clean --all -f -y && \
-     fix-permissions "${CONDA_DIR}" && \
-     fix-permissions "/home/${NB_USER}"
+     fix-permissions "${CONDA_DIR}"
 
 # Download the QE pseudopotentials to the folder for afterware installation.
 ENV PSEUDO_FOLDER=${CONDA_DIR}/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
+
+COPY --from=qe_conda_env "${QE_DIR}" "${QE_DIR}"
+# TODO: Remove this once we get rid of 70_prepare-qe-executable.sh
+ENV QE_VERSION="$QE_VER"
 
 COPY before-notebook.d/* /usr/local/bin/before-notebook.d/
 
