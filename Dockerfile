@@ -1,23 +1,23 @@
 # syntax=docker/dockerfile:1
 ARG FULL_STACK_VER=2024.1021
-ARG QE_VER=7.2
 ARG UV_VER=0.2.27
-
-ARG UV_CACHE_DIR=/tmp/uv_cache
+ARG QE_VER=7.2
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
+ARG UV_CACHE_DIR=/tmp/uv_cache
+
 FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
 # STAGE 1
 # Install QE into conda environment in /opt/conda
-# We need to do this first, otherwise QE gets installed into home folder as part of
-# python -m aiidalab_qe install-qe
+# This step is largely independent from the others and can run in parallel.
+# However, it needs to be done before running `python -m aiidalab_qe install-qe`,
+# otherwise QE gets installed into ~/.conda folder.
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS qe_conda_env
 ARG QE_VER
 ARG QE_DIR
 
 USER ${NB_USER}
-RUN mamba create -p ${QE_DIR} --yes \
-    qe=${QE_VER} && \
+RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} && \
     mamba clean --all -f -y
 
 # STAGE 2
