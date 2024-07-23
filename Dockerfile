@@ -80,7 +80,7 @@ RUN git clean -dffx || true
 # Use uv cache from the previous build step
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} . && \
     rm -rf build/ src/aiidalab_qe.egg-info/
 
