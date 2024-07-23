@@ -22,10 +22,7 @@ RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} && \
 
 # STAGE 2
 # - Install python dependencies needed to run aiidalab_qe CLI commands
-# - Prepare AiiDA profile and localhost computer
-# - Install QE codes and pseudopotentials
-# - Archive home folder
-FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS home_build
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS build_deps
 ARG UV_CACHE_DIR
 ARG QE_DIR
 
@@ -42,6 +39,12 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --strict --system --cache-dir=${UV_CACHE_DIR} .
 
+# STAGE 3
+# - Prepare AiiDA profile and localhost computer
+# - Install QE codes and pseudopotentials
+# - Archive home folder
+FROM build_deps AS home_build
+ARG QE_DIR
 ENV PSEUDO_FOLDER=/tmp/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
@@ -67,9 +70,6 @@ ARG QE_DIR
 ARG UV_CACHE_DIR
 USER ${NB_USER}
 
-COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
-COPY --from=home_build /opt/conda/home.tar /opt/conda/home.tar
-
 ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
 WORKDIR "${QE_APP_FOLDER}"
 COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
@@ -80,9 +80,12 @@ RUN git clean -dffx || true
 # Use uv cache from the previous build step
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} . && \
     rm -rf build/ src/aiidalab_qe.egg-info/
+
+COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
+COPY --from=home_build /opt/conda/home.tar /opt/conda/home.tar
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
