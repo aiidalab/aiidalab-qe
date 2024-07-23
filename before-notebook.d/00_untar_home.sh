@@ -2,7 +2,6 @@
 set -eux
 
 home="/home/${NB_USER}"
-HOME_TAR="/opt/conda/home.tar"
 
 # Untar home archive file to restore home directory if it is empty
 if [[ $(ls -A ${home} | wc -l) = "0" ]]; then

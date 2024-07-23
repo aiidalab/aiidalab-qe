@@ -3,7 +3,9 @@ ARG FULL_STACK_VER=2024.1021
 ARG UV_VER=0.2.27
 ARG QE_VER=7.2
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
+
 ARG UV_CACHE_DIR=/tmp/uv_cache
+ARG QE_APP_SRC=/tmp/quantum-espresso
 
 FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
@@ -21,16 +23,16 @@ RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} && \
     mamba clean --all -f -y
 
 # STAGE 2
-# - Install python dependencies needed to run aiidalab_qe CLI commands
+# Install python dependencies needed to run aiidalab_qe CLI commands
+# uv package cache from this stage is reused in the final stage as well.
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS build_deps
-ARG UV_CACHE_DIR
 ARG QE_DIR
+ARG UV_CACHE_DIR
+ARG QE_APP_SRC
 
-ENV QE_APP_FOLDER=/tmp/quantum-espresso
-WORKDIR ${QE_APP_FOLDER}
-
-COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_FOLDER}/src
-COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml *yaml README.md ${QE_APP_FOLDER}
+WORKDIR ${QE_APP_SRC}
+COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
+COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml *yaml README.md ${QE_APP_SRC}
 
 # Use uv instead of pip to speed up installation, per docs:
 # https://github.com/astral-sh/uv/blob/main/docs/guides/docker.md#using-uv-temporarily
@@ -67,33 +69,35 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
 # - Remove all content of home folder
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
 ARG QE_DIR
+ARG QE_APP_SRC
 ARG UV_CACHE_DIR
 USER ${NB_USER}
 
-ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
-WORKDIR "${QE_APP_FOLDER}"
-COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
-# Remove all untracked files and directories.
-RUN git clean -dffx || true
-
+WORKDIR /tmp
 # 3.Install python dependencies
 # Use uv cache from the previous build step
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-    uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} . && \
-    rm -rf build/ src/aiidalab_qe.egg-info/
+    --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
+    uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} ${QE_APP_SRC}
 
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
-COPY --from=home_build /opt/conda/home.tar /opt/conda/home.tar
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 RUN fix-permissions "${CONDA_DIR}"
-
 # Remove content of $HOME
 # '-mindepth=1' ensures that we do not remove the home directory itself.
 RUN find /home/${NB_USER}/ -mindepth 1 -delete
+
+ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
+COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
+# Remove all untracked files and directories.
+RUN git clean -dffx || true
+
+ENV HOME_TAR="/opt/home.tar"
+COPY --from=home_build /opt/conda/home.tar "$HOME_TAR"
 
 USER ${NB_USER}
 WORKDIR "/home/${NB_USER}"
