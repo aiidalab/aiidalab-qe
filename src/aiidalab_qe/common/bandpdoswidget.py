@@ -110,7 +110,7 @@ class BandPdosPlotly:
             return None
 
         bandyaxis = go.layout.YAxis(
-            title=dict(text="Electronic Bands (eV)", standoff=1),
+            title={"text": "Electronic Bands (eV)", "standoff": 1},
             side="left",
             showgrid=True,
             showline=True,
@@ -185,7 +185,7 @@ class BandPdosPlotly:
             for label in band_labels[1]:
                 fig.add_vline(
                     x=label,
-                    line=dict(color=self.SETTINGS["vertical_linecolor"], width=1),
+                    line={"color": self.SETTINGS["vertical_linecolor"], "width": 1},
                 )
 
             if self.project_bands:
@@ -196,9 +196,9 @@ class BandPdosPlotly:
             if self.plot_type == "pdos":
                 fig.add_vline(
                     x=0,
-                    line=dict(
-                        color=self.SETTINGS["vertical_linecolor"], width=1, dash="dot"
-                    ),
+                    line={
+                        "color": self.SETTINGS["vertical_linecolor"], "width": 1, "dash": "dot"
+                    },
                 )
 
         if self.plot_type == "combined":
@@ -274,11 +274,11 @@ class BandPdosPlotly:
                     x=x_bands_comb,
                     y=y_bands_comb - fermi_energy,
                     mode="lines",
-                    line=dict(
-                        color=colors[(spin_polarized, spin)],
-                        shape="spline",
-                        smoothing=1.3,
-                    ),
+                    line={
+                        "color": colors[(spin_polarized, spin)],
+                        "shape": "spline",
+                        "smoothing": 1.3,
+                    },
                     showlegend=False,
                 )
             )
@@ -319,7 +319,7 @@ class BandPdosPlotly:
                 y=y_data,
                 fill=fill,
                 name=trace["label"],
-                line=dict(color=trace["borderColor"], shape="spline", smoothing=1.0),
+                line={"color": trace["borderColor"], "shape": "spline", "smoothing": 1.0},
                 legendgroup=trace["label"],
             )
 
@@ -350,7 +350,7 @@ class BandPdosPlotly:
                     fill="toself",
                     legendgroup=proj_bands["label"],
                     mode="lines",
-                    line=dict(width=0, color=proj_bands["color"]),
+                    line={"width": 0, "color": proj_bands["color"]},
                     name=proj_bands["label"],
                     # If PDOS is present, use those legend entries
                     showlegend=True if self.plot_type == "bands" else False,
@@ -363,7 +363,7 @@ class BandPdosPlotly:
         self._customize_layout(fig, self._bands_xaxis, self._bands_yaxis)
         self._customize_layout(fig, self._pdos_xaxis, self._pdos_yaxis, col=2)
         fig.update_layout(
-            legend=dict(xanchor="left", x=1.06),
+            legend={"xanchor": "left", "x": 1.06},
             height=self.SETTINGS["combined_plot_height"],
             width=self.SETTINGS["combined_plot_width"],
             plot_bgcolor="white",
@@ -374,7 +374,7 @@ class BandPdosPlotly:
         fig.update_yaxes(patch=yaxis, row=row, col=col, showticklabels=True)
         fig.add_hline(
             y=0,
-            line=dict(color=self.SETTINGS["horizontal_linecolor"], width=1, dash="dot"),
+            line={"color": self.SETTINGS["horizontal_linecolor"], "width": 1, "dash": "dot"},
             row=row,
             col=col,
         )
@@ -1050,4 +1050,4 @@ def cmap(label: str) -> str:
     ascn = sum([ord(c) for c in label])
     random.seed(ascn)
 
-    return "#%06x" % random.randint(0, 0xFFFFFF)
+    return f"#{random.randint(0, 0xFFFFFF):06x}"

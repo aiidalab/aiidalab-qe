@@ -169,7 +169,7 @@ class Result(ResultPanel):
         # init figure
         self.g = go.FigureWidget(
             layout=go.Layout(
-                title=dict(text="XPS"),
+                title={"text": "XPS"},
                 barmode="overlay",
             )
         )

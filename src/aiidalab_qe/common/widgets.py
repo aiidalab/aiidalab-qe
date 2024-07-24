@@ -302,7 +302,7 @@ class CalcJobOutputFollower(traitlets.HasTraits):
                 with calcjob.outputs.retrieved.base.repository.open(self.filename) as f:
                     return f.read().splitlines()
             except OSError:
-                return list()
+                return []
 
         elif "remote_folder" in calcjob.outputs:
             try:
@@ -312,9 +312,9 @@ class CalcJobOutputFollower(traitlets.HasTraits):
                     calcjob.outputs.remote_folder.getfile(fn_out, tmpfile.name)
                     return tmpfile.read().decode().splitlines()
             except OSError:
-                return list()
+                return []
         else:
-            return list()
+            return []
 
     _EOF = None
 
@@ -977,12 +977,10 @@ class HubbardWidget(ipw.VBox):
 
         if condition:
             hubbard_widget = ipw.VBox(
-                [ipw.HTML("Define U value [eV] ")]
-                + widgets_list
-                + [self.eigenvalues_help, self.eigenvalues_label]
+                [ipw.HTML("Define U value [eV] "), *widgets_list, self.eigenvalues_help, self.eigenvalues_label]
             )
         else:
-            hubbard_widget = ipw.VBox([ipw.HTML("Define U value [eV] ")] + widgets_list)
+            hubbard_widget = ipw.VBox([ipw.HTML("Define U value [eV] "), *widgets_list])
         return hubbard_widget
 
     def _hubbard_widget_labels(self):
@@ -1096,27 +1094,11 @@ class HubbardWidget(ipw.VBox):
                     widgets_list_down.append(eigenvalues_down)
 
                 row_up = ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Up:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="50px"
-                            ),
-                        )
-                    ]
-                    + widgets_list_up,
+                    children=[ipw.Label("Up:", layout=ipw.Layout(justify_content="flex-start", width="50px")), *widgets_list_up],
                 )
 
                 row_down = ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Down:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="50px"
-                            ),
-                        )
-                    ]
-                    + widgets_list_down,
+                    children=[ipw.Label("Down:", layout=ipw.Layout(justify_content="flex-start", width="50px")), *widgets_list_down],
                 )
                 eigenvalues_container = ipw.VBox(children=[row_up, row_down])
                 kind_container = ipw.HBox(

@@ -337,7 +337,7 @@ class PseudoSetter(ipw.VBox):
         """Reset the traitlets to the initial state"""
         self.ecutwfc = 0
         self.ecutrho = 0
-        self.pseudos = dict()
+        self.pseudos = {}
 
     def _reset(self):
         """Reset the pseudo setting widgets according to the structure

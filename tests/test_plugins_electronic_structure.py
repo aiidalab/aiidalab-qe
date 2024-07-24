@@ -13,11 +13,11 @@ def test_electronic_structure(generate_qeapp_workchain):
     # find the tab with the identifier "electronic_structure"
     # the built-in summary and structure tabs is not a plugin panel,
     # thus don't have identifiers
-    tab = [
+    tab = next(
         tab
         for tab in wcv.result_tabs.children
         if getattr(tab, "identifier", "") == "electronic_structure"
-    ][0]
+    )
     # It should have one children: the _bands_plot_view
     assert len(tab.children) == 1
 

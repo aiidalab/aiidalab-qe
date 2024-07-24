@@ -89,7 +89,7 @@ class WorkChainSelector(ipw.HBox):
 
     def parse_extra_info(self, pk: int) -> dict:
         """Parse extra information about the work chain."""
-        return dict()
+        return {}
 
     def find_work_chains(self):
         builder = CalculationQueryBuilder()

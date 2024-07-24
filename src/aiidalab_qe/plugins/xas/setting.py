@@ -272,7 +272,7 @@ class Setting(Panel):
         ]
         ch_pseudos = self.core_hole_pseudos
         structure = self.input_structure
-        available_elements = [k for k in ch_pseudos]
+        available_elements = list(ch_pseudos)
         elements_to_select = sorted(
             [
                 kind.symbol
