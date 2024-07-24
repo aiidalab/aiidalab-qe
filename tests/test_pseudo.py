@@ -1,6 +1,5 @@
 import pytest
 from aiida import orm
-
 from aiidalab_qe.common.setup_pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
@@ -96,7 +95,7 @@ def test_setup_pseudos_cmd(tmp_path):
         "--pseudo-format",
         "upf",
         "--from-download",
-        f"{str(tmp_path)}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
+        f"{tmp_path!s}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
     ]
 
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Panel for Pdos plugin."""
 
 import ipywidgets as ipw

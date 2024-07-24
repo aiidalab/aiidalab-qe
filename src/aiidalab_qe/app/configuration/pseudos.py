@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import io
@@ -377,7 +376,7 @@ class PseudoSetter(ipw.VBox):
             pseudo_family = self._get_pseudos_family(self.pseudo_family)
         except exceptions.NotExistent as exception:
             self._status_message.message = (
-                f"""<div class='alert alert-danger'> ERROR: {str(exception)}</div>"""
+                f"""<div class='alert alert-danger'> ERROR: {exception!s}</div>"""
             )
             return
 

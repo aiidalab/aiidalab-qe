@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from subprocess import run
 from threading import Thread
-from typing import Iterable
 
 import ipywidgets as ipw
 import traitlets

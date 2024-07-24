@@ -19,38 +19,38 @@ class SpectrumDownloadButton(ipw.Button):
     """
 
     def __init__(self, filename: str, contents: Callable[[], str], **kwargs):
-        super(SpectrumDownloadButton, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.filename = filename
         self.contents = contents
         self.on_click(self.__on_click)
 
     def __on_click(self, b):
         if self.contents is None:
-            pass  # to avoid a crash because NoneType obviously can't be processed here
-        else:
-            contents: bytes = self.contents().encode("utf-8")
-            b64 = base64.b64encode(contents)
-            payload = b64.decode()
-            digest = hashlib.md5(contents).hexdigest()  # bypass browser cache
-            id = f"dl_{digest}"
+            return
 
-            display(
-                HTML(
-                    f"""
-                <html>
-                <body>
-                <a id="{id}" download="{self.filename}" href="data:text/csv;base64,{payload}" download>
-                </a>
-                <script>
-                (function download() {{
-                document.getElementById('{id}').click();
-                }})()
-                </script>
-                </body>
-                </html>
-            """
-                )
+        contents: bytes = self.contents().encode("utf-8")
+        b64 = base64.b64encode(contents)
+        payload = b64.decode()
+        digest = hashlib.md5(contents).hexdigest()  # bypass browser cache
+        link_id = f"dl_{digest}"
+
+        display(
+            HTML(
+                f"""
+            <html>
+            <body>
+            <a id="{link_id}" download="{self.filename}" href="data:text/csv;base64,{payload}" download>
+            </a>
+            <script>
+            (function download() {{
+            document.getElementById('{id}').click();
+            }})()
+            </script>
+            </body>
+            </html>
+        """
             )
+        )
 
 
 def write_csv(dataset):
@@ -276,9 +276,9 @@ class Result(ResultPanel):
             Select spectrum to plot</b></div>"""
         )
         final_spectra, equivalent_sites_data = export_xas_data(self.outputs)
-        xas_wc = [
+        xas_wc = next(
             n for n in self.node.called if n.process_label == "XspectraCrystalWorkChain"
-        ][0]
+        )
         core_wcs = {
             n.get_metadata_inputs()["metadata"]["call_link_label"]: n
             for n in xas_wc.called
@@ -310,7 +310,7 @@ class Result(ResultPanel):
             min=0.0,
             max=5,
             step=0.1,
-            description="$\Gamma_{hole}$",  # noqa: W605
+            description="$\Gamma_{hole}$",
             disabled=False,
             continuous_update=False,
             orientation="horizontal",
@@ -323,7 +323,7 @@ class Result(ResultPanel):
             max=10,
             step=0.5,
             continuous_update=False,
-            description="$\Gamma_{max}$",  # noqa: W605
+            description="$\Gamma_{max}$",
             disabled=True,
             orientation="horizontal",
             readout=True,
@@ -350,7 +350,7 @@ class Result(ResultPanel):
         #     # init figure
         g = go.FigureWidget(
             layout=go.Layout(
-                title=dict(text="XAS"),
+                title={"text": "XAS"},
                 barmode="overlay",
             )
         )
@@ -394,7 +394,7 @@ class Result(ResultPanel):
             download_data.contents = lambda: write_csv(dataset)
             download_data.filename = f"{element}_XAS_Spectra.csv"
 
-        def response(change):
+        def response(_change):
             chosen_spectrum = spectrum_select.value
             chosen_spectrum_label = f"{chosen_spectrum}_xas"
             element_sites = [

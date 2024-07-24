@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Panel for XPS plugin."""
 
 import ipywidgets as ipw

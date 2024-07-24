@@ -1,7 +1,8 @@
 """For running the app from the command line used for post_install script."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import click
 from aiida import load_profile
 

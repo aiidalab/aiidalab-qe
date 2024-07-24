@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """The main widget that shows the application in the Jupyter notebook.
 
 Authors: AiiDAlab team

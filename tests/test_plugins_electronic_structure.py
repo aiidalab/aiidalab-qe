@@ -1,10 +1,9 @@
 def test_electronic_structure(generate_qeapp_workchain):
     """Test the electronic structure tab."""
+    import plotly.graph_objects as go
     from aiida import engine
-
     from aiidalab_qe.app.result.workchain_viewer import WorkChainViewer
     from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
-    import plotly.graph_objects as go
     from aiidalab_qe.plugins.electronic_structure.result import Result
 
     wkchain = generate_qeapp_workchain()

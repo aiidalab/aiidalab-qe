@@ -1,14 +1,14 @@
 import base64
 import json
+import re
 
 import ipywidgets as ipw
 import numpy as np
 import plotly.graph_objects as go
 from aiida.orm import ProjectionData
-from aiidalab_widgets_base.utils import string_range_to_list, StatusHTML
+from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 from IPython.display import clear_output, display
 from plotly.subplots import make_subplots
-import re
 
 
 class BandPdosPlotly:
@@ -543,14 +543,14 @@ class BandPdosWidget(ipw.VBox):
         from IPython.display import Javascript
 
         javas = Javascript(
-            """
+            f"""
             var link = document.createElement('a');
             link.href = 'data:text/json;charset=utf-8;base64,{payload}'
             link.download = "{filename}"
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            """.format(payload=payload, filename=filename)
+            """
         )
         display(javas)
 
@@ -903,13 +903,9 @@ def _curate_orbitals(orbital):
         qn_j = orbital_data["total_angular_momentum"]
         qn_l = orbital_data["angular_momentum"]
         qn_m_j = orbital_data["magnetic_number"]
-        orbital_name = "j {j} l {l} m_j{m_j}".format(j=qn_j, l=qn_l, m_j=qn_m_j)
-        orbital_name_plotly = "j={j} <i>l</i>={l} m<sub>j</sub>={m_j}".format(
-            j=HTML_TAGS.get(qn_j, qn_j),
-            l=qn_l,
-            m_j=HTML_TAGS.get(qn_m_j, qn_m_j),
-        )
-        orbital_angular_momentum = "l {l} ".format(l=qn_l)
+        orbital_name = f"j {qn_j} l {qn_l} m_j{qn_m_j}"
+        orbital_name_plotly = f"j={HTML_TAGS.get(qn_j, qn_j)} <i>l</i>={qn_l} m<sub>j</sub>={HTML_TAGS.get(qn_m_j, qn_m_j)}"
+        orbital_angular_momentum = f"l {qn_l} "
 
     return orbital_name_plotly, orbital_angular_momentum, kind_name, atom_position
 

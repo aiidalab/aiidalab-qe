@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Widgets for the submission of bands work chains.
 
 Authors: AiiDAlab team
@@ -148,7 +147,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Observe the submission blockers and update the message area."""
         blockers = self.internal_submission_blockers + self.external_submission_blockers
         if any(blockers):
-            fmt_list = "\n".join((f"<li>{item}</li>" for item in sorted(blockers)))
+            fmt_list = "\n".join(f"<li>{item}</li>" for item in sorted(blockers))
             self._submission_blocker_messages.value = f"""
                 <div class="alert alert-info">
                 <strong>The submission is blocked, due to the following reason(s):</strong>
@@ -379,7 +378,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             properties_info = f", properties on {', '.join(properties)}"
 
-        label = "{} {} {}".format(formula, relax_info, properties_info)
+        label = f"{formula} {relax_info} {properties_info}"
         self.process_label.value = label
 
     def _create_builder(self) -> ProcessBuilderNamespace:

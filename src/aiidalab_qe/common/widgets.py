@@ -15,9 +15,9 @@ import ase
 import ipywidgets as ipw
 import numpy as np
 import traitlets
-from aiida.orm import CalcJobNode
+from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiida.orm import load_code, load_node
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_widgets_base import ComputationalResourcesWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
@@ -26,8 +26,6 @@ from aiidalab_widgets_base.utils import (
 )
 from IPython.display import HTML, Javascript, clear_output, display
 from pymatgen.core.periodic_table import Element
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -527,9 +525,7 @@ class AddingTagsEditor(ipw.VBox):
                 symbol = chemichal_symbols[index]
                 if tag == 0:
                     tag = ""
-                table_data.append(
-                    ["{}".format(index), "{}".format(symbol), "{}".format(tag)]
-                )
+                table_data.append([f"{index}", f"{symbol}", f"{tag}"])
 
             # Create an HTML table
             table_html = "<table>"
@@ -537,7 +533,7 @@ class AddingTagsEditor(ipw.VBox):
             for row in table_data:
                 table_html += "<tr>"
                 for cell in row:
-                    table_html += "<td>{}</td>".format(cell)
+                    table_html += f"<td>{cell}</td>"
                 table_html += "</tr>"
             table_html += "</table>"
 
