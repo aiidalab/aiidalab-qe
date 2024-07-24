@@ -18,10 +18,10 @@ def check_codes(pw_code, dos_code, projwfc_code):
         )
         and len(
             {
-                    pw_code.computer.pk,
-                    dos_code.computer.pk,
-                    projwfc_code.computer.pk,
-                }
+                pw_code.computer.pk,
+                dos_code.computer.pk,
+                projwfc_code.computer.pk,
+            }
         )
         != 1
     ):

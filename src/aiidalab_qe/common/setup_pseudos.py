@@ -286,7 +286,7 @@ class PseudosInstallWidget(ProgressBar):
     @traitlets.observe("busy")
     @traitlets.observe("error")
     @traitlets.observe("installed")
-    def _update(self, change):
+    def _update(self, _change):
         with self.hold_trait_notifications():
             if self.hide_by_default:
                 self.layout.visibility = (

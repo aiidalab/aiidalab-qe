@@ -137,7 +137,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.process_label,
                 self.process_description,
                 self.submit_button,
-            ]
+            ],
+            **kwargs,
         )
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])

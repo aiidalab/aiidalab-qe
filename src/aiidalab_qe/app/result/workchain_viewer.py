@@ -147,7 +147,9 @@ class WorkChainOutputs(ipw.VBox):
     _busy = tl.Bool(read_only=True)
 
     def __init__(self, node, export_dir=None, **kwargs):
-        self.export_dir = Path.cwd().joinpath("exports")
+        if export_dir is None:
+            export_dir = Path.cwd().joinpath("exports")
+        self.export_dir = export_dir
 
         if node.process_label != "QeAppWorkChain":
             raise KeyError(str(node.node_type))

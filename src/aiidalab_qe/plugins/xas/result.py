@@ -24,7 +24,7 @@ class SpectrumDownloadButton(ipw.Button):
         self.contents = contents
         self.on_click(self.__on_click)
 
-    def __on_click(self, b):
+    def __on_click(self, _):
         if self.contents is None:
             return
 

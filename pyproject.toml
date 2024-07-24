@@ -8,10 +8,11 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 line-length = 88
 show-fixes = true
+output-format = "full"
 target-version = "py39"
 
 [tool.ruff.lint]
-ignore = ["E501", "E402", "ARG002", "TRY003", "RUF001", "RUF012", "N806"]
+ignore = ["E501", "E402", "TRY003", "RUF012", "N806"]
 select = [
   "A",    # flake8-builtins
   "ARG",  # flake8-unused-arguments

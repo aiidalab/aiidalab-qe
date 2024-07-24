@@ -127,6 +127,7 @@ class PseudoFamilySelector(ipw.VBox):
                 self.pseudo_family_help,
             ],
             layout=ipw.Layout(max_width="60%"),
+            **kwargs,
         )
         ipw.dlink((self.show_ui, "value"), (self.library_selection, "disabled"))
         ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))

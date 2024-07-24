@@ -87,7 +87,7 @@ class WorkChainSelector(ipw.HBox):
         self.refresh_work_chains()
         # the following is needed to disable the button.
 
-    def parse_extra_info(self, pk: int) -> dict:
+    def parse_extra_info(self, _pk: int) -> dict:
         """Parse extra information about the work chain."""
         return {}
 

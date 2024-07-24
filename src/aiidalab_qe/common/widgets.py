@@ -41,7 +41,7 @@ class RollingOutput(ipw.VBox):
     value = traitlets.Unicode()
     auto_scroll = traitlets.Bool()
 
-    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):
+    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):  # noqa: ARG002
         self._num_min_lines = num_min_lines
         self._output = ipw.HTML(layout=ipw.Layout(min_width="50em"))
         self._refresh_output()
@@ -839,7 +839,8 @@ class ParallelizationSettings(ipw.VBox):
                     children=[self.override, self.prompt, self.npool],
                     layout=ipw.Layout(justify_content="flex-start"),
                 ),
-            ]
+            ],
+            **kwargs,
         )
         # set the default visibility of the widget
         self.npool.layout.display = "none"

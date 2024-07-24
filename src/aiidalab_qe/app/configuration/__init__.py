@@ -110,7 +110,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
     @tl.observe("previous_step_state")
-    def _observe_previous_step_state(self, change):
+    def _observe_previous_step_state(self, _change):
         self._update_state()
 
     def get_configuration_parameters(self):
