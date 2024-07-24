@@ -224,7 +224,7 @@ def install(
             if len(pseudos_to_install()) > 0:
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
-                )
+                ) from None
 
 
 class PseudosInstallWidget(ProgressBar):

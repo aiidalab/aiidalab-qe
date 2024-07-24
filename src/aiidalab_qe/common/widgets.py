@@ -119,14 +119,14 @@ class DownloadButton(ipw.Button):
         digest = hashlib.md5(self.payload).hexdigest()  # bypass browser cache
         payload = base64.b64encode(self.payload).decode()
 
-        id = f"dl_{digest}"
+        link_id = f"dl_{digest}"
 
         display(
             HTML(
                 f"""
             <html>
             <body>
-            <a id="{id}" download="{self.filename}" href="data:text/plain;base64,{payload}" download>
+            <a id="{link_id}" download="{self.filename}" href="data:text/plain;base64,{payload}" download>
             </a>
 
             <script>
@@ -977,7 +977,12 @@ class HubbardWidget(ipw.VBox):
 
         if condition:
             hubbard_widget = ipw.VBox(
-                [ipw.HTML("Define U value [eV] "), *widgets_list, self.eigenvalues_help, self.eigenvalues_label]
+                [
+                    ipw.HTML("Define U value [eV] "),
+                    *widgets_list,
+                    self.eigenvalues_help,
+                    self.eigenvalues_label,
+                ]
             )
         else:
             hubbard_widget = ipw.VBox([ipw.HTML("Define U value [eV] "), *widgets_list])
@@ -1094,11 +1099,27 @@ class HubbardWidget(ipw.VBox):
                     widgets_list_down.append(eigenvalues_down)
 
                 row_up = ipw.HBox(
-                    children=[ipw.Label("Up:", layout=ipw.Layout(justify_content="flex-start", width="50px")), *widgets_list_up],
+                    children=[
+                        ipw.Label(
+                            "Up:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="50px"
+                            ),
+                        ),
+                        *widgets_list_up,
+                    ],
                 )
 
                 row_down = ipw.HBox(
-                    children=[ipw.Label("Down:", layout=ipw.Layout(justify_content="flex-start", width="50px")), *widgets_list_down],
+                    children=[
+                        ipw.Label(
+                            "Down:",
+                            layout=ipw.Layout(
+                                justify_content="flex-start", width="50px"
+                            ),
+                        ),
+                        *widgets_list_down,
+                    ],
                 )
                 eigenvalues_container = ipw.VBox(children=[row_up, row_down])
                 kind_container = ipw.HBox(

@@ -233,7 +233,7 @@ class WorkChainOutputs(ipw.VBox):
         finally:
             self.set_trait("_busy", False)
 
-        id = f"dl_{self.node.uuid}"
+        link_id = f"dl_{self.node.uuid}"
 
         display(
             HTML(
@@ -241,7 +241,7 @@ class WorkChainOutputs(ipw.VBox):
         <html>
         <body>
         <a
-            id="{id}"
+            id="{link_id}"
             href="{fn_archive.relative_to(Path.cwd())}"
             download="{fn_archive.stem}"
         ></a>

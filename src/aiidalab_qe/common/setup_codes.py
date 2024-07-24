@@ -103,7 +103,6 @@ def _generate_string_to_setup_code(code_name, computer_name="localhost"):
     generates Python code to create and store a new code setup."""
     try:
         load_code(f"{code_name}-{QE_VERSION}@{computer_name}")
-        return ""
     except NotExistent:
         label = f"{code_name}-{QE_VERSION}"
         description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
@@ -130,6 +129,8 @@ code.store()
             prepend_text,
         )
         return python_code
+    else:
+        return ""
 
 
 def setup_codes():

@@ -11,7 +11,7 @@ show-fixes = true
 target-version = "py39"
 
 [tool.ruff.lint]
-ignore = ["E501", "E402", "ARG002", "TRY003", "RUF001", "RUF012"]
+ignore = ["E501", "E402", "ARG002", "TRY003", "RUF001", "RUF012", "N806"]
 select = [
   "A",    # flake8-builtins
   "ARG",  # flake8-unused-arguments

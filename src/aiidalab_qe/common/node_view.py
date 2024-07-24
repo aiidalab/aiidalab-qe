@@ -29,10 +29,10 @@ class MinimalStructureViewer(ipw.VBox):
         self.structure = structure
 
         super().__init__(
+            *args,
             children=[
                 self._viewer,
             ],
-            *args,
             **kwargs,
         )
 
@@ -45,7 +45,7 @@ class MinimalStructureViewer(ipw.VBox):
         return [1, 1, 1]
 
     @tl.validate("structure")
-    def _valid_structure(self, change):  # pylint: disable=no-self-use
+    def _valid_structure(self, change):
         """Update structure."""
         structure = change["value"]
 
@@ -74,7 +74,7 @@ class MinimalStructureViewer(ipw.VBox):
     def _update_structure_viewer(self, change):
         """Update the view if displayed_structure trait was modified."""
         with self.hold_trait_notifications():
-            for comp_id in self._viewer._ngl_component_ids:  # pylint: disable=protected-access
+            for comp_id in self._viewer._ngl_component_ids:
                 self._viewer.remove_component(comp_id)
             self.selection = []
             if change["new"] is not None:
@@ -87,7 +87,7 @@ class MinimalStructureViewer(ipw.VBox):
 
 class VBoxWithCaption(ipw.VBox):
     def __init__(self, caption, body, *args, **kwargs):
-        super().__init__(children=[ipw.HTML(caption), body], *args, **kwargs)
+        super().__init__(*args, children=[ipw.HTML(caption), body], **kwargs)
 
 
 @register_viewer_widget("process.calculation.calcjob.CalcJobNode.")

@@ -45,10 +45,10 @@ def _load_or_import_nodes_from_filenames(in_dict, path, core_wfc_data=False):
 
 
 def _download_extract_pseudo_archive(func):
-    dir = f"{head_path}/{dir_header}/{func}"
+    target_dir = f"{head_path}/{dir_header}/{func}"
     archive_filename = f"{func}_ch_pseudos.tgz"
     remote_archive_filename = f"{base_url}/{func}/{archive_filename}"
-    local_archive_filename = f"{dir}/{archive_filename}"
+    local_archive_filename = f"{target_dir}/{archive_filename}"
 
     env = os.environ.copy()
     env["PATH"] = f"{env['PATH']}:{Path.home() / '.local' / 'lib'}"
@@ -61,16 +61,16 @@ def _download_extract_pseudo_archive(func):
         response.close()
 
     with tarfile.open(local_archive_filename, "r:gz") as tarfil:
-        tarfil.extractall(dir)
+        tarfil.extractall(target_dir)
 
 
 url = f"{base_url}"
 for func in functionals:
-    dir = f"{head_path}/{dir_header}/{func}"
-    os.makedirs(dir, exist_ok=True)
+    target_dir = f"{head_path}/{dir_header}/{func}"
+    os.makedirs(target_dir, exist_ok=True)
     archive_filename = f"{func}_ch_pseudos.tgz"
     archive_found = False
-    for entry in os.listdir(dir):
+    for entry in os.listdir(target_dir):
         if entry == archive_filename:
             archive_found = True
     if not archive_found:

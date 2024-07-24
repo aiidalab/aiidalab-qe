@@ -197,7 +197,9 @@ class BandPdosPlotly:
                 fig.add_vline(
                     x=0,
                     line={
-                        "color": self.SETTINGS["vertical_linecolor"], "width": 1, "dash": "dot"
+                        "color": self.SETTINGS["vertical_linecolor"],
+                        "width": 1,
+                        "dash": "dot",
                     },
                 )
 
@@ -319,7 +321,11 @@ class BandPdosPlotly:
                 y=y_data,
                 fill=fill,
                 name=trace["label"],
-                line={"color": trace["borderColor"], "shape": "spline", "smoothing": 1.0},
+                line={
+                    "color": trace["borderColor"],
+                    "shape": "spline",
+                    "smoothing": 1.0,
+                },
                 legendgroup=trace["label"],
             )
 
@@ -374,7 +380,11 @@ class BandPdosPlotly:
         fig.update_yaxes(patch=yaxis, row=row, col=col, showticklabels=True)
         fig.add_hline(
             y=0,
-            line={"color": self.SETTINGS["horizontal_linecolor"], "width": 1, "dash": "dot"},
+            line={
+                "color": self.SETTINGS["horizontal_linecolor"],
+                "width": 1,
+                "dash": "dot",
+            },
             row=row,
             col=col,
         )
@@ -978,7 +988,7 @@ def _projections_curated_options(
 
     curated_proj = []
     for label, (energy, proj_pdos) in _proj_pdos.items():
-        label += SPIN_LABELS[spin_type]
+        label += SPIN_LABELS[spin_type]  # noqa: PLW2901
         if projections_pdos == "pdos":
             orbital_proj_pdos = {
                 "label": label,

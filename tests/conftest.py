@@ -106,10 +106,6 @@ def generate_xy_data():
         """
         from aiida.orm import XyData
 
-        xvals = xvals
-        yvals = yvals
-        xlabel = xlabel
-        ylabel = ylabel
         xunits = "n/a"
         yunits = ["n/a"] * len(ylabel)
 
@@ -196,33 +192,34 @@ def sssp(aiida_profile, generate_upf_data):
     cutoffs = {}
     stringency = "standard"
 
-    with tempfile.TemporaryDirectory() as dirpath:
+    actinides = (
+        "Ac",
+        "Th",
+        "Pa",
+        "U",
+        "Np",
+        "Pu",
+        "Am",
+        "Cm",
+        "Bk",
+        "Cf",
+        "Es",
+        "Fm",
+        "Md",
+        "No",
+        "Lr",
+    )
+
+    with tempfile.TemporaryDirectory() as d:
+        dirpath = pathlib.Path(d)
+
         for values in elements.values():
             element = values["symbol"]
-
-            actinides = (
-                "Ac",
-                "Th",
-                "Pa",
-                "U",
-                "Np",
-                "Pu",
-                "Am",
-                "Cm",
-                "Bk",
-                "Cf",
-                "Es",
-                "Fm",
-                "Md",
-                "No",
-                "Lr",
-            )
 
             if element in actinides:
                 continue
 
             upf = generate_upf_data(element)
-            dirpath = pathlib.Path(dirpath)
             filename = dirpath / f"{element}.upf"
 
             with open(filename, "w+b") as handle:
