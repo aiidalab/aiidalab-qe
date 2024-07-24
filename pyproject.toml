@@ -8,19 +8,10 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 addopts = '--strict-config --strict-markers --durations=30 --durations-min=1 -ra'
 filterwarnings = [
-    'ignore:Object of type .* not in session, .* operation along .* will not proceed:sqlalchemy.exc.SAWarning',
-    'ignore::DeprecationWarning:bokeh',
-    'ignore:Creating AiiDA configuration:UserWarning:aiida',
-    'ignore:The `Code` class:aiida.common.warnings.AiidaDeprecationWarning:',
-    'ignore:crystal system:UserWarning:ase.io.cif',
-    'ignore::DeprecationWarning:ase.atoms',
-    # TODO: This comes from a transitive dependency of ipyoptimade
-    # Remove this when this issue is addressed:
-    # https://github.com/CasperWA/ipywidgets-extended/issues/85
-    'ignore::DeprecationWarning:ipywidgets_extended',
-    'ignore:metadata.*traitlets.traitlets.Unicode object:DeprecationWarning:traitlets',
+    'ignore:Object of type .* not in session, .* operation along .* will not proceed:',
+    'ignore:Creating AiiDA configuration:UserWarning:',
+    'ignore:metadata.*traitlets.traitlets.Unicode object:DeprecationWarning:',
     # For some reason we get this error, see
     # https://github.com/aiidalab/aiidalab-widgets-base/issues/551
     'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
-    'ignore::DeprecationWarning:jupyter_client',
 ]
