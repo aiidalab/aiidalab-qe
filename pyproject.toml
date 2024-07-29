@@ -4,3 +4,14 @@ requires = [
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = '--strict-config --strict-markers --durations=30 --durations-min=1 -ra'
+filterwarnings = [
+    'ignore:Object of type .* not in session, .* operation along .* will not proceed:',
+    'ignore:Creating AiiDA configuration:UserWarning:',
+    'ignore:metadata.*traitlets.traitlets.Unicode object:DeprecationWarning:',
+    # For some reason we get this error, see
+    # https://github.com/aiidalab/aiidalab-widgets-base/issues/551
+    'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
+]
