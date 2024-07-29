@@ -10,6 +10,7 @@ line-length = 88
 show-fixes = true
 output-format = "full"
 target-version = "py39"
+extend-include = ["*.ipynb"]
 
 [tool.ruff.lint]
 ignore = ["E501", "E402", "TRY003", "RUF012", "N806"]

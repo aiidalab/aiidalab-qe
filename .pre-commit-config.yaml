@@ -24,23 +24,16 @@ repos:
       hooks:
           - id: check-github-workflows
 
-    # TODO: Ruff now supports notebooks natively, remove this
-    - repo: https://github.com/nbQA-dev/nbQA
-      rev: 1.8.5
-      hooks:
-          - id: nbqa-pyupgrade
-            args: [--py38-plus]
-          - id: nbqa-ruff
-            args: [--ignore=E402, --fix]
-
     - repo: https://github.com/kynan/nbstripout
       rev: 0.7.1
       hooks:
           - id: nbstripout
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.5.4
+      rev: v0.5.5
       hooks:
           - id: ruff
+            types_or: [python, pyi, jupyter]
             args: [--fix]
           - id: ruff-format
+            types_or: [python, pyi, jupyter]
