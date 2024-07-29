@@ -2,12 +2,12 @@
 
 import ipywidgets as ipw
 import traitlets as tl
+
 from aiida import orm
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-
 from aiidalab_qe.common.panel import Panel
 
 

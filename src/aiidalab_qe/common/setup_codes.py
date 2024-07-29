@@ -5,10 +5,10 @@ from threading import Thread
 
 import ipywidgets as ipw
 import traitlets
-from aiida.common.exceptions import NotExistent
-from aiida.orm import load_code
 from filelock import FileLock, Timeout
 
+from aiida.common.exceptions import NotExistent
+from aiida.orm import load_code
 from aiidalab_qe.common.widgets import ProgressBar
 
 __all__ = [

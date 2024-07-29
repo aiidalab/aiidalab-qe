@@ -1,10 +1,10 @@
 from importlib import resources
 
 import yaml
+
 from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
-
 from aiidalab_qe.plugins import xas as xas_folder
 from aiidalab_qe.plugins.utils import set_component_resources
 

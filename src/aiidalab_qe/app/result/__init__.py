@@ -1,5 +1,6 @@
 import ipywidgets as ipw
 import traitlets as tl
+
 from aiida import orm
 from aiida.engine import ProcessState
 from aiida.engine.processes import control

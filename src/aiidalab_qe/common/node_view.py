@@ -6,9 +6,10 @@ Authors: AiiDAlab team
 import ipywidgets as ipw
 import nglview
 import traitlets as tl
+from ase import Atoms
+
 from aiida import orm
 from aiidalab_widgets_base import register_viewer_widget
-from ase import Atoms
 
 from .widgets import CalcJobOutputFollower, LogOutputWidget
 

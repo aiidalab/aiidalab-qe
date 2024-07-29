@@ -4,14 +4,14 @@ Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
-from aiida.orm import load_node
-from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
+from aiida.orm import load_node
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structure import StructureSelectionStep
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.common import QeAppWorkChainSelector
+from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
 
 class App(ipw.VBox):

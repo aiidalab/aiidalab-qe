@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida import orm
-from aiidalab_widgets_base import WizardAppWidgetStep
 
+from aiida import orm
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_widgets_base import WizardAppWidgetStep
 
 from .advanced import AdvancedSettings
 from .workflow import WorkChainSettings

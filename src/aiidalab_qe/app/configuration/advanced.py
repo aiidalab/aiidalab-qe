@@ -8,14 +8,14 @@ import os
 import ipywidgets as ipw
 import numpy as np
 import traitlets as tl
+from IPython.display import clear_output, display
+
 from aiida import orm
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from IPython.display import clear_output, display
-
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.panel import Panel
 from aiidalab_qe.common.setup_pseudos import PseudoFamily

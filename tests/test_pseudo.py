@@ -1,5 +1,4 @@
 import pytest
-from aiida import orm
 from aiidalab_qe.common.setup_pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
@@ -7,6 +6,8 @@ from aiidalab_qe.common.setup_pseudos import (
     _install_pseudos,
     pseudos_to_install,
 )
+
+from aiida import orm
 
 
 def test_setup_pseudos_cmd(tmp_path):

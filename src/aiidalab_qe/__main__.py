@@ -4,8 +4,8 @@ import sys
 from pathlib import Path
 
 import click
-from aiida import load_profile
 
+from aiida import load_profile
 from aiidalab_qe.common.setup_codes import codes_are_setup
 from aiidalab_qe.common.setup_codes import install as install_qe_codes
 

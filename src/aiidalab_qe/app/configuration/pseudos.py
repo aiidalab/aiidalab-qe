@@ -5,18 +5,18 @@ import re
 
 import ipywidgets as ipw
 import traitlets as tl
+
 from aiida import orm
 from aiida.common import exceptions
 from aiida.plugins import DataFactory, GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from aiidalab_widgets_base.utils import StatusHTML
-
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.setup_pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
     PseudoFamily,
 )
+from aiidalab_widgets_base.utils import StatusHTML
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")

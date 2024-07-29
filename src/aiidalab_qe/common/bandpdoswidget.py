@@ -5,10 +5,11 @@ import re
 import ipywidgets as ipw
 import numpy as np
 import plotly.graph_objects as go
-from aiida.orm import ProjectionData
-from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 from IPython.display import clear_output, display
 from plotly.subplots import make_subplots
+
+from aiida.orm import ProjectionData
+from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 
 
 class BandPdosPlotly:

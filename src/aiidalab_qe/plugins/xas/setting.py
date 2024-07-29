@@ -9,8 +9,8 @@ import ipywidgets as ipw
 import requests
 import traitlets as tl
 import yaml
-from aiida import orm
 
+from aiida import orm
 from aiidalab_qe.common.panel import Panel
 from aiidalab_qe.plugins import xas as xas_folder
 

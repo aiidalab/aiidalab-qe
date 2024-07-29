@@ -1,7 +1,7 @@
 import numpy as np
+
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
-
 from aiidalab_qe.plugins.utils import set_component_resources
 
 GAMMA = "\u0393"

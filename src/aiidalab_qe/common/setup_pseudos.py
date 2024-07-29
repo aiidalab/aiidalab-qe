@@ -9,10 +9,10 @@ from threading import Thread
 
 import ipywidgets as ipw
 import traitlets
-from aiida.orm import QueryBuilder
 from aiida_pseudo.groups.family import PseudoPotentialFamily
 from filelock import FileLock, Timeout
 
+from aiida.orm import QueryBuilder
 from aiidalab_qe.common.widgets import ProgressBar
 
 SSSP_VERSION = "1.3"

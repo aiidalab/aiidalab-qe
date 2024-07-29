@@ -2,8 +2,8 @@
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida.orm import Group, QueryBuilder, StructureData
 
+from aiida.orm import Group, QueryBuilder, StructureData
 from aiidalab_qe.common.panel import Panel
 
 base_url = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"

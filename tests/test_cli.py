@@ -1,8 +1,9 @@
 import time
 
-import aiida
 import aiidalab_qe.__main__ as cli
 from click.testing import CliRunner, Result
+
+import aiida
 
 # To learn more about testing click applications, see: https://click.palletsprojects.com/en/8.1.x/testing/
 

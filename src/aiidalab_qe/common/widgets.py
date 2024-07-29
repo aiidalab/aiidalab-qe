@@ -15,6 +15,9 @@ import ase
 import ipywidgets as ipw
 import numpy as np
 import traitlets
+from IPython.display import HTML, Javascript, clear_output, display
+from pymatgen.core.periodic_table import Element
+
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
@@ -24,8 +27,6 @@ from aiidalab_widgets_base.utils import (
     list_to_string_range,
     string_range_to_list,
 )
-from IPython.display import HTML, Javascript, clear_output, display
-from pymatgen.core.periodic_table import Element
 
 __all__ = [
     "CalcJobOutputFollower",

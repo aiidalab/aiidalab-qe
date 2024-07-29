@@ -7,12 +7,11 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
+from IPython.display import display
+
 from aiida import orm
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, submit
-from aiidalab_widgets_base import WizardAppWidgetStep
-from IPython.display import display
-
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
@@ -22,6 +21,7 @@ from aiidalab_qe.common.widgets import (
     QEAppComputationalResourcesWidget,
 )
 from aiidalab_qe.workflows import QeAppWorkChain
+from aiidalab_widgets_base import WizardAppWidgetStep
 
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
