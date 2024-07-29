@@ -7,8 +7,11 @@
 build/
 export/
 .do-not-setup-on-localhost
-
+.mypy_cache/
 
 # Sphinx documentation
 docs/html
 screenshots/
+
+# User config (used to mark first-time users as existing)
+.app-user-config
