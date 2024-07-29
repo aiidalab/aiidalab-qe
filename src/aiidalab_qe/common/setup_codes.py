@@ -99,6 +99,7 @@ load_profile()
 
 def _generate_string_to_setup_code(code_name, computer_name="localhost"):
     """Generate the Python string to setup an AiiDA code for a given computer.
+
     Tries to load an existing code and if not existent,
     generates Python code to create and store a new code setup."""
     try:
@@ -130,6 +131,7 @@ code.store()
         )
         return python_code
     else:
+        # the code already exists
         return ""
 
 
