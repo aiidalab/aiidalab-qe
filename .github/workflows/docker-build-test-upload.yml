@@ -80,7 +80,18 @@ jobs:
             - name: Run pytest for Chrome
               run: pytest -sv --driver Chrome tests_integration/
               env:
-                  QE_IMAGE: ${{ env.IMAGE }}@${{ steps.build-upload.outputs.digest }}
+                  # We'd like to identify the image by its unique digest, i.e ghcr.io/aiidalab/qe@sha256:<digest>
+                  # but that sadly does not work when the image is loaded to Docker locally and not published on ghcr.io
+                  # as is the case for PRs from forks. Hence this super-ugly ternary expression...
+                  # For forks, we take the image as ghcr.io/aiidalab/qe:pr-XXX
+                  # which is stored in the steps.meta.outputs.tags variable
+                  QE_IMAGE: >-
+                      ${{
+                          github.event_name == 'pull_request' &&
+                          github.event.pull_request.head.repo.fork &&
+                          steps.meta.outputs.tags ||
+                          format('{0}@{1}', env.IMAGE, steps.build-upload.outputs.imageid)
+                      }}
 
             - name: Upload screenshots as artifacts
               if: always()
