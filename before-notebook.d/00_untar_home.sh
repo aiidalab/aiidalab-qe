@@ -5,8 +5,8 @@ home="/home/${NB_USER}"
 
 # Untar home archive file to restore home directory if it is empty
 if [[ $(ls -A ${home} | wc -l) = "0" ]]; then
-  if [[ ! -f $HOME_TAR ]]; then
-    echo "File $HOME_TAR does not exist!"
+  if [[ ! -d $TMP_HOME ]]; then
+    echo "Folder $TMP_HOME does not exist!"
     exit 1
   fi
   if [[ ! -d ${QE_APP_FOLDER} ]]; then
@@ -14,8 +14,8 @@ if [[ $(ls -A ${home} | wc -l) = "0" ]]; then
     exit 1
   fi
 
-  echo "Extracting $HOME_TAR to $home"
-  tar -xf $HOME_TAR -C "$home"
+  echo "Moving $TMP_HOME to $home"
+  mv $TMP_HOME/* "$home"
 
   echo "Copying directory '$QE_APP_FOLDER' to '$AIIDALAB_APPS'"
   cp -r "$QE_APP_FOLDER" "$AIIDALAB_APPS"

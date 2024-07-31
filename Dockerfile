@@ -51,6 +51,8 @@ ENV PSEUDO_FOLDER=/tmp/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
+RUN mkdir -p /opt/conda/tmp-home
+
 # TODO: Remove PGSQL and daemon log files, and other unneeded files
 RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
@@ -59,7 +61,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
+    cd /home/${NB_USER} && cp -a . /opt/conda/tmp-home
 
 # STAGE 3 - Final stage
 # - Install python dependencies
@@ -96,8 +98,10 @@ COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
 # Remove all untracked files and directories.
 RUN git clean -dffx || true
 
-ENV HOME_TAR="/opt/home.tar"
-COPY --from=home_build /opt/conda/home.tar "$HOME_TAR"
+ENV TMP_HOME="/opt/store/home"
+RUN mkdir -p ${TMP_HOME} && \
+  fix-permissions ${TMP_HOME}
+COPY --from=home_build /opt/conda/tmp-home "$TMP_HOME"
 
 USER ${NB_USER}
 WORKDIR "/home/${NB_USER}"
