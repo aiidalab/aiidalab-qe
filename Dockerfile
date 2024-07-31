@@ -86,7 +86,9 @@ COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
-RUN fix-permissions "${CONDA_DIR}"
+RUN mkdir -p /opt/store/ && \
+    fix-permissions /opt/store/
+
 # Remove content of $HOME
 # '-mindepth=1' ensures that we do not remove the home directory itself.
 RUN find /home/${NB_USER}/ -mindepth 1 -delete
@@ -96,7 +98,7 @@ COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
 # Remove all untracked files and directories.
 RUN git clean -dffx || true
 
-ENV HOME_TAR="/opt/home.tar"
+ENV HOME_TAR="/opt/store/home.tar"
 COPY --from=home_build /opt/conda/home.tar "$HOME_TAR"
 
 USER ${NB_USER}
