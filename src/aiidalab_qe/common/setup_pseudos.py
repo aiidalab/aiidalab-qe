@@ -1,19 +1,18 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from subprocess import run
 from threading import Thread
-from typing import Iterable
 
 import ipywidgets as ipw
 import traitlets
-from aiida.orm import QueryBuilder
 from aiida_pseudo.groups.family import PseudoPotentialFamily
 from filelock import FileLock, Timeout
 
+from aiida.orm import QueryBuilder
 from aiidalab_qe.common.widgets import ProgressBar
 
 SSSP_VERSION = "1.3"
@@ -225,7 +224,7 @@ def install(
             if len(pseudos_to_install()) > 0:
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
-                )
+                ) from None
 
 
 class PseudosInstallWidget(ProgressBar):
@@ -287,7 +286,7 @@ class PseudosInstallWidget(ProgressBar):
     @traitlets.observe("busy")
     @traitlets.observe("error")
     @traitlets.observe("installed")
-    def _update(self, change):
+    def _update(self, _change):
         with self.hold_trait_notifications():
             if self.hide_by_default:
                 self.layout.visibility = (

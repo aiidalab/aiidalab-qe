@@ -29,7 +29,7 @@ def export_xps_data(outputs):
 
 
 def xps_spectra_broadening(
-    points, equivalent_sites_data, gamma=0.3, sigma=0.3, label="", intensity=1.0
+    points, equivalent_sites_data, gamma=0.3, sigma=0.3, _label="", intensity=1.0
 ):
     """Broadening the XPS spectra with Voigt function and return the spectra data"""
 
@@ -169,7 +169,7 @@ class Result(ResultPanel):
         # init figure
         self.g = go.FigureWidget(
             layout=go.Layout(
-                title=dict(text="XPS"),
+                title={"text": "XPS"},
                 barmode="overlay",
             )
         )
@@ -189,7 +189,7 @@ class Result(ResultPanel):
                 x=d[0], y=d[1], fill="tozeroy", name=site.replace("_", " ")
             )
 
-        def response(change):
+        def response(_change):
             data = []
             if spectra_type.value == "chemical_shift":
                 points = chemical_shifts

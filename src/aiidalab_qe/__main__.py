@@ -1,10 +1,11 @@
 """For running the app from the command line used for post_install script."""
 
-from pathlib import Path
 import sys
-import click
-from aiida import load_profile
+from pathlib import Path
 
+import click
+
+from aiida import load_profile
 from aiidalab_qe.common.setup_codes import codes_are_setup
 from aiidalab_qe.common.setup_codes import install as install_qe_codes
 
@@ -28,7 +29,7 @@ def install_qe(force, profile):
         assert codes_are_setup()
         click.secho("Codes are setup!", fg="green")
     except Exception as error:
-        raise click.ClickException(f"Failed to set up QE failed: {error}")
+        raise click.ClickException(f"Failed to set up QE failed: {error}") from error
 
 
 @cli.command()
@@ -53,7 +54,9 @@ def install_pseudos(profile, source):
             click.echo(msg)
         click.secho("Pseudopotentials are installed!", fg="green")
     except Exception as error:
-        raise click.ClickException(f"Failed to set up pseudo potentials: {error}")
+        raise click.ClickException(
+            f"Failed to set up pseudo potentials: {error}"
+        ) from error
 
 
 @cli.command()
@@ -75,7 +78,9 @@ def download_pseudos(dest):
         click.secho("Pseudopotentials are downloaded!", fg="green")
 
     except Exception as error:
-        raise click.ClickException(f"Failed to download pseudo potentials: {error}")
+        raise click.ClickException(
+            f"Failed to download pseudo potentials: {error}"
+        ) from error
 
 
 @cli.command()

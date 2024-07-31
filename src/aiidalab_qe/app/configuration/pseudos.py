@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import io
@@ -6,18 +5,18 @@ import re
 
 import ipywidgets as ipw
 import traitlets as tl
+
 from aiida import orm
 from aiida.common import exceptions
 from aiida.plugins import DataFactory, GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from aiidalab_widgets_base.utils import StatusHTML
-
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.setup_pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
     PseudoFamily,
 )
+from aiidalab_widgets_base.utils import StatusHTML
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -128,6 +127,7 @@ class PseudoFamilySelector(ipw.VBox):
                 self.pseudo_family_help,
             ],
             layout=ipw.Layout(max_width="60%"),
+            **kwargs,
         )
         ipw.dlink((self.show_ui, "value"), (self.library_selection, "disabled"))
         ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
@@ -338,7 +338,7 @@ class PseudoSetter(ipw.VBox):
         """Reset the traitlets to the initial state"""
         self.ecutwfc = 0
         self.ecutrho = 0
-        self.pseudos = dict()
+        self.pseudos = {}
 
     def _reset(self):
         """Reset the pseudo setting widgets according to the structure
@@ -377,7 +377,7 @@ class PseudoSetter(ipw.VBox):
             pseudo_family = self._get_pseudos_family(self.pseudo_family)
         except exceptions.NotExistent as exception:
             self._status_message.message = (
-                f"""<div class='alert alert-danger'> ERROR: {str(exception)}</div>"""
+                f"""<div class='alert alert-danger'> ERROR: {exception!s}</div>"""
             )
             return
 

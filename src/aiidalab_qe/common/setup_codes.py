@@ -5,10 +5,10 @@ from threading import Thread
 
 import ipywidgets as ipw
 import traitlets
-from aiida.common.exceptions import NotExistent
-from aiida.orm import load_code
 from filelock import FileLock, Timeout
 
+from aiida.common.exceptions import NotExistent
+from aiida.orm import load_code
 from aiidalab_qe.common.widgets import ProgressBar
 
 __all__ = [
@@ -99,11 +99,11 @@ load_profile()
 
 def _generate_string_to_setup_code(code_name, computer_name="localhost"):
     """Generate the Python string to setup an AiiDA code for a given computer.
+
     Tries to load an existing code and if not existent,
     generates Python code to create and store a new code setup."""
     try:
         load_code(f"{code_name}-{QE_VERSION}@{computer_name}")
-        return ""
     except NotExistent:
         label = f"{code_name}-{QE_VERSION}"
         description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
@@ -130,6 +130,9 @@ code.store()
             prepend_text,
         )
         return python_code
+    else:
+        # the code already exists
+        return ""
 
 
 def setup_codes():

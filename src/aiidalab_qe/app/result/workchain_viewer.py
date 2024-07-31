@@ -6,18 +6,18 @@ from tempfile import TemporaryDirectory
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida import orm
-from aiida.cmdline.utils.common import get_workchain_report
-from aiida.common import LinkType
-from aiida.orm.utils.serialize import deserialize_unsafe
-from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
-from aiidalab_widgets_base.viewers import StructureDataViewer
 from filelock import FileLock, Timeout
 from IPython.display import HTML, display
 from jinja2 import Environment
 
+from aiida import orm
+from aiida.cmdline.utils.common import get_workchain_report
+from aiida.common import LinkType
+from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app import static
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
+from aiidalab_widgets_base.viewers import StructureDataViewer
 
 from .summary_viewer import SummaryView
 
@@ -147,7 +147,9 @@ class WorkChainOutputs(ipw.VBox):
     _busy = tl.Bool(read_only=True)
 
     def __init__(self, node, export_dir=None, **kwargs):
-        self.export_dir = Path.cwd().joinpath("exports")
+        if export_dir is None:
+            export_dir = Path.cwd().joinpath("exports")
+        self.export_dir = export_dir
 
         if node.process_label != "QeAppWorkChain":
             raise KeyError(str(node.node_type))
@@ -233,7 +235,7 @@ class WorkChainOutputs(ipw.VBox):
         finally:
             self.set_trait("_busy", False)
 
-        id = f"dl_{self.node.uuid}"
+        link_id = f"dl_{self.node.uuid}"
 
         display(
             HTML(
@@ -241,7 +243,7 @@ class WorkChainOutputs(ipw.VBox):
         <html>
         <body>
         <a
-            id="{id}"
+            id="{link_id}"
             href="{fn_archive.relative_to(Path.cwd())}"
             download="{fn_archive.stem}"
         ></a>
