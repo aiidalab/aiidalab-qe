@@ -14,6 +14,7 @@ automatically detect the default path in reciprocal space using the
 SeeK-path tool</a>.
 """
 
+
 projwfc_bands = QEAppComputationalResourcesWidget(
     description="projwfc.x for bands",
     default_calc_job_plugin="quantumespresso.projwfc",

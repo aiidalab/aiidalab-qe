@@ -6,6 +6,7 @@ import traitlets as tl
 from aiidalab_qe.common.panel import Panel
 from aiida import orm
 
+
 class Setting(Panel):
     title = "Bands Structure"
     identifier = "bands"
@@ -21,7 +22,7 @@ class Setting(Panel):
             value="moderate",
         )
         self.properties_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
+            """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
         The band structure workflow will
         automatically detect the default path in reciprocal space using the
         <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
@@ -50,7 +51,6 @@ class Setting(Panel):
             self.kpath_2d,
         ]
         super().__init__(**kwargs)
-
 
     @tl.observe("input_structure")
     def _update_structure(self, _=None):

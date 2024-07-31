@@ -35,6 +35,7 @@ def check_codes(pw_code, projwfc_code):
             "PDOS calculations rely on large files that are not retrieved by AiiDA."
         )
 
+
 def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distance):
     """function to calculate the number of points per branch depending on the kpoints_distance and the reciprocal cell"""
     scaled_vector_a = np.array(vector_a)
@@ -223,7 +224,9 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     if parameters["bands"]["projwfc_bands"]:
         check_codes(pw_code, codes.get("projwfc_bands")["code"])
-        overrides["scf"]["kpoints_distance"] = orm.Float(overrides["scf"]["kpoints_distance"]) #To be removed once the issue is fixed
+        overrides["scf"]["kpoints_distance"] = orm.Float(
+            overrides["scf"]["kpoints_distance"]
+        )  # To be removed once the issue is fixed
         bands = ProjwfcBandsWorkChain.get_builder_from_protocol(
             pw_code=pw_code,
             projwfc_code=codes.get("projwfc_bands")["code"],
@@ -235,7 +238,7 @@ def get_builder(codes, structure, parameters, **kwargs):
             overrides=overrides,
             **kwargs,
         )
-    else: # Use the PwBandsWorkChain
+    else:  # Use the PwBandsWorkChain
         bands = PwBandsWorkChain.get_builder_from_protocol(
             code=pw_code,
             structure=structure,
@@ -264,7 +267,6 @@ def get_builder(codes, structure, parameters, **kwargs):
     bands.pop("clean_workdir", None)
     # update resources
     update_resources(bands, codes, parameters["bands"]["projwfc_bands"])
-
 
     return bands
 
