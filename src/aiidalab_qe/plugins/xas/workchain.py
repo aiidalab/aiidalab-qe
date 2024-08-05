@@ -85,6 +85,10 @@ def get_builder(codes, structure, parameters, **kwargs):
         }
     }
 
+    # Ensure that VdW corrections are not applied for the core-hole SCF calculation
+    # Required to resolve issue #765 (https://github.com/aiidalab/aiidalab-qe/issues/765)
+    overrides["core"]["scf"]["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "none"
+
     builder = XspectraCrystalWorkChain.get_builder_from_protocol(
         pw_code=pw_code,
         xs_code=xs_code,
