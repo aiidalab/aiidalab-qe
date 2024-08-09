@@ -3,39 +3,12 @@ from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
 from aiida import orm
-
-from .bands_workchain import BandsWorkChain
+from aiida.engine import ToContext, WorkChain, calcfunction
 
 GAMMA = "\u0393"
 
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 ProjwfcBandsWorkChain = WorkflowFactory("wannier90_workflows.projwfcbands")
-KpointsData = DataFactory("core.array.kpoints")
-
-
-def check_codes(pw_code, projwfc_code):
-    """Check that the codes are installed on the same computer."""
-    if (
-        not any(
-            [
-                pw_code is None,
-                projwfc_code is None,
-            ]
-        )
-        and len(
-            set(
-                (
-                    pw_code.computer.pk,
-                    projwfc_code.computer.pk,
-                )
-            )
-        )
-        != 1
-    ):
-        raise ValueError(
-            "All selected codes must be installed on the same computer. This is because the "
-            "PDOS calculations rely on large files that are not retrieved by AiiDA."
-        )
 
 
 def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distance):
@@ -195,147 +168,149 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
 
     return kpoints
 
+def determine_symmetry_path(structure):
+    # Tolerance for checking equality
+    cell_lengths = structure.cell_lengths
+    cell_angles = structure.cell_angles
+    tolerance = 1e-3
 
-def update_resources(builder, codes, projwfc_bands=False):
-
-    if "bands_projwfc" in builder:
-        label = "bands_projwfc"
-    else: 
-        label = "bands"
-    set_component_resources(builder[label]["scf"]["pw"], codes.get("pw"))
-    set_component_resources(builder[label]["bands"]["pw"], codes.get("pw"))
-    if projwfc_bands:
-        set_component_resources(builder.bands_projwfc.projwfc.projwfc , codes.get("projwfc_bands"))
-
-
-# def get_builder(codes, structure, parameters, **kwargs):
-#     """Get a builder for the PwBandsWorkChain."""
-#     from copy import deepcopy
-
-#     pw_code = codes.get("pw")["code"]
-#     protocol = parameters["workchain"]["protocol"]
-#     scf_overrides = deepcopy(parameters["advanced"])
-#     relax_overrides = {
-#         "base": deepcopy(parameters["advanced"]),
-#         "base_final_scf": deepcopy(parameters["advanced"]),
-#     }
-#     bands_overrides = deepcopy(parameters["advanced"])
-#     bands_overrides.pop("kpoints_distance", None)
-#     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
-#     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
-#     overrides = {
-#         "scf": scf_overrides,
-#         "bands": bands_overrides,
-#         "relax": relax_overrides,
-#     }
-
-#     if parameters["bands"]["projwfc_bands"]:
-#         check_codes(pw_code, codes.get("projwfc_bands")["code"])
-#         overrides["scf"]["kpoints_distance"] = orm.Float(
-#             overrides["scf"]["kpoints_distance"]
-#         )  # To be removed once the issue is fixed
-#         bands = ProjwfcBandsWorkChain.get_builder_from_protocol(
-#             pw_code=pw_code,
-#             projwfc_code=codes.get("projwfc_bands")["code"],
-#             structure=structure,
-#             protocol=protocol,
-#             electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
-#             spin_type=SpinType(parameters["workchain"]["spin_type"]),
-#             initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
-#             overrides=overrides,
-#             **kwargs,
-#         )
-#     else:  # Use the PwBandsWorkChain
-#         bands = PwBandsWorkChain.get_builder_from_protocol(
-#             code=pw_code,
-#             structure=structure,
-#             protocol=protocol,
-#             electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
-#             spin_type=SpinType(parameters["workchain"]["spin_type"]),
-#             initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
-#             overrides=overrides,
-#             **kwargs,
-#         )
-
-#     if structure.pbc != (True, True, True):
-#         kpoints_distance = parameters["advanced"]["kpoints_distance"]
-#         if structure.pbc == (True, False, False):
-#             kpoints = generate_kpath_1d(structure, kpoints_distance)
-#         elif structure.pbc == (True, True, False):
-#             kpoints = generate_kpath_2d(
-#                 structure, kpoints_distance, parameters["bands"]["kpath_2d"]
-#             )
-#         bands.pop("bands_kpoints_distance")
-#         bands.update({"bands_kpoints": kpoints})
-
-#     # pop the inputs that are excluded from the expose_inputs
-#     bands.pop("relax")
-#     bands.pop("structure", None)
-#     bands.pop("clean_workdir", None)
-#     # update resources
-#     update_resources(bands, codes, parameters["bands"]["projwfc_bands"])
-
-#     return bands
-
-
-def get_builder(codes, structure, parameters, **kwargs):
-    """Get a builder for the PwBandsWorkChain."""
-    from copy import deepcopy
-
-    pw_code = codes.get("pw")["code"]
-    protocol = parameters["workchain"]["protocol"]
-    scf_overrides = deepcopy(parameters["advanced"])
-    relax_overrides = {
-        "base": deepcopy(parameters["advanced"]),
-        "base_final_scf": deepcopy(parameters["advanced"]),
-    }
-    bands_overrides = deepcopy(parameters["advanced"])
-    bands_overrides.pop("kpoints_distance", None)
-    bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
-    bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
-    overrides = {
-        "scf": scf_overrides,
-        "bands": bands_overrides,
-        "relax": relax_overrides,
+    # Define symmetry conditions and their corresponding types in a dictionary
+    symmetry_conditions = {
+        (
+            math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance)
+            and math.isclose(cell_angles[2], 120.0, abs_tol=tolerance)
+        ): "hexagonal",
+        (
+            math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance)
+            and math.isclose(cell_angles[2], 90.0, abs_tol=tolerance)
+        ): "square",
+        (
+            math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance) == False
+            and math.isclose(cell_angles[2], 90.0, abs_tol=tolerance)
+        ): "rectangular",
+        (
+            math.isclose(
+                cell_lengths[1] * math.cos(math.radians(cell_angles[2])),
+                cell_lengths[0] / 2,
+                abs_tol=tolerance,
+            )
+        ): "rectangular_centered",
+        (
+            math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance) == False
+            and math.isclose(cell_angles[2], 90.0, abs_tol=tolerance) == False
+        ): "oblique",
     }
 
-    check_codes(pw_code, codes.get("projwfc_bands")["code"]) 
+    # Check for symmetry type based on conditions
+    for condition, symmetry_type in symmetry_conditions.items():
+        if condition:
+            if symmetry_type == "rectangular_centered" or "oblique":
+                cos_gamma = np.array(structure.cell[0]).dot(structure.cell[1]) / (
+                    cell_lengths[0] * cell_lengths[1]
+                )
+                gamma = np.arccos(cos_gamma)
+                eta = (1 - (cell_lengths[0] / cell_lengths[1]) * cos_gamma) / (
+                    2 * np.power(np.sin(gamma), 2)
+                )
+                nu = 0.5 - (eta * cell_lengths[1] * cos_gamma) / cell_lengths[0]
+                return generate_2d_path(symmetry_type, eta, nu)
 
-    if parameters["bands"]["projwfc_bands"]:
-        simulation_mode = "fat_bands"
-    else:
-        simulation_mode = "normal"
+            return generate_2d_path(symmetry_type)
+        else:
+            raise ValueError("Invalid symmetry type")
 
-    bands = BandsWorkChain.get_builder_from_protocol(
-        pw_code=pw_code,
-        projwfc_code=codes.get("projwfc_bands")["code"],
-        structure=structure,
-        simulation_mode=simulation_mode,
-        protocol=protocol,
-        electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
-        spin_type=SpinType(parameters["workchain"]["spin_type"]),
-        initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
-        overrides=overrides,
+class BandsWorkChain(WorkChain):
+    "Workchain to compute the electronic band structure"
+    label = "bands"
+
+    @classmethod
+    def define(cls, spec):
+        super().define(spec)
+        spec.expose_inputs(PwBandsWorkChain, namespace="bands")
+        spec.expose_inputs(ProjwfcBandsWorkChain, namespace="bands_projwfc")
+
+        spec.expose_outputs(PwBandsWorkChain)
+        spec.expose_outputs(ProjwfcBandsWorkChain)
+
+        spec.outline(cls.setup, cls.run_bands, cls.results)
+
+        spec.exit_code(400, "ERROR_WORKCHAIN_FAILED", message="The workchain bands failed.")
+
+
+    @classmethod
+    def get_builder_from_protocol(
+        cls,
+        pw_code,
+        structure,
+        simulation_mode,
+        protocol=None,
+        projwfc_code=None,
+        overrides=None,
         **kwargs,
-    )    
-    # update resources
-    update_resources(bands, codes, parameters["bands"]["projwfc_bands"])
+    ):
+        """ Return a BandsWorkChain builder prepopulated with inputs following the specified protocol
+        
+        :param structure: the ``StructureData`` instance to use.
+        :param pw_code: the ``Code`` instance configured for the ``quantumespresso.pw`` plugin.
+        :param protocol: protocol to use, if not specified, the default will be used.
+        :param projwfc_code: the ``Code`` instance configured for the ``quantumespresso.projwfc`` plugin.
+        :param simulation_mode: hat type of simulation to run normal band or fat bands.
+        
+        """
 
-    return bands
+        builder = cls.get_builder()
 
-def update_inputs(inputs, ctx):
-    """Update the inputs using context."""
-    inputs.structure = ctx.current_structure
-    inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
-    if ctx.current_number_of_bands:
-        inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-            "nbnd", ctx.current_number_of_bands
+        if "simulation_mode" == "normal":
+
+            args = (pw_code, structure, protocol)
+            builder = PwBandsWorkChain.get_builder_from_protocol(
+                *args, overrides=overrides, **kwargs
+            )
+        elif "simulation_mode" == "fat_bands":
+            args = (pw_code, projwfc_code, structure, protocol, projwfc_code)
+            builder = ProjwfcBandsWorkChain.get_builder_from_protocol(
+                *args, overrides=overrides, **kwargs
+            )
+
+        if structure.pbc != (True, True, True):
+            kpoints_distance = overrides["scf"]["kpoints_distance"]
+            if structure.pbc == (True, False, False):
+                kpoints = generate_kpath_1d(structure, kpoints_distance)
+            elif structure.pbc == (True, True, False):
+                kpoints = generate_kpath_2d(
+                    structure, kpoints_distance, determine_symmetry_path(structure)
+                )
+            builder.pop("bands_kpoints_distance")
+            builder.update({"bands_kpoints": kpoints})
+
+        return builder
+            
+
+    def setup(self):
+        """Define the current workchain"""
+        if "bands" in self.inputs:
+            self.ctx.workchain = PwBandsWorkChain
+        elif "bands_projwfc" in self.inputs:
+            self.ctx.workchain = ProjwfcBandsWorkChain
+        else:
+            self.report("No bands workchain specified")
+            return self.exit_codes.ERROR_WORKCHAIN_FAILED
+        
+    def run_bands(self):
+        """Run the bands workchain"""
+        inputs = self.exposed_inputs(self.ctx.workchain)
+        inputs.update(self.inputs[self.ctx.workchain.get_link_label("bands")])
+        return ToContext(
+            bands=self.ctx.workchain.run.get_submission_node().get_outgoing().one().node
         )
 
+    def results(self):
+        """Attach the bands results"""
+        workchain = self.ctx.workchain
 
-workchain_and_builder = {
-    "workchain": BandsWorkChain,
-    "exclude": ("structure", "relax"),
-    "get_builder": get_builder,
-    "update_inputs": update_inputs,
-}
+        if not workchain.is_finished_ok:
+            self.report("Bands workchain failed")
+            return self.exit_codes.ERROR_WORKCHAIN_FAILED
+        else:
+            self.out_many(self.ctx.bands.outputs)
+            self.report("Bands workchain completed successfully")
