@@ -51,7 +51,11 @@ CODE_NAMES = (
 
 def qe_installed():
     env_exist = get_qe_env().exists()
-    proc = subprocess.run(["conda", "list", "-n", f"{get_qe_env().name}", "qe"], check=True, capture_output=True,)
+    proc = subprocess.run(
+        ["conda", "list", "-n", f"{get_qe_env().name}", "qe"],
+        check=True,
+        capture_output=True,
+    )
 
     # XXX: "qe" in check is not future proof if there are similar packages such as qe-tool, better solution?? JSON output??
     return env_exist and "qe" in str(proc.stdout)
@@ -167,8 +171,7 @@ def install_and_setup(target_computer, force=False):
 
 
 def _install():
-    """Install Quantum ESPRESSO.
-    """
+    """Install Quantum ESPRESSO."""
     yield "Checking installation status..."
 
     conda_installed = which("conda")
@@ -181,7 +184,7 @@ def _install():
                 )
 
             if qe_installed():
-                return 
+                return
 
             # Install Quantum ESPRESSO.
             yield "Installing QE..."
@@ -201,9 +204,9 @@ def _install():
                     "Installation process did not finish in the expected time."
                 ) from None
 
+
 def _setup(computer):
-    """Setup the corresponding AiiDA codes after QE installation.
-    """
+    """Setup the corresponding AiiDA codes after QE installation."""
     yield "Checking setup status..."
 
     try:
@@ -241,7 +244,6 @@ def _setup(computer):
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
                 ) from None
-
 
 
 class QESetupWidget(ipw.VBox):
