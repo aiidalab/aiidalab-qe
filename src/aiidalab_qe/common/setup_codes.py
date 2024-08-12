@@ -51,11 +51,7 @@ CODE_NAMES = (
 
 def qe_installed():
     env_exist = get_qe_env().exists()
-    proc = subprocess.run(
-        ["conda", "list", "-n", f"{get_qe_env()}", "qe"],
-        check=False,
-        capture_output=True,
-    )
+    proc = subprocess.run(["conda", "list", "-n", f"{get_qe_env().name}", "qe"], check=True, capture_output=True,)
 
     # XXX: "qe" in check is not future proof if there are similar packages such as qe-tool, better solution?? JSON output??
     return env_exist and "qe" in str(proc.stdout)
@@ -104,13 +100,13 @@ load_profile()
     return header_code
 
 
-def _generate_string_to_setup_code(code_name, computer_name="localhost"):
+def _generate_string_to_setup_code(code_name, computer="localhost"):
     """Generate the Python string to setup an AiiDA code for a given computer.
 
     Tries to load an existing code and if not existent,
     generates Python code to create and store a new code setup."""
     try:
-        load_code(f"{code_name}-{QE_VERSION}@{computer_name}")
+        load_code(f"{code_name}-{QE_VERSION}@{computer}")
     except NotExistent:
         label = f"{code_name}-{QE_VERSION}"
         description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
@@ -129,7 +125,7 @@ code = InstalledCode(computer=computer,
 
 code.store()
 """.format(  # noqa: UP032
-            computer_name,
+            computer,
             label,
             description,
             filepath_executable,
@@ -152,7 +148,7 @@ def setup_codes():
         raise RuntimeError(f"Failed to setup codes: {error}") from None
 
 
-def install_and_setup(force=False, target_computer="localhost"):
+def install_and_setup(target_computer, force=False):
     """Install Quantum ESPRESSO and the corresponding AiiDA codes.
 
     Args:
@@ -166,8 +162,8 @@ def install_and_setup(force=False, target_computer="localhost"):
     if not force and FN_DO_NOT_SETUP.exists():
         raise RuntimeError("Installation failed in previous attempt.")
 
-    _install()
-    _setup(target_computer)
+    yield from _install()
+    yield from _setup(target_computer)
 
 
 def _install():
@@ -184,17 +180,17 @@ def _install():
                     "is not available."
                 )
 
-            if not qe_installed():
-                # First, install Quantum ESPRESSO.
-                yield "Installing QE..."
-                try:
-                    install_qe()
-                except subprocess.CalledProcessError as error:
-                    raise RuntimeError(
-                        f"Failed to create conda environment: {error}"
-                    ) from None
-            else:
-                return
+            if qe_installed():
+                return 
+
+            # Install Quantum ESPRESSO.
+            yield "Installing QE..."
+            try:
+                install_qe()
+            except subprocess.CalledProcessError as error:
+                raise RuntimeError(
+                    f"Failed to create conda environment: {error}"
+                ) from None
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
