@@ -1,4 +1,6 @@
+import subprocess
 from pathlib import Path
+from shutil import which
 from threading import Thread
 
 import ipywidgets as ipw
@@ -48,11 +50,19 @@ CODE_NAMES = (
 
 
 def qe_installed():
-    return get_qe_env().exists()
+    env_exist = get_qe_env().exists()
+    proc = subprocess.run(
+        ["conda", "list", "-n", f"{get_qe_env()}", "qe"],
+        check=False,
+        capture_output=True,
+    )
+
+    # XXX: "qe" in check is not future proof if there are similar packages such as qe-tool, better solution?? JSON output??
+    return env_exist and "qe" in str(proc.stdout)
 
 
 def install_qe():
-    run(
+    subprocess.run(
         [
             "conda",
             "create",
@@ -137,16 +147,17 @@ def setup_codes():
     for code_name in CODE_NAMES:
         python_code += _generate_string_to_setup_code(code_name)
     try:
-        run(["python", "-c", python_code], capture_output=True, check=True)
-    except CalledProcessError as error:
+        subprocess.run(["python", "-c", python_code], capture_output=True, check=True)
+    except subprocess.CalledProcessError as error:
         raise RuntimeError(f"Failed to setup codes: {error}") from None
 
 
-def install_and_setup(force=False):
+def install_and_setup(force=False, target_computer="localhost"):
     """Install Quantum ESPRESSO and the corresponding AiiDA codes.
 
     Args:
         force: Ignore previously failed attempts and install anyways.
+        target_computer: computer label in AiiDA where the code is setup for
     """
     # Check for "do not install file" and skip actual check. The purpose of
     # this file is to not re-try this process on every app start in case that
@@ -155,20 +166,18 @@ def install_and_setup(force=False):
     if not force and FN_DO_NOT_SETUP.exists():
         raise RuntimeError("Installation failed in previous attempt.")
 
+    _install()
+    _setup(target_computer)
+
+
+def _install():
+    """Install Quantum ESPRESSO.
+    """
     yield "Checking installation status..."
 
     conda_installed = which("conda")
     try:
         with FileLock(FN_INSTALL_LOCKFILE, timeout=5):
-            # We assume that if the codes are already setup, everything is in
-            # order. Only if they are not present, should we take action,
-            # however we only do so if the environment has a conda binary
-            # present (`which conda`). If that is not the case then we assume
-            # that this is a custom user environment in which case we also take
-            # no further action.
-            if codes_are_setup():
-                return  # Already setup
-
             if not conda_installed:
                 raise RuntimeError(
                     "Unable to automatically install Quantum ESPRESSO, conda "
@@ -180,33 +189,63 @@ def install_and_setup(force=False):
                 yield "Installing QE..."
                 try:
                     install_qe()
-                except CalledProcessError as error:
+                except subprocess.CalledProcessError as error:
                     raise RuntimeError(
                         f"Failed to create conda environment: {error}"
                     ) from None
+            else:
+                return
+
+    except Timeout:
+        # Assume that the installation was triggered by a different process.
+        yield "Installation was already started, waiting for it to finish..."
+        with FileLock(FN_INSTALL_LOCKFILE, timeout=120):
+            if not qe_installed():
+                raise RuntimeError(
+                    "Installation process did not finish in the expected time."
+                ) from None
+
+def _setup(computer):
+    """Setup the corresponding AiiDA codes after QE installation.
+    """
+    yield "Checking setup status..."
+
+    try:
+        with FileLock(FN_SETUP_LOCKFILE, timeout=5):
+            # We assume that if the codes are already setup, everything is in
+            # order. Only if they are not present, should we take action,
+            # however we only do so if the environment has a conda binary
+            # present (`which conda`). If that is not the case then we assume
+            # that this is a custom user environment in which case we also take
+            # no further action.
+            if codes_are_setup():
+                return  # Already setup
 
             # After installing QE, we install the corresponding
             # AiiDA codes:
             python_code = _generate_header_to_setup_code()
             for code_name in CODE_NAMES:
                 if not _code_is_setup(code_name):
-                    yield f"Preparing setup script for ({code_name})..."
-                    code_string = _generate_string_to_setup_code(code_name)
+                    yield f"Preparing setup script for ({code_name}) on ({computer})..."
+                    code_string = _generate_string_to_setup_code(code_name, computer)
                     python_code += code_string
             try:
                 yield "Setting up all codes..."
-                run(["python", "-c", python_code], capture_output=True, check=True)
-            except CalledProcessError as error:
+                subprocess.run(
+                    ["python", "-c", python_code], capture_output=True, check=True
+                )
+            except subprocess.CalledProcessError as error:
                 raise RuntimeError(f"Failed to setup codes: {error}") from None
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
         yield "Installation was already started, waiting for it to finish..."
-        with FileLock(FN_INSTALL_LOCKFILE, timeout=120):
+        with FileLock(FN_SETUP_LOCKFILE, timeout=120):
             if not codes_are_setup():
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
                 ) from None
+
 
 
 class QESetupWidget(ipw.VBox):
