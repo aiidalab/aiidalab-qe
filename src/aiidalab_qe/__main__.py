@@ -6,8 +6,8 @@ from pathlib import Path
 import click
 
 from aiida import load_profile
-from aiidalab_qe.common.setup_codes import codes_are_setup
-from aiidalab_qe.common.setup_codes import install as install_qe_codes
+from aiidalab_qe.setup.setup_codes import codes_are_setup
+from aiidalab_qe.setup.setup_codes import install as install_qe_codes
 
 # The default profile name of AiiDAlab container.
 _DEFAULT_PROFILE = "default"
@@ -68,7 +68,7 @@ def install_pseudos(profile, source):
     type=click.Path(exists=True, path_type=Path, resolve_path=True),
 )
 def download_pseudos(dest):
-    from aiidalab_qe.common.setup_pseudos import EXPECTED_PSEUDOS, _install_pseudos
+    from aiidalab_qe.setup.setup_pseudos import EXPECTED_PSEUDOS, _install_pseudos
 
     try:
         for progress in _install_pseudos(
