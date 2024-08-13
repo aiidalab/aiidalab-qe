@@ -75,7 +75,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
     bash /usr/local/bin/before-notebook.d/41_setup-hq-computer.sh && \
     python -m aiidalab_qe install-qe --computer local-hq && \
-    # python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
+    python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
@@ -116,6 +116,12 @@ COPY --from=home_build /opt/conda/hq /usr/local/bin/
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
+
+# XXX: move me to docker-stack
+RUN apt-get update --yes && \
+    apt-get install --yes --no-install-recommends bc && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+    
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
 # Remove content of $HOME

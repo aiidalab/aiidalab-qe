@@ -7,9 +7,6 @@ verdi daemon stop || echo "stop fail"
 
 # Setup hyperqueue computer if needed
 HQ_COMPUTER="local-hq"
-# XXX: hardcode N_MPI_PROCES, or read from OCI runtime?? think monkey, think!
-LOCAL_MPI_PROCS=2
-LOCAL_MEM=2560
 
 computer_list=$(verdi computer list)
 if echo ${computer_list} | grep -q ${HQ_COMPUTER}; then
@@ -32,9 +29,5 @@ else
       --non-interactive                                               \
       --safe-interval 5.0
 fi
-
-# Start hq server with a worker
-nohup hq server start 1>$HOME/.hq-stdout 2>$HOME/.hq-stderr &
-nohup hq worker start --cpus=${LOCAL_MPI_PROCS} --resource "mem=sum(${LOCAL_MEM})" --no-detect-resources &
 
 verdi daemon start || echo "start fail"
