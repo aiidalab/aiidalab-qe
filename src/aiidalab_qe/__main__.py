@@ -24,12 +24,12 @@ def install_qe(force, profile):
 
     load_profile(profile)
     try:
-        for msg in install(force=force):
+        for msg in install_and_setup_qe_codes(computer=computer, force=force):
             click.echo(msg)
-        assert codes_are_setup()
+        assert codes_are_setup(computer=computer)
         click.secho("Codes are setup!", fg="green")
     except Exception as error:
-        raise click.ClickException(f"Failed to set up QE failed: {error}") from error
+        raise click.ClickException(f"Failed to set up QE: {error}") from error
 
 
 @cli.command()

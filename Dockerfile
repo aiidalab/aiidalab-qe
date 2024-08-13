@@ -75,7 +75,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
     bash /usr/local/bin/before-notebook.d/41_setup-hq-computer.sh && \
     python -m aiidalab_qe install-qe --computer local-hq && \
-    python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
+    # python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .

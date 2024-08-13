@@ -79,17 +79,17 @@ def install_qe():
     )
 
 
-def _code_is_setup(name):
+def _code_is_setup(name, computer):
     try:
-        load_code(f"{name}-{QE_VERSION}@localhost")
+        load_code(f"{name}-{QE_VERSION}@{computer}")
     except NotExistent:
         return False
     else:
         return True
 
 
-def codes_are_setup():
-    return all(_code_is_setup(code_name) for code_name in CODE_NAMES)
+def codes_are_setup(computer):
+    return all(_code_is_setup(code_name, computer) for code_name in CODE_NAMES)
 
 
 def _generate_header_to_setup_code():
@@ -104,7 +104,7 @@ load_profile()
     return header_code
 
 
-def _generate_string_to_setup_code(code_name, computer="localhost"):
+def _generate_string_to_setup_code(code_name, computer):
     """Generate the Python string to setup an AiiDA code for a given computer.
 
     Tries to load an existing code and if not existent,
@@ -116,7 +116,7 @@ def _generate_string_to_setup_code(code_name, computer="localhost"):
         description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
         filepath_executable = get_qe_env().joinpath("bin", f"{code_name}.x")
         default_calc_job_plugin = f"quantumespresso.{code_name}"
-        prepend_text = f'eval "$(conda shell.posix hook)"\\nconda activate {get_qe_env()}\\nexport OMP_NUM_THREADS=1'
+        prepend_text = f'eval "$(conda shell.posix hook)"\\nconda acitvate {get_qe_env()}\\nexport OMP_NUM_THREADS=1'
         python_code = """
 computer = load_computer('{}')
 code = InstalledCode(computer=computer,
@@ -142,22 +142,22 @@ code.store()
         return ""
 
 
-def setup_codes():
+def setup_codes(computer):
     python_code = _generate_header_to_setup_code()
     for code_name in CODE_NAMES:
-        python_code += _generate_string_to_setup_code(code_name)
+        python_code += _generate_string_to_setup_code(code_name, computer)
     try:
         subprocess.run(["python", "-c", python_code], capture_output=True, check=True)
-    except subprocess.CalledProcessError as error:
-        raise RuntimeError(f"Failed to setup codes: {error}") from None
+    except subprocess.CalledProcessError as err:
+        raise RuntimeError(f"Failed to setup codes, exit_code={err.returncode}, {err.stderr}") from None
 
 
-def install_and_setup(target_computer, force=False):
+def install_and_setup(computer="localhost", force=False):
     """Install Quantum ESPRESSO and the corresponding AiiDA codes.
 
     Args:
         force: Ignore previously failed attempts and install anyways.
-        target_computer: computer label in AiiDA where the code is setup for
+        computer: computer label in AiiDA where the code is setup for
     """
     # Check for "do not install file" and skip actual check. The purpose of
     # this file is to not re-try this process on every app start in case that
@@ -167,7 +167,7 @@ def install_and_setup(target_computer, force=False):
         raise RuntimeError("Installation failed in previous attempt.")
 
     yield from _install()
-    yield from _setup(target_computer)
+    yield from _setup(computer)
 
 
 def _install():
@@ -217,14 +217,14 @@ def _setup(computer):
             # present (`which conda`). If that is not the case then we assume
             # that this is a custom user environment in which case we also take
             # no further action.
-            if codes_are_setup():
+            if codes_are_setup(computer=computer):
                 return  # Already setup
 
             # After installing QE, we install the corresponding
             # AiiDA codes:
             python_code = _generate_header_to_setup_code()
             for code_name in CODE_NAMES:
-                if not _code_is_setup(code_name):
+                if not _code_is_setup(code_name, computer=computer):
                     yield f"Preparing setup script for ({code_name}) on ({computer})..."
                     code_string = _generate_string_to_setup_code(code_name, computer)
                     python_code += code_string
@@ -233,14 +233,14 @@ def _setup(computer):
                 subprocess.run(
                     ["python", "-c", python_code], capture_output=True, check=True
                 )
-            except subprocess.CalledProcessError as error:
-                raise RuntimeError(f"Failed to setup codes: {error}") from None
+            except subprocess.CalledProcessError as err:
+                raise RuntimeError(f"Failed to setup codes, exit_code={err.returncode}, {err.stderr}") from None
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
         yield "Installation was already started, waiting for it to finish..."
         with FileLock(FN_SETUP_LOCKFILE, timeout=120):
-            if not codes_are_setup():
+            if not codes_are_setup(computer=computer):
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
                 ) from None
