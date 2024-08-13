@@ -19,7 +19,7 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.panel import Panel
 from aiidalab_qe.common.widgets import HubbardWidget
-from aiidalab_qe.setup.setup_pseudos import PseudoFamily
+from aiidalab_qe.setup.pseudos import PseudoFamily
 
 from .pseudos import PseudoFamilySelector, PseudoSetter
 

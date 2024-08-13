@@ -19,7 +19,7 @@ def cli():
 @click.option("-p", "--profile", default=_DEFAULT_PROFILE)
 def install_qe(force, profile):
     from aiida import load_profile
-    from aiidalab_qe.setup.setup_codes import codes_are_setup, install
+    from aiidalab_qe.setup.codes import codes_are_setup, install
 
     load_profile(profile)
     try:
@@ -45,7 +45,7 @@ def install_pseudos(profile, source):
     otherwise download from remote repositories.
     """
     from aiida import load_profile
-    from aiidalab_qe.setup.setup_pseudos import install
+    from aiidalab_qe.setup.pseudos import install
 
     load_profile(profile)
 
@@ -68,7 +68,7 @@ def install_pseudos(profile, source):
     type=click.Path(exists=True, path_type=Path, resolve_path=True),
 )
 def download_pseudos(dest):
-    from aiidalab_qe.setup.setup_pseudos import EXPECTED_PSEUDOS, _install_pseudos
+    from aiidalab_qe.setup.pseudos import EXPECTED_PSEUDOS, _install_pseudos
 
     try:
         for progress in _install_pseudos(

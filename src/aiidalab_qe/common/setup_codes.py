@@ -4,8 +4,7 @@ from threading import Thread
 import ipywidgets as ipw
 import traitlets
 
-from ..setup import QE_VERSION
-from ..setup.setup_codes import install
+from ..setup.codes import QE_VERSION, install
 from .widgets import ProgressBar
 
 __all__ = [

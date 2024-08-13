@@ -5,7 +5,7 @@ from threading import Thread
 import ipywidgets as ipw
 import traitlets
 
-from ..setup.setup_pseudos import install, pseudos_to_install
+from ..setup.pseudos import install, pseudos_to_install
 from .widgets import ProgressBar
 
 
