@@ -10,7 +10,6 @@ from aiida_pseudo.groups.family import PseudoPotentialFamily
 from filelock import FileLock, Timeout
 
 from aiida.orm import QueryBuilder
-from aiidalab_qe.common.widgets import ProgressBar
 
 SSSP_VERSION = "1.3"
 PSEUDODOJO_VERSION = "0.4"
@@ -213,6 +212,8 @@ def install(
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
+        from aiidalab_qe.common.widgets import ProgressBar
+
         yield (
             "Installation was already started elsewhere, waiting for it to finish...",
             ProgressBar.AnimationRate(1.0),
