@@ -1,3 +1,5 @@
 """Package for the QE app CLI for setting up codes and pseudos"""
 
-__all__ = []
+from .setup_codes import QE_VERSION
+
+__all__ = ["QE_VERSION"]

@@ -11,7 +11,7 @@ from aiida.common import exceptions
 from aiida.plugins import DataFactory, GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.setup_pseudos import (
+from aiidalab_qe.setup.setup_pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
     PseudoFamily,

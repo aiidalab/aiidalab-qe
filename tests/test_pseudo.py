@@ -1,5 +1,5 @@
 import pytest
-from aiidalab_qe.common.setup_pseudos import (
+from aiidalab_qe.setup.setup_pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
     _construct_cmd,
