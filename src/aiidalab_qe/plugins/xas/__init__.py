@@ -1,9 +1,9 @@
 from importlib import resources
 
 import yaml
-from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
 from aiidalab_qe.common.panel import OutlinePanel
+from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 from aiidalab_qe.plugins import xas as xas_folder
 
 from .result import Result

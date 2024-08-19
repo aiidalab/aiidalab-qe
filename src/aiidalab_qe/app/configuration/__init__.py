@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Widgets for the submission of bands work chains.
 
 Authors: AiiDAlab team
@@ -8,10 +7,10 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida import orm
-from aiidalab_widgets_base import WizardAppWidgetStep
 
+from aiida import orm
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_widgets_base import WizardAppWidgetStep
 
 from .advanced import AdvancedSettings
 from .workflow import WorkChainSettings
@@ -111,7 +110,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
     @tl.observe("previous_step_state")
-    def _observe_previous_step_state(self, change):
+    def _observe_previous_step_state(self, _change):
         self._update_state()
 
     def get_configuration_parameters(self):

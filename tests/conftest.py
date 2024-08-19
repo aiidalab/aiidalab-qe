@@ -5,9 +5,9 @@ import pathlib
 import tempfile
 
 import pytest
-from aiida import orm
+from aiidalab_qe.setup.pseudos import SSSP_VERSION
 
-from aiidalab_qe.common.setup_pseudos import SSSP_VERSION
+from aiida import orm
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 
@@ -107,10 +107,6 @@ def generate_xy_data():
         """
         from aiida.orm import XyData
 
-        xvals = xvals
-        yvals = yvals
-        xlabel = xlabel
-        ylabel = ylabel
         xunits = "n/a"
         yunits = ["n/a"] * len(ylabel)
 
@@ -130,6 +126,7 @@ def generate_bands_data():
     def _generate_bands_data():
         """Return a `BandsData` instance with some basic `kpoints` and `bands` arrays."""
         import numpy as np
+
         from aiida.plugins import DataFactory
 
         BandsData = DataFactory("core.array.bands")
@@ -153,6 +150,7 @@ def generate_projection_data(generate_bands_data):
     def _generate_projection_data():
         """Return an ``ProjectionData`` node."""
         import numpy as np
+
         from aiida.plugins import DataFactory, OrbitalFactory
 
         ProjectionData = DataFactory("core.array.projection")
@@ -197,33 +195,34 @@ def sssp(aiida_profile, generate_upf_data):
     cutoffs = {}
     stringency = "standard"
 
-    with tempfile.TemporaryDirectory() as dirpath:
+    actinides = (
+        "Ac",
+        "Th",
+        "Pa",
+        "U",
+        "Np",
+        "Pu",
+        "Am",
+        "Cm",
+        "Bk",
+        "Cf",
+        "Es",
+        "Fm",
+        "Md",
+        "No",
+        "Lr",
+    )
+
+    with tempfile.TemporaryDirectory() as d:
+        dirpath = pathlib.Path(d)
+
         for values in elements.values():
             element = values["symbol"]
-
-            actinides = (
-                "Ac",
-                "Th",
-                "Pa",
-                "U",
-                "Np",
-                "Pu",
-                "Am",
-                "Cm",
-                "Bk",
-                "Cf",
-                "Es",
-                "Fm",
-                "Md",
-                "No",
-                "Lr",
-            )
 
             if element in actinides:
                 continue
 
             upf = generate_upf_data(element)
-            dirpath = pathlib.Path(dirpath)
             filename = dirpath / f"{element}.upf"
 
             with open(filename, "w+b") as handle:
@@ -443,6 +442,7 @@ def generate_pdos_workchain(
 
     def _generate_pdos_workchain(structure, spin_type="none"):
         import numpy as np
+
         from aiida import engine
         from aiida.orm import Dict, FolderData, RemoteData
         from aiida_quantumespresso.workflows.pdos import PdosWorkChain
@@ -630,11 +630,11 @@ def generate_qeapp_workchain(
     ):
         from copy import deepcopy
 
-        from aiida.orm.utils.serialize import serialize
-
         from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
         from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
         from aiidalab_qe.workflows import QeAppWorkChain
+
+        from aiida.orm.utils.serialize import serialize
 
         # Step 1: select structure from example
         s1 = app.structure_step

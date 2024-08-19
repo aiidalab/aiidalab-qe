@@ -1,10 +1,9 @@
 # AiiDA imports.
+# AiiDA Quantum ESPRESSO plugin inputs.
 from aiida import orm
 from aiida.common import AttributeDict
 from aiida.engine import ToContext, WorkChain, if_
 from aiida.plugins import DataFactory
-
-# AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs

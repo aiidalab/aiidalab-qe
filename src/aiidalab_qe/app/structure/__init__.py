@@ -5,9 +5,13 @@ Authors: AiiDAlab team
 
 import pathlib
 
-import aiida
 import ipywidgets as ipw
 import traitlets as tl
+
+import aiida
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common import AddingTagsEditor
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
@@ -18,10 +22,6 @@ from aiidalab_widgets_base import (
     StructureUploadWidget,
     WizardAppWidgetStep,
 )
-
-from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common import AddingTagsEditor
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.

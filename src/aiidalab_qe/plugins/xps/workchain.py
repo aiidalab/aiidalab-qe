@@ -37,14 +37,14 @@ def get_builder(codes, structure, parameters, **kwargs):
     for label in core_level_list:
         element = label.split("_")[0]
         pseudos[element] = {
-            "core_hole": [
+            "core_hole": next(
                 pseudo for pseudo in pseudo_group.nodes if pseudo.label == label
-            ][0],
-            "gipaw": [
+            ),
+            "gipaw": next(
                 pseudo
                 for pseudo in pseudo_group.nodes
                 if pseudo.label == f"{element}_gs"
-            ][0],
+            ),
         }
         correction_energies[element] = (
             all_correction_energies[label]["core"]

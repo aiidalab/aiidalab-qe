@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Widgets for the submission of bands work chains.
 
 Authors: AiiDAlab team
@@ -8,12 +7,11 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
+from IPython.display import display
+
 from aiida import orm
 from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, submit
-from aiidalab_widgets_base import WizardAppWidgetStep
-from IPython.display import display
-
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
@@ -23,6 +21,7 @@ from aiidalab_qe.common.widgets import (
     QEAppComputationalResourcesWidget,
 )
 from aiidalab_qe.workflows import QeAppWorkChain
+from aiidalab_widgets_base import WizardAppWidgetStep
 
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -138,7 +137,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.process_label,
                 self.process_description,
                 self.submit_button,
-            ]
+            ],
+            **kwargs,
         )
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
@@ -148,7 +148,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Observe the submission blockers and update the message area."""
         blockers = self.internal_submission_blockers + self.external_submission_blockers
         if any(blockers):
-            fmt_list = "\n".join((f"<li>{item}</li>" for item in sorted(blockers)))
+            fmt_list = "\n".join(f"<li>{item}</li>" for item in sorted(blockers))
             self._submission_blocker_messages.value = f"""
                 <div class="alert alert-info">
                 <strong>The submission is blocked, due to the following reason(s):</strong>
@@ -379,7 +379,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             properties_info = f", properties on {', '.join(properties)}"
 
-        label = "{} {} {}".format(formula, relax_info, properties_info)
+        label = f"{formula} {relax_info} {properties_info}"
         self.process_label.value = label
 
     def _create_builder(self) -> ProcessBuilderNamespace:

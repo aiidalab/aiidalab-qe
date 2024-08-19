@@ -1,14 +1,15 @@
 import base64
 import json
+import re
 
 import ipywidgets as ipw
 import numpy as np
 import plotly.graph_objects as go
-from aiida.orm import ProjectionData
-from aiidalab_widgets_base.utils import string_range_to_list, StatusHTML
 from IPython.display import clear_output, display
 from plotly.subplots import make_subplots
-import re
+
+from aiida.orm import ProjectionData
+from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 
 
 class BandPdosPlotly:
@@ -110,7 +111,7 @@ class BandPdosPlotly:
             return None
 
         bandyaxis = go.layout.YAxis(
-            title=dict(text="Electronic Bands (eV)", standoff=1),
+            title={"text": "Electronic Bands (eV)", "standoff": 1},
             side="left",
             showgrid=True,
             showline=True,
@@ -185,7 +186,7 @@ class BandPdosPlotly:
             for label in band_labels[1]:
                 fig.add_vline(
                     x=label,
-                    line=dict(color=self.SETTINGS["vertical_linecolor"], width=1),
+                    line={"color": self.SETTINGS["vertical_linecolor"], "width": 1},
                 )
 
             if self.project_bands:
@@ -196,9 +197,11 @@ class BandPdosPlotly:
             if self.plot_type == "pdos":
                 fig.add_vline(
                     x=0,
-                    line=dict(
-                        color=self.SETTINGS["vertical_linecolor"], width=1, dash="dot"
-                    ),
+                    line={
+                        "color": self.SETTINGS["vertical_linecolor"],
+                        "width": 1,
+                        "dash": "dot",
+                    },
                 )
 
         if self.plot_type == "combined":
@@ -274,11 +277,11 @@ class BandPdosPlotly:
                     x=x_bands_comb,
                     y=y_bands_comb - fermi_energy,
                     mode="lines",
-                    line=dict(
-                        color=colors[(spin_polarized, spin)],
-                        shape="spline",
-                        smoothing=1.3,
-                    ),
+                    line={
+                        "color": colors[(spin_polarized, spin)],
+                        "shape": "spline",
+                        "smoothing": 1.3,
+                    },
                     showlegend=False,
                 )
             )
@@ -319,7 +322,11 @@ class BandPdosPlotly:
                 y=y_data,
                 fill=fill,
                 name=trace["label"],
-                line=dict(color=trace["borderColor"], shape="spline", smoothing=1.0),
+                line={
+                    "color": trace["borderColor"],
+                    "shape": "spline",
+                    "smoothing": 1.0,
+                },
                 legendgroup=trace["label"],
             )
 
@@ -350,7 +357,7 @@ class BandPdosPlotly:
                     fill="toself",
                     legendgroup=proj_bands["label"],
                     mode="lines",
-                    line=dict(width=0, color=proj_bands["color"]),
+                    line={"width": 0, "color": proj_bands["color"]},
                     name=proj_bands["label"],
                     # If PDOS is present, use those legend entries
                     showlegend=True if self.plot_type == "bands" else False,
@@ -363,7 +370,7 @@ class BandPdosPlotly:
         self._customize_layout(fig, self._bands_xaxis, self._bands_yaxis)
         self._customize_layout(fig, self._pdos_xaxis, self._pdos_yaxis, col=2)
         fig.update_layout(
-            legend=dict(xanchor="left", x=1.06),
+            legend={"xanchor": "left", "x": 1.06},
             height=self.SETTINGS["combined_plot_height"],
             width=self.SETTINGS["combined_plot_width"],
             plot_bgcolor="white",
@@ -374,7 +381,11 @@ class BandPdosPlotly:
         fig.update_yaxes(patch=yaxis, row=row, col=col, showticklabels=True)
         fig.add_hline(
             y=0,
-            line=dict(color=self.SETTINGS["horizontal_linecolor"], width=1, dash="dot"),
+            line={
+                "color": self.SETTINGS["horizontal_linecolor"],
+                "width": 1,
+                "dash": "dot",
+            },
             row=row,
             col=col,
         )
@@ -543,14 +554,14 @@ class BandPdosWidget(ipw.VBox):
         from IPython.display import Javascript
 
         javas = Javascript(
-            """
+            f"""
             var link = document.createElement('a');
             link.href = 'data:text/json;charset=utf-8;base64,{payload}'
             link.download = "{filename}"
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            """.format(payload=payload, filename=filename)
+            """
         )
         display(javas)
 
@@ -903,13 +914,9 @@ def _curate_orbitals(orbital):
         qn_j = orbital_data["total_angular_momentum"]
         qn_l = orbital_data["angular_momentum"]
         qn_m_j = orbital_data["magnetic_number"]
-        orbital_name = "j {j} l {l} m_j{m_j}".format(j=qn_j, l=qn_l, m_j=qn_m_j)
-        orbital_name_plotly = "j={j} <i>l</i>={l} m<sub>j</sub>={m_j}".format(
-            j=HTML_TAGS.get(qn_j, qn_j),
-            l=qn_l,
-            m_j=HTML_TAGS.get(qn_m_j, qn_m_j),
-        )
-        orbital_angular_momentum = "l {l} ".format(l=qn_l)
+        orbital_name = f"j {qn_j} l {qn_l} m_j{qn_m_j}"
+        orbital_name_plotly = f"j={HTML_TAGS.get(qn_j, qn_j)} <i>l</i>={qn_l} m<sub>j</sub>={HTML_TAGS.get(qn_m_j, qn_m_j)}"
+        orbital_angular_momentum = f"l {qn_l} "
 
     return orbital_name_plotly, orbital_angular_momentum, kind_name, atom_position
 
@@ -982,7 +989,7 @@ def _projections_curated_options(
 
     curated_proj = []
     for label, (energy, proj_pdos) in _proj_pdos.items():
-        label += SPIN_LABELS[spin_type]
+        label += SPIN_LABELS[spin_type]  # noqa: PLW2901
         if projections_pdos == "pdos":
             orbital_proj_pdos = {
                 "label": label,
@@ -1054,4 +1061,4 @@ def cmap(label: str) -> str:
     ascn = sum([ord(c) for c in label])
     random.seed(ascn)
 
-    return "#%06x" % random.randint(0, 0xFFFFFF)
+    return f"#{random.randint(0, 0xFFFFFF):06x}"
