@@ -119,7 +119,7 @@ USER root
 RUN apt-get update --yes && \
     apt-get install --yes --no-install-recommends bc && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-    
+
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
 # Remove content of $HOME

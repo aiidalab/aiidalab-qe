@@ -149,7 +149,9 @@ def setup_codes(computer):
     try:
         subprocess.run(["python", "-c", python_code], capture_output=True, check=True)
     except subprocess.CalledProcessError as err:
-        raise RuntimeError(f"Failed to setup codes, exit_code={err.returncode}, {err.stderr}") from None
+        raise RuntimeError(
+            f"Failed to setup codes, exit_code={err.returncode}, {err.stderr}"
+        ) from None
 
 
 def install_and_setup(computer="localhost", force=False):
@@ -234,7 +236,9 @@ def _setup(computer):
                     ["python", "-c", python_code], capture_output=True, check=True
                 )
             except subprocess.CalledProcessError as err:
-                raise RuntimeError(f"Failed to setup codes, exit_code={err.returncode}, {err.stderr}") from None
+                raise RuntimeError(
+                    f"Failed to setup codes, exit_code={err.returncode}, {err.stderr}"
+                ) from None
 
     except Timeout:
         # Assume that the installation was triggered by a different process.

@@ -32,4 +32,3 @@ fi
 # Start hq server with a worker
 run-one-constantly hq server start 1>$HOME/.hq-stdout 2>$HOME/.hq-stderr &
 run-one-constantly hq worker start --cpus=${CPU_LIMIT} --resource "mem=sum(${MEMORY_LIMIT})" --no-detect-resources &
-
