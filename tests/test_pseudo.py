@@ -1,5 +1,5 @@
 import pytest
-from aiidalab_qe.common.setup_pseudos import (
+from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
     _construct_cmd,
@@ -11,7 +11,7 @@ from aiida import orm
 
 
 def test_setup_pseudos_cmd(tmp_path):
-    """Test _construct_cmd function in setup_pseudos.py."""
+    """Test _construct_cmd function in setup.pseudos"""
 
     # SSSP family
     pseudo_family = f"SSSP/{SSSP_VERSION}/PBE/efficiency"

@@ -1,4 +1,4 @@
-from aiidalab_qe.common.setup_pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
+from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 
 def test_protocol():

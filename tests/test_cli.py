@@ -24,7 +24,7 @@ def test_download_and_install_pseudos(tmp_path, aiida_profile, monkeypatch):
 
     Note: this test is slow, it takes about ~30 seconds to run.
     """
-    from aiidalab_qe.common.setup_pseudos import (
+    from aiidalab_qe.setup.pseudos import (
         PSEUDODOJO_VERSION,
         SSSP_VERSION,
         pseudos_to_install,
@@ -39,7 +39,7 @@ def test_download_and_install_pseudos(tmp_path, aiida_profile, monkeypatch):
     }
     # mock the EXPECTED_PSEUDOS
     monkeypatch.setattr(
-        "aiidalab_qe.common.setup_pseudos.EXPECTED_PSEUDOS",
+        "aiidalab_qe.setup.pseudos.EXPECTED_PSEUDOS",
         MOCK_EXPECTED_PSEUDOS,
     )
 

@@ -86,7 +86,7 @@ COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
-RUN fix-permissions "${CONDA_DIR}"
+
 # Remove content of $HOME
 # '-mindepth=1' ensures that we do not remove the home directory itself.
 RUN find /home/${NB_USER}/ -mindepth 1 -delete
