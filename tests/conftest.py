@@ -5,7 +5,7 @@ import pathlib
 import tempfile
 
 import pytest
-from aiidalab_qe.common.setup_pseudos import SSSP_VERSION
+from aiidalab_qe.setup.pseudos import SSSP_VERSION
 
 from aiida import orm
 
