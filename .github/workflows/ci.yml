@@ -13,7 +13,7 @@ concurrency:
 
 env:
     FORCE_COLOR: 1
-    UV_VERSION: 0.2.30
+    UV_VERSION: 0.3.0
 
 jobs:
 
