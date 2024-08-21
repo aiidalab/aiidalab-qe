@@ -5,10 +5,10 @@ import pytest
 def test_settings():
     """Test the settings of the xps app."""
 
-    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
     from ase.build import molecule
 
     from aiida.orm import StructureData
+    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 
     configure_step = ConfigureQeAppWorkChainStep()
     # set the input structure
