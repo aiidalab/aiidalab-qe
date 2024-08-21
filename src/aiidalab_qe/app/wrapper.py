@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets
+from IPython.display import Javascript, display
 
 
 def without_triggering(toggle: str):
@@ -52,7 +53,14 @@ class AppWrapperContoller:
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
-        self._view.info_container.children = [self._view.guide] if change["new"] else []
+        self._view.info_container.children = (
+            [
+                self._view.guide,
+                self._view.guide_selection,
+            ]
+            if change["new"]
+            else []
+        )
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
     @without_triggering("guide_toggle")
@@ -61,10 +69,35 @@ class AppWrapperContoller:
         self._view.info_container.children = [self._view.about] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
+    def _on_guide_select(self, change: dict):
+        """Toggle the guide section."""
+        display(
+            Javascript(f"""
+                document.querySelectorAll('.{change["old"]}').forEach((guide) => {'{'}
+                    guide.classList.remove('show');
+                {'}'});
+            """)
+        )
+        if (guide_class := change["new"]) != "none":
+            display(
+                Javascript(f"""
+                    document.querySelectorAll('.{guide_class}').forEach((guide) => {'{'}
+                        guide.classList.add('show');
+                    {'}'});
+                """)
+            )
+
+    def _on_close_first_time_info(self, _=None):
+        """Close the first time info box."""
+        self._view.first_time_users_infobox.layout.display = "none"
+        with open("first-time-user", "w") as file:
+            file.write("existing user")
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._view.guide_toggle.observe(self._on_guide_toggle, "value")
         self._view.about_toggle.observe(self._on_about_toggle, "value")
+        self._view.guide_selection.observe(self._on_guide_select, "value")
 
 
 class AppWrapperModel(traitlets.HasTraits):
@@ -85,7 +118,7 @@ class AppWrapperView(ipw.VBox):
         from datetime import datetime
 
         from importlib_resources import files
-        from IPython.display import Image, display
+        from IPython.display import Image
         from jinja2 import Environment
 
         from aiidalab_qe.app.static import templates
@@ -139,6 +172,16 @@ class AppWrapperView(ipw.VBox):
 
         self.guide = ipw.HTML(env.from_string(guide_template).render())
         self.about = ipw.HTML(env.from_string(about_template).render())
+
+        self.guide_selection = ipw.RadioButtons(
+            options=[
+                "none",
+                "relaxation",
+                "bands",
+            ],
+            description="Guides:",
+            value="none",
+        )
 
         self.info_container = InfoBox()
 
