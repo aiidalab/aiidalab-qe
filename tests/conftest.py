@@ -5,9 +5,9 @@ import pathlib
 import tempfile
 
 import pytest
-from aiidalab_qe.setup.pseudos import SSSP_VERSION
 
 from aiida import orm
+from aiidalab_qe.setup.pseudos import SSSP_VERSION
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 
@@ -630,11 +630,10 @@ def generate_qeapp_workchain(
     ):
         from copy import deepcopy
 
+        from aiida.orm.utils.serialize import serialize
         from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
         from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
         from aiidalab_qe.workflows import QeAppWorkChain
-
-        from aiida.orm.utils.serialize import serialize
 
         # Step 1: select structure from example
         s1 = app.structure_step

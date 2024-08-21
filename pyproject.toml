@@ -5,12 +5,22 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.pytest.ini_options]
+addopts = '--strict-config --strict-markers --durations=30 --durations-min=1 -ra'
+filterwarnings = [
+    'ignore:Object of type .* not in session, .* operation along .* will not proceed:',
+    'ignore:Creating AiiDA configuration:UserWarning:',
+    'ignore:metadata.*traitlets.traitlets.Unicode object:DeprecationWarning:',
+    # For some reason we get this error, see
+    # https://github.com/aiidalab/aiidalab-widgets-base/issues/551
+    'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
+]
+
 [tool.ruff]
 line-length = 88
 show-fixes = true
 output-format = "full"
 target-version = "py39"
-extend-include = ["*.ipynb"]
 
 [tool.ruff.lint]
 ignore = ["E501", "E402", "TRY003", "RUF012", "N806"]
