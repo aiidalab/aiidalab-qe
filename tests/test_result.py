@@ -43,9 +43,8 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
 
 def test_summary_view(generate_qeapp_workchain):
     """Test the report html can be properly generated."""
-    from bs4 import BeautifulSoup
-
     from aiidalab_qe.app.result.summary_viewer import SummaryView
+    from bs4 import BeautifulSoup
 
     wkchain = generate_qeapp_workchain()
     viewer = SummaryView(wkchain.node)

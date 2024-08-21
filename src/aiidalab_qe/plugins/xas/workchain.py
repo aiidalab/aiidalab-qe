@@ -1,12 +1,12 @@
 from importlib import resources
 
 import yaml
+
 from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
-from aiidalab_qe.plugins.utils import set_component_resources
-
 from aiidalab_qe.plugins import xas as xas_folder
+from aiidalab_qe.plugins.utils import set_component_resources
 
 XspectraCrystalWorkChain = WorkflowFactory("quantumespresso.xspectra.crystal")
 PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
@@ -84,6 +84,10 @@ def get_builder(codes, structure, parameters, **kwargs):
             },
         }
     }
+
+    # Ensure that VdW corrections are not applied for the core-hole SCF calculation
+    # Required to resolve issue #765 (https://github.com/aiidalab/aiidalab-qe/issues/765)
+    overrides["core"]["scf"]["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "none"
 
     builder = XspectraCrystalWorkChain.get_builder_from_protocol(
         pw_code=pw_code,

@@ -1,8 +1,9 @@
 import ipywidgets as ipw
 import pandas as pd
+from IPython.display import display
+
 from aiida.orm import QueryBuilder
 from aiidalab_qe.workflows import QeAppWorkChain
-from IPython.display import display
 
 
 class QueryInterface:

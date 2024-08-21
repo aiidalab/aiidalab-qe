@@ -5,8 +5,8 @@
 
 ## About
 
-This is a early-development implementation of an AiiDAlab application for Quantum ESPRESSO workflow.
-The app allows the execution of a workflow with Quantum ESPRESSO that includes the selection of an input structure, its relaxation, and the bands structure calculation.
+This is an AiiDAlab application for Quantum ESPRESSO workflows.
+The app allows the execution of a workflow with Quantum ESPRESSO that includes the selection of an input structure, its relaxation, the bands structure calculation, and more!
 
 **The app is currently in an early development stage!**
 
@@ -40,6 +40,16 @@ Then, you can run the integration tests with:
 ```bash
 pytest --driver Chrome tests_integration
 ```
+
+### Published Docker images
+
+Supported tags released on [Github Container Registry](https://ghcr.io/aiidalab):
+
+- `edge` – the latest commit on the default branch (`main`)
+- `latest` – the latest stable release
+- `$version` – the version of a specific release (ex. `2022.1001`)
+
+Pull requests into the default branch are further released on ghcr.io with the `pr-###` tag to simplify the testing of development versions.
 
 ## For maintainers
 

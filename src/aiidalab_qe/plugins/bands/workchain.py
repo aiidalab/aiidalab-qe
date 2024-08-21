@@ -1,4 +1,5 @@
 import numpy as np
+
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
@@ -144,7 +145,7 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
 
     # Calculate the number of points per branch and generate the kpoints
     index_offset = 0  # Start index for each segment
-    for (start, end), label_start, label_end in zip(branches, labels[:-1], labels[1:]):
+    for (start, end), label_start, _label_end in zip(branches, labels[:-1], labels[1:]):
         num_points_per_branch = points_per_branch(
             start, end, reciprocal_cell, bands_kpoints_distance
         )

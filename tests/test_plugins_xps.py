@@ -7,6 +7,7 @@ def test_settings():
 
     from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
     from ase.build import molecule
+
     from aiida.orm import StructureData
 
     configure_step = ConfigureQeAppWorkChainStep()

@@ -1,4 +1,5 @@
 import ipywidgets as ipw
+
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
 FUNCTIONAL_LINK_MAP = {

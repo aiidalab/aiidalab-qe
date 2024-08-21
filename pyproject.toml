@@ -15,3 +15,36 @@ filterwarnings = [
     # https://github.com/aiidalab/aiidalab-widgets-base/issues/551
     'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
 ]
+
+[tool.ruff]
+line-length = 88
+show-fixes = true
+output-format = "full"
+target-version = "py39"
+extend-include = ["*.ipynb"]
+
+[tool.ruff.lint]
+ignore = ["E501", "E402", "TRY003", "RUF012", "N806"]
+select = [
+  "A",    # flake8-builtins
+  "ARG",  # flake8-unused-arguments
+  "B",    # flake8-bugbear
+  "C4",   # flake8-comprehensions
+  "E",    # pycodestyle
+  "F",    # pyflakes
+  "I",    # isort
+  "N",    # pep8-naming
+  "PLE",  # pylint error rules
+  "PLW",  # pylint warning rules
+  "PLC",  # pylint convention rules
+  "RUF",  # ruff-specific rules
+  "TRY",  # Tryceratops
+  "UP"    # pyupgrade
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["aiida", "aiidalab_widgets_base", "aiida_quantumespresso"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG001"]
+"tests_integration/*" = ["ARG001"]
