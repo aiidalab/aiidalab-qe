@@ -21,7 +21,7 @@ else
       --transport core.local                                          \
       --scheduler hyperqueue                                          \
       --work-dir /home/${NB_USER}/aiida_run/                          \
-      --mpirun-command "mpirun -np {tot_num_mpiprocs}"
+      --mpirun-command "mpirun -np {num_cpus}"
 
     verdi computer configure core.local "${HQ_COMPUTER}"              \
       --non-interactive                                               \

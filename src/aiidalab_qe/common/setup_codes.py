@@ -116,7 +116,7 @@ def _generate_string_to_setup_code(code_name, computer):
         description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
         filepath_executable = get_qe_env().joinpath("bin", f"{code_name}.x")
         default_calc_job_plugin = f"quantumespresso.{code_name}"
-        prepend_text = f'eval "$(conda shell.posix hook)"\\nconda acitvate {get_qe_env()}\\nexport OMP_NUM_THREADS=1'
+        prepend_text = f'eval "$(conda shell.posix hook)"\\nconda activate {get_qe_env()}\\nexport OMP_NUM_THREADS=1'
         python_code = """
 computer = load_computer('{}')
 code = InstalledCode(computer=computer,

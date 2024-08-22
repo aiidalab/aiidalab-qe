@@ -2,6 +2,12 @@
 
 set -x
 
+# NOTE: this cgroup folder hierachy is based on cgroupv2
+# if the container is open in system where it has cgroupv1 it will fail.
+# Since the image is mostly for demo server where we know the machine and OS I supposed 
+# it should have cgroupv2 (> Kubernetes v1.25).
+# See: https://kubernetes.io/docs/concepts/architecture/cgroups/#using-cgroupv2
+
 # computer memory from runtime
 MEMORY_LIMIT=$(cat /sys/fs/cgroup/memory.max)
 
@@ -32,3 +38,9 @@ fi
 # Start hq server with a worker
 run-one-constantly hq server start 1>$HOME/.hq-stdout 2>$HOME/.hq-stderr &
 run-one-constantly hq worker start --cpus=${CPU_LIMIT} --resource "mem=sum(${MEMORY_LIMIT})" --no-detect-resources &
+
+
+# TODO: reset the default memory_per_machine and default_mpiprocs_per_machine
+# orm.Computer.collection.all()[1] # better way to get the computer with the label??
+# c.set_default_mpiprocs_per_machine = ${CPU_CLIMIT}
+# c.set_default_memery_per_machine = ${MEMORY_LIMIT}
