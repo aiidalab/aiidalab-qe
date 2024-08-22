@@ -65,7 +65,8 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
      uv pip install --system --strict --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-     "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
+     # "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
+     "aiida-hyperqueue@git+https://github.com/unkcpz/aiida-hyperqueue@Compatible-with-slurm-resources-type-setting-for-backward-compatibility"
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -106,7 +107,8 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
      uv pip install --system --strict --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-     "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
+     # "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
+     "aiida-hyperqueue@git+https://github.com/unkcpz/aiida-hyperqueue@Compatible-with-slurm-resources-type-setting-for-backward-compatibility"
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
