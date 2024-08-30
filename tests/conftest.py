@@ -380,6 +380,7 @@ def submit_app_generator(
         configure_step.advanced_settings.magnetization._set_magnetization_values(
             initial_magnetic_moments
         )
+        configure_step.advanced_settings.electron_maxstep.value = electron_maxstep
         # mimic the behavior of the smearing widget set up
         configure_step.advanced_settings.smearing.smearing.value = smearing
         configure_step.advanced_settings.smearing.degauss.value = degauss
