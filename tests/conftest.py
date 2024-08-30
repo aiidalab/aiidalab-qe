@@ -357,6 +357,7 @@ def submit_app_generator(
         tot_charge=0.0,
         vdw_corr="none",
         initial_magnetic_moments=0.0,
+        electron_maxstep=80,
     ):
         configure_step = app.configure_step
         # Settings
