@@ -210,7 +210,7 @@ class AdvancedSettings(Panel):
             lambda override: not override,
         )
 
-        #Max electron SCF steps widget
+        # Max electron SCF steps widget
         self._create_electron_maxstep_widgets()
 
         # Spin-Orbit calculation
@@ -284,7 +284,7 @@ class AdvancedSettings(Panel):
 
         # Default settings to trigger the callback
         self.reset()
-        
+
     def _create_electron_maxstep_widgets(self):
         self.electron_maxstep = ipw.BoundedIntText(
             min=20,
@@ -481,7 +481,7 @@ class AdvancedSettings(Panel):
             self.etot_conv_thr.value
         )
 
-        #Max electron SCF steps
+        # Max electron SCF steps
         parameters["pw"]["parameters"]["ELECTRONS"]["electron_maxstep"] = (
             self.electron_maxstep.value
         )
@@ -569,7 +569,7 @@ class AdvancedSettings(Panel):
                 .get("conv_thr", 0.0)
             )
 
-            #Max electron SCF steps
+            # Max electron SCF steps
             self.electron_maxstep.value = (
                 parameters.get("pw", {})
                 .get("parameters", {})
