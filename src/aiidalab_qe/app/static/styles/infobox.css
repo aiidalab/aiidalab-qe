@@ -16,3 +16,46 @@
 .info-box.in-app-guide.show {
   display: flex !important;
 }
+.first-visit-box {
+  max-width: 500px;
+  margin: 2px auto !important;
+}
+.first-visit-box button {
+  width: fit-content;
+  background: none;
+  color: black;
+  cursor: pointer !important;
+}
+.first-visit-box button:hover,
+.first-visit-box button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  color: orangered;
+}
+.first-visit-box button:active {
+  background: none;
+  color: #cc3700;
+}
+.first-visit-box .message-box,
+.first-visit-box .closing-message {
+  display: flex;
+  overflow: unset;
+}
+.first-visit-box .message-box button {
+  position: absolute;
+  top: -10px;
+  right: -5px;
+  padding: 0;
+  font-size: large;
+}
+.first-visit-box .message-box button:hover,
+.first-visit-box .message-box button:focus {
+  transform: scale(1.1);
+  -webkit-transform: scale(1.1);
+  -moz-transform: scale(1.1);
+  -ms-transform: scale(1.1);
+  -o-transform: scale(1.1);
+}
+.first-visit-box .message-box .widget-html {
+  padding-right: 20px;
+}

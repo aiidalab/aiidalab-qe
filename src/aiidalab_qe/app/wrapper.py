@@ -87,12 +87,6 @@ class AppWrapperContoller:
                 """)
             )
 
-    def _on_close_first_time_info(self, _=None):
-        """Close the first time info box."""
-        self._view.first_time_users_infobox.layout.display = "none"
-        with open("first-time-user", "w") as file:
-            file.write("existing user")
-
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._view.guide_toggle.observe(self._on_guide_toggle, "value")
@@ -122,7 +116,7 @@ class AppWrapperView(ipw.VBox):
         from jinja2 import Environment
 
         from aiidalab_qe.app.static import templates
-        from aiidalab_qe.common.infobox import InfoBox
+        from aiidalab_qe.common.infobox import FirstVisitBox, InfoBox
         from aiidalab_qe.version import __version__
 
         #################################################
@@ -139,6 +133,13 @@ class AppWrapperView(ipw.VBox):
         logo.add_class("logo")
 
         subtitle = ipw.HTML("<h3 id='subtitle'>🎉 Happy computing 🎉</h3>")
+
+        self.first_visit_infobox = FirstVisitBox("""
+            <p>
+                For first time users, click on <strong>Guide</strong> for walkthroughs
+                or <strong>About</strong> to learn about the Quantum ESPRESSO app.
+            </p>
+        """)
 
         self.guide_toggle = ipw.ToggleButton(
             button_style="",
@@ -189,6 +190,7 @@ class AppWrapperView(ipw.VBox):
             children=[
                 logo,
                 subtitle,
+                self.first_visit_infobox,
                 info_toggles,
                 self.info_container,
             ],
@@ -197,7 +199,8 @@ class AppWrapperView(ipw.VBox):
 
         loading = ipw.HTML("""
             <div id="loading">
-                Loading the app <i class="fa fa-spinner fa-spin"></i>
+                <p>Buttons will be enabled once the app is ready</p>
+                <p>Loading the app <i class="fa fa-spinner fa-spin"></i></p>
             </div>
         """)
 
