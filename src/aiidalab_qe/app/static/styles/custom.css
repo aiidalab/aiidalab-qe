@@ -1,3 +1,8 @@
+/*
+  Override Jupyter width limitation to
+  make apps take full notebook width
+*/
 .output_subarea {
   max-width: none !important;
 }
+/* end override */
