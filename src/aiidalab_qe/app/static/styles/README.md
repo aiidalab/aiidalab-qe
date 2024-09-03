@@ -1,11 +1,13 @@
 # Stylesheets for the Quantum ESPRESSO app
 
-This folder contains `css` stylesheets which may be loaded directly from the CSS folder using
+This folder contains `css` stylesheets. These can be loaded from the styles folder using
 
 ```python
-from aiidalab_widgets_base.utils.loaders import load_css_stylesheet
+from aiidalab_widgets_base.utils.loaders import load_css
 
-load_css_stylesheet(package="aiidalab_qe.app.static.styles.css", filename="<stylesheet-name>.css")
+load_css(css_path="src/aiidalab_qe/app/static/styles")  # load all stylesheets in the styles folder
+
+# or
+
+load_css(css_path="src/aiidalab_qe/app/static/styles/<stylesheet>.css") # load a single stylesheet
 ```
-
-If `filename` is not provided, all CSS stylesheets will be loaded from the `css` package.
