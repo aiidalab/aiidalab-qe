@@ -9,11 +9,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_widgets_base import WizardAppWidgetStep
-
-from .advanced import AdvancedSettings
-from .workflow import WorkChainSettings
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -24,7 +20,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     # output dictionary
     configuration_parameters = tl.Dict()
 
-    def __init__(self, **kwargs):
+    def render(self):
+        from aiidalab_qe.app.utils import get_entry_items
+
+        from .advanced import AdvancedSettings
+        from .workflow import WorkChainSettings
+
         self.workchain_settings = WorkChainSettings()
         self.advanced_settings = AdvancedSettings()
 
@@ -100,14 +101,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.confirm_button.on_click(self.confirm)
 
-        super().__init__(
-            children=[
-                self.tab,
-                self._submission_blocker_messages,
-                self.confirm_button,
-            ],
-            **kwargs,
-        )
+        self.children = [
+            self.tab,
+            self._submission_blocker_messages,
+            self.confirm_button,
+        ]
 
     @tl.observe("previous_step_state")
     def _observe_previous_step_state(self, _change):
@@ -115,7 +113,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def get_configuration_parameters(self):
         """Get the parameters of the configuration step."""
-
+        if not hasattr(self, "tab"):
+            return {}
         return {s.identifier: s.get_panel_value() for s in self.tab.children}
 
     def set_configuration_parameters(self, parameters):

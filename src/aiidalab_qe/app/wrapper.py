@@ -199,7 +199,6 @@ class AppWrapperView(ipw.VBox):
 
         loading = ipw.HTML("""
             <div id="loading">
-                <p>Buttons will be enabled once the app is ready</p>
                 <p>Loading the app <i class="fa fa-spinner fa-spin"></i></p>
             </div>
         """)

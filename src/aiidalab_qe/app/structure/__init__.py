@@ -8,20 +8,8 @@ import pathlib
 import ipywidgets as ipw
 import traitlets as tl
 
-import aiida
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common import AddingTagsEditor
-from aiidalab_widgets_base import (
-    BasicCellEditor,
-    BasicStructureEditor,
-    OptimadeQueryWidget,
-    StructureBrowserWidget,
-    StructureExamplesWidget,
-    StructureManagerWidget,
-    StructureUploadWidget,
-    WizardAppWidgetStep,
-)
+from aiida import orm
+from aiidalab_widgets_base import WizardAppWidgetStep
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
@@ -47,18 +35,45 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     structure importers and the structure editors can be extended by plugins.
     """
 
-    structure = tl.Instance(aiida.orm.StructureData, allow_none=True)
-    confirmed_structure = tl.Instance(aiida.orm.StructureData, allow_none=True)
+    structure = tl.Instance(orm.StructureData, allow_none=True)
+    confirmed_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     def __init__(self, description=None, **kwargs):
+        if description is None:
+            description = ipw.HTML(
+                """
+                <p>Select a structure from one of the following sources and then click
+                "Confirm" to go to the next step. </p><i class="fa fa-exclamation-circle"
+                aria-hidden="true"></i> Currently only three-dimensional structures are
+                supported.
+                """
+            )
+        self.description = description
+        super().__init__(**kwargs)
+
+    def render(self):
+        """docstring"""
+        from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+        from aiidalab_qe.app.utils import get_entry_items
+        from aiidalab_qe.common import AddingTagsEditor
+        from aiidalab_widgets_base import (
+            BasicCellEditor,
+            BasicStructureEditor,
+            OptimadeQueryWidget,
+            StructureBrowserWidget,
+            StructureExamplesWidget,
+            StructureManagerWidget,
+            StructureUploadWidget,
+        )
+
         importers = [
             StructureUploadWidget(title="Upload file"),
             OptimadeQueryWidget(embedded=False),
             StructureBrowserWidget(
                 title="AiiDA database",
                 query_types=(
-                    aiida.orm.StructureData,
-                    aiida.orm.CifData,
+                    orm.StructureData,
+                    orm.CifData,
                     HubbardStructureData,
                 ),
             ),
@@ -84,17 +99,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
         )
 
-        if description is None:
-            description = ipw.HTML(
-                """
-                <p>Select a structure from one of the following sources and then click
-                "Confirm" to go to the next step. </p><i class="fa fa-exclamation-circle"
-                aria-hidden="true"></i> Currently only three-dimensional structures are
-                supported.
-                """
-            )
-        self.description = description
-
         self.structure_name_text = ipw.Text(
             placeholder="[No structure selected]",
             description="Selected:",
@@ -117,16 +121,13 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         # structure manager to our 'structure' traitlet:
         ipw.dlink((self.manager, "structure_node"), (self, "structure"))
 
-        super().__init__(
-            children=[
-                self.description,
-                self.manager,
-                self.structure_name_text,
-                self.message_area,
-                self.confirm_button,
-            ],
-            **kwargs,
-        )
+        self.children = [
+            self.description,
+            self.manager,
+            self.structure_name_text,
+            self.message_area,
+            self.confirm_button,
+        ]
 
     @tl.default("state")
     def _default_state(self):

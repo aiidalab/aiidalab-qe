@@ -2,14 +2,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiida.engine import ProcessState
-from aiida.engine.processes import control
-from aiidalab_widgets_base import (
-    AiidaNodeViewWidget,
-    ProcessMonitor,
-    ProcessNodesTreeWidget,
-    WizardAppWidgetStep,
-)
+from aiidalab_widgets_base import WizardAppWidgetStep
 
 # trigger registration of the viewer widget:
 from .workchain_viewer import WorkChainViewer  # noqa: F401
@@ -22,7 +15,13 @@ PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     process = tl.Unicode(allow_none=True)
 
-    def __init__(self, **kwargs):
+    def render(self):
+        from aiidalab_widgets_base import (
+            AiidaNodeViewWidget,
+            ProcessMonitor,
+            ProcessNodesTreeWidget,
+        )
+
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink(
             (self, "process"),
@@ -57,15 +56,13 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self.kill_button.on_click(self._on_click_kill_button)
         self.process_info = ipw.HTML()
 
-        super().__init__(
-            [
-                ipw.HBox(children=[self.kill_button, self.process_info]),
-                self.process_status,
-            ],
-            **kwargs,
-        )
+        self.children = [
+            ipw.HBox(children=[self.kill_button, self.process_info]),
+            self.process_status,
+        ]
 
         self._update_kill_button_layout()
+        self.observe(self._observe_process, "process")
 
     def can_reset(self):
         "Do not allow reset while process is running."
@@ -76,6 +73,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
     def _update_state(self):
         """Based on the process state, update the state of the step."""
+        from aiida.engine import ProcessState
+
         if self.process is None:
             self.state = self.State.INIT
         else:
@@ -124,13 +123,14 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         """callback for the kill button.
         First kill the process, then update the kill button layout.
         """
+        from aiida.engine.processes import control
+
         workchain = [orm.load_node(self.process)]
         control.kill_processes(workchain)
 
         # update the kill button layout
         self._update_kill_button_layout()
 
-    @tl.observe("process")
     def _observe_process(self, _):
         """Callback for when the process is changed."""
         # The order of the following calls matters,

@@ -5,19 +5,18 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
-from aiida.orm import load_node
-from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
-from aiidalab_qe.app.structure import StructureSelectionStep
-from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.common import QeAppWorkChainSelector
-from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
-
 
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
 
     def __init__(self, qe_auto_setup=True):
+        from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+        from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
+        from aiidalab_qe.app.structure import StructureSelectionStep
+        from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
+        from aiidalab_qe.common import QeAppWorkChainSelector
+        from aiidalab_widgets_base import WizardAppWidget
+
         # Create the application steps
         self.structure_step = StructureSelectionStep(auto_advance=True)
         self.structure_step.observe(self._observe_structure_selection, "structure")
@@ -85,6 +84,8 @@ class App(ipw.VBox):
             ]
         )
 
+        self._wizard_app_widget.selected_index = None
+
     @property
     def steps(self):
         return self._wizard_app_widget.steps
@@ -100,6 +101,8 @@ class App(ipw.VBox):
 
     def _observe_selected_index(self, change):
         """Check unsaved change in the step when leaving the step."""
+        from aiidalab_widgets_base import WizardAppWidgetStep
+
         # no accordion tab is selected
         if not change["new"]:
             return
@@ -120,6 +123,7 @@ class App(ipw.VBox):
         self.submit_step.external_submission_blockers = blockers
 
     def _observe_process_selection(self, change):
+        from aiida.orm import load_node
         from aiida.orm.utils.serialize import deserialize_unsafe
 
         if change["old"] == change["new"]:
