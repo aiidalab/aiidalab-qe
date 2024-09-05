@@ -1,6 +1,6 @@
 import shutil
 import typing as t
-from importlib import resources
+from importlib.resources import files
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -14,7 +14,7 @@ from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
 from aiida.orm.utils.serialize import deserialize_unsafe
-from aiidalab_qe.app import static
+from aiidalab_qe.app.static import styles, templates
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
@@ -175,8 +175,8 @@ class WorkChainOutputs(ipw.VBox):
             )
             final_calcjob = self._get_final_calcjob(node)
             env = Environment()
-            template = resources.read_text(static, "workflow_failure.jinja")
-            style = resources.read_text(static, "style.css")
+            template = files(templates).joinpath("workflow_failure.jinja").read_text()
+            style = files(styles).joinpath("style.css").read_text()
             output = ipw.HTML(
                 env.from_string(template).render(
                     style=style,
