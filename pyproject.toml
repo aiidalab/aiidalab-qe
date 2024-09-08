@@ -8,12 +8,17 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 addopts = '--strict-config --strict-markers --durations=30 --durations-min=1 -ra'
 filterwarnings = [
-    'ignore:Object of type .* not in session, .* operation along .* will not proceed:',
+    # This is needed since SQLAlchemy 2.0, see
+    # https://github.com/aiidalab/aiidalab-widgets-base/issues/605
+    'ignore:Object of type.*not in session,.*operation along.*will not proceed:sqlalchemy.exc.SAWarning',
     'ignore:Creating AiiDA configuration:UserWarning:',
     'ignore:metadata.*traitlets.traitlets.Unicode object:DeprecationWarning:',
     # For some reason we get this error, see
     # https://github.com/aiidalab/aiidalab-widgets-base/issues/551
     'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
+    "ignore::cryptography.utils.CryptographyDeprecationWarning:",
+    # This popped up in spglib 2.5. Since we still try to support spglib v1,
+    "ignore:dict interface.*is deprecated.Use attribute interface:DeprecationWarning:spglib",
 ]
 
 [tool.ruff]
