@@ -437,8 +437,22 @@ class AddingTagsEditor(ipw.VBox):
     input_selection = traitlets.List(traitlets.Int, allow_none=True)
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
-    def __init__(self, title=""):
+    def __init__(self, title="", **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
         self.title = title
+
+        super().__init__(
+            children=[LoadingWidget("Loading tags editor")],
+            **kwargs,
+        )
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
         self._status_message = StatusHTML()
         self.atom_selection = ipw.Text(
             description="Index of atoms", value="", layout={"width": "initial"}
@@ -488,28 +502,29 @@ class AddingTagsEditor(ipw.VBox):
         self.reset_tags.on_click(self._display_table)
         self.reset_all_tags.on_click(self._display_table)
         self.select_periodicity.on_click(self._select_periodicity)
-        super().__init__(
-            children=[
-                ipw.HTML(
-                    "<b>Adding a tag to atoms</b>",
-                ),
-                ipw.HBox(
-                    [
-                        self.atom_selection,
-                        self.from_selection,
-                        self.tag,
-                    ]
-                ),
-                self.tag_display,
-                ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
-                self._status_message,
-                ipw.HTML(
-                    "<b>Define periodicity</b>",
-                ),
-                self.periodicity,
-                self.select_periodicity,
-            ]
-        )
+
+        self.children = [
+            ipw.HTML(
+                "<b>Adding a tag to atoms</b>",
+            ),
+            ipw.HBox(
+                [
+                    self.atom_selection,
+                    self.from_selection,
+                    self.tag,
+                ]
+            ),
+            self.tag_display,
+            ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
+            self._status_message,
+            ipw.HTML(
+                "<b>Define periodicity</b>",
+            ),
+            self.periodicity,
+            self.select_periodicity,
+        ]
+
+        self.rendered = True
 
     def _display_table(self, _=None):
         """Function to control tag_display
@@ -1320,3 +1335,17 @@ class HubbardWidget(ipw.VBox):
         else:
             eigenvalues_dict = {}
         return eigenvalues_dict
+
+
+class LoadingWidget(ipw.HBox):
+    """Widget for displaying a loading spinner."""
+
+    def __init__(self, message="Loading", **kwargs):
+        super().__init__(
+            children=[
+                ipw.Label(message),
+                ipw.HTML("<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>"),
+            ],
+            **kwargs,
+        )
+        self.add_class("loading")

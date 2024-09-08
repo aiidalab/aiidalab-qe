@@ -86,6 +86,8 @@ class App(ipw.VBox):
 
         self._wizard_app_widget.selected_index = None
 
+        # TODO disable other panels until required components are rendered
+
     @property
     def steps(self):
         return self._wizard_app_widget.steps
@@ -104,9 +106,13 @@ class App(ipw.VBox):
         from aiidalab_widgets_base import WizardAppWidgetStep
 
         # no accordion tab is selected
-        if not change["new"]:
+        if change["new"] is None:
             return
         new_idx = change["new"]
+
+        step = self.steps[new_idx][1]
+        step.render()
+
         # only when entering the submit step, check and udpate the blocker messages
         # steps[new_idx][0] is the title of the step
         if self.steps[new_idx][1] is not self.submit_step:

@@ -38,11 +38,16 @@
   margin-bottom: 0.5em;
 }
 
-#loading {
-  text-align: center;
+.loading {
+  margin: 0 auto;
+  padding: 5px;
   font-size: large;
-  margin-top: -1rem;
-  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+.warning {
+  color: red;
+  font-weight: bold;
 }
 
 footer {

@@ -39,6 +39,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     confirmed_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     def __init__(self, description=None, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
         if description is None:
             description = ipw.HTML(
                 """
@@ -49,10 +51,17 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 """
             )
         self.description = description
-        super().__init__(**kwargs)
+        super().__init__(
+            children=[LoadingWidget("Loading structure selection panel")],
+            **kwargs,
+        )
+        self.rendered = False
 
     def render(self):
         """docstring"""
+        if self.rendered:
+            return
+
         from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
         from aiidalab_qe.app.utils import get_entry_items
         from aiidalab_qe.common import AddingTagsEditor
@@ -79,25 +88,22 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             ),
             StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
+
         # add plugin specific structure importers
-        entries = get_entry_items("aiidalab_qe.properties", "importer")
-        importers.extend([entry_point() for entry_point in entries.values()])
-        # add plugin specific structure editors
+        # entries = get_entry_items("aiidalab_qe.properties", "importer")
+        # importers.extend([entry_point() for entry_point in entries.values()])
+
         editors = [
             BasicCellEditor(title="Edit cell"),
             BasicStructureEditor(title="Edit structure"),
             AddingTagsEditor(title="Edit StructureData"),
         ]
-        entries = get_entry_items("aiidalab_qe.properties", "editor")
-        editors.extend([entry_point() for entry_point in entries.values()])
+
+        # add plugin specific structure editors
+        # entries = get_entry_items("aiidalab_qe.properties", "editor")
+        # editors.extend([entry_point() for entry_point in entries.values()])
         #
-        self.manager = StructureManagerWidget(
-            importers=importers,
-            editors=editors,
-            node_class="StructureData",
-            storable=False,
-            configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
-        )
+        self.manager = StructureManagerWidget()
 
         self.structure_name_text = ipw.Text(
             placeholder="[No structure selected]",
@@ -128,6 +134,16 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.message_area,
             self.confirm_button,
         ]
+
+        self.manager.render(
+            importers=importers,
+            editors=editors,
+            node_class="StructureData",
+            storable=False,
+            configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
+        )
+
+        self.rendered = True
 
     @tl.default("state")
     def _default_state(self):

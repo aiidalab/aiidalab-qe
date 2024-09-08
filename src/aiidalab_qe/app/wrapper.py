@@ -117,6 +117,7 @@ class AppWrapperView(ipw.VBox):
 
         from aiidalab_qe.app.static import templates
         from aiidalab_qe.common.infobox import FirstVisitBox, InfoBox
+        from aiidalab_qe.common.widgets import LoadingWidget
         from aiidalab_qe.version import __version__
 
         #################################################
@@ -197,13 +198,7 @@ class AppWrapperView(ipw.VBox):
         )
         header.add_class("app-header")
 
-        loading = ipw.HTML("""
-            <div id="loading">
-                <p>Loading the app <i class="fa fa-spinner fa-spin"></i></p>
-            </div>
-        """)
-
-        self.main = ipw.VBox(children=[loading])
+        self.main = ipw.VBox(children=[LoadingWidget("Loading the app")])
 
         current_year = datetime.now().year
         footer = ipw.HTML(f"""
