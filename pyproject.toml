@@ -10,7 +10,7 @@ addopts = '--strict-config --strict-markers --durations=30 --durations-min=1 -ra
 filterwarnings = [
     # This is needed since SQLAlchemy 2.0, see
     # https://github.com/aiidalab/aiidalab-widgets-base/issues/605
-    'ignore:Object of type.*not in session,.*operation along.*will not proceed:sqlalchemy.exc.SAWarning',
+    'ignore:Object of type.*not in session,.*operation along.*will not proceed:',
     'ignore:Creating AiiDA configuration:UserWarning:',
     'ignore:metadata.*traitlets.traitlets.Unicode object:DeprecationWarning:',
     # For some reason we get this error, see
@@ -18,7 +18,7 @@ filterwarnings = [
     'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
     "ignore::cryptography.utils.CryptographyDeprecationWarning:",
     # This popped up in spglib 2.5. Since we still try to support spglib v1,
-    "ignore:dict interface.*is deprecated.Use attribute interface:DeprecationWarning:spglib",
+    "ignore:dict interface.*is deprecated.Use attribute interface:DeprecationWarning:",
 ]
 
 [tool.ruff]
