@@ -39,14 +39,14 @@ def aiidalab_exec(docker_compose):
             opts = f"{opts} --workdir={workdir}"
         command = f"exec {opts} aiidalab {command}"
 
-        return docker_compose.execute(command, **kwargs)
+        return docker_compose.execute(command, **kwargs).decode().strip()
 
     return execute
 
 
 @pytest.fixture(scope="session")
 def nb_user(aiidalab_exec):
-    return aiidalab_exec("bash -c 'echo \"${NB_USER}\"'").decode().strip()
+    return aiidalab_exec("bash -c 'echo \"${NB_USER}\"'")
 
 
 @pytest.fixture(scope="session")
