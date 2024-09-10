@@ -6,6 +6,8 @@ set -x
 # if the container is open in system where it has cgroupv1 it will fail.
 # Since the image is mostly for demo server where we know the machine and OS I supposed 
 # it should have cgroupv2 (> Kubernetes v1.25).
+# We only build the server for demo server so it does not require user to have new cgroup.
+# But for developers, please update your cgroup version to v2.
 # See: https://kubernetes.io/docs/concepts/architecture/cgroups/#using-cgroupv2
 
 # computer memory from runtime

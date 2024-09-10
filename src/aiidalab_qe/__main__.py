@@ -18,13 +18,13 @@ def cli():
 @click.option("-f", "--force", is_flag=True)
 @click.option("--computer")
 @click.option("-p", "--profile", default=_DEFAULT_PROFILE)
-def install_qe(force, profile):
+def install_qe(force, profile, computer):
     from aiida import load_profile
-    from aiidalab_qe.setup.codes import codes_are_setup, install
+    from aiidalab_qe.setup.codes import codes_are_setup, install_and_setup
 
     load_profile(profile)
     try:
-        for msg in install_and_setup_qe_codes(computer=computer, force=force):
+        for msg in install_and_setup(computer=computer, force=force):
             click.echo(msg)
         assert codes_are_setup(computer=computer)
         click.secho("Codes are setup!", fg="green")
