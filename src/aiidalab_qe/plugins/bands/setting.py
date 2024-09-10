@@ -34,12 +34,14 @@ class Setting(Panel):
             ],
             value="hexagonal",
         )
-        self.children = [
-            self.settings_title,
-            self.kpath_2d_help,
-            self.kpath_2d,
-        ]
-        super().__init__(**kwargs)
+        super().__init__(
+            children=[
+                self.settings_title,
+                self.kpath_2d_help,
+                self.kpath_2d,
+            ],
+            **kwargs,
+        )
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""

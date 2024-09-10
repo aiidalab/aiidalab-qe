@@ -33,7 +33,7 @@ class Panel(ipw.VBox):
         if identifier:
             self.identifier = identifier
         super().__init__(
-            children=self.children,
+            children=kwargs.pop("children", []),
             **kwargs,
         )
 
@@ -79,9 +79,7 @@ class OutlinePanel(Panel):
         )
         self.accordion = ipw.Accordion(children=[self.description_html])
         self.accordion.selected_index = None
-        # self.children = [self.run, self.accordion]
-        self.children = [self.run, self.description_html]
-        super().__init__(**kwargs)
+        super().__init__(children=[self.run, self.description_html], **kwargs)
 
     def get_panel_value(self):
         return {f"{self.identifier}_run": self.run.value}
@@ -104,13 +102,15 @@ class ResultPanel(Panel):
 
     def __init__(self, node=None, **kwargs):
         self.node = node
-        self.children = [
-            ipw.VBox(
-                [ipw.Label(f"{self.title} not available.")],
-                layout=ipw.Layout(min_height="380px"),
-            )
-        ]
-        super().__init__(**kwargs)
+        super().__init__(
+            children=[
+                ipw.VBox(
+                    [ipw.Label(f"{self.title} not available.")],
+                    layout=ipw.Layout(min_height="380px"),
+                )
+            ],
+            **kwargs,
+        )
 
     @property
     def outputs(self):

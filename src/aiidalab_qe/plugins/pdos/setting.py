@@ -34,11 +34,13 @@ class Setting(Panel):
         self.mesh_grid = ipw.HTML()
         self.nscf_kpoints_distance.observe(self._display_mesh, "value")
         self.nscf_kpoints_distance.observe(self._procotol_changed, "change")
-        self.children = [
-            self.settings_title,
-            ipw.HBox([self.nscf_kpoints_distance, self.mesh_grid]),
-        ]
-        super().__init__(**kwargs)
+        super().__init__(
+            children=[
+                self.settings_title,
+                ipw.HBox([self.nscf_kpoints_distance, self.mesh_grid]),
+            ],
+            **kwargs,
+        )
 
     @tl.observe("protocol")
     def _procotol_changed(self, change):

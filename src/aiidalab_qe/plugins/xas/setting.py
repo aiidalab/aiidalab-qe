@@ -190,23 +190,26 @@ class Setting(Panel):
             style={"description_width": "initial"},
         )
 
-        self.children = [
-            # self.structure_title,
-            # self.structure_help,
-            # ipw.HBox(
-            #     [self.structure_type],
-            # ),
-            self.element_selection_title,
-            self.element_selection_help,
-            ipw.HBox([self.element_and_ch_treatment], layout=ipw.Layout(width="95%")),
-            self.supercell_title,
-            self.supercell_help,
-            ipw.HBox(
-                [self.supercell_min_parameter],
-            ),
-        ]
-
-        super().__init__(**kwargs)
+        super().__init__(
+            children=[
+                # self.structure_title,
+                # self.structure_help,
+                # ipw.HBox(
+                #     [self.structure_type],
+                # ),
+                self.element_selection_title,
+                self.element_selection_help,
+                ipw.HBox(
+                    [self.element_and_ch_treatment], layout=ipw.Layout(width="95%")
+                ),
+                self.supercell_title,
+                self.supercell_help,
+                ipw.HBox(
+                    [self.supercell_min_parameter],
+                ),
+            ],
+            **kwargs,
+        )
 
     def get_panel_value(self):
         elements_list = []

@@ -132,23 +132,25 @@ class Setting(Panel):
             value=False,
         )
 
-        self.children = [
-            self.structure_title,
-            self.structure_help,
-            ipw.HBox(
-                [self.structure_type],
-            ),
-            self.pseudo_title,
-            self.pseudo_help,
-            self.pseudo_group,
-            self.core_level_title,
-            self.core_level_help,
-            ipw.HBox(
-                [self.core_level_list],
-            ),
-        ]
         self.pseudo_group.observe(self._update_pseudo, names="value")
-        super().__init__(**kwargs)
+        super().__init__(
+            children=[
+                self.structure_title,
+                self.structure_help,
+                ipw.HBox(
+                    [self.structure_type],
+                ),
+                self.pseudo_title,
+                self.pseudo_help,
+                self.pseudo_group,
+                self.core_level_title,
+                self.core_level_help,
+                ipw.HBox(
+                    [self.core_level_list],
+                ),
+            ],
+            **kwargs,
+        )
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
