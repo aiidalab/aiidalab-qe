@@ -1,6 +1,7 @@
 import subprocess
 from pathlib import Path
 from shutil import which
+
 from filelock import FileLock, Timeout
 
 from aiida.common.exceptions import NotExistent
@@ -241,4 +242,3 @@ def _setup(computer):
                 raise RuntimeError(
                     "Installation process did not finish in the expected time."
                 ) from None
-

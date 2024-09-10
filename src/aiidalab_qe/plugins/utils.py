@@ -7,7 +7,9 @@ def set_component_resources(component, code_info):
         code: orm.Code = code_info["code"]
         if code.computer.scheduler_type == "hyperqueue":
             component.metadata.options.resources = {
-                "num_cpus": code_info["nodes"] * code_info["ntasks_per_node"] * code_info["cpus_per_task"]
+                "num_cpus": code_info["nodes"]
+                * code_info["ntasks_per_node"]
+                * code_info["cpus_per_task"]
             }
         else:
             # XXX: jyu should properly deal with None type of scheduler_type which can be "core.direct" (will be replaced by hyperqueue) and "core.slurm" ...
