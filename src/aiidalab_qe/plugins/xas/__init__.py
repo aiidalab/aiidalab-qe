@@ -18,13 +18,14 @@ class XasOutline(OutlinePanel):
     help = """"""
 
 
-xs_code = QEAppComputationalResourcesWidget(
-    description="xspectra.x", default_calc_job_plugin="quantumespresso.xspectra"
-)
-
 xas = {
     "outline": XasOutline,
-    "code": {"xspectra": xs_code},
+    "code": lambda: {
+        "xspectra": QEAppComputationalResourcesWidget(
+            description="xspectra.x",
+            default_calc_job_plugin="quantumespresso.xspectra",
+        )
+    },
     "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,

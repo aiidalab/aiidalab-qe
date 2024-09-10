@@ -20,32 +20,29 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     # output dictionary
     configuration_parameters = tl.Dict()
 
+    def __init__(self, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
+        super().__init__(
+            children=[LoadingWidget("Loading workflow configuration widget")],
+            **kwargs,
+        )
+
+        self.rendered = False
+
     def render(self):
+        if self.rendered:
+            return
+
         from aiidalab_qe.app.utils import get_entry_items
 
         from .advanced import AdvancedSettings
+        from .model import config_model
         from .workflow import WorkChainSettings
 
         self.workchain_settings = WorkChainSettings()
         self.advanced_settings = AdvancedSettings()
 
-        ipw.dlink(
-            (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings, "protocol"),
-        )
-        ipw.dlink(
-            (self.workchain_settings.spin_type, "value"),
-            (self.advanced_settings, "spin_type"),
-        )
-        ipw.dlink(
-            (self.workchain_settings.electronic_type, "value"),
-            (self.advanced_settings, "electronic_type"),
-        )
-        ipw.dlink(
-            (self, "input_structure"),
-            (self.advanced_settings, "input_structure"),
-        )
-        #
         self.built_in_settings = [
             self.workchain_settings,
             self.advanced_settings,
@@ -53,7 +50,9 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.tab = ipw.Tab(
             children=self.built_in_settings,
             layout=ipw.Layout(min_height="250px"),
+            selected_index=None,
         )
+        self.tab.observe(self._on_tab_change, "selected_index")
 
         self.tab.set_title(0, "Basic settings")
         self.tab.set_title(1, "Advanced settings")
@@ -69,6 +68,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # list of trailets to link
         # if new trailets are added to the settings, they need to be added here
         trailets_list = ["input_structure", "protocol", "electronic_type", "spin_type"]
+
+        self.tab.selected_index = 0
 
         # then add plugin specific settings
         entries = get_entry_items("aiidalab_qe.properties", "setting")
@@ -106,6 +107,31 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._submission_blocker_messages,
             self.confirm_button,
         ]
+
+        # Link to model
+        ipw.dlink(
+            (config_model, "prev_step_state"),
+            (self, "previous_step_state"),
+        )
+        ipw.dlink(
+            (config_model, "input_structure"),
+            (self, "input_structure"),
+        )
+        ipw.dlink(
+            (self, "state"),
+            (config_model, "state"),
+        )
+        ipw.dlink(
+            (self, "configuration_parameters"),
+            (config_model, "configuration_parameters"),
+        )
+
+        self.rendered = True
+
+    def _on_tab_change(self, change):
+        if (tab := change["new"]) is None:
+            return
+        self.tab.children[tab].render()
 
     @tl.observe("previous_step_state")
     def _observe_previous_step_state(self, _change):
@@ -161,7 +187,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.input_structure = None
             for _, settings in self.settings.items():
-                settings.reset()
+                if settings.rendered:
+                    settings.reset()
 
     def _update_panel(self, _=None):
         """Dynamic add/remove the panel based on the selected properties."""

@@ -51,6 +51,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 """
             )
         self.description = description
+
         super().__init__(
             children=[LoadingWidget("Loading structure selection panel")],
             **kwargs,
@@ -75,6 +76,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             StructureUploadWidget,
         )
 
+        from .model import struct_model
+
         importers = [
             StructureUploadWidget(title="Upload file"),
             OptimadeQueryWidget(embedded=False),
@@ -90,8 +93,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         ]
 
         # add plugin specific structure importers
-        # entries = get_entry_items("aiidalab_qe.properties", "importer")
-        # importers.extend([entry_point() for entry_point in entries.values()])
+        entries = get_entry_items("aiidalab_qe.properties", "importer")
+        importers.extend([entry_point() for entry_point in entries.values()])
 
         editors = [
             BasicCellEditor(title="Edit cell"),
@@ -100,8 +103,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         ]
 
         # add plugin specific structure editors
-        # entries = get_entry_items("aiidalab_qe.properties", "editor")
-        # editors.extend([entry_point() for entry_point in entries.values()])
+        entries = get_entry_items("aiidalab_qe.properties", "editor")
+        editors.extend([entry_point() for entry_point in entries.values()])
         #
         self.manager = StructureManagerWidget()
 
@@ -140,7 +143,21 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             editors=editors,
             node_class="StructureData",
             storable=False,
-            configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
+            configuration_tabs=[
+                "Cell",
+                "Selection",
+                "Appearance",
+                "Download",
+            ],
+        )
+
+        ipw.dlink(
+            (self, "state"),
+            (struct_model, "state"),
+        )
+        ipw.dlink(
+            (self, "confirmed_structure"),
+            (struct_model, "confirmed_structure"),
         )
 
         self.rendered = True

@@ -57,9 +57,25 @@ class AdvancedSettings(Panel):
     value = tl.Dict()
 
     def __init__(self, default_protocol=None, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
         self._default_protocol = (
             default_protocol or DEFAULT_PARAMETERS["workchain"]["protocol"]
         )
+
+        super().__init__(
+            layout={"justify_content": "space-between", **kwargs.get("layout", {})},
+            children=[LoadingWidget("Loading advanced settings widget")],
+            **kwargs,
+        )
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
+        from .model import config_model
 
         # clean-up workchain settings
         self.clean_workdir = ipw.Checkbox(
@@ -271,13 +287,28 @@ class AdvancedSettings(Panel):
             self.pseudo_family_selector,
             self.pseudo_setter,
         ]
-        super().__init__(
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
+
+        ipw.dlink(
+            (config_model, "workchain_protocol"),
+            (self, "protocol"),
+        )
+        ipw.dlink(
+            (config_model, "spin_type"),
+            (self, "spin_type"),
+        )
+        ipw.dlink(
+            (config_model, "electronic_type"),
+            (self, "electronic_type"),
+        )
+        ipw.dlink(
+            (config_model, "input_structure"),
+            (self, "input_structure"),
         )
 
         # Default settings to trigger the callback
         self.reset()
+
+        self.rendered = True
 
     def set_value_and_step(self, attribute, value):
         """

@@ -11,9 +11,13 @@ class App(ipw.VBox):
 
     def __init__(self, qe_auto_setup=True):
         from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+        from aiidalab_qe.app.configuration.model import config_model
         from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
+        from aiidalab_qe.app.result.model import results_model
         from aiidalab_qe.app.structure import StructureSelectionStep
+        from aiidalab_qe.app.structure.model import struct_model
         from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
+        from aiidalab_qe.app.submission.model import submit_model
         from aiidalab_qe.common import QeAppWorkChainSelector
         from aiidalab_widgets_base import WizardAppWidget
 
@@ -27,30 +31,30 @@ class App(ipw.VBox):
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep()
 
-        # Link the application steps
+        # Link the models of the application steps
         ipw.dlink(
-            (self.structure_step, "state"),
-            (self.configure_step, "previous_step_state"),
+            (struct_model, "state"),
+            (config_model, "prev_step_state"),
         )
         ipw.dlink(
-            (self.structure_step, "confirmed_structure"),
-            (self.submit_step, "input_structure"),
+            (struct_model, "confirmed_structure"),
+            (submit_model, "input_structure"),
         )
         ipw.dlink(
-            (self.structure_step, "confirmed_structure"),
-            (self.configure_step, "input_structure"),
+            (struct_model, "confirmed_structure"),
+            (config_model, "input_structure"),
         )
         ipw.dlink(
-            (self.configure_step, "state"),
-            (self.submit_step, "previous_step_state"),
+            (config_model, "state"),
+            (submit_model, "prev_step_state"),
         )
         ipw.dlink(
-            (self.configure_step, "configuration_parameters"),
-            (self.submit_step, "input_parameters"),
+            (config_model, "configuration_parameters"),
+            (submit_model, "input_parameters"),
         )
         ipw.dlink(
-            (self.submit_step, "process"),
-            (self.results_step, "process"),
+            (submit_model, "process"),
+            (results_model, "process"),
             transform=lambda node: node.uuid if node is not None else None,
         )
 

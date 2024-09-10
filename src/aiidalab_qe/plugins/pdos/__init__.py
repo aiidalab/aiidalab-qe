@@ -11,20 +11,18 @@ class PdosOutline(OutlinePanel):
     help = """"""
 
 
-dos_code = QEAppComputationalResourcesWidget(
-    description="dos.x",
-    default_calc_job_plugin="quantumespresso.dos",
-)
-
-projwfc_code = QEAppComputationalResourcesWidget(
-    description="projwfc.x",
-    default_calc_job_plugin="quantumespresso.projwfc",
-)
-
-
 pdos = {
     "outline": PdosOutline,
-    "code": {"dos": dos_code, "projwfc": projwfc_code},
+    "code": lambda: {
+        "dos": QEAppComputationalResourcesWidget(
+            description="dos.x",
+            default_calc_job_plugin="quantumespresso.dos",
+        ),
+        "projwfc": QEAppComputationalResourcesWidget(
+            description="projwfc.x",
+            default_calc_job_plugin="quantumespresso.projwfc",
+        ),
+    },
     "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,

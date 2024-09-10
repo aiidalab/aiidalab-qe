@@ -58,6 +58,21 @@ class WorkChainSettings(Panel):
     )
 
     def __init__(self, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
+        super().__init__(
+            children=[LoadingWidget("Loading workchain settings widget")],
+            **kwargs,
+        )
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
+        from .model import config_model
+
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type = ipw.ToggleButtons(
             options=[
@@ -117,6 +132,7 @@ class WorkChainSettings(Panel):
                 self.properties[name].run.observe(update_reminder_info, "value")
 
         self.property_children.append(self.properties_help)
+
         self.children = [
             self.structure_title,
             self.structure_help,
@@ -146,9 +162,21 @@ class WorkChainSettings(Panel):
             self.workchain_protocol,
             self.protocol_help,
         ]
-        super().__init__(
-            **kwargs,
+
+        ipw.dlink(
+            (self.workchain_protocol, "value"),
+            (config_model, "workchain_protocol"),
         )
+        ipw.dlink(
+            (self.spin_type, "value"),
+            (config_model, "spin_type"),
+        )
+        ipw.dlink(
+            (self.electronic_type, "value"),
+            (config_model, "electronic_type"),
+        )
+
+        self.rendered = True
 
     def get_panel_value(self):
         # Work chain settings
