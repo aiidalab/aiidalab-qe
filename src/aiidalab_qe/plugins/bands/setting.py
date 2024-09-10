@@ -2,14 +2,17 @@
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import Panel
+from aiidalab_qe.common.panel import SettingPanel
 
 
-class Setting(Panel):
+class Setting(SettingPanel):
     title = "Bands Structure"
     identifier = "bands"
 
-    def __init__(self, **kwargs):
+    def render(self):
+        if self.rendered:
+            return
+
         self.settings_title = ipw.HTML(
             """<div style="padding-top: 0px; padding-bottom: 0px">
             <h4>Settings</h4></div>"""
@@ -34,14 +37,14 @@ class Setting(Panel):
             ],
             value="hexagonal",
         )
-        super().__init__(
-            children=[
-                self.settings_title,
-                self.kpath_2d_help,
-                self.kpath_2d,
-            ],
-            **kwargs,
-        )
+
+        self.children = [
+            self.settings_title,
+            self.kpath_2d_help,
+            self.kpath_2d,
+        ]
+
+        self.rendered = True
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""

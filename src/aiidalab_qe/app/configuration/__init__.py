@@ -52,10 +52,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             layout=ipw.Layout(min_height="250px"),
             selected_index=None,
         )
-        self.tab.observe(self._on_tab_change, "selected_index")
-
         self.tab.set_title(0, "Basic settings")
         self.tab.set_title(1, "Advanced settings")
+
+        self.tab.observe(self._on_tab_change, "selected_index")
+
+        self.tab.selected_index = 0
 
         # store the property identifier and setting panel for all plugins
         # only show the setting panel when the corresponding property is selected
@@ -64,12 +66,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
-
-        # list of trailets to link
-        # if new trailets are added to the settings, they need to be added here
-        trailets_list = ["input_structure", "protocol", "electronic_type", "spin_type"]
-
-        self.tab.selected_index = 0
 
         # then add plugin specific settings
         entries = get_entry_items("aiidalab_qe.properties", "setting")
@@ -81,13 +77,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.workchain_settings.properties[identifier].run.observe(
                     self._update_panel, "value"
                 )
-            # link the trailets if they exist in the plugin specific settings
-            for trailet in trailets_list:
-                if hasattr(self.settings[identifier], trailet):
-                    ipw.dlink(
-                        (self.advanced_settings, trailet),
-                        (self.settings[identifier], trailet),
-                    )
 
         self._submission_blocker_messages = ipw.HTML()
 

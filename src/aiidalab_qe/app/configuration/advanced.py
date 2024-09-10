@@ -289,7 +289,7 @@ class AdvancedSettings(Panel):
         ]
 
         ipw.dlink(
-            (config_model, "workchain_protocol"),
+            (config_model, "protocol"),
             (self, "protocol"),
         )
         ipw.dlink(

@@ -4,7 +4,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida.orm import Group, QueryBuilder, StructureData
-from aiidalab_qe.common.panel import Panel
+from aiidalab_qe.common.panel import SettingPanel
 
 base_url = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
 
@@ -25,7 +25,7 @@ def install_pseudos(pseudo_group="pseudo_demo_pbe"):
     run_(["verdi", "archive", "import", url, "--no-import-group"])
 
 
-class Setting(Panel):
+class Setting(SettingPanel):
     title = "XPS Settings"
     identifier = "xps"
     input_structure = tl.Instance(StructureData, allow_none=True)
@@ -94,7 +94,12 @@ class Setting(Panel):
         </div>"""
     )
 
-    def __init__(self, **kwargs):
+    def render(self):
+        if self.rendered:
+            return
+
+        from aiidalab_qe.app.configuration.model import config_model
+
         # Core hole treatment type
         self.core_hole_treatment = ipw.ToggleButtons(
             options=[
@@ -133,24 +138,29 @@ class Setting(Panel):
         )
 
         self.pseudo_group.observe(self._update_pseudo, names="value")
-        super().__init__(
-            children=[
-                self.structure_title,
-                self.structure_help,
-                ipw.HBox(
-                    [self.structure_type],
-                ),
-                self.pseudo_title,
-                self.pseudo_help,
-                self.pseudo_group,
-                self.core_level_title,
-                self.core_level_help,
-                ipw.HBox(
-                    [self.core_level_list],
-                ),
-            ],
-            **kwargs,
+
+        self.children = [
+            self.structure_title,
+            self.structure_help,
+            ipw.HBox(
+                [self.structure_type],
+            ),
+            self.pseudo_title,
+            self.pseudo_help,
+            self.pseudo_group,
+            self.core_level_title,
+            self.core_level_help,
+            ipw.HBox(
+                [self.core_level_list],
+            ),
+        ]
+
+        ipw.dlink(
+            (config_model, "input_structure"),
+            (self, "input_structure"),
         )
+
+        self.rendered = True
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""

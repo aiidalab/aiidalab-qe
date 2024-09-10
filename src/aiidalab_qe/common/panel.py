@@ -30,8 +30,7 @@ class Panel(ipw.VBox):
         :param kwargs: keyword arguments to pass to the ipw.VBox constructor.
         """
         self.parent = parent
-        if identifier:
-            self.identifier = identifier
+        self.identifier = identifier or getattr(self, "identifier", "plugin")
         super().__init__(
             children=kwargs.pop("children", []),
             **kwargs,
@@ -59,6 +58,21 @@ class Panel(ipw.VBox):
 
     def _update_state(self):
         """Update the state of the panel."""
+
+
+class SettingPanel(Panel):
+    title = "Settings"
+    description = ""
+
+    def __init__(self, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
+        super().__init__(
+            children=[LoadingWidget(f"Loading {self.identifier} settings")],
+            **kwargs,
+        )
+
+        self.rendered = False
 
 
 class OutlinePanel(Panel):

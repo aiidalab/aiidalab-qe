@@ -165,7 +165,7 @@ class WorkChainSettings(Panel):
 
         ipw.dlink(
             (self.workchain_protocol, "value"),
-            (config_model, "workchain_protocol"),
+            (config_model, "protocol"),
         )
         ipw.dlink(
             (self.spin_type, "value"),

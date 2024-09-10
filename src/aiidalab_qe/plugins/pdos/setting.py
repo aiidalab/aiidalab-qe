@@ -8,16 +8,21 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
     create_kpoints_from_distance,
 )
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-from aiidalab_qe.common.panel import Panel
+from aiidalab_qe.common.panel import SettingPanel
 
 
-class Setting(Panel):
+class Setting(SettingPanel):
     title = "PDOS"
     identifier = "pdos"
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     protocol = tl.Unicode(allow_none=True)
 
-    def __init__(self, **kwargs):
+    def render(self):
+        if self.rendered:
+            return
+
+        from aiidalab_qe.app.configuration.model import config_model
+
         self.settings_title = ipw.HTML(
             """<div style="padding-top: 0px; padding-bottom: 0px">
             <h4>Settings</h4></div>"""
@@ -34,13 +39,22 @@ class Setting(Panel):
         self.mesh_grid = ipw.HTML()
         self.nscf_kpoints_distance.observe(self._display_mesh, "value")
         self.nscf_kpoints_distance.observe(self._procotol_changed, "change")
-        super().__init__(
-            children=[
-                self.settings_title,
-                ipw.HBox([self.nscf_kpoints_distance, self.mesh_grid]),
-            ],
-            **kwargs,
+
+        self.children = [
+            self.settings_title,
+            ipw.HBox([self.nscf_kpoints_distance, self.mesh_grid]),
+        ]
+
+        ipw.dlink(
+            (config_model, "protocol"),
+            (self, "protocol"),
         )
+        ipw.dlink(
+            (config_model, "input_structure"),
+            (self, "input_structure"),
+        )
+
+        self.rendered = True
 
     @tl.observe("protocol")
     def _procotol_changed(self, change):

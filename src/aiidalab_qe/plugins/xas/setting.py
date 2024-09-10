@@ -11,7 +11,7 @@ import traitlets as tl
 import yaml
 
 from aiida import orm
-from aiidalab_qe.common.panel import Panel
+from aiidalab_qe.common.panel import SettingPanel
 from aiidalab_qe.plugins import xas as xas_folder
 
 PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
@@ -112,7 +112,7 @@ for func in functionals:
     )
 
 
-class Setting(Panel):
+class Setting(SettingPanel):
     title = "XAS Settings"
     identifier = "xas"
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
@@ -169,7 +169,12 @@ class Setting(Panel):
         </div>"""
     )
 
-    def __init__(self, **kwargs):
+    def render(self):
+        if self.rendered:
+            return
+
+        from aiidalab_qe.app.configuration.model import config_model
+
         self.gipaw_pseudos = pseudo_data_dict["pbe"]["gipaw_pseudos"]
         self.core_hole_pseudos = pseudo_data_dict["pbe"]["core_hole_pseudos"]["1s"]
         self.core_wfc_data_dict = pseudo_data_dict["pbe"]["core_wavefunction_data"]
@@ -190,26 +195,28 @@ class Setting(Panel):
             style={"description_width": "initial"},
         )
 
-        super().__init__(
-            children=[
-                # self.structure_title,
-                # self.structure_help,
-                # ipw.HBox(
-                #     [self.structure_type],
-                # ),
-                self.element_selection_title,
-                self.element_selection_help,
-                ipw.HBox(
-                    [self.element_and_ch_treatment], layout=ipw.Layout(width="95%")
-                ),
-                self.supercell_title,
-                self.supercell_help,
-                ipw.HBox(
-                    [self.supercell_min_parameter],
-                ),
-            ],
-            **kwargs,
+        self.children = [
+            # self.structure_title,
+            # self.structure_help,
+            # ipw.HBox(
+            #     [self.structure_type],
+            # ),
+            self.element_selection_title,
+            self.element_selection_help,
+            ipw.HBox([self.element_and_ch_treatment], layout=ipw.Layout(width="95%")),
+            self.supercell_title,
+            self.supercell_help,
+            ipw.HBox(
+                [self.supercell_min_parameter],
+            ),
+        ]
+
+        ipw.dlink(
+            (config_model, "input_structure"),
+            (self, "input_structure"),
         )
+
+        self.rendered = True
 
     def get_panel_value(self):
         elements_list = []

@@ -10,7 +10,7 @@ class ConfigurationModel(traitlets.HasTraits):
 
     input_structure = traitlets.Instance(orm.StructureData, allow_none=True)
     configuration_parameters = traitlets.Dict()
-    workchain_protocol = traitlets.Unicode()
+    protocol = traitlets.Unicode()
     spin_type = traitlets.Unicode()
     electronic_type = traitlets.Unicode()
 
