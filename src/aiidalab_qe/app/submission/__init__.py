@@ -56,11 +56,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     external_submission_blockers = tl.List(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
         self.qe_setup_status = qe_auto_setup
         self._submission_blocker_messages = ipw.HTML()
-        super().__init__(**kwargs)
+
+        super().__init__(
+            children=LoadingWidget("Loading workflow submission panel"),
+            **kwargs,
+        )
+
+        self.rendered = False
 
     def render(self):
+        if self.rendered:
+            return
+
         from aiidalab_qe.app.utils import get_entry_items
         from aiidalab_qe.common.setup_codes import QESetupWidget
         from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
@@ -144,6 +155,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
 
         self.observe(self._observe_input_structure, "input_parameters")
+
+        self.rendered = True
 
     @tl.observe("internal_submission_blockers", "external_submission_blockers")
     def _observe_submission_blockers(self, _change):

@@ -24,7 +24,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
-            children=[LoadingWidget("Loading workflow configuration widget")],
+            children=[LoadingWidget("Loading workflow configuration panel")],
             **kwargs,
         )
 

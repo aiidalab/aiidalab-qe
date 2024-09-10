@@ -15,7 +15,20 @@ PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     process = tl.Unicode(allow_none=True)
 
+    def __init__(self, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
+        super().__init__(
+            children=LoadingWidget("Loading results panel"),
+            **kwargs,
+        )
+
+        self.rendered = False
+
     def render(self):
+        if self.rendered:
+            return
+
         from aiidalab_widgets_base import (
             AiidaNodeViewWidget,
             ProcessMonitor,
@@ -63,6 +76,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
         self._update_kill_button_layout()
         self.observe(self._observe_process, "process")
+
+        self.rendered = True
 
     def can_reset(self):
         "Do not allow reset while process is running."
