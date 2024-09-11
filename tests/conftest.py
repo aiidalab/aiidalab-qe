@@ -305,7 +305,7 @@ def workchain_settings_generator():
 @pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
-    from aiidalab_qe.app.configuration.advanced import SmearingSettings
+    from aiidalab_qe.app.configuration.smearing import SmearingSettings
 
     def _smearing_settings_generator(**kwargs):
         smearing_settings = SmearingSettings()
