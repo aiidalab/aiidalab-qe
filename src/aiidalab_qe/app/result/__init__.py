@@ -19,7 +19,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
-            children=LoadingWidget("Loading results panel"),
+            children=[LoadingWidget("Loading results panel")],
             **kwargs,
         )
 
@@ -34,6 +34,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             ProcessMonitor,
             ProcessNodesTreeWidget,
         )
+
+        from .model import results_model
 
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink(
@@ -76,6 +78,11 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
         self._update_kill_button_layout()
         self.observe(self._observe_process, "process")
+
+        ipw.dlink(
+            (results_model, "process"),
+            (self, "process"),
+        )
 
         self.rendered = True
 

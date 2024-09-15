@@ -58,11 +58,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def __init__(self, qe_auto_setup=True, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
-        self.qe_setup_status = qe_auto_setup
+        self.qe_auto_setup = qe_auto_setup
         self._submission_blocker_messages = ipw.HTML()
 
         super().__init__(
-            children=LoadingWidget("Loading workflow submission panel"),
+            children=[LoadingWidget("Loading workflow submission panel")],
             **kwargs,
         )
 
@@ -76,6 +76,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         from aiidalab_qe.common.setup_codes import QESetupWidget
         from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
         from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget
+
+        from .model import submit_model
 
         self.message_area = ipw.Output()
 
@@ -94,7 +96,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ]
         self.code_entries = get_entry_items("aiidalab_qe.properties", "code")
         for _, entry_point in self.code_entries.items():
-            for name, code in entry_point.items():
+            for name, code in entry_point().items():
                 self.codes[name] = code
                 code.observe(self._update_state, "value")
                 self.code_children.append(self.codes[name])
@@ -155,6 +157,23 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
 
         self.observe(self._observe_input_structure, "input_parameters")
+
+        ipw.dlink(
+            (submit_model, "prev_step_state"),
+            (self, "previous_step_state"),
+        )
+        ipw.dlink(
+            (submit_model, "input_structure"),
+            (self, "input_structure"),
+        )
+        ipw.dlink(
+            (submit_model, "input_parameters"),
+            (self, "input_parameters"),
+        )
+        ipw.dlink(
+            (self, "process"),
+            (submit_model, "process"),
+        )
 
         self.rendered = True
 

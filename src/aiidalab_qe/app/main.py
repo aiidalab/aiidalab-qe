@@ -5,22 +5,22 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
+from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+from aiidalab_qe.app.configuration.model import config_model
+from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
+from aiidalab_qe.app.result.model import results_model
+from aiidalab_qe.app.structure import StructureSelectionStep
+from aiidalab_qe.app.structure.model import struct_model
+from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
+from aiidalab_qe.app.submission.model import submit_model
+from aiidalab_qe.common import QeAppWorkChainSelector
+from aiidalab_widgets_base import WizardAppWidget
+
 
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
 
     def __init__(self, qe_auto_setup=True):
-        from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-        from aiidalab_qe.app.configuration.model import config_model
-        from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
-        from aiidalab_qe.app.result.model import results_model
-        from aiidalab_qe.app.structure import StructureSelectionStep
-        from aiidalab_qe.app.structure.model import struct_model
-        from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-        from aiidalab_qe.app.submission.model import submit_model
-        from aiidalab_qe.common import QeAppWorkChainSelector
-        from aiidalab_widgets_base import WizardAppWidget
-
         # Create the application steps
         self.structure_step = StructureSelectionStep(auto_advance=True)
         self.structure_step.observe(self._observe_structure_selection, "structure")

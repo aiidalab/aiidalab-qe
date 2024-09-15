@@ -9,7 +9,21 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiidalab_widgets_base import WizardAppWidgetStep
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common import AddingTagsEditor
+from aiidalab_widgets_base import (
+    BasicCellEditor,
+    BasicStructureEditor,
+    OptimadeQueryWidget,
+    StructureBrowserWidget,
+    StructureExamplesWidget,
+    StructureManagerWidget,
+    StructureUploadWidget,
+    WizardAppWidgetStep,
+)
+
+from .model import struct_model
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
@@ -41,6 +55,11 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def __init__(self, description=None, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
+        super().__init__(
+            children=[LoadingWidget("Loading structure selection panel")],
+            **kwargs,
+        )
+
         if description is None:
             description = ipw.HTML(
                 """
@@ -52,31 +71,12 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             )
         self.description = description
 
-        super().__init__(
-            children=[LoadingWidget("Loading structure selection panel")],
-            **kwargs,
-        )
         self.rendered = False
 
     def render(self):
         """docstring"""
         if self.rendered:
             return
-
-        from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-        from aiidalab_qe.app.utils import get_entry_items
-        from aiidalab_qe.common import AddingTagsEditor
-        from aiidalab_widgets_base import (
-            BasicCellEditor,
-            BasicStructureEditor,
-            OptimadeQueryWidget,
-            StructureBrowserWidget,
-            StructureExamplesWidget,
-            StructureManagerWidget,
-            StructureUploadWidget,
-        )
-
-        from .model import struct_model
 
         importers = [
             StructureUploadWidget(title="Upload file"),

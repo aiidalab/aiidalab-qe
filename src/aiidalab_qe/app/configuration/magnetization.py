@@ -1,10 +1,10 @@
-import os
-
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import clear_output, display
 
 from aiida import orm
+from aiidalab_qe.common.widgets import LoadingWidget
+
+from .model import config_model as model
 
 
 class MagnetizationSettings(ipw.VBox):
@@ -23,139 +23,131 @@ class MagnetizationSettings(ipw.VBox):
 
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     electronic_type = tl.Unicode()
-    disabled = tl.Bool()
-    _DEFAULT_TOT_MAGNETIZATION = 0.0
-    _DEFAULT_DESCRIPTION = "<b>Magnetization: Input structure not confirmed</b>"
+    magnetization_type = tl.Unicode()
 
     def __init__(self, **kwargs):
-        self.input_structure = orm.StructureData()
-        self.input_structure_labels = []
-        self.tot_magnetization = ipw.BoundedIntText(
-            min=0,
-            max=100,
-            step=1,
-            value=self._DEFAULT_TOT_MAGNETIZATION,
-            disabled=True,
-            description="Total magnetization:",
-            style={"description_width": "initial"},
+        super().__init__(
+            layout={"justify_content": "space-between", **kwargs.get("layout", {})},
+            children=[LoadingWidget("Loading magnetization settings widget")],
+            **kwargs,
         )
-        self.magnetization_type = ipw.ToggleButtons(
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
+        self.description = ipw.HTML("<b>Magnetization:</b>")
+
+        self.magnetization_type_toggle = ipw.ToggleButtons(
             options=[
                 ("Starting Magnetization", "starting_magnetization"),
                 ("Tot. Magnetization", "tot_magnetization"),
             ],
-            value="starting_magnetization",
             style={"description_width": "initial"},
         )
-        self.description = ipw.HTML(self._DEFAULT_DESCRIPTION)
-        self.kinds = self.create_kinds_widget()
-        self.kinds_widget_out = ipw.Output()
-        self.magnetization_out = ipw.Output()
-        self.magnetization_type.observe(self._render, "value")
-        super().__init__(
-            children=[
-                self.description,
-                self.magnetization_out,
-                self.kinds_widget_out,
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
+        ipw.link(
+            (model.magnetization, "type"),
+            (self.magnetization_type_toggle, "value"),
+        )
+        ipw.dlink(
+            (model, "override"),
+            (self.magnetization_type_toggle, "disabled"),
+            lambda override: not override,
         )
 
-    @tl.observe("disabled")
-    def _disabled_changed(self, _):
-        """Disable the widget"""
-        if hasattr(self.kinds, "children") and self.kinds.children:
-            for i in range(len(self.kinds.children)):
-                self.kinds.children[i].disabled = self.disabled
-        self.tot_magnetization.disabled = self.disabled
-        self.magnetization_type.disabled = self.disabled
+        self.tot_magnetization = ipw.BoundedIntText(
+            min=0,
+            max=100,
+            step=1,
+            disabled=True,
+            description="Total magnetization:",
+            style={"description_width": "initial"},
+        )
+        ipw.link(
+            (model.magnetization, "total"),
+            (self.tot_magnetization, "value"),
+        )
+        ipw.dlink(
+            (model, "override"),
+            (self.tot_magnetization, "disabled"),
+            lambda override: not override,
+        )
+
+        self.kinds = ipw.VBox()
+
+        self.container = ipw.VBox(
+            children=[
+                self.tot_magnetization,
+            ]
+        )
+
+        self.children = [self.description]
+
+        ipw.dlink(
+            (model, "input_structure"),
+            (self, "input_structure"),
+        )
+        ipw.dlink(
+            (model, "electronic_type"),
+            (self, "electronic_type"),
+        )
+        ipw.dlink(
+            (model.magnetization, "type"),
+            (self, "magnetization_type"),
+        )
+
+        self.rendered = True
 
     def reset(self):
-        self.disabled = True
-        self.tot_magnetization.value = self._DEFAULT_TOT_MAGNETIZATION
-        #
-        if self.input_structure is None:
-            self.description.value = self._DEFAULT_DESCRIPTION
-            self.kinds = None
-        else:
-            self.description.value = "<b>Magnetization</b>"
-            self.kinds = self.create_kinds_widget()
+        model.magnetization.reset()
 
-    def create_kinds_widget(self):
-        if self.input_structure_labels:
-            widgets_list = []
-            for kind_label in self.input_structure_labels:
+    @tl.observe("input_structure")
+    def _on_input_structure_change(self, change):
+        children = []
+
+        if structure := change["new"]:
+            for label in structure.get_kind_names():
                 kind_widget = ipw.BoundedFloatText(
-                    description=kind_label,
+                    description=label,
                     min=-4,
                     max=4,
                     step=0.1,
-                    value=0.0,
                     disabled=True,
                 )
-                widgets_list.append(kind_widget)
-            kinds_widget = ipw.VBox(widgets_list)
-        else:
-            kinds_widget = None
+                ipw.link(
+                    (model.magnetization, "moments"),
+                    (kind_widget, "value"),
+                    [
+                        lambda d, label=label: d.get(label, 0.0),
+                        lambda v, label=label: {
+                            **model.magnetization.moments,
+                            label: v,
+                        },
+                    ],
+                )
+                ipw.dlink(
+                    (model, "override"),
+                    (kind_widget, "disabled"),
+                    lambda override: not override,
+                )
+                children.append(kind_widget)
 
-        return kinds_widget
+        self.kinds.children = children
 
     @tl.observe("electronic_type")
-    def _electronic_type_changed(self, change):
-        with self.magnetization_out:
-            clear_output()
-            if change["new"] == "metal":
-                display(self.magnetization_type)
-                self._render({"new": self.magnetization_type.value})
-            else:
-                display(self.tot_magnetization)
-                with self.kinds_widget_out:
-                    clear_output()
-
-    def update_kinds_widget(self):
-        self.input_structure_labels = self.input_structure.get_kind_names()
-        self.kinds = self.create_kinds_widget()
-        self.description.value = "<b>Magnetization</b>"
-
-    def _render(self, value):
-        if value["new"] == "tot_magnetization":
-            with self.kinds_widget_out:
-                clear_output()
-                display(self.tot_magnetization)
+    def _on_electronic_type_change(self, change):
+        children = [self.description]
+        if change["new"] == "metal":
+            children.extend([self.magnetization_type_toggle, self.container])
         else:
-            self.display_kinds()
+            children.append(self.tot_magnetization)
+        self.children = children
 
-    def display_kinds(self):
-        if "PYTEST_CURRENT_TEST" not in os.environ and self.kinds:
-            with self.kinds_widget_out:
-                clear_output()
-                display(self.kinds)
-
-    def _update_widget(self, change):
-        self.input_structure = change["new"]
-        self.update_kinds_widget()
-        self.display_kinds()
-
-    def get_magnetization(self):
-        """Method to generate the dictionary with the initial magnetic moments"""
-        magnetization = {}
-        for i in range(len(self.kinds.children)):
-            magnetization[self.input_structure_labels[i]] = self.kinds.children[i].value
-        return magnetization
-
-    def _set_magnetization_values(self, magnetic_moments):
-        """Set magnetization"""
-        # self.override.value = True
-        with self.hold_trait_notifications():
-            for i in range(len(self.kinds.children)):
-                if isinstance(magnetic_moments, dict):
-                    self.kinds.children[i].value = magnetic_moments.get(
-                        self.kinds.children[i].description, 0.0
-                    )
-                else:
-                    self.kinds.children[i].value = magnetic_moments
-
-    def _set_tot_magnetization(self, tot_magnetization):
-        """Set the total magnetization"""
-        self.tot_magnetization.value = tot_magnetization
+    @tl.observe("magnetization_type")
+    def _on_magnetization_type_change(self, change):
+        if change["new"] == "tot_magnetization":
+            self.container.children = [self.tot_magnetization]
+        else:
+            self.container.children = [self.kinds]

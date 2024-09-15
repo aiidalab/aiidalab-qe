@@ -10,6 +10,8 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.panel import Panel
 
+from .model import config_model as model
+
 
 class WorkChainSettings(Panel):
     identifier = "workchain"
@@ -57,7 +59,7 @@ class WorkChainSettings(Panel):
         with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
     )
 
-    def __init__(self, **kwargs):
+    def __init__(self, callback, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -65,13 +67,13 @@ class WorkChainSettings(Panel):
             **kwargs,
         )
 
+        self._set_properties(callback)
+
         self.rendered = False
 
     def render(self):
         if self.rendered:
             return
-
-        from .model import config_model
 
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type = ipw.ToggleButtons(
@@ -80,58 +82,40 @@ class WorkChainSettings(Panel):
                 ("Atomic positions", "positions"),
                 ("Full geometry", "positions_cell"),
             ],
-            value="positions_cell",
+        )
+        ipw.link(
+            (model, "relax_type"),
+            (self.relax_type, "value"),
         )
 
         # SpinType: magnetic properties of material
         self.spin_type = ipw.ToggleButtons(
             options=[("Off", "none"), ("On", "collinear")],
-            value=DEFAULT_PARAMETERS["workchain"]["spin_type"],
             style={"description_width": "initial"},
+        )
+        ipw.link(
+            (model, "spin_type"),
+            (self.spin_type, "value"),
         )
 
         # ElectronicType: electronic properties of material
         self.electronic_type = ipw.ToggleButtons(
             options=[("Metal", "metal"), ("Insulator", "insulator")],
-            value=DEFAULT_PARAMETERS["workchain"]["electronic_type"],
             style={"description_width": "initial"},
+        )
+        ipw.link(
+            (model, "electronic_type"),
+            (self.electronic_type, "value"),
         )
 
         # Work chain protocol
-        self.workchain_protocol = ipw.ToggleButtons(
+        self.protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
-            value="moderate",
         )
-        self.properties = {}
-        self.reminder_info = {}
-        self.property_children = [
-            self.properties_title,
-            ipw.HTML("Select which properties to calculate:"),
-        ]
-        entries = get_entry_items("aiidalab_qe.properties", "outline")
-        setting_entries = get_entry_items("aiidalab_qe.properties", "setting")
-        for name, entry_point in entries.items():
-            self.properties[name] = entry_point()
-            self.reminder_info[name] = ipw.HTML()
-            self.property_children.append(
-                ipw.HBox([self.properties[name], self.reminder_info[name]])
-            )
-
-            # observer change to update the reminder text
-            def update_reminder_info(change, name=name):
-                if change["new"]:
-                    self.reminder_info[
-                        name
-                    ].value = (
-                        f"""Customize {name} settings in the panel above if needed."""
-                    )
-                else:
-                    self.reminder_info[name].value = ""
-
-            if name in setting_entries:
-                self.properties[name].run.observe(update_reminder_info, "value")
-
-        self.property_children.append(self.properties_help)
+        ipw.link(
+            (model, "protocol"),
+            (self.protocol, "value"),
+        )
 
         self.children = [
             self.structure_title,
@@ -159,33 +143,14 @@ class WorkChainSettings(Panel):
             *self.property_children,
             self.protocol_title,
             ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-            self.workchain_protocol,
+            self.protocol,
             self.protocol_help,
         ]
-
-        ipw.dlink(
-            (self.workchain_protocol, "value"),
-            (config_model, "protocol"),
-        )
-        ipw.dlink(
-            (self.spin_type, "value"),
-            (config_model, "spin_type"),
-        )
-        ipw.dlink(
-            (self.electronic_type, "value"),
-            (config_model, "electronic_type"),
-        )
 
         self.rendered = True
 
     def get_panel_value(self):
         # Work chain settings
-        relax_type = self.relax_type.value
-        electronic_type = self.electronic_type.value
-        spin_type = self.spin_type.value
-
-        protocol = self.workchain_protocol.value
-
         properties = []
 
         # add plugin specific settings
@@ -199,14 +164,16 @@ class WorkChainSettings(Panel):
             elif name == "pdos":
                 run_bands = True
 
-        if RelaxType(relax_type) is not RelaxType.NONE or not (run_bands or run_pdos):
+        if RelaxType(model.relax_type) is not RelaxType.NONE or not (
+            run_bands or run_pdos
+        ):
             properties.append("relax")
         return {
-            "protocol": protocol,
-            "relax_type": relax_type,
+            "protocol": model.protocol,
+            "relax_type": model.relax_type,
             "properties": properties,
-            "spin_type": spin_type,
-            "electronic_type": electronic_type,
+            "spin_type": model.spin_type,
+            "electronic_type": model.electronic_type,
         }
 
     def set_panel_value(self, parameters):
@@ -217,9 +184,10 @@ class WorkChainSettings(Panel):
             "electronic_type",
         ]:
             if key in parameters:
-                getattr(self, key).value = parameters[key]
+                setattr(model, key, parameters[key])
         if "protocol" in parameters:
-            self.workchain_protocol.value = parameters["protocol"]
+            model.protocol = parameters["protocol"]
+
         properties = parameters.get("properties", [])
         for name in self.properties:
             if name in properties:
@@ -230,7 +198,42 @@ class WorkChainSettings(Panel):
     def reset(self):
         """Reset the panel to the default value."""
         for key in ["relax_type", "spin_type", "electronic_type"]:
-            getattr(self, key).value = DEFAULT_PARAMETERS["workchain"][key]
-        self.workchain_protocol.value = DEFAULT_PARAMETERS["workchain"]["protocol"]
+            setattr(model, key, model.traits()[key].default_value)
+        model.protocol = model.traits()["protocol"].default_value
         for key, p in self.properties.items():
             p.run.value = key in DEFAULT_PARAMETERS["workchain"]["properties"]
+
+    def _set_properties(self, callback):
+        """Handle plugin specific settings."""
+
+        self.properties = {}
+        self.reminder_info = {}
+        self.property_children = [
+            self.properties_title,
+            ipw.HTML("Select which properties to calculate:"),
+        ]
+        entries = get_entry_items("aiidalab_qe.properties", "outline")
+        setting_entries = get_entry_items("aiidalab_qe.properties", "setting")
+        for name, entry_point in entries.items():
+            self.properties[name] = entry_point()
+            self.properties[name].run.observe(callback, "value")
+            self.reminder_info[name] = ipw.HTML()
+            self.property_children.append(
+                ipw.HBox([self.properties[name], self.reminder_info[name]])
+            )
+
+            # observer change to update the reminder text
+            def update_reminder_info(change, name=name):
+                if change["new"]:
+                    self.reminder_info[
+                        name
+                    ].value = (
+                        f"""Customize {name} settings in the panel above if needed."""
+                    )
+                else:
+                    self.reminder_info[name].value = ""
+
+            if name in setting_entries:
+                self.properties[name].run.observe(update_reminder_info, "value")
+
+        self.property_children.append(self.properties_help)

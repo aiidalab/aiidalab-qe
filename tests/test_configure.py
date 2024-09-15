@@ -9,7 +9,7 @@ def test_protocol():
     from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 
     wg = ConfigureQeAppWorkChainStep()
-    wg.workchain_settings.workchain_protocol.value = "fast"
+    wg.workchain_settings.protocol.value = "fast"
     assert wg.advanced_settings.protocol == "fast"
     assert wg.advanced_settings.kpoints_distance.value == 0.5
 

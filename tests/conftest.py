@@ -655,7 +655,7 @@ def generate_qeapp_workchain(
         # this can be overrided later
         s2.workchain_settings.properties["bands"].run.value = run_bands
         s2.workchain_settings.properties["pdos"].run.value = run_pdos
-        s2.workchain_settings.workchain_protocol.value = "fast"
+        s2.workchain_settings.protocol.value = "fast"
         s2.workchain_settings.spin_type.value = spin_type
         s2.workchain_settings.electronic_type.value = electronic_type
         if spin_type == "collinear":

@@ -8,17 +8,26 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida import orm
+from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_widgets_base import WizardAppWidgetStep
+
+from .advanced import AdvancedSettings
+from .model import config_model as model
+from .workflow import WorkChainSettings
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     confirmed = tl.Bool()
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     # output dictionary
     configuration_parameters = tl.Dict()
+
+    _structure_not_set_warning = """
+        <div style="color: red;">
+            Please set the input structure first.
+        </div>
+    """
 
     def __init__(self, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
@@ -34,13 +43,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.rendered:
             return
 
-        from aiidalab_qe.app.utils import get_entry_items
+        self.structure_set_message = ipw.HTML()
+        ipw.dlink(
+            (model, "input_structure"),
+            (self.structure_set_message, "value"),
+            lambda s: "" if s else self._structure_not_set_warning,
+        )
 
-        from .advanced import AdvancedSettings
-        from .model import config_model
-        from .workflow import WorkChainSettings
-
-        self.workchain_settings = WorkChainSettings()
+        self.workchain_settings = WorkChainSettings(callback=self._update_panel)
         self.advanced_settings = AdvancedSettings()
 
         self.built_in_settings = [
@@ -72,11 +82,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         for identifier, entry_point in entries.items():
             self.settings[identifier] = entry_point(parent=self)
             self.settings[identifier].identifier = identifier
-            # link basic protocol to all plugin specific protocols
-            if identifier in self.workchain_settings.properties:
-                self.workchain_settings.properties[identifier].run.observe(
-                    self._update_panel, "value"
-                )
 
         self._submission_blocker_messages = ipw.HTML()
 
@@ -92,6 +97,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.confirm_button.on_click(self.confirm)
 
         self.children = [
+            self.structure_set_message,
             self.tab,
             self._submission_blocker_messages,
             self.confirm_button,
@@ -99,20 +105,16 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # Link to model
         ipw.dlink(
-            (config_model, "prev_step_state"),
+            (model, "prev_step_state"),
             (self, "previous_step_state"),
         )
         ipw.dlink(
-            (config_model, "input_structure"),
-            (self, "input_structure"),
-        )
-        ipw.dlink(
             (self, "state"),
-            (config_model, "state"),
+            (model, "state"),
         )
         ipw.dlink(
             (self, "configuration_parameters"),
-            (config_model, "configuration_parameters"),
+            (model, "configuration_parameters"),
         )
 
         self.rendered = True
@@ -121,10 +123,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if (tab := change["new"]) is None:
             return
         self.tab.children[tab].render()
-
-    @tl.observe("previous_step_state")
-    def _observe_previous_step_state(self, _change):
-        self._update_state()
 
     def get_configuration_parameters(self):
         """Get the parameters of the configuration step."""
@@ -140,6 +138,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 if parameters.get(identifier):
                     settings.set_panel_value(parameters[identifier])
 
+    @tl.observe("previous_step_state")
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
             self.confirm_button.disabled = False
@@ -153,7 +152,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             self.confirm_button.disabled = True
             self.state = self.State.INIT
-            self.reset()
+            self.reset()  # TODO redundant?
 
     def confirm(self, _=None):
         self.configuration_parameters = self.get_configuration_parameters()
@@ -174,7 +173,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def reset(self):
         """Reset the widgets in all settings to their initial states."""
         with self.hold_trait_notifications():
-            self.input_structure = None
             for _, settings in self.settings.items():
                 if settings.rendered:
                     settings.reset()
