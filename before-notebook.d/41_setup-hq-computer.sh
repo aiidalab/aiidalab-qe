@@ -2,19 +2,14 @@
 
 set -x
 
-# XXX: need to make daemon start late
+# XXX: need to make daemon start late in docker stack
+# https://github.com/aiidalab/aiidalab-docker-stack/pull/498
 verdi daemon stop || echo "stop fail"
-
-# Setup hyperqueue computer if needed
-HQ_COMPUTER="localhost"
 
 computer_list=$(verdi computer list)
 if echo ${computer_list} | grep -q ${HQ_COMPUTER}; then
-  echo "${HQ_COMPUTER} already setup"
+    echo "${HQ_COMPUTER} already setup"
 else
-    # Disable the localhost which is set in base image
-    verdi computer disable localhost aiida@localhost
-
     # computer
     verdi computer show ${HQ_COMPUTER} || verdi computer setup        \
       --non-interactive                                               \
@@ -29,6 +24,9 @@ else
     verdi computer configure core.local "${HQ_COMPUTER}"              \
       --non-interactive                                               \
       --safe-interval 5.0
+
+    # disable the localhost which is set in base image
+    verdi computer disable localhost aiida@localhost
 fi
 
 verdi daemon start || echo "start fail"

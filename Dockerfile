@@ -69,12 +69,16 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
+ENV HQ_COMPUTER="localhost-hq"
+# export
+ARG HQ_COMPUTER
+
 # TODO: Remove PGSQL and daemon log files, and other unneeded files
 RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
     bash /usr/local/bin/before-notebook.d/41_setup-hq-computer.sh && \
-    python -m aiidalab_qe install-qe --computer localhost && \
+    python -m aiidalab_qe install-qe --computer ${HQ_COMPUTER} && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
@@ -116,11 +120,14 @@ COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 USER root
 
 # XXX: move me to docker-stack
+# https://github.com/aiidalab/aiidalab-docker-stack/pull/497
 RUN apt-get update --yes && \
     apt-get install --yes --no-install-recommends bc && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
+
+ENV HQ_COMPUTER="localhost-hq"
 
 # Remove content of $HOME
 # '-mindepth=1' ensures that we do not remove the home directory itself.

@@ -41,8 +41,19 @@ fi
 run-one-constantly hq server start 1>$HOME/.hq-stdout 2>$HOME/.hq-stderr &
 run-one-constantly hq worker start --cpus=${CPU_LIMIT} --resource "mem=sum(${MEMORY_LIMIT})" --no-detect-resources &
 
-
-# TODO: reset the default memory_per_machine and default_mpiprocs_per_machine
-# orm.Computer.collection.all()[1] # better way to get the computer with the label??
-# c.set_default_mpiprocs_per_machine = ${CPU_CLIMIT}
+# Reset the default memory_per_machine and default_mpiprocs_per_machine
+# c.set_default_mpiprocs_per_machine = ${CPU_LIMIT}
 # c.set_default_memery_per_machine = ${MEMORY_LIMIT}
+
+# Same as original localhost set job poll interval to 2.0 secs
+# In addition, set default mpiprocs and memor per machine
+# TODO: this will be run every time the container start, we need a lock file to prevent it.
+job_poll_interval="2.0"
+computer_name=${HQ_COMPUTER}
+python -c "
+from aiida import load_profile; from aiida.orm import load_computer;
+load_profile();
+load_computer('${computer_name}').set_minimum_job_poll_interval(${job_poll_interval})
+load_computer('${computer_name}').set_default_mpiprocs_per_machine(${CPU_LIMIT})
+load_computer('${computer_name}').set_default_memory_per_machine(${MEMORY_LIMIT})
+"
