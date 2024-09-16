@@ -106,33 +106,42 @@ class MagnetizationSettings(ipw.VBox):
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
         children = []
+        self.kind_widget_links = []
 
-        if structure := change["new"]:
-            for label in structure.get_kind_names():
-                kind_widget = ipw.BoundedFloatText(
-                    description=label,
-                    min=-4,
-                    max=4,
-                    step=0.1,
-                    disabled=True,
-                )
-                ipw.link(
-                    (model.magnetization, "moments"),
-                    (kind_widget, "value"),
-                    [
-                        lambda d, label=label: d.get(label, 0.0),
-                        lambda v, label=label: {
-                            **model.magnetization.moments,
-                            label: v,
-                        },
-                    ],
-                )
-                ipw.dlink(
-                    (model, "override"),
-                    (kind_widget, "disabled"),
-                    lambda override: not override,
-                )
-                children.append(kind_widget)
+        if (input_structure := change["new"]) is None:
+            labels = []
+            for link in self.kind_widget_links:
+                link.unlink()
+            self.kind_widget_links.clear()
+        else:
+            labels = input_structure.get_kind_names()
+
+        for label in labels:
+            kind_widget = ipw.BoundedFloatText(
+                description=label,
+                min=-4,
+                max=4,
+                step=0.1,
+                disabled=True,
+            )
+            link = ipw.link(
+                (model.magnetization, "moments"),
+                (kind_widget, "value"),
+                [
+                    lambda d, label=label: d.get(label, 0.0),
+                    lambda v, label=label: {
+                        **model.magnetization.moments,
+                        label: v,
+                    },
+                ],
+            )
+            self.kind_widget_links.append(link)
+            ipw.dlink(
+                (model, "override"),
+                (kind_widget, "disabled"),
+                lambda override: not override,
+            )
+            children.append(kind_widget)
 
         self.kinds.children = children
 

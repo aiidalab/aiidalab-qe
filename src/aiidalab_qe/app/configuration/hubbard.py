@@ -86,7 +86,7 @@ class HubbardSettings(ipw.VBox):
         model.hubbard.reset()
 
     @tl.observe("input_structure")
-    def _on_input_structure_change(self, _=None):
+    def _on_input_structure_change(self, change):
         self._define_elements()
         self._build_hubbard_widget()
         if self._needs_eigenvalues_widget:
@@ -95,7 +95,7 @@ class HubbardSettings(ipw.VBox):
         else:
             self._unsubscribe_eigenvalues_widget()
             self.eigenvalues_widget.children = []
-        if isinstance(model.input_structure, HubbardStructureData):
+        if isinstance(change["new"], HubbardStructureData):
             self._set_parameters_from_hubbard_structure()
 
     def _define_elements(self):
@@ -341,5 +341,5 @@ class HubbardSettings(ipw.VBox):
                 self.eigenvalues_widget,
             ]
             if change["new"]
-            else self.hubbard_widget.children[:-1]
+            else [*self.hubbard_widget.children][:-1]
         )
