@@ -17,7 +17,7 @@ if [ "$MEMORY_LIMIT" = "max" ]; then
   MEMORY_LIMIT=4096
   echo "No memory limit set, use 4GiB"
 else
-  MEMORY_LIMIT=$(echo "scale=2; $MEMORY_LIMIT / (1024 * 1024)" | bc)
+  MEMORY_LIMIT=$(echo "scale=0; $MEMORY_LIMIT / (1024 * 1024)" | bc)
   echo "Memory Limit: ${MEMORY_LIMIT} MiB"
 fi
 
