@@ -87,32 +87,14 @@ class HubbardSettings(ipw.VBox):
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
-        self._define_elements()
         self._build_hubbard_widget()
-        if self._needs_eigenvalues_widget:
-            self._define_default_eigenvalues()
+        if model.hubbard.needs_eigenvalues_widget:
             self._build_eigenvalues_widget()
         else:
             self._unsubscribe_eigenvalues_widget()
             self.eigenvalues_widget.children = []
         if isinstance(change["new"], HubbardStructureData):
             self._set_parameters_from_hubbard_structure()
-
-    def _define_elements(self):
-        if model.input_structure is None:
-            self.elements = []
-        else:
-            self.elements = [
-                *filter(
-                    lambda element: (
-                        element.is_transition_metal
-                        or element.is_lanthanoid
-                        or element.is_actinoid
-                    ),
-                    [Element(kind.symbol) for kind in model.input_structure.kinds],
-                )
-            ]
-        self._needs_eigenvalues_widget = len(self.elements) > 0
 
     def _build_hubbard_widget(self):
         """Build the widget for defining Hubbard U values
@@ -213,7 +195,7 @@ class HubbardSettings(ipw.VBox):
             self.hubbard_widget_links.append(link)
             children.append(float_widget)
 
-        if self._needs_eigenvalues_widget:
+        if model.hubbard.needs_eigenvalues_widget:
             children.extend(
                 [
                     self.eigenvalues_help,
@@ -227,18 +209,6 @@ class HubbardSettings(ipw.VBox):
         for link in self.hubbard_widget_links:
             link.unlink()
         self.hubbard_widget_links.clear()
-
-    def _define_default_eigenvalues(self):
-        model.hubbard.eigenvalues = [
-            [
-                [
-                    [state + 1, spin, element.symbol, "-1"]  # default eigenvalue
-                    for state in range(5 if element.is_transition_metal else 7)
-                ]
-                for spin in range(2)  # spin up and down
-            ]
-            for element in self.elements  # transition metals and lanthanoids
-        ]
 
     def _build_eigenvalues_widget(self):
         """Build the widget for selecting eigenvalues of different kinds of atoms.
@@ -256,7 +226,7 @@ class HubbardSettings(ipw.VBox):
         children = []
         self.eigenvalues_widget_links = []
 
-        for ei, element in enumerate(self.elements):
+        for ei, element in enumerate(model.hubbard.elements):
             es = element.symbol
             num_states = 5 if element.is_transition_metal else 7  # d or f states
 

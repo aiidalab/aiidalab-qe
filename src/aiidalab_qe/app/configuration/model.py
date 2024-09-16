@@ -1,4 +1,5 @@
 import traitlets as tl
+from pymatgen.core.periodic_table import Element
 
 from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
@@ -11,8 +12,7 @@ class SmearingModel(tl.HasTraits):
     type = tl.Unicode()
     degauss = tl.Float()
 
-    def __init__(self, default_protocol, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def set_defaults(self, default_protocol):
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(default_protocol)
             .get("pw", {})
@@ -65,11 +65,39 @@ class HubbardModel(tl.HasTraits):
         default_value=[],
     )
 
+    def set_defaults(self, change):
+        if (input_structure := change["new"]) is None:
+            self.elements = []
+            self._default_eigenvalues = []
+        else:
+            self.elements = [
+                *filter(
+                    lambda element: (
+                        element.is_transition_metal
+                        or element.is_lanthanoid
+                        or element.is_actinoid
+                    ),
+                    [Element(kind.symbol) for kind in input_structure.kinds],
+                )
+            ]
+            self._default_eigenvalues = [
+                [
+                    [
+                        [state + 1, spin, element.symbol, "-1"]  # default eigenvalue
+                        for state in range(5 if element.is_transition_metal else 7)
+                    ]
+                    for spin in range(2)  # spin up and down
+                ]
+                for element in self.elements  # transition metals and lanthanoids
+            ]
+        self.eigenvalues = self._default_eigenvalues
+        self.needs_eigenvalues_widget = len(self.elements) > 0
+
     def reset(self):
         self.activate = self.traits()["activate"].default_value
         self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
         self.parameters = {}
-        self.eigenvalues = []
+        self.eigenvalues = self._default_eigenvalues
 
 
 class ConfigurationModel(tl.HasTraits):
@@ -114,38 +142,13 @@ class ConfigurationModel(tl.HasTraits):
     kpoints_distance = tl.Float(0.0)
     mesh_grid = tl.Unicode()
 
-    smearing = SmearingModel(protocol.default_value)
+    smearing = SmearingModel()
     magnetization = MagnetizationModel()
     hubbard = HubbardModel()
-
-    # Pseudopotential
-    pseudos = tl.Dict(
-        key_trait=tl.Unicode(),  # element symbol
-        value_trait=tl.Unicode(),  # pseudopotential node uuid
-        default_value={},
-    )
-    pseudo_family = tl.Unicode(
-        "/".join(
-            [
-                DEFAULT["advanced"]["pseudo_family"]["library"],
-                str(DEFAULT["advanced"]["pseudo_family"]["version"]),
-                DEFAULT["advanced"]["pseudo_family"]["functional"],
-                DEFAULT["advanced"]["pseudo_family"]["accuracy"],
-            ]
-        )
-    )
-    pseudo_library = tl.Unicode(
-        " ".join(
-            [
-                DEFAULT["advanced"]["pseudo_family"]["library"],
-                DEFAULT["advanced"]["pseudo_family"]["accuracy"],
-            ]
-        )
-    )
-    pseudo_override = tl.Bool(False)
-    dft_functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
-    ecutwfc = tl.Float(0.0)
-    ecutrho = tl.Float(0.0)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.smearing.set_defaults(self.traits()["protocol"].default_value)
+        self.observe(self.hubbard.set_defaults, "input_structure")
 
 
 config_model = ConfigurationModel()
