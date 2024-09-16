@@ -115,19 +115,83 @@ class HubbardSettings(ipw.VBox):
         self._needs_eigenvalues_widget = len(self.elements) > 0
 
     def _build_hubbard_widget(self):
-        """
-        Creates a widget for defining Hubbard U values for each atomic species in the input structure.
+        """Build the widget for defining Hubbard U values
+        for each atomic species in the input structure.
 
         Returns:
-            hubbard_widget (ipywidgets.VBox): The widget containing the input fields for defining Hubbard U values.
+            hubbard_widget (ipywidgets.VBox):
+                The widget containing the input fields for defining Hubbard U values.
         """
 
+        def get_manifold(element):
+            """Get the Hubbard manifold for a given element.
+
+            Parameters:
+                element (Element):
+                    The element for which to determine the Hubbard manifold.
+
+            Returns:
+                hubbard_manifold (str):
+                    The Hubbard manifold for the given element.
+            """
+            valence = [
+                orbital
+                for orbital in element.electronic_structure.split(".")
+                if "[" not in orbital
+            ]
+            orbital_shells = [shell[:2] for shell in valence]
+
+            def is_condition_met(shell):
+                return condition and condition in shell
+
+            # Conditions for determining the Hubbard manifold
+            # to be selected from the electronic structure
+            conditions = {
+                element.is_transition_metal: "d",
+                element.is_lanthanoid or element.is_actinoid: "f",
+                element.is_post_transition_metal
+                or element.is_metalloid
+                or element.is_halogen
+                or element.is_chalcogen
+                or element.symbol in ["C", "N", "P"]: "p",
+                element.is_alkaline or element.is_alkali or element.is_noble_gas: "s",
+            }
+
+            condition = next(
+                (shell for condition, shell in conditions.items() if condition), None
+            )
+
+            hubbard_manifold = next(
+                (shell for shell in orbital_shells if is_condition_met(shell)), None
+            )
+
+            return hubbard_manifold
+
+        def get_labels():
+            """Get a list of labels for the Hubbard widget.
+
+            Returns:
+                labels (list):
+                    A list of labels in the format "{kind} - {manifold}".
+            """
+            kind_list = model.input_structure.get_kind_names()
+            hubbard_manifold_list = [
+                get_manifold(Element(kind.symbol))
+                for kind in model.input_structure.kinds
+            ]
+            labels = [
+                f"{kind} - {manifold}"
+                for kind, manifold in zip(kind_list, hubbard_manifold_list)
+            ]
+            return labels
+
         children = []
+        self.hubbard_widget_links = []
 
         if model.input_structure is None:
             input_labels = []
         else:
-            input_labels = self._hubbard_widget_labels()
+            input_labels = get_labels()
             children.append(ipw.HTML("Define U value [eV] "))
 
         for label in input_labels:
@@ -138,17 +202,15 @@ class HubbardSettings(ipw.VBox):
                 step=0.1,
                 layout={"width": "160px"},
             )
-            ipw.dlink(
+            link = ipw.link(
                 (model.hubbard, "parameters"),
                 (float_widget, "value"),
-                lambda d, label=label: d.get(label, 0.0),
+                [
+                    lambda p, label=label: p.get(label, 0.0),
+                    lambda v, label=label: {**model.hubbard.parameters, label: v},
+                ],
             )
-            float_widget.observe(
-                lambda change, label=label: self._update_hubbard_dict(
-                    {**model.hubbard.parameters, label: change["new"]}
-                ),
-                "value",
-            )
+            self.hubbard_widget_links.append(link)
             children.append(float_widget)
 
         if self._needs_eigenvalues_widget:
@@ -161,72 +223,10 @@ class HubbardSettings(ipw.VBox):
 
         self.hubbard_widget.children = children
 
-    def _hubbard_widget_labels(self):
-        """
-        Returns a list of labels for the Hubbard widget.
-
-        The labels are generated based on the kind names and the corresponding Hubbard manifolds
-        of the input structure.
-
-        Returns:
-            list: A list of labels in the format "{kind} - {manifold}".
-        """
-        kind_list = model.input_structure.get_kind_names()
-        hubbard_manifold_list = [
-            self._get_hubbard_manifold(Element(x.symbol))
-            for x in model.input_structure.kinds
-        ]
-        result = [
-            f"{kind} - {manifold}"
-            for kind, manifold in zip(kind_list, hubbard_manifold_list)
-        ]
-        return result
-
-    def _get_hubbard_manifold(self, element):
-        """
-        Get the Hubbard manifold for a given element.
-
-        Parameters:
-        element (Element): The element for which to determine the Hubbard manifold.
-
-        Returns:
-        str: The Hubbard manifold for the given element.
-        """
-        valence = [
-            orbital
-            for orbital in element.electronic_structure.split(".")
-            if "[" not in orbital
-        ]
-        orbital_shells = [shell[:2] for shell in valence]
-
-        def is_condition_met(shell):
-            return condition and condition in shell
-
-        # Conditions for determining the Hubbard manifold to be selected from the electronic structure
-        hubbard_conditions = {
-            element.is_transition_metal: "d",
-            element.is_lanthanoid or element.is_actinoid: "f",
-            element.is_post_transition_metal
-            or element.is_metalloid
-            or element.is_halogen
-            or element.is_chalcogen
-            or element.symbol in ["C", "N", "P"]: "p",
-            element.is_alkaline or element.is_alkali or element.is_noble_gas: "s",
-        }
-
-        condition = next(
-            (shell for condition, shell in hubbard_conditions.items() if condition),
-            None,
-        )
-
-        hubbard_manifold = next(
-            (shell for shell in orbital_shells if is_condition_met(shell)), None
-        )
-
-        return hubbard_manifold
-
-    def _update_hubbard_dict(self, hubbard_dict):
-        model.hubbard.parameters = hubbard_dict
+    def _unsubscribe_hubbard_widget(self):
+        for link in self.hubbard_widget_links:
+            link.unlink()
+        self.hubbard_widget_links.clear()
 
     def _define_default_eigenvalues(self):
         model.hubbard.eigenvalues = [
@@ -247,7 +247,7 @@ class HubbardSettings(ipw.VBox):
             ipywidgets.VBox: Widget for selecting eigenvalues.
         """
 
-        def _update(index, spin, state, symbol, value):
+        def update(index, spin, state, symbol, value):
             """Update the eigenvalues list."""
             eigenvalues = [*model.hubbard.eigenvalues]
             eigenvalues[index][spin][state] = [state + 1, spin, symbol, value]
@@ -276,7 +276,7 @@ class HubbardSettings(ipw.VBox):
                     (eigenvalues_up, "value"),
                     [
                         lambda evs, ei=ei, si=si: evs[ei][0][si][-1],
-                        lambda v, ei=ei, si=si, es=es: _update(ei, 0, si, es, v),
+                        lambda v, ei=ei, si=si, es=es: update(ei, 0, si, es, v),
                     ],
                 )
                 self.eigenvalues_widget_links.append(link)
@@ -293,7 +293,7 @@ class HubbardSettings(ipw.VBox):
                     (eigenvalues_down, "value"),
                     [
                         lambda evs, ei=ei, si=si: evs[ei][1][si][-1],
-                        lambda v, ei=ei, si=si, es=es: _update(ei, 1, si, es, v),
+                        lambda v, ei=ei, si=si, es=es: update(ei, 1, si, es, v),
                     ],
                 )
                 self.eigenvalues_widget_links.append(link)
