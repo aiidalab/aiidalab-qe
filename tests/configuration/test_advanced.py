@@ -184,7 +184,7 @@ def test_advanced_hubbard_widget(generate_structure_data):
 
     # Check there is only eigenvalues for Co (Transition metal)
 
-    assert len(w.hubbard.eigen_values_widget.children) == 1
+    assert len(w.hubbard.eigenvalues_widget.children) == 1
 
     # The widget hierarchy for eigenvalues:
     # - w.hubbard_widget.eigen_values_widget.children[0]: List of eigenvalues for Co
@@ -192,13 +192,13 @@ def test_advanced_hubbard_widget(generate_structure_data):
     # - w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0]: Widget for up spin
     # - w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[1]: Widget for eigenvalue 1 (3d range: 1 to 5)
 
-    w.hubbard.eigen_values_widget.children[0].children[1].children[0].children[
+    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
         1
     ].value = "1"
-    w.hubbard.eigen_values_widget.children[0].children[1].children[0].children[
+    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
         3
     ].value = "1"
-    w.hubbard.eigen_values_widget.children[0].children[1].children[0].children[
+    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
         5
     ].value = "1"
 

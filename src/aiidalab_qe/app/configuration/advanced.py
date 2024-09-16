@@ -378,11 +378,11 @@ class AdvancedSettings(Panel):
             "kpoints_distance": model.kpoints_distance,
         }
 
-        if model.activate_hubbard:
-            parameters["hubbard_parameters"] = {"hubbard_u": model.hubbard_dict}
-            if model.eigenvalues_label:
+        if model.hubbard.activate:
+            parameters["hubbard_parameters"] = {"hubbard_u": model.hubbard.parameters}
+            if model.hubbard.eigenvalues_label:
                 parameters["pw"]["parameters"]["SYSTEM"].update(
-                    {"starting_ns_eigenvalue": model.eigenvalues_list}
+                    {"starting_ns_eigenvalue": model.hubbard.eigenvalues}
                 )
 
         if model.pseudos:
@@ -400,27 +400,27 @@ class AdvancedSettings(Panel):
 
         # there are two choose, use link or parent
         if model.spin_type == "collinear":
-            parameters["initial_magnetic_moments"] = model.magnetic_moments
+            parameters["initial_magnetic_moments"] = model.magnetization.moments
         if model.electronic_type == "metal":
             # smearing type setting
-            parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = model.smearing
+            parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = model.smearing.type
             # smearing degauss setting
-            parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = model.degauss
+            parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = model.smearing.degauss
 
         # Set tot_magnetization for collinear simulations.
         if model.spin_type == "collinear":
             # Conditions for metallic systems. Select the magnetization type and set the value if override is True
             if model.electronic_type == "metal" and model.override:
-                if model.magnetization_type == "tot_magnetization":
+                if model.magnetization.type == "tot_magnetization":
                     parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
-                        model.tot_magnetization
+                        model.magnetization.total
                     )
                 else:
-                    parameters["initial_magnetic_moments"] = model.magnetic_moments
+                    parameters["initial_magnetic_moments"] = model.magnetization.moments
             # Conditions for insulator systems. Default value is 0.0
             elif model.electronic_type == "insulator":
                 parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
-                    model.tot_magnetization
+                    model.magnetization.total
                 )
 
         # Spin-Orbit calculation
@@ -449,9 +449,9 @@ class AdvancedSettings(Panel):
         if parameters.get("pw") is not None:
             system = parameters["pw"]["parameters"]["SYSTEM"]
             if "degauss" in system:
-                model.degauss = system["degauss"]
+                model.smearing.degauss = system["degauss"]
             if "smearing" in system:
-                model.smearing = system["smearing"]
+                model.smearing.type = system["smearing"]
             model.total_charge = parameters["pw"]["parameters"]["SYSTEM"].get(
                 "tot_charge", 0
             )
@@ -489,14 +489,14 @@ class AdvancedSettings(Panel):
                     kind: magnetic_moments[i]
                     for i, kind in enumerate(model.input_structure.get_kind_names())
                 }
-            model.magnetic_moments = magnetic_moments
+            model.magnetization.moments = magnetic_moments
 
         if "tot_magnetization" in parameters["pw"]["parameters"]["SYSTEM"]:
-            model.magnetization_type = "tot_magnetization"
+            model.magnetization.type = "tot_magnetization"
 
         if parameters.get("hubbard_parameters"):
-            model.activate_hubbard = True
-            model.hubbard_dict = parameters["hubbard_parameters"]["hubbard_u"]
+            model.hubbard.activate = True
+            model.hubbard.parameters = parameters["hubbard_parameters"]["hubbard_u"]
             starting_ns_eigenvalue = (
                 parameters.get("pw", {})
                 .get("parameters", {})
@@ -504,8 +504,8 @@ class AdvancedSettings(Panel):
                 .get("starting_ns_eigenvalue")
             )
             if starting_ns_eigenvalue is not None:
-                model.eigenvalues_label = True
-                model.eigenvalues_list = starting_ns_eigenvalue
+                model.hubbard.eigenvalues_label = True
+                model.hubbard.eigenvalues = starting_ns_eigenvalue
 
     def reset(self):
         """Reset the widget and the traitlets"""

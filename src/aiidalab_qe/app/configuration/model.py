@@ -2,11 +2,42 @@ import traitlets as tl
 
 from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS as DEFAULT
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 
-class MagnetizationSettings(tl.HasTraits):
+class SmearingModel(tl.HasTraits):
+    type = tl.Unicode()
+    degauss = tl.Float()
+
+    def __init__(self, default_protocol, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        parameters = (
+            PwBaseWorkChain.get_protocol_inputs(default_protocol)
+            .get("pw", {})
+            .get("parameters", {})
+            .get("SYSTEM", {})
+        )
+        self._defaults = {
+            "type": parameters["smearing"],
+            "degauss": parameters["degauss"],
+        }
+
+    @tl.default("type")
+    def _default_type(self):
+        return self._defaults["type"]
+
+    @tl.default("degauss")
+    def _default_degauss(self):
+        return self._defaults["degauss"]
+
+    def reset(self):
+        self.type = self._default_type()
+        self.degauss = self._default_degauss()
+
+
+class MagnetizationModel(tl.HasTraits):
     type = tl.Unicode("starting_magnetization")
     total = tl.Float(0.0)
     moments = tl.Dict(
@@ -19,6 +50,26 @@ class MagnetizationSettings(tl.HasTraits):
         self.type = self.traits()["type"].default_value
         self.total = self.traits()["total"].default_value
         self.moments = {}
+
+
+class HubbardModel(tl.HasTraits):
+    activate = tl.Bool(False)
+    eigenvalues_label = tl.Bool(False)
+    parameters = tl.Dict(
+        key_trait=tl.Unicode(),  # element symbol
+        value_trait=tl.Float(),  # U value
+        default_value={},
+    )
+    eigenvalues = tl.List(
+        trait=tl.List(),  # [[orbital, spin, element, eigenvalue], ...]
+        default_value=[],
+    )
+
+    def reset(self):
+        self.activate = self.traits()["activate"].default_value
+        self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
+        self.parameters = {}
+        self.eigenvalues = []
 
 
 class ConfigurationModel(tl.HasTraits):
@@ -63,25 +114,9 @@ class ConfigurationModel(tl.HasTraits):
     kpoints_distance = tl.Float(0.0)
     mesh_grid = tl.Unicode()
 
-    # Smearing
-    degauss = tl.Float()
-    smearing = tl.Unicode("gaussian")
-
-    magnetization = MagnetizationSettings()
-
-    # Hubbard
-    activate_hubbard = tl.Bool(False)
-    eigenvalues_label = tl.Bool(False)
-    input_labels = tl.List(
-        trait=tl.Unicode(),  # element symbol
-        default_value=[],
-    )
-    hubbard_dict = tl.Dict(
-        key_trait=tl.Unicode(),  # element symbol
-        value_trait=tl.Float(),  # U value
-        default_value={},
-    )
-    eigenvalues_list = tl.List(tl.List(), [])
+    smearing = SmearingModel(protocol.default_value)
+    magnetization = MagnetizationModel()
+    hubbard = HubbardModel()
 
     # Pseudopotential
     pseudos = tl.Dict(

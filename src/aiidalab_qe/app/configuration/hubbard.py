@@ -1,6 +1,5 @@
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import clear_output, display
 from pymatgen.core.periodic_table import Element
 
 from aiida import orm
@@ -27,10 +26,6 @@ class HubbardSettings(ipw.VBox):
         if self.rendered:
             return
 
-        self.eigenvalues_help = ipw.HTML(
-            value="For transition metals and lanthanoids, the starting eigenvalues can be defined (Magnetic calculation).",
-            layout=ipw.Layout(width="auto"),
-        )
         self.activate_hubbard = ipw.Checkbox(
             description="",
             tooltip="Use Hubbard DFT+U.",
@@ -38,7 +33,7 @@ class HubbardSettings(ipw.VBox):
             layout=ipw.Layout(max_width="10%"),
         )
         ipw.link(
-            (model, "activate_hubbard"),
+            (model.hubbard, "activate"),
             (self.activate_hubbard, "value"),
         )
         ipw.dlink(
@@ -46,8 +41,12 @@ class HubbardSettings(ipw.VBox):
             (self.activate_hubbard, "disabled"),
             lambda override: not override,
         )
-        self.activate_hubbard.observe(self.toggle_hubbard_widgets, "value")
+        self.activate_hubbard.observe(self._on_hubbard_check, "value")
 
+        self.eigenvalues_help = ipw.HTML(
+            value="For transition metals and lanthanoids, the starting eigenvalues can be defined (Magnetic calculation).",
+            layout=ipw.Layout(width="auto"),
+        )
         self.eigenvalues_label = ipw.Checkbox(
             description="Define eigenvalues",
             tooltip="Define eigenvalues",
@@ -55,13 +54,14 @@ class HubbardSettings(ipw.VBox):
             layout=ipw.Layout(max_width="30%"),
         )
         ipw.link(
-            (model, "eigenvalues_label"),
+            (model.hubbard, "eigenvalues_label"),
             (self.eigenvalues_label, "value"),
         )
-        self.eigenvalues_label.observe(self.toggle_eigenvalues_widgets, "value")
+        self.eigenvalues_label.observe(self._on_eigenvalues_check, "value")
 
-        self.hubbard_widget_out = ipw.Output()
-        self.eigen_values_widget_out = ipw.Output()
+        self.hubbard_widget = ipw.VBox()
+        self.eigenvalues_widget = ipw.VBox()
+        self.container = ipw.VBox()
 
         self.children = [
             ipw.HBox(
@@ -70,8 +70,7 @@ class HubbardSettings(ipw.VBox):
                     self.activate_hubbard,
                 ]
             ),
-            self.hubbard_widget_out,
-            self.eigen_values_widget_out,
+            self.container,
         ]
 
         ipw.dlink(
@@ -81,7 +80,41 @@ class HubbardSettings(ipw.VBox):
 
         self.rendered = True
 
-    def create_hubbard_widget(self):
+    def reset(self):
+        """Reset the widget."""
+        self._unsubscribe_eigenvalues_widget()
+        model.hubbard.reset()
+
+    @tl.observe("input_structure")
+    def _on_input_structure_change(self, _=None):
+        self._define_elements()
+        self._build_hubbard_widget()
+        if self._needs_eigenvalues_widget:
+            self._define_default_eigenvalues()
+            self._build_eigenvalues_widget()
+        else:
+            self._unsubscribe_eigenvalues_widget()
+            self.eigenvalues_widget.children = []
+        if isinstance(model.input_structure, HubbardStructureData):
+            self._set_parameters_from_hubbard_structure()
+
+    def _define_elements(self):
+        if model.input_structure is None:
+            self.elements = []
+        else:
+            self.elements = [
+                *filter(
+                    lambda element: (
+                        element.is_transition_metal
+                        or element.is_lanthanoid
+                        or element.is_actinoid
+                    ),
+                    [Element(kind.symbol) for kind in model.input_structure.kinds],
+                )
+            ]
+        self._needs_eigenvalues_widget = len(self.elements) > 0
+
+    def _build_hubbard_widget(self):
         """
         Creates a widget for defining Hubbard U values for each atomic species in the input structure.
 
@@ -89,23 +122,15 @@ class HubbardSettings(ipw.VBox):
             hubbard_widget (ipywidgets.VBox): The widget containing the input fields for defining Hubbard U values.
         """
 
-        def _display_checkbox(symbols):
-            return any(
-                Element(symbol).is_transition_metal
-                or Element(symbol).is_lanthanoid
-                or Element(symbol).is_actinoid
-                for symbol in symbols
-            )
+        children = []
 
-        condition = False
         if model.input_structure is None:
-            model.input_labels = []
+            input_labels = []
         else:
-            model.input_labels = self._hubbard_widget_labels()
-            condition = _display_checkbox(model.input_structure.get_symbols_set())
-        widgets_list = []
-        for label in model.input_labels:
-            hbox_container = ipw.HBox()
+            input_labels = self._hubbard_widget_labels()
+            children.append(ipw.HTML("Define U value [eV] "))
+
+        for label in input_labels:
             float_widget = ipw.BoundedFloatText(
                 description=label,
                 min=0,
@@ -114,31 +139,27 @@ class HubbardSettings(ipw.VBox):
                 layout={"width": "160px"},
             )
             ipw.dlink(
-                (model, "hubbard_dict"),
+                (model.hubbard, "parameters"),
                 (float_widget, "value"),
                 lambda d, label=label: d.get(label, 0.0),
             )
             float_widget.observe(
                 lambda change, label=label: self._update_hubbard_dict(
-                    {**model.hubbard_dict, label: change["new"]}
+                    {**model.hubbard.parameters, label: change["new"]}
                 ),
                 "value",
             )
-            hbox_container.children = [float_widget]
-            widgets_list.append(hbox_container)
+            children.append(float_widget)
 
-        if condition:
-            hubbard_widget = ipw.VBox(
+        if self._needs_eigenvalues_widget:
+            children.extend(
                 [
-                    ipw.HTML("Define U value [eV] "),
-                    *widgets_list,
                     self.eigenvalues_help,
                     self.eigenvalues_label,
                 ]
             )
-        else:
-            hubbard_widget = ipw.VBox([ipw.HTML("Define U value [eV] "), *widgets_list])
-        return hubbard_widget
+
+        self.hubbard_widget.children = children
 
     def _hubbard_widget_labels(self):
         """
@@ -205,196 +226,153 @@ class HubbardSettings(ipw.VBox):
         return hubbard_manifold
 
     def _update_hubbard_dict(self, hubbard_dict):
-        model.hubbard_dict = hubbard_dict
+        model.hubbard.parameters = hubbard_dict
 
-    def create_eigenvalues_widget(self):
+    def _define_default_eigenvalues(self):
+        model.hubbard.eigenvalues = [
+            [
+                [
+                    ["-1"]  # default eigenvalue
+                    for _ in range(5 if element.is_transition_metal else 7)
+                ]
+                for _ in range(2)  # spin up and down
+            ]
+            for element in self.elements  # transition metals and lanthanoids
+        ]
+
+    def _build_eigenvalues_widget(self):
         """
         Creates and returns a widget for selecting eigenvalues of different kinds of atoms.
 
         Returns:
-        occup_kinds_widget (ipywidgets.VBox): Widget for selecting eigenvalues.
+            ipywidgets.VBox: Widget for selecting eigenvalues.
         """
 
-        if self.input_structure is None:
-            self.input_kinds_eigenvalues = []
-        else:
-            list_of_kinds = [
-                [index + 1, value.name, Element(value.symbol)]
-                for index, value in enumerate(self.input_structure.kinds)
-            ]
-            self.input_kinds_eigenvalues = [
-                x
-                for x in list_of_kinds
-                if x[2].is_transition_metal or x[2].is_lanthanoid
-            ]
+        children = []
+        self.eigenvalues_widget_links = []
 
-        kind_list = []
-        for index, kind in enumerate(self.input_kinds_eigenvalues):
-            if kind[2].is_transition_metal:
-                num_states = 5  # d states
-            if kind[2].is_lanthanoid:
-                num_states = 7  # f states
+        for index, element in enumerate(self.elements):
+            num_states = 5 if element.is_transition_metal else 7  # d or f states
 
-            if kind[2].is_transition_metal or kind[2].is_lanthanoid:
-                widgets_list_up = []
-                widgets_list_down = []
-                for i in range(num_states):
-                    eigenvalues_up = ipw.Dropdown(
-                        description=f"{i+1}",
-                        options=["-1", "0", "1"],
-                        layout=ipw.Layout(width="65px"),
-                        style={"description_width": "initial"},
-                    )
-                    ipw.dlink(
-                        (model, "eigenvalues_list"),
-                        (eigenvalues_up, "value"),
-                        lambda evl, index=index, i=i: evl[index][0][i][-1],
-                    )
-                    eigenvalues_up.observe(
-                        lambda change, index=index, i=i: self._update_eigenvalues_list(
-                            index, 0, i, change["new"]
-                        ),
-                        "value",
-                    )
-                    widgets_list_up.append(eigenvalues_up)
-
-                    eigenvalues_down = ipw.Dropdown(
-                        description=f"{i+1}",
-                        options=["-1", "0", "1"],
-                        layout=ipw.Layout(width="65px"),
-                        style={"description_width": "initial"},
-                    )
-                    ipw.dlink(
-                        (model, "eigenvalues_list"),
-                        (eigenvalues_down, "value"),
-                        lambda evl, index=index, i=i: evl[index][1][i][-1],
-                    )
-                    eigenvalues_down.observe(
-                        lambda change, index=index, i=i: self._update_eigenvalues_list(
-                            index, 1, i, change["new"]
-                        ),
-                        "value",
-                    )
-                    widgets_list_down.append(eigenvalues_down)
-
-                row_up = ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Up:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="50px"
-                            ),
-                        ),
-                        *widgets_list_up,
-                    ],
+            widgets_list_up = []
+            widgets_list_down = []
+            for i in range(num_states):
+                eigenvalues_up = ipw.Dropdown(
+                    description=f"{i+1}",
+                    options=["-1", "0", "1"],
+                    layout=ipw.Layout(width="65px"),
+                    style={"description_width": "initial"},
                 )
-
-                row_down = ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Down:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="50px"
-                            ),
-                        ),
-                        *widgets_list_down,
-                    ],
+                link = ipw.dlink(
+                    (model.hubbard, "eigenvalues"),
+                    (eigenvalues_up, "value"),
+                    lambda values, index=index, state=i: values[index][0][state][-1],
                 )
-
-                eigenvalues_container = ipw.VBox(children=[row_up, row_down])
-
-                kind_container = ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            kind[1],
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="50px"
-                            ),
-                        ),
-                        eigenvalues_container,
-                    ]
+                self.eigenvalues_widget_links.append(link)
+                eigenvalues_up.observe(
+                    lambda change,
+                    index=index,
+                    state=i,
+                    symbol=element.symbol: self._update_eigenvalues_list(
+                        index, 0, state, symbol, change["new"]
+                    ),
+                    "value",
                 )
+                widgets_list_up.append(eigenvalues_up)
 
-                kind_list.append(kind_container)
+                eigenvalues_down = ipw.Dropdown(
+                    description=f"{i+1}",
+                    options=["-1", "0", "1"],
+                    layout=ipw.Layout(width="65px"),
+                    style={"description_width": "initial"},
+                )
+                link = ipw.dlink(
+                    (model.hubbard, "eigenvalues"),
+                    (eigenvalues_down, "value"),
+                    lambda values, index=index, state=i: values[index][1][state][-1],
+                )
+                self.eigenvalues_widget_links.append(link)
+                eigenvalues_down.observe(
+                    lambda change,
+                    index=index,
+                    state=i,
+                    symbol=element.symbol: self._update_eigenvalues_list(
+                        index, 1, state, symbol, change["new"]
+                    ),
+                    "value",
+                )
+                widgets_list_down.append(eigenvalues_down)
 
-        return ipw.VBox(kind_list)
+            row_up = ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Up:",
+                        layout=ipw.Layout(justify_content="flex-start", width="50px"),
+                    ),
+                    *widgets_list_up,
+                ],
+            )
 
-    def _update_eigenvalues_list(self, index, spin, eigenvalue, value):
-        eigenvalues_list = {**model.eigenvalues_list}
-        eigenvalues_list[index][spin][eigenvalue] = value
-        model.eigenvalues_list = eigenvalues_list
+            row_down = ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Down:",
+                        layout=ipw.Layout(justify_content="flex-start", width="50px"),
+                    ),
+                    *widgets_list_down,
+                ],
+            )
 
-    @tl.observe("input_structure")
-    def update_widgets(self, _):
-        """
-        Update the widgets based on the given change.
-        """
-        self.hubbard_widget = self.create_hubbard_widget()
-        model.eigenvalues_label = False  # TODO permanently disabled?
-        if model.activate_hubbard:
-            with self.hubbard_widget_out:
-                clear_output()
-                display(self.hubbard_widget)
+            eigenvalues_container = ipw.VBox(children=[row_up, row_down])
 
-        self.eigen_values_widget = self.create_eigenvalues_widget()
-        if model.eigenvalues_label:
-            with self.eigen_values_widget_out:
-                clear_output()
-                display(self.eigen_values_widget)
+            container = ipw.HBox(
+                children=[
+                    ipw.Label(
+                        element.name,  # TODO why not symbol
+                        layout=ipw.Layout(justify_content="flex-start", width="50px"),
+                    ),
+                    eigenvalues_container,
+                ]
+            )
 
-        if isinstance(self.input_structure, HubbardStructureData):
-            self.set_parameters_from_hubbardstructure(self.input_structure)
+            children.append(container)
 
-    def set_parameters_from_hubbardstructure(self, hubbard_structure):
-        hubbard_parameters = hubbard_structure.hubbard.dict()["parameters"]
+        self.eigenvalues_widget.children = children
+
+    def _update_eigenvalues_list(self, index, spin, state, symbol, value):
+        eigenvalues = [*model.hubbard.eigenvalues]
+        eigenvalues[index][spin][state] = [state + 1, spin, symbol, value]
+        model.hubbard.eigenvalues = eigenvalues
+
+    def _unsubscribe_eigenvalues_widget(self):
+        for link in self.eigenvalues_widget_links:
+            link.unlink()
+        self.eigenvalues_widget_links.clear()
+        for container in self.eigenvalues_widget.children:
+            for row in container.children[1].children:
+                for dropdown in row.children[1:]:
+                    dropdown.unobserve_all()
+
+    def _set_parameters_from_hubbard_structure(self):
+        hubbard_parameters = model.input_structure.hubbard.dict()["parameters"]
         parameters = {
-            f"{hubbard_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item[
+            f"{model.input_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item[
                 "value"
             ]
             for item in hubbard_parameters
         }
-        model.hubbard_dict = parameters
-        model.activate_hubbard = True
+        model.hubbard.parameters = parameters
+        model.hubbard.activate = True
 
-    def toggle_hubbard_widgets(self, change):
-        """
-        Toggle the visibility of the Hubbard widgets based on the value of check box.
-        """
-        if change["new"]:
-            with self.hubbard_widget_out:
-                clear_output()
-                display(self.hubbard_widget)
-            if self.eigenvalues_label.value:
-                with self.eigen_values_widget_out:
-                    clear_output()
-                    display(self.eigen_values_widget)
-        else:
-            with self.hubbard_widget_out:
-                clear_output()
-            with self.eigen_values_widget_out:
-                clear_output()
+    def _on_hubbard_check(self, change):
+        self.container.children = [self.hubbard_widget] if change["new"] else []
 
-    def toggle_eigenvalues_widgets(self, change):
-        """
-        Toggle the visibility of eigenvalues widgets based on the value of the eigenvalues check box.
-        """
-        if change["new"]:
-            with self.eigen_values_widget_out:
-                clear_output()
-                display(self.eigen_values_widget)
-        else:
-            with self.eigen_values_widget_out:
-                clear_output()
-
-    def reset(self):
-        """Reset the widget."""
-        self.activate_hubbard.value = False
-        self.eigenvalues_label.value = False
-        self.hubbard_widget = self.create_hubbard_widget()
-        self.eigen_values_widget = self.create_eigenvalues_widget()
-        with self.hubbard_widget_out:
-            clear_output()
-        with self.eigen_values_widget_out:
-            clear_output()
-        if isinstance(self.input_structure, HubbardStructureData):
-            self.set_parameters_from_hubbardstructure(self.input_structure)
+    def _on_eigenvalues_check(self, change):
+        self.hubbard_widget.children = (
+            [
+                *self.hubbard_widget.children,
+                self.eigenvalues_widget,
+            ]
+            if change["new"]
+            else self.hubbard_widget.children[:-1]
+        )

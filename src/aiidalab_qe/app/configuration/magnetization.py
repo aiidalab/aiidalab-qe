@@ -12,13 +12,13 @@ class MagnetizationSettings(ipw.VBox):
     1) Tot_magnetization: Total majority spin charge - minority spin charge.
     2) Starting magnetization: Starting spin polarization on atomic type 'i' in a spin polarized (LSDA or noncollinear/spin-orbit) calculation.
 
-    For Starting magnetization you can set each kind names defined in the StructureData (StructureDtaa.get_kind_names())
+    For Starting magnetization you can set each kind names defined in the StructureData (StructureData.get_kind_names())
     Usually these are the names of the elements in the StructureData
     (For example 'C' , 'N' , 'Fe' . However the StructureData can have defined kinds like 'Fe1' and 'Fe2')
     The widget generate a dictionary that can be used to set initial_magnetic_moments in the builder of PwBaseWorkChain
 
     Attributes:
-        input_structure(StructureData): trait that containes the input_strucgure (confirmed structure from previous step)
+        input_structure(StructureData): trait that contains the input_structure (confirmed structure from previous step)
     """
 
     input_structure = tl.Instance(orm.StructureData, allow_none=True)

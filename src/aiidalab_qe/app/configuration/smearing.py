@@ -38,7 +38,7 @@ class SmearingSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model, "smearing"),
+            (model.smearing, "type"),
             (self.smearing, "value"),
         )
         ipw.dlink(
@@ -54,7 +54,7 @@ class SmearingSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model, "degauss"),
+            (model.smearing, "degauss"),
             (self.degauss, "value"),
         )
         ipw.dlink(
@@ -75,15 +75,17 @@ class SmearingSettings(ipw.VBox):
 
         self.rendered = True
 
-    @tl.observe("protocol")
-    def _update_settings_from_protocol(self, _=None):
-        """Update the widget values from the given protocol, and trigger the callback."""
-        parameters = PwBaseWorkChain.get_protocol_inputs(model.protocol)["pw"][
-            "parameters"
-        ]["SYSTEM"]
-        model.degauss = parameters["degauss"]
-        model.smearing = parameters["smearing"]
-
     def reset(self):
-        """Reset the widget and the traitlets"""
-        model.protocol = model.traits()["protocol"].default_value
+        model.smearing.reset()
+
+    @tl.observe("protocol")
+    def _on_protocol_change(self, _=None):
+        """Update model with protocol parameters."""
+        parameters = (
+            PwBaseWorkChain.get_protocol_inputs(model.protocol)
+            .get("pw", {})
+            .get("parameters", {})
+            .get("SYSTEM", {})
+        )
+        model.smearing.degauss = parameters["degauss"]
+        model.smearing.type = parameters["smearing"]
