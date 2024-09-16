@@ -61,7 +61,7 @@ class HubbardModel(tl.HasTraits):
         default_value={},
     )
     eigenvalues = tl.List(
-        trait=tl.List(),  # [[orbital, spin, element, eigenvalue], ...]
+        trait=tl.List(),  # [[[[state, spin, kind, eigenvalue] # state] # spin] # kind]
         default_value=[],
     )
 

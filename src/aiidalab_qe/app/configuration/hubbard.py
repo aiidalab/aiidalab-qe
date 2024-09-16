@@ -232,126 +232,93 @@ class HubbardSettings(ipw.VBox):
         model.hubbard.eigenvalues = [
             [
                 [
-                    ["-1"]  # default eigenvalue
-                    for _ in range(5 if element.is_transition_metal else 7)
+                    [state + 1, spin, element.symbol, "-1"]  # default eigenvalue
+                    for state in range(5 if element.is_transition_metal else 7)
                 ]
-                for _ in range(2)  # spin up and down
+                for spin in range(2)  # spin up and down
             ]
             for element in self.elements  # transition metals and lanthanoids
         ]
 
     def _build_eigenvalues_widget(self):
-        """
-        Creates and returns a widget for selecting eigenvalues of different kinds of atoms.
+        """Build the widget for selecting eigenvalues of different kinds of atoms.
 
         Returns:
             ipywidgets.VBox: Widget for selecting eigenvalues.
         """
 
+        def _update(index, spin, state, symbol, value):
+            """Update the eigenvalues list."""
+            eigenvalues = [*model.hubbard.eigenvalues]
+            eigenvalues[index][spin][state] = [state + 1, spin, symbol, value]
+            return eigenvalues
+
         children = []
         self.eigenvalues_widget_links = []
 
-        for index, element in enumerate(self.elements):
+        for ei, element in enumerate(self.elements):
+            es = element.symbol
             num_states = 5 if element.is_transition_metal else 7  # d or f states
 
-            widgets_list_up = []
-            widgets_list_down = []
-            for i in range(num_states):
+            label_layout = ipw.Layout(justify_content="flex-start", width="50px")
+            spin_up_row = ipw.HBox([ipw.Label("Up:", layout=label_layout)])
+            spin_down_row = ipw.HBox([ipw.Label("Down:", layout=label_layout)])
+
+            for si in range(num_states):
                 eigenvalues_up = ipw.Dropdown(
-                    description=f"{i+1}",
+                    description=f"{si+1}",
                     options=["-1", "0", "1"],
                     layout=ipw.Layout(width="65px"),
                     style={"description_width": "initial"},
                 )
-                link = ipw.dlink(
+                link = ipw.link(
                     (model.hubbard, "eigenvalues"),
                     (eigenvalues_up, "value"),
-                    lambda values, index=index, state=i: values[index][0][state][-1],
+                    [
+                        lambda evs, ei=ei, si=si: evs[ei][0][si][-1],
+                        lambda v, ei=ei, si=si, es=es: _update(ei, 0, si, es, v),
+                    ],
                 )
                 self.eigenvalues_widget_links.append(link)
-                eigenvalues_up.observe(
-                    lambda change,
-                    index=index,
-                    state=i,
-                    symbol=element.symbol: self._update_eigenvalues_list(
-                        index, 0, state, symbol, change["new"]
-                    ),
-                    "value",
-                )
-                widgets_list_up.append(eigenvalues_up)
+                spin_up_row.children += (eigenvalues_up,)
 
                 eigenvalues_down = ipw.Dropdown(
-                    description=f"{i+1}",
+                    description=f"{si+1}",
                     options=["-1", "0", "1"],
                     layout=ipw.Layout(width="65px"),
                     style={"description_width": "initial"},
                 )
-                link = ipw.dlink(
+                link = ipw.link(
                     (model.hubbard, "eigenvalues"),
                     (eigenvalues_down, "value"),
-                    lambda values, index=index, state=i: values[index][1][state][-1],
+                    [
+                        lambda evs, ei=ei, si=si: evs[ei][1][si][-1],
+                        lambda v, ei=ei, si=si, es=es: _update(ei, 1, si, es, v),
+                    ],
                 )
                 self.eigenvalues_widget_links.append(link)
-                eigenvalues_down.observe(
-                    lambda change,
-                    index=index,
-                    state=i,
-                    symbol=element.symbol: self._update_eigenvalues_list(
-                        index, 1, state, symbol, change["new"]
-                    ),
-                    "value",
+                spin_down_row.children += (eigenvalues_down,)
+
+            children.append(
+                ipw.HBox(
+                    [
+                        ipw.Label(element.symbol, layout=label_layout),
+                        ipw.VBox(
+                            children=[
+                                spin_up_row,
+                                spin_down_row,
+                            ]
+                        ),
+                    ]
                 )
-                widgets_list_down.append(eigenvalues_down)
-
-            row_up = ipw.HBox(
-                children=[
-                    ipw.Label(
-                        "Up:",
-                        layout=ipw.Layout(justify_content="flex-start", width="50px"),
-                    ),
-                    *widgets_list_up,
-                ],
             )
-
-            row_down = ipw.HBox(
-                children=[
-                    ipw.Label(
-                        "Down:",
-                        layout=ipw.Layout(justify_content="flex-start", width="50px"),
-                    ),
-                    *widgets_list_down,
-                ],
-            )
-
-            eigenvalues_container = ipw.VBox(children=[row_up, row_down])
-
-            container = ipw.HBox(
-                children=[
-                    ipw.Label(
-                        element.name,  # TODO why not symbol
-                        layout=ipw.Layout(justify_content="flex-start", width="50px"),
-                    ),
-                    eigenvalues_container,
-                ]
-            )
-
-            children.append(container)
 
         self.eigenvalues_widget.children = children
-
-    def _update_eigenvalues_list(self, index, spin, state, symbol, value):
-        eigenvalues = [*model.hubbard.eigenvalues]
-        eigenvalues[index][spin][state] = [state + 1, spin, symbol, value]
-        model.hubbard.eigenvalues = eigenvalues
 
     def _unsubscribe_eigenvalues_widget(self):
         for link in self.eigenvalues_widget_links:
             link.unlink()
         self.eigenvalues_widget_links.clear()
-        for container in self.eigenvalues_widget.children:
-            for row in container.children[1].children:
-                for dropdown in row.children[1:]:
-                    dropdown.unobserve_all()
 
     def _set_parameters_from_hubbard_structure(self):
         hubbard_parameters = model.input_structure.hubbard.dict()["parameters"]
