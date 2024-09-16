@@ -6,12 +6,15 @@ set -x
 verdi daemon stop || echo "stop fail"
 
 # Setup hyperqueue computer if needed
-HQ_COMPUTER="local-hq"
+HQ_COMPUTER="localhost"
 
 computer_list=$(verdi computer list)
 if echo ${computer_list} | grep -q ${HQ_COMPUTER}; then
   echo "${HQ_COMPUTER} already setup"
 else
+    # Disable the localhost which is set in base image
+    verdi computer disable localhost aiida@localhost
+
     # computer
     verdi computer show ${HQ_COMPUTER} || verdi computer setup        \
       --non-interactive                                               \
@@ -26,10 +29,6 @@ else
     verdi computer configure core.local "${HQ_COMPUTER}"              \
       --non-interactive                                               \
       --safe-interval 5.0
-
-    # disable the localhost which is set in base image
-    # XXX: this cas also be done before hq computer set and set the hq computer as `localhost`
-    verdi computer disable localhost aiida@localhost
 fi
 
 verdi daemon start || echo "start fail"

@@ -65,8 +65,7 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
      uv pip install --system --strict --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-     # "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
-     "aiida-hyperqueue@git+https://github.com/unkcpz/aiida-hyperqueue@Compatible-with-slurm-resources-type-setting-for-backward-compatibility"
+     "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -75,7 +74,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
     bash /usr/local/bin/before-notebook.d/41_setup-hq-computer.sh && \
-    python -m aiidalab_qe install-qe --computer local-hq && \
+    python -m aiidalab_qe install-qe --computer localhost && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
@@ -107,8 +106,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
      uv pip install --system --strict --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-     # "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
-     "aiida-hyperqueue@git+https://github.com/unkcpz/aiida-hyperqueue@Compatible-with-slurm-resources-type-setting-for-backward-compatibility"
+     "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
