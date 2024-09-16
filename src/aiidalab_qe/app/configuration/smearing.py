@@ -2,7 +2,6 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from aiidalab_qe.common.widgets import LoadingWidget
 
 from .model import config_model as model
 
@@ -19,6 +18,8 @@ class SmearingSettings(ipw.VBox):
     protocol = tl.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
         super().__init__(
             layout={"justify_content": "space-between", **kwargs.get("layout", {})},
             children=[LoadingWidget("Loading smearing settings widget")],

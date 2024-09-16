@@ -2,7 +2,6 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiidalab_qe.common.widgets import LoadingWidget
 
 from .model import config_model as model
 
@@ -26,11 +25,15 @@ class MagnetizationSettings(ipw.VBox):
     magnetization_type = tl.Unicode()
 
     def __init__(self, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
         super().__init__(
             layout={"justify_content": "space-between", **kwargs.get("layout", {})},
             children=[LoadingWidget("Loading magnetization settings widget")],
             **kwargs,
         )
+
+        self.kind_widget_links = []
 
         self.rendered = False
 
@@ -106,7 +109,6 @@ class MagnetizationSettings(ipw.VBox):
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
         children = []
-        self.kind_widget_links = []
 
         if (input_structure := change["new"]) is None:
             labels = []

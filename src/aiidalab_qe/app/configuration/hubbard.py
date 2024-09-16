@@ -4,7 +4,6 @@ from pymatgen.core.periodic_table import Element
 
 from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-from aiidalab_qe.common.widgets import LoadingWidget
 
 from .model import config_model as model
 
@@ -15,10 +14,15 @@ class HubbardSettings(ipw.VBox):
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
         super().__init__(
             children=[LoadingWidget("Loading Hubbard settings widget")],
             **kwargs,
         )
+
+        self.hubbard_widget_links = []
+        self.eigenvalues_widget_links = []
 
         self.rendered = False
 
