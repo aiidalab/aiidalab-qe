@@ -1,0 +1,15 @@
+.info-box {
+  display: none;
+  margin: 2px;
+  padding: 1em;
+  border: 3px solid orangered;
+  background-color: #ffedcc;
+  border-radius: 1em;
+  -webkit-border-radius: 1em;
+  -moz-border-radius: 1em;
+  -ms-border-radius: 1em;
+  -o-border-radius: 1em;
+}
+.info-box p {
+  line-height: 24px;
+}
