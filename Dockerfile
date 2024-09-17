@@ -65,7 +65,7 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 # XXX: fix me after release aiida-hyperqueue
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-     uv pip install --system --strict --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
+     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
      "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
@@ -100,18 +100,13 @@ USER ${NB_USER}
 WORKDIR /tmp
 # Install python dependencies
 # Use uv cache from the previous build step
+# # Install the aiida-hyperqueue
+# # XXX: fix me after release aiida-hyperqueue
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} ${QE_APP_SRC} "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
-
-# # Install the aiida-hyperqueue
-# # XXX: fix me after release aiida-hyperqueue
-RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-     uv pip install --system --strict --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-     "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
