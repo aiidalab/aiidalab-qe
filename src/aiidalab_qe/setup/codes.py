@@ -44,15 +44,18 @@ CODE_NAMES = (
 
 
 def qe_installed():
+    import json
+
     env_exist = get_qe_env().exists()
     proc = subprocess.run(
-        ["conda", "list", "-n", f"{get_qe_env().name}", "qe"],
+        ["conda", "list", "-n", f"{get_qe_env().name}", "--json", "--full-name", "qe"],
         check=True,
         capture_output=True,
     )
 
-    # XXX: "qe" in check is not future proof if there are similar packages such as qe-tool, better solution?? JSON output??
-    return env_exist and "qe" in str(proc.stdout)
+    info = json.loads(str(proc.stdout.decode()))[0]
+
+    return env_exist and "qe" == info["name"]
 
 
 def install_qe():
