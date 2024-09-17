@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-ARG FULL_STACK_VER=2024.1021
+# TODO: change full-stack version to latest one when released with bc and late dameon start
+ARG FULL_STACK_VER=edge
 ARG UV_VER=0.2.27
 ARG QE_VER=7.2
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
@@ -118,12 +119,6 @@ COPY --from=home_build /opt/conda/hq /usr/local/bin/
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
-
-# XXX: move me to docker-stack
-# https://github.com/aiidalab/aiidalab-docker-stack/pull/497
-RUN apt-get update --yes && \
-    apt-get install --yes --no-install-recommends bc && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 

@@ -2,10 +2,6 @@
 
 set -x
 
-# XXX: need to make daemon start late in docker stack
-# https://github.com/aiidalab/aiidalab-docker-stack/pull/498
-verdi daemon stop || echo "stop fail"
-
 computer_list=$(verdi computer list)
 if echo ${computer_list} | grep -q ${HQ_COMPUTER}; then
     echo "${HQ_COMPUTER} already setup"
@@ -28,5 +24,3 @@ else
     # disable the localhost which is set in base image
     verdi computer disable localhost aiida@localhost
 fi
-
-verdi daemon start || echo "start fail"
