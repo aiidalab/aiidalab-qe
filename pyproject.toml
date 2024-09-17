@@ -16,7 +16,6 @@ filterwarnings = [
     # For some reason we get this error, see
     # https://github.com/aiidalab/aiidalab-widgets-base/issues/551
     'ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning:_pytest',
-    "ignore::cryptography.utils.CryptographyDeprecationWarning:",
     # This popped up in spglib 2.5. Since we still try to support spglib v1,
     "ignore:dict interface.*is deprecated.Use attribute interface:DeprecationWarning:",
 ]
