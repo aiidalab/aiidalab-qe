@@ -167,7 +167,7 @@ class ConfigurationModel(tl.HasTraits):
     # Advanced setting defaults
     clean_workdir = tl.Bool(False)
     override = tl.Bool(False)
-    total_charge = tl.Int(DEFAULT["advanced"]["tot_charge"])
+    total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
     van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
     spin_orbit = tl.Unicode("wo_soc")
 
