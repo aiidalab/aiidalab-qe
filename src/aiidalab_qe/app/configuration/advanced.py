@@ -315,7 +315,6 @@ class AdvancedSettings(Panel):
         else:
             setattr(model, f"{attribute}_step", 0.1)
 
-    # TODO should this be here?
     def _on_override_change(self, change):
         if not change["new"]:
             self.reset()
@@ -352,7 +351,7 @@ class AdvancedSettings(Panel):
 
         # The pseudo_family read from the protocol (aiida-quantumespresso plugin settings)
         # we override it with the value from the pseudo_family_selector widget
-        parameters["pseudo_family"] = model.pseudo_family  # TODO useless code?
+        parameters["pseudo_family"] = model.pseudos.family  # TODO useless code?
 
     def get_panel_value(self):
         # create the the initial_magnetic_moments as None (Default)
@@ -374,7 +373,7 @@ class AdvancedSettings(Panel):
                 }
             },
             "clean_workdir": model.clean_workdir,
-            "pseudo_family": model.pseudo_family,  # TODO check this
+            "pseudo_family": model.pseudos.family,  # TODO check this
             "kpoints_distance": model.kpoints_distance,
         }
 
@@ -385,10 +384,10 @@ class AdvancedSettings(Panel):
                     {"starting_ns_eigenvalue": model.hubbard.eigenvalues}
                 )
 
-        if model.pseudos:
-            parameters["pw"]["pseudos"] = model.pseudos
-            parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = model.ecutwfc
-            parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = model.ecutrho
+        if model.pseudos.dictionary:
+            parameters["pw"]["pseudos"] = model.pseudos.dictionary
+            parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = model.pseudos.ecutwfc
+            parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = model.pseudos.ecutrho
 
         if model.van_der_waals in ["none", "ts-vdw"]:
             parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = model.van_der_waals
@@ -438,12 +437,12 @@ class AdvancedSettings(Panel):
             pseudo_family = PseudoFamily.from_string(parameters["pseudo_family"])
             library = pseudo_family.library
             accuracy = pseudo_family.accuracy
-            model.pseudo_library = f"{library} {accuracy}"
-            model.dft_functional = pseudo_family.functional
+            model.pseudos.library = f"{library} {accuracy}"
+            model.pseudos.dft_functional = pseudo_family.functional
         if "pseudos" in parameters["pw"]:
-            model.pseudos = parameters["pw"]["pseudos"]
-            model.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
-            model.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+            model.pseudos.dictionary = parameters["pw"]["pseudos"]
+            model.pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
+            model.pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
         #
         model.kpoints_distance = parameters.get("kpoints_distance", 0.15)
         if parameters.get("pw") is not None:

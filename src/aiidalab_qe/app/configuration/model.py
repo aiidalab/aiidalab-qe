@@ -4,8 +4,10 @@ from pymatgen.core.periodic_table import Element
 from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS as DEFAULT
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_widgets_base import WizardAppWidgetStep
+
+DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SmearingModel(tl.HasTraits):
@@ -100,6 +102,45 @@ class HubbardModel(tl.HasTraits):
         self.eigenvalues = self._default_eigenvalues
 
 
+class PseudosModel(tl.HasTraits):
+    dictionary = tl.Dict(
+        key_trait=tl.Unicode(),  # element symbol
+        value_trait=tl.Unicode(),  # pseudopotential node uuid
+        default_value={},
+    )
+    family = tl.Unicode(
+        "/".join(
+            [
+                DEFAULT["advanced"]["pseudo_family"]["library"],
+                str(DEFAULT["advanced"]["pseudo_family"]["version"]),
+                DEFAULT["advanced"]["pseudo_family"]["functional"],
+                DEFAULT["advanced"]["pseudo_family"]["accuracy"],
+            ]
+        )
+    )
+    library = tl.Unicode(
+        " ".join(
+            [
+                DEFAULT["advanced"]["pseudo_family"]["library"],
+                DEFAULT["advanced"]["pseudo_family"]["accuracy"],
+            ]
+        )
+    )
+    override = tl.Bool(False)
+    dft_functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
+    ecutwfc = tl.Float(0.0)
+    ecutrho = tl.Float(0.0)
+
+    def reset(self):
+        self.dictionary = {}
+        self.family = self.traits()["family"].default_value
+        self.library = self.traits()["library"].default_value
+        self.override = self.traits()["override"].default_value
+        self.dft_functional = self.traits()["dft_functional"].default_value
+        self.ecutwfc = self.traits()["ecutwfc"].default_value
+        self.ecutrho = self.traits()["ecutrho"].default_value
+
+
 class ConfigurationModel(tl.HasTraits):
     state = tl.UseEnum(WizardAppWidgetStep.State)
     prev_step_state = tl.UseEnum(WizardAppWidgetStep.State)
@@ -145,6 +186,8 @@ class ConfigurationModel(tl.HasTraits):
     smearing = SmearingModel()
     magnetization = MagnetizationModel()
     hubbard = HubbardModel()
+    pseudos = PseudosModel()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.smearing.set_defaults(self.traits()["protocol"].default_value)
