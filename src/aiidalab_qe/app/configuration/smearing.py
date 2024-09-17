@@ -7,14 +7,6 @@ from .model import config_model as model
 
 
 class SmearingSettings(ipw.VBox):
-    smearing_description = ipw.HTML(
-        """<p>
-        The smearing type and width is set by the chosen <b>protocol</b>.
-        Tick the box to override the default, not advised unless you've mastered <b>smearing effects</b> (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
-        target="_blank">here</a> for a discussion).
-    </p>"""
-    )
-
     protocol = tl.Unicode(allow_none=True)
 
     def __init__(self, **kwargs):
@@ -65,8 +57,21 @@ class SmearingSettings(ipw.VBox):
         )
 
         self.children = [
-            self.smearing_description,
-            ipw.HBox([self.smearing, self.degauss]),
+            ipw.HTML("""
+                <p>
+                    The smearing type and width is set by the chosen <b>protocol</b>.
+                    Tick the box to override the default, not advised unless you've
+                    mastered <b>smearing effects</b> (click
+                    <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
+                    target="_blank">here</a> for a discussion).
+                </p>
+            """),
+            ipw.HBox(
+                children=[
+                    self.smearing,
+                    self.degauss,
+                ]
+            ),
         ]
 
         ipw.dlink(

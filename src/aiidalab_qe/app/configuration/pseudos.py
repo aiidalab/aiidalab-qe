@@ -28,41 +28,6 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 
 
 class PseudoFamilySelector(ipw.VBox):
-    PSEUDO_HELP_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
-            Spin-orbit coupling (SOC) calculations are supported exclusively with PseudoDojo pseudopotentials.
-            PseudoDojo offers these pseudopotentials in two versions: standard and stringent.
-            Here, we utilize the FR (fully relativistic) type from PseudoDojo.
-            Please ensure you choose appropriate cutoff values for your calculations.
-        </div>"""
-
-    PSEUDO_HELP_WO_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
-        If you are unsure, select 'SSSP efficiency', which for
-        most calculations will produce sufficiently accurate results at
-        comparatively small computational costs. If your calculations require a
-        higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
-        more expensive. SSSP is the standard solid-state pseudopotentials.
-        The PseudoDojo used here has the SR relativistic type.</div>"""
-
-    # XXX: the link is not correct after add pseudo dojo
-    pseudo_family_prompt = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;">
-        <b><a href="https://www.materialscloud.org/discover/sssp/table/efficiency"
-        target="_blank">Pseudopotential family</b></div>"""
-    )
-    pseudo_family_help = ipw.HTML(PSEUDO_HELP_WO_SOC)
-
-    dft_functional_prompt = ipw.HTML(
-        """
-        <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;"><b>
-        Exchange-correlation  functional</b></div>"""
-    )
-    dft_functional_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; opacity:0.5;">
-        The exchange-correlation energy is calculated using this functional. We currently provide support for two
-        well-established generalised gradient approximation (GGA) functionals:
-        PBE and PBEsol.</div>"""
-    )
-
     protocol = tl.Unicode(allow_none=True)
     spin_orbit = tl.Unicode()
 
@@ -77,6 +42,41 @@ class PseudoFamilySelector(ipw.VBox):
     def render(self):
         if self.rendered:
             return
+
+        self.PSEUDO_HELP_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
+                Spin-orbit coupling (SOC) calculations are supported exclusively with PseudoDojo pseudopotentials.
+                PseudoDojo offers these pseudopotentials in two versions: standard and stringent.
+                Here, we utilize the FR (fully relativistic) type from PseudoDojo.
+                Please ensure you choose appropriate cutoff values for your calculations.
+            </div>"""
+
+        self.PSEUDO_HELP_WO_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
+            If you are unsure, select 'SSSP efficiency', which for
+            most calculations will produce sufficiently accurate results at
+            comparatively small computational costs. If your calculations require a
+            higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
+            more expensive. SSSP is the standard solid-state pseudopotentials.
+            The PseudoDojo used here has the SR relativistic type.</div>"""
+
+        # XXX: the link is not correct after add pseudo dojo
+        self.pseudo_family_prompt = ipw.HTML(
+            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;">
+            <b><a href="https://www.materialscloud.org/discover/sssp/table/efficiency"
+            target="_blank">Pseudopotential family</b></div>"""
+        )
+        self.pseudo_family_help = ipw.HTML(self.PSEUDO_HELP_WO_SOC)
+
+        self.dft_functional_prompt = ipw.HTML(
+            """
+            <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;"><b>
+            Exchange-correlation  functional</b></div>"""
+        )
+        self.dft_functional_help = ipw.HTML(
+            """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; opacity:0.5;">
+            The exchange-correlation energy is calculated using this functional. We currently provide support for two
+            well-established generalised gradient approximation (GGA) functionals:
+            PBE and PBEsol.</div>"""
+        )
 
         self.override = ipw.Checkbox(
             description="",
@@ -281,20 +281,7 @@ class PseudoSetter(ipw.VBox):
     input_structure = tl.Instance(klass=orm.StructureData, allow_none=True)
     pseudo_family = tl.Unicode(allow_none=True)
     override = tl.Bool(False)
-
-    # output pseudos
     pseudos = tl.Dict()
-
-    _update_pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The pseudopotential for each kind of atom in the structure can be set customly.
-        The default pseudopotential and cutoffs are get from the pseudo family.
-        The cutoffs used for the calculation are the maximum of the default from all pseudopotentials
-        and can be set customly.
-        </div>"""
-
-    _cutoff_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        Please set the cutoffs for the calculation. The default cutoffs are get from the pseudo family.
-        </div>"""
 
     def __init__(self, **kwargs):
         super().__init__(
@@ -308,13 +295,20 @@ class PseudoSetter(ipw.VBox):
         if self.rendered:
             return
 
+        self.pseudo_setter_helper = ipw.HTML("""
+            <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+                The pseudopotential for each kind of atom in the structure can be
+                custom set. The default pseudopotential and cutoffs are get from the
+                pseudo family. The cutoffs used for the calculation are the maximum of
+                the default from all pseudopotentials and can be custom set.
+            </div>
+        """)
+
         self.setter_widget_out = ipw.Output()
-        self.pseudo_setter_helper = ipw.HTML(self._update_pseudo_setter_helper_text)
         self.pseudo_setting_widgets = ipw.VBox()
 
         self._status_message = StatusHTML(clear_after=20)
 
-        self.cutoff_setter_helper = ipw.HTML(self._cutoff_setter_helper_text)
         self.ecutwfc = ipw.FloatText(
             description="Wavefunction cutoff (Ry)",
             style={"description_width": "initial"},
@@ -334,7 +328,12 @@ class PseudoSetter(ipw.VBox):
 
         self.children = [
             self.setter_widget_out,
-            self.cutoff_setter_helper,
+            ipw.HTML("""
+                <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+                    Please set the cutoffs for the calculation. The default cutoffs are
+                    get from the pseudo family.
+                </div>
+            """),
             ipw.HBox(
                 children=[
                     self.ecutwfc,

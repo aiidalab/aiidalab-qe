@@ -26,13 +26,6 @@ from .smearing import SmearingSettings
 class AdvancedSettings(Panel):
     identifier = "advanced"
 
-    dftd3_version = {
-        "dft-d3": 3,
-        "dft-d3bj": 4,
-        "dft-d3m": 5,
-        "dft-d3mbj": 6,
-    }
-
     protocol = tl.Unicode(allow_none=True)
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
@@ -50,6 +43,13 @@ class AdvancedSettings(Panel):
         self.magnetization = MagnetizationSettings()
         self.pseudo_family_selector = PseudoFamilySelector()
         self.pseudo_setter = PseudoSetter()
+
+        self.dftd3_version = {
+            "dft-d3": 3,
+            "dft-d3bj": 4,
+            "dft-d3m": 5,
+            "dft-d3mbj": 6,
+        }
 
         self.rendered = False
 
