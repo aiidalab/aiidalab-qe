@@ -26,32 +26,15 @@ from .smearing import SmearingSettings
 class AdvancedSettings(Panel):
     identifier = "advanced"
 
-    title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 10px">
-        <h4>Advanced Settings</h4></div>"""
-    )
-    pw_adv_description = ipw.HTML(
-        """Select the advanced settings for the <b>pw.x</b> code."""
-    )
-    kpoints_description = ipw.HTML(
-        """<div>
-        The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
-        The value below represents the maximum distance between the k-points in each direction of reciprocal space.
-        Tick the box to override the default, smaller is more accurate and costly. </div>"""
-    )
-
     dftd3_version = {
         "dft-d3": 3,
         "dft-d3bj": 4,
         "dft-d3m": 5,
         "dft-d3mbj": 6,
     }
-    # protocol interface
+
     protocol = tl.Unicode(allow_none=True)
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
-
-    # output dictionary
-    value = tl.Dict()
 
     def __init__(self, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
@@ -84,13 +67,7 @@ class AdvancedSettings(Panel):
             (model, "clean_workdir"),
             (self.clean_workdir, "value"),
         )
-        self.clean_workdir_description = ipw.HTML(
-            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-            Tick to clean-up the work directory after the calculation is finished.</div>"""
-        )
-
         # Override setting widget
-        self.override_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
         self.override = ipw.Checkbox(
             description="",
             indent=False,
@@ -101,10 +78,6 @@ class AdvancedSettings(Panel):
             (self.override, "value"),
         )
         self.override.observe(self._on_override_change, "value")
-        self.override_widget = ipw.HBox(
-            [self.override_prompt, self.override],
-            layout=ipw.Layout(max_width="20%"),
-        )
 
         # Smearing setting widget
         self.smearing.render()
@@ -263,13 +236,38 @@ class AdvancedSettings(Panel):
         self.kpoints_distance.observe(self._display_mesh, "value")
 
         self.children = [
-            self.title,
+            ipw.HTML("""
+                <div style="padding-top: 0px; padding-bottom: 10px">
+                    <h4>Advanced Settings</h4>
+                </div>
+            """),
             ipw.HBox(
-                [self.clean_workdir, self.clean_workdir_description],
+                children=[
+                    self.clean_workdir,
+                    ipw.HTML("""
+                        <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+                            Tick to clean-up the work directory after the calculation is finished.
+                        </div>
+                    """),
+                ],
                 layout=ipw.Layout(height="50px", justify_content="flex-start"),
             ),
             ipw.HBox(
-                [self.pw_adv_description, self.override_widget],
+                children=[
+                    ipw.HTML("""
+                        Select the advanced settings for the <b>pw.x</b> code.
+                    """),
+                    ipw.HBox(
+                        children=[
+                            ipw.HTML(
+                                value="<b>Override</b>",
+                                layout=ipw.Layout(margin="0 5px 0 0"),
+                            ),
+                            self.override,
+                        ],
+                        layout=ipw.Layout(max_width="20%"),
+                    ),
+                ],
                 layout=ipw.Layout(height="50px", justify_content="space-between"),
             ),
             self.total_charge,
@@ -277,12 +275,29 @@ class AdvancedSettings(Panel):
             self.magnetization,
             ipw.HTML("<b>Convergence Thresholds:</b>"),
             ipw.HBox(
-                [self.forc_conv_thr, self.etot_conv_thr, self.scf_conv_thr],
+                children=[
+                    self.forc_conv_thr,
+                    self.etot_conv_thr,
+                    self.scf_conv_thr,
+                ],
                 layout=ipw.Layout(height="50px", justify_content="flex-start"),
             ),
             self.smearing,
-            self.kpoints_description,
-            ipw.HBox([self.kpoints_distance, self.mesh_grid]),
+            ipw.HTML("""
+                <div>
+                    The k-points mesh density of the SCF calculation is set by the
+                    <b>protocol</b>. The value below represents the maximum distance
+                    between the k-points in each direction of reciprocal space. Tick
+                    the box to override the default, smaller is more accurate and
+                    costly.
+                </div>
+            """),
+            ipw.HBox(
+                children=[
+                    self.kpoints_distance,
+                    self.mesh_grid,
+                ]
+            ),
             self.hubbard,
             self.spin_orbit,
             self.pseudo_family_selector,
@@ -300,58 +315,21 @@ class AdvancedSettings(Panel):
 
         self.rendered = True
 
-    def set_value_and_step(self, attribute, value):
-        """
-        Sets the value and adjusts the step based on the order of magnitude of the value.
-        This is used for the thresolds values (etot_conv_thr, scf_conv_thr, forc_conv_thr).
-        Parameters:
-            attribute: The attribute whose values are to be set (e.g., self.etot_conv_thr).
-            value: The numerical value to set.
-        """
-        setattr(model, attribute, value)
-        if value != 0:
-            order_of_magnitude = np.floor(np.log10(abs(value)))
-            setattr(model, f"{attribute}_step", 10 ** (order_of_magnitude - 1))
-        else:
-            setattr(model, f"{attribute}_step", 0.1)
+    def reset(self):
+        """Reset the widget and the traitlets"""
 
-    def _on_override_change(self, change):
-        if not change["new"]:
-            self.reset()
-
-    @tl.observe("input_structure")
-    def _update_input_structure(self, _):
-        if model.input_structure:
-            self._update_settings_from_protocol()
-            self._display_mesh()
-            if isinstance(model.input_structure, HubbardStructureData):
-                model.override = True
-
-    @tl.observe("protocol")
-    def _update_settings_from_protocol(self, _=None):
-        """Update the values of sub-widgets from the given protocol, this will
-        trigger the callback of the sub-widget if it is exist.
-        """
-        parameters = PwBaseWorkChain.get_protocol_inputs(model.protocol)
-
-        model.kpoints_distance = parameters["kpoints_distance"]
-
-        num_atoms = len(model.input_structure.sites) if model.input_structure else 1
-
-        etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
-        self.set_value_and_step("etot_conv_thr", etot_value)
-
-        # Set SCF conversion threshold
-        scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
-        self.set_value_and_step("scf_conv_thr", scf_value)
-
-        # Set force conversion threshold
-        forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
-        self.set_value_and_step("forc_conv_thr", forc_value)
-
-        # The pseudo_family read from the protocol (aiida-quantumespresso plugin settings)
-        # we override it with the value from the pseudo_family_selector widget
-        parameters["pseudo_family"] = model.pseudos.family  # TODO useless code?
+        with self.hold_trait_notifications():
+            model.protocol = model.traits()["protocol"].default_value
+            model.total_charge = model.traits()["total_charge"].default_value
+            model.van_der_waals = model.traits()["van_der_waals"].default_value
+            model.override = False
+            self.smearing.reset()
+            self.hubbard.reset()
+            self.magnetization.reset()
+            self.pseudo_family_selector.reset()
+            self.pseudo_setter.reset()
+            if model.input_structure is None:
+                model.mesh_grid = " "
 
     def get_panel_value(self):
         # create the the initial_magnetic_moments as None (Default)
@@ -506,21 +484,58 @@ class AdvancedSettings(Panel):
                 model.hubbard.eigenvalues_label = True
                 model.hubbard.eigenvalues = starting_ns_eigenvalue
 
-    def reset(self):
-        """Reset the widget and the traitlets"""
+    @tl.observe("protocol")
+    def _on_protocol_change(self, _=None):
+        """Update the values of sub-widgets from the given protocol, this will
+        trigger the callback of the sub-widget if it is exist.
+        """
+        parameters = PwBaseWorkChain.get_protocol_inputs(model.protocol)
 
-        with self.hold_trait_notifications():
-            model.protocol = model.traits()["protocol"].default_value
-            model.total_charge = model.traits()["total_charge"].default_value
-            model.van_der_waals = model.traits()["van_der_waals"].default_value
-            model.override = False
-            self.smearing.reset()
-            self.hubbard.reset()
-            self.magnetization.reset()
-            self.pseudo_family_selector.reset()
-            self.pseudo_setter.reset()
-            if model.input_structure is None:
-                model.mesh_grid = " "
+        model.kpoints_distance = parameters["kpoints_distance"]
+
+        num_atoms = len(model.input_structure.sites) if model.input_structure else 1
+
+        etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
+        self._set_value_and_step("etot_conv_thr", etot_value)
+
+        # Set SCF conversion threshold
+        scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
+        self._set_value_and_step("scf_conv_thr", scf_value)
+
+        # Set force conversion threshold
+        forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
+        self._set_value_and_step("forc_conv_thr", forc_value)
+
+        # The pseudo_family read from the protocol (aiida-quantumespresso plugin settings)
+        # we override it with the value from the pseudo_family_selector widget
+        parameters["pseudo_family"] = model.pseudos.family  # TODO useless code?
+
+    @tl.observe("input_structure")
+    def _on_input_structure_change(self, _):
+        if model.input_structure:
+            self._on_protocol_change()
+            self._display_mesh()
+            if isinstance(model.input_structure, HubbardStructureData):
+                model.override = True
+
+    def _set_value_and_step(self, attribute, value):
+        """
+        Sets the value and adjusts the step based on the order of magnitude of the value.
+        This is used for the thresolds values (etot_conv_thr, scf_conv_thr, forc_conv_thr).
+        Parameters:
+            attribute: The attribute whose values are to be set (e.g., self.etot_conv_thr).
+            value: The numerical value to set.
+        """
+        setattr(model, attribute, value)
+        if value != 0:
+            order_of_magnitude = np.floor(np.log10(abs(value)))
+            setattr(model, f"{attribute}_step", 10 ** (order_of_magnitude - 1))
+        else:
+            setattr(model, f"{attribute}_step", 0.1)
+
+    def _on_override_change(self, change):
+        if not change["new"]:
+            self.reset()
 
     def _display_mesh(self, _=None):
         if model.input_structure is None:
