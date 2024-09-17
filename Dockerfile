@@ -8,6 +8,7 @@ ARG HQ_VER=0.19.0
 
 ARG UV_CACHE_DIR=/tmp/uv_cache
 ARG QE_APP_SRC=/tmp/quantum-espresso
+ARG HQ_COMPUTER="localhost-hq"
 
 FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
@@ -51,6 +52,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 FROM build_deps AS home_build
 ARG QE_DIR
 ARG HQ_VER
+ARG HQ_COMPUTER
 
 # Install hq binary
 RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz && \
@@ -70,9 +72,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
-ENV HQ_COMPUTER="localhost-hq"
-# export
-ARG HQ_COMPUTER
+ENV HQ_COMPUTER=$HQ_COMPUTER
 
 # TODO: Remove PGSQL and daemon log files, and other unneeded files
 RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
@@ -95,6 +95,7 @@ FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
 ARG QE_DIR
 ARG QE_APP_SRC
 ARG UV_CACHE_DIR
+ARG HQ_COMPUTER
 USER ${NB_USER}
 
 WORKDIR /tmp
@@ -117,7 +118,7 @@ USER root
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
-ENV HQ_COMPUTER="localhost-hq"
+ENV HQ_COMPUTER=$HQ_COMPUTER
 
 # Remove content of $HOME
 # '-mindepth=1' ensures that we do not remove the home directory itself.
