@@ -28,10 +28,6 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 
 
 class PseudoFamilySelector(ipw.VBox):
-    title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 10px">
-        <h4>Accuracy and precision</h4></div>"""
-    )
     PSEUDO_HELP_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
             Spin-orbit coupling (SOC) calculations are supported exclusively with PseudoDojo pseudopotentials.
             PseudoDojo offers these pseudopotentials in two versions: standard and stringent.
@@ -46,14 +42,6 @@ class PseudoFamilySelector(ipw.VBox):
         higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
         more expensive. SSSP is the standard solid-state pseudopotentials.
         The PseudoDojo used here has the SR relativistic type.</div>"""
-
-    description = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The exchange-correlation functional and pseudopotential library is set by
-        the <b>protocol</b> configured in the "Workflow" tab. Here you can
-        override the defaults if desired.</div>""",
-        layout=ipw.Layout(max_width="60%"),
-    )
 
     # XXX: the link is not correct after add pseudo dojo
     pseudo_family_prompt = ipw.HTML(
@@ -90,9 +78,6 @@ class PseudoFamilySelector(ipw.VBox):
         if self.rendered:
             return
 
-        # Enable manual setting of the pseudopotential family
-        self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
-
         self.override = ipw.Checkbox(
             description="",
             indent=False,
@@ -102,18 +87,8 @@ class PseudoFamilySelector(ipw.VBox):
             (model.pseudos, "override"),
             (self.override, "value"),
         )
-        self.override.observe(self.set_show_ui, "value")
-        self.override.observe(self.set_text_color, "value")
-        self.override.observe(self.set_pseudo_family, "value")
+        self.override.observe(self._toggle_text_opacity, "value")
 
-        self.set_pseudo_family_box = ipw.HBox(
-            [self.set_pseudo_family_prompt, self.override],
-            layout=ipw.Layout(max_width="20%"),
-        )
-
-        self.show_ui = ipw.Valid(value=True)
-
-        # the widget for DFT functional selection
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
             style={"description_width": "initial"},
@@ -122,7 +97,12 @@ class PseudoFamilySelector(ipw.VBox):
             (model.pseudos, "dft_functional"),
             (self.dft_functional, "value"),
         )
-        self.dft_functional.observe(self.set_pseudo_family, "value")
+        ipw.dlink(
+            (self.override, "value"),
+            (self.dft_functional, "disabled"),
+            lambda override: not override,
+        )
+        self.dft_functional.observe(self._update_pseudo_family, "value")
 
         self.library_selection = ipw.ToggleButtons(
             options=[
@@ -137,36 +117,65 @@ class PseudoFamilySelector(ipw.VBox):
             (model.pseudos, "library"),
             (self.library_selection, "value"),
         )
-        self.library_selection.observe(self.set_pseudo_family, "value")
-
-        self.dft_functional_box = ipw.VBox(
-            children=[
-                self.dft_functional_prompt,
-                self.dft_functional,
-                self.dft_functional_help,
-            ],
-            layout=ipw.Layout(max_width="40%"),
+        ipw.dlink(
+            (self.override, "value"),
+            (self.library_selection, "disabled"),
+            lambda override: not override,
         )
-
-        self.pseudo_setup_box = ipw.VBox(
-            children=[
-                self.pseudo_family_prompt,
-                self.library_selection,
-                self.pseudo_family_help,
-            ],
-            layout=ipw.Layout(max_width="60%"),
-        )
-
-        ipw.dlink((self.show_ui, "value"), (self.library_selection, "disabled"))
-        ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
+        self.library_selection.observe(self._update_pseudo_family, "value")
 
         self.children = [
-            self.title,
+            ipw.HTML("""
+                <div style="padding-top: 0px; padding-bottom: 10px">
+                    <h4>Accuracy and precision</h4>
+                </div>
+            """),
             ipw.HBox(
-                [self.description, self.set_pseudo_family_box],
+                children=[
+                    ipw.HTML(
+                        """
+                        <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+                            The exchange-correlation functional and pseudopotential
+                            library is set by the <b>protocol</b> configured in the
+                            "Workflow" tab. Here you can override the defaults if
+                            desired.
+                        </div>
+                        """,
+                        layout=ipw.Layout(max_width="60%"),
+                    ),
+                    ipw.HBox(
+                        children=[
+                            ipw.HTML(
+                                value="<b>Override</b>",
+                                layout=ipw.Layout(margin="0 5px 0 0"),
+                            ),
+                            self.override,
+                        ],
+                        layout=ipw.Layout(max_width="20%"),
+                    ),
+                ],
                 layout=ipw.Layout(height="50px", justify_content="space-between"),
             ),
-            ipw.HBox([self.dft_functional_box, self.pseudo_setup_box]),
+            ipw.HBox(
+                [
+                    ipw.VBox(
+                        children=[
+                            self.dft_functional_prompt,
+                            self.dft_functional,
+                            self.dft_functional_help,
+                        ],
+                        layout=ipw.Layout(max_width="40%"),
+                    ),
+                    ipw.VBox(
+                        children=[
+                            self.pseudo_family_prompt,
+                            self.library_selection,
+                            self.pseudo_family_help,
+                        ],
+                        layout=ipw.Layout(max_width="60%"),
+                    ),
+                ]
+            ),
         ]
 
         ipw.dlink(
@@ -180,11 +189,50 @@ class PseudoFamilySelector(ipw.VBox):
 
         self.rendered = True
 
-    def set_pseudo_family(self, _=None):
-        """The callback when the selection of pseudo family or dft functional is changed.
-        Also triggered when the override checkbox is changed.
-        This is the only method to set the value of the widget.
-        """
+    def reset(self):
+        """Reset the widget."""
+        self._on_protocol_change()
+
+    @tl.observe("protocol")
+    def _on_protocol_change(self, _=None):
+        """Update the widget values from the current protocol."""
+        # FIXME: this rely on the aiida-quantumespresso, which is not ideal
+
+        # TODO shouldn't we also use the variables here?
+        if model.spin_orbit == "soc":
+            if model.protocol in ["fast", "moderate"]:
+                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
+            else:
+                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
+        else:
+            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(model.protocol)[
+                "pseudo_family"
+            ]
+
+        pseudo_family = PseudoFamily.from_string(pseudo_family_string)
+
+        self._load_from_pseudo_family(pseudo_family)
+
+    @tl.observe("spin_orbit")
+    def _on_spin_orbit_change(self, _):
+        """Update the library selection according to the spin orbit value."""
+        if model.spin_orbit == "soc":
+            self.library_selection.options = [
+                "PseudoDojo standard",
+                "PseudoDojo stringent",
+            ]
+            self.pseudo_family_help.value = self.PSEUDO_HELP_SOC
+        else:
+            self.library_selection.options = [
+                "SSSP efficiency",
+                "SSSP precision",
+                "PseudoDojo standard",
+                "PseudoDojo stringent",
+            ]
+            self.pseudo_family_help.value = self.PSEUDO_HELP_WO_SOC
+
+    def _update_pseudo_family(self, _=None):
+        """Set pseudo family according to the selected library and functional."""
         library, accuracy = model.pseudos.library.split()
         functional = model.pseudos.dft_functional
         # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
@@ -205,11 +253,8 @@ class PseudoFamilySelector(ipw.VBox):
 
         model.pseudos.family = pseudo_family_string
 
-    def set_show_ui(self, change):
-        self.show_ui.value = not change.new
-
-    def set_text_color(self, change):
-        opacity = 1.0 if change.new else 0.5
+    def _toggle_text_opacity(self, change):
+        opacity = 1.0 if change["new"] else 0.5
 
         for html in (
             self.pseudo_family_prompt,
@@ -224,48 +269,7 @@ class PseudoFamilySelector(ipw.VBox):
                 f"opacity:{old_opacity};", f"opacity:{opacity};"
             )
 
-    def reset(self):
-        """Reset the widget."""
-        self._update_settings_from_protocol()
-
-    @tl.observe("spin_orbit")
-    def _update_library_selection(self, _):
-        """Update the library selection according to the spin orbit value."""
-        if model.spin_orbit == "soc":
-            self.library_selection.options = [
-                "PseudoDojo standard",
-                "PseudoDojo stringent",
-            ]
-            self.pseudo_family_help.value = self.PSEUDO_HELP_SOC
-        else:
-            self.library_selection.options = [
-                "SSSP efficiency",
-                "SSSP precision",
-                "PseudoDojo standard",
-                "PseudoDojo stringent",
-            ]
-            self.pseudo_family_help.value = self.PSEUDO_HELP_WO_SOC
-
-    @tl.observe("protocol")
-    def _update_settings_from_protocol(self, _=None):
-        """Update the widget values from the given protocol, and trigger the callback."""
-        # FIXME: this rely on the aiida-quantumespresso, which is not ideal
-
-        if model.spin_orbit == "soc":
-            if model.protocol in ["fast", "moderate"]:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
-            else:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
-        else:
-            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(model.protocol)[
-                "pseudo_family"
-            ]
-
-        pseudo_family = PseudoFamily.from_string(pseudo_family_string)
-
-        self.load_from_pseudo_family(pseudo_family)
-
-    def load_from_pseudo_family(self, pseudo_family: PseudoFamily):
+    def _load_from_pseudo_family(self, pseudo_family: PseudoFamily):
         """Reload the widget from the given pseudo family string."""
         with self.hold_trait_notifications():
             # will trigger the callback to set the value of widgets
