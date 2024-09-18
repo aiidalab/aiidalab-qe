@@ -4,10 +4,8 @@ import io
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida_pseudo.common.units import U
 
 from aiida import orm
-from aiida.common import exceptions
 from aiida.plugins import DataFactory, GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.common.widgets import LoadingWidget
@@ -33,6 +31,7 @@ class PseudoSettings(ipw.VBox):
     input_structure = tl.Instance(klass=orm.StructureData, allow_none=True)
     spin_orbit = tl.Unicode()
     pseudo_family = tl.Unicode()
+    override = tl.Bool(False)
 
     def __init__(self, **kwargs):
         super().__init__(
@@ -89,22 +88,6 @@ class PseudoSettings(ipw.VBox):
             </div>
         """)
 
-        self.override = ipw.Checkbox(
-            description="",
-            indent=False,
-            layout=ipw.Layout(max_width="10%"),
-        )
-        ipw.link(
-            (model.pseudos, "override"),
-            (self.override, "value"),
-        )
-        ipw.dlink(
-            (model, "input_structure"),
-            (self.override, "disabled"),
-            lambda structure: structure is None,
-        )
-        self.override.observe(self._on_override_change, "value")
-
         self.functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
             style={"description_width": "initial"},
@@ -114,7 +97,7 @@ class PseudoSettings(ipw.VBox):
             (self.functional, "value"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (model, "override"),
             (self.functional, "disabled"),
             lambda override: not override,
         )
@@ -134,15 +117,29 @@ class PseudoSettings(ipw.VBox):
             (self.library, "value"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (model, "override"),
             (self.library, "disabled"),
             lambda override: not override,
         )
         self.library.observe(self._on_family_parameters_change, "value")
 
+        self.setter_widget_helper = ipw.HTML("""
+            <div class="pseudo-text">
+                The pseudopotential for each kind of atom in the structure can be
+                custom set. The default pseudopotential and cutoffs are get from
+                the pseudo family. The cutoffs used for the calculation are the
+                maximum of the default from all pseudopotentials and can be custom
+                set.
+            </div>
+        """)
+
         self.setter_widget = ipw.VBox()
 
         self._status_message = StatusHTML(clear_after=20)
+        ipw.dlink(
+            (model.pseudos, "status_message"),
+            (self._status_message, "message"),
+        )
 
         self.cutoff_helper = ipw.HTML("""
             <div class="pseudo-text">
@@ -159,7 +156,7 @@ class PseudoSettings(ipw.VBox):
             (self.ecutwfc, "value"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (model, "override"),
             (self.ecutwfc, "disabled"),
             lambda override: not override,
         )
@@ -172,24 +169,12 @@ class PseudoSettings(ipw.VBox):
             (self.ecutrho, "value"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (model, "override"),
             (self.ecutrho, "disabled"),
             lambda override: not override,
         )
 
-        self.container = ipw.VBox(
-            children=[
-                ipw.HTML("""
-                <div class="pseudo-text">
-                    The pseudopotential for each kind of atom in the structure can be
-                    custom set. The default pseudopotential and cutoffs are get from
-                    the pseudo family. The cutoffs used for the calculation are the
-                    maximum of the default from all pseudopotentials and can be custom
-                    set.
-                </div>
-                """),
-            ]
-        )
+        self.container = ipw.VBox()
 
         self.children = [
             ipw.HTML("""
@@ -209,16 +194,6 @@ class PseudoSettings(ipw.VBox):
                         </div>
                         """,
                         layout=ipw.Layout(max_width="60%"),
-                    ),
-                    ipw.HBox(
-                        children=[
-                            ipw.HTML(
-                                value="<b>Override</b>",
-                                layout=ipw.Layout(margin="0 5px 0 0"),
-                            ),
-                            self.override,
-                        ],
-                        layout=ipw.Layout(max_width="20%"),
                     ),
                 ],
                 layout=ipw.Layout(height="50px", justify_content="space-between"),
@@ -255,10 +230,6 @@ class PseudoSettings(ipw.VBox):
         ]
 
         ipw.dlink(
-            (model.pseudos, "family"),
-            (self, "pseudo_family"),
-        )
-        ipw.dlink(
             (model, "protocol"),
             (self, "protocol"),
         )
@@ -270,11 +241,18 @@ class PseudoSettings(ipw.VBox):
             (model, "spin_orbit"),
             (self, "spin_orbit"),
         )
+        ipw.dlink(
+            (model.pseudos, "family"),
+            (self, "pseudo_family"),
+        )
+        ipw.dlink(
+            (model, "override"),
+            (self, "override"),
+        )
 
         self.rendered = True
 
     def reset(self):
-        self._unsubscribe_setter_links()
         model.pseudos.reset()
 
     @tl.observe("protocol")
@@ -283,6 +261,8 @@ class PseudoSettings(ipw.VBox):
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, _=None):
+        self._unsubscribe_setter_links()
+        model.pseudos.set_defaults_for_structure(model.input_structure)
         self._build_setter_widgets()
 
     @tl.observe("spin_orbit")
@@ -292,13 +272,12 @@ class PseudoSettings(ipw.VBox):
     @tl.observe("pseudo_family")
     def _on_pseudo_family_change(self, _=None):
         self._update_family_link()
-        self._update_pseudos()
-        self._update_cutoffs()
+        model.pseudos.update_pseudos(model.input_structure)
+        model.pseudos.update_cutoffs(model.input_structure)
 
+    @tl.observe("override")
     def _on_override_change(self, change):
         self._toggle_setter_widgets(change)
-        if not change["new"]:
-            self.reset()
 
     def _on_family_parameters_change(self, _=None):
         self._update_family()
@@ -379,81 +358,23 @@ class PseudoSettings(ipw.VBox):
             </div>
         """
 
-    def _update_pseudos(self):
-        try:
-            pseudo_family = self._get_pseudo_family()
-            pseudos = pseudo_family.get_pseudos(structure=model.input_structure)
-        except ValueError as exception:
-            self._status_message.message = f"""
-                <div class='alert alert-danger'>
-                    ERROR: {exception!s}
-                </div>
-            """
-            return
-
-        model.pseudos.dictionary = {
-            kind: pseudo.uuid for kind, pseudo in pseudos.items()
-        }
-
-    def _update_cutoffs(self):
-        """Update wavefunction and density cutoffs from pseudo family."""
-        if model.input_structure is None:
-            model.pseudos.cutoffs = [[0.0], [0.0]]
-            return
-
-        try:
-            pseudo_family = self._get_pseudo_family()
-            current_unit = pseudo_family.get_cutoffs_unit()
-            cutoff_dict = pseudo_family.get_cutoffs()
-        except exceptions.NotExistent:
-            self._status_message.message = f"""
-                <div class='alert alert-danger'>
-                    ERROR: required pseudo family `{model.pseudos.family}` is
-                    not installed. Please use `aiida-pseudo install` to install
-                    it."
-                </div>
-            """
-        except ValueError as exception:
-            self._status_message.message = f"""
-                <div class='alert alert-danger'>
-                    ERROR: failed to obtain recommended cutoffs for pseudos
-                    `{pseudo_family}`: {exception}
-                </div>
-            """
-        else:
-            kind_names = model.input_structure.get_kind_names()
-
-        ecutwfc_list = []
-        ecutrho_list = []
-        for kind in kind_names:
-            cutoff = cutoff_dict.get(kind, {})
-            ecutrho, ecutwfc = (
-                U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
-                for v in cutoff.values()
-            )
-            ecutwfc_list.append(ecutwfc)
-            ecutrho_list.append(ecutrho)
-
-        model.pseudos.cutoffs = [ecutwfc_list, ecutrho_list]
-
     def _toggle_setter_widgets(self, change):
         if change["new"]:
-            self.container.children += (self.setter_widget,)
+            self.container.children = [
+                self.setter_widget_helper,
+                self.setter_widget,
+            ]
         else:
-            self.container.children = [*self.container.children][:1]
+            self.container.children = []
 
     def _build_setter_widgets(self):
         """Build the pseudo setter widgets."""
-
-        self._unsubscribe_setter_links()
 
         children = []
 
         if model.input_structure is None:
             kinds = []
         else:
-            self._update_pseudos()
-            self._update_cutoffs()
             kinds = model.input_structure.kinds
 
         for index, kind in enumerate(kinds):

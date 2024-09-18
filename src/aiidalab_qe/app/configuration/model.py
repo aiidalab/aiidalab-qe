@@ -1,12 +1,21 @@
+from copy import deepcopy
+
 import ipywidgets as ipw
 import traitlets as tl
+from aiida_pseudo.common.units import U
 from pymatgen.core.periodic_table import Element
 
 from aiida import orm
+from aiida.common import exceptions
+from aiida.plugins import GroupFactory
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_widgets_base import WizardAppWidgetStep
+
+SsspFamily = GroupFactory("pseudo.family.sssp")
+PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
+CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -15,7 +24,7 @@ class SmearingModel(tl.HasTraits):
     type = tl.Unicode()
     degauss = tl.Float()
 
-    def set_defaults(self, default_protocol):
+    def set_defaults_for_protocol(self, default_protocol):
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(default_protocol)
             .get("pw", {})
@@ -49,10 +58,20 @@ class MagnetizationModel(tl.HasTraits):
         default_value={},
     )
 
+    def set_defaults_for_structure(self, input_structure):
+        if input_structure is None:
+            self._default_moments = {}
+        else:
+            self._default_moments = {kind.symbol: 0.0 for kind in input_structure.kinds}
+        self.moments = self._get_moments()
+
+    def _get_moments(self):
+        return deepcopy(self._default_moments)
+
     def reset(self):
         self.type = self.traits()["type"].default_value
         self.total = self.traits()["total"].default_value
-        self.moments = {}
+        self.moments = self._get_moments()
 
 
 class HubbardModel(tl.HasTraits):
@@ -68,8 +87,8 @@ class HubbardModel(tl.HasTraits):
         default_value=[],
     )
 
-    def set_defaults(self, change):
-        if (input_structure := change["new"]) is None:
+    def set_defaults_for_structure(self, input_structure):
+        if input_structure is None:
             self.elements = []
             self._default_eigenvalues = []
         else:
@@ -93,14 +112,17 @@ class HubbardModel(tl.HasTraits):
                 ]
                 for element in self.elements  # transition metals and lanthanoids
             ]
-        self.eigenvalues = self._default_eigenvalues
+        self.eigenvalues = self._get_default_eigenvalues()
         self.needs_eigenvalues_widget = len(self.elements) > 0
+
+    def _get_default_eigenvalues(self):
+        return deepcopy(self._default_eigenvalues)
 
     def reset(self):
         self.activate = self.traits()["activate"].default_value
         self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
-        self.parameters = {}
-        self.eigenvalues = self._default_eigenvalues
+        self.parameters = {}  # TODO default parameters
+        self.eigenvalues = self._get_default_eigenvalues()
 
 
 class PseudosModel(tl.HasTraits):
@@ -127,7 +149,6 @@ class PseudosModel(tl.HasTraits):
             ]
         )
     )
-    override = tl.Bool(False)
     functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
     cutoffs = tl.List(
         trait=tl.List(tl.Float),  # [[ecutwfc values], [ecutrho values]]
@@ -135,6 +156,7 @@ class PseudosModel(tl.HasTraits):
     )
     ecutwfc = tl.Float()
     ecutrho = tl.Float()
+    status_message = tl.Unicode()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -149,13 +171,97 @@ class PseudosModel(tl.HasTraits):
             lambda cutoffs: max(cutoffs[1]),
         )
 
+    def set_defaults_for_structure(self, input_structure):
+        if input_structure is None:
+            self._default_dictionary = {}
+            self._default_cutoffs = [[0.0], [0.0]]
+        else:
+            self.update_pseudos(input_structure)
+            self.update_cutoffs(input_structure)
+
+    def update_pseudos(self, input_structure):
+        try:
+            pseudo_family = self._get_pseudo_family()
+            pseudos = pseudo_family.get_pseudos(structure=input_structure)
+        except ValueError as exception:
+            self._status_message = f"""
+                <div class='alert alert-danger'>
+                    ERROR: {exception!s}
+                </div>
+            """
+            return
+
+        self._default_dictionary = {
+            kind: pseudo.uuid for kind, pseudo in pseudos.items()
+        }
+        self.dictionary = self._get_default_dictionary()
+
+    def update_cutoffs(self, input_structure):
+        """Update wavefunction and density cutoffs from pseudo family."""
+        try:
+            pseudo_family = self._get_pseudo_family()
+            current_unit = pseudo_family.get_cutoffs_unit()
+            cutoff_dict = pseudo_family.get_cutoffs()
+        except exceptions.NotExistent:
+            self._status_message = f"""
+                <div class='alert alert-danger'>
+                    ERROR: required pseudo family `{self.family}` is
+                    not installed. Please use `aiida-pseudo install` to install
+                    it."
+                </div>
+            """
+        except ValueError as exception:
+            self._status_message = f"""
+                <div class='alert alert-danger'>
+                    ERROR: failed to obtain recommended cutoffs for pseudos
+                    `{pseudo_family}`: {exception}
+                </div>
+            """
+        else:
+            kind_names = input_structure.get_kind_names()
+
+        ecutwfc_list = []
+        ecutrho_list = []
+        for kind in kind_names:
+            cutoff = cutoff_dict.get(kind, {})
+            ecutrho, ecutwfc = (
+                U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
+                for v in cutoff.values()
+            )
+            ecutwfc_list.append(ecutwfc)
+            ecutrho_list.append(ecutrho)
+
+        self._default_cutoffs = [ecutwfc_list, ecutrho_list]
+        self.cutoffs = self._get_default_cutoffs()
+
+    def _get_pseudo_family(self):
+        """Get the pseudo family from the database."""
+        return (
+            orm.QueryBuilder()
+            .append(
+                (
+                    PseudoDojoFamily,
+                    SsspFamily,
+                    CutoffsPseudoPotentialFamily,
+                ),
+                filters={"label": self.family},
+            )
+            .one()[0]
+        )
+
+    def _get_default_dictionary(self):
+        return deepcopy(self._default_dictionary)
+
+    def _get_default_cutoffs(self):
+        return deepcopy(self._default_cutoffs)
+
     def reset(self):
-        self.dictionary = {}
-        self.cutoffs = [[0.0], [0.0]]
+        self.dictionary = self._get_default_dictionary()
+        self.cutoffs = self._get_default_cutoffs()
         self.family = self.traits()["family"].default_value
         self.library = self.traits()["library"].default_value
-        self.override = self.traits()["override"].default_value
         self.functional = self.traits()["functional"].default_value
+        self.status_message = ""
 
 
 class ConfigurationModel(tl.HasTraits):
@@ -207,8 +313,7 @@ class ConfigurationModel(tl.HasTraits):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.smearing.set_defaults(self.traits()["protocol"].default_value)
-        self.observe(self.hubbard.set_defaults, "input_structure")
+        self.smearing.set_defaults_for_protocol(self.traits()["protocol"].default_value)
 
 
 config_model = ConfigurationModel()

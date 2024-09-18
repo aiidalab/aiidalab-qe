@@ -325,6 +325,7 @@ class AdvancedSettings(Panel):
             model.protocol = model.traits()["protocol"].default_value
             model.total_charge = model.traits()["total_charge"].default_value
             model.van_der_waals = model.traits()["van_der_waals"].default_value
+            model.spin_orbit = model.traits()["spin_orbit"].default_value
             model.override = False
             self.smearing.reset()
             self.hubbard.reset()

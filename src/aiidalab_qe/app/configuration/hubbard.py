@@ -91,6 +91,7 @@ class HubbardSettings(ipw.VBox):
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
+        model.hubbard.set_defaults_for_structure(model.input_structure)
         self._build_hubbard_widget()
         if model.hubbard.needs_eigenvalues_widget:
             self._build_eigenvalues_widget()
