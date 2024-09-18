@@ -100,6 +100,12 @@ class HubbardSettings(ipw.VBox):
         if isinstance(change["new"], HubbardStructureData):
             self._set_parameters_from_hubbard_structure()
 
+    def _on_hubbard_check(self, change):
+        self._toggle_hubbard_widget(change)
+
+    def _on_eigenvalues_check(self, change):
+        self._toggle_eigenvalues_widget(change)
+
     def _build_hubbard_widget(self):
         """Build the widget for defining Hubbard U values
         for each atomic species in the input structure.
@@ -171,8 +177,9 @@ class HubbardSettings(ipw.VBox):
             ]
             return labels
 
+        self._unsubscribe_hubbard_widget()
+
         children = []
-        self.hubbard_widget_links = []
 
         if model.input_structure is None:
             input_labels = []
@@ -227,8 +234,9 @@ class HubbardSettings(ipw.VBox):
             eigenvalues[index][spin][state] = [state + 1, spin, symbol, value]
             return eigenvalues
 
+        self._unsubscribe_eigenvalues_widget()
+
         children = []
-        self.eigenvalues_widget_links = []
 
         for ei, element in enumerate(model.hubbard.elements):
             es = element.symbol
@@ -305,10 +313,10 @@ class HubbardSettings(ipw.VBox):
         model.hubbard.parameters = parameters
         model.hubbard.activate = True
 
-    def _on_hubbard_check(self, change):
+    def _toggle_hubbard_widget(self, change):
         self.container.children = [self.hubbard_widget] if change["new"] else []
 
-    def _on_eigenvalues_check(self, change):
+    def _toggle_eigenvalues_widget(self, change):
         self.hubbard_widget.children = (
             [
                 *self.hubbard_widget.children,

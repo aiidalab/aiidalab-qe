@@ -193,7 +193,7 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
 
     # Upload and set a new pseudo for O
     new_O_pseudo = generate_upf_data("O", "O_new.upf")
-    upload_w = w.pseudo_setting_widgets.children[1]
+    upload_w = w.pseudo_setter_widgets.children[1]
     upload_w._on_file_upload(
         {
             "new": {

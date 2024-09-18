@@ -108,6 +108,17 @@ class MagnetizationSettings(ipw.VBox):
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
+        self._build_kinds_widget(change)
+
+    @tl.observe("electronic_type")
+    def _on_electronic_type_change(self, change):
+        self._switch_widgets(change)
+
+    @tl.observe("magnetization_type")
+    def _on_magnetization_type_change(self, change):
+        self._toggle_widgets(change)
+
+    def _build_kinds_widget(self, change):
         children = []
 
         if (input_structure := change["new"]) is None:
@@ -147,8 +158,7 @@ class MagnetizationSettings(ipw.VBox):
 
         self.kinds.children = children
 
-    @tl.observe("electronic_type")
-    def _on_electronic_type_change(self, change):
+    def _switch_widgets(self, change):
         children = [self.description]
         if change["new"] == "metal":
             children.extend([self.magnetization_type_toggle, self.container])
@@ -156,8 +166,7 @@ class MagnetizationSettings(ipw.VBox):
             children.append(self.tot_magnetization)
         self.children = children
 
-    @tl.observe("magnetization_type")
-    def _on_magnetization_type_change(self, change):
+    def _toggle_widgets(self, change):
         if change["new"] == "tot_magnetization":
             self.container.children = [self.tot_magnetization]
         else:

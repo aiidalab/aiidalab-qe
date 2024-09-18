@@ -50,6 +50,11 @@
   font-weight: bold;
 }
 
+.pseudo-text {
+  line-height: 140%;
+  padding: 5px 0;
+}
+
 footer {
   text-align: right;
 }

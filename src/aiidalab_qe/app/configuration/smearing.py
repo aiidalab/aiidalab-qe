@@ -86,6 +86,9 @@ class SmearingSettings(ipw.VBox):
 
     @tl.observe("protocol")
     def _on_protocol_change(self, _=None):
+        self._update_model()
+
+    def _update_model(self):
         """Update model with protocol parameters."""
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(model.protocol)

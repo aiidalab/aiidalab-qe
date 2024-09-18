@@ -127,7 +127,7 @@ class PseudosModel(tl.HasTraits):
         )
     )
     override = tl.Bool(False)
-    dft_functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
+    functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
     ecutwfc = tl.Float(0.0)
     ecutrho = tl.Float(0.0)
 
@@ -136,7 +136,7 @@ class PseudosModel(tl.HasTraits):
         self.family = self.traits()["family"].default_value
         self.library = self.traits()["library"].default_value
         self.override = self.traits()["override"].default_value
-        self.dft_functional = self.traits()["dft_functional"].default_value
+        self.functional = self.traits()["functional"].default_value
         self.ecutwfc = self.traits()["ecutwfc"].default_value
         self.ecutrho = self.traits()["ecutrho"].default_value
 

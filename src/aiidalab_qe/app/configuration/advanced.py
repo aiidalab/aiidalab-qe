@@ -19,7 +19,7 @@ from aiidalab_qe.setup.pseudos import PseudoFamily
 from .hubbard import HubbardSettings
 from .magnetization import MagnetizationSettings
 from .model import config_model as model
-from .pseudos import PseudoFamilySelector, PseudoSetter
+from .pseudos import PseudoSettings
 from .smearing import SmearingSettings
 
 
@@ -41,8 +41,7 @@ class AdvancedSettings(Panel):
         self.smearing = SmearingSettings()
         self.hubbard = HubbardSettings()
         self.magnetization = MagnetizationSettings()
-        self.pseudo_family_selector = PseudoFamilySelector()
-        self.pseudo_setter = PseudoSetter()
+        self.pseudos = PseudoSettings()
 
         self.dftd3_version = {
             "dft-d3": 3,
@@ -76,6 +75,11 @@ class AdvancedSettings(Panel):
         ipw.link(
             (model, "override"),
             (self.override, "value"),
+        )
+        ipw.dlink(
+            (model, "input_structure"),
+            (self.override, "disabled"),
+            lambda structure: structure is None,
         )
         self.override.observe(self._on_override_change, "value")
 
@@ -231,8 +235,8 @@ class AdvancedSettings(Panel):
             lambda override: not override,
         )
 
-        self.pseudo_family_selector.render()
-        self.pseudo_setter.render()
+        self.pseudos.render()
+
         self.kpoints_distance.observe(self._display_mesh, "value")
 
         self.children = [
@@ -300,8 +304,7 @@ class AdvancedSettings(Panel):
             ),
             self.hubbard,
             self.spin_orbit,
-            self.pseudo_family_selector,
-            self.pseudo_setter,
+            self.pseudos,
         ]
 
         ipw.dlink(
@@ -326,8 +329,7 @@ class AdvancedSettings(Panel):
             self.smearing.reset()
             self.hubbard.reset()
             self.magnetization.reset()
-            self.pseudo_family_selector.reset()
-            self.pseudo_setter.reset()
+            self.pseudos.reset()
             if model.input_structure is None:
                 model.mesh_grid = " "
 
@@ -362,8 +364,8 @@ class AdvancedSettings(Panel):
                     {"starting_ns_eigenvalue": model.hubbard.eigenvalues}
                 )
 
-        if model.pseudos.dictionary:
-            parameters["pw"]["pseudos"] = model.pseudos.dictionary
+        if model.pseudos.dict:
+            parameters["pw"]["pseudos"] = model.pseudos.dict
             parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = model.pseudos.ecutwfc
             parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = model.pseudos.ecutrho
 
@@ -416,9 +418,9 @@ class AdvancedSettings(Panel):
             library = pseudo_family.library
             accuracy = pseudo_family.accuracy
             model.pseudos.library = f"{library} {accuracy}"
-            model.pseudos.dft_functional = pseudo_family.functional
+            model.pseudos.functional = pseudo_family.functional
         if "pseudos" in parameters["pw"]:
-            model.pseudos.dictionary = parameters["pw"]["pseudos"]
+            model.pseudos.dict = parameters["pw"]["pseudos"]
             model.pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
             model.pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
         #
@@ -486,9 +488,39 @@ class AdvancedSettings(Panel):
 
     @tl.observe("protocol")
     def _on_protocol_change(self, _=None):
-        """Update the values of sub-widgets from the given protocol, this will
-        trigger the callback of the sub-widget if it is exist.
-        """
+        self._update_model()
+
+    @tl.observe("input_structure")
+    def _on_input_structure_change(self, _):
+        if model.input_structure:
+            self._update_model()
+            self._display_mesh()
+            if isinstance(model.input_structure, HubbardStructureData):
+                model.override = True
+
+    def _on_override_change(self, change):
+        if not change["new"]:
+            self.reset()
+
+    def _update_model(self):
+        """Update the model from the given protocol."""
+
+        def set_value_and_step(attribute, value):
+            """Sets the value and step size.
+
+            Parameters:
+                attribute (str):
+                    The attribute whose values are to be set (e.g., self.etot_conv_thr).
+                value (float):
+                    The numerical value to set.
+            """
+            setattr(model, attribute, value)
+            if value != 0:
+                order_of_magnitude = np.floor(np.log10(abs(value)))
+                setattr(model, f"{attribute}_step", 10 ** (order_of_magnitude - 1))
+            else:
+                setattr(model, f"{attribute}_step", 0.1)
+
         parameters = PwBaseWorkChain.get_protocol_inputs(model.protocol)
 
         model.kpoints_distance = parameters["kpoints_distance"]
@@ -496,46 +528,13 @@ class AdvancedSettings(Panel):
         num_atoms = len(model.input_structure.sites) if model.input_structure else 1
 
         etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
-        self._set_value_and_step("etot_conv_thr", etot_value)
+        set_value_and_step("etot_conv_thr", etot_value)
 
-        # Set SCF conversion threshold
         scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
-        self._set_value_and_step("scf_conv_thr", scf_value)
+        set_value_and_step("scf_conv_thr", scf_value)
 
-        # Set force conversion threshold
         forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
-        self._set_value_and_step("forc_conv_thr", forc_value)
-
-        # The pseudo_family read from the protocol (aiida-quantumespresso plugin settings)
-        # we override it with the value from the pseudo_family_selector widget
-        parameters["pseudo_family"] = model.pseudos.family  # TODO useless code?
-
-    @tl.observe("input_structure")
-    def _on_input_structure_change(self, _):
-        if model.input_structure:
-            self._on_protocol_change()
-            self._display_mesh()
-            if isinstance(model.input_structure, HubbardStructureData):
-                model.override = True
-
-    def _set_value_and_step(self, attribute, value):
-        """
-        Sets the value and adjusts the step based on the order of magnitude of the value.
-        This is used for the thresolds values (etot_conv_thr, scf_conv_thr, forc_conv_thr).
-        Parameters:
-            attribute: The attribute whose values are to be set (e.g., self.etot_conv_thr).
-            value: The numerical value to set.
-        """
-        setattr(model, attribute, value)
-        if value != 0:
-            order_of_magnitude = np.floor(np.log10(abs(value)))
-            setattr(model, f"{attribute}_step", 10 ** (order_of_magnitude - 1))
-        else:
-            setattr(model, f"{attribute}_step", 0.1)
-
-    def _on_override_change(self, change):
-        if not change["new"]:
-            self.reset()
+        set_value_and_step("forc_conv_thr", forc_value)
 
     def _display_mesh(self, _=None):
         if model.input_structure is None:
