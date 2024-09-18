@@ -7,7 +7,7 @@
 build/
 export/
 .do-not-setup-on-localhost
-
+.mypy_cache/
 
 # Sphinx documentation
 docs/html
