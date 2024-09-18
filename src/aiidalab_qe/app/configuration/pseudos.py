@@ -35,7 +35,6 @@ class PseudoSettings(ipw.VBox):
     input_structure = tl.Instance(klass=orm.StructureData, allow_none=True)
     spin_orbit = tl.Unicode()
     pseudo_family = tl.Unicode()
-    pseudos = tl.Dict()
 
     def __init__(self, **kwargs):
         super().__init__(
@@ -399,15 +398,45 @@ class PseudoSettings(ipw.VBox):
         }
 
     def _update_cutoffs(self):
-        """Set calculation cutoff defaults to the maximum of kind cutoffs."""
-        max_ecutwfc = 0
-        max_ecutrho = 0
-        for widget in self.setter_widget.children:
-            max_ecutwfc = max(max_ecutwfc, widget.ecutwfc)
-            max_ecutrho = max(max_ecutrho, widget.ecutrho)
-        with self.hold_trait_notifications():
-            model.pseudos.ecutwfc = max_ecutwfc
-            model.pseudos.ecutrho = max_ecutrho
+        """Update wavefunction and density cutoffs from pseudo family."""
+        if model.input_structure is None:
+            model.pseudos.cutoffs = [[0.0], [0.0]]
+            return
+
+        try:
+            pseudo_family = self._get_pseudo_family()
+            current_unit = pseudo_family.get_cutoffs_unit()
+            cutoff_dict = pseudo_family.get_cutoffs()
+        except exceptions.NotExistent:
+            self._status_message.message = f"""
+                <div class='alert alert-danger'>
+                    ERROR: required pseudo family `{model.pseudos.family}` is
+                    not installed. Please use `aiida-pseudo install` to install
+                    it."
+                </div>
+            """
+        except ValueError as exception:
+            self._status_message.message = f"""
+                <div class='alert alert-danger'>
+                    ERROR: failed to obtain recommended cutoffs for pseudos
+                    `{pseudo_family}`: {exception}
+                </div>
+            """
+        else:
+            kind_names = model.input_structure.get_kind_names()
+
+        ecutwfc_list = []
+        ecutrho_list = []
+        for kind in kind_names:
+            cutoff = cutoff_dict.get(kind, {})
+            ecutrho, ecutwfc = (
+                U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
+                for v in cutoff.values()
+            )
+            ecutwfc_list.append(ecutwfc)
+            ecutrho_list.append(ecutrho)
+
+        model.pseudos.cutoffs = [ecutwfc_list, ecutrho_list]
 
     def _toggle_setter_widgets(self, change):
         if change["new"]:
@@ -418,41 +447,6 @@ class PseudoSettings(ipw.VBox):
     def _build_setter_widgets(self):
         """Build the pseudo setter widgets."""
 
-        def get_cutoffs():
-            """Get the cutoffs from the pseudo family."""
-
-            try:
-                pseudo_family = self._get_pseudo_family()
-            except exceptions.NotExistent:
-                self._status_message.message = f"""
-                    <div class='alert alert-danger'>
-                        ERROR: required pseudo family `{model.pseudos.family}` is
-                        not installed. Please use `aiida-pseudo install` to install
-                        it."
-                    </div>
-                """
-                return {}
-
-            try:
-                cutoffs = pseudo_family.get_cutoffs()
-            except ValueError as exception:
-                self._status_message.message = f"""
-                    <div class='alert alert-danger'>
-                        ERROR: failed to obtain recommended cutoffs for pseudos
-                        `{pseudo_family}`: {exception}
-                    </div>
-                """
-                return {}
-
-            current_unit = pseudo_family.get_cutoffs_unit()
-            for element, cutoff in cutoffs.items():
-                cutoffs[element] = {
-                    k: U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
-                    for k, v in cutoff.items()
-                }
-
-            return cutoffs
-
         self._unsubscribe_setter_links()
 
         children = []
@@ -461,18 +455,15 @@ class PseudoSettings(ipw.VBox):
             kinds = []
         else:
             self._update_pseudos()
-            cutoffs = get_cutoffs()
+            self._update_cutoffs()
             kinds = model.input_structure.kinds
 
-        for kind in kinds:
+        for index, kind in enumerate(kinds):
             symbol = kind.name
-            pseudo_upload_widget = PseudoUploadWidget(
-                kind=symbol,
-                cutoffs=cutoffs.get(symbol, None),
-            )
-            link = ipw.link(
+            upload_widget = PseudoUploadWidget(kind=symbol)
+            pseudo_link = ipw.link(
                 (model.pseudos, "dictionary"),
-                (pseudo_upload_widget, "pseudo"),
+                (upload_widget, "pseudo"),
                 [
                     lambda d, symbol=symbol: orm.load_node(d.get(symbol)),
                     lambda v, symbol=symbol: {
@@ -481,9 +472,22 @@ class PseudoSettings(ipw.VBox):
                     },
                 ],
             )
-            self.setter_widget_links.append(link)
-            pseudo_upload_widget.render()
-            children.append(pseudo_upload_widget)
+            cutoffs_link = ipw.dlink(
+                (model.pseudos, "cutoffs"),
+                (upload_widget, "cutoffs"),
+                lambda c, i=index: [c[0][i], c[1][i]],
+            )
+            upload_widget.render()
+
+            self.setter_widget_links.extend(
+                [
+                    pseudo_link,
+                    cutoffs_link,
+                    upload_widget.link,
+                ]
+            )
+
+            children.append(upload_widget)
 
         self.setter_widget.children = children
 
@@ -1032,23 +1036,16 @@ class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
 
     pseudo = tl.Instance(UpfData, allow_none=True)
+    cutoffs = tl.List(tl.Float, [])
     error_message = tl.Unicode(allow_none=True)
 
-    cutoffs_message_template = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The recommended ecutwfc: <b>{ecutwfc} Ry</b> &nbsp;
-        for ecutrho: <b>{ecutrho} Ry</b>
-        </div>"""
-
-    def __init__(self, kind, cutoffs, **kwargs):
+    def __init__(self, kind, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading pseudopotential uploader")],
             **kwargs,
         )
 
         self.kind = kind
-        self.cutoffs = cutoffs
-        self.ecutwfc = None
-        self.ecutrho = None
 
         self.rendered = False
 
@@ -1063,8 +1060,21 @@ class PseudoUploadWidget(ipw.HBox):
         self.pseudo_text = ipw.Text(description=self.kind)
         self.file_upload.observe(self._on_file_upload, "value")
 
-        self._cutoff_message = ipw.HTML(
-            self.cutoffs_message_template.format(ecutwfc=0, ecutrho=0)
+        cutoffs_message_template = """
+            <div class="pseudo-text">
+                Recommended ecutwfc: <b>{ecutwfc} Ry</b> ecutrho: <b>{ecutrho} Ry</b>
+            </div>
+        """
+
+        self.cutoff_message = ipw.HTML()
+
+        self.link = ipw.dlink(
+            (self, "cutoffs"),
+            (self.cutoff_message, "value"),
+            lambda c: cutoffs_message_template.format(
+                ecutwfc=c[0] if len(c) else "not set",
+                ecutrho=c[1] if len(c) else "not set",
+            ),
         )
 
         if self.pseudo is not None:
@@ -1075,17 +1085,10 @@ class PseudoUploadWidget(ipw.HBox):
         self.children = [
             self.pseudo_text,
             self.file_upload,
-            self._cutoff_message,
+            self.cutoff_message,
         ]
 
-        # set the widget directly to trigger the traitlets set
-        if self.cutoffs is not None:
-            self.ecutwfc = self.cutoffs.get("cutoff_wfc", None)
-            self.ecutrho = self.cutoffs.get("cutoff_rho", None)
-            self._cutoff_message.value = self.cutoffs_message_template.format(
-                ecutwfc=self.ecutwfc or "not set",
-                ecutrho=self.ecutrho or "not set",
-            )
+        self.rendered = True
 
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""
@@ -1109,5 +1112,4 @@ class PseudoUploadWidget(ipw.HBox):
     def _reset(self):
         """Reset the widget to the initial state."""
         self.pseudo = None
-        self.ecutrho = None
-        self.ecutwfc = None
+        self.cutoffs = []

@@ -1,3 +1,4 @@
+import ipywidgets as ipw
 import traitlets as tl
 from pymatgen.core.periodic_table import Element
 
@@ -128,17 +129,33 @@ class PseudosModel(tl.HasTraits):
     )
     override = tl.Bool(False)
     functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
-    ecutwfc = tl.Float(0.0)
-    ecutrho = tl.Float(0.0)
+    cutoffs = tl.List(
+        trait=tl.List(tl.Float),  # [[ecutwfc values], [ecutrho values]]
+        default_value=[[0.0], [0.0]],
+    )
+    ecutwfc = tl.Float()
+    ecutrho = tl.Float()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ipw.dlink(
+            (self, "cutoffs"),
+            (self, "ecutwfc"),
+            lambda cutoffs: max(cutoffs[0]),
+        )
+        ipw.dlink(
+            (self, "cutoffs"),
+            (self, "ecutrho"),
+            lambda cutoffs: max(cutoffs[1]),
+        )
 
     def reset(self):
         self.dictionary = {}
+        self.cutoffs = [[0.0], [0.0]]
         self.family = self.traits()["family"].default_value
         self.library = self.traits()["library"].default_value
         self.override = self.traits()["override"].default_value
         self.functional = self.traits()["functional"].default_value
-        self.ecutwfc = self.traits()["ecutwfc"].default_value
-        self.ecutrho = self.traits()["ecutrho"].default_value
 
 
 class ConfigurationModel(tl.HasTraits):
