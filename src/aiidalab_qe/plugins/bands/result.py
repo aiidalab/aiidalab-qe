@@ -16,7 +16,10 @@ class Result(ResultPanel):
     def _update_view(self):
         # Check if the workchain has the outputs
         try:
-            bands_node = self.node.outputs.bands
+            if "bands" in self.node.outputs.bands:
+                bands_node = self.node.outputs.bands.bands
+            elif "bands_projwfc" in self.node.outputs.bands:
+                bands_node = self.node.outputs.bands.bands_projwfc
         except AttributeError:
             bands_node = None
 

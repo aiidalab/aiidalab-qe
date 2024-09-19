@@ -1,14 +1,17 @@
 import numpy as np
 from aiida.plugins import DataFactory, WorkflowFactory
-from aiida_quantumespresso.common.types import ElectronicType, SpinType
-from aiidalab_qe.plugins.utils import set_component_resources
 from aiida import orm
-from aiida.engine import ToContext, WorkChain, calcfunction
+from aiida.engine import WorkChain
+import math
+
+from aiida.common import AttributeDict
+
 
 GAMMA = "\u0393"
 
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 ProjwfcBandsWorkChain = WorkflowFactory("wannier90_workflows.projwfcbands")
+KpointsData = DataFactory("core.array.kpoints")
 
 
 def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distance):
@@ -168,6 +171,7 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
 
     return kpoints
 
+
 def determine_symmetry_path(structure):
     # Tolerance for checking equality
     cell_lengths = structure.cell_lengths
@@ -185,7 +189,7 @@ def determine_symmetry_path(structure):
             and math.isclose(cell_angles[2], 90.0, abs_tol=tolerance)
         ): "square",
         (
-            math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance) == False
+            not math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance)
             and math.isclose(cell_angles[2], 90.0, abs_tol=tolerance)
         ): "rectangular",
         (
@@ -196,8 +200,8 @@ def determine_symmetry_path(structure):
             )
         ): "rectangular_centered",
         (
-            math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance) == False
-            and math.isclose(cell_angles[2], 90.0, abs_tol=tolerance) == False
+            not math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance)
+            and not math.isclose(cell_angles[2], 90.0, abs_tol=tolerance)
         ): "oblique",
     }
 
@@ -213,29 +217,66 @@ def determine_symmetry_path(structure):
                     2 * np.power(np.sin(gamma), 2)
                 )
                 nu = 0.5 - (eta * cell_lengths[1] * cos_gamma) / cell_lengths[0]
-                return generate_2d_path(symmetry_type, eta, nu)
+                return generate_kpath_2d(symmetry_type, eta, nu)
 
-            return generate_2d_path(symmetry_type)
+            return generate_kpath_2d(symmetry_type)
         else:
             raise ValueError("Invalid symmetry type")
 
+
 class BandsWorkChain(WorkChain):
     "Workchain to compute the electronic band structure"
+
     label = "bands"
 
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.expose_inputs(PwBandsWorkChain, namespace="bands")
-        spec.expose_inputs(ProjwfcBandsWorkChain, namespace="bands_projwfc")
 
-        spec.expose_outputs(PwBandsWorkChain)
-        spec.expose_outputs(ProjwfcBandsWorkChain)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.expose_inputs(
+            PwBandsWorkChain,
+            namespace="bands",
+            exclude=["structure", "relax"],
+            namespace_options={
+                "required": False,
+                "populate_defaults": False,
+                "help": "Inputs for the `PwBandsWorkChain`, simulation mode normal.",
+            },
+        )
+        spec.expose_inputs(
+            ProjwfcBandsWorkChain,
+            namespace="bands_projwfc",
+            exclude=["structure", "relax"],
+            namespace_options={
+                "required": False,
+                "populate_defaults": False,
+                "help": "Inputs for the `ProjwfcBandsWorkChain`, simulation mode fat_bands.",
+            },
+        )
+
+        spec.expose_outputs(
+            PwBandsWorkChain,
+            namespace="bands",
+            namespace_options={
+                "required": False,
+                "help": "Outputs of the `PwBandsWorkChain`.",
+            },
+        )
+        spec.expose_outputs(
+            ProjwfcBandsWorkChain,
+            namespace="bands_projwfc",
+            namespace_options={
+                "required": False,
+                "help": "Outputs of the `PwBandsWorkChain`.",
+            },
+        )
 
         spec.outline(cls.setup, cls.run_bands, cls.results)
 
-        spec.exit_code(400, "ERROR_WORKCHAIN_FAILED", message="The workchain bands failed.")
-
+        spec.exit_code(
+            400, "ERROR_WORKCHAIN_FAILED", message="The workchain bands failed."
+        )
 
     @classmethod
     def get_builder_from_protocol(
@@ -248,69 +289,114 @@ class BandsWorkChain(WorkChain):
         overrides=None,
         **kwargs,
     ):
-        """ Return a BandsWorkChain builder prepopulated with inputs following the specified protocol
-        
+        """Return a BandsWorkChain builder prepopulated with inputs following the specified protocol
+
         :param structure: the ``StructureData`` instance to use.
         :param pw_code: the ``Code`` instance configured for the ``quantumespresso.pw`` plugin.
         :param protocol: protocol to use, if not specified, the default will be used.
         :param projwfc_code: the ``Code`` instance configured for the ``quantumespresso.projwfc`` plugin.
         :param simulation_mode: hat type of simulation to run normal band or fat bands.
-        
+
         """
 
         builder = cls.get_builder()
 
-        if "simulation_mode" == "normal":
-
+        if simulation_mode == "normal":
             args = (pw_code, structure, protocol)
-            builder = PwBandsWorkChain.get_builder_from_protocol(
-                *args, overrides=overrides, **kwargs
-            )
-        elif "simulation_mode" == "fat_bands":
-            args = (pw_code, projwfc_code, structure, protocol, projwfc_code)
-            builder = ProjwfcBandsWorkChain.get_builder_from_protocol(
+            builder_bands = PwBandsWorkChain.get_builder_from_protocol(
                 *args, overrides=overrides, **kwargs
             )
 
-        if structure.pbc != (True, True, True):
-            kpoints_distance = overrides["scf"]["kpoints_distance"]
+            builder_bands.bands.pw.metadata.options["resources"] = {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+            }
+            builder_bands.scf.pw.metadata.options["resources"] = {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+            }
+
+            if structure.pbc != (True, True, True):
+                kpoints_distance = overrides["scf"]["kpoints_distance"]
             if structure.pbc == (True, False, False):
                 kpoints = generate_kpath_1d(structure, kpoints_distance)
             elif structure.pbc == (True, True, False):
                 kpoints = generate_kpath_2d(
                     structure, kpoints_distance, determine_symmetry_path(structure)
                 )
-            builder.pop("bands_kpoints_distance")
-            builder.update({"bands_kpoints": kpoints})
+                builder_bands.pop("bands_kpoints_distance")
+                builder_bands.update({"bands_kpoints": kpoints})
+
+            builder.pop("bands_projwfc")
+            builder_bands.pop("relax", None)
+            builder_bands.pop("structure", None)
+            builder.bands = builder_bands
+            builder.structure = structure
+
+        elif simulation_mode == "fat_bands":
+            args = (
+                pw_code,
+                projwfc_code,
+                structure,
+            )
+            builder_bands_projwfc = ProjwfcBandsWorkChain.get_builder_from_protocol(
+                *args, protocol=protocol, overrides=overrides, **kwargs
+            )
+
+            if structure.pbc != (True, True, True):
+                kpoints_distance = overrides["scf"]["kpoints_distance"]
+            if structure.pbc == (True, False, False):
+                kpoints = generate_kpath_1d(structure, kpoints_distance)
+            elif structure.pbc == (True, True, False):
+                kpoints = generate_kpath_2d(
+                    structure, kpoints_distance, determine_symmetry_path(structure)
+                )
+                builder_bands_projwfc.bands.pop("bands_kpoints_distance")
+                builder_bands_projwfc.bands.update({"bands_kpoints": kpoints})
+
+            builder.pop("bands")
+            builder_bands_projwfc.pop("relax", None)
+            builder_bands_projwfc.pop("structure", None)
+            builder.bands_projwfc = builder_bands_projwfc
+            builder.structure = structure
 
         return builder
-            
 
     def setup(self):
         """Define the current workchain"""
+        self.ctx.current_structure = self.inputs.structure
         if "bands" in self.inputs:
+            self.ctx.key = "bands"
             self.ctx.workchain = PwBandsWorkChain
         elif "bands_projwfc" in self.inputs:
+            self.ctx.key = "bands_projwfc"
             self.ctx.workchain = ProjwfcBandsWorkChain
         else:
             self.report("No bands workchain specified")
             return self.exit_codes.ERROR_WORKCHAIN_FAILED
-        
+
     def run_bands(self):
         """Run the bands workchain"""
-        inputs = self.exposed_inputs(self.ctx.workchain)
-        inputs.update(self.inputs[self.ctx.workchain.get_link_label("bands")])
-        return ToContext(
-            bands=self.ctx.workchain.run.get_submission_node().get_outgoing().one().node
+        inputs = AttributeDict(
+            self.exposed_inputs(self.ctx.workchain, namespace=self.ctx.key)
         )
+        inputs.metadata.call_link_label = self.ctx.key
+        inputs.structure = self.ctx.current_structure
+        future = self.submit(self.ctx.workchain, **inputs)
+        self.report(f"submitting `WorkChain` <PK={future.pk}>")
+        self.to_context(**{self.ctx.key: future})
 
     def results(self):
         """Attach the bands results"""
-        workchain = self.ctx.workchain
+        workchain = self.ctx[self.ctx.key]
 
         if not workchain.is_finished_ok:
             self.report("Bands workchain failed")
             return self.exit_codes.ERROR_WORKCHAIN_FAILED
         else:
-            self.out_many(self.ctx.bands.outputs)
+            self.out_many(
+                self.exposed_outputs(
+                    self.ctx[self.ctx.key], self.ctx.workchain, namespace=self.ctx.key
+                )
+            )
             self.report("Bands workchain completed successfully")

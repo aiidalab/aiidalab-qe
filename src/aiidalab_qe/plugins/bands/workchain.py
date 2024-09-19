@@ -2,8 +2,6 @@ import numpy as np
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
-from aiida import orm
-
 from .bands_workchain import BandsWorkChain
 
 GAMMA = "\u0393"
@@ -196,86 +194,33 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     return kpoints
 
 
-def update_resources(builder, codes, projwfc_bands=False):
+# def set_component_resources(component, code_info):
+#     """Set the resources for a given component based on the code info and return the updated metadata."""
+#     if code_info:
+#         # Directly modify the existing 'resources' in 'metadata'
+#         component["metadata"]["options"]["resources"] = {
+#             "num_machines": code_info["nodes"],
+#             "num_mpiprocs_per_machine": code_info["ntasks_per_node"],
+#             "num_cores_per_mpiproc": code_info["cpus_per_task"],
+#         }
+#         # Optionally set 'max_wallclock_seconds' if it exists
+#         if "max_wallclock_seconds" in code_info:
+#             component["metadata"]["options"]["max_wallclock_seconds"] = code_info["max_wallclock_seconds"]
 
-    if "bands_projwfc" in builder:
-        label = "bands_projwfc"
-    else: 
-        label = "bands"
-    set_component_resources(builder[label]["scf"]["pw"], codes.get("pw"))
-    set_component_resources(builder[label]["bands"]["pw"], codes.get("pw"))
-    if projwfc_bands:
-        set_component_resources(builder.bands_projwfc.projwfc.projwfc , codes.get("projwfc_bands"))
+#     # Return the updated 'metadata' field from the component
+#     return component
 
 
-# def get_builder(codes, structure, parameters, **kwargs):
-#     """Get a builder for the PwBandsWorkChain."""
-#     from copy import deepcopy
-
-#     pw_code = codes.get("pw")["code"]
-#     protocol = parameters["workchain"]["protocol"]
-#     scf_overrides = deepcopy(parameters["advanced"])
-#     relax_overrides = {
-#         "base": deepcopy(parameters["advanced"]),
-#         "base_final_scf": deepcopy(parameters["advanced"]),
-#     }
-#     bands_overrides = deepcopy(parameters["advanced"])
-#     bands_overrides.pop("kpoints_distance", None)
-#     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
-#     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
-#     overrides = {
-#         "scf": scf_overrides,
-#         "bands": bands_overrides,
-#         "relax": relax_overrides,
-#     }
-
-#     if parameters["bands"]["projwfc_bands"]:
-#         check_codes(pw_code, codes.get("projwfc_bands")["code"])
-#         overrides["scf"]["kpoints_distance"] = orm.Float(
-#             overrides["scf"]["kpoints_distance"]
-#         )  # To be removed once the issue is fixed
-#         bands = ProjwfcBandsWorkChain.get_builder_from_protocol(
-#             pw_code=pw_code,
-#             projwfc_code=codes.get("projwfc_bands")["code"],
-#             structure=structure,
-#             protocol=protocol,
-#             electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
-#             spin_type=SpinType(parameters["workchain"]["spin_type"]),
-#             initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
-#             overrides=overrides,
-#             **kwargs,
-#         )
-#     else:  # Use the PwBandsWorkChain
-#         bands = PwBandsWorkChain.get_builder_from_protocol(
-#             code=pw_code,
-#             structure=structure,
-#             protocol=protocol,
-#             electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
-#             spin_type=SpinType(parameters["workchain"]["spin_type"]),
-#             initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
-#             overrides=overrides,
-#             **kwargs,
-#         )
-
-#     if structure.pbc != (True, True, True):
-#         kpoints_distance = parameters["advanced"]["kpoints_distance"]
-#         if structure.pbc == (True, False, False):
-#             kpoints = generate_kpath_1d(structure, kpoints_distance)
-#         elif structure.pbc == (True, True, False):
-#             kpoints = generate_kpath_2d(
-#                 structure, kpoints_distance, parameters["bands"]["kpath_2d"]
-#             )
-#         bands.pop("bands_kpoints_distance")
-#         bands.update({"bands_kpoints": kpoints})
-
-#     # pop the inputs that are excluded from the expose_inputs
-#     bands.pop("relax")
-#     bands.pop("structure", None)
-#     bands.pop("clean_workdir", None)
-#     # update resources
-#     update_resources(bands, codes, parameters["bands"]["projwfc_bands"])
-
-#     return bands
+def update_resources(builder, codes):
+    if "bands" in builder:
+        set_component_resources(builder.bands.scf.pw, codes.get("pw"))
+        set_component_resources(builder.bands.bands.pw, codes.get("pw"))
+    elif "bands_projwfc" in builder:
+        set_component_resources(builder.bands_projwfc.scf.pw, codes.get("pw"))
+        set_component_resources(builder.bands_projwfc.bands.pw, codes.get("pw"))
+        set_component_resources(
+            builder.bands_projwfc.projwfc.projwfc, codes.get("projwfc_bands")
+        )
 
 
 def get_builder(codes, structure, parameters, **kwargs):
@@ -293,20 +238,28 @@ def get_builder(codes, structure, parameters, **kwargs):
     bands_overrides.pop("kpoints_distance", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
+
+    check_codes(pw_code, codes.get("projwfc_bands")["code"])
+
+    # scf_overrides["pw"].update(set_component_resources(component, codes.get("pw")))
+    # relax_overrides["base"]["pw"].update(set_component_resources(component, codes.get("pw")))
+    # relax_overrides["base_final_scf"]["pw"].update(set_component_resources(component, codes.get("pw")))
+    # bands_overrides["pw"].update(set_component_resources(component, codes.get("pw")))
+    # projwfc_overrides = set_component_resources(component, codes.get("projwfc_bands"))
+
     overrides = {
         "scf": scf_overrides,
         "bands": bands_overrides,
         "relax": relax_overrides,
+        #    "projwfc": projwfc_overrides,
     }
-
-    check_codes(pw_code, codes.get("projwfc_bands")["code"]) 
 
     if parameters["bands"]["projwfc_bands"]:
         simulation_mode = "fat_bands"
     else:
         simulation_mode = "normal"
 
-    bands = BandsWorkChain.get_builder_from_protocol(
+    bands_builder = BandsWorkChain.get_builder_from_protocol(
         pw_code=pw_code,
         projwfc_code=codes.get("projwfc_bands")["code"],
         structure=structure,
@@ -317,20 +270,34 @@ def get_builder(codes, structure, parameters, **kwargs):
         initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
         overrides=overrides,
         **kwargs,
-    )    
-    # update resources
-    update_resources(bands, codes, parameters["bands"]["projwfc_bands"])
+    )
+    update_resources(bands_builder, codes)
 
-    return bands
+    return bands_builder
+
 
 def update_inputs(inputs, ctx):
     """Update the inputs using context."""
     inputs.structure = ctx.current_structure
-    inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
-    if ctx.current_number_of_bands:
-        inputs.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-            "nbnd", ctx.current_number_of_bands
-        )
+
+    # inputs.bands.pw.parameters = inputs.bands.pw.parameters.get_dict()
+    # if ctx.bands.bands.current_number_of_bands:
+    #     inputs.bands.bands.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+    #         "nbnd", ctx.bands.bands.current_number_of_bands
+    #     )
+
+    # labels_namespace = ["bands", "bands_projwfc"]
+
+    # for label in labels_namespace:
+    #     if label in ctx.bands:
+    #         # Update parameters
+    #         inputs[label].scf.pw.parameters = ctx[label].scf.pw.parameters.get_dict()
+
+    #         # Set the number of bands if available
+    #         if ctx[label].current_number_of_bands:
+    #             inputs[label].scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
+    #                 "nbnd", ctx[label].current_number_of_bands
+    #             )
 
 
 workchain_and_builder = {
