@@ -1,12 +1,9 @@
 import ipywidgets as ipw
-import traitlets as tl
 
 from .model import config_model as model
 
 
 class SmearingSettings(ipw.VBox):
-    protocol = tl.Unicode(allow_none=True)
-
     def __init__(self, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
@@ -33,7 +30,7 @@ class SmearingSettings(ipw.VBox):
             (self.smearing, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.smearing, "disabled"),
             lambda override: not override,
         )
@@ -49,7 +46,7 @@ class SmearingSettings(ipw.VBox):
             (self.degauss, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.degauss, "disabled"),
             lambda override: not override,
         )
@@ -72,16 +69,7 @@ class SmearingSettings(ipw.VBox):
             ),
         ]
 
-        ipw.dlink(
-            (model, "protocol"),
-            (self, "protocol"),
-        )
-
         self.rendered = True
 
     def reset(self):
         model.smearing.reset()
-
-    @tl.observe("protocol")
-    def _on_protocol_change(self, change):
-        model.smearing.update_from_protocol(change["new"])

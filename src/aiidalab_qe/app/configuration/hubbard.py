@@ -40,7 +40,7 @@ class HubbardSettings(ipw.VBox):
             (self.activate_hubbard, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.activate_hubbard, "disabled"),
             lambda override: not override,
         )

@@ -12,6 +12,8 @@ from aiidalab_qe.common.panel import Panel
 
 from .model import config_model as model
 
+DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
+
 
 class WorkChainSettings(Panel):
     identifier = "workchain"
@@ -84,7 +86,7 @@ class WorkChainSettings(Panel):
             ],
         )
         ipw.link(
-            (model, "relax_type"),
+            (model.basic, "relax_type"),
             (self.relax_type, "value"),
         )
 
@@ -94,7 +96,7 @@ class WorkChainSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model, "spin_type"),
+            (model.basic, "spin_type"),
             (self.spin_type, "value"),
         )
 
@@ -104,7 +106,7 @@ class WorkChainSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model, "electronic_type"),
+            (model.basic, "electronic_type"),
             (self.electronic_type, "value"),
         )
 
@@ -113,9 +115,10 @@ class WorkChainSettings(Panel):
             options=["fast", "moderate", "precise"],
         )
         ipw.link(
-            (model, "protocol"),
+            (model.basic, "protocol"),
             (self.protocol, "value"),
         )
+        self.protocol.observe(self._on_protocol_change, "value")
 
         self.children = [
             self.structure_title,
@@ -149,6 +152,12 @@ class WorkChainSettings(Panel):
 
         self.rendered = True
 
+    def reset(self):
+        """Reset the panel to the default value."""
+        model.basic.reset()
+        for key, p in self.properties.items():
+            p.run.value = key in DEFAULT["workchain"]["properties"]
+
     def get_panel_value(self):
         # Work chain settings
         properties = []
@@ -164,16 +173,16 @@ class WorkChainSettings(Panel):
             elif name == "pdos":
                 run_bands = True
 
-        if RelaxType(model.relax_type) is not RelaxType.NONE or not (
+        if RelaxType(model.basic.relax_type) is not RelaxType.NONE or not (
             run_bands or run_pdos
         ):
             properties.append("relax")
         return {
-            "protocol": model.protocol,
-            "relax_type": model.relax_type,
+            "protocol": model.basic.protocol,
+            "relax_type": model.basic.relax_type,
             "properties": properties,
-            "spin_type": model.spin_type,
-            "electronic_type": model.electronic_type,
+            "spin_type": model.basic.spin_type,
+            "electronic_type": model.basic.electronic_type,
         }
 
     def set_panel_value(self, parameters):
@@ -184,9 +193,9 @@ class WorkChainSettings(Panel):
             "electronic_type",
         ]:
             if key in parameters:
-                setattr(model, key, parameters[key])
+                setattr(model.basic, key, parameters[key])
         if "protocol" in parameters:
-            model.protocol = parameters["protocol"]
+            model.basic.protocol = parameters["protocol"]
 
         properties = parameters.get("properties", [])
         for name in self.properties:
@@ -195,13 +204,8 @@ class WorkChainSettings(Panel):
             else:
                 self.properties[name].run.value = False
 
-    def reset(self):
-        """Reset the panel to the default value."""
-        for key in ["relax_type", "spin_type", "electronic_type"]:
-            setattr(model, key, model.traits()[key].default_value)
-        model.protocol = model.traits()["protocol"].default_value
-        for key, p in self.properties.items():
-            p.run.value = key in DEFAULT_PARAMETERS["workchain"]["properties"]
+    def _on_protocol_change(self, change):
+        model.update_from_protocol(change["new"])
 
     def _set_properties(self, callback):
         """Handle plugin specific settings."""

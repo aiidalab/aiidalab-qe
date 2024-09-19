@@ -21,7 +21,6 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 class PseudoSettings(ipw.VBox):
     """Widget to set the pseudopotentials for the calculation."""
 
-    protocol = tl.Unicode(allow_none=True)
     input_structure = tl.Instance(klass=orm.StructureData, allow_none=True)
     spin_orbit = tl.Unicode()
     pseudo_family = tl.Unicode()
@@ -91,7 +90,7 @@ class PseudoSettings(ipw.VBox):
             (self.functional, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.functional, "disabled"),
             lambda override: not override,
         )
@@ -111,7 +110,7 @@ class PseudoSettings(ipw.VBox):
             (self.library, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.library, "disabled"),
             lambda override: not override,
         )
@@ -150,7 +149,7 @@ class PseudoSettings(ipw.VBox):
             (self.ecutwfc, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.ecutwfc, "disabled"),
             lambda override: not override,
         )
@@ -163,7 +162,7 @@ class PseudoSettings(ipw.VBox):
             (self.ecutrho, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.ecutrho, "disabled"),
             lambda override: not override,
         )
@@ -225,15 +224,11 @@ class PseudoSettings(ipw.VBox):
 
         with self.hold_trait_notifications():
             ipw.dlink(
-                (model, "protocol"),
-                (self, "protocol"),
-            )
-            ipw.dlink(
                 (model, "input_structure"),
                 (self, "input_structure"),
             )
             ipw.dlink(
-                (model, "spin_orbit"),
+                (model.advanced, "spin_orbit"),
                 (self, "spin_orbit"),
             )
             ipw.dlink(
@@ -241,7 +236,7 @@ class PseudoSettings(ipw.VBox):
                 (self, "pseudo_family"),
             )
             ipw.dlink(
-                (model, "override"),
+                (model.advanced, "override"),
                 (self, "override"),
             )
 
@@ -250,14 +245,10 @@ class PseudoSettings(ipw.VBox):
     def reset(self):
         model.pseudos.reset()
 
-    @tl.observe("protocol")
-    def _on_protocol_change(self, _=None):
-        model.pseudos.update_family_parameters(model.protocol, model.spin_orbit)
-
     @tl.observe("input_structure")
     def _on_input_structure_change(self, _=None):
         self._unsubscribe_setter_widget()
-        model.pseudos.set_defaults_for_structure(model.input_structure)
+        model.pseudos.set_defaults_from_structure(model.input_structure)
         self._build_setter_widgets()
 
     @tl.observe("spin_orbit")
@@ -275,11 +266,11 @@ class PseudoSettings(ipw.VBox):
         self._toggle_setter_widgets(change)
 
     def _on_family_parameters_change(self, _=None):
-        model.pseudos.update_family(model.spin_orbit)
+        model.pseudos.update_family(model.advanced.spin_orbit)
 
     def _update_library_options(self):
         """Update pseudo library selection options w.r.t spin orbit."""
-        if model.spin_orbit == "soc":
+        if model.advanced.spin_orbit == "soc":
             self.library.options = [
                 "PseudoDojo standard",
                 "PseudoDojo stringent",

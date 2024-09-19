@@ -55,7 +55,7 @@ class MagnetizationSettings(ipw.VBox):
             (self.magnetization_type_toggle, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.magnetization_type_toggle, "disabled"),
             lambda override: not override,
         )
@@ -73,7 +73,7 @@ class MagnetizationSettings(ipw.VBox):
             (self.tot_magnetization, "value"),
         )
         ipw.dlink(
-            (model, "override"),
+            (model.advanced, "override"),
             (self.tot_magnetization, "disabled"),
             lambda override: not override,
         )
@@ -94,7 +94,7 @@ class MagnetizationSettings(ipw.VBox):
                 (self, "input_structure"),
             )
             ipw.dlink(
-                (model, "electronic_type"),
+                (model.basic, "electronic_type"),
                 (self, "electronic_type"),
             )
             ipw.dlink(
@@ -152,7 +152,7 @@ class MagnetizationSettings(ipw.VBox):
             )
             self.kind_widget_links.append(link)
             ipw.dlink(
-                (model, "override"),
+                (model.advanced, "override"),
                 (kind_widget, "disabled"),
                 lambda override: not override,
             )
