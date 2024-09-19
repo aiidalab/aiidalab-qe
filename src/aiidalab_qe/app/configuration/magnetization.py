@@ -88,18 +88,19 @@ class MagnetizationSettings(ipw.VBox):
 
         self.children = [self.description]
 
-        ipw.dlink(
-            (model, "input_structure"),
-            (self, "input_structure"),
-        )
-        ipw.dlink(
-            (model, "electronic_type"),
-            (self, "electronic_type"),
-        )
-        ipw.dlink(
-            (model.magnetization, "type"),
-            (self, "magnetization_type"),
-        )
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (model, "input_structure"),
+                (self, "input_structure"),
+            )
+            ipw.dlink(
+                (model, "electronic_type"),
+                (self, "electronic_type"),
+            )
+            ipw.dlink(
+                (model.magnetization, "type"),
+                (self, "magnetization_type"),
+            )
 
         self.rendered = True
 
@@ -108,7 +109,7 @@ class MagnetizationSettings(ipw.VBox):
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
-        model.magnetization.set_defaults_for_structure(model.input_structure)
+        model.magnetization.set_defaults_from_structure(change["new"])
         self._build_kinds_widget(change)
 
     @tl.observe("electronic_type")

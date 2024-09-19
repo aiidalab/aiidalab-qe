@@ -7,13 +7,7 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.plugins import DataFactory, GroupFactory
-from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.common.widgets import LoadingWidget
-from aiidalab_qe.setup.pseudos import (
-    PSEUDODOJO_VERSION,
-    SSSP_VERSION,
-    PseudoFamily,
-)
 from aiidalab_widgets_base.utils import StatusHTML
 
 from .model import config_model as model
@@ -229,26 +223,27 @@ class PseudoSettings(ipw.VBox):
             self._status_message,
         ]
 
-        ipw.dlink(
-            (model, "protocol"),
-            (self, "protocol"),
-        )
-        ipw.dlink(
-            (model, "input_structure"),
-            (self, "input_structure"),
-        )
-        ipw.dlink(
-            (model, "spin_orbit"),
-            (self, "spin_orbit"),
-        )
-        ipw.dlink(
-            (model.pseudos, "family"),
-            (self, "pseudo_family"),
-        )
-        ipw.dlink(
-            (model, "override"),
-            (self, "override"),
-        )
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (model, "protocol"),
+                (self, "protocol"),
+            )
+            ipw.dlink(
+                (model, "input_structure"),
+                (self, "input_structure"),
+            )
+            ipw.dlink(
+                (model, "spin_orbit"),
+                (self, "spin_orbit"),
+            )
+            ipw.dlink(
+                (model.pseudos, "family"),
+                (self, "pseudo_family"),
+            )
+            ipw.dlink(
+                (model, "override"),
+                (self, "override"),
+            )
 
         self.rendered = True
 
@@ -257,11 +252,11 @@ class PseudoSettings(ipw.VBox):
 
     @tl.observe("protocol")
     def _on_protocol_change(self, _=None):
-        self._update_family_parameters()
+        model.pseudos.update_family_parameters(model.protocol, model.spin_orbit)
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, _=None):
-        self._unsubscribe_setter_links()
+        self._unsubscribe_setter_widget()
         model.pseudos.set_defaults_for_structure(model.input_structure)
         self._build_setter_widgets()
 
@@ -280,47 +275,7 @@ class PseudoSettings(ipw.VBox):
         self._toggle_setter_widgets(change)
 
     def _on_family_parameters_change(self, _=None):
-        self._update_family()
-
-    def _update_family(self):
-        """Set pseudo family according to the selected library and functional."""
-        library, accuracy = model.pseudos.library.split()
-        functional = model.pseudos.functional
-        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
-        if library == "PseudoDojo":
-            if model.spin_orbit == "soc":
-                pseudo_family_string = (
-                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/FR/{accuracy}/upf"
-                )
-            else:
-                pseudo_family_string = (
-                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
-                )
-        elif library == "SSSP":
-            pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
-        else:
-            raise ValueError(
-                f"Unknown pseudo family parameters: {library} | {accuracy}"
-            )
-
-        model.pseudos.family = pseudo_family_string
-
-    def _update_family_parameters(self):
-        if model.spin_orbit == "soc":
-            if model.protocol in ["fast", "moderate"]:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
-            else:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
-        else:
-            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(model.protocol)[
-                "pseudo_family"
-            ]
-
-        pseudo_family = PseudoFamily.from_string(pseudo_family_string)
-
-        with self.hold_trait_notifications():
-            model.pseudos.library = f"{pseudo_family.library} {pseudo_family.accuracy}"
-            model.pseudos.functional = pseudo_family.functional
+        model.pseudos.update_family(model.spin_orbit)
 
     def _update_library_options(self):
         """Update pseudo library selection options w.r.t spin orbit."""
@@ -410,22 +365,7 @@ class PseudoSettings(ipw.VBox):
 
         self.setter_widget.children = children
 
-    def _get_pseudo_family(self):
-        """Get the pseudo family from the database."""
-        return (
-            orm.QueryBuilder()
-            .append(
-                (
-                    PseudoDojoFamily,
-                    SsspFamily,
-                    CutoffsPseudoPotentialFamily,
-                ),
-                filters={"label": model.pseudos.family},
-            )
-            .one()[0]
-        )
-
-    def _unsubscribe_setter_links(self):
+    def _unsubscribe_setter_widget(self):
         for link in self.setter_widget_links:
             link.unlink()
         self.setter_widget_links.clear()

@@ -1,8 +1,6 @@
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-
 from .model import config_model as model
 
 
@@ -85,16 +83,5 @@ class SmearingSettings(ipw.VBox):
         model.smearing.reset()
 
     @tl.observe("protocol")
-    def _on_protocol_change(self, _=None):
-        self._update_model()
-
-    def _update_model(self):
-        """Update model with protocol parameters."""
-        parameters = (
-            PwBaseWorkChain.get_protocol_inputs(model.protocol)
-            .get("pw", {})
-            .get("parameters", {})
-            .get("SYSTEM", {})
-        )
-        model.smearing.degauss = parameters["degauss"]
-        model.smearing.type = parameters["smearing"]
+    def _on_protocol_change(self, change):
+        model.smearing.update_from_protocol(change["new"])

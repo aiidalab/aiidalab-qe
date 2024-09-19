@@ -1,6 +1,5 @@
 import ipywidgets as ipw
 import traitlets as tl
-from pymatgen.core.periodic_table import Element
 
 from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
@@ -91,7 +90,8 @@ class HubbardSettings(ipw.VBox):
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
-        model.hubbard.set_defaults_for_structure(model.input_structure)
+        self._unsubscribe_hubbard_widget()
+        model.hubbard.set_defaults_from_structure(change["new"])
         self._build_hubbard_widget()
         if model.hubbard.needs_eigenvalues_widget:
             self._build_eigenvalues_widget()
@@ -99,7 +99,7 @@ class HubbardSettings(ipw.VBox):
             self._unsubscribe_eigenvalues_widget()
             self.eigenvalues_widget.children = []
         if isinstance(change["new"], HubbardStructureData):
-            self._set_parameters_from_hubbard_structure()
+            model.hubbard.set_parameters_from_hubbard_structure(change["new"])
 
     def _on_hubbard_check(self, change):
         self._toggle_hubbard_widget(change)
@@ -116,79 +116,12 @@ class HubbardSettings(ipw.VBox):
                 The widget containing the input fields for defining Hubbard U values.
         """
 
-        def get_manifold(element):
-            """Get the Hubbard manifold for a given element.
-
-            Parameters:
-                element (Element):
-                    The element for which to determine the Hubbard manifold.
-
-            Returns:
-                hubbard_manifold (str):
-                    The Hubbard manifold for the given element.
-            """
-            valence = [
-                orbital
-                for orbital in element.electronic_structure.split(".")
-                if "[" not in orbital
-            ]
-            orbital_shells = [shell[:2] for shell in valence]
-
-            def is_condition_met(shell):
-                return condition and condition in shell
-
-            # Conditions for determining the Hubbard manifold
-            # to be selected from the electronic structure
-            conditions = {
-                element.is_transition_metal: "d",
-                element.is_lanthanoid or element.is_actinoid: "f",
-                element.is_post_transition_metal
-                or element.is_metalloid
-                or element.is_halogen
-                or element.is_chalcogen
-                or element.symbol in ["C", "N", "P"]: "p",
-                element.is_alkaline or element.is_alkali or element.is_noble_gas: "s",
-            }
-
-            condition = next(
-                (shell for condition, shell in conditions.items() if condition), None
-            )
-
-            hubbard_manifold = next(
-                (shell for shell in orbital_shells if is_condition_met(shell)), None
-            )
-
-            return hubbard_manifold
-
-        def get_labels():
-            """Get a list of labels for the Hubbard widget.
-
-            Returns:
-                labels (list):
-                    A list of labels in the format "{kind} - {manifold}".
-            """
-            kind_list = model.input_structure.get_kind_names()
-            hubbard_manifold_list = [
-                get_manifold(Element(kind.symbol))
-                for kind in model.input_structure.kinds
-            ]
-            labels = [
-                f"{kind} - {manifold}"
-                for kind, manifold in zip(kind_list, hubbard_manifold_list)
-            ]
-            return labels
-
-        self._unsubscribe_hubbard_widget()
-
         children = []
 
-        if model.input_structure is None:
-            input_labels = []
-        else:
-            input_labels = get_labels()
+        if model.input_structure:
             children.append(ipw.HTML("Define U value [eV] "))
 
-        for label in input_labels:
+        for label in model.hubbard.input_labels:
             float_widget = ipw.BoundedFloatText(
                 description=label,
                 min=0,
@@ -302,17 +235,6 @@ class HubbardSettings(ipw.VBox):
         for link in self.eigenvalues_widget_links:
             link.unlink()
         self.eigenvalues_widget_links.clear()
-
-    def _set_parameters_from_hubbard_structure(self):
-        hubbard_parameters = model.input_structure.hubbard.dict()["parameters"]
-        parameters = {
-            f"{model.input_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item[
-                "value"
-            ]
-            for item in hubbard_parameters
-        }
-        model.hubbard.parameters = parameters
-        model.hubbard.activate = True
 
     def _toggle_hubbard_widget(self, change):
         self.container.children = [self.hubbard_widget] if change["new"] else []

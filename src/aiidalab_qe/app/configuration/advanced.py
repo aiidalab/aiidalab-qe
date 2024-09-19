@@ -307,14 +307,15 @@ class AdvancedSettings(Panel):
             self.pseudos,
         ]
 
-        ipw.dlink(
-            (model, "input_structure"),
-            (self, "input_structure"),
-        )
-        ipw.dlink(
-            (model, "protocol"),
-            (self, "protocol"),
-        )
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (model, "input_structure"),
+                (self, "input_structure"),
+            )
+            ipw.dlink(
+                (model, "protocol"),
+                (self, "protocol"),
+            )
 
         self.rendered = True
 

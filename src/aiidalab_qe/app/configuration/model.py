@@ -11,6 +11,7 @@ from aiida.plugins import GroupFactory
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -24,7 +25,7 @@ class SmearingModel(tl.HasTraits):
     type = tl.Unicode()
     degauss = tl.Float()
 
-    def set_defaults_for_protocol(self, default_protocol):
+    def set_defaults_from_protocol(self, default_protocol):
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(default_protocol)
             .get("pw", {})
@@ -36,6 +37,22 @@ class SmearingModel(tl.HasTraits):
             "degauss": parameters["degauss"],
         }
 
+    def update_from_protocol(self, protocol):
+        parameters = (
+            PwBaseWorkChain.get_protocol_inputs(protocol)
+            .get("pw", {})
+            .get("parameters", {})
+            .get("SYSTEM", {})
+        )
+        with self.hold_trait_notifications():
+            self.type = parameters["smearing"]
+            self.degauss = parameters["degauss"]
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.type = self._default_type()
+            self.degauss = self._default_degauss()
+
     @tl.default("type")
     def _default_type(self):
         return self._defaults["type"]
@@ -43,10 +60,6 @@ class SmearingModel(tl.HasTraits):
     @tl.default("degauss")
     def _default_degauss(self):
         return self._defaults["degauss"]
-
-    def reset(self):
-        self.type = self._default_type()
-        self.degauss = self._default_degauss()
 
 
 class MagnetizationModel(tl.HasTraits):
@@ -58,25 +71,26 @@ class MagnetizationModel(tl.HasTraits):
         default_value={},
     )
 
-    def set_defaults_for_structure(self, input_structure):
+    def set_defaults_from_structure(self, input_structure):
         if input_structure is None:
             self._default_moments = {}
         else:
             self._default_moments = {kind.symbol: 0.0 for kind in input_structure.kinds}
         self.moments = self._get_moments()
 
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.type = self.traits()["type"].default_value
+            self.total = self.traits()["total"].default_value
+            self.moments = self._get_moments()
+
     def _get_moments(self):
         return deepcopy(self._default_moments)
-
-    def reset(self):
-        self.type = self.traits()["type"].default_value
-        self.total = self.traits()["total"].default_value
-        self.moments = self._get_moments()
 
 
 class HubbardModel(tl.HasTraits):
     activate = tl.Bool(False)
-    eigenvalues_label = tl.Bool(False)
+    eigenvalues_label = tl.Bool(False)  # TODO: rename (widget also)
     parameters = tl.Dict(
         key_trait=tl.Unicode(),  # element symbol
         value_trait=tl.Float(),  # U value
@@ -87,11 +101,15 @@ class HubbardModel(tl.HasTraits):
         default_value=[],
     )
 
-    def set_defaults_for_structure(self, input_structure):
+    def set_defaults_from_structure(self, input_structure):
         if input_structure is None:
-            self.elements = []
+            self.elements = []  # TODO: rename for clarity
+            self.input_labels = []  # TODO: rename for clarity
+            self._default_parameters = {}
             self._default_eigenvalues = []
         else:
+            self.input_labels = self._get_labels(input_structure)
+            self._default_parameters = {label: 0.0 for label in self.input_labels}
             self.elements = [
                 *filter(
                     lambda element: (
@@ -112,17 +130,94 @@ class HubbardModel(tl.HasTraits):
                 ]
                 for element in self.elements  # transition metals and lanthanoids
             ]
+        self.parameters = self._get_default_parameters()
         self.eigenvalues = self._get_default_eigenvalues()
         self.needs_eigenvalues_widget = len(self.elements) > 0
+
+    def set_parameters_from_hubbard_structure(self, input_structure):
+        hubbard_parameters = input_structure.hubbard.dict()["parameters"]
+        sites = input_structure.sites
+        parameters = {
+            f"{sites[hp['atom_index']].kind_name} - {hp['atom_manifold']}": hp["value"]
+            for hp in hubbard_parameters
+        }
+        with self.hold_trait_notifications():
+            self.parameters = parameters
+            self.activate = True
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.activate = self.traits()["activate"].default_value
+            self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
+            self.parameters = {}  # TODO default parameters
+            self.eigenvalues = self._get_default_eigenvalues()
+
+    def _get_default_parameters(self):
+        return deepcopy(self._default_parameters)
 
     def _get_default_eigenvalues(self):
         return deepcopy(self._default_eigenvalues)
 
-    def reset(self):
-        self.activate = self.traits()["activate"].default_value
-        self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
-        self.parameters = {}  # TODO default parameters
-        self.eigenvalues = self._get_default_eigenvalues()
+    def _get_labels(self, input_structure):
+        """Get a list of labels for the Hubbard widget.
+
+        Returns:
+            labels (list):
+                A list of labels in the format "{kind} - {manifold}".
+        """
+        kind_list = input_structure.get_kind_names()
+        hubbard_manifold_list = [
+            self._get_manifold(Element(kind.symbol)) for kind in input_structure.kinds
+        ]
+        labels = [
+            f"{kind} - {manifold}"
+            for kind, manifold in zip(kind_list, hubbard_manifold_list)
+        ]
+        return labels
+
+    def _get_manifold(self, element):
+        """Get the Hubbard manifold for a given element.
+
+        Parameters:
+            element (Element):
+                The element for which to determine the Hubbard manifold.
+
+        Returns:
+            hubbard_manifold (str):
+                The Hubbard manifold for the given element.
+        """
+        valence = [
+            orbital
+            for orbital in element.electronic_structure.split(".")
+            if "[" not in orbital
+        ]
+        orbital_shells = [shell[:2] for shell in valence]
+
+        def is_condition_met(shell):
+            return condition and condition in shell
+
+        # Conditions for determining the Hubbard manifold
+        # to be selected from the electronic structure
+        conditions = {
+            element.is_transition_metal: "d",
+            element.is_lanthanoid or element.is_actinoid: "f",
+            element.is_post_transition_metal
+            or element.is_metalloid
+            or element.is_halogen
+            or element.is_chalcogen
+            or element.symbol in ["C", "N", "P"]: "p",
+            element.is_alkaline or element.is_alkali or element.is_noble_gas: "s",
+        }
+
+        condition = next(
+            (shell for condition, shell in conditions.items() if condition), None
+        )
+
+        hubbard_manifold = next(
+            (shell for shell in orbital_shells if is_condition_met(shell)), None
+        )
+
+        return hubbard_manifold
 
 
 class PseudosModel(tl.HasTraits):
@@ -179,6 +274,45 @@ class PseudosModel(tl.HasTraits):
             self.update_pseudos(input_structure)
             self.update_cutoffs(input_structure)
 
+    def update_family(self, spin_orbit):
+        library, accuracy = self.library.split()
+        functional = self.functional
+        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
+        if library == "PseudoDojo":
+            if spin_orbit == "soc":
+                pseudo_family_string = (
+                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/FR/{accuracy}/upf"
+                )
+            else:
+                pseudo_family_string = (
+                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
+                )
+        elif library == "SSSP":
+            pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
+        else:
+            raise ValueError(
+                f"Unknown pseudo family parameters: {library} | {accuracy}"
+            )
+
+        self.family = pseudo_family_string
+
+    def update_family_parameters(self, protocol, spin_orbit):
+        if spin_orbit == "soc":
+            if protocol in ["fast", "moderate"]:
+                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
+            else:
+                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
+        else:
+            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
+                "pseudo_family"
+            ]
+
+        pseudo_family = PseudoFamily.from_string(pseudo_family_string)
+
+        with self.hold_trait_notifications():
+            self.library = f"{pseudo_family.library} {pseudo_family.accuracy}"
+            self.functional = pseudo_family.functional
+
     def update_pseudos(self, input_structure):
         try:
             pseudo_family = self._get_pseudo_family()
@@ -234,6 +368,15 @@ class PseudosModel(tl.HasTraits):
         self._default_cutoffs = [ecutwfc_list, ecutrho_list]
         self.cutoffs = self._get_default_cutoffs()
 
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.dictionary = self._get_default_dictionary()
+            self.cutoffs = self._get_default_cutoffs()
+            self.family = self.traits()["family"].default_value
+            self.library = self.traits()["library"].default_value
+            self.functional = self.traits()["functional"].default_value
+            self.status_message = ""
+
     def _get_pseudo_family(self):
         """Get the pseudo family from the database."""
         return (
@@ -254,14 +397,6 @@ class PseudosModel(tl.HasTraits):
 
     def _get_default_cutoffs(self):
         return deepcopy(self._default_cutoffs)
-
-    def reset(self):
-        self.dictionary = self._get_default_dictionary()
-        self.cutoffs = self._get_default_cutoffs()
-        self.family = self.traits()["family"].default_value
-        self.library = self.traits()["library"].default_value
-        self.functional = self.traits()["functional"].default_value
-        self.status_message = ""
 
 
 class ConfigurationModel(tl.HasTraits):
@@ -313,7 +448,9 @@ class ConfigurationModel(tl.HasTraits):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.smearing.set_defaults_for_protocol(self.traits()["protocol"].default_value)
+        self.smearing.set_defaults_from_protocol(
+            self.traits()["protocol"].default_value
+        )
 
 
 config_model = ConfigurationModel()
