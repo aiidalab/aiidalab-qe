@@ -15,7 +15,7 @@ from aiidalab_qe.common import AddingTagsEditor
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
-    OptimadeQueryWidget,
+    OptimadeWrapper,
     StructureBrowserWidget,
     StructureExamplesWidget,
     StructureManagerWidget,
@@ -69,7 +69,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
         importers = [
             StructureUploadWidget(title="Upload file"),
-            OptimadeQueryWidget(embedded=False),
+            OptimadeWrapper(embedded=False),
             StructureBrowserWidget(
                 title="AiiDA database",
                 query_types=(
