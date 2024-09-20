@@ -3,6 +3,7 @@ set -eux
 
 home="/home/${NB_USER}"
 
+ls -lrta "$home"
 # Untar home archive file to restore home directory if it is empty
 if [ ! -e ${home}/.FLAG_HOME_INITIALIZED ]; then
   if [[ ! -f $HOME_TAR ]]; then
@@ -20,7 +21,7 @@ if [ ! -e ${home}/.FLAG_HOME_INITIALIZED ]; then
   echo "Copying directory '$QE_APP_FOLDER' to '$AIIDALAB_APPS'"
   cp -r "$QE_APP_FOLDER" "$AIIDALAB_APPS"
 else
-  echo "$home folder is not empty!"
+  echo "$home folder is initialized!"
   ls -lrta "$home"
 fi
 set +eux
