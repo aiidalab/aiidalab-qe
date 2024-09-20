@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG FULL_STACK_VER=2024.1023
+ARG FULL_STACK_VER=2024.1022
 ARG UV_VER=0.4.7
 ARG QE_VER=7.2
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
@@ -82,7 +82,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
-    touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
+    # touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
 
 # STAGE 3 - Final stage
