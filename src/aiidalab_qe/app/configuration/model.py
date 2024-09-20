@@ -108,6 +108,8 @@ class SmearingModel(tl.HasTraits):
     type = tl.Unicode()
     degauss = tl.Float()
 
+    _defaults = {}
+
     def set_defaults_from_protocol(self, default_protocol):
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(default_protocol)
@@ -154,6 +156,8 @@ class MagnetizationModel(tl.HasTraits):
         default_value={},
     )
 
+    _default_moments = {}
+
     def set_defaults_from_structure(self, structure):
         if structure is None:
             self._default_moments = {}
@@ -183,6 +187,9 @@ class HubbardModel(tl.HasTraits):
         trait=tl.List(),  # [[[[state, spin, kind, eigenvalue] # state] # spin] # kind]
         default_value=[],
     )
+
+    _default_parameters = {}
+    _default_eigenvalues = []
 
     def set_defaults_from_structure(self, structure):
         if structure is None:
@@ -336,6 +343,9 @@ class PseudosModel(tl.HasTraits):
     ecutrho = tl.Float()
     status_message = tl.Unicode()
 
+    _default_dictionary = {}
+    _default_cutoffs = []
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         ipw.dlink(
@@ -435,10 +445,10 @@ class PseudosModel(tl.HasTraits):
                 </div>
             """
         else:
-            kind_names = structure.get_kind_names()
+            kind_names = structure.get_kind_names() if structure else []
 
-        ecutwfc_list = []
-        ecutrho_list = []
+        ecutwfc_list = [0.0]
+        ecutrho_list = [0.0]
         for kind in kind_names:
             cutoff = cutoff_dict.get(kind, {})
             ecutrho, ecutwfc = (
