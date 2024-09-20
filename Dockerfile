@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG FULL_STACK_VER=2024.1022
+ARG FULL_STACK_VER=2024.1023
 ARG UV_VER=0.4.7
 ARG QE_VER=7.2
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
@@ -77,7 +77,7 @@ ENV HQ_COMPUTER=$HQ_COMPUTER
 RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
-    bash /usr/local/bin/before-notebook.d/41_setup-hq-computer.sh && \
+    bash /usr/local/bin/before-notebook.d/42_setup-hq-computer.sh && \
     python -m aiidalab_qe install-qe --computer ${HQ_COMPUTER} && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
