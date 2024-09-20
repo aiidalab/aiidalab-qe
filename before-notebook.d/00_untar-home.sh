@@ -5,7 +5,7 @@ home="/home/${NB_USER}"
 
 ls -lrta "$home"
 # Untar home archive file to restore home directory if it is empty
-if [ ! -e ${home}/.FLAG_HOME_INITIALIZED ]; then
+if [[ $(ls -A ${home} | wc -l) = 1 ]]; then
   if [[ ! -f $HOME_TAR ]]; then
     echo "File $HOME_TAR does not exist!"
     exit 1
@@ -21,7 +21,7 @@ if [ ! -e ${home}/.FLAG_HOME_INITIALIZED ]; then
   echo "Copying directory '$QE_APP_FOLDER' to '$AIIDALAB_APPS'"
   cp -r "$QE_APP_FOLDER" "$AIIDALAB_APPS"
 else
-  echo "$home folder is initialized!"
+  echo "$home folder is not empty!"
   ls -lrta "$home"
 fi
 set +eux
