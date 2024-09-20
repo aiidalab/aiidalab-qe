@@ -52,24 +52,13 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     structure = tl.Instance(orm.StructureData, allow_none=True)
     confirmed_structure = tl.Instance(orm.StructureData, allow_none=True)
 
-    def __init__(self, description=None, **kwargs):
+    def __init__(self, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
             children=[LoadingWidget("Loading structure selection panel")],
             **kwargs,
         )
-
-        if description is None:
-            description = ipw.HTML(
-                """
-                <p>Select a structure from one of the following sources and then click
-                "Confirm" to go to the next step. </p><i class="fa fa-exclamation-circle"
-                aria-hidden="true"></i> Currently only three-dimensional structures are
-                supported.
-                """
-            )
-        self.description = description
 
         self.rendered = False
 
@@ -106,7 +95,18 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         entries = get_entry_items("aiidalab_qe.properties", "editor")
         editors.extend([entry_point() for entry_point in entries.values()])
         #
-        self.manager = StructureManagerWidget()
+        self.manager = StructureManagerWidget(
+            importers=importers,
+            editors=editors,
+            node_class="StructureData",
+            storable=False,
+            configuration_tabs=[
+                "Cell",
+                "Selection",
+                "Appearance",
+                "Download",
+            ],
+        )
 
         self.structure_name_text = ipw.Text(
             placeholder="[No structure selected]",
@@ -131,25 +131,23 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         ipw.dlink((self.manager, "structure_node"), (self, "structure"))
 
         self.children = [
-            self.description,
+            ipw.HTML("""
+                <div>
+                    <p>
+                        Select a structure from one of the following sources and then
+                        click "Confirm" to go to the next step.
+                    </p>
+                    <span>
+                        <i class="fa fa-exclamation-circle" aria-hidden="true"></i>
+                        Currently only three-dimensional structures are supported.
+                    </span>
+                </div>
+            """),
             self.manager,
             self.structure_name_text,
             self.message_area,
             self.confirm_button,
         ]
-
-        self.manager.render(
-            importers=importers,
-            editors=editors,
-            node_class="StructureData",
-            storable=False,
-            configuration_tabs=[
-                "Cell",
-                "Selection",
-                "Appearance",
-                "Download",
-            ],
-        )
 
         with self.hold_trait_notifications():
             ipw.dlink(
