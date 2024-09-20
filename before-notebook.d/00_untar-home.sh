@@ -16,11 +16,16 @@ if [[ $(ls -A ${home} | wc -l) -le 1 ]]; then
 
   echo "Extracting $HOME_TAR to $home"
   tar -xf $HOME_TAR -C "$home"
-
-  echo "Copying directory '$QE_APP_FOLDER' to '$AIIDALAB_APPS'"
-  cp -r "$QE_APP_FOLDER" "$AIIDALAB_APPS"
 else
   echo "$home folder is not empty!"
   ls -lrta "$home"
 fi
+
+if [ -d $AIIDALAB_APPS/quantum-espresso ]; then
+  echo "Quantum ESPRESSO app does exist"
+else
+  echo "Copying directory '$QE_APP_FOLDER' to '$AIIDALAB_APPS'"
+  cp -r "$QE_APP_FOLDER" "$AIIDALAB_APPS"
+fi
+
 set +eux
