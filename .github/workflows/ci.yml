@@ -13,7 +13,6 @@ concurrency:
 
 env:
     FORCE_COLOR: 1
-    UV_VERSION: 0.3.0
 
 jobs:
 
@@ -45,7 +44,9 @@ jobs:
                   python-version: ${{ matrix.python-version }}
 
             - name: Install uv
-              run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/${{ env.UV_VERSION }}/uv-installer.sh | sh
+              uses: astral-sh/setup-uv@v1
+              with:
+                  version: 0.4.7
 
             - name: Install package
               run: uv pip install --system -e .[dev] aiida-core==${{ matrix.aiida-core-version }}

@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1
-# TODO: change full-stack version to latest one when released with bc and late dameon start
-ARG FULL_STACK_VER=edge
-ARG UV_VER=0.2.27
+ARG FULL_STACK_VER=2024.1023
+ARG UV_VER=0.4.7
 ARG QE_VER=7.2
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
