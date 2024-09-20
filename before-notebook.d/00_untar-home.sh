@@ -16,7 +16,7 @@ if [ ! -e $home/.FLAG_HOME_INITIALIZED ]; then
 
   echo "Extracting $HOME_TAR to $home"
   # NOTE: a tar error when deployed to k8s but at the momment not cause any issue
-  # tar: .: Cannot utime: Operation not permitted 
+  # tar: .: Cannot utime: Operation not permitted
   # tar: .: Cannot change mode to rwxr-s---: Operation not permitted
   tar -xf $HOME_TAR -C "$home"
 else
