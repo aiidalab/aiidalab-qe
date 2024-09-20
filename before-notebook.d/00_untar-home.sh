@@ -4,7 +4,7 @@ set -eux
 home="/home/${NB_USER}"
 
 # Untar home archive file to restore home directory if it is empty
-if [[ $(ls -A ${home} | wc -l) = "0" ]]; then
+if [[ $(ls -A ${home} | wc -l) -le 1 ]]; then
   if [[ ! -f $HOME_TAR ]]; then
     echo "File $HOME_TAR does not exist!"
     exit 1
