@@ -34,7 +34,7 @@ class App(ipw.VBox):
         # Link the models of the application steps
         ipw.dlink(
             (struct_model, "state"),
-            (config_model, "prev_step_state"),
+            (config_model, "previous_step_state"),
         )
         ipw.dlink(
             (struct_model, "confirmed_structure"),
@@ -46,7 +46,7 @@ class App(ipw.VBox):
         )
         ipw.dlink(
             (config_model, "state"),
-            (submit_model, "prev_step_state"),
+            (submit_model, "previous_step_state"),
         )
         ipw.dlink(
             (config_model, "configuration_parameters"),
@@ -96,8 +96,8 @@ class App(ipw.VBox):
     def steps(self):
         return self._wizard_app_widget.steps
 
-    # Reset the confirmed_structure in case that a new structure is selected
     def _observe_structure_selection(self, change):
+        """Reset the confirmed_structure in case that a new structure is selected."""
         with self.structure_step.hold_sync():
             if (
                 self.structure_step.confirmed_structure is not None

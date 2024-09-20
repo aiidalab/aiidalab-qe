@@ -151,20 +151,17 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             ],
         )
 
-        ipw.dlink(
-            (self, "state"),
-            (struct_model, "state"),
-        )
-        ipw.dlink(
-            (self, "confirmed_structure"),
-            (struct_model, "confirmed_structure"),
-        )
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (self, "state"),
+                (struct_model, "state"),
+            )
+            ipw.dlink(
+                (self, "confirmed_structure"),
+                (struct_model, "confirmed_structure"),
+            )
 
         self.rendered = True
-
-    @tl.default("state")
-    def _default_state(self):
-        return self.State.INIT
 
     def _update_state(self):
         if self.structure is None:

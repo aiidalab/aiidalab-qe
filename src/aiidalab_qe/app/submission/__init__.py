@@ -159,7 +159,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.observe(self._observe_input_structure, "input_parameters")
 
         ipw.dlink(
-            (submit_model, "prev_step_state"),
+            (submit_model, "previous_step_state"),
             (self, "previous_step_state"),
         )
         ipw.dlink(

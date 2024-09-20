@@ -5,7 +5,10 @@ from aiidalab_widgets_base import WizardAppWidgetStep
 
 
 class StructureModel(tl.HasTraits):
-    state = tl.UseEnum(WizardAppWidgetStep.State)
+    state = tl.UseEnum(
+        enum_class=WizardAppWidgetStep.State,
+        default_value=WizardAppWidgetStep.State.INIT,
+    )
 
     confirmed_structure = tl.Instance(orm.StructureData, allow_none=True)
 

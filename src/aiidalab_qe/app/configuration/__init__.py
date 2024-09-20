@@ -20,9 +20,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     confirmed = tl.Bool()
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
-    # output dictionary
-    configuration_parameters = tl.Dict()
-
     _structure_not_set_warning = """
         <div style="color: red;">
             Please set the input structure first.
@@ -103,31 +100,41 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.confirm_button,
         ]
 
-        # Link to model
-        ipw.dlink(
-            (model, "prev_step_state"),
-            (self, "previous_step_state"),
-        )
-        ipw.dlink(
-            (self, "state"),
-            (model, "state"),
-        )
-        ipw.dlink(
-            (self, "configuration_parameters"),
-            (model, "configuration_parameters"),
-        )
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (model, "previous_step_state"),
+                (self, "previous_step_state"),
+            )
+            ipw.dlink(
+                (self, "state"),
+                (model, "state"),
+            )
 
         self.rendered = True
 
-    def _on_tab_change(self, change):
-        if (tab := change["new"]) is None:
-            return
-        self.tab.children[tab].render()
+    def reset(self):
+        """Reset the widgets in all settings to their initial states."""
+        with self.hold_trait_notifications():
+            for _, settings in self.settings.items():
+                if settings.rendered:
+                    settings.reset()
+
+    def is_saved(self):
+        """Check if the current step is saved.
+        That all changes are confirmed.
+        """
+        new_parameters = self.get_configuration_parameters()
+        return new_parameters == model.configuration_parameters
+
+    def confirm(self, _=None):
+        model.configuration_parameters = self.get_configuration_parameters()
+        self.confirm_button.disabled = False
+        self.state = self.State.SUCCESS
 
     def get_configuration_parameters(self):
         """Get the parameters of the configuration step."""
         if not hasattr(self, "tab"):
-            return {}
+            return {}  # TODO restructure plugin system to use models
         return {s.identifier: s.get_panel_value() for s in self.tab.children}
 
     def set_configuration_parameters(self, parameters):
@@ -139,7 +146,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     settings.set_panel_value(parameters[identifier])
 
     @tl.observe("previous_step_state")
-    def _update_state(self, _=None):
+    def _on_previous_step_state_change(self, _):
+        self._update_state()
+
+    def _update_state(self):
         if self.previous_step_state == self.State.SUCCESS:
             self.confirm_button.disabled = False
             self._submission_blocker_messages.value = ""
@@ -154,28 +164,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.INIT
             self.reset()  # TODO redundant?
 
-    def confirm(self, _=None):
-        self.configuration_parameters = self.get_configuration_parameters()
-        self.confirm_button.disabled = False
-        self.state = self.State.SUCCESS
-
-    def is_saved(self):
-        """Check if the current step is saved.
-        That all changes are confirmed.
-        """
-        new_parameters = self.get_configuration_parameters()
-        return new_parameters == self.configuration_parameters
-
-    @tl.default("state")
-    def _default_state(self):
-        return self.State.INIT
-
-    def reset(self):
-        """Reset the widgets in all settings to their initial states."""
-        with self.hold_trait_notifications():
-            for _, settings in self.settings.items():
-                if settings.rendered:
-                    settings.reset()
+    def _on_tab_change(self, change):
+        if (tab := change["new"]) is None:
+            return
+        self.tab.children[tab].render()  # type: ignore
 
     def _update_panel(self, _=None):
         """Dynamic add/remove the panel based on the selected properties."""

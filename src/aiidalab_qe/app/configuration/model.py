@@ -493,8 +493,11 @@ class PseudosModel(tl.HasTraits):
 
 
 class ConfigurationModel(tl.HasTraits):
-    state = tl.UseEnum(WizardAppWidgetStep.State)
-    prev_step_state = tl.UseEnum(WizardAppWidgetStep.State)
+    state = tl.UseEnum(
+        enum_class=WizardAppWidgetStep.State,
+        default_value=WizardAppWidgetStep.State.INIT,
+    )
+    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_structure = tl.Union(
         [
             tl.Instance(orm.StructureData),
