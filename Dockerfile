@@ -80,6 +80,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/42_setup-hq-computer.sh && \
     python -m aiidalab_qe install-qe --computer ${HQ_COMPUTER} && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
+    touch /home/${NB_USER}/work/.placeholder && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     # touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
