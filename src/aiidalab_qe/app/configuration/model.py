@@ -16,7 +16,6 @@ from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
-from aiidalab_widgets_base import WizardAppWidgetStep
 
 SsspFamily = GroupFactory("pseudo.family.sssp")
 PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
@@ -493,11 +492,6 @@ class PseudosModel(tl.HasTraits):
 
 
 class ConfigurationModel(tl.HasTraits):
-    state = tl.UseEnum(
-        enum_class=WizardAppWidgetStep.State,
-        default_value=WizardAppWidgetStep.State.INIT,
-    )
-    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_structure = tl.Union(
         [
             tl.Instance(orm.StructureData),

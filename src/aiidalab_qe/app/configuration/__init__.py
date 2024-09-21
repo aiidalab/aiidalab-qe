@@ -17,8 +17,8 @@ from .workflow import WorkChainSettings
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
-    confirmed = tl.Bool()
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
+    confirmed = tl.Bool()
 
     _structure_not_set_warning = """
         <div style="color: red;">
@@ -80,8 +80,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.settings[identifier] = entry_point(parent=self)
             self.settings[identifier].identifier = identifier
 
-        self._submission_blocker_messages = ipw.HTML()
-
         self.confirm_button = ipw.Button(
             description="Confirm",
             tooltip="Confirm the currently selected settings and go to the next step.",
@@ -90,25 +88,18 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             disabled=True,
             layout=ipw.Layout(width="auto"),
         )
-
+        ipw.dlink(
+            (self, "state"),
+            (self.confirm_button, "disabled"),
+            lambda state: state != self.State.CONFIGURED,
+        )
         self.confirm_button.on_click(self.confirm)
 
         self.children = [
             self.structure_set_message,
             self.tab,
-            self._submission_blocker_messages,
             self.confirm_button,
         ]
-
-        with self.hold_trait_notifications():
-            ipw.dlink(
-                (model, "previous_step_state"),
-                (self, "previous_step_state"),
-            )
-            ipw.dlink(
-                (self, "state"),
-                (model, "state"),
-            )
 
         self.rendered = True
 
@@ -151,18 +142,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _update_state(self):
         if self.previous_step_state == self.State.SUCCESS:
-            self.confirm_button.disabled = False
-            self._submission_blocker_messages.value = ""
             self.state = self.State.CONFIGURED
-            # update plugin specific settings
-            for _, settings in self.settings.items():
-                settings._update_state()
+            # for settings in self.settings.values():
+            #     settings._update_state()
         elif self.previous_step_state == self.State.FAIL:
             self.state = self.State.FAIL
         else:
-            self.confirm_button.disabled = True
             self.state = self.State.INIT
-            self.reset()  # TODO redundant?
+            # self.reset()  # TODO redundant?
 
     def _on_tab_change(self, change):
         if (tab := change["new"]) is None:

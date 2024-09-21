@@ -1,16 +1,17 @@
 import traitlets as tl
 
 from aiida import orm
-from aiidalab_widgets_base import WizardAppWidgetStep
 
 
 class StructureModel(tl.HasTraits):
-    state = tl.UseEnum(
-        enum_class=WizardAppWidgetStep.State,
-        default_value=WizardAppWidgetStep.State.INIT,
-    )
-
     confirmed_structure = tl.Instance(orm.StructureData, allow_none=True)
+
+    def reset(self):
+        self.confirmed_structure = None
+
+    @property
+    def is_confirmed(self):
+        return self.confirmed_structure is not None
 
 
 struct_model = StructureModel()

@@ -23,7 +23,7 @@ from aiidalab_widgets_base import (
     WizardAppWidgetStep,
 )
 
-from .model import struct_model
+from .model import struct_model as model
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
@@ -50,7 +50,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     """
 
     structure = tl.Instance(orm.StructureData, allow_none=True)
-    confirmed_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
@@ -120,15 +119,22 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             tooltip="Confirm the currently selected structure and go to the next step.",
             button_style="success",
             icon="check-circle",
-            disabled=True,
             layout=ipw.Layout(width="auto"),
+        )
+        ipw.dlink(
+            (self, "state"),
+            (self.confirm_button, "disabled"),
+            lambda state: state != self.State.CONFIGURED,
         )
         self.confirm_button.on_click(self.confirm)
         self.message_area = ipw.HTML()
 
         # Create directional link from the (read-only) 'structure_node' traitlet of the
         # structure manager to our 'structure' traitlet:
-        ipw.dlink((self.manager, "structure_node"), (self, "structure"))
+        ipw.dlink(
+            (self.manager, "structure_node"),
+            (self, "structure"),
+        )
 
         self.children = [
             ipw.HTML("""
@@ -149,69 +155,47 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.confirm_button,
         ]
 
-        with self.hold_trait_notifications():
-            ipw.dlink(
-                (self, "state"),
-                (struct_model, "state"),
-            )
-            ipw.dlink(
-                (self, "confirmed_structure"),
-                (struct_model, "confirmed_structure"),
-            )
-
         self.rendered = True
 
-    def _update_state(self):
-        if self.structure is None:
-            if self.confirmed_structure is None:
-                self.state = self.State.READY
-            else:
-                self.state = self.State.SUCCESS
-        else:
-            if self.confirmed_structure is None:
-                self.state = self.State.CONFIGURED
-            else:
-                self.state = self.State.SUCCESS
+    def can_reset(self):
+        return model.confirmed_structure is not None
 
-    @tl.observe("structure")
-    def _observe_structure(self, change):
-        structure = change["new"]
+    def reset(self):
+        """Reset the widget to its initial state."""
         with self.hold_trait_notifications():
-            if structure is None:
-                self.structure_name_text.value = ""
-                self.message_area.value = ""
-            else:
-                self.structure_name_text.value = str(self.structure.get_formula())
-            self._update_state()
+            model.reset()
+            self.manager.structure = None
+            self.manager.viewer.structure = None
+            self.manager.output.value = ""
 
-    @tl.observe("confirmed_structure")
-    def _observe_confirmed_structure(self, _):
-        with self.hold_trait_notifications():
-            self._update_state()
-
-    @tl.observe("state")
-    def _observe_state(self, change):
-        with self.hold_trait_notifications():
-            state = change["new"]
-            self.confirm_button.disabled = state != self.State.CONFIGURED
-            self.manager.disabled = state is self.State.SUCCESS
+    def is_saved(self):
+        """Check if the current structure is confirmed."""
+        return self.structure == model.confirmed_structure
 
     def confirm(self, _=None):
         self.manager.store_structure()
-        self.confirmed_structure = self.structure
+        model.confirmed_structure = self.structure
         self.message_area.value = ""
+        self._update_state()
 
-    def is_saved(self):
-        """Check if the current structure is saved.
-        That all changes are confirmed."""
-        return self.confirmed_structure == self.structure
+    @tl.observe("structure")
+    def _on_structure_change(self, _):
+        model.reset()
+        self._update_widget_text()
+        self._update_state()
 
-    def can_reset(self):
-        return self.confirmed_structure is not None
+    def _update_widget_text(self):
+        if self.structure is None:
+            self.structure_name_text.value = ""
+            self.message_area.value = ""
+        else:
+            self.manager.output.value = ""
+            self.structure_name_text.value = str(self.structure.get_formula())
 
-    def reset(self):  # unconfirm
-        """Reset the widget to its initial state."""
-        self.confirmed_structure = None
-        self.manager.structure = None
-        self.manager.viewer.structure = None
-        self.manager.output.value = ""
+    def _update_state(self):
+        if model.is_confirmed:
+            self.state = self.State.SUCCESS
+        elif self.structure is None:
+            self.state = self.State.READY
+        else:
+            self.state = self.State.CONFIGURED

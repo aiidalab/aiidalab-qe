@@ -33,20 +33,20 @@ class App(ipw.VBox):
 
         # Link the models of the application steps
         ipw.dlink(
-            (struct_model, "state"),
-            (config_model, "previous_step_state"),
-        )
-        ipw.dlink(
-            (struct_model, "confirmed_structure"),
-            (submit_model, "input_structure"),
+            (self.structure_step, "state"),
+            (self.configure_step, "previous_step_state"),
         )
         ipw.dlink(
             (struct_model, "confirmed_structure"),
             (config_model, "input_structure"),
         )
         ipw.dlink(
-            (config_model, "state"),
-            (submit_model, "previous_step_state"),
+            (struct_model, "confirmed_structure"),
+            (submit_model, "input_structure"),
+        )
+        ipw.dlink(
+            (self.configure_step, "state"),
+            (self.submit_step, "previous_step_state"),
         )
         ipw.dlink(
             (config_model, "configuration_parameters"),
@@ -98,12 +98,13 @@ class App(ipw.VBox):
 
     def _observe_structure_selection(self, change):
         """Reset the confirmed_structure in case that a new structure is selected."""
-        with self.structure_step.hold_sync():
-            if (
-                self.structure_step.confirmed_structure is not None
-                and self.structure_step.confirmed_structure != change["new"]
-            ):
-                self.structure_step.confirmed_structure = None
+        pass
+        # with self.structure_step.hold_sync():
+        #     if (
+        #         self.structure_step.confirmed_structure is not None
+        #         and self.structure_step.confirmed_structure != change["new"]
+        #     ):
+        #         self.structure_step.confirmed_structure = None
 
     def _observe_selected_index(self, change):
         """Check unsaved change in the step when leaving the step."""

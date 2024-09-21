@@ -14,6 +14,8 @@ from aiida.engine import ProcessBuilderNamespace
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_widgets_base import WizardAppWidgetStep
 
+from .model import submit_model as model
+
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
@@ -48,9 +50,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     # Put a limit on how many MPI tasks you want to run per k-pool by default
     MAX_MPI_PER_POOL = 20
 
+    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
-    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_parameters = tl.Dict()
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
@@ -76,8 +78,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         from aiidalab_qe.common.setup_codes import QESetupWidget
         from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
         from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget
-
-        from .model import submit_model
 
         self.message_area = ipw.Output()
 
@@ -158,22 +158,19 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.observe(self._observe_input_structure, "input_parameters")
 
-        ipw.dlink(
-            (submit_model, "previous_step_state"),
-            (self, "previous_step_state"),
-        )
-        ipw.dlink(
-            (submit_model, "input_structure"),
-            (self, "input_structure"),
-        )
-        ipw.dlink(
-            (submit_model, "input_parameters"),
-            (self, "input_parameters"),
-        )
-        ipw.dlink(
-            (self, "process"),
-            (submit_model, "process"),
-        )
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (model, "input_structure"),
+                (self, "input_structure"),
+            )
+            ipw.dlink(
+                (model, "input_parameters"),
+                (self, "input_parameters"),
+            )
+            ipw.dlink(
+                (self, "process"),
+                (model, "process"),
+            )
 
         self.rendered = True
 
@@ -306,7 +303,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
-    @tl.observe("previous_step_state")
+    @tl.observe("input_structure")
     def _observe_input_structure(self, _):
         self._update_state()
         self.update_codes_display()

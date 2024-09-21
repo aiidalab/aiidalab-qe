@@ -4,6 +4,8 @@ import traitlets as tl
 from aiida import orm
 from aiidalab_widgets_base import WizardAppWidgetStep
 
+from .model import results_model as model
+
 # trigger registration of the viewer widget:
 from .workchain_viewer import WorkChainViewer  # noqa: F401
 
@@ -34,8 +36,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             ProcessMonitor,
             ProcessNodesTreeWidget,
         )
-
-        from .model import results_model
 
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink(
@@ -80,7 +80,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self.observe(self._observe_process, "process")
 
         ipw.dlink(
-            (results_model, "process"),
+            (model, "process"),
             (self, "process"),
         )
 
