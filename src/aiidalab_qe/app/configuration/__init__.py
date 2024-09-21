@@ -8,6 +8,8 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets as tl
 
+from aiida_quantumespresso.common.types import RelaxType
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_widgets_base import WizardAppWidgetStep
 
@@ -15,12 +17,14 @@ from .advanced import AdvancedSettings
 from .model import config_model as model
 from .workflow import WorkChainSettings
 
+DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
+
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     confirmed = tl.Bool()
 
-    _structure_not_set_warning = """
+    _no_structure_warning = """
         <div style="color: red;">
             Please set the input structure first.
         </div>
@@ -34,6 +38,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             **kwargs,
         )
 
+        self._fetch_setting_entries()
+
         self.rendered = False
 
     def render(self):
@@ -44,10 +50,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ipw.dlink(
             (model, "input_structure"),
             (self.structure_set_message, "value"),
-            lambda s: "" if s else self._structure_not_set_warning,
+            lambda structure: self._no_structure_warning if structure is None else "",
         )
 
-        self.workchain_settings = WorkChainSettings(callback=self._update_panel)
+        self.workchain_settings = WorkChainSettings()
         self.advanced_settings = AdvancedSettings()
 
         self.built_in_settings = [
@@ -74,6 +80,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "advanced": self.advanced_settings,
         }
 
+        # TODO setting entries already fetched - store and reuse?
         # then add plugin specific settings
         entries = get_entry_items("aiidalab_qe.properties", "setting")
         for identifier, entry_point in entries.items():
@@ -97,6 +104,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.children = [
             self.structure_set_message,
+            *self.property_children,
             self.tab,
             self.confirm_button,
         ]
@@ -109,6 +117,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             for _, settings in self.settings.items():
                 if settings.rendered:
                     settings.reset()
+            for key, p in self.properties.items():
+                p.run.value = key in DEFAULT["workchain"]["properties"]
 
     def is_saved(self):
         """Check if the current step is saved.
@@ -124,9 +134,32 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def get_configuration_parameters(self):
         """Get the parameters of the configuration step."""
-        if not hasattr(self, "tab"):
-            return {}  # TODO restructure plugin system to use models
-        return {s.identifier: s.get_panel_value() for s in self.tab.children}
+        parameters = {
+            setting.identifier: setting.get_model_state()
+            for setting in self.settings.values()
+        }
+
+        properties = []
+
+        properties = []
+
+        run_bands = False
+        run_pdos = False
+        for name in self.properties:
+            if self.properties[name].run.value:
+                properties.append(name)
+            if name == "bands":
+                run_bands = True
+            elif name == "pdos":
+                run_bands = True
+
+        if RelaxType(model.basic.relax_type) is not RelaxType.NONE or not (
+            run_bands or run_pdos
+        ):
+            properties.append("relax")
+
+        # TODO necessary to store the properties in the workchain settings?
+        parameters["workchain"].update("properties", properties)
 
     def set_configuration_parameters(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
@@ -135,6 +168,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             for identifier, settings in self.settings.items():
                 if parameters.get(identifier):
                     settings.set_panel_value(parameters[identifier])
+            properties = parameters.get("properties", [])
+            for name in self.properties:
+                if name in properties:
+                    self.properties[name].run.value = True
+                else:
+                    self.properties[name].run.value = False
 
     @tl.observe("previous_step_state")
     def _on_previous_step_state_change(self, change):
@@ -158,15 +197,52 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _update_panel(self, _=None):
         """Dynamic add/remove the panel based on the selected properties."""
-        # only keep basic and advanced settings
         self.tab.children = self.built_in_settings
-        # add plugin specific settings
-        for identifier in self.workchain_settings.properties:
-            if (
-                identifier in self.settings
-                and self.workchain_settings.properties[identifier].run.value
-            ):
+        for identifier in self.properties:
+            if identifier in self.settings and self.properties[identifier].run.value:
                 self.tab.children += (self.settings[identifier],)
                 self.tab.set_title(
                     len(self.tab.children) - 1, self.settings[identifier].title
                 )
+
+    def _fetch_setting_entries(self):
+        """Handle plugin specific settings."""
+
+        self.properties = {}
+        self.reminder_info = {}
+        self.property_children = [ipw.HTML("Select which properties to calculate:")]
+        entries = get_entry_items("aiidalab_qe.properties", "outline")
+        setting_entries = get_entry_items("aiidalab_qe.properties", "setting")
+        for name, entry_point in entries.items():
+            self.properties[name] = entry_point()
+            self.properties[name].run.observe(self._update_panel, "value")
+            self.reminder_info[name] = ipw.HTML()
+            self.property_children.append(
+                ipw.HBox(
+                    children=[
+                        self.properties[name],
+                        self.reminder_info[name],
+                    ]
+                )
+            )
+
+            def update_reminder_info(change, name=name):
+                info = self.reminder_info[name]
+                info.value = (
+                    f"Customize {name} settings in the corresponding tab"
+                    if change["new"]
+                    else ""
+                )
+
+            if name in setting_entries:
+                self.properties[name].run.observe(update_reminder_info, "value")
+
+        self.property_children.append(
+            ipw.HTML("""
+                <div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
+                    The band structure workflow will automatically detect the default
+                    path in reciprocal space using the
+                    <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">SeeK-path tool</a>.
+                </div>
+            """)
+        )

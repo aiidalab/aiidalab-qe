@@ -5,14 +5,9 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
-from aiida_quantumespresso.common.types import RelaxType
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.panel import Panel
 
 from .model import config_model as model
-
-DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class WorkChainSettings(Panel):
@@ -38,18 +33,6 @@ class WorkChainSettings(Panel):
         </div>"""
     )
 
-    properties_title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Properties</h4></div>"""
-    )
-    properties_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        The band structure workflow will
-        automatically detect the default path in reciprocal space using the
-        <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
-        SeeK-path tool</a>.</div>"""
-    )
-
     protocol_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Protocol</h4></div>"""
@@ -61,15 +44,13 @@ class WorkChainSettings(Panel):
         with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
     )
 
-    def __init__(self, callback, **kwargs):
+    def __init__(self, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
             children=[LoadingWidget("Loading workchain settings widget")],
             **kwargs,
         )
-
-        self._set_properties(callback)
 
         self.rendered = False
 
@@ -143,7 +124,6 @@ class WorkChainSettings(Panel):
                     self.spin_type,
                 ]
             ),
-            *self.property_children,
             self.protocol_title,
             ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
             self.protocol,
@@ -155,32 +135,11 @@ class WorkChainSettings(Panel):
     def reset(self):
         """Reset the panel to the default value."""
         model.basic.reset()
-        for key, p in self.properties.items():
-            p.run.value = key in DEFAULT["workchain"]["properties"]
 
     def get_panel_value(self):
-        # Work chain settings
-        properties = []
-
-        # add plugin specific settings
-        run_bands = False
-        run_pdos = False
-        for name in self.properties:
-            if self.properties[name].run.value:
-                properties.append(name)
-            if name == "bands":
-                run_bands = True
-            elif name == "pdos":
-                run_bands = True
-
-        if RelaxType(model.basic.relax_type) is not RelaxType.NONE or not (
-            run_bands or run_pdos
-        ):
-            properties.append("relax")
         return {
             "protocol": model.basic.protocol,
             "relax_type": model.basic.relax_type,
-            "properties": properties,
             "spin_type": model.basic.spin_type,
             "electronic_type": model.basic.electronic_type,
         }
@@ -197,47 +156,5 @@ class WorkChainSettings(Panel):
         if "protocol" in parameters:
             model.basic.protocol = parameters["protocol"]
 
-        properties = parameters.get("properties", [])
-        for name in self.properties:
-            if name in properties:
-                self.properties[name].run.value = True
-            else:
-                self.properties[name].run.value = False
-
     def _on_protocol_change(self, change):
         model.update_from_protocol(change["new"])
-
-    def _set_properties(self, callback):
-        """Handle plugin specific settings."""
-
-        self.properties = {}
-        self.reminder_info = {}
-        self.property_children = [
-            self.properties_title,
-            ipw.HTML("Select which properties to calculate:"),
-        ]
-        entries = get_entry_items("aiidalab_qe.properties", "outline")
-        setting_entries = get_entry_items("aiidalab_qe.properties", "setting")
-        for name, entry_point in entries.items():
-            self.properties[name] = entry_point()
-            self.properties[name].run.observe(callback, "value")
-            self.reminder_info[name] = ipw.HTML()
-            self.property_children.append(
-                ipw.HBox([self.properties[name], self.reminder_info[name]])
-            )
-
-            # observer change to update the reminder text
-            def update_reminder_info(change, name=name):
-                if change["new"]:
-                    self.reminder_info[
-                        name
-                    ].value = (
-                        f"""Customize {name} settings in the panel above if needed."""
-                    )
-                else:
-                    self.reminder_info[name].value = ""
-
-            if name in setting_entries:
-                self.properties[name].run.observe(update_reminder_info, "value")
-
-        self.property_children.append(self.properties_help)
