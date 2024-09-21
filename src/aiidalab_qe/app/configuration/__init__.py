@@ -137,15 +137,15 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     settings.set_panel_value(parameters[identifier])
 
     @tl.observe("previous_step_state")
-    def _on_previous_step_state_change(self, _):
-        self._update_state()
+    def _on_previous_step_state_change(self, change):
+        self._update_state(change["new"])
 
-    def _update_state(self):
-        if self.previous_step_state == self.State.SUCCESS:
+    def _update_state(self, previous_step_state):
+        if previous_step_state == self.State.SUCCESS:
             self.state = self.State.CONFIGURED
             # for settings in self.settings.values():
             #     settings._update_state()
-        elif self.previous_step_state == self.State.FAIL:
+        elif previous_step_state == self.State.FAIL:
             self.state = self.State.FAIL
         else:
             self.state = self.State.INIT
