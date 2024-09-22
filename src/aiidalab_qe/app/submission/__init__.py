@@ -10,18 +10,11 @@ import traitlets as tl
 from IPython.display import display
 
 from aiida import orm
-from aiida.common import NotExistent
-from aiida.engine import ProcessBuilderNamespace, submit
+from aiida.engine import ProcessBuilderNamespace
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.setup_codes import QESetupWidget
-from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import (
-    PwCodeResourceSetupWidget,
-    QEAppComputationalResourcesWidget,
-)
-from aiidalab_qe.workflows import QeAppWorkChain
 from aiidalab_widgets_base import WizardAppWidgetStep
+
+from .model import submit_model as model
 
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -57,16 +50,36 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     # Put a limit on how many MPI tasks you want to run per k-pool by default
     MAX_MPI_PER_POOL = 20
 
+    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
-    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
     input_parameters = tl.Dict()
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
-        self.message_area = ipw.Output()
+        from aiidalab_qe.common.widgets import LoadingWidget
+
+        self.qe_auto_setup = qe_auto_setup
         self._submission_blocker_messages = ipw.HTML()
+
+        super().__init__(
+            children=[LoadingWidget("Loading workflow submission panel")],
+            **kwargs,
+        )
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
+        from aiidalab_qe.app.utils import get_entry_items
+        from aiidalab_qe.common.setup_codes import QESetupWidget
+        from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
+        from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget
+
+        self.message_area = ipw.Output()
 
         self.pw_code = PwCodeResourceSetupWidget(
             description="pw.x:", default_calc_job_plugin="quantumespresso.pw"
@@ -83,7 +96,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ]
         self.code_entries = get_entry_items("aiidalab_qe.properties", "code")
         for _, entry_point in self.code_entries.items():
-            for name, code in entry_point.items():
+            for name, code in entry_point().items():
                 self.codes[name] = code
                 code.observe(self._update_state, "value")
                 self.code_children.append(self.codes[name])
@@ -112,7 +125,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # in case that the installation was already triggered elsewhere, e.g.,
         # by the start up scripts.  The submission is blocked while the
         # potentials are not yet installed.
-        self.sssp_installation_status = PseudosInstallWidget(auto_start=qe_auto_setup)
+        self.sssp_installation_status = PseudosInstallWidget(
+            auto_start=self.qe_auto_setup
+        )
         self.sssp_installation_status.observe(self._update_state, ["busy", "installed"])
         self.sssp_installation_status.observe(self._toggle_install_widgets, "installed")
 
@@ -120,28 +135,44 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # expected labels (e.g. "pw-7.2@localhost") and triggers both the
         # installation of QE into a dedicated conda environment and the setup of
         # the codes in case that they are not already configured.
-        self.qe_setup_status = QESetupWidget(auto_start=qe_auto_setup)
+        self.qe_setup_status = QESetupWidget(auto_start=self.qe_auto_setup)
         self.qe_setup_status.observe(self._update_state, "busy")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
         self.qe_setup_status.observe(self._auto_select_code, "installed")
         self.ui_parameters = {}
 
-        super().__init__(
-            children=[
-                *self.code_children,
-                self.message_area,
-                self.sssp_installation_status,
-                self.qe_setup_status,
-                self._submission_blocker_messages,
-                self.process_label_help,
-                self.process_label,
-                self.process_description,
-                self.submit_button,
-            ],
-            **kwargs,
-        )
+        self.children = [
+            *self.code_children,
+            self.message_area,
+            self.sssp_installation_status,
+            self.qe_setup_status,
+            self._submission_blocker_messages,
+            self.process_label_help,
+            self.process_label,
+            self.process_description,
+            self.submit_button,
+        ]
+
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
+
+        self.observe(self._observe_input_structure, "input_parameters")
+
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (model, "input_structure"),
+                (self, "input_structure"),
+            )
+            ipw.dlink(
+                (model, "input_parameters"),
+                (self, "input_parameters"),
+            )
+            ipw.dlink(
+                (self, "process"),
+                (model, "process"),
+            )
+
+        self.rendered = True
 
     @tl.observe("internal_submission_blockers", "external_submission_blockers")
     def _observe_submission_blockers(self, _change):
@@ -158,6 +189,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _identify_submission_blockers(self):
         """Validate the resource inputs and identify blockers for the submission."""
+        from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
+
         # Do not submit while any of the background setup processes are running.
         if self.qe_setup_status.busy or self.sssp_installation_status.busy:
             yield "Background setup processes must finish."
@@ -270,7 +303,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self.submit_button.disabled = change["new"] != self.State.CONFIGURED
 
-    @tl.observe("previous_step_state", "input_parameters")
+    @tl.observe("input_structure")
     def _observe_input_structure(self, _):
         self._update_state()
         self.update_codes_display()
@@ -305,6 +338,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # Codes
         def _get_code_uuid(code):
+            from aiida.common import NotExistent
+
             if code is not None:
                 try:
                     return orm.load_code(code).uuid
@@ -343,6 +378,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
+        from aiida.engine import submit
         from aiida.orm.utils.serialize import serialize
 
         builder = self._create_builder()
@@ -385,6 +421,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _create_builder(self) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
         from copy import deepcopy
+
+        from aiidalab_qe.workflows import QeAppWorkChain
 
         self.ui_parameters = deepcopy(self.input_parameters)
         # add codes and resource info into ui_parameters

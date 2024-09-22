@@ -187,13 +187,13 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
 
     # reset the structure, the widget should be reset
     silica = generate_structure_data("silica")
-    w.structure = silica
+    w.input_structure = silica
     assert "Si" in w.pseudos.keys()
     assert "O" in w.pseudos.keys()
 
     # Upload and set a new pseudo for O
     new_O_pseudo = generate_upf_data("O", "O_new.upf")
-    upload_w = w.pseudo_setting_widgets.children[1]
+    upload_w = w.pseudo_setter_widgets.children[1]
     upload_w._on_file_upload(
         {
             "new": {
@@ -208,7 +208,7 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
     #
     pseudos = w.pseudos
     cutoffs = {"cutoff_wfc": w.ecutwfc, "cutoff_rho": w.ecutrho}
-    w._reset()
+    w.reset()
     assert orm.load_node(w.pseudos["O"]).filename != "O_new.upf"
     w.set_pseudos(pseudos, cutoffs)
     assert orm.load_node(w.pseudos["O"]).filename == "O_new.upf"

@@ -38,9 +38,21 @@
   margin-bottom: 0.5em;
 }
 
-#loading {
-  text-align: center;
+.loading {
+  margin: 0 auto;
+  padding: 5px;
   font-size: large;
+  justify-content: center;
+}
+
+.warning {
+  color: red;
+  font-weight: bold;
+}
+
+.pseudo-text {
+  line-height: 140%;
+  padding: 5px 0;
 }
 
 footer {

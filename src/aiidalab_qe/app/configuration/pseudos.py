@@ -1,22 +1,16 @@
 from __future__ import annotations
 
 import io
-import re
 
 import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiida.common import exceptions
 from aiida.plugins import DataFactory, GroupFactory
-from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.setup.pseudos import (
-    PSEUDODOJO_VERSION,
-    SSSP_VERSION,
-    PseudoFamily,
-)
+from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML
+
+from .model import ConfigurationModel
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -24,84 +18,92 @@ PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
 CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 
 
-class PseudoFamilySelector(ipw.VBox):
-    title = ipw.HTML(
-        """<div style="padding-top: 0px; padding-bottom: 10px">
-        <h4>Accuracy and precision</h4></div>"""
-    )
-    PSEUDO_HELP_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
-            Spin-orbit coupling (SOC) calculations are supported exclusively with PseudoDojo pseudopotentials.
-            PseudoDojo offers these pseudopotentials in two versions: standard and stringent.
-            Here, we utilize the FR (fully relativistic) type from PseudoDojo.
-            Please ensure you choose appropriate cutoff values for your calculations.
-        </div>"""
+class PseudoSettings(ipw.VBox):
+    """Widget to set the pseudopotentials for the calculation."""
 
-    PSEUDO_HELP_WO_SOC = """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px; opacity:0.5;">
-        If you are unsure, select 'SSSP efficiency', which for
-        most calculations will produce sufficiently accurate results at
-        comparatively small computational costs. If your calculations require a
-        higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent', which will be computationally
-        more expensive. SSSP is the standard solid-state pseudopotentials.
-        The PseudoDojo used here has the SR relativistic type.</div>"""
-
-    description = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The exchange-correlation functional and pseudopotential library is set by
-        the <b>protocol</b> configured in the "Workflow" tab. Here you can
-        override the defaults if desired.</div>""",
-        layout=ipw.Layout(max_width="60%"),
+    input_structure = tl.Union(
+        [
+            tl.Instance(orm.StructureData),
+            tl.Instance(orm.KpointsData),
+        ],
+        allow_none=True,
     )
-
-    # XXX: the link is not correct after add pseudo dojo
-    pseudo_family_prompt = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;">
-        <b><a href="https://www.materialscloud.org/discover/sssp/table/efficiency"
-        target="_blank">Pseudopotential family</b></div>"""
-    )
-    pseudo_family_help = ipw.HTML(PSEUDO_HELP_WO_SOC)
-
-    dft_functional_prompt = ipw.HTML(
-        """
-        <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;"><b>
-        Exchange-correlation  functional</b></div>"""
-    )
-    dft_functional_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; opacity:0.5;">
-        The exchange-correlation energy is calculated using this functional. We currently provide support for two
-        well-established generalised gradient approximation (GGA) functionals:
-        PBE and PBEsol.</div>"""
-    )
-    protocol = tl.Unicode(allow_none=True)
-    disabled = tl.Bool()
     spin_orbit = tl.Unicode()
+    pseudo_family = tl.Unicode()
+    override = tl.Bool()
 
-    # output pseudo family widget which is the string of the pseudo family (of the AiiDA group).
-    value = tl.Unicode(allow_none=True)
-
-    def __init__(self, **kwargs):
-        # Enable manual setting of the pseudopotential family
-        self.set_pseudo_family_prompt = ipw.HTML("<b>&nbsp;&nbsp;Override&nbsp;</b>")
-        self.override = ipw.Checkbox(
-            description="",
-            indent=False,
-            layout=ipw.Layout(max_width="10%"),
+    def __init__(self, model: ConfigurationModel, **kwargs):
+        super().__init__(
+            children=[LoadingWidget("Loading pseudopotentials widget")],
+            **kwargs,
         )
-        self.set_pseudo_family_box = ipw.HBox(
-            [self.set_pseudo_family_prompt, self.override],
-            layout=ipw.Layout(max_width="20%"),
-        )
-        self.show_ui = ipw.Valid(value=True)
-        self.override.observe(self.set_show_ui, "value")
-        self.override.observe(self.set_text_color, "value")
-        self.override.observe(self.set_value, "value")
 
-        # the widget for DFT functional selection
-        self.dft_functional = ipw.Dropdown(
+        self._model = model
+
+        self.setter_widget_links = []
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
+        self.PSEUDO_HELP_SOC = """
+            <div class="pseudo-text">
+                Spin-orbit coupling (SOC) calculations are supported exclusively with
+                PseudoDojo pseudopotentials. PseudoDojo offers these pseudopotentials
+                in two versions: standard and stringent. Here, we utilize the FR
+                (fully relativistic) type from PseudoDojo. Please ensure you choose
+                appropriate cutoff values for your calculations.
+            </div>
+        """
+
+        self.PSEUDO_HELP_WO_SOC = """
+            <div class="pseudo-text">
+                If you are unsure, select 'SSSP efficiency', which for most
+                calculations will produce sufficiently accurate results at
+                comparatively small computational costs. If your calculations require a
+                higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent',
+                which will be computationally more expensive. SSSP is the standard
+                solid-state pseudopotentials. The PseudoDojo used here has the SR
+                relativistic type.
+            </div>
+        """
+
+        self.family_prompt = ipw.HTML()
+
+        self.family_help = ipw.HTML(self.PSEUDO_HELP_WO_SOC)
+
+        self.functional_prompt = ipw.HTML("""
+            <div class="pseudo-text"><b>
+                Exchange-correlation  functional</b>
+            </div>
+        """)
+
+        self.functional_help = ipw.HTML("""
+            <div class="pseudo-text">
+                The exchange-correlation energy is calculated using this functional. We
+                currently provide support for two well-established generalized gradient
+                approximation (GGA) functionals: PBE and PBEsol.
+            </div>
+        """)
+
+        self.functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
             style={"description_width": "initial"},
         )
-        self.dft_functional.observe(self.set_value, "value")
-        self.library_selection = ipw.ToggleButtons(
+        ipw.link(
+            (self._model.advanced.pseudos, "functional"),
+            (self.functional, "value"),
+        )
+        ipw.dlink(
+            (self._model.advanced, "override"),
+            (self.functional, "disabled"),
+            lambda override: not override,
+        )
+        self.functional.observe(self._on_family_parameters_change, "value")
+
+        self.library = ipw.ToggleButtons(
             options=[
                 "SSSP efficiency",
                 "SSSP precision",
@@ -110,432 +112,325 @@ class PseudoFamilySelector(ipw.VBox):
             ],
             layout=ipw.Layout(max_width="80%"),
         )
-        self.library_selection.observe(self.set_value, "value")
-
-        self.dft_functional_box = ipw.VBox(
-            children=[
-                self.dft_functional_prompt,
-                self.dft_functional,
-                self.dft_functional_help,
-            ],
-            layout=ipw.Layout(max_width="40%"),
+        ipw.link(
+            (self._model.advanced.pseudos, "library"),
+            (self.library, "value"),
         )
-        self.pseudo_setup_box = ipw.VBox(
-            children=[
-                self.pseudo_family_prompt,
-                self.library_selection,
-                self.pseudo_family_help,
-            ],
-            layout=ipw.Layout(max_width="60%"),
-            **kwargs,
+        ipw.dlink(
+            (self._model.advanced, "override"),
+            (self.library, "disabled"),
+            lambda override: not override,
         )
-        ipw.dlink((self.show_ui, "value"), (self.library_selection, "disabled"))
-        ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
+        self.library.observe(self._on_family_parameters_change, "value")
 
-        super().__init__(
-            children=[
-                self.title,
-                ipw.HBox(
-                    [self.description, self.set_pseudo_family_box],
-                    layout=ipw.Layout(height="50px", justify_content="space-between"),
-                ),
-                ipw.HBox([self.dft_functional_box, self.pseudo_setup_box]),
-            ]
+        self.setter_widget_helper = ipw.HTML("""
+            <div class="pseudo-text">
+                The pseudopotential for each kind of atom in the structure can be
+                custom set. The default pseudopotential and cutoffs are get from
+                the pseudo family. The cutoffs used for the calculation are the
+                maximum of the default from all pseudopotentials and can be custom
+                set.
+            </div>
+        """)
+
+        self.setter_widget = ipw.VBox()
+
+        self._status_message = StatusHTML(clear_after=20)
+        ipw.dlink(
+            (self._model.advanced.pseudos, "status_message"),
+            (self._status_message, "message"),
         )
-        # after the initialization, the protocol is set to the default
-        # this will trigger the callback to set the value of widgets to the default
-        self._default_protocol = DEFAULT_PARAMETERS["workchain"]["protocol"]
-        self.protocol = self._default_protocol
-        self.override.value = False
 
-    def set_value(self, _=None):
-        """The callback when the selection of pseudo family or dft functional is changed.
-        Also triggered when the override checkbox is changed.
-        This is the only method to set the value of the widget.
-        """
-        library, accuracy = self.library_selection.value.split()
-        functional = self.dft_functional.value
-        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
-        if library == "PseudoDojo":
-            if self.spin_orbit == "soc":
-                pseudo_family_string = (
-                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/FR/{accuracy}/upf"
-                )
-            else:
-                pseudo_family_string = (
-                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
-                )
-        elif library == "SSSP":
-            pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
-        else:
-            raise ValueError(
-                f"Unknown pseudo family {self.override_protocol_pseudo_family.value}"
+        self.cutoff_helper = ipw.HTML("""
+            <div class="pseudo-text">
+                Please set the cutoffs for the calculation. The default cutoffs are get
+                from the pseudo family.
+            </div>
+        """)
+        self.ecutwfc = ipw.FloatText(
+            description="Wavefunction cutoff (Ry)",
+            style={"description_width": "initial"},
+        )
+        ipw.link(
+            (self._model.advanced.pseudos, "ecutwfc"),
+            (self.ecutwfc, "value"),
+        )
+        ipw.dlink(
+            (self._model.advanced, "override"),
+            (self.ecutwfc, "disabled"),
+            lambda override: not override,
+        )
+        self.ecutrho = ipw.FloatText(
+            description="Charge density cutoff (Ry)",
+            style={"description_width": "initial"},
+        )
+        ipw.link(
+            (self._model.advanced.pseudos, "ecutrho"),
+            (self.ecutrho, "value"),
+        )
+        ipw.dlink(
+            (self._model.advanced, "override"),
+            (self.ecutrho, "disabled"),
+            lambda override: not override,
+        )
+
+        self.container = ipw.VBox()
+
+        self.children = [
+            ipw.HTML("""
+                <div style="padding-top: 0px; padding-bottom: 10px">
+                    <h4>Accuracy and precision</h4>
+                </div>
+            """),
+            ipw.HBox(
+                children=[
+                    ipw.HTML(
+                        """
+                        <div class="pseudo-text">
+                            The exchange-correlation functional and pseudopotential
+                            library is set by the <b>protocol</b> configured in the
+                            "Workflow" tab. Here you can override the defaults if
+                            desired.
+                        </div>
+                        """,
+                        layout=ipw.Layout(max_width="60%"),
+                    ),
+                ],
+                layout=ipw.Layout(height="50px", justify_content="space-between"),
+            ),
+            ipw.HBox(
+                [
+                    ipw.VBox(
+                        children=[
+                            self.functional_prompt,
+                            self.functional,
+                            self.functional_help,
+                        ],
+                        layout=ipw.Layout(max_width="40%"),
+                    ),
+                    ipw.VBox(
+                        children=[
+                            self.family_prompt,
+                            self.library,
+                            self.family_help,
+                        ],
+                        layout=ipw.Layout(max_width="60%"),
+                    ),
+                ]
+            ),
+            self.container,
+            self.cutoff_helper,
+            ipw.HBox(
+                children=[
+                    self.ecutwfc,
+                    self.ecutrho,
+                ],
+            ),
+            self._status_message,
+        ]
+
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (self._model, "input_structure"),
+                (self, "input_structure"),
+            )
+            ipw.dlink(
+                (self._model.advanced, "spin_orbit"),
+                (self, "spin_orbit"),
+            )
+            ipw.dlink(
+                (self._model.advanced.pseudos, "family"),
+                (self, "pseudo_family"),
+            )
+            ipw.dlink(
+                (self._model.advanced, "override"),
+                (self, "override"),
             )
 
-        self.value = pseudo_family_string
-
-    def set_show_ui(self, change):
-        self.show_ui.value = not change.new
-
-    def set_text_color(self, change):
-        opacity = 1.0 if change.new else 0.5
-
-        for html in (
-            self.pseudo_family_prompt,
-            self.pseudo_family_help,
-            self.dft_functional_help,
-            self.dft_functional_prompt,
-        ):
-            old_opacity = re.match(
-                r"[\s\S]+opacity:([\S]+);[\S\s]+", html.value
-            ).groups()[0]
-            html.value = html.value.replace(
-                f"opacity:{old_opacity};", f"opacity:{opacity};"
-            )
+        self.rendered = True
 
     def reset(self):
-        """Reset the widget to the initial state by reset protocol to default."""
-        self.protocol = self._default_protocol
+        self._model.advanced.pseudos.reset()
 
-        # in case the protocol is not changed, the callback is not triggered
-        # so we trigger it explicitly. This will happened when the protocol
-        # stay the same while xc selection is changed.
-        self._update_settings_from_protocol(self.protocol)
+    @tl.observe("input_structure")
+    def _on_input_structure_change(self, _=None):
+        self._unsubscribe_setter_widget()
+        self._model.advanced.pseudos.set_defaults_from_structure()
+        self._build_setter_widgets()
 
     @tl.observe("spin_orbit")
-    def _update_library_selection(self, _):
-        """Update the library selection according to the spin orbit value."""
-        if self.spin_orbit == "soc":
-            self.library_selection.options = [
+    def _on_spin_orbit_change(self, _):
+        self._update_library_options()
+
+    @tl.observe("pseudo_family")
+    def _on_pseudo_family_change(self, _=None):
+        self._update_family_link()
+        self._model.advanced.pseudos.update_pseudos()
+        self._model.advanced.pseudos.update_cutoffs()
+
+    @tl.observe("override")
+    def _on_override_change(self, change):
+        self._toggle_setter_widgets(change)
+
+    def _on_family_parameters_change(self, _=None):
+        self._model.advanced.pseudos.update_family()
+
+    def _update_library_options(self):
+        """Update pseudo library selection options w.r.t spin orbit."""
+        if self._model.advanced.spin_orbit == "soc":
+            self.library.options = [
                 "PseudoDojo standard",
                 "PseudoDojo stringent",
             ]
-            self.pseudo_family_help.value = self.PSEUDO_HELP_SOC
+            self.family_help.value = self.PSEUDO_HELP_SOC
         else:
-            self.library_selection.options = [
+            self.library.options = [
                 "SSSP efficiency",
                 "SSSP precision",
                 "PseudoDojo standard",
                 "PseudoDojo stringent",
             ]
-            self.pseudo_family_help.value = self.PSEUDO_HELP_WO_SOC
+            self.family_help.value = self.PSEUDO_HELP_WO_SOC
 
-    @tl.observe("protocol")
-    def _protocol_changed(self, _):
-        """Input protocol changed, update the value of widgets."""
-        self._update_settings_from_protocol(self.protocol)
-
-    def _update_settings_from_protocol(self, protocol):
-        """Update the widget values from the given protocol, and trigger the callback."""
-        # FIXME: this rely on the aiida-quantumespresso, which is not ideal
-
-        if self.spin_orbit == "soc":
-            if protocol in ["fast", "moderate"]:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
-            else:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
+    def _update_family_link(self):
+        library, accuracy = self._model.advanced.pseudos.library.split()
+        if library == "SSSP":
+            pseudo_family_link = (
+                f"https://www.materialscloud.org/discover/sssp/table/{accuracy}"
+            )
         else:
-            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
-                "pseudo_family"
-            ]
+            pseudo_family_link = "http://www.pseudo-dojo.org/"
 
-        pseudo_family = PseudoFamily.from_string(pseudo_family_string)
-
-        self.load_from_pseudo_family(pseudo_family)
-
-    def load_from_pseudo_family(self, pseudo_family: PseudoFamily):
-        """Reload the widget from the given pseudo family string."""
-        with self.hold_trait_notifications():
-            # will trigger the callback to set the value of widgets
-            self.library_selection.value = (
-                f"{pseudo_family.library} {pseudo_family.accuracy}"
-            )
-            self.dft_functional.value = pseudo_family.functional
-
-
-class PseudoSetter(ipw.VBox):
-    structure = tl.Instance(klass=orm.StructureData, allow_none=True)
-    pseudo_family = tl.Unicode(allow_none=True)
-
-    # output pseudos
-    pseudos = tl.Dict()
-
-    # output cutoffs
-    ecutwfc = tl.Float()
-    ecutrho = tl.Float()
-
-    _default_pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; color: red;">
-            Input structure is not set. Please set the structure first.
-            </div>"""
-    _update_pseudo_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The pseudopotential for each kind of atom in the structure can be set customly.
-        The default pseudopotential and cutoffs are get from the pseudo family.
-        The cutoffs used for the calculation are the maximum of the default from all pseudopotentials
-        and can be set customly.
-        </div>"""
-
-    _cutoff_setter_helper_text = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        Please set the cutoffs for the calculation. The default cutoffs are get from the pseudo family.
-        </div>"""
-
-    def __init__(
-        self,
-        structure: orm.StructureData | None = None,
-        pseudo_family: str | None = None,
-        **kwargs,
-    ):
-        self.pseudo_setting_widgets = ipw.VBox()
-        self._status_message = StatusHTML(clear_after=20)
-
-        # the initial cutoffs are set to 0
-        self.ecutwfc = 0
-        self.ecutrho = 0
-
-        self.pseudo_setter_helper = ipw.HTML(self._default_pseudo_setter_helper_text)
-        self.cutoff_setter_helper = ipw.HTML(self._cutoff_setter_helper_text)
-        self.ecutwfc_setter = ipw.FloatText(
-            description="Wavefunction cutoff (Ry)",
-            style={"description_width": "initial"},
-        )
-        self.ecutrho_setter = ipw.FloatText(
-            description="Charge density cutoff (Ry)",
-            style={"description_width": "initial"},
-        )
-        self.ecutwfc_setter.observe(self._on_cutoff_change, names="value")
-        self.ecutrho_setter.observe(self._on_cutoff_change, names="value")
-
-        super().__init__(
-            children=[
-                self.pseudo_setter_helper,
-                self.pseudo_setting_widgets,
-                self.cutoff_setter_helper,
-                ipw.HBox(
-                    children=[
-                        self.ecutwfc_setter,
-                        self.ecutrho_setter,
-                    ],
-                ),
-                self._status_message,
-            ],
-            **kwargs,
-        )
-        self._reset()
-        with self.hold_trait_notifications():
-            self.structure = structure
-            self.pseudo_family = pseudo_family
-
-    def _on_cutoff_change(self, _=None):
-        """Update the cutoffs according to the cutoff widgets"""
-        self.ecutwfc = self.ecutwfc_setter.value
-        self.ecutrho = self.ecutrho_setter.value
-
-    def _reset_cutoff_widgets(self):
-        """Reset the cutoff widgets to 0"""
-        self.ecutwfc_setter.value = 0
-        self.ecutrho_setter.value = 0
-
-    def _reset_traitlets(self):
-        """Reset the traitlets to the initial state"""
-        self.ecutwfc = 0
-        self.ecutrho = 0
-        self.pseudos = {}
-
-    def _reset(self):
-        """Reset the pseudo setting widgets according to the structure
-        by default the pseudos are get from the pseudo family
+        self.family_prompt.value = f"""
+            <div class="pseudo-text">
+                <b>
+                    <a href="{pseudo_family_link}" target="_blank">
+                        Pseudopotential family
+                    </a>
+                </b>
+            </div>
         """
-        if self.structure is None:
-            self._reset_cutoff_widgets()
-            self._reset_traitlets()
-            self.pseudo_setting_widgets.children = ()
-            self.pseudo_setter_helper.value = self._default_pseudo_setter_helper_text
-            return
 
-        if self.pseudo_family is None:
-            # this happened from the beginning when the widget is initialized
-            # but also for the case when pseudo family is not provided which
-            # won't happened for the real use but may happen for the test
-            # so we still generate the pseudo setting widgets
-            kinds = self.structure.get_kind_names()
+    def _toggle_setter_widgets(self, change):
+        if change["new"]:
+            self.container.children = [
+                self.setter_widget_helper,
+                self.setter_widget,
+            ]
+        else:
+            self.container.children = []
 
-            # Reset the traitlets, so the interface is clear setup
-            self.pseudo_setting_widgets.children = ()
-            self._reset_traitlets()
+    def _build_setter_widgets(self):
+        """Build the pseudo setter widgets."""
 
-            # loop over the kinds and create the pseudo setting widget
-            # (initialized with the pseudo from the family)
-            for kind in kinds:
-                pseudo_upload_widget = PseudoUploadWidget(kind=kind)
+        children = []
 
-                # keep track of the changing of pseudo setting of each kind
-                pseudo_upload_widget.observe(self._update_pseudos, ["pseudo"])
-                self.pseudo_setting_widgets.children += (pseudo_upload_widget,)
+        if self._model.input_structure is None:
+            kinds = []
+        else:
+            kinds = self._model.input_structure.kinds
 
-            return
-
-        try:
-            pseudo_family = self._get_pseudos_family(self.pseudo_family)
-        except exceptions.NotExistent as exception:
-            self._status_message.message = (
-                f"""<div class='alert alert-danger'> ERROR: {exception!s}</div>"""
+        for index, kind in enumerate(kinds):
+            symbol = kind.name
+            upload_widget = PseudoUploadWidget(kind=symbol)
+            pseudo_link = ipw.link(
+                (self._model.advanced.pseudos, "dictionary"),
+                (upload_widget, "pseudo"),
+                [
+                    lambda d, symbol=symbol: orm.load_node(d.get(symbol)),
+                    lambda v, symbol=symbol: {
+                        **self._model.advanced.pseudos.dictionary,
+                        symbol: v.uuid,
+                    },
+                ],
             )
-            return
-
-        try:
-            pseudos = pseudo_family.get_pseudos(structure=self.structure)
-            # get cutoffs dict of all elements
-            cutoffs = self._get_cutoffs(pseudo_family)
-        except ValueError as exception:
-            self._status_message.message = f"""<div class='alert alert-danger'> ERROR: failed to obtain recommended cutoffs for pseudos `{pseudo_family}`: {exception}</div>"""
-            return
-
-        # success get family and cutoffs, set the traitlets accordingly
-        # set the recommended cutoffs
-        self.pseudos = {kind: pseudo.uuid for kind, pseudo in pseudos.items()}
-        self.set_pseudos(self.pseudos, cutoffs)
-
-    def _get_pseudos_family(self, pseudo_family: str) -> orm.Group:
-        """Get the pseudo family from the database."""
-        try:
-            pseudo_set = (PseudoDojoFamily, SsspFamily, CutoffsPseudoPotentialFamily)
-            pseudo_family = (
-                orm.QueryBuilder()
-                .append(pseudo_set, filters={"label": pseudo_family})
-                .one()[0]
+            cutoffs_link = ipw.dlink(
+                (self._model.advanced.pseudos, "cutoffs"),
+                (upload_widget, "cutoffs"),
+                lambda c, i=index: [c[0][i], c[1][i]],
             )
-        except exceptions.NotExistent as exception:
-            raise exceptions.NotExistent(
-                f"required pseudo family `{pseudo_family}` is not installed. Please use `aiida-pseudo install` to"
-                "install it."
-            ) from exception
+            upload_widget.render()
 
-        return pseudo_family
-
-    def _get_cutoffs(self, pseudo_family):
-        """Get the cutoffs from the pseudo family."""
-        from aiida_pseudo.common.units import U
-
-        try:
-            cutoffs = pseudo_family.get_cutoffs()
-        except ValueError as exception:
-            self._status_message.message = f"""<div class='alert alert-danger'> ERROR: failed to obtain recommended cutoffs for pseudos `{pseudo_family}`: {exception}</div>"""
-            return
-
-        current_unit = pseudo_family.get_cutoffs_unit()
-        for element, cutoff in cutoffs.items():
-            cutoffs[element] = {
-                k: U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
-                for k, v in cutoff.items()
-            }
-
-        return cutoffs
-
-    def _create_pseudo_widget(self, kind):
-        """The sigle line of pseudo setter widget"""
-        return PseudoUploadWidget(kind=kind)
-
-    @tl.observe("structure")
-    def _structure_change(self, _):
-        self._reset()
-        self._update_pseudos()
-
-    @tl.observe("pseudo_family")
-    def _pseudo_family_change(self, _):
-        self._reset()
-        self._update_pseudos()
-
-    def _update_pseudos(self, _=None):
-        """Update the pseudos according to the pseudo setting widgets"""
-        self._reset_cutoff_widgets()
-        for w in self.pseudo_setting_widgets.children:
-            if w.error_message is not None:
-                self._status_message.message = w.error_message
-                return
-
-            if w.pseudo is not None:
-                self.pseudos[w.kind] = w.pseudo.uuid
-                self.pseudo_setter_helper.value = self._update_pseudo_setter_helper_text
-
-                with self.hold_trait_notifications():
-                    self.ecutwfc_setter.value = max(self.ecutwfc, w.ecutwfc)
-                    self.ecutrho_setter.value = max(self.ecutrho, w.ecutrho)
-
-    def set_pseudos(self, pseudos, cutoffs):
-        # Reset the traitlets, so the interface is clear setup
-        self.pseudo_setting_widgets.children = ()
-        self._reset_traitlets()
-
-        # loop over the kinds and create the pseudo setting widget
-        # (initialized with the pseudo from the family)
-        for kind in self.structure.kinds:
-            element = kind.symbol
-            pseudo = orm.load_node(pseudos.get(kind.name, None))
-            _cutoffs = cutoffs.get(element, None)  # cutoffs for each element
-            pseudo_upload_widget = PseudoUploadWidget(
-                kind=kind.name, pseudo=pseudo, cutoffs=_cutoffs
+            self.setter_widget_links.extend(
+                [
+                    pseudo_link,
+                    cutoffs_link,
+                    *upload_widget.links,
+                ]
             )
 
-            # keep track of the changing of pseudo setting of each kind
-            pseudo_upload_widget.observe(
-                self._update_pseudos, ["pseudo", "ecutwfc", "ecutrho"]
-            )
-            self.pseudo_setting_widgets.children += (pseudo_upload_widget,)
-        self._update_pseudos()
+            children.append(upload_widget)
+
+        self.setter_widget.children = children
+
+    def _unsubscribe_setter_widget(self):
+        for link in self.setter_widget_links:
+            link.unlink()
+        self.setter_widget_links.clear()
 
 
 class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
 
-    pseudo = tl.Instance(klass=UpfData, allow_none=True)
-    kind = tl.Unicode()
-    ecutwfc = tl.Float(allow_none=True)
-    ecutrho = tl.Float(allow_none=True)
+    pseudo = tl.Instance(UpfData, allow_none=True)
+    cutoffs = tl.List(tl.Float, [])
     error_message = tl.Unicode(allow_none=True)
 
-    cutoffs_message_template = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-        The recommened ecutwfc: <b>{ecutwfc} Ry</b> &nbsp;
-        for ecutrho: <b>{ecutrho} Ry</b>
-        </div>"""
+    def __init__(self, kind, **kwargs):
+        super().__init__(
+            children=[LoadingWidget("Loading pseudopotential uploader")],
+            **kwargs,
+        )
 
-    def __init__(
-        self,
-        kind: str = "",
-        pseudo: UpfData | None = None,
-        cutoffs: dict | None = None,
-        **kwargs,
-    ):
         self.kind = kind
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
         self.file_upload = ipw.FileUpload(
             description="Upload",
             multiple=False,
         )
-        self.pseudo_text = ipw.Text(description=kind)
-        self.file_upload.observe(self._on_file_upload, names="value")
+        self.pseudo_text = ipw.Text(description=self.kind)
+        self.file_upload.observe(self._on_file_upload, "value")
 
-        self._cutoff_message = ipw.HTML(
-            self.cutoffs_message_template.format(ecutwfc=0, ecutrho=0)
+        cutoffs_message_template = """
+            <div class="pseudo-text">
+                Recommended ecutwfc: <b>{ecutwfc} Ry</b> ecutrho: <b>{ecutrho} Ry</b>
+            </div>
+        """
+
+        self.cutoff_message = ipw.HTML()
+
+        pseudo_link = ipw.dlink(
+            (self, "pseudo"),
+            (self.pseudo_text, "value"),
+            lambda p: p.filename if p else "",
         )
 
-        if pseudo is not None:
-            self.pseudo = pseudo
-            self.pseudo_text.value = pseudo.filename
+        cutoff_link = ipw.dlink(
+            (self, "cutoffs"),
+            (self.cutoff_message, "value"),
+            lambda c: cutoffs_message_template.format(
+                ecutwfc=c[0] if len(c) else "not set",
+                ecutrho=c[1] if len(c) else "not set",
+            ),
+        )
+
+        self.links = [pseudo_link, cutoff_link]
 
         self.error_message = None
-        super().__init__(
-            children=[
-                self.pseudo_text,
-                self.file_upload,
-                self._cutoff_message,
-            ],
-            **kwargs,
-        )
-        # set the widget directly to trigger the traitlets set
-        if cutoffs is not None:
-            self.ecutwfc = cutoffs.get("cutoff_wfc", None)
-            self.ecutrho = cutoffs.get("cutoff_rho", None)
-            self._cutoff_message.value = self.cutoffs_message_template.format(
-                ecutwfc=self.ecutwfc or "not set", ecutrho=self.ecutrho or "not set"
-            )
+
+        self.children = [
+            self.pseudo_text,
+            self.file_upload,
+            self.cutoff_message,
+        ]
+
+        self.rendered = True
 
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""
@@ -559,5 +454,4 @@ class PseudoUploadWidget(ipw.HBox):
     def _reset(self):
         """Reset the widget to the initial state."""
         self.pseudo = None
-        self.ecutrho = None
-        self.ecutwfc = None
+        self.cutoffs = []

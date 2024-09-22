@@ -164,27 +164,27 @@ def test_advanced_hubbard_widget(generate_structure_data):
     w.input_structure = structure
 
     # Activate Hubbard U widget
-    w.hubbard_widget.activate_hubbard.value = True
+    w.hubbard.activate_hubbard.value = True
 
-    assert w.hubbard_widget.input_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
+    assert w.hubbard.input_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
 
     # Change the value of the Hubbard U for Co, O and Li
-    w.hubbard_widget.hubbard_widget.children[1].children[0].value = 1
-    w.hubbard_widget.hubbard_widget.children[2].children[0].value = 2
-    w.hubbard_widget.hubbard_widget.children[3].children[0].value = 3
+    w.hubbard.hubbard_widget.children[1].children[0].value = 1
+    w.hubbard.hubbard_widget.children[2].children[0].value = 2
+    w.hubbard.hubbard_widget.children[3].children[0].value = 3
 
-    assert w.hubbard_widget.hubbard_dict == {
+    assert w.hubbard.hubbard_dict == {
         "hubbard_u": {"Co - 3d": 1.0, "O - 2p": 2.0, "Li - 2s": 3.0}
     }
 
     # Check eigenvalues are empty
-    assert w.hubbard_widget.eigenvalues_dict == {}
+    assert w.hubbard.eigenvalues_dict == {}
 
-    w.hubbard_widget.eigenvalues_label.value = True
+    w.hubbard.eigenvalues_label.value = True
 
     # Check there is only eigenvalues for Co (Transition metal)
 
-    assert len(w.hubbard_widget.eigen_values_widget.children) == 1
+    assert len(w.hubbard.eigenvalues_widget.children) == 1
 
     # The widget hierarchy for eigenvalues:
     # - w.hubbard_widget.eigen_values_widget.children[0]: List of eigenvalues for Co
@@ -192,16 +192,16 @@ def test_advanced_hubbard_widget(generate_structure_data):
     # - w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0]: Widget for up spin
     # - w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[1]: Widget for eigenvalue 1 (3d range: 1 to 5)
 
-    w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[
+    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
         1
     ].value = "1"
-    w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[
+    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
         3
     ].value = "1"
-    w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[
+    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
         5
     ].value = "1"
 
-    assert w.hubbard_widget.eigenvalues_dict == {
+    assert w.hubbard.eigenvalues_dict == {
         "starting_ns_eigenvalue": [[1, 1, "Co", 1], [3, 1, "Co", 1], [5, 1, "Co", 1]]
     }

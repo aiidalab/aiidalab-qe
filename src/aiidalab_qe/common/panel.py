@@ -5,7 +5,15 @@ Authors:
     AiiDAlab Team
 """
 
+from __future__ import annotations
+
+import typing as t
+
 import ipywidgets as ipw
+import traitlets as tl
+
+if t.TYPE_CHECKING:
+    from aiidalab_qe.app.configuration.model import ConfigurationModel
 
 DEFAULT_PARAMETERS = {}
 
@@ -30,64 +38,71 @@ class Panel(ipw.VBox):
         :param kwargs: keyword arguments to pass to the ipw.VBox constructor.
         """
         self.parent = parent
-        if identifier:
-            self.identifier = identifier
+        self.identifier = identifier or getattr(self, "identifier", "plugin")
         super().__init__(
-            children=self.children,
+            children=kwargs.pop("children", []),
             **kwargs,
         )
 
-    def get_panel_value(self):
-        """Return the value of all the widgets in the panel as a dictionary.
+    def reset(self):
+        raise NotImplementedError
 
-        :return: a dictionary of the values of all the widgets in the panel.
-        """
-        return {}
 
-    def set_panel_value(self, parameters):
-        """Set the value of the widgets in the panel.
+class PanelModel(tl.HasTraits):
+    title = "Model"
 
-        :param parameters: a dictionary of the values of all the widgets in the panel.
-        """
-        for key, value in parameters.items():
-            if key in self.__dict__:
-                setattr(self, key, value)
+    include_plugin = tl.Bool()
+
+    def get_model_state(self):
+        raise NotImplementedError
+
+    def set_model_state(self, parameters):
+        raise NotImplementedError
 
     def reset(self):
-        """Reset the panel to the default value."""
-        self.set_panel_value(DEFAULT_PARAMETERS)
-
-    def _update_state(self):
-        """Update the state of the panel."""
+        raise NotImplementedError
 
 
-class OutlinePanel(Panel):
+class PanelOutline(Panel):
     title = "Outline"
     description = ""
 
     def __init__(self, **kwargs):
-        # Checkbox to see if the property should be calculated
-        self.run = ipw.Checkbox(
+        self.include_plugin = ipw.Checkbox(
             description=self.title,
             indent=False,
-            value=False,
             style={"description_width": "initial"},
         )
-        self.description_html = ipw.HTML(
-            f"""<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-            {self.description}</div>"""
+
+        super().__init__(
+            children=[
+                self.include_plugin,
+                ipw.HTML(f"""
+                    <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+                        {self.description}
+                    </div>
+                """),
+            ],
+            **kwargs,
         )
-        self.accordion = ipw.Accordion(children=[self.description_html])
-        self.accordion.selected_index = None
-        # self.children = [self.run, self.accordion]
-        self.children = [self.run, self.description_html]
-        super().__init__(**kwargs)
 
-    def get_panel_value(self):
-        return {f"{self.identifier}_run": self.run.value}
 
-    def set_panel_value(self, input_dict):
-        self.run.value = input_dict.get(f"{self.identifier}_run", False)
+class SettingPanel(Panel):
+    title = "Settings"
+    description = ""
+
+    def __init__(self, config_model: ConfigurationModel, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
+        super().__init__(
+            children=[LoadingWidget(f"Loading {self.identifier} settings")],
+            **kwargs,
+        )
+
+        self._config_model = config_model
+        self._model = config_model.get_model(self.identifier)
+
+        self.rendered = False
 
 
 class ResultPanel(Panel):
@@ -104,13 +119,15 @@ class ResultPanel(Panel):
 
     def __init__(self, node=None, **kwargs):
         self.node = node
-        self.children = [
-            ipw.VBox(
-                [ipw.Label(f"{self.title} not available.")],
-                layout=ipw.Layout(min_height="380px"),
-            )
-        ]
-        super().__init__(**kwargs)
+        super().__init__(
+            children=[
+                ipw.VBox(
+                    [ipw.Label(f"{self.title} not available.")],
+                    layout=ipw.Layout(min_height="380px"),
+                )
+            ],
+            **kwargs,
+        )
 
     @property
     def outputs(self):
