@@ -21,7 +21,6 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-    confirmed = tl.Bool()
 
     _no_structure_warning = """
         <div style="color: red;">
@@ -84,7 +83,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         self.tab.set_title(0, "Basic settings")
         self.tab.set_title(1, "Advanced settings")
-        self.tab.observe(self._on_tab_change, "selected_index")
+        self.tab.observe(
+            self._on_tab_change,
+            "selected_index",
+        )
         self.tab.selected_index = 0
 
         self.confirm_button = ipw.Button(
@@ -161,29 +163,24 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         models = get_entry_items("aiidalab_qe.properties", "model")
         settings = get_entry_items("aiidalab_qe.properties", "setting")
         for identifier in settings:
-            outline = outlines[identifier]()
             model = models[identifier]()
+            self._model.add_model(identifier, model)
+
+            outline = outlines[identifier]()
             info = ipw.HTML()
             ipw.link(
                 (model, "include_plugin"),
                 (outline.include_plugin, "value"),
             )
 
-            def toggle_plugin_model(
-                change,
-                identifier=identifier,
-                model=model,
-                info=info,
-            ):
-                self._update_panel()
+            def toggle_plugin(change, identifier=identifier, info=info):
                 if change["new"]:
-                    self._model.add_model(identifier, model)
                     info.value = f"Customize {identifier} settings below"
                 else:
-                    self._model.remove_model(identifier)
                     info.value = ""
+                self._update_panel()
 
-            model.observe(toggle_plugin_model, "include_plugin")
+            model.observe(toggle_plugin, "include_plugin")
 
             self.properties[identifier] = outline
             self.property_children.append(
@@ -214,7 +211,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # )
 
     def _update_panel(self, _=None):
-        """Dynamic add/remove the panel based on the selected properties."""
         self.tab.children = self.built_in_settings
         for identifier in self.properties:
             model = self._model.get_model(identifier)
@@ -229,11 +225,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_state(self, previous_step_state):
         if previous_step_state == self.State.SUCCESS:
             self.state = self.State.CONFIGURED
-            # # TODO why?
+            # TODO why?
             # for settings in self.settings.values():
             #     settings._update_state()
         elif previous_step_state == self.State.FAIL:
             self.state = self.State.FAIL
         else:
             self.state = self.State.INIT
-            # self.reset()
+            # self.reset()  # TODO why?

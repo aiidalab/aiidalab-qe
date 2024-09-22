@@ -32,6 +32,10 @@ class WorkChainModel(PanelModel):
     spin_type = tl.Unicode(DEFAULT["workchain"]["spin_type"])
     electronic_type = tl.Unicode(DEFAULT["workchain"]["electronic_type"])
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.include_plugin = True
+
     def get_model_state(self):
         return {
             "protocol": self.protocol,
@@ -558,6 +562,8 @@ class AdvancedModel(PanelModel):
 
         self.update()
 
+        self.include_plugin = True
+
     def update(self):
         parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
 
@@ -814,17 +820,15 @@ class ConfigurationModel(tl.HasTraits):
             (self.advanced, "electronic_type"),
         )
 
-        self._models = {
+        self._default_models = {
             "workchain": self.workchain,
             "advanced": self.advanced,
         }
 
+        self._models = deepcopy(self._default_models)
+
     def add_model(self, identifier, model):
         self._models[identifier] = model
-
-    def remove_model(self, identifier):
-        if identifier in self._models:
-            del self._models[identifier]
 
     def get_model(self, identifier):
         return self._models.get(identifier)
@@ -833,6 +837,7 @@ class ConfigurationModel(tl.HasTraits):
         parameters = {
             identifier: model.get_model_state()
             for identifier, model in self._models.items()
+            if model.include_plugin
         }
         # TODO necessary?
         parameters["workchain"].update({"properties": self._get_properties()})
@@ -841,11 +846,10 @@ class ConfigurationModel(tl.HasTraits):
     def set_model_state(self, parameters):
         # TODO check logic
         with self.hold_trait_notifications():
+            properties = parameters.get("properties", [])
             for identifier, model in self._models.items():
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
-            properties = parameters.get("properties", [])
-            for identifier, model in self._models.items():
                 if identifier in properties:
                     model.include_plugin = True
                 else:
@@ -862,6 +866,9 @@ class ConfigurationModel(tl.HasTraits):
         run_bands = False
         run_pdos = False
         for identifier, model in self._models.items():
+            # TODO handle differently?
+            if identifier in self._default_models:
+                continue
             if model.include_plugin:
                 properties.append(identifier)
             if identifier == "bands":
