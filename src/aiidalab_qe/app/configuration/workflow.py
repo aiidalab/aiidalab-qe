@@ -7,13 +7,13 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import Panel
 
-from .model import WorkChainModel
+from .model import ConfigurationModel
 
 
 class WorkChainSettings(Panel):
     identifier = "workchain"
 
-    def __init__(self, model: WorkChainModel, **kwargs):
+    def __init__(self, model: ConfigurationModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -38,7 +38,7 @@ class WorkChainSettings(Panel):
             ],
         )
         ipw.link(
-            (self._model, "relax_type"),
+            (self._model.workchain, "relax_type"),
             (self.relax_type, "value"),
         )
 
@@ -48,7 +48,7 @@ class WorkChainSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "spin_type"),
+            (self._model.workchain, "spin_type"),
             (self.spin_type, "value"),
         )
 
@@ -58,7 +58,7 @@ class WorkChainSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "electronic_type"),
+            (self._model.workchain, "electronic_type"),
             (self.electronic_type, "value"),
         )
 
@@ -67,7 +67,7 @@ class WorkChainSettings(Panel):
             options=["fast", "moderate", "precise"],
         )
         ipw.link(
-            (self._model, "protocol"),
+            (self._model.workchain, "protocol"),
             (self.protocol, "value"),
         )
 
@@ -137,11 +137,5 @@ class WorkChainSettings(Panel):
 
         self.rendered = True
 
-    def get_panel_value(self):
-        return self._model.get_model_state()
-
-    def set_panel_value(self, parameters):
-        self._model.set_model_state(parameters)
-
     def reset(self):
-        self._model.reset()
+        self._model.workchain.reset()

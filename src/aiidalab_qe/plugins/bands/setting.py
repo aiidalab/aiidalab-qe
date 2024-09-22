@@ -21,7 +21,7 @@ class Setting(SettingPanel):
             options=["fast", "moderate", "precise"],
         )
         ipw.link(
-            (self._model, "protocol"),
+            (self._config_model.workchain, "protocol"),
             (self.protocol, "value"),
         )
 
@@ -52,12 +52,6 @@ class Setting(SettingPanel):
         ]
 
         self.rendered = True
-
-    def get_panel_value(self):
-        return self._model.get_model_state()
-
-    def set_panel_value(self, parameters):
-        self._model.set_model_state(parameters)
 
     def reset(self):
         self._model.reset()

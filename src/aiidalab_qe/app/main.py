@@ -82,6 +82,10 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
+        self._wizard_app_widget.observe(
+            self._observe_selected_index,
+            "selected_index",
+        )
 
         # Add process selection header
         self.work_chain_selector = QeAppWorkChainSelector(

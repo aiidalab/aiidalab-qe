@@ -1,5 +1,5 @@
 # from aiidalab_qe.bands.result import Result
-from aiidalab_qe.common.panel import OutlinePanel
+from aiidalab_qe.common.panel import PanelOutline
 
 from .model import BandsModel
 from .result import Result
@@ -7,7 +7,7 @@ from .setting import Setting
 from .workchain import workchain_and_builder
 
 
-class BandsOutline(OutlinePanel):
+class BandsOutline(PanelOutline):
     title = "Electronic band structure"
     help = """The band structure workflow will
 automatically detect the default path in reciprocal space using the

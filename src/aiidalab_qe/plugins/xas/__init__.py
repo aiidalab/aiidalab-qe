@@ -2,7 +2,7 @@ from importlib import resources
 
 import yaml
 
-from aiidalab_qe.common.panel import OutlinePanel
+from aiidalab_qe.common.panel import PanelOutline
 from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 from aiidalab_qe.plugins import xas as xas_folder
 
@@ -13,7 +13,7 @@ from .workchain import workchain_and_builder
 PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
 
 
-class XasOutline(OutlinePanel):
+class XasOutline(PanelOutline):
     title = "X-ray absorption spectroscopy (XAS)"
     help = """"""
 

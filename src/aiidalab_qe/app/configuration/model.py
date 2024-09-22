@@ -12,9 +12,11 @@ from aiida.plugins import GroupFactory
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
+from aiida_quantumespresso.common.types import RelaxType
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.panel import PanelModel
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -24,7 +26,7 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class WorkChainModel(tl.HasTraits):
+class WorkChainModel(PanelModel):
     protocol = tl.Unicode(DEFAULT["workchain"]["protocol"])
     relax_type = tl.Unicode("positions_cell")
     spin_type = tl.Unicode(DEFAULT["workchain"]["spin_type"])
@@ -59,6 +61,7 @@ class WorkChainModel(tl.HasTraits):
 
 
 class SmearingModel(tl.HasTraits):
+    protocol = tl.Unicode()
     override = tl.Bool()
 
     type = tl.Unicode()
@@ -66,9 +69,9 @@ class SmearingModel(tl.HasTraits):
 
     _defaults = {}
 
-    def set_defaults_from_protocol(self, default_protocol):
+    def set_defaults_from_protocol(self):
         parameters = (
-            PwBaseWorkChain.get_protocol_inputs(default_protocol)
+            PwBaseWorkChain.get_protocol_inputs(self.protocol)
             .get("pw", {})
             .get("parameters", {})
             .get("SYSTEM", {})
@@ -285,6 +288,7 @@ class PseudosModel(tl.HasTraits):
         ],
         allow_none=True,
     )
+    protocol = tl.Unicode()
     spin_orbit = tl.Unicode()
     override = tl.Bool()
 
@@ -336,20 +340,20 @@ class PseudosModel(tl.HasTraits):
             lambda cutoffs: max(cutoffs[1]),
         )
 
-    def set_defaults_from_structure(self, structure):
-        if structure is None:
+    def set_defaults_from_structure(self):
+        if self.input_structure is None:
             self._default_dictionary = {}
             self._default_cutoffs = [[0.0], [0.0]]
         else:
-            self.update_pseudos(structure)
-            self.update_cutoffs(structure)
+            self.update_pseudos()
+            self.update_cutoffs()
 
-    def update_family(self, spin_orbit):
+    def update_family(self):
         library, accuracy = self.library.split()
         functional = self.functional
         # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
         if library == "PseudoDojo":
-            if spin_orbit == "soc":
+            if self.spin_orbit == "soc":
                 pseudo_family_string = (
                     f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/FR/{accuracy}/upf"
                 )
@@ -366,14 +370,14 @@ class PseudosModel(tl.HasTraits):
 
         self.family = pseudo_family_string
 
-    def update_family_parameters(self, protocol, spin_orbit):
-        if spin_orbit == "soc":
-            if protocol in ["fast", "moderate"]:
+    def update_family_parameters(self):
+        if self.spin_orbit == "soc":
+            if self.protocol in ["fast", "moderate"]:
                 pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
             else:
                 pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
         else:
-            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(protocol)[
+            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(self.protocol)[
                 "pseudo_family"
             ]
 
@@ -383,10 +387,10 @@ class PseudosModel(tl.HasTraits):
             self.library = f"{pseudo_family.library} {pseudo_family.accuracy}"
             self.functional = pseudo_family.functional
 
-    def update_pseudos(self, structure):
+    def update_pseudos(self):
         try:
             pseudo_family = self._get_pseudo_family()
-            pseudos = pseudo_family.get_pseudos(structure=structure)
+            pseudos = pseudo_family.get_pseudos(structure=self.input_structure)
         except ValueError as exception:
             self._status_message = f"""
                 <div class='alert alert-danger'>
@@ -400,7 +404,7 @@ class PseudosModel(tl.HasTraits):
         }
         self.dictionary = self._get_default_dictionary()
 
-    def update_cutoffs(self, structure):
+    def update_cutoffs(self):
         """Update wavefunction and density cutoffs from pseudo family."""
         try:
             pseudo_family = self._get_pseudo_family()
@@ -422,10 +426,12 @@ class PseudosModel(tl.HasTraits):
                 </div>
             """
         else:
-            kind_names = structure.get_kind_names() if structure else []
+            kind_names = (
+                self.input_structure.get_kind_names() if self.input_structure else []
+            )
 
-        ecutwfc_list = [0.0]
-        ecutrho_list = [0.0]
+        ecutwfc_list = []
+        ecutrho_list = []
         for kind in kind_names:
             cutoff = cutoff_dict.get(kind, {})
             ecutrho, ecutwfc = (
@@ -435,7 +441,7 @@ class PseudosModel(tl.HasTraits):
             ecutwfc_list.append(ecutwfc)
             ecutrho_list.append(ecutrho)
 
-        self._default_cutoffs = [ecutwfc_list, ecutrho_list]
+        self._default_cutoffs = [ecutwfc_list or [0.0], ecutrho_list or [0.0]]
         self.cutoffs = self._get_default_cutoffs()
 
     def reset(self):
@@ -469,7 +475,7 @@ class PseudosModel(tl.HasTraits):
         return deepcopy(self._default_cutoffs)
 
 
-class AdvancedModel(tl.HasTraits):
+class AdvancedModel(PanelModel):
     input_structure = tl.Union(
         [
             tl.Instance(orm.StructureData),
@@ -499,6 +505,10 @@ class AdvancedModel(tl.HasTraits):
         super().__init__(*args, **kwargs)
 
         self.smearing = SmearingModel()
+        ipw.dlink(
+            (self, "protocol"),
+            (self.smearing, "protocol"),
+        )
         ipw.dlink(
             (self, "override"),
             (self.smearing, "override"),
@@ -534,6 +544,10 @@ class AdvancedModel(tl.HasTraits):
             (self.pseudos, "input_structure"),
         )
         ipw.dlink(
+            (self, "protocol"),
+            (self.smearing, "protocol"),
+        )
+        ipw.dlink(
             (self, "spin_orbit"),
             (self.pseudos, "spin_orbit"),
         )
@@ -542,10 +556,10 @@ class AdvancedModel(tl.HasTraits):
             (self.pseudos, "override"),
         )
 
-    def update_from_protocol(self, protocol=None):
-        protocol = self.protocol if protocol is None else protocol
+        self.update()
 
-        parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
+    def update(self):
+        parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
 
         self.kpoints_distance = parameters["kpoints_distance"]
 
@@ -560,25 +574,24 @@ class AdvancedModel(tl.HasTraits):
         forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
         self._set_value_and_step("forc_conv_thr", forc_value)
 
-        self.smearing.set_defaults_from_protocol(protocol)
-        self.pseudos.update_family_parameters(protocol, self.spin_orbit)
+        self.smearing.set_defaults_from_protocol()
+        self.pseudos.update_family_parameters()
+        self.update_kpoints_mesh()
 
-    def update_kpoints_mesh(self, change=None):
+    def update_kpoints_mesh(self, _=None):
         if self.input_structure is None:
             self.mesh_grid = ""
+        elif self.kpoints_distance > 0:
+            # To avoid creating an aiida node every time we change the kpoints_distance,
+            # we use the function itself instead of the decorated calcfunction.
+            mesh = create_kpoints_from_distance.process_class._func(
+                self.input_structure,
+                orm.Float(self.kpoints_distance),
+                orm.Bool(False),
+            )
+            self.mesh_grid = "Mesh " + str(mesh.get_kpoints_mesh()[0])
         else:
-            distance = self.kpoints_distance if change is None else change["new"]
-            if distance > 0:
-                # To avoid creating an aiida node every time we change the kpoints_distance,
-                # we use the function itself instead of the decorated calcfunction.
-                mesh = create_kpoints_from_distance.process_class._func(
-                    self.input_structure,
-                    orm.Float(distance),
-                    orm.Bool(False),
-                )
-                self.mesh_grid = "Mesh " + str(mesh.get_kpoints_mesh()[0])
-            else:
-                self.mesh_grid = "Please select a number higher than 0.0"
+            self.mesh_grid = "Please select a number higher than 0.0"
 
     def get_model_state(self):
         parameters = {
@@ -734,7 +747,6 @@ class AdvancedModel(tl.HasTraits):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.clean_workdir = self.traits()["clean_workdir"].default_value
             self.override = self.traits()["override"].default_value
             self.total_charge = self.traits()["total_charge"].default_value
             self.van_der_waals = self.traits()["van_der_waals"].default_value
@@ -746,8 +758,7 @@ class AdvancedModel(tl.HasTraits):
             self.scf_conv_thr = self.traits()["scf_conv_thr"].default_value
             self.scf_conv_thr_step = self.traits()["scf_conv_thr_step"].default_value
             self.kpoints_distance = self.traits()["kpoints_distance"].default_value
-            self.mesh_grid = self.traits()["mesh_grid"].default_value
-            self.update_from_protocol()  # TODO check position
+            self.update()
 
     def _set_value_and_step(self, attribute, value):
         """Sets the value and step size.
@@ -779,3 +790,87 @@ class ConfigurationModel(tl.HasTraits):
         value_trait=tl.Dict(),  # parameter configuration
         default_value={},
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.workchain = WorkChainModel()
+        self.advanced = AdvancedModel()
+
+        ipw.dlink(
+            (self, "input_structure"),
+            (self.advanced, "input_structure"),
+        )
+        ipw.dlink(
+            (self.workchain, "protocol"),
+            (self.advanced, "protocol"),
+        )
+        ipw.dlink(
+            (self.workchain, "spin_type"),
+            (self.advanced, "spin_type"),
+        )
+        ipw.dlink(
+            (self.workchain, "electronic_type"),
+            (self.advanced, "electronic_type"),
+        )
+
+        self._models = {
+            "workchain": self.workchain,
+            "advanced": self.advanced,
+        }
+
+    def add_model(self, identifier, model):
+        self._models[identifier] = model
+
+    def remove_model(self, identifier):
+        if identifier in self._models:
+            del self._models[identifier]
+
+    def get_model(self, identifier):
+        return self._models.get(identifier)
+
+    def get_model_state(self):
+        parameters = {
+            identifier: model.get_model_state()
+            for identifier, model in self._models.items()
+        }
+        # TODO necessary?
+        parameters["workchain"].update({"properties": self._get_properties()})
+        return parameters
+
+    def set_model_state(self, parameters):
+        # TODO check logic
+        with self.hold_trait_notifications():
+            for identifier, model in self._models.items():
+                if parameters.get(identifier):
+                    model.set_model_state(parameters[identifier])
+            properties = parameters.get("properties", [])
+            for identifier, model in self._models.items():
+                if identifier in properties:
+                    model.include_plugin = True
+                else:
+                    model.include_plugin = False
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            for model in self._models.values():
+                model.reset()
+            self.configuration_parameters = {}
+
+    def _get_properties(self):
+        properties = []
+        run_bands = False
+        run_pdos = False
+        for identifier, model in self._models.items():
+            if model.include_plugin:
+                properties.append(identifier)
+            if identifier == "bands":
+                run_bands = True
+            elif identifier == "pdos":
+                run_bands = True
+
+        if RelaxType(self.workchain.relax_type) is not RelaxType.NONE or not (
+            run_bands or run_pdos
+        ):
+            properties.append("relax")
+        return properties

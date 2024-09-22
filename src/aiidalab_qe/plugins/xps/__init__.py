@@ -1,11 +1,11 @@
-from aiidalab_qe.common.panel import OutlinePanel
+from aiidalab_qe.common.panel import PanelOutline
 
 from .result import Result
 from .setting import Setting
 from .workchain import workchain_and_builder
 
 
-class XpsOutline(OutlinePanel):
+class XpsOutline(PanelOutline):
     title = "X-ray photoelectron spectroscopy (XPS)"
     help = """"""
 

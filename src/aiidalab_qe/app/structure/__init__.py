@@ -9,17 +9,18 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+
+# from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common import AddingTagsEditor
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
-    OptimadeWrapper,
-    StructureBrowserWidget,
+    # OptimadeWrapper,
+    # StructureBrowserWidget,
     StructureExamplesWidget,
     StructureManagerWidget,
-    StructureUploadWidget,
+    # StructureUploadWidget,
     WizardAppWidgetStep,
 )
 
@@ -67,16 +68,16 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             return
 
         importers = [
-            StructureUploadWidget(title="Upload file"),
-            OptimadeWrapper(embedded=False),
-            StructureBrowserWidget(
-                title="AiiDA database",
-                query_types=(
-                    orm.StructureData,
-                    orm.CifData,
-                    HubbardStructureData,
-                ),
-            ),
+            # StructureUploadWidget(title="Upload file"),
+            # OptimadeWrapper(embedded=False),
+            # StructureBrowserWidget(
+            #     title="AiiDA database",
+            #     query_types=(
+            #         orm.StructureData,
+            #         orm.CifData,
+            #         HubbardStructureData,
+            #     ),
+            # ),
             StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
 
@@ -157,6 +158,16 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = True
 
+    def is_saved(self):
+        """Check if the current structure is confirmed."""
+        return self.structure == self._model.confirmed_structure
+
+    def confirm(self, _=None):
+        self.manager.store_structure()
+        self._model.confirmed_structure = self.structure
+        self.message_area.value = ""
+        self._update_state()
+
     def can_reset(self):
         return self._model.confirmed_structure is not None
 
@@ -167,16 +178,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.manager.structure = None
             self.manager.viewer.structure = None
             self.manager.output.value = ""
-
-    def is_saved(self):
-        """Check if the current structure is confirmed."""
-        return self.structure == self._model.confirmed_structure
-
-    def confirm(self, _=None):
-        self.manager.store_structure()
-        self._model.confirmed_structure = self.structure
-        self.message_area.value = ""
-        self._update_state()
 
     @tl.observe("structure")
     def _on_structure_change(self, _):

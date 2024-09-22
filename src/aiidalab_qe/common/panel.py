@@ -5,8 +5,15 @@ Authors:
     AiiDAlab Team
 """
 
+from __future__ import annotations
+
+import typing as t
+
 import ipywidgets as ipw
 import traitlets as tl
+
+if t.TYPE_CHECKING:
+    from aiidalab_qe.app.configuration.model import ConfigurationModel
 
 DEFAULT_PARAMETERS = {}
 
@@ -37,48 +44,54 @@ class Panel(ipw.VBox):
             **kwargs,
         )
 
-    def get_panel_value(self):
-        """Return the value of all the widgets in the panel as a dictionary.
-
-        :return: a dictionary of the values of all the widgets in the panel.
-        """
-        return {}
-
-    def set_panel_value(self, parameters):
-        """Set the value of the widgets in the panel.
-
-        :param parameters: a dictionary of the values of all the widgets in the panel.
-        """
-        for key, value in parameters.items():
-            if key in self.__dict__:
-                setattr(self, key, value)
-
     def reset(self):
-        """Reset the panel to the default value."""
-        self.set_panel_value(DEFAULT_PARAMETERS)
-
-    def _update_state(self):
-        """Update the state of the panel."""
+        raise NotImplementedError
 
 
 class PanelModel(tl.HasTraits):
     title = "Model"
 
+    include_plugin = tl.Bool()
+
     def get_model_state(self):
         raise NotImplementedError
 
-    def set_model_state(self, state: dict):
+    def set_model_state(self, parameters):
         raise NotImplementedError
 
     def reset(self):
         raise NotImplementedError
+
+
+class PanelOutline(Panel):
+    title = "Outline"
+    description = ""
+
+    def __init__(self, **kwargs):
+        self.include_plugin = ipw.Checkbox(
+            description=self.title,
+            indent=False,
+            style={"description_width": "initial"},
+        )
+
+        super().__init__(
+            children=[
+                self.include_plugin,
+                ipw.HTML(f"""
+                    <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+                        {self.description}
+                    </div>
+                """),
+            ],
+            **kwargs,
+        )
 
 
 class SettingPanel(Panel):
     title = "Settings"
     description = ""
 
-    def __init__(self, model, **kwargs):
+    def __init__(self, config_model: ConfigurationModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -86,36 +99,10 @@ class SettingPanel(Panel):
             **kwargs,
         )
 
-        self._model = model
+        self._config_model = config_model
+        self._model = config_model.get_model(self.identifier)
 
         self.rendered = False
-
-
-class OutlinePanel(Panel):
-    title = "Outline"
-    description = ""
-
-    def __init__(self, **kwargs):
-        # Checkbox to see if the property should be calculated
-        self.run = ipw.Checkbox(
-            description=self.title,
-            indent=False,
-            value=False,
-            style={"description_width": "initial"},
-        )
-        self.description_html = ipw.HTML(
-            f"""<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-            {self.description}</div>"""
-        )
-        self.accordion = ipw.Accordion(children=[self.description_html])
-        self.accordion.selected_index = None
-        super().__init__(children=[self.run, self.description_html], **kwargs)
-
-    def get_panel_value(self):
-        return {f"{self.identifier}_run": self.run.value}
-
-    def set_panel_value(self, input_dict):
-        self.run.value = input_dict.get(f"{self.identifier}_run", False)
 
 
 class ResultPanel(Panel):

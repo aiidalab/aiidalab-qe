@@ -9,7 +9,7 @@ from aiidalab_qe.common.panel import Panel
 
 from .hubbard import HubbardSettings
 from .magnetization import MagnetizationSettings
-from .model import AdvancedModel
+from .model import ConfigurationModel
 from .pseudos import PseudoSettings
 from .smearing import SmearingSettings
 
@@ -17,7 +17,7 @@ from .smearing import SmearingSettings
 class AdvancedSettings(Panel):
     identifier = "advanced"
 
-    def __init__(self, model: AdvancedModel, **kwargs):
+    def __init__(self, model: ConfigurationModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -28,10 +28,10 @@ class AdvancedSettings(Panel):
 
         self._model = model
 
-        self.smearing = SmearingSettings(model=self._model.smearing)
-        self.hubbard = HubbardSettings(model=self._model.hubbard)
-        self.magnetization = MagnetizationSettings(model=self._model.magnetization)
-        self.pseudos = PseudoSettings(model=self._model.pseudos)
+        self.smearing = SmearingSettings(model=model)
+        self.hubbard = HubbardSettings(model=model)
+        self.magnetization = MagnetizationSettings(model=model)
+        self.pseudos = PseudoSettings(model=model)
 
         self.dftd3_version = {
             "dft-d3": 3,
@@ -53,7 +53,7 @@ class AdvancedSettings(Panel):
             layout=ipw.Layout(max_width="20px"),
         )
         ipw.link(
-            (self._model, "clean_workdir"),
+            (self._model.advanced, "clean_workdir"),
             (self.clean_workdir, "value"),
         )
         # Override setting widget
@@ -63,7 +63,7 @@ class AdvancedSettings(Panel):
             layout=ipw.Layout(max_width="10%"),
         )
         ipw.link(
-            (self._model, "override"),
+            (self._model.advanced, "override"),
             (self.override, "value"),
         )
         ipw.dlink(
@@ -81,11 +81,10 @@ class AdvancedSettings(Panel):
             min=0.0,
             step=0.05,
             description="K-points distance (1/Å):",
-            disabled=False,
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "kpoints_distance"),
+            (self._model.advanced, "kpoints_distance"),
             (self.kpoints_distance, "value"),
         )
         ipw.dlink(
@@ -99,7 +98,7 @@ class AdvancedSettings(Panel):
         )
         self.mesh_grid = ipw.HTML()
         ipw.dlink(
-            (self._model, "mesh_grid"),
+            (self._model.advanced, "mesh_grid"),
             (self.mesh_grid, "value"),
         )
 
@@ -111,16 +110,15 @@ class AdvancedSettings(Panel):
             min=-3,
             max=3,
             step=0.01,
-            disabled=False,
             description="Total charge:",
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "total_charge"),
+            (self._model.advanced, "total_charge"),
             (self.total_charge, "value"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self._model.advanced, "override"),
             (self.total_charge, "disabled"),
             lambda override: not override,
         )
@@ -136,15 +134,14 @@ class AdvancedSettings(Panel):
                 ("Tkatchenko-Scheffler", "ts-vdw"),
             ],
             description="Van der Waals correction:",
-            disabled=False,
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "van_der_waals"),
+            (self._model.advanced, "van_der_waals"),
             (self.van_der_waals, "value"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self._model.advanced, "override"),
             (self.van_der_waals, "disabled"),
             lambda override: not override,
         )
@@ -157,19 +154,18 @@ class AdvancedSettings(Panel):
             min=1e-15,
             max=1.0,
             description="SCF conv.:",
-            disabled=False,
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "scf_conv_thr"),
+            (self._model.advanced, "scf_conv_thr"),
             (self.scf_conv_thr, "value"),
         )
         ipw.dlink(
-            (self._model, "scf_conv_thr_step"),
+            (self._model.advanced, "scf_conv_thr_step"),
             (self.scf_conv_thr, "step"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self._model.advanced, "override"),
             (self.scf_conv_thr, "disabled"),
             lambda override: not override,
         )
@@ -177,19 +173,18 @@ class AdvancedSettings(Panel):
             min=1e-15,
             max=1.0,
             description="Force conv.:",
-            disabled=False,
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "forc_conv_thr"),
+            (self._model.advanced, "forc_conv_thr"),
             (self.forc_conv_thr, "value"),
         )
         ipw.dlink(
-            (self._model, "forc_conv_thr_step"),
+            (self._model.advanced, "forc_conv_thr_step"),
             (self.forc_conv_thr, "step"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self._model.advanced, "override"),
             (self.forc_conv_thr, "disabled"),
             lambda override: not override,
         )
@@ -197,19 +192,18 @@ class AdvancedSettings(Panel):
             min=1e-15,
             max=1.0,
             description="Energy conv.:",
-            disabled=False,
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "etot_conv_thr"),
+            (self._model.advanced, "etot_conv_thr"),
             (self.etot_conv_thr, "value"),
         )
         ipw.dlink(
-            (self._model, "etot_conv_thr_step"),
+            (self._model.advanced, "etot_conv_thr_step"),
             (self.etot_conv_thr, "step"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self._model.advanced, "override"),
             (self.etot_conv_thr, "disabled"),
             lambda override: not override,
         )
@@ -224,11 +218,11 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "spin_orbit"),
+            (self._model.advanced, "spin_orbit"),
             (self.spin_orbit, "value"),
         )
         ipw.dlink(
-            (self.override, "value"),
+            (self._model.advanced, "override"),
             (self.spin_orbit, "disabled"),
             lambda override: not override,
         )
@@ -305,23 +299,17 @@ class AdvancedSettings(Panel):
 
         self.rendered = True
 
-    def get_panel_value(self):
-        return self._model.get_model_state()
-
-    def set_panel_value(self, parameters):
-        self._model.set_model_state(parameters)
-
     def reset(self):
         with self.hold_trait_notifications():
+            self._model.advanced.reset()
             self.smearing.reset()
             self.hubbard.reset()
             self.magnetization.reset()
             self.pseudos.reset()
-            self._model.reset()
+
+    def _on_kpoints_distance_change(self, _=None):
+        self._model.advanced.update_kpoints_mesh()
 
     def _on_override_change(self, change):
         if not change["new"]:
             self.reset()
-
-    def _on_kpoints_distance_change(self, change):
-        self._model.update_kpoints_mesh(change)
