@@ -1,6 +1,7 @@
 # from aiidalab_qe.bands.result import Result
 from aiidalab_qe.common.panel import OutlinePanel
 
+from .model import BandsModel
 from .result import Result
 from .setting import Setting
 from .workchain import workchain_and_builder
@@ -17,6 +18,7 @@ SeeK-path tool</a>.
 
 bands = {
     "outline": BandsOutline,
+    "model": BandsModel,
     "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,

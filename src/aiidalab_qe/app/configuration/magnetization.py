@@ -1,9 +1,6 @@
 import ipywidgets as ipw
-import traitlets as tl
 
-from aiida import orm
-
-from .model import config_model as model
+from .model import MagnetizationModel
 
 
 class MagnetizationSettings(ipw.VBox):
@@ -20,17 +17,27 @@ class MagnetizationSettings(ipw.VBox):
         input_structure(StructureData): trait that contains the input_structure (confirmed structure from previous step)
     """
 
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
-    electronic_type = tl.Unicode()
-    magnetization_type = tl.Unicode()
-
-    def __init__(self, **kwargs):
+    def __init__(self, model: MagnetizationModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
             layout={"justify_content": "space-between", **kwargs.get("layout", {})},
             children=[LoadingWidget("Loading magnetization settings widget")],
             **kwargs,
+        )
+
+        self._model = model
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
+        self._model.observe(
+            self._on_electronic_type_change,
+            "electronic_type",
+        )
+        self._model.observe(
+            self._on_magnetization_type_change,
+            "magnetization_type",
         )
 
         self.kind_widget_links = []
@@ -51,11 +58,11 @@ class MagnetizationSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.magnetization, "type"),
+            (self._model, "type"),
             (self.magnetization_type_toggle, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.magnetization_type_toggle, "disabled"),
             lambda override: not override,
         )
@@ -69,11 +76,11 @@ class MagnetizationSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.magnetization, "total"),
+            (self._model, "total"),
             (self.tot_magnetization, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.tot_magnetization, "disabled"),
             lambda override: not override,
         )
@@ -88,35 +95,18 @@ class MagnetizationSettings(ipw.VBox):
 
         self.children = [self.description]
 
-        with self.hold_trait_notifications():
-            ipw.dlink(
-                (model, "input_structure"),
-                (self, "input_structure"),
-            )
-            ipw.dlink(
-                (model.basic, "electronic_type"),
-                (self, "electronic_type"),
-            )
-            ipw.dlink(
-                (model.magnetization, "type"),
-                (self, "magnetization_type"),
-            )
-
         self.rendered = True
 
     def reset(self):
-        model.magnetization.reset()
+        self._model.reset()
 
-    @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
-        model.magnetization.set_defaults_from_structure(change["new"])
+        self._model.set_defaults_from_structure()
         self._build_kinds_widget(change)
 
-    @tl.observe("electronic_type")
     def _on_electronic_type_change(self, change):
         self._switch_widgets(change)
 
-    @tl.observe("magnetization_type")
     def _on_magnetization_type_change(self, change):
         self._toggle_widgets(change)
 
@@ -140,19 +130,19 @@ class MagnetizationSettings(ipw.VBox):
                 disabled=True,
             )
             link = ipw.link(
-                (model.magnetization, "moments"),
+                (self._model, "moments"),
                 (kind_widget, "value"),
                 [
                     lambda d, label=label: d.get(label, 0.0),
                     lambda v, label=label: {
-                        **model.magnetization.moments,
+                        **self._model.moments,
                         label: v,
                     },
                 ],
             )
             self.kind_widget_links.append(link)
             ipw.dlink(
-                (model.advanced, "override"),
+                (self._model, "override"),
                 (kind_widget, "disabled"),
                 lambda override: not override,
             )

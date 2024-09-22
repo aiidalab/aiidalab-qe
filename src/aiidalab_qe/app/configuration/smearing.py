@@ -1,10 +1,10 @@
 import ipywidgets as ipw
 
-from .model import config_model as model
+from .model import SmearingModel
 
 
 class SmearingSettings(ipw.VBox):
-    def __init__(self, **kwargs):
+    def __init__(self, model: SmearingModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -12,6 +12,8 @@ class SmearingSettings(ipw.VBox):
             children=[LoadingWidget("Loading smearing settings widget")],
             **kwargs,
         )
+
+        self._model = model
 
         self.rendered = False
 
@@ -26,11 +28,11 @@ class SmearingSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.smearing, "type"),
+            (self._model, "type"),
             (self.smearing, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.smearing, "disabled"),
             lambda override: not override,
         )
@@ -42,11 +44,11 @@ class SmearingSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.smearing, "degauss"),
+            (self._model, "degauss"),
             (self.degauss, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.degauss, "disabled"),
             lambda override: not override,
         )
@@ -72,4 +74,4 @@ class SmearingSettings(ipw.VBox):
         self.rendered = True
 
     def reset(self):
-        model.smearing.reset()
+        self._model.reset()

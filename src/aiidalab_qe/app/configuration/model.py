@@ -24,11 +24,31 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class BasicModel(tl.HasTraits):
+class WorkChainModel(tl.HasTraits):
     protocol = tl.Unicode(DEFAULT["workchain"]["protocol"])
     relax_type = tl.Unicode("positions_cell")
     spin_type = tl.Unicode(DEFAULT["workchain"]["spin_type"])
     electronic_type = tl.Unicode(DEFAULT["workchain"]["electronic_type"])
+
+    def get_model_state(self):
+        return {
+            "protocol": self.protocol,
+            "relax_type": self.relax_type,
+            "spin_type": self.spin_type,
+            "electronic_type": self.electronic_type,
+        }
+
+    def set_model_state(self, parameters):
+        """Update the settings based on the given dict."""
+        for key in [
+            "relax_type",
+            "spin_type",
+            "electronic_type",
+        ]:
+            if key in parameters:
+                setattr(self, key, parameters[key])
+        if "protocol" in parameters:
+            self.protocol = parameters["protocol"]
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -38,72 +58,9 @@ class BasicModel(tl.HasTraits):
             self.electronic_type = self.traits()["electronic_type"].default_value
 
 
-class AdvancedModel(tl.HasTraits):
-    clean_workdir = tl.Bool(False)
-    override = tl.Bool(False)
-    total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
-    van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
-    spin_orbit = tl.Unicode("wo_soc")
-    forc_conv_thr = tl.Float(0.0)
-    forc_conv_thr_step = tl.Float(1e-4)
-    etot_conv_thr = tl.Float(0.0)
-    etot_conv_thr_step = tl.Float(1e-5)
-    scf_conv_thr = tl.Float(0.0)
-    scf_conv_thr_step = tl.Float(1e-10)
-    kpoints_distance = tl.Float(0.0)
-    mesh_grid = tl.Unicode("")
-
-    def update_kpoints_mesh(self, structure, distance=None):
-        if structure is None:
-            self.mesh_grid = ""
-        else:
-            distance = self.kpoints_distance if distance is None else distance
-            if distance > 0:
-                # To avoid creating an aiida node every time we change the kpoints_distance,
-                # we use the function itself instead of the decorated calcfunction.
-                mesh = create_kpoints_from_distance.process_class._func(
-                    structure,
-                    orm.Float(distance),
-                    orm.Bool(False),
-                )
-                self.mesh_grid = "Mesh " + str(mesh.get_kpoints_mesh()[0])
-            else:
-                self.mesh_grid = "Please select a number higher than 0.0"
-
-    def set_value_and_step(self, attribute, value):
-        """Sets the value and step size.
-
-        Parameters:
-            attribute (str):
-                The attribute whose values are to be set (e.g., self.etot_conv_thr).
-            value (float):
-                The numerical value to set.
-        """
-        setattr(self, attribute, value)
-        if value != 0:
-            order_of_magnitude = np.floor(np.log10(abs(value)))
-            setattr(self, f"{attribute}_step", 10 ** (order_of_magnitude - 1))
-        else:
-            setattr(self, f"{attribute}_step", 0.1)
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.clean_workdir = self.traits()["clean_workdir"].default_value
-            self.override = self.traits()["override"].default_value
-            self.total_charge = self.traits()["total_charge"].default_value
-            self.van_der_waals = self.traits()["van_der_waals"].default_value
-            self.spin_orbit = self.traits()["spin_orbit"].default_value
-            self.forc_conv_thr = self.traits()["forc_conv_thr"].default_value
-            self.forc_conv_thr_step = self.traits()["forc_conv_thr_step"].default_value
-            self.etot_conv_thr = self.traits()["etot_conv_thr"].default_value
-            self.etot_conv_thr_step = self.traits()["etot_conv_thr_step"].default_value
-            self.scf_conv_thr = self.traits()["scf_conv_thr"].default_value
-            self.scf_conv_thr_step = self.traits()["scf_conv_thr_step"].default_value
-            self.kpoints_distance = self.traits()["kpoints_distance"].default_value
-            self.mesh_grid = self.traits()["mesh_grid"].default_value
-
-
 class SmearingModel(tl.HasTraits):
+    override = tl.Bool()
+
     type = tl.Unicode()
     degauss = tl.Float()
 
@@ -121,17 +78,6 @@ class SmearingModel(tl.HasTraits):
             "degauss": parameters["degauss"],
         }
 
-    def update_from_protocol(self, protocol):
-        parameters = (
-            PwBaseWorkChain.get_protocol_inputs(protocol)
-            .get("pw", {})
-            .get("parameters", {})
-            .get("SYSTEM", {})
-        )
-        with self.hold_trait_notifications():
-            self.type = parameters["smearing"]
-            self.degauss = parameters["degauss"]
-
     def reset(self):
         with self.hold_trait_notifications():
             self.type = self._get_default_type()
@@ -147,6 +93,16 @@ class SmearingModel(tl.HasTraits):
 
 
 class MagnetizationModel(tl.HasTraits):
+    input_structure = tl.Union(
+        [
+            tl.Instance(orm.StructureData),
+            tl.Instance(HubbardStructureData),
+        ],
+        allow_none=True,
+    )
+    electronic_type = tl.Unicode()
+    override = tl.Bool()
+
     type = tl.Unicode("starting_magnetization")
     total = tl.Float(0.0)
     moments = tl.Dict(
@@ -157,11 +113,13 @@ class MagnetizationModel(tl.HasTraits):
 
     _default_moments = {}
 
-    def set_defaults_from_structure(self, structure):
-        if structure is None:
+    def set_defaults_from_structure(self):
+        if self.input_structure is None:
             self._default_moments = {}
         else:
-            self._default_moments = {kind.symbol: 0.0 for kind in structure.kinds}
+            self._default_moments = {
+                kind.symbol: 0.0 for kind in self.input_structure.kinds
+            }
         self.moments = self._get_moments()
 
     def reset(self):
@@ -175,6 +133,15 @@ class MagnetizationModel(tl.HasTraits):
 
 
 class HubbardModel(tl.HasTraits):
+    input_structure = tl.Union(
+        [
+            tl.Instance(orm.StructureData),
+            tl.Instance(HubbardStructureData),
+        ],
+        allow_none=True,
+    )
+    override = tl.Bool()
+
     activate = tl.Bool(False)
     eigenvalues_label = tl.Bool(False)  # TODO: rename (widget also)
     parameters = tl.Dict(
@@ -190,14 +157,14 @@ class HubbardModel(tl.HasTraits):
     _default_parameters = {}
     _default_eigenvalues = []
 
-    def set_defaults_from_structure(self, structure):
-        if structure is None:
+    def set_defaults_from_structure(self):
+        if self.input_structure is None:
             self.elements = []  # TODO: rename for clarity
             self.input_labels = []  # TODO: rename for clarity
             self._default_parameters = {}
             self._default_eigenvalues = []
         else:
-            self.input_labels = self._get_labels(structure)
+            self.input_labels = self._get_labels()
             self._default_parameters = {label: 0.0 for label in self.input_labels}
             self.elements = [
                 *filter(
@@ -206,7 +173,7 @@ class HubbardModel(tl.HasTraits):
                         or element.is_lanthanoid
                         or element.is_actinoid
                     ),
-                    [Element(kind.symbol) for kind in structure.kinds],
+                    [Element(kind.symbol) for kind in self.input_structure.kinds],
                 )
             ]
             self._default_eigenvalues = [
@@ -223,9 +190,9 @@ class HubbardModel(tl.HasTraits):
         self.eigenvalues = self._get_default_eigenvalues()
         self.needs_eigenvalues_widget = len(self.elements) > 0
 
-    def set_parameters_from_hubbard_structure(self, structure):
-        hubbard_parameters = structure.hubbard.dict()["parameters"]
-        sites = structure.sites
+    def set_parameters_from_hubbard_structure(self):
+        hubbard_parameters = self.input_structure.hubbard.dict()["parameters"]
+        sites = self.input_structure.sites
         parameters = {
             f"{sites[hp['atom_index']].kind_name} - {hp['atom_manifold']}": hp["value"]
             for hp in hubbard_parameters
@@ -247,16 +214,17 @@ class HubbardModel(tl.HasTraits):
     def _get_default_eigenvalues(self):
         return deepcopy(self._default_eigenvalues)
 
-    def _get_labels(self, structure):
+    def _get_labels(self):
         """Get a list of labels for the Hubbard widget.
 
         Returns:
             labels (list):
                 A list of labels in the format "{kind} - {manifold}".
         """
-        kind_list = structure.get_kind_names()
+        kind_list = self.input_structure.get_kind_names()
         hubbard_manifold_list = [
-            self._get_manifold(Element(kind.symbol)) for kind in structure.kinds
+            self._get_manifold(Element(kind.symbol))
+            for kind in self.input_structure.kinds
         ]
         labels = [
             f"{kind} - {manifold}"
@@ -310,6 +278,16 @@ class HubbardModel(tl.HasTraits):
 
 
 class PseudosModel(tl.HasTraits):
+    input_structure = tl.Union(
+        [
+            tl.Instance(orm.StructureData),
+            tl.Instance(HubbardStructureData),
+        ],
+        allow_none=True,
+    )
+    spin_orbit = tl.Unicode()
+    override = tl.Bool()
+
     dictionary = tl.Dict(
         key_trait=tl.Unicode(),  # element symbol
         value_trait=tl.Unicode(),  # pseudopotential node uuid
@@ -491,6 +469,303 @@ class PseudosModel(tl.HasTraits):
         return deepcopy(self._default_cutoffs)
 
 
+class AdvancedModel(tl.HasTraits):
+    input_structure = tl.Union(
+        [
+            tl.Instance(orm.StructureData),
+            tl.Instance(HubbardStructureData),
+        ],
+        allow_none=True,
+    )
+    protocol = tl.Unicode()
+    spin_type = tl.Unicode()
+    electronic_type = tl.Unicode()
+
+    clean_workdir = tl.Bool(False)
+    override = tl.Bool(False)
+    total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
+    van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
+    spin_orbit = tl.Unicode("wo_soc")
+    forc_conv_thr = tl.Float(0.0)
+    forc_conv_thr_step = tl.Float(1e-4)
+    etot_conv_thr = tl.Float(0.0)
+    etot_conv_thr_step = tl.Float(1e-5)
+    scf_conv_thr = tl.Float(0.0)
+    scf_conv_thr_step = tl.Float(1e-10)
+    kpoints_distance = tl.Float(0.0)
+    mesh_grid = tl.Unicode("")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.smearing = SmearingModel()
+        ipw.dlink(
+            (self, "override"),
+            (self.smearing, "override"),
+        )
+
+        self.magnetization = MagnetizationModel()
+        ipw.dlink(
+            (self, "input_structure"),
+            (self.magnetization, "input_structure"),
+        )
+        ipw.dlink(
+            (self, "electronic_type"),
+            (self.magnetization, "electronic_type"),
+        )
+        ipw.dlink(
+            (self, "override"),
+            (self.magnetization, "override"),
+        )
+
+        self.hubbard = HubbardModel()
+        ipw.dlink(
+            (self, "input_structure"),
+            (self.hubbard, "input_structure"),
+        )
+        ipw.dlink(
+            (self, "override"),
+            (self.hubbard, "override"),
+        )
+
+        self.pseudos = PseudosModel()
+        ipw.dlink(
+            (self, "input_structure"),
+            (self.pseudos, "input_structure"),
+        )
+        ipw.dlink(
+            (self, "spin_orbit"),
+            (self.pseudos, "spin_orbit"),
+        )
+        ipw.dlink(
+            (self, "override"),
+            (self.pseudos, "override"),
+        )
+
+    def update_from_protocol(self, protocol=None):
+        protocol = self.protocol if protocol is None else protocol
+
+        parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
+
+        self.kpoints_distance = parameters["kpoints_distance"]
+
+        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
+
+        etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
+        self._set_value_and_step("etot_conv_thr", etot_value)
+
+        scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
+        self._set_value_and_step("scf_conv_thr", scf_value)
+
+        forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
+        self._set_value_and_step("forc_conv_thr", forc_value)
+
+        self.smearing.set_defaults_from_protocol(protocol)
+        self.pseudos.update_family_parameters(protocol, self.spin_orbit)
+
+    def update_kpoints_mesh(self, change=None):
+        if self.input_structure is None:
+            self.mesh_grid = ""
+        else:
+            distance = self.kpoints_distance if change is None else change["new"]
+            if distance > 0:
+                # To avoid creating an aiida node every time we change the kpoints_distance,
+                # we use the function itself instead of the decorated calcfunction.
+                mesh = create_kpoints_from_distance.process_class._func(
+                    self.input_structure,
+                    orm.Float(distance),
+                    orm.Bool(False),
+                )
+                self.mesh_grid = "Mesh " + str(mesh.get_kpoints_mesh()[0])
+            else:
+                self.mesh_grid = "Please select a number higher than 0.0"
+
+    def get_model_state(self):
+        parameters = {
+            "initial_magnetic_moments": None,
+            "pw": {
+                "parameters": {
+                    "SYSTEM": {
+                        "tot_charge": self.total_charge,
+                    },
+                    "CONTROL": {
+                        "forc_conv_thr": self.forc_conv_thr,
+                        "etot_conv_thr": self.etot_conv_thr,
+                    },
+                    "ELECTRONS": {
+                        "conv_thr": self.scf_conv_thr,
+                    },
+                }
+            },
+            "clean_workdir": self.clean_workdir,
+            "pseudo_family": self.pseudos.family,
+            "kpoints_distance": self.kpoints_distance,
+        }
+
+        if self.hubbard.activate:
+            parameters["hubbard_parameters"] = {"hubbard_u": self.hubbard.parameters}
+            if self.hubbard.eigenvalues_label:
+                parameters["pw"]["parameters"]["SYSTEM"].update(
+                    {"starting_ns_eigenvalue": self.hubbard.eigenvalues}
+                )
+
+        if self.pseudos.dictionary:
+            parameters["pw"]["pseudos"] = self.pseudos.dictionary
+            parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = self.pseudos.ecutwfc
+            parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = self.pseudos.ecutrho
+
+        if self.van_der_waals in ["none", "ts-vdw"]:
+            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = self.van_der_waals
+        else:
+            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
+            parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] = (
+                self.dftd3_version[self.van_der_waals]
+            )
+
+        # there are two choose, use link or parent
+        if self.spin_type == "collinear":
+            parameters["initial_magnetic_moments"] = self.magnetization.moments
+        if self.electronic_type == "metal":
+            # smearing type setting
+            parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = self.smearing.type
+            # smearing degauss setting
+            parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = self.smearing.degauss
+
+        # Set tot_magnetization for collinear simulations.
+        if self.spin_type == "collinear":
+            # Conditions for metallic systems.
+            # Select the magnetization type and set the value if override is True
+            if self.electronic_type == "metal" and self.override:
+                if self.magnetization.type == "tot_magnetization":
+                    parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+                        self.magnetization.total
+                    )
+                else:
+                    parameters["initial_magnetic_moments"] = self.magnetization.moments
+            # Conditions for insulator systems. Default value is 0.0
+            elif self.electronic_type == "insulator":
+                parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+                    self.magnetization.total
+                )
+
+        # Spin-Orbit calculation
+        if self.spin_orbit == "soc":
+            parameters["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
+            parameters["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
+            parameters["pw"]["parameters"]["SYSTEM"]["nspin"] = 4
+
+        return parameters
+
+    def set_model_state(self, parameters):
+        """Set the panel value from the given parameters."""
+
+        if "pseudo_family" in parameters:
+            pseudo_family = PseudoFamily.from_string(parameters["pseudo_family"])
+            library = pseudo_family.library
+            accuracy = pseudo_family.accuracy
+            self.pseudos.library = f"{library} {accuracy}"
+            self.pseudos.functional = pseudo_family.functional
+        if "pseudos" in parameters["pw"]:
+            self.pseudos.dict = parameters["pw"]["pseudos"]
+            self.pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
+            self.pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+        #
+        self.kpoints_distance = parameters.get("kpoints_distance", 0.15)
+        if parameters.get("pw") is not None:
+            system = parameters["pw"]["parameters"]["SYSTEM"]
+            if "degauss" in system:
+                self.smearing.degauss = system["degauss"]
+            if "smearing" in system:
+                self.smearing.type = system["smearing"]
+            self.total_charge = parameters["pw"]["parameters"]["SYSTEM"].get(
+                "tot_charge", 0
+            )
+            self.spin_orbit = "soc" if "lspinorb" in system else "wo_soc"
+            # van der waals correction
+            self.van_der_waals = self.dftd3_version.get(
+                system.get("dftd3_version"),
+                parameters["pw"]["parameters"]["SYSTEM"].get("vdw_corr", "none"),
+            )
+
+            # convergence threshold setting
+            self.forc_conv_thr = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("CONTROL", {})
+                .get("forc_conv_thr", 0.0)
+            )
+            self.etot_conv_thr = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("CONTROL", {})
+                .get("etot_conv_thr", 0.0)
+            )
+            self.scf_conv_thr = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("ELECTRONS", {})
+                .get("conv_thr", 0.0)
+            )
+
+        # Logic to set the magnetization
+        if magnetic_moments := parameters.get("initial_magnetic_moments"):
+            if isinstance(magnetic_moments, list):
+                magnetic_moments = {
+                    kind: magnetic_moments[i]
+                    for i, kind in enumerate(self.input_structure.get_kind_names())
+                }
+            self.magnetization.moments = magnetic_moments
+
+        if "tot_magnetization" in parameters["pw"]["parameters"]["SYSTEM"]:
+            self.magnetization.type = "tot_magnetization"
+
+        if parameters.get("hubbard_parameters"):
+            self.hubbard.activate = True
+            self.hubbard.parameters = parameters["hubbard_parameters"]["hubbard_u"]
+            starting_ns_eigenvalue = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("SYSTEM", {})
+                .get("starting_ns_eigenvalue")
+            )
+            if starting_ns_eigenvalue is not None:
+                self.hubbard.eigenvalues_label = True
+                self.hubbard.eigenvalues = starting_ns_eigenvalue
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.clean_workdir = self.traits()["clean_workdir"].default_value
+            self.override = self.traits()["override"].default_value
+            self.total_charge = self.traits()["total_charge"].default_value
+            self.van_der_waals = self.traits()["van_der_waals"].default_value
+            self.spin_orbit = self.traits()["spin_orbit"].default_value
+            self.forc_conv_thr = self.traits()["forc_conv_thr"].default_value
+            self.forc_conv_thr_step = self.traits()["forc_conv_thr_step"].default_value
+            self.etot_conv_thr = self.traits()["etot_conv_thr"].default_value
+            self.etot_conv_thr_step = self.traits()["etot_conv_thr_step"].default_value
+            self.scf_conv_thr = self.traits()["scf_conv_thr"].default_value
+            self.scf_conv_thr_step = self.traits()["scf_conv_thr_step"].default_value
+            self.kpoints_distance = self.traits()["kpoints_distance"].default_value
+            self.mesh_grid = self.traits()["mesh_grid"].default_value
+            self.update_from_protocol()  # TODO check position
+
+    def _set_value_and_step(self, attribute, value):
+        """Sets the value and step size.
+
+        Parameters:
+            attribute (str):
+                The attribute whose values are to be set (e.g., self.etot_conv_thr).
+            value (float):
+                The numerical value to set.
+        """
+        setattr(self, attribute, value)
+        if value != 0:
+            order_of_magnitude = np.floor(np.log10(abs(value)))
+            setattr(self, f"{attribute}_step", 10 ** (order_of_magnitude - 1))
+        else:
+            setattr(self, f"{attribute}_step", 0.1)
+
+
 class ConfigurationModel(tl.HasTraits):
     input_structure = tl.Union(
         [
@@ -504,42 +779,3 @@ class ConfigurationModel(tl.HasTraits):
         value_trait=tl.Dict(),  # parameter configuration
         default_value={},
     )
-
-    basic = BasicModel()
-    advanced = AdvancedModel()
-    smearing = SmearingModel()
-    magnetization = MagnetizationModel()
-    hubbard = HubbardModel()
-    pseudos = PseudosModel()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.observe(self._update_from_structure, "input_structure")
-        self.update_from_protocol()
-
-    def update_from_protocol(self, protocol=None):
-        protocol = self.basic.protocol if protocol is None else protocol
-
-        parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
-
-        self.advanced.kpoints_distance = parameters["kpoints_distance"]
-
-        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
-
-        etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
-        self.advanced.set_value_and_step("etot_conv_thr", etot_value)
-
-        scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
-        self.advanced.set_value_and_step("scf_conv_thr", scf_value)
-
-        forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
-        self.advanced.set_value_and_step("forc_conv_thr", forc_value)
-
-        self.smearing.set_defaults_from_protocol(protocol)
-        self.pseudos.update_family_parameters(protocol, self.advanced.spin_orbit)
-
-    def _update_from_structure(self, change):
-        self.advanced.update_kpoints_mesh(change["new"])
-
-
-config_model = ConfigurationModel()

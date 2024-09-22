@@ -6,13 +6,13 @@ Authors: AiiDAlab team
 import ipywidgets as ipw
 
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-from aiidalab_qe.app.configuration.model import config_model
+from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
-from aiidalab_qe.app.result.model import results_model
+from aiidalab_qe.app.result.model import ResultsModel
 from aiidalab_qe.app.structure import StructureSelectionStep
-from aiidalab_qe.app.structure.model import struct_model
+from aiidalab_qe.app.structure.model import StructureModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.app.submission.model import submit_model
+from aiidalab_qe.app.submission.model import SubmissionModel
 from aiidalab_qe.common import QeAppWorkChainSelector
 from aiidalab_widgets_base import WizardAppWidget
 
@@ -21,15 +21,30 @@ class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
 
     def __init__(self, qe_auto_setup=True):
+        # Initialize the models
+        struct_model = StructureModel()
+        config_model = ConfigurationModel()
+        submit_model = SubmissionModel()
+        results_model = ResultsModel()
+
         # Create the application steps
-        self.structure_step = StructureSelectionStep(auto_advance=True)
-        self.structure_step.observe(self._observe_structure_selection, "structure")
-        self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
+        self.structure_step = StructureSelectionStep(
+            model=struct_model,
+            auto_advance=True,
+        )
+
+        self.configure_step = ConfigureQeAppWorkChainStep(
+            model=config_model,
+            auto_advance=True,
+        )
+
         self.submit_step = SubmitQeAppWorkChainStep(
+            model=submit_model,
             auto_advance=True,
             qe_auto_setup=qe_auto_setup,
         )
-        self.results_step = ViewQeAppWorkChainStatusAndResultsStep()
+
+        self.results_step = ViewQeAppWorkChainStatusAndResultsStep(model=results_model)
 
         # Link the models of the application steps
         ipw.dlink(
@@ -67,13 +82,15 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
-        self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
 
         # Add process selection header
         self.work_chain_selector = QeAppWorkChainSelector(
             layout=ipw.Layout(width="auto")
         )
-        self.work_chain_selector.observe(self._observe_process_selection, "value")
+        self.work_chain_selector.observe(
+            self._observe_process_selection,
+            "value",
+        )
 
         ipw.dlink(
             (self.submit_step, "process"),
@@ -95,16 +112,6 @@ class App(ipw.VBox):
     @property
     def steps(self):
         return self._wizard_app_widget.steps
-
-    def _observe_structure_selection(self, change):
-        """Reset the confirmed_structure in case that a new structure is selected."""
-        pass
-        # with self.structure_step.hold_sync():
-        #     if (
-        #         self.structure_step.confirmed_structure is not None
-        #         and self.structure_step.confirmed_structure != change["new"]
-        #     ):
-        #         self.structure_step.confirmed_structure = None
 
     def _observe_selected_index(self, change):
         """Check unsaved change in the step when leaving the step."""

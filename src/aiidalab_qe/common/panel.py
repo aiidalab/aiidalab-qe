@@ -6,6 +6,7 @@ Authors:
 """
 
 import ipywidgets as ipw
+import traitlets as tl
 
 DEFAULT_PARAMETERS = {}
 
@@ -60,17 +61,32 @@ class Panel(ipw.VBox):
         """Update the state of the panel."""
 
 
+class PanelModel(tl.HasTraits):
+    title = "Model"
+
+    def get_model_state(self):
+        raise NotImplementedError
+
+    def set_model_state(self, state: dict):
+        raise NotImplementedError
+
+    def reset(self):
+        raise NotImplementedError
+
+
 class SettingPanel(Panel):
     title = "Settings"
     description = ""
 
-    def __init__(self, **kwargs):
+    def __init__(self, model, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
             children=[LoadingWidget(f"Loading {self.identifier} settings")],
             **kwargs,
         )
+
+        self._model = model
 
         self.rendered = False
 

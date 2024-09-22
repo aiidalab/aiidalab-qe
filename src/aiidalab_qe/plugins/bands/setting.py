@@ -17,10 +17,14 @@ class Setting(SettingPanel):
             """<div style="padding-top: 0px; padding-bottom: 0px">
             <h4>Settings</h4></div>"""
         )
-        self.workchain_protocol = ipw.ToggleButtons(
+        self.protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
-            value="moderate",
         )
+        ipw.link(
+            (self._model, "protocol"),
+            (self.protocol, "value"),
+        )
+
         self.kpath_2d_help = ipw.HTML(
             """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
             If your system has periodicity xy. Please select one of the five 2D Bravais lattices corresponding to your system.
@@ -35,7 +39,10 @@ class Setting(SettingPanel):
                 ("Centered Rectangular", "centered_rectangular"),
                 ("Oblique", "oblique"),
             ],
-            value="hexagonal",
+        )
+        ipw.link(
+            (self._model, "kpath_2d"),
+            (self.kpath_2d, "value"),
         )
 
         self.children = [
@@ -47,15 +54,10 @@ class Setting(SettingPanel):
         self.rendered = True
 
     def get_panel_value(self):
-        """Return a dictionary with the input parameters for the plugin."""
-        return {
-            "kpath_2d": self.kpath_2d.value,
-        }
+        return self._model.get_model_state()
 
-    def set_panel_value(self, input_dict):
-        """Load a dictionary with the input parameters for the plugin."""
-        self.kpath_2d.value = input_dict.get("kpath_2d", "hexagonal")
+    def set_panel_value(self, parameters):
+        self._model.set_model_state(parameters)
 
     def reset(self):
-        """Reset the panel to its default values."""
-        self.kpath_2d.value = "hexagonal"
+        self._model.reset()

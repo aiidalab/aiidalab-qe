@@ -23,8 +23,6 @@ from aiidalab_widgets_base import (
     WizardAppWidgetStep,
 )
 
-from .model import struct_model as model
-
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
 file_path = pathlib.Path(__file__).parent
@@ -51,13 +49,15 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
     structure = tl.Instance(orm.StructureData, allow_none=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, model, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
             children=[LoadingWidget("Loading structure selection panel")],
             **kwargs,
         )
+
+        self._model = model
 
         self.rendered = False
 
@@ -158,29 +158,29 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self.rendered = True
 
     def can_reset(self):
-        return model.confirmed_structure is not None
+        return self._model.confirmed_structure is not None
 
     def reset(self):
         """Reset the widget to its initial state."""
         with self.hold_trait_notifications():
-            model.reset()
+            self._model.reset()
             self.manager.structure = None
             self.manager.viewer.structure = None
             self.manager.output.value = ""
 
     def is_saved(self):
         """Check if the current structure is confirmed."""
-        return self.structure == model.confirmed_structure
+        return self.structure == self._model.confirmed_structure
 
     def confirm(self, _=None):
         self.manager.store_structure()
-        model.confirmed_structure = self.structure
+        self._model.confirmed_structure = self.structure
         self.message_area.value = ""
         self._update_state()
 
     @tl.observe("structure")
     def _on_structure_change(self, _):
-        model.reset()
+        self._model.reset()
         self._update_widget_text()
         self._update_state()
 
@@ -193,7 +193,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.structure_name_text.value = str(self.structure.get_formula())
 
     def _update_state(self):
-        if model.is_confirmed:
+        if self._model.is_confirmed:
             self.state = self.State.SUCCESS
         elif self.structure is None:
             self.state = self.State.READY

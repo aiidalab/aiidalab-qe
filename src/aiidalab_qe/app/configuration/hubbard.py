@@ -1,23 +1,25 @@
 import ipywidgets as ipw
-import traitlets as tl
 
-from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
-from .model import config_model as model
+from .model import HubbardModel
 
 
 class HubbardSettings(ipw.VBox):
     """Widget for setting up Hubbard parameters."""
 
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
-
-    def __init__(self, **kwargs):
+    def __init__(self, model: HubbardModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
             children=[LoadingWidget("Loading Hubbard settings widget")],
             **kwargs,
+        )
+
+        self._model = model
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
         )
 
         self.hubbard_widget_links = []
@@ -36,11 +38,11 @@ class HubbardSettings(ipw.VBox):
             layout=ipw.Layout(max_width="10%"),
         )
         ipw.link(
-            (model.hubbard, "activate"),
+            (self._model, "activate"),
             (self.activate_hubbard, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.activate_hubbard, "disabled"),
             lambda override: not override,
         )
@@ -57,7 +59,7 @@ class HubbardSettings(ipw.VBox):
             layout=ipw.Layout(max_width="30%"),
         )
         ipw.link(
-            (model.hubbard, "eigenvalues_label"),
+            (self._model, "eigenvalues_label"),
             (self.eigenvalues_label, "value"),
         )
         self.eigenvalues_label.observe(self._on_eigenvalues_check, "value")
@@ -76,30 +78,24 @@ class HubbardSettings(ipw.VBox):
             self.container,
         ]
 
-        ipw.dlink(
-            (model, "input_structure"),
-            (self, "input_structure"),
-        )
-
         self.rendered = True
 
     def reset(self):
         """Reset the widget."""
         self._unsubscribe_eigenvalues_widget()
-        model.hubbard.reset()
+        self._model.reset()
 
-    @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
         self._unsubscribe_hubbard_widget()
-        model.hubbard.set_defaults_from_structure(change["new"])
+        self._model.set_defaults_from_structure()
         self._build_hubbard_widget()
-        if model.hubbard.needs_eigenvalues_widget:
+        if self._model.needs_eigenvalues_widget:
             self._build_eigenvalues_widget()
         else:
             self._unsubscribe_eigenvalues_widget()
             self.eigenvalues_widget.children = []
         if isinstance(change["new"], HubbardStructureData):
-            model.hubbard.set_parameters_from_hubbard_structure(change["new"])
+            self._model.set_parameters_from_hubbard_structure()
 
     def _on_hubbard_check(self, change):
         self._toggle_hubbard_widget(change)
@@ -118,10 +114,10 @@ class HubbardSettings(ipw.VBox):
 
         children = []
 
-        if model.input_structure:
+        if self._model.input_structure:
             children.append(ipw.HTML("Define U value [eV] "))
 
-        for label in model.hubbard.input_labels:
+        for label in self._model.input_labels:
             float_widget = ipw.BoundedFloatText(
                 description=label,
                 min=0,
@@ -130,17 +126,17 @@ class HubbardSettings(ipw.VBox):
                 layout={"width": "160px"},
             )
             link = ipw.link(
-                (model.hubbard, "parameters"),
+                (self._model, "parameters"),
                 (float_widget, "value"),
                 [
                     lambda p, label=label: p.get(label, 0.0),
-                    lambda v, label=label: {**model.hubbard.parameters, label: v},
+                    lambda v, label=label: {**self._model.parameters, label: v},
                 ],
             )
             self.hubbard_widget_links.append(link)
             children.append(float_widget)
 
-        if model.hubbard.needs_eigenvalues_widget:
+        if self._model.needs_eigenvalues_widget:
             children.extend(
                 [
                     self.eigenvalues_help,
@@ -164,7 +160,7 @@ class HubbardSettings(ipw.VBox):
 
         def update(index, spin, state, symbol, value):
             """Update the eigenvalues list."""
-            eigenvalues = [*model.hubbard.eigenvalues]
+            eigenvalues = [*self._model.eigenvalues]
             eigenvalues[index][spin][state] = [state + 1, spin, symbol, value]
             return eigenvalues
 
@@ -172,7 +168,7 @@ class HubbardSettings(ipw.VBox):
 
         children = []
 
-        for ei, element in enumerate(model.hubbard.elements):
+        for ei, element in enumerate(self._model.elements):
             es = element.symbol
             num_states = 5 if element.is_transition_metal else 7  # d or f states
 
@@ -188,7 +184,7 @@ class HubbardSettings(ipw.VBox):
                     style={"description_width": "initial"},
                 )
                 link = ipw.link(
-                    (model.hubbard, "eigenvalues"),
+                    (self._model, "eigenvalues"),
                     (eigenvalues_up, "value"),
                     [
                         lambda evs, ei=ei, si=si: evs[ei][0][si][-1],
@@ -205,7 +201,7 @@ class HubbardSettings(ipw.VBox):
                     style={"description_width": "initial"},
                 )
                 link = ipw.link(
-                    (model.hubbard, "eigenvalues"),
+                    (self._model, "eigenvalues"),
                     (eigenvalues_down, "value"),
                     [
                         lambda evs, ei=ei, si=si: evs[ei][1][si][-1],

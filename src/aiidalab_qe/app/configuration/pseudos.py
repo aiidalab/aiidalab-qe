@@ -10,7 +10,7 @@ from aiida.plugins import DataFactory, GroupFactory
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML
 
-from .model import config_model as model
+from .model import PseudosModel
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -21,15 +21,28 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 class PseudoSettings(ipw.VBox):
     """Widget to set the pseudopotentials for the calculation."""
 
-    input_structure = tl.Instance(klass=orm.StructureData, allow_none=True)
-    spin_orbit = tl.Unicode()
-    pseudo_family = tl.Unicode()
-    override = tl.Bool(False)
-
-    def __init__(self, **kwargs):
+    def __init__(self, model: PseudosModel, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading pseudopotentials widget")],
             **kwargs,
+        )
+
+        self._model = model
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
+        self._model.observe(
+            self._on_spin_orbit_change,
+            "spin_orbit",
+        )
+        self._model.observe(
+            self._on_pseudo_family_change,
+            "pseudo_family",
+        )
+        self._model.observe(
+            self._on_override_change,
+            "override",
         )
 
         self.setter_widget_links = []
@@ -62,7 +75,6 @@ class PseudoSettings(ipw.VBox):
             </div>
         """
 
-        # XXX: the link is not correct after add pseudo dojo
         self.family_prompt = ipw.HTML()
 
         self.family_help = ipw.HTML(self.PSEUDO_HELP_WO_SOC)
@@ -86,11 +98,11 @@ class PseudoSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.pseudos, "functional"),
+            (self._model, "functional"),
             (self.functional, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.functional, "disabled"),
             lambda override: not override,
         )
@@ -106,11 +118,11 @@ class PseudoSettings(ipw.VBox):
             layout=ipw.Layout(max_width="80%"),
         )
         ipw.link(
-            (model.pseudos, "library"),
+            (self._model, "library"),
             (self.library, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.library, "disabled"),
             lambda override: not override,
         )
@@ -130,7 +142,7 @@ class PseudoSettings(ipw.VBox):
 
         self._status_message = StatusHTML(clear_after=20)
         ipw.dlink(
-            (model.pseudos, "status_message"),
+            (self._model, "status_message"),
             (self._status_message, "message"),
         )
 
@@ -145,11 +157,11 @@ class PseudoSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.pseudos, "ecutwfc"),
+            (self._model, "ecutwfc"),
             (self.ecutwfc, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.ecutwfc, "disabled"),
             lambda override: not override,
         )
@@ -158,11 +170,11 @@ class PseudoSettings(ipw.VBox):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.pseudos, "ecutrho"),
+            (self._model, "ecutrho"),
             (self.ecutrho, "value"),
         )
         ipw.dlink(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.ecutrho, "disabled"),
             lambda override: not override,
         )
@@ -222,55 +234,33 @@ class PseudoSettings(ipw.VBox):
             self._status_message,
         ]
 
-        with self.hold_trait_notifications():
-            ipw.dlink(
-                (model, "input_structure"),
-                (self, "input_structure"),
-            )
-            ipw.dlink(
-                (model.advanced, "spin_orbit"),
-                (self, "spin_orbit"),
-            )
-            ipw.dlink(
-                (model.pseudos, "family"),
-                (self, "pseudo_family"),
-            )
-            ipw.dlink(
-                (model.advanced, "override"),
-                (self, "override"),
-            )
-
         self.rendered = True
 
     def reset(self):
-        model.pseudos.reset()
+        self._model.reset()
 
-    @tl.observe("input_structure")
     def _on_input_structure_change(self, _=None):
         self._unsubscribe_setter_widget()
-        model.pseudos.set_defaults_from_structure(model.input_structure)
+        self._model.set_defaults_from_structure(self._model.input_structure)
         self._build_setter_widgets()
 
-    @tl.observe("spin_orbit")
     def _on_spin_orbit_change(self, _):
         self._update_library_options()
 
-    @tl.observe("pseudo_family")
     def _on_pseudo_family_change(self, _=None):
         self._update_family_link()
-        model.pseudos.update_pseudos(model.input_structure)
-        model.pseudos.update_cutoffs(model.input_structure)
+        self._model.update_pseudos(self._model.input_structure)
+        self._model.update_cutoffs(self._model.input_structure)
 
-    @tl.observe("override")
     def _on_override_change(self, change):
         self._toggle_setter_widgets(change)
 
     def _on_family_parameters_change(self, _=None):
-        model.pseudos.update_family(model.advanced.spin_orbit)
+        self._model.update_family(self._model.spin_orbit)
 
     def _update_library_options(self):
         """Update pseudo library selection options w.r.t spin orbit."""
-        if model.advanced.spin_orbit == "soc":
+        if self._model.spin_orbit == "soc":
             self.library.options = [
                 "PseudoDojo standard",
                 "PseudoDojo stringent",
@@ -286,7 +276,7 @@ class PseudoSettings(ipw.VBox):
             self.family_help.value = self.PSEUDO_HELP_WO_SOC
 
     def _update_family_link(self):
-        library, accuracy = model.pseudos.library.split()
+        library, accuracy = self._model.library.split()
         if library == "SSSP":
             pseudo_family_link = (
                 f"https://www.materialscloud.org/discover/sssp/table/{accuracy}"
@@ -318,27 +308,27 @@ class PseudoSettings(ipw.VBox):
 
         children = []
 
-        if model.input_structure is None:
+        if self._model.input_structure is None:
             kinds = []
         else:
-            kinds = model.input_structure.kinds
+            kinds = self._model.input_structure.kinds
 
         for index, kind in enumerate(kinds):
             symbol = kind.name
             upload_widget = PseudoUploadWidget(kind=symbol)
             pseudo_link = ipw.link(
-                (model.pseudos, "dictionary"),
+                (self._model, "dictionary"),
                 (upload_widget, "pseudo"),
                 [
                     lambda d, symbol=symbol: orm.load_node(d.get(symbol)),
                     lambda v, symbol=symbol: {
-                        **model.pseudos.dictionary,
+                        **self._model.dictionary,
                         symbol: v.uuid,
                     },
                 ],
             )
             cutoffs_link = ipw.dlink(
-                (model.pseudos, "cutoffs"),
+                (self._model, "cutoffs"),
                 (upload_widget, "cutoffs"),
                 lambda c, i=index: [c[0][i], c[1][i]],
             )

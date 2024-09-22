@@ -6,11 +6,10 @@ Authors: AiiDAlab team
 import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import Panel
-from aiidalab_qe.setup.pseudos import PseudoFamily
 
 from .hubbard import HubbardSettings
 from .magnetization import MagnetizationSettings
-from .model import config_model as model
+from .model import AdvancedModel
 from .pseudos import PseudoSettings
 from .smearing import SmearingSettings
 
@@ -18,7 +17,7 @@ from .smearing import SmearingSettings
 class AdvancedSettings(Panel):
     identifier = "advanced"
 
-    def __init__(self, **kwargs):
+    def __init__(self, model: AdvancedModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -27,10 +26,12 @@ class AdvancedSettings(Panel):
             **kwargs,
         )
 
-        self.smearing = SmearingSettings()
-        self.hubbard = HubbardSettings()
-        self.magnetization = MagnetizationSettings()
-        self.pseudos = PseudoSettings()
+        self._model = model
+
+        self.smearing = SmearingSettings(model=self._model.smearing)
+        self.hubbard = HubbardSettings(model=self._model.hubbard)
+        self.magnetization = MagnetizationSettings(model=self._model.magnetization)
+        self.pseudos = PseudoSettings(model=self._model.pseudos)
 
         self.dftd3_version = {
             "dft-d3": 3,
@@ -52,7 +53,7 @@ class AdvancedSettings(Panel):
             layout=ipw.Layout(max_width="20px"),
         )
         ipw.link(
-            (model.advanced, "clean_workdir"),
+            (self._model, "clean_workdir"),
             (self.clean_workdir, "value"),
         )
         # Override setting widget
@@ -62,11 +63,11 @@ class AdvancedSettings(Panel):
             layout=ipw.Layout(max_width="10%"),
         )
         ipw.link(
-            (model.advanced, "override"),
+            (self._model, "override"),
             (self.override, "value"),
         )
         ipw.dlink(
-            (model, "input_structure"),
+            (self._model, "input_structure"),
             (self.override, "disabled"),
             lambda structure: structure is None,
         )
@@ -84,7 +85,7 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.advanced, "kpoints_distance"),
+            (self._model, "kpoints_distance"),
             (self.kpoints_distance, "value"),
         )
         ipw.dlink(
@@ -98,7 +99,7 @@ class AdvancedSettings(Panel):
         )
         self.mesh_grid = ipw.HTML()
         ipw.dlink(
-            (model.advanced, "mesh_grid"),
+            (self._model, "mesh_grid"),
             (self.mesh_grid, "value"),
         )
 
@@ -115,7 +116,7 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.advanced, "total_charge"),
+            (self._model, "total_charge"),
             (self.total_charge, "value"),
         )
         ipw.dlink(
@@ -139,7 +140,7 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.advanced, "van_der_waals"),
+            (self._model, "van_der_waals"),
             (self.van_der_waals, "value"),
         )
         ipw.dlink(
@@ -160,11 +161,11 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.advanced, "scf_conv_thr"),
+            (self._model, "scf_conv_thr"),
             (self.scf_conv_thr, "value"),
         )
         ipw.dlink(
-            (model.advanced, "scf_conv_thr_step"),
+            (self._model, "scf_conv_thr_step"),
             (self.scf_conv_thr, "step"),
         )
         ipw.dlink(
@@ -180,11 +181,11 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.advanced, "forc_conv_thr"),
+            (self._model, "forc_conv_thr"),
             (self.forc_conv_thr, "value"),
         )
         ipw.dlink(
-            (model.advanced, "forc_conv_thr_step"),
+            (self._model, "forc_conv_thr_step"),
             (self.forc_conv_thr, "step"),
         )
         ipw.dlink(
@@ -200,11 +201,11 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.advanced, "etot_conv_thr"),
+            (self._model, "etot_conv_thr"),
             (self.etot_conv_thr, "value"),
         )
         ipw.dlink(
-            (model.advanced, "etot_conv_thr_step"),
+            (self._model, "etot_conv_thr_step"),
             (self.etot_conv_thr, "step"),
         )
         ipw.dlink(
@@ -223,7 +224,7 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (model.advanced, "spin_orbit"),
+            (self._model, "spin_orbit"),
             (self.spin_orbit, "value"),
         )
         ipw.dlink(
@@ -304,173 +305,23 @@ class AdvancedSettings(Panel):
 
         self.rendered = True
 
+    def get_panel_value(self):
+        return self._model.get_model_state()
+
+    def set_panel_value(self, parameters):
+        self._model.set_model_state(parameters)
+
     def reset(self):
         with self.hold_trait_notifications():
-            model.advanced.reset()
             self.smearing.reset()
             self.hubbard.reset()
             self.magnetization.reset()
             self.pseudos.reset()
-            model.update_from_protocol()
-
-    def get_panel_value(self):
-        # create the the initial_magnetic_moments as None (Default)
-        # XXX: start from parameters = {} and then bundle the settings by purposes (e.g. pw, bands, etc.)
-        parameters = {
-            "initial_magnetic_moments": None,
-            "pw": {
-                "parameters": {
-                    "SYSTEM": {
-                        "tot_charge": model.advanced.total_charge,
-                    },
-                    "CONTROL": {
-                        "forc_conv_thr": model.advanced.forc_conv_thr,
-                        "etot_conv_thr": model.advanced.etot_conv_thr,
-                    },
-                    "ELECTRONS": {
-                        "conv_thr": model.advanced.scf_conv_thr,
-                    },
-                }
-            },
-            "clean_workdir": model.advanced.clean_workdir,
-            "pseudo_family": model.pseudos.family,  # TODO check this
-            "kpoints_distance": model.advanced.kpoints_distance,
-        }
-
-        if model.hubbard.activate:
-            parameters["hubbard_parameters"] = {"hubbard_u": model.hubbard.parameters}
-            if model.hubbard.eigenvalues_label:
-                parameters["pw"]["parameters"]["SYSTEM"].update(
-                    {"starting_ns_eigenvalue": model.hubbard.eigenvalues}
-                )
-
-        if model.pseudos.dictionary:
-            parameters["pw"]["pseudos"] = model.pseudos.dictionary
-            parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = model.pseudos.ecutwfc
-            parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = model.pseudos.ecutrho
-
-        if model.advanced.van_der_waals in ["none", "ts-vdw"]:
-            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = (
-                model.advanced.van_der_waals
-            )
-        else:
-            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
-            parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] = (
-                self.dftd3_version[model.advanced.van_der_waals]
-            )
-
-        # there are two choose, use link or parent
-        if model.basic.spin_type == "collinear":
-            parameters["initial_magnetic_moments"] = model.magnetization.moments
-        if model.basic.electronic_type == "metal":
-            # smearing type setting
-            parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = model.smearing.type
-            # smearing degauss setting
-            parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = model.smearing.degauss
-
-        # Set tot_magnetization for collinear simulations.
-        if model.basic.spin_type == "collinear":
-            # Conditions for metallic systems. Select the magnetization type and set the value if override is True
-            if model.basic.electronic_type == "metal" and model.advanced.override:
-                if model.magnetization.type == "tot_magnetization":
-                    parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
-                        model.magnetization.total
-                    )
-                else:
-                    parameters["initial_magnetic_moments"] = model.magnetization.moments
-            # Conditions for insulator systems. Default value is 0.0
-            elif model.basic.electronic_type == "insulator":
-                parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
-                    model.magnetization.total
-                )
-
-        # Spin-Orbit calculation
-        if model.advanced.spin_orbit == "soc":
-            parameters["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
-            parameters["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
-            parameters["pw"]["parameters"]["SYSTEM"]["nspin"] = 4
-
-        return parameters
-
-    def set_panel_value(self, parameters):
-        """Set the panel value from the given parameters."""
-
-        if "pseudo_family" in parameters:
-            pseudo_family = PseudoFamily.from_string(parameters["pseudo_family"])
-            library = pseudo_family.library
-            accuracy = pseudo_family.accuracy
-            model.pseudos.library = f"{library} {accuracy}"
-            model.pseudos.functional = pseudo_family.functional
-        if "pseudos" in parameters["pw"]:
-            model.pseudos.dict = parameters["pw"]["pseudos"]
-            model.pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
-            model.pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
-        #
-        model.advanced.kpoints_distance = parameters.get("kpoints_distance", 0.15)
-        if parameters.get("pw") is not None:
-            system = parameters["pw"]["parameters"]["SYSTEM"]
-            if "degauss" in system:
-                model.smearing.degauss = system["degauss"]
-            if "smearing" in system:
-                model.smearing.type = system["smearing"]
-            model.advanced.total_charge = parameters["pw"]["parameters"]["SYSTEM"].get(
-                "tot_charge", 0
-            )
-            model.advanced.spin_orbit = "soc" if "lspinorb" in system else "wo_soc"
-            # van der waals correction
-            model.advanced.van_der_waals = self.dftd3_version.get(
-                system.get("dftd3_version"),
-                parameters["pw"]["parameters"]["SYSTEM"].get("vdw_corr", "none"),
-            )
-
-            # convergence threshold setting
-            model.advanced.forc_conv_thr = (
-                parameters.get("pw", {})
-                .get("parameters", {})
-                .get("CONTROL", {})
-                .get("forc_conv_thr", 0.0)
-            )
-            model.advanced.etot_conv_thr = (
-                parameters.get("pw", {})
-                .get("parameters", {})
-                .get("CONTROL", {})
-                .get("etot_conv_thr", 0.0)
-            )
-            model.advanced.scf_conv_thr = (
-                parameters.get("pw", {})
-                .get("parameters", {})
-                .get("ELECTRONS", {})
-                .get("conv_thr", 0.0)
-            )
-
-        # Logic to set the magnetization
-        if magnetic_moments := parameters.get("initial_magnetic_moments"):
-            if isinstance(magnetic_moments, list):
-                magnetic_moments = {
-                    kind: magnetic_moments[i]
-                    for i, kind in enumerate(model.input_structure.get_kind_names())
-                }
-            model.magnetization.moments = magnetic_moments
-
-        if "tot_magnetization" in parameters["pw"]["parameters"]["SYSTEM"]:
-            model.magnetization.type = "tot_magnetization"
-
-        if parameters.get("hubbard_parameters"):
-            model.hubbard.activate = True
-            model.hubbard.parameters = parameters["hubbard_parameters"]["hubbard_u"]
-            starting_ns_eigenvalue = (
-                parameters.get("pw", {})
-                .get("parameters", {})
-                .get("SYSTEM", {})
-                .get("starting_ns_eigenvalue")
-            )
-            if starting_ns_eigenvalue is not None:
-                model.hubbard.eigenvalues_label = True
-                model.hubbard.eigenvalues = starting_ns_eigenvalue
+            self._model.reset()
 
     def _on_override_change(self, change):
         if not change["new"]:
             self.reset()
 
     def _on_kpoints_distance_change(self, change):
-        model.advanced.update_kpoints_mesh(model.input_structure, change["new"])
+        self._model.update_kpoints_mesh(change)
