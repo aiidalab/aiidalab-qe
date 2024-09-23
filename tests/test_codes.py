@@ -20,9 +20,9 @@ def test_set_selected_codes(submit_app_generator):
     submit_step._create_builder()
 
     new_submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    new_submit_step.set_selected_codes(submit_step.ui_parameters["codes"])
+    new_submit_step._set_selected_codes(submit_step.ui_parameters["codes"])
 
-    assert new_submit_step.get_selected_codes() == submit_step.get_selected_codes()
+    assert new_submit_step._get_selected_codes() == submit_step.get_selected_codes()
 
 
 def test_update_codes_display():
@@ -32,10 +32,10 @@ def test_update_codes_display():
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     submit = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    submit.update_codes_display()
+    submit._update_codes_display()
     assert submit.codes["dos"].layout.display == "none"
     submit.input_parameters = {"workchain": {"properties": ["pdos"]}}
-    submit.update_codes_display()
+    submit._update_codes_display()
     assert submit.codes["dos"].layout.display == "block"
 
 
