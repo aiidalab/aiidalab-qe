@@ -23,7 +23,7 @@ class InfoBox(ipw.VBox):
 
 
 class InAppGuide(InfoBox):
-    """The `InfoAppGuide` is used to set up in-app guides that may be toggle in unison."""
+    """The `InfoAppGuide` is used to set up in-app guides that may be toggled in unison."""
 
     def __init__(self, guide_id: str, classes: list[str] | None = None, **kwargs):
         """`InAppGuide` constructor.
