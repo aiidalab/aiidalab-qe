@@ -120,6 +120,10 @@ class MagnetizationModel(tl.HasTraits):
 
     _default_moments = {}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_defaults_from_structure()
+
     def set_defaults_from_structure(self):
         if self.input_structure is None:
             self._default_moments = {}
@@ -163,6 +167,10 @@ class HubbardModel(tl.HasTraits):
 
     _default_parameters = {}
     _default_eigenvalues = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_defaults_from_structure()
 
     def set_defaults_from_structure(self):
         if self.input_structure is None:
@@ -344,13 +352,15 @@ class PseudosModel(tl.HasTraits):
             lambda cutoffs: max(cutoffs[1]),
         )
 
+        self.set_defaults_from_structure()
+
     def set_defaults_from_structure(self):
         if self.input_structure is None:
             self._default_dictionary = {}
             self._default_cutoffs = [[0.0], [0.0]]
         else:
-            self.update_pseudos()
-            self.update_cutoffs()
+            self.update_default_pseudos()
+            self.update_default_cutoffs()
 
     def update_family(self):
         library, accuracy = self.library.split()
@@ -391,7 +401,7 @@ class PseudosModel(tl.HasTraits):
             self.library = f"{pseudo_family.library} {pseudo_family.accuracy}"
             self.functional = pseudo_family.functional
 
-    def update_pseudos(self):
+    def update_default_pseudos(self):
         try:
             pseudo_family = self._get_pseudo_family()
             pseudos = pseudo_family.get_pseudos(structure=self.input_structure)
@@ -408,7 +418,7 @@ class PseudosModel(tl.HasTraits):
         }
         self.dictionary = self._get_default_dictionary()
 
-    def update_cutoffs(self):
+    def update_default_cutoffs(self):
         """Update wavefunction and density cutoffs from pseudo family."""
         try:
             pseudo_family = self._get_pseudo_family()

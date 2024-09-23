@@ -12,7 +12,6 @@ import traitlets as tl
 from IPython.display import display
 
 from aiida import orm
-from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace
 from aiida.engine import submit as aiida_submit
 from aiida.orm.utils.serialize import serialize
@@ -56,10 +55,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ],
         allow_none=True,
     )
-
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
     input_parameters = tl.Dict()
-
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
 
@@ -80,7 +77,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.qe_auto_setup = qe_auto_setup
-        self._submission_blocker_messages = ipw.HTML()
+
+        # TODO consider restructuring model's codes trait to remove this
+        self.code_entries = get_entry_items("aiidalab_qe.properties", "code")
 
         self._ALERT_MESSAGE = """
             <div class="alert alert-{alert_class} alert-dismissible">
@@ -110,53 +109,46 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.message_area = ipw.Output()
 
-        self.pw_code = PwCodeResourceSetupWidget(
+        self.code_children = []
+
+        # add default pw code
+        pw_code = PwCodeResourceSetupWidget(
             description="pw.x:",
             default_calc_job_plugin="quantumespresso.pw",
         )
-
-        self.pw_code.observe(
+        pw_code.observe(
             self._update_state,
             "value",
         )
+        self.code_children.append(pw_code)
+        self._model.add_code("pw", pw_code)
 
-        self.codes = {"pw": self.pw_code}
-        self.code_children = [
-            ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Codes</h4>
-                </div>
-            """),
-            ipw.HTML("""
-                <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-                    Select the code to use for running the calculations. The codes on
-                    the local machine (localhost) are installed by default, but you can
-                    configure new ones on potentially more powerful machines by clicking
-                    on "Setup new code".
-                </div>
-            """),
-            self.pw_code,
-        ]
-
-        # add plugin's entry points
-        self.code_entries = get_entry_items("aiidalab_qe.properties", "code")
+        # add plugin codes
         for _, entry_point in self.code_entries.items():
-            for identifier, code in entry_point().items():
-                self.codes[identifier] = code
+            for name, code in entry_point().items():
+                self._model.add_code(name, code)
                 code.observe(
                     self._update_state,
                     "value",
                 )
-                self.code_children.append(self.codes[identifier])
+                self.code_children.append(code)
 
         # set process label and description
         self.process_label = ipw.Text(
             description="Label:",
             layout=ipw.Layout(width="auto", indent="0px"),
         )
+        ipw.link(
+            (self._model, "process_label"),
+            (self.process_label, "value"),
+        )
         self.process_description = ipw.Textarea(
             description="Description",
             layout=ipw.Layout(width="auto", indent="0px"),
+        )
+        ipw.link(
+            (self._model, "process_description"),
+            (self.process_description, "value"),
         )
 
         self.submit_button = ipw.Button(
@@ -178,6 +170,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.sssp_installation_status = PseudosInstallWidget(
             auto_start=self.qe_auto_setup
         )
+        ipw.dlink(
+            (self.sssp_installation_status, "busy"),
+            (self._model, "installing_sssp"),
+        )
+        ipw.dlink(
+            (self.sssp_installation_status, "installed"),
+            (self._model, "sssp_installed"),
+        )
+        # TODO why trigger these observers?
         self.sssp_installation_status.observe(
             self._update_state,
             ["busy", "installed"],
@@ -188,6 +189,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.qe_setup_status = QESetupWidget(auto_start=self.qe_auto_setup)
+        ipw.dlink(
+            (self.qe_setup_status, "busy"),
+            (self._model, "setting_up_qe"),
+        )
         self.qe_setup_status.observe(
             self._update_state,
             "busy",
@@ -201,14 +206,31 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "installed",
         )
 
-        self.ui_parameters = {}
+        self.submission_blocker_messages = ipw.HTML()
+        ipw.dlink(
+            (self._model, "submission_blocker_messages"),
+            (self.submission_blocker_messages, "value"),
+        )
 
         self.children = [
+            ipw.HTML("""
+                <div style="padding-top: 0px; padding-bottom: 0px">
+                    <h4>Codes</h4>
+                </div>
+            """),
+            ipw.HTML("""
+                <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+                    Select the code to use for running the calculations. The codes on
+                    the local machine (localhost) are installed by default, but you can
+                    configure new ones on potentially more powerful machines by clicking
+                    on "Setup new code".
+                </div>
+            """),
             *self.code_children,
             self.message_area,
             self.sssp_installation_status,
             self.qe_setup_status,
-            self._submission_blocker_messages,
+            self.submission_blocker_messages,
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
                     <h4>Labeling Your Job</h4>
@@ -226,18 +248,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ]
 
         # set default codes
-        self._set_selected_codes(DEFAULT["codes"])
+        self._model.set_selected_codes(DEFAULT["codes"])
 
-        self.observe(self._on_input_structure_change, "input_parameters")
+        # TODO old observation - check if and why it was required
+        # self._model.observe(self._on_input_structure_change, "input_parameters")
 
         with self.hold_trait_notifications():
             ipw.dlink(
                 (self._model, "input_structure"),
                 (self, "input_structure"),
-            )
-            ipw.dlink(
-                (self._model, "input_parameters"),
-                (self, "input_parameters"),
             )
             ipw.dlink(
                 (self, "process"),
@@ -246,58 +265,40 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = True
 
+    # TODO seems to only be setting codes? rename for clarity? same with setter
     def get_submission_parameters(self):
-        """Get the parameters for the submission step."""
         return {
-            "codes": self._get_selected_codes(),
+            "codes": self._model.get_selected_codes(),
         }
 
     def set_submission_parameters(self, parameters):
-        # backward compatibility for v2023.11
-        # which have a separate "resources" section for pw code
-        if "resources" in parameters:
-            parameters["codes"] = {
-                key: {"code": value} for key, value in parameters["codes"].items()
-            }
-            parameters["codes"]["pw"]["nodes"] = parameters["resources"]["num_machines"]
-            parameters["codes"]["pw"]["cpus"] = parameters["resources"][
-                "num_mpiprocs_per_machine"
-            ]
-            parameters["codes"]["pw"]["parallelization"] = {
-                "npool": parameters["resources"]["npools"]
-            }
-        self._set_selected_codes(parameters["codes"])
-        # label and description are not stored in the parameters, but in the process directly
-        if self.process:
-            self.process_label.value = self.process.label
-            self.process_description.value = self.process.description
+        self._model.set_model_state(parameters)
 
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
 
-        builder = self._create_builder()
+        parameters = deepcopy(self._model.input_parameters)
+        builder = self._create_builder(parameters)
 
         with self.hold_trait_notifications():
             process = aiida_submit(builder)
 
-            process.label = self.process_label.value
-            process.description = self.process_description.value
+            process.label = self._model.process_label
+            process.description = self._model.process_description
             # since AiiDA data node may exist in the ui_parameters,
             # we serialize it to yaml
-            process.base.extras.set("ui_parameters", serialize(self.ui_parameters))
+            process.base.extras.set("ui_parameters", serialize(parameters))
             # store the workchain name in extras, this will help to filter the workchain in the future
-            process.base.extras.set("workchain", self.ui_parameters["workchain"])
+            process.base.extras.set("workchain", parameters["workchain"])
             process.base.extras.set("structure", self.input_structure.get_formula())
-            self.process = process
+            self._model.process = process
 
         self._update_state()
 
     def reset(self):
-        """Reset the widget to its initial state."""
         with self.hold_trait_notifications():
-            self.process = None
-            self.input_structure = None
-            self._set_selected_codes(DEFAULT["codes"])
+            self._model.reset()
+            self._model.set_selected_codes(DEFAULT["codes"])
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, _):
@@ -311,7 +312,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process_node = change["new"]
             # TODO why here? Do we not populate traits earlier that would cover this?
             if process_node is not None:
-                self.input_structure = process_node.inputs.structure
+                self._model.input_structure = process_node.inputs.structure
             self._update_state()
 
     @tl.observe("internal_submission_blockers", "external_submission_blockers")
@@ -322,7 +323,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         blockers = self.internal_submission_blockers + self.external_submission_blockers
         if any(blockers):
             fmt_list = "\n".join(f"<li>{item}</li>" for item in sorted(blockers))
-            self._submission_blocker_messages.value = f"""
+            self._model.submission_blocker_messages = f"""
                 <div class="alert alert-info">
                     <b>The submission is blocked, due to the following reason(s):</b>
                     <ul>
@@ -331,7 +332,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 </div>
             """
         else:
-            self._submission_blocker_messages.value = ""
+            self._model.submission_blocker_messages = ""
 
     def _update_state(self, _=None):
         # If the previous step has failed, this should fail as well.
@@ -344,7 +345,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return
 
         # Process is already running.
-        if self.process is not None:
+        if self._model.process is not None:
             self.state = self.State.SUCCESS
             return
 
@@ -361,24 +362,27 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Validate the resource inputs and identify blockers for the submission."""
 
         # Do not submit while any of the background setup processes are running.
-        if self.qe_setup_status.busy or self.sssp_installation_status.busy:
+        if self._model.setting_up_qe or self._model.installing_sssp:
             yield "Background setup processes must finish."
 
         # No pw code selected (this is ignored while the setup process is running).
-        if self.pw_code.value is None and not self.qe_setup_status.busy:
+        pw_code = self._model.get_code("pw")
+        if pw_code and pw_code.value is None and not self._model.setting_up_qe:
             yield ("No pw code selected")
         # code related to the selected property is not installed
-        properties = self.input_parameters.get("workchain", {}).get("properties", [])
-        for identifer in properties:
-            for name, code in self.code_entries.get(identifer, {}).items():
+        properties = self._model.input_parameters.get("workchain", {}).get(
+            "properties", []
+        )
+        for identifier in properties:
+            for name, code in self.code_entries.get(identifier, {}).items():
                 if code.value is None:
-                    yield f"Calculating the {identifer} property requires code {name} to be set."
+                    yield f"Calculating the {identifier} property requires code {name} to be set."
         # SSSP library not installed
-        if not self.sssp_installation_status.installed:
+        if not self._model.sssp_installed:
             yield "The SSSP library is not installed."
 
         # check if the QEAppComputationalResourcesWidget is used
-        for name, code in self.codes.items():
+        for name, code in self._model.codes.items():
             # skip if the code is not displayed, convenient for the plugin developer
             if code.layout.display == "none":
                 continue
@@ -386,46 +390,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 yield (
                     f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {name}."
                 )
-
-    def _get_selected_codes(self):
-        """Get the codes selected in the GUI.
-
-        return: A dict with the code names as keys and the code UUIDs as values.
-        """
-        codes = {
-            key: code.parameters
-            for key, code in self.codes.items()
-            if code.layout.display != "none"
-        }
-        return codes
-
-    def _set_selected_codes(self, code_data):
-        """Set the inputs in the GUI based on a set of codes."""
-
-        # Codes
-        def _get_code_uuid(code):
-            if code is not None:
-                try:
-                    return orm.load_code(code).uuid
-                except NotExistent:
-                    return None
-
-        with self.hold_trait_notifications():
-            for name, code in self.codes.items():
-                if name not in code_data:
-                    continue
-                # check if the code is installed and usable
-                # note: if code is imported from another user, it is not usable and thus will not be
-                # treated as an option in the ComputationalResourcesWidget.
-                code_options = [
-                    o[1] for o in code.code_selection.code_select_dropdown.options
-                ]
-                if _get_code_uuid(code_data.get(name)["code"]) in code_options:
-                    # get code uuid from code label in case of using DEFAULT_PARAMETERS
-                    code_data.get(name)["code"] = _get_code_uuid(
-                        code_data.get(name)["code"]
-                    )
-                    code.parameters = code_data.get(name)
 
     def _toggle_install_widgets(self, change):
         if change["new"]:
@@ -448,37 +412,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
             )
 
-    def _check_resources(self):
-        """Check whether the currently selected resources will be sufficient and warn if not."""
-        if not self.pw_code.value:
-            return  # No code selected, nothing to do.
-
-        num_cpus = self.resources_config.num_cpus.value
-        on_localhost = (
-            orm.load_node(self.pw_code.value).computer.hostname == "localhost"
-        )
-        if self.pw_code.value and on_localhost and num_cpus > 1:
-            self._show_alert_message(
-                "The selected code would be executed on the local host, but "
-                "the number of CPUs is larger than one. Please review "
-                "the configuration and consider to select a code that runs "
-                "on a larger system if necessary.",
-                alert_class="warning",
-            )
-        elif (
-            self.input_structure
-            and on_localhost
-            and len(self.input_structure.sites)
-            > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
-        ):
-            self._show_alert_message(
-                "The selected code would be executed on the local host, but the "
-                "number of sites of the selected structure is relatively large. "
-                "Consider to select a code that runs on a larger system if "
-                "necessary.",
-                alert_class="warning",
-            )
-
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
         self.submit()
@@ -486,22 +419,27 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_codes_display(self):
         """Hide code if no related property is selected."""
         # hide all codes except pw
-        for name, code in self.codes.items():
+        for name, code in self._model.codes.items():
             if name == "pw":
                 continue
             code.layout.display = "none"
-        properties = self.input_parameters.get("workchain", {}).get("properties", [])
+        properties = self._model.input_parameters.get("workchain", {}).get(
+            "properties", []
+        )
         # show the code if the related property is selected.
         for identifier in properties:
             for code in self.code_entries.get(identifier, {}).values():
                 code.layout.display = "block"
 
-    def _update_process_label(self) -> dict:
+    def _update_process_label(self):
         """Generate a label for the work chain based on the input parameters."""
-        if not self.input_structure:
-            return ""
-        formula = self.input_structure.get_formula()
-        workchain_data = self.input_parameters.get("workchain", {"properties": []})
+        if not self._model.input_structure:
+            return
+        formula = self._model.input_structure.get_formula()
+        workchain_data = self._model.input_parameters.get(
+            "workchain",
+            {"properties": []},
+        )
         properties = [p for p in workchain_data["properties"] if p != "relax"]
         relax_type = workchain_data.get("relax_type", "none")
         if relax_type != "none":
@@ -514,27 +452,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             properties_info = f", properties on {', '.join(properties)}"
 
         label = f"{formula} {relax_info} {properties_info}"
-        self.process_label.value = label
+        self._model.process_label = label
 
-    def _create_builder(self) -> ProcessBuilderNamespace:
+    def _create_builder(self, parameters) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
 
-        self.ui_parameters = deepcopy(self.input_parameters)
-        # add codes and resource info into ui_parameters
         submission_parameters = self.get_submission_parameters()
-        self.ui_parameters.update(submission_parameters)
+        parameters.update(submission_parameters)
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            parameters=deepcopy(self.ui_parameters),
+            parameters=deepcopy(parameters),  # TODO why deepcopy again?
         )
 
-        self._update_builder(builder, submission_parameters["codes"])
+        codes = submission_parameters["codes"]
 
-        return builder
-
-    def _update_builder(self, builder, codes):
-        """Update the resources and parallelization of the ``relax`` builder."""
-        # update resources
         builder.relax.base.pw.metadata.options.resources = {
             "num_machines": codes.get("pw")["nodes"],
             "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
@@ -546,3 +477,5 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         builder.relax.base.pw.parallelization = orm.Dict(
             dict=codes["pw"]["parallelization"]
         )
+
+        return builder

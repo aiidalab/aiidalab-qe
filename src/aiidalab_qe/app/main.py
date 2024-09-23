@@ -5,6 +5,8 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
+from aiida.orm import load_node
+from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
@@ -14,7 +16,7 @@ from aiidalab_qe.app.structure.model import StructureModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.app.submission.model import SubmissionModel
 from aiidalab_qe.common import QeAppWorkChainSelector
-from aiidalab_widgets_base import WizardAppWidget
+from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
 
 class App(ipw.VBox):
@@ -119,7 +121,6 @@ class App(ipw.VBox):
 
     def _observe_selected_index(self, change):
         """Check unsaved change in the step when leaving the step."""
-        from aiidalab_widgets_base import WizardAppWidgetStep
 
         # no accordion tab is selected
         if change["new"] is None:
@@ -145,9 +146,6 @@ class App(ipw.VBox):
         self.submit_step.external_submission_blockers = blockers
 
     def _observe_process_selection(self, change):
-        from aiida.orm import load_node
-        from aiida.orm.utils.serialize import deserialize_unsafe
-
         if change["old"] == change["new"]:
             return
         pk = change["new"]

@@ -265,8 +265,8 @@ class PseudoSettings(ipw.VBox):
     @tl.observe("pseudo_family")
     def _on_pseudo_family_change(self, _=None):
         self._update_family_link()
-        self._model.advanced.pseudos.update_pseudos()
-        self._model.advanced.pseudos.update_cutoffs()
+        self._model.advanced.pseudos.update_default_pseudos()
+        self._model.advanced.pseudos.update_default_cutoffs()
 
     @tl.observe("override")
     def _on_override_change(self, change):
