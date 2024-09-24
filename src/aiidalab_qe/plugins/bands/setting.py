@@ -52,34 +52,15 @@ class Setting(Panel):
         ]
         super().__init__(**kwargs)
 
-    @tl.observe("input_structure")
-    def _update_structure(self, _=None):
-        if self.input_structure.pbc == (True, True, False):
-            self.properties_help.value = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-            Please select one of the five 2D Bravais lattices corresponding to your system.
-            </div>"""
-            self.kpath_2d.visibility = "visible"
-        elif self.input_structure.pbc == (True, False, False):
-            self.properties_help.value = """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-            The band structure path for systems with periodicity x is from Gamma to X.
-            </div>"""
-            self.kpath_2d.visibility = "hidden"
-        else:
-            self.kpath_2d.visibility = "hidden"
-
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
         return {
-            "kpath_2d": self.kpath_2d.value,
             "projwfc_bands": self.projwfc_bands.value,
         }
 
     def set_panel_value(self, input_dict):
-        """Load a dictionary with the input parameters for the plugin."""
-        self.kpath_2d.value = input_dict.get("kpath_2d", "hexagonal")
         self.projwfc_bands.value = input_dict.get("projwfc_bands", False)
 
     def reset(self):
         """Reset the panel to its default values."""
-        self.kpath_2d.value = "hexagonal"
         self.projwfc_bands.value = False

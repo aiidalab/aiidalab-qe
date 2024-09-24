@@ -316,21 +316,22 @@ class BandsWorkChain(WorkChain):
                 "num_mpiprocs_per_machine": 1,
             }
 
-            if structure.pbc != (True, True, True):
-                kpoints_distance = overrides["scf"]["kpoints_distance"]
-            if structure.pbc == (True, False, False):
-                kpoints = generate_kpath_1d(structure, kpoints_distance)
-            elif structure.pbc == (True, True, False):
-                kpoints = generate_kpath_2d(
-                    structure, kpoints_distance, determine_symmetry_path(structure)
-                )
-                builder_bands.pop("bands_kpoints_distance")
-                builder_bands.update({"bands_kpoints": kpoints})
-
             builder.pop("bands_projwfc")
             builder_bands.pop("relax", None)
             builder_bands.pop("structure", None)
             builder.bands = builder_bands
+
+            if structure.pbc != (True, True, True):
+                kpoints_distance = overrides["scf"]["kpoints_distance"]
+                if structure.pbc == (True, False, False):
+                    kpoints = generate_kpath_1d(structure, kpoints_distance)
+                elif structure.pbc == (True, True, False):
+                    kpoints = generate_kpath_2d(
+                        structure, kpoints_distance, determine_symmetry_path(structure)
+                    )
+
+            builder.bands.pop("bands_kpoints_distance")
+            builder.bands.update({"bands_kpoints": kpoints})
             builder.structure = structure
 
         elif simulation_mode == "fat_bands":
@@ -343,21 +344,22 @@ class BandsWorkChain(WorkChain):
                 *args, protocol=protocol, overrides=overrides, **kwargs
             )
 
-            if structure.pbc != (True, True, True):
-                kpoints_distance = overrides["scf"]["kpoints_distance"]
-            if structure.pbc == (True, False, False):
-                kpoints = generate_kpath_1d(structure, kpoints_distance)
-            elif structure.pbc == (True, True, False):
-                kpoints = generate_kpath_2d(
-                    structure, kpoints_distance, determine_symmetry_path(structure)
-                )
-                builder_bands_projwfc.bands.pop("bands_kpoints_distance")
-                builder_bands_projwfc.bands.update({"bands_kpoints": kpoints})
-
             builder.pop("bands")
             builder_bands_projwfc.pop("relax", None)
             builder_bands_projwfc.pop("structure", None)
             builder.bands_projwfc = builder_bands_projwfc
+
+            if structure.pbc != (True, True, True):
+                kpoints_distance = overrides["scf"]["kpoints_distance"]
+                if structure.pbc == (True, False, False):
+                    kpoints = generate_kpath_1d(structure, kpoints_distance)
+                elif structure.pbc == (True, True, False):
+                    kpoints = generate_kpath_2d(
+                        structure, kpoints_distance, determine_symmetry_path(structure)
+                    )
+            builder.bands_projwfc.pop("bands_kpoints_distance")
+            builder.bands_projwfc.update({"bands_kpoints": kpoints})
+
             builder.structure = structure
 
         return builder

@@ -20,7 +20,10 @@ class Result(ResultPanel):
             pdos_node = None
 
         try:
-            bands_node = self.node.outputs.bands
+            if "bands" in self.node.outputs.bands:
+                bands_node = self.node.outputs.bands.bands
+            elif "bands_projwfc" in self.node.outputs.bands:
+                bands_node = self.node.outputs.bands.bands_projwfc
         except AttributeError:
             bands_node = None
         _bands_dos_widget = BandPdosWidget(bands=bands_node, pdos=pdos_node)

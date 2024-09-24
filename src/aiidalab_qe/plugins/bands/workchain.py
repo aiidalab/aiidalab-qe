@@ -286,19 +286,6 @@ def update_inputs(inputs, ctx):
     #         "nbnd", ctx.bands.bands.current_number_of_bands
     #     )
 
-    # labels_namespace = ["bands", "bands_projwfc"]
-
-    # for label in labels_namespace:
-    #     if label in ctx.bands:
-    #         # Update parameters
-    #         inputs[label].scf.pw.parameters = ctx[label].scf.pw.parameters.get_dict()
-
-    #         # Set the number of bands if available
-    #         if ctx[label].current_number_of_bands:
-    #             inputs[label].scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-    #                 "nbnd", ctx[label].current_number_of_bands
-    #             )
-
 
 workchain_and_builder = {
     "workchain": BandsWorkChain,
