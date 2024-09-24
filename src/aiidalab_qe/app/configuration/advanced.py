@@ -300,12 +300,7 @@ class AdvancedSettings(Panel):
         self.rendered = True
 
     def reset(self):
-        with self.hold_trait_notifications():
-            self._model.advanced.reset()
-            self.smearing.reset()
-            self.hubbard.reset()
-            self.magnetization.reset()
-            self.pseudos.reset()
+        self._model.advanced.reset()
 
     def _on_kpoints_distance_change(self, _=None):
         self._model.advanced.update_kpoints_mesh()

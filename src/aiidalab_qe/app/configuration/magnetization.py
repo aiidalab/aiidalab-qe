@@ -117,7 +117,7 @@ class MagnetizationSettings(ipw.VBox):
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
-        self._model.advanced.magnetization.set_defaults_from_structure()
+        self._model.advanced.magnetization.update()
         self._build_kinds_widget(change)
 
     @tl.observe("electronic_type")

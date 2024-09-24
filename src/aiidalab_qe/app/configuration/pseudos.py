@@ -29,7 +29,7 @@ class PseudoSettings(ipw.VBox):
         allow_none=True,
     )
     spin_orbit = tl.Unicode()
-    pseudo_family = tl.Unicode()
+    family = tl.Unicode()
     override = tl.Bool()
 
     def __init__(self, model: ConfigurationModel, **kwargs):
@@ -39,6 +39,11 @@ class PseudoSettings(ipw.VBox):
         )
 
         self._model = model
+
+        self._model.advanced.pseudos.observe(
+            self._on_family_parameters_change,
+            ["library", "functional"],
+        )
 
         self.setter_widget_links = []
 
@@ -101,7 +106,6 @@ class PseudoSettings(ipw.VBox):
             (self.functional, "disabled"),
             lambda override: not override,
         )
-        self.functional.observe(self._on_family_parameters_change, "value")
 
         self.library = ipw.ToggleButtons(
             options=[
@@ -121,7 +125,6 @@ class PseudoSettings(ipw.VBox):
             (self.library, "disabled"),
             lambda override: not override,
         )
-        self.library.observe(self._on_family_parameters_change, "value")
 
         self.setter_widget_helper = ipw.HTML("""
             <div class="pseudo-text">
@@ -240,7 +243,7 @@ class PseudoSettings(ipw.VBox):
             )
             ipw.dlink(
                 (self._model.advanced.pseudos, "family"),
-                (self, "pseudo_family"),
+                (self, "family"),
             )
             ipw.dlink(
                 (self._model.advanced, "override"),
@@ -255,15 +258,15 @@ class PseudoSettings(ipw.VBox):
     @tl.observe("input_structure")
     def _on_input_structure_change(self, _=None):
         self._unsubscribe_setter_widget()
-        self._model.advanced.pseudos.set_defaults_from_structure()
+        self._model.advanced.pseudos.update()
         self._build_setter_widgets()
 
     @tl.observe("spin_orbit")
     def _on_spin_orbit_change(self, _):
         self._update_library_options()
 
-    @tl.observe("pseudo_family")
-    def _on_pseudo_family_change(self, _=None):
+    @tl.observe("family")
+    def _on_family_change(self, _=None):
         self._update_family_link()
         self._model.advanced.pseudos.update_default_pseudos()
         self._model.advanced.pseudos.update_default_cutoffs()

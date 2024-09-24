@@ -73,17 +73,11 @@ class SmearingModel(tl.HasTraits):
 
     _defaults = {}
 
-    def set_defaults_from_protocol(self):
-        parameters = (
-            PwBaseWorkChain.get_protocol_inputs(self.protocol)
-            .get("pw", {})
-            .get("parameters", {})
-            .get("SYSTEM", {})
-        )
-        self._defaults = {
-            "type": parameters["smearing"],
-            "degauss": parameters["degauss"],
-        }
+    def update(self):
+        with self.hold_trait_notifications():
+            self._update_defaults()
+            self.type = self._get_default_type()
+            self.degauss = self._get_default_degauss()
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -97,6 +91,18 @@ class SmearingModel(tl.HasTraits):
     @tl.default("degauss")
     def _get_default_degauss(self):
         return self._defaults["degauss"]
+
+    def _update_defaults(self):
+        parameters = (
+            PwBaseWorkChain.get_protocol_inputs(self.protocol)
+            .get("pw", {})
+            .get("parameters", {})
+            .get("SYSTEM", {})
+        )
+        self._defaults = {
+            "type": parameters["smearing"],
+            "degauss": parameters["degauss"],
+        }
 
 
 class MagnetizationModel(tl.HasTraits):
@@ -120,26 +126,26 @@ class MagnetizationModel(tl.HasTraits):
 
     _default_moments = {}
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.set_defaults_from_structure()
+    def update(self):
+        with self.hold_trait_notifications():
+            self._update_defaults()
+            self.moments = self._get_default_moments()
 
-    def set_defaults_from_structure(self):
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.type = self.traits()["type"].default_value
+            self.total = self.traits()["total"].default_value
+            self.moments = self._get_default_moments()
+
+    def _update_defaults(self):
         if self.input_structure is None:
             self._default_moments = {}
         else:
             self._default_moments = {
                 kind.symbol: 0.0 for kind in self.input_structure.kinds
             }
-        self.moments = self._get_moments()
 
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.type = self.traits()["type"].default_value
-            self.total = self.traits()["total"].default_value
-            self.moments = self._get_moments()
-
-    def _get_moments(self):
+    def _get_default_moments(self):
         return deepcopy(self._default_moments)
 
 
@@ -168,11 +174,32 @@ class HubbardModel(tl.HasTraits):
     _default_parameters = {}
     _default_eigenvalues = []
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.set_defaults_from_structure()
+    def update(self):
+        with self.hold_trait_notifications():
+            self._update_defaults()
+            self.parameters = self._get_default_parameters()
+            self.eigenvalues = self._get_default_eigenvalues()
+            self.needs_eigenvalues_widget = len(self.elements) > 0
 
-    def set_defaults_from_structure(self):
+    def set_parameters_from_hubbard_structure(self):
+        hubbard_parameters = self.input_structure.hubbard.dict()["parameters"]
+        sites = self.input_structure.sites
+        parameters = {
+            f"{sites[hp['atom_index']].kind_name} - {hp['atom_manifold']}": hp["value"]
+            for hp in hubbard_parameters
+        }
+        with self.hold_trait_notifications():
+            self.parameters = parameters
+            self.activate = True
+
+    def reset(self):
+        with self.hold_trait_notifications():
+            self.activate = self.traits()["activate"].default_value
+            self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
+            self.parameters = {}  # TODO default parameters
+            self.eigenvalues = self._get_default_eigenvalues()
+
+    def _update_defaults(self):
         if self.input_structure is None:
             self.elements = []  # TODO: rename for clarity
             self.input_labels = []  # TODO: rename for clarity
@@ -201,27 +228,6 @@ class HubbardModel(tl.HasTraits):
                 ]
                 for element in self.elements  # transition metals and lanthanoids
             ]
-        self.parameters = self._get_default_parameters()
-        self.eigenvalues = self._get_default_eigenvalues()
-        self.needs_eigenvalues_widget = len(self.elements) > 0
-
-    def set_parameters_from_hubbard_structure(self):
-        hubbard_parameters = self.input_structure.hubbard.dict()["parameters"]
-        sites = self.input_structure.sites
-        parameters = {
-            f"{sites[hp['atom_index']].kind_name} - {hp['atom_manifold']}": hp["value"]
-            for hp in hubbard_parameters
-        }
-        with self.hold_trait_notifications():
-            self.parameters = parameters
-            self.activate = True
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.activate = self.traits()["activate"].default_value
-            self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
-            self.parameters = {}  # TODO default parameters
-            self.eigenvalues = self._get_default_eigenvalues()
 
     def _get_default_parameters(self):
         return deepcopy(self._default_parameters)
@@ -352,54 +358,10 @@ class PseudosModel(tl.HasTraits):
             lambda cutoffs: max(cutoffs[1]),
         )
 
-        self.set_defaults_from_structure()
-
-    def set_defaults_from_structure(self):
-        if self.input_structure is None:
-            self._default_dictionary = {}
-            self._default_cutoffs = [[0.0], [0.0]]
-        else:
-            self.update_default_pseudos()
-            self.update_default_cutoffs()
-
-    def update_family(self):
-        library, accuracy = self.library.split()
-        functional = self.functional
-        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
-        if library == "PseudoDojo":
-            if self.spin_orbit == "soc":
-                pseudo_family_string = (
-                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/FR/{accuracy}/upf"
-                )
-            else:
-                pseudo_family_string = (
-                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
-                )
-        elif library == "SSSP":
-            pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
-        else:
-            raise ValueError(
-                f"Unknown pseudo family parameters: {library} | {accuracy}"
-            )
-
-        self.family = pseudo_family_string
-
-    def update_family_parameters(self):
-        if self.spin_orbit == "soc":
-            if self.protocol in ["fast", "moderate"]:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
-            else:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
-        else:
-            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(self.protocol)[
-                "pseudo_family"
-            ]
-
-        pseudo_family = PseudoFamily.from_string(pseudo_family_string)
-
+    def update(self):
         with self.hold_trait_notifications():
-            self.library = f"{pseudo_family.library} {pseudo_family.accuracy}"
-            self.functional = pseudo_family.functional
+            self._update_defaults()
+            self._update_family_parameters()
 
     def update_default_pseudos(self):
         try:
@@ -458,6 +420,28 @@ class PseudosModel(tl.HasTraits):
         self._default_cutoffs = [ecutwfc_list or [0.0], ecutrho_list or [0.0]]
         self.cutoffs = self._get_default_cutoffs()
 
+    def update_family(self):
+        library, accuracy = self.library.split()
+        functional = self.functional
+        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
+        if library == "PseudoDojo":
+            if self.spin_orbit == "soc":
+                pseudo_family_string = (
+                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/FR/{accuracy}/upf"
+                )
+            else:
+                pseudo_family_string = (
+                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
+                )
+        elif library == "SSSP":
+            pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
+        else:
+            raise ValueError(
+                f"Unknown pseudo family parameters: {library} | {accuracy}"
+            )
+
+        self.family = pseudo_family_string
+
     def reset(self):
         with self.hold_trait_notifications():
             self.dictionary = self._get_default_dictionary()
@@ -466,6 +450,31 @@ class PseudosModel(tl.HasTraits):
             self.library = self.traits()["library"].default_value
             self.functional = self.traits()["functional"].default_value
             self.status_message = ""
+
+    def _update_defaults(self):
+        if self.input_structure is None:
+            self._default_dictionary = {}
+            self._default_cutoffs = [[0.0], [0.0]]
+        else:
+            self.update_default_pseudos()
+            self.update_default_cutoffs()
+
+    def _update_family_parameters(self):
+        if self.spin_orbit == "soc":
+            if self.protocol in ["fast", "moderate"]:
+                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
+            else:
+                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
+        else:
+            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(self.protocol)[
+                "pseudo_family"
+            ]
+
+        pseudo_family = PseudoFamily.from_string(pseudo_family_string)
+
+        with self.hold_trait_notifications():
+            self.library = f"{pseudo_family.library} {pseudo_family.accuracy}"
+            self.functional = pseudo_family.functional
 
     def _get_pseudo_family(self):
         """Get the pseudo family from the database."""
@@ -559,7 +568,7 @@ class AdvancedModel(PanelModel):
         )
         ipw.dlink(
             (self, "protocol"),
-            (self.smearing, "protocol"),
+            (self.pseudos, "protocol"),
         )
         ipw.dlink(
             (self, "spin_orbit"),
@@ -590,9 +599,12 @@ class AdvancedModel(PanelModel):
         forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
         self._set_value_and_step("forc_conv_thr", forc_value)
 
-        self.smearing.set_defaults_from_protocol()
-        self.pseudos.update_family_parameters()
         self.update_kpoints_mesh()
+
+        self.smearing.update()
+        self.magnetization.update()
+        self.hubbard.update()
+        self.pseudos.update()
 
     def update_kpoints_mesh(self, _=None):
         if self.input_structure is None:
@@ -774,6 +786,12 @@ class AdvancedModel(PanelModel):
             self.scf_conv_thr = self.traits()["scf_conv_thr"].default_value
             self.scf_conv_thr_step = self.traits()["scf_conv_thr_step"].default_value
             self.kpoints_distance = self.traits()["kpoints_distance"].default_value
+
+        with self.hold_trait_notifications():
+            self.smearing.reset()
+            self.hubbard.reset()
+            self.magnetization.reset()
+            self.pseudos.reset()
             self.update()
 
     def _set_value_and_step(self, attribute, value):
@@ -835,7 +853,7 @@ class ConfigurationModel(tl.HasTraits):
             "advanced": self.advanced,
         }
 
-        self._models = deepcopy(self._default_models)
+        self._models = self._default_models
 
     def add_model(self, identifier, model):
         self._models[identifier] = model

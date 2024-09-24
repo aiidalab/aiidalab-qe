@@ -42,7 +42,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._on_input_structure_change,
             "input_structure",
         )
-
         self._model.workchain.observe(
             self._on_protocol_change,
             "protocol",
@@ -117,6 +116,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Check if the current step is saved.
         That all changes are confirmed.
         """
+        # TODO reduce calls to model state
         new_parameters = self.get_configuration_parameters()
         return new_parameters == self._model.configuration_parameters
 

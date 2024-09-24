@@ -99,7 +99,7 @@ class HubbardSettings(ipw.VBox):
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
         self._unsubscribe()
-        self._model.advanced.hubbard.set_defaults_from_structure()
+        self._model.advanced.hubbard.update()
         self._build_hubbard_widget()
         if isinstance(change["new"], HubbardStructureData):
             self._model.advanced.hubbard.set_parameters_from_hubbard_structure()
