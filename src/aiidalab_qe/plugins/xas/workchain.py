@@ -23,6 +23,11 @@ def update_resources(builder, codes):
 def get_builder(codes, structure, parameters, **kwargs):
     from copy import deepcopy
 
+    adv_parameters = deepcopy(parameters["advanced"])
+    # Setting `tot_charge = 0` will cause FCH calculations to fail due to
+    # inputs being incorrect, thus we pop this from the overrides
+    if adv_parameters["pw"]["parameters"]["SYSTEM"].get("tot_charge") == 0:
+        adv_parameters["pw"]["parameters"]["SYSTEM"].pop("tot_charge")
     protocol = parameters["workchain"]["protocol"]
     xas_parameters = parameters["xas"]
     core_hole_treatments = xas_parameters["core_hole_treatments"]
@@ -61,7 +66,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     xs_code = codes["xspectra"]["code"]
     overrides = {
         "core": {
-            "scf": deepcopy(parameters["advanced"]),
+            "scf": adv_parameters,
             # PG: Here, we set a "variable" broadening scheme, which actually defines a constant broadening
             # The reason for this is that in "gamma_mode = constant", the Lorenzian broadening parameter
             # is defined by "xgamma" (in "PLOT"), but this parameter *also* controls the broadening value
