@@ -1,11 +1,11 @@
-import numpy as np
-from aiida.plugins import DataFactory, WorkflowFactory
-from aiida import orm
-from aiida.engine import WorkChain
 import math
 
-from aiida.common import AttributeDict
+import numpy as np
 
+from aiida import orm
+from aiida.common import AttributeDict
+from aiida.engine import WorkChain
+from aiida.plugins import DataFactory, WorkflowFactory
 
 GAMMA = "\u0393"
 

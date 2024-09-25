@@ -3,8 +3,9 @@
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiidalab_qe.common.panel import Panel
+
 from aiida import orm
+from aiidalab_qe.common.panel import Panel
 
 
 class Setting(Panel):
