@@ -213,11 +213,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _update_state(self, previous_step_state):
         if previous_step_state == self.State.SUCCESS:
             self.state = self.State.CONFIGURED
-            # TODO why?
-            # for settings in self.settings.values():
-            #     settings._update_state()
         elif previous_step_state == self.State.FAIL:
             self.state = self.State.FAIL
         else:
             self.state = self.State.INIT
-            # self.reset()  # TODO why?

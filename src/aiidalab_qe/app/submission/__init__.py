@@ -35,17 +35,6 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     """Step for submission of a bands workchain."""
 
-    # This number provides a rough estimate for how many MPI tasks are needed
-    # for a given structure.
-    NUM_SITES_PER_MPI_TASK_DEFAULT = 6
-
-    # Warn the user if they are trying to run calculations for a large
-    # structure on localhost.
-    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
-
-    # Put a limit on how many MPI tasks you want to run per k-pool by default
-    MAX_MPI_PER_POOL = 20
-
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
     input_structure = tl.Union(
