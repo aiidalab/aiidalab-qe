@@ -1,7 +1,9 @@
+from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
 
-from .bands_workchain import BandsWorkChain
+BandsWorkChain = WorkflowFactory("aiidalab_qe.bands_workchain")
+# from .bands_workchain import BandsWorkChain
 
 
 def check_codes(pw_code, projwfc_code):
@@ -23,7 +25,7 @@ def check_codes(pw_code, projwfc_code):
     ):
         raise ValueError(
             "All selected codes must be installed on the same computer. This is because the "
-            "PDOS calculations rely on large files that are not retrieved by AiiDA."
+            "BandsWorkChain calculations rely on large files that are not retrieved by AiiDA."
         )
 
 
