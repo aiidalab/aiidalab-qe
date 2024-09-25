@@ -420,7 +420,6 @@ class BandPdosWidget(ipw.VBox):
         Select the style of plotting the projected density of states.
         </div>"""
     )
-    projected_bands_width = 0.05
 
     def __init__(self, bands=None, pdos=None, **kwargs):
         if bands is None and pdos is None:
@@ -472,7 +471,7 @@ class BandPdosWidget(ipw.VBox):
             description="Add `fat bands` projections",
         )
 
-        self.project_bands_width = ipw.FloatSlider(
+        self.proj_bands_width_slider = ipw.FloatSlider(
             description="Width",
             min=0.01,
             max=1.0,
@@ -503,7 +502,7 @@ class BandPdosWidget(ipw.VBox):
         # If projections are available in the bands data, include the box to plot fat-bands
         if self.bands_data and "projected_bands" in self.bands_data:
             pdos_options_list.insert(4, self.project_bands_box)
-            pdos_options_list.insert(5, self.project_bands_width)
+            pdos_options_list.insert(5, self.proj_bands_width_slider)
 
         self.pdos_options = ipw.VBox(pdos_options_list)
 
@@ -593,7 +592,7 @@ class BandPdosWidget(ipw.VBox):
                 group_tag=self.dos_atoms_group.value,
                 plot_tag=self.dos_plot_group.value,
                 selected_atoms=expanded_selection,
-                bands_width=self.project_bands_width.value,
+                bands_width=self.proj_bands_width_slider.value,
             )
             return bands
         return None
