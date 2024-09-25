@@ -23,12 +23,10 @@ def check_codes(pw_code, projwfc_code):
             ]
         )
         and len(
-            set(
-                (
-                    pw_code.computer.pk,
-                    projwfc_code.computer.pk,
-                )
-            )
+            {
+                pw_code.computer.pk,
+                projwfc_code.computer.pk,
+            }
         )
         != 1
     ):
@@ -173,7 +171,7 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
 
     # Calculate the number of points per branch and generate the kpoints
     index_offset = 0  # Start index for each segment
-    for (start, end), label_start, _label_end in zip(branches, labels[:-1], labels[1:]):
+    for (start, end), label_start, _ in zip(branches, labels[:-1], labels[1:]):
         num_points_per_branch = points_per_branch(
             start, end, reciprocal_cell, bands_kpoints_distance
         )
