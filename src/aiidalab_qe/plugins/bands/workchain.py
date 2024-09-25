@@ -194,23 +194,6 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     return kpoints
 
 
-# def set_component_resources(component, code_info):
-#     """Set the resources for a given component based on the code info and return the updated metadata."""
-#     if code_info:
-#         # Directly modify the existing 'resources' in 'metadata'
-#         component["metadata"]["options"]["resources"] = {
-#             "num_machines": code_info["nodes"],
-#             "num_mpiprocs_per_machine": code_info["ntasks_per_node"],
-#             "num_cores_per_mpiproc": code_info["cpus_per_task"],
-#         }
-#         # Optionally set 'max_wallclock_seconds' if it exists
-#         if "max_wallclock_seconds" in code_info:
-#             component["metadata"]["options"]["max_wallclock_seconds"] = code_info["max_wallclock_seconds"]
-
-#     # Return the updated 'metadata' field from the component
-#     return component
-
-
 def update_resources(builder, codes):
     if "bands" in builder:
         set_component_resources(builder.bands.scf.pw, codes.get("pw"))
@@ -241,17 +224,10 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     check_codes(pw_code, codes.get("projwfc_bands")["code"])
 
-    # scf_overrides["pw"].update(set_component_resources(component, codes.get("pw")))
-    # relax_overrides["base"]["pw"].update(set_component_resources(component, codes.get("pw")))
-    # relax_overrides["base_final_scf"]["pw"].update(set_component_resources(component, codes.get("pw")))
-    # bands_overrides["pw"].update(set_component_resources(component, codes.get("pw")))
-    # projwfc_overrides = set_component_resources(component, codes.get("projwfc_bands"))
-
     overrides = {
         "scf": scf_overrides,
         "bands": bands_overrides,
         "relax": relax_overrides,
-        #    "projwfc": projwfc_overrides,
     }
 
     if parameters["bands"]["projwfc_bands"]:

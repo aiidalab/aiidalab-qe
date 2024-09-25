@@ -208,20 +208,9 @@ def determine_symmetry_path(structure):
     # Check for symmetry type based on conditions
     for condition, symmetry_type in symmetry_conditions.items():
         if condition:
-            if symmetry_type == "rectangular_centered" or "oblique":
-                cos_gamma = np.array(structure.cell[0]).dot(structure.cell[1]) / (
-                    cell_lengths[0] * cell_lengths[1]
-                )
-                gamma = np.arccos(cos_gamma)
-                eta = (1 - (cell_lengths[0] / cell_lengths[1]) * cos_gamma) / (
-                    2 * np.power(np.sin(gamma), 2)
-                )
-                nu = 0.5 - (eta * cell_lengths[1] * cos_gamma) / cell_lengths[0]
-                return generate_kpath_2d(symmetry_type, eta, nu)
+            return symmetry_type
 
-            return generate_kpath_2d(symmetry_type)
-        else:
-            raise ValueError("Invalid symmetry type")
+    raise ValueError("Invalid symmetry type")
 
 
 class BandsWorkChain(WorkChain):
@@ -283,7 +272,7 @@ class BandsWorkChain(WorkChain):
         cls,
         pw_code,
         structure,
-        simulation_mode,
+        simulation_mode="normal",
         protocol=None,
         projwfc_code=None,
         overrides=None,
@@ -307,32 +296,29 @@ class BandsWorkChain(WorkChain):
                 *args, overrides=overrides, **kwargs
             )
 
-            builder_bands.bands.pw.metadata.options["resources"] = {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
-            }
-            builder_bands.scf.pw.metadata.options["resources"] = {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
-            }
-
             builder.pop("bands_projwfc")
             builder_bands.pop("relax", None)
             builder_bands.pop("structure", None)
             builder.bands = builder_bands
 
             if structure.pbc != (True, True, True):
-                kpoints_distance = overrides["scf"]["kpoints_distance"]
+                kpoints_distance = overrides.get("scf", {}).get(
+                    "kpoints_distance", builder.bands.scf.kpoints_distance
+                )
                 if structure.pbc == (True, False, False):
                     kpoints = generate_kpath_1d(structure, kpoints_distance)
                 elif structure.pbc == (True, True, False):
                     kpoints = generate_kpath_2d(
-                        structure, kpoints_distance, determine_symmetry_path(structure)
+                        structure=structure,
+                        kpoints_distance=kpoints_distance,
+                        kpath_2d=determine_symmetry_path(structure),
                     )
 
-            builder.bands.pop("bands_kpoints_distance")
-            builder.bands.update({"bands_kpoints": kpoints})
+                builder.bands.pop("bands_kpoints_distance")
+                builder.bands.update({"bands_kpoints": kpoints})
             builder.structure = structure
+
+            return builder
 
         elif simulation_mode == "fat_bands":
             args = (
@@ -355,14 +341,16 @@ class BandsWorkChain(WorkChain):
                     kpoints = generate_kpath_1d(structure, kpoints_distance)
                 elif structure.pbc == (True, True, False):
                     kpoints = generate_kpath_2d(
-                        structure, kpoints_distance, determine_symmetry_path(structure)
+                        structure=structure,
+                        kpoints_distance=kpoints_distance,
+                        kpath_2d=determine_symmetry_path(structure),
                     )
-            builder.bands_projwfc.pop("bands_kpoints_distance")
-            builder.bands_projwfc.update({"bands_kpoints": kpoints})
+                builder.bands_projwfc.pop("bands_kpoints_distance")
+                builder.bands_projwfc.update({"bands_kpoints": kpoints})
 
             builder.structure = structure
 
-        return builder
+            return builder
 
     def setup(self):
         """Define the current workchain"""

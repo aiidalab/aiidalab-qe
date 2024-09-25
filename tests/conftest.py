@@ -90,6 +90,14 @@ def generate_structure_data():
 
             for site in sites:
                 structure.append_atom(position=site[2], symbols=site[0], name=site[1])
+
+        elif name == "MoS2":
+            cell = [[3.1922, 0, 0], [-1.5961, 2.7646, 0], [0, 0, 13.3783]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(-0.0, 1.84, 10.03), symbols="Mo")
+            structure.append_atom(position=(1.6, 0.92, 8.47), symbols="S")
+            structure.append_atom(position=(1.6, 0.92, 11.6), symbols="S")
+
         structure.pbc = pbc
 
         return structure
@@ -556,17 +564,16 @@ def generate_bands_workchain(
     """Generate an instance of a the WorkChain."""
 
     def _generate_bands_workchain(structure):
-        from copy import deepcopy
-
         from aiida import engine
         from aiida.orm import Dict
-        from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+        from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 
         pseudo_family = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
         inputs = {
-            "code": fixture_code("quantumespresso.pw"),
+            "pw_code": fixture_code("quantumespresso.pw"),
             "structure": structure,
+            "simulation_mode": "normal",
             "overrides": {
                 "scf": {
                     "pseudo_family": pseudo_family,
@@ -584,20 +591,34 @@ def generate_bands_workchain(
                 },
             },
         }
-        builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)
+        builder = BandsWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
-        inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
-        wkchain = generate_workchain(PwBandsWorkChain, inputs)
+        wkchain = generate_workchain(BandsWorkChain, inputs)
         wkchain.setup()
         # run bands and return the process
-        output_parameters = Dict(dict={"fermi_energy": 2.0})
-        output_parameters.store()
-        wkchain.out("scf_parameters", output_parameters)
-        wkchain.out("band_parameters", output_parameters)
+        fermi_dict = Dict(dict={"fermi_energy": 2.0})
+        fermi_dict.store()
+
+        output_parameters = Dict(
+            dict={
+                "bands": {
+                    "scf_parameters": fermi_dict,
+                    "band_parameters": fermi_dict,
+                }
+            }
+        )
+
+        wkchain.out(
+            "bands.scf_parameters", output_parameters["bands"]["scf_parameters"]
+        )
+        wkchain.out(
+            "bands.band_parameters", output_parameters["bands"]["band_parameters"]
+        )
+
         #
         band_structure = generate_bands_data()
         band_structure.store()
-        wkchain.out("band_structure", band_structure)
+        wkchain.out("bands.band_structure", band_structure)
         wkchain.update_outputs()
         #
         bands_node = wkchain.node
@@ -679,12 +700,34 @@ def generate_qeapp_workchain(
         builder = s3._create_builder()
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
+
+        inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
+            inputs["bands"]["bands"]["scf"]["pw"]
+        )
+        inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
+            inputs["bands"]["bands"]["bands"]["pw"]
+        )
+        inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
+            "bands"
+        ]["bands"]["pw"]["code"]
+        inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
+            "bands"
+        ]["scf"]["pw"]["code"]
+
+        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = inputs["pdos"][
+            "projwfc"
+        ]["code"]
+        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = deepcopy(
+            inputs["pdos"]["projwfc"]["parameters"]
+        )
+
+        wkchain = generate_workchain(QeAppWorkChain, inputs)
+        wkchain.setup()
+        print(inputs["properties"])
         if run_bands:
             inputs["properties"].append("bands")
         if run_pdos:
             inputs["properties"].append("pdos")
-        wkchain = generate_workchain(QeAppWorkChain, inputs)
-        wkchain.setup()
         # mock output
         if relax_type != "none":
             wkchain.out("structure", s1.confirmed_structure)
@@ -696,11 +739,11 @@ def generate_qeapp_workchain(
                 wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
             )
         if run_bands:
-            from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+            from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 
             bands = generate_bands_workchain(structure)
             wkchain.out_many(
-                wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
+                wkchain.exposed_outputs(bands.node, BandsWorkChain, namespace="bands")
             )
         wkchain.update_outputs()
         # set ui_parameters

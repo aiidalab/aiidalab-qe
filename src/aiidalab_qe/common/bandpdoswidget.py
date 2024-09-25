@@ -674,8 +674,8 @@ def _prepare_projections_to_plot(bands_data, projections, bands_width):
 
         for proj in projections[spin]:
             # Create the upper and lower boundary of the fat bands based on the orbital projections
-            y_bands_proj_upper = y_bands + bands_width * proj["projections"].T
-            y_bands_proj_lower = y_bands - bands_width * proj["projections"].T
+            y_bands_proj_upper = y_bands + bands_width / 2 * proj["projections"].T
+            y_bands_proj_lower = y_bands - bands_width / 2 * proj["projections"].T
             # As mentioned above, the bands need to be concatenated with their mirror image
             # to create the filled areas properly
             y_bands_mirror = np.hstack(

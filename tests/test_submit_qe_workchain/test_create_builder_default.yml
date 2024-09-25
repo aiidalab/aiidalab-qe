@@ -19,7 +19,6 @@ advanced:
         vdw_corr: none
     pseudos: {}
 bands:
-  kpath_2d: hexagonal
 codes:
   dos:
     cpus: 1

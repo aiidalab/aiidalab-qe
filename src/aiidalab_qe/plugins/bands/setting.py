@@ -32,23 +32,10 @@ class Setting(Panel):
             description="Flat bands calculation",
             value=False,
         )
-        self.kpath_2d = ipw.Dropdown(
-            description="Lattice:",
-            options=[
-                ("Hexagonal", "hexagonal"),
-                ("Square", "square"),
-                ("Rectangular", "rectangular"),
-                ("Centered Rectangular", "centered_rectangular"),
-                ("Oblique", "oblique"),
-            ],
-            value="hexagonal",
-        )
-        self.kpath_2d.layout.visibility = "hidden"
         self.children = [
             self.settings_title,
             self.properties_help,
             self.projwfc_bands,
-            self.kpath_2d,
         ]
         super().__init__(**kwargs)
 
