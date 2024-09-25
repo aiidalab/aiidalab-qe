@@ -323,30 +323,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             self._model.submission_blocker_messages = ""
 
-    def _update_state(self, _=None):
-        # If the previous step has failed, this should fail as well.
-        if self.previous_step_state is self.State.FAIL:
-            self.state = self.State.FAIL
-            return
-        # Do not interact with the user if they haven't successfully completed the previous step.
-        elif self.previous_step_state is not self.State.SUCCESS:
-            self.state = self.State.INIT
-            return
-
-        # Process is already running.
-        if self._model.process is not None:
-            self.state = self.State.SUCCESS
-            return
-
-        blockers = list(self._identify_submission_blockers())
-        if any(blockers):
-            self.internal_submission_blockers = blockers
-            self.state = self.State.READY
-            return
-
-        self.internal_submission_blockers = []
-        self.state = self.state.CONFIGURED
-
     def _identify_submission_blockers(self):
         """Validate the resource inputs and identify blockers for the submission."""
 
@@ -468,3 +444,27 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         return builder
+
+    def _update_state(self, _=None):
+        # If the previous step has failed, this should fail as well.
+        if self.previous_step_state is self.State.FAIL:
+            self.state = self.State.FAIL
+            return
+        # Do not interact with the user if they haven't successfully completed the previous step.
+        elif self.previous_step_state is not self.State.SUCCESS:
+            self.state = self.State.INIT
+            return
+
+        # Process is already running.
+        if self._model.process is not None:
+            self.state = self.State.SUCCESS
+            return
+
+        blockers = list(self._identify_submission_blockers())
+        if any(blockers):
+            self.internal_submission_blockers = blockers
+            self.state = self.State.READY
+            return
+
+        self.internal_submission_blockers = []
+        self.state = self.state.CONFIGURED

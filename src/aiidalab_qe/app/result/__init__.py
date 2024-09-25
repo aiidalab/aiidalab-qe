@@ -93,34 +93,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def reset(self):
         self.process = None
 
-    def _update_state(self):
-        """Based on the process state, update the state of the step."""
-        from aiida.engine import ProcessState
-
-        if self.process is None:
-            self.state = self.State.INIT
-        else:
-            process = orm.load_node(self.process)
-            process_state = process.process_state
-            if process_state in (
-                ProcessState.CREATED,
-                ProcessState.RUNNING,
-                ProcessState.WAITING,
-            ):
-                self.state = self.State.ACTIVE
-                self.process_info.value = PROCESS_RUNNING
-            elif (
-                process_state in (ProcessState.EXCEPTED, ProcessState.KILLED)
-                or process.is_failed
-            ):
-                self.state = self.State.FAIL
-                self.kill_button.layout.display = "none"
-                self.process_info.value = PROCESS_EXCEPTED
-            elif process.is_finished_ok:
-                self.state = self.State.SUCCESS
-                self.kill_button.layout.display = "none"
-                self.process_info.value = PROCESS_COMPLETED
-
     def _update_kill_button_layout(self):
         """Update the layout of the kill button."""
         # If no process is selected, hide the button.
@@ -159,3 +131,31 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         # as the self.state is updated in the _update_state method.
         self._update_state()
         self._update_kill_button_layout()
+
+    def _update_state(self):
+        """Based on the process state, update the state of the step."""
+        from aiida.engine import ProcessState
+
+        if self.process is None:
+            self.state = self.State.INIT
+        else:
+            process = orm.load_node(self.process)
+            process_state = process.process_state
+            if process_state in (
+                ProcessState.CREATED,
+                ProcessState.RUNNING,
+                ProcessState.WAITING,
+            ):
+                self.state = self.State.ACTIVE
+                self.process_info.value = PROCESS_RUNNING
+            elif (
+                process_state in (ProcessState.EXCEPTED, ProcessState.KILLED)
+                or process.is_failed
+            ):
+                self.state = self.State.FAIL
+                self.kill_button.layout.display = "none"
+                self.process_info.value = PROCESS_EXCEPTED
+            elif process.is_finished_ok:
+                self.state = self.State.SUCCESS
+                self.kill_button.layout.display = "none"
+                self.process_info.value = PROCESS_COMPLETED
