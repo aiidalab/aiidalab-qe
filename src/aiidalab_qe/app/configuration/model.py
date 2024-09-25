@@ -848,12 +848,12 @@ class ConfigurationModel(tl.HasTraits):
             (self.advanced, "electronic_type"),
         )
 
-        self._default_models = {
+        self._models = {
             "workchain": self.workchain,
             "advanced": self.advanced,
         }
 
-        self._models = self._default_models
+        self._default_models = [*self._models.keys()]
 
     def add_model(self, identifier, model):
         self._models[identifier] = model
@@ -894,7 +894,7 @@ class ConfigurationModel(tl.HasTraits):
         run_bands = False
         run_pdos = False
         for identifier, model in self._models.items():
-            # TODO handle differently?
+            # TODO consider handling this differently
             if identifier in self._default_models:
                 continue
             if model.include_plugin:
