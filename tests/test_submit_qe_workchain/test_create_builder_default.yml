@@ -20,6 +20,7 @@ advanced:
         vdw_corr: none
     pseudos: {}
 bands:
+  projwfc_bands: false
 codes:
   dos:
     cpus: 1

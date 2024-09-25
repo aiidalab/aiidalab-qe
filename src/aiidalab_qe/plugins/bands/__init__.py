@@ -16,15 +16,15 @@ SeeK-path tool</a>.
 """
 
 
-projwfc_bands = QEAppComputationalResourcesWidget(
-    description="projwfc.x for bands",
+projwfc_code = QEAppComputationalResourcesWidget(
+    description="projwfc.x",
     default_calc_job_plugin="quantumespresso.projwfc",
 )
 
 
 bands = {
     "outline": BandsOutline,
-    "code": {"projwfc_bands": projwfc_bands},
+    "code": {"projwfc": projwfc_code},
     "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,

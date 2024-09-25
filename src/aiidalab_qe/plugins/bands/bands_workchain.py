@@ -271,10 +271,10 @@ class BandsWorkChain(WorkChain):
     def get_builder_from_protocol(
         cls,
         pw_code,
+        projwfc_code,
         structure,
         simulation_mode="normal",
         protocol=None,
-        projwfc_code=None,
         overrides=None,
         **kwargs,
     ):
@@ -291,66 +291,56 @@ class BandsWorkChain(WorkChain):
         builder = cls.get_builder()
 
         if simulation_mode == "normal":
-            args = (pw_code, structure, protocol)
             builder_bands = PwBandsWorkChain.get_builder_from_protocol(
-                *args, overrides=overrides, **kwargs
+                pw_code, structure, protocol, overrides=overrides, **kwargs
             )
-
-            builder.pop("bands_projwfc")
+            builder.pop("bands_projwfc", None)
             builder_bands.pop("relax", None)
             builder_bands.pop("structure", None)
             builder.bands = builder_bands
 
-            if structure.pbc != (True, True, True):
-                kpoints_distance = overrides.get("scf", {}).get(
-                    "kpoints_distance", builder.bands.scf.kpoints_distance
-                )
-                if structure.pbc == (True, False, False):
-                    kpoints = generate_kpath_1d(structure, kpoints_distance)
-                elif structure.pbc == (True, True, False):
-                    kpoints = generate_kpath_2d(
-                        structure=structure,
-                        kpoints_distance=kpoints_distance,
-                        kpath_2d=determine_symmetry_path(structure),
-                    )
-
-                builder.bands.pop("bands_kpoints_distance")
-                builder.bands.update({"bands_kpoints": kpoints})
-            builder.structure = structure
-
-            return builder
-
         elif simulation_mode == "fat_bands":
-            args = (
+            builder_bands_projwfc = ProjwfcBandsWorkChain.get_builder_from_protocol(
                 pw_code,
                 projwfc_code,
                 structure,
+                protocol=protocol,
+                overrides=overrides,
+                **kwargs,
             )
-            builder_bands_projwfc = ProjwfcBandsWorkChain.get_builder_from_protocol(
-                *args, protocol=protocol, overrides=overrides, **kwargs
-            )
-
-            builder.pop("bands")
+            builder.pop("bands", None)
             builder_bands_projwfc.pop("relax", None)
             builder_bands_projwfc.pop("structure", None)
             builder.bands_projwfc = builder_bands_projwfc
 
-            if structure.pbc != (True, True, True):
-                kpoints_distance = overrides["scf"]["kpoints_distance"]
-                if structure.pbc == (True, False, False):
-                    kpoints = generate_kpath_1d(structure, kpoints_distance)
-                elif structure.pbc == (True, True, False):
-                    kpoints = generate_kpath_2d(
-                        structure=structure,
-                        kpoints_distance=kpoints_distance,
-                        kpath_2d=determine_symmetry_path(structure),
-                    )
-                builder.bands_projwfc.pop("bands_kpoints_distance")
+        else:
+            raise ValueError(f"Unknown simulation_mode: {simulation_mode}")
+
+        # Handle periodic boundary conditions (PBC)
+        if structure.pbc != (True, True, True):
+            kpoints_distance = overrides.get("scf", {}).get(
+                "kpoints_distance",
+                builder.get("bands", {}).get("scf", {}).get("kpoints_distance"),
+            )
+            kpoints = None
+            if structure.pbc == (True, False, False):
+                kpoints = generate_kpath_1d(structure, kpoints_distance)
+            elif structure.pbc == (True, True, False):
+                kpoints = generate_kpath_2d(
+                    structure=structure,
+                    kpoints_distance=kpoints_distance,
+                    kpath_2d=determine_symmetry_path(structure),
+                )
+
+            if simulation_mode == "normal":
+                builder.bands.pop("bands_kpoints_distance", None)
+                builder.bands.update({"bands_kpoints": kpoints})
+            elif simulation_mode == "fat_bands":
+                builder.bands_projwfc.pop("bands_kpoints_distance", None)
                 builder.bands_projwfc.update({"bands_kpoints": kpoints})
 
-            builder.structure = structure
-
-            return builder
+        builder.structure = structure
+        return builder
 
     def setup(self):
         """Define the current workchain"""

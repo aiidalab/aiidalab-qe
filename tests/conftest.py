@@ -574,6 +574,7 @@ def generate_bands_workchain(
 
         inputs = {
             "pw_code": fixture_code("quantumespresso.pw"),
+            "projwfc_code": fixture_code("quantumespresso.projwfc"),
             "structure": structure,
             "simulation_mode": "normal",
             "overrides": {
@@ -600,15 +601,12 @@ def generate_bands_workchain(
         # run bands and return the process
         fermi_dict = Dict(dict={"fermi_energy": 2.0})
         fermi_dict.store()
-
-        output_parameters = Dict(
-            dict={
-                "bands": {
-                    "scf_parameters": fermi_dict,
-                    "band_parameters": fermi_dict,
-                }
+        output_parameters = {
+            "bands": {
+                "scf_parameters": fermi_dict,
+                "band_parameters": fermi_dict,
             }
-        )
+        }
 
         wkchain.out(
             "bands.scf_parameters", output_parameters["bands"]["scf_parameters"]
@@ -702,6 +700,8 @@ def generate_qeapp_workchain(
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
 
+        # Setting up inputs for bands_projwfc
+
         inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
             inputs["bands"]["bands"]["scf"]["pw"]
         )
@@ -722,13 +722,13 @@ def generate_qeapp_workchain(
             inputs["pdos"]["projwfc"]["parameters"]
         )
 
-        wkchain = generate_workchain(QeAppWorkChain, inputs)
-        wkchain.setup()
-        print(inputs["properties"])
         if run_bands:
             inputs["properties"].append("bands")
         if run_pdos:
             inputs["properties"].append("pdos")
+
+        wkchain = generate_workchain(QeAppWorkChain, inputs)
+        wkchain.setup()
         # mock output
         if relax_type != "none":
             wkchain.out("structure", s1.confirmed_structure)

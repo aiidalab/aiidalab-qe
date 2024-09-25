@@ -29,7 +29,7 @@ class Setting(Panel):
         SeeK-path tool</a>.</div>"""
         )
         self.projwfc_bands = ipw.Checkbox(
-            description="Flat bands calculation",
+            description="Fat bands calculation",
             value=False,
         )
         self.children = [
