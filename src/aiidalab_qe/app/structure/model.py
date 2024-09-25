@@ -13,12 +13,20 @@ class StructureModel(tl.HasTraits):
         allow_none=True,
     )
 
+    confirmed = tl.Bool(False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.observe(
+            self._unconfirm,
+            "confirmed_structure",
+        )
+
     def reset(self):
         self.confirmed_structure = None
 
-    @property
-    def is_confirmed(self):
-        return self.confirmed_structure is not None
+    def _unconfirm(self, _):
+        self.confirmed = False
 
 
 struct_model = StructureModel()

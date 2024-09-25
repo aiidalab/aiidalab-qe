@@ -37,6 +37,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self._model = model
+        self._model.observe(
+            self._on_confirmation_change,
+            "confirmed",
+        )
 
         self._model.observe(
             self._on_input_structure_change,
@@ -122,7 +126,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def confirm(self, _=None):
         self._model.configuration_parameters = self.get_configuration_parameters()
-        self.state = self.State.SUCCESS
+        self._model.confirmed = True
 
     def get_configuration_parameters(self):
         return self._model.get_model_state()
@@ -138,8 +142,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 settings.reset()
 
     @tl.observe("previous_step_state")
-    def _on_previous_step_state_change(self, change):
-        self._update_state(change["new"])
+    def _on_previous_step_state_change(self, _):
+        self._update_state()
 
     def _on_tab_change(self, change):
         if (tab := change["new"]) is None:
@@ -151,6 +155,9 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _on_protocol_change(self, _):
         self._model.advanced.update()
+
+    def _on_confirmation_change(self, _):
+        self._update_state()
 
     def _fetch_setting_entries(self):
         """Handle plugin specific settings."""
@@ -169,8 +176,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             outline = outlines[identifier]()
             info = ipw.HTML()
             ipw.link(
-                (model, "include_plugin"),
-                (outline.include_plugin, "value"),
+                (model, "include"),
+                (outline.include, "value"),
             )
 
             def toggle_plugin(change, identifier=identifier, info=info):
@@ -180,7 +187,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     info.value = ""
                 self._update_panel()
 
-            model.observe(toggle_plugin, "include_plugin")
+            model.observe(
+                toggle_plugin,
+                "include",
+            )
 
             self.properties[identifier] = outline
             self.property_children.append(
@@ -203,17 +213,19 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         for identifier in self.properties:
             model = self._model.get_model(identifier)
             setting = self.settings[identifier]
-            if model and model.include_plugin:
+            if model and model.include:
                 self.tab.children += (setting,)
                 self.tab.set_title(
                     len(self.tab.children) - 1,
                     setting.title,
                 )
 
-    def _update_state(self, previous_step_state):
-        if previous_step_state == self.State.SUCCESS:
+    def _update_state(self, _=None):
+        if self._model.confirmed:
+            self.state = self.State.SUCCESS
+        elif self.previous_step_state is self.State.SUCCESS:
             self.state = self.State.CONFIGURED
-        elif previous_step_state == self.State.FAIL:
+        elif self.previous_step_state is self.State.FAIL:
             self.state = self.State.FAIL
         else:
             self.state = self.State.INIT

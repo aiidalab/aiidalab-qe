@@ -48,27 +48,12 @@ class Panel(ipw.VBox):
         raise NotImplementedError
 
 
-class PanelModel(tl.HasTraits):
-    title = "Model"
-
-    include_plugin = tl.Bool()
-
-    def get_model_state(self):
-        raise NotImplementedError
-
-    def set_model_state(self, parameters):
-        raise NotImplementedError
-
-    def reset(self):
-        raise NotImplementedError
-
-
 class PanelOutline(Panel):
     title = "Outline"
     description = ""
 
     def __init__(self, **kwargs):
-        self.include_plugin = ipw.Checkbox(
+        self.include = ipw.Checkbox(
             description=self.title,
             indent=False,
             style={"description_width": "initial"},
@@ -76,7 +61,7 @@ class PanelOutline(Panel):
 
         super().__init__(
             children=[
-                self.include_plugin,
+                self.include,
                 ipw.HTML(f"""
                     <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
                         {self.description}
@@ -103,6 +88,30 @@ class SettingPanel(Panel):
         self._model = config_model.get_model(self.identifier)
 
         self.rendered = False
+
+
+class SettingsModel(tl.HasTraits):
+    title = "Model"
+
+    include = tl.Bool()
+    confirmed = tl.Bool(False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.observe(self._unconfirm, tl.All)
+
+    def get_model_state(self):
+        raise NotImplementedError
+
+    def set_model_state(self, parameters):
+        raise NotImplementedError
+
+    def reset(self):
+        raise NotImplementedError
+
+    def _unconfirm(self, change):
+        if change["name"] != "confirmed":
+            self.confirmed = False
 
 
 class ResultPanel(Panel):

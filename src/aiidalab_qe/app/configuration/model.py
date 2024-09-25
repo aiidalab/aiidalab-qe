@@ -16,7 +16,7 @@ from aiida_quantumespresso.common.types import RelaxType
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.panel import PanelModel
+from aiidalab_qe.common.panel import SettingsModel
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -26,7 +26,7 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class WorkChainModel(PanelModel):
+class WorkChainModel(SettingsModel):
     protocol = tl.Unicode(DEFAULT["workchain"]["protocol"])
     relax_type = tl.Unicode("positions_cell")
     spin_type = tl.Unicode(DEFAULT["workchain"]["spin_type"])
@@ -34,7 +34,7 @@ class WorkChainModel(PanelModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.include_plugin = True
+        self.include = True
 
     def get_model_state(self):
         return {
@@ -498,7 +498,7 @@ class PseudosModel(tl.HasTraits):
         return deepcopy(self._default_cutoffs)
 
 
-class AdvancedModel(PanelModel):
+class AdvancedModel(SettingsModel):
     input_structure = tl.Union(
         [
             tl.Instance(orm.StructureData),
@@ -526,6 +526,7 @@ class AdvancedModel(PanelModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.include = True
 
         self.smearing = SmearingModel()
         ipw.dlink(
@@ -535,6 +536,10 @@ class AdvancedModel(PanelModel):
         ipw.dlink(
             (self, "override"),
             (self.smearing, "override"),
+        )
+        self.smearing.observe(
+            self._unconfirm,
+            tl.All,
         )
 
         self.magnetization = MagnetizationModel()
@@ -550,6 +555,10 @@ class AdvancedModel(PanelModel):
             (self, "override"),
             (self.magnetization, "override"),
         )
+        self.magnetization.observe(
+            self._unconfirm,
+            tl.All,
+        )
 
         self.hubbard = HubbardModel()
         ipw.dlink(
@@ -559,6 +568,10 @@ class AdvancedModel(PanelModel):
         ipw.dlink(
             (self, "override"),
             (self.hubbard, "override"),
+        )
+        self.hubbard.observe(
+            self._unconfirm,
+            tl.All,
         )
 
         self.pseudos = PseudosModel()
@@ -578,10 +591,17 @@ class AdvancedModel(PanelModel):
             (self, "override"),
             (self.pseudos, "override"),
         )
+        self.pseudos.observe(
+            self._unconfirm,
+            tl.All,
+        )
+
+        self.observe(
+            self._unconfirm,
+            tl.All,
+        )
 
         self.update()
-
-        self.include_plugin = True
 
     def update(self):
         parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
@@ -811,7 +831,7 @@ class AdvancedModel(PanelModel):
             setattr(self, f"{attribute}_step", 0.1)
 
 
-class ConfigurationModel(tl.HasTraits):
+class ConfigurationModel(SettingsModel):
     input_structure = tl.Union(
         [
             tl.Instance(orm.StructureData),
@@ -825,12 +845,18 @@ class ConfigurationModel(tl.HasTraits):
         default_value={},
     )
 
+    confirmed = tl.Bool(False)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.workchain = WorkChainModel()
-        self.advanced = AdvancedModel()
+        ipw.link(
+            (self, "confirmed"),
+            (self.workchain, "confirmed"),
+        )
 
+        self.advanced = AdvancedModel()
         ipw.dlink(
             (self, "input_structure"),
             (self.advanced, "input_structure"),
@@ -847,6 +873,10 @@ class ConfigurationModel(tl.HasTraits):
             (self.workchain, "electronic_type"),
             (self.advanced, "electronic_type"),
         )
+        ipw.link(
+            (self, "confirmed"),
+            (self.advanced, "confirmed"),
+        )
 
         self._models = {
             "workchain": self.workchain,
@@ -857,6 +887,10 @@ class ConfigurationModel(tl.HasTraits):
 
     def add_model(self, identifier, model):
         self._models[identifier] = model
+        ipw.link(
+            (self, "confirmed"),
+            (model, "confirmed"),
+        )
 
     def get_model(self, identifier):
         return self._models.get(identifier)
@@ -865,7 +899,7 @@ class ConfigurationModel(tl.HasTraits):
         parameters = {
             identifier: model.get_model_state()
             for identifier, model in self._models.items()
-            if model.include_plugin
+            if model.include
         }
         # TODO necessary?
         parameters["workchain"].update({"properties": self._get_properties()})
@@ -879,9 +913,9 @@ class ConfigurationModel(tl.HasTraits):
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
                 if identifier in properties:
-                    model.include_plugin = True
+                    model.include = True
                 else:
-                    model.include_plugin = False
+                    model.include = False
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -897,7 +931,7 @@ class ConfigurationModel(tl.HasTraits):
             # TODO consider handling this differently
             if identifier in self._default_models:
                 continue
-            if model.include_plugin:
+            if model.include:
                 properties.append(identifier)
             if identifier == "bands":
                 run_bands = True

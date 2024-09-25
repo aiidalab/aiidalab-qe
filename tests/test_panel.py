@@ -8,4 +8,4 @@ def test_outline_panel():
     assert parameters == {"test_run": False}
     parameters = {"test_run": True}
     panel.set_panel_value(parameters)
-    assert panel.include_plugin.value is True
+    assert panel.include.value is True

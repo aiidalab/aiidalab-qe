@@ -50,7 +50,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
     structure = tl.Instance(orm.StructureData, allow_none=True)
 
-    def __init__(self, model, **kwargs):
+    def __init__(self, model: StructureModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -59,6 +59,10 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self._model = model
+        self._model.observe(
+            self._on_confirmation_change,
+            "confirmed",
+        )
 
         self.rendered = False
 
@@ -165,8 +169,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def confirm(self, _=None):
         self.manager.store_structure()
         self._model.confirmed_structure = self.structure
+        self._model.confirmed = True
         self.message_area.value = ""
-        self._update_state()
 
     def can_reset(self):
         return self._model.confirmed_structure is not None
@@ -185,6 +189,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self._update_widget_text()
         self._update_state()
 
+    def _on_confirmation_change(self, _):
+        self._update_state()
+
     def _update_widget_text(self):
         if self.structure is None:
             self.structure_name_text.value = ""
@@ -194,7 +201,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.structure_name_text.value = str(self.structure.get_formula())
 
     def _update_state(self):
-        if self._model.is_confirmed:
+        if self._model.confirmed:
             self.state = self.State.SUCCESS
         elif self.structure is None:
             self.state = self.State.READY

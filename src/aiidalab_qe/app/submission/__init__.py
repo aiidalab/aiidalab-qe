@@ -153,7 +153,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.submit_button, "disabled"),
             lambda state: state != self.State.CONFIGURED,
         )
-
         self.submit_button.on_click(self._on_submit_button_clicked)
 
         self.sssp_installation_status = PseudosInstallWidget(
@@ -278,7 +277,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # we serialize it to yaml
             process.base.extras.set("ui_parameters", serialize(parameters))
             # store the workchain name in extras, this will help to filter the workchain in the future
-            process.base.extras.set("workchain", parameters["workchain"])
+            process.base.extras.set("workchain", parameters["workchain"])  # type: ignore
             process.base.extras.set("structure", self.input_structure.get_formula())
             self._model.process = process
 
@@ -288,6 +287,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             self._model.reset()
             self._model.set_selected_codes(DEFAULT["codes"])
+
+    @tl.observe("previous_step_state")
+    def _on_previous_step_state_change(self, _):
+        self._update_state()
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, _):
@@ -446,25 +449,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         return builder
 
     def _update_state(self, _=None):
-        # If the previous step has failed, this should fail as well.
         if self.previous_step_state is self.State.FAIL:
             self.state = self.State.FAIL
-            return
-        # Do not interact with the user if they haven't successfully completed the previous step.
         elif self.previous_step_state is not self.State.SUCCESS:
             self.state = self.State.INIT
-            return
-
-        # Process is already running.
-        if self._model.process is not None:
+        elif self._model.process is not None:
             self.state = self.State.SUCCESS
-            return
-
-        blockers = list(self._identify_submission_blockers())
-        if any(blockers):
+        elif any(blockers := list(self._identify_submission_blockers())):
             self.internal_submission_blockers = blockers
             self.state = self.State.READY
-            return
-
-        self.internal_submission_blockers = []
-        self.state = self.state.CONFIGURED
+        else:
+            self.internal_submission_blockers = []
+            self.state = self.state.CONFIGURED

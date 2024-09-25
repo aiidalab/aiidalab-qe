@@ -1,9 +1,9 @@
 import traitlets as tl
 
-from aiidalab_qe.common.panel import PanelModel
+from aiidalab_qe.common.panel import SettingsModel
 
 
-class BandsModel(PanelModel):
+class BandsModel(SettingsModel):
     """Model for the band structure plugin."""
 
     kpath_2d = tl.Unicode("hexagonal")
