@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-ARG FULL_STACK_VER=2024.1021
-ARG UV_VER=0.2.27
+ARG FULL_STACK_VER=2024.1022
+ARG UV_VER=0.4.7
 ARG QE_VER=7.2
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 
@@ -86,7 +86,7 @@ COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
-RUN fix-permissions "${CONDA_DIR}"
+
 # Remove content of $HOME
 # '-mindepth=1' ensures that we do not remove the home directory itself.
 RUN find /home/${NB_USER}/ -mindepth 1 -delete

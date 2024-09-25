@@ -3,8 +3,9 @@ import pytest
 
 @pytest.mark.usefixtures("sssp")
 def test_result(generate_qeapp_workchain):
-    from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
     import plotly.graph_objects as go
+
+    from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
     from aiidalab_qe.plugins.bands.result import Result
 
     wkchain = generate_qeapp_workchain()

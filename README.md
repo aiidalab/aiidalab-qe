@@ -5,8 +5,8 @@
 
 ## About
 
-This is a early-development implementation of an AiiDAlab application for Quantum ESPRESSO workflow.
-The app allows the execution of a workflow with Quantum ESPRESSO that includes the selection of an input structure, its relaxation, and the bands structure calculation.
+This is an AiiDAlab application for Quantum ESPRESSO workflows.
+The app allows the execution of a workflow with Quantum ESPRESSO that includes the selection of an input structure, its relaxation, the bands structure calculation, and more!
 
 **The app is currently in an early development stage!**
 
@@ -41,6 +41,16 @@ Then, you can run the integration tests with:
 pytest --driver Chrome tests_integration
 ```
 
+### Published Docker images
+
+Supported tags released on [Github Container Registry](https://ghcr.io/aiidalab):
+
+- `edge` – the latest commit on the default branch (`main`)
+- `latest` – the latest stable release
+- `$version` – the version of a specific release (ex. `2022.1001`)
+
+Pull requests into the default branch are further released on ghcr.io with the `pr-###` tag to simplify the testing of development versions.
+
 ## For maintainers
 
 To create a new release, clone the repository, install development dependencies with `pip install '.[dev]'`, and then execute `bumpver update`.
@@ -61,9 +71,9 @@ Additional notes:
 ## Acknowledgements
 We acknowledge support from:
 * the European Union\'s Horizon 2020 research and innovation programme (Grant No. 957189, [project BIG-MAP](https://www.big-map.eu)).
-* the [MARVEL National Centre for Competency in Research](<http://nccr-marvel.ch>) funded by the [Swiss National Science Foundation](<http://www.snf.ch/en>).
+* the [MARVEL National Centre for Competency in Research](https://nccr-marvel.ch/) funded by the [Swiss National Science Foundation](https://www.snf.ch/en).
 * the MARKETPLACE project funded by [Horizon 2020](https://ec.europa.eu/programmes/horizon2020/) under the H2020-NMBP-25-2017 call (Grant No. 760173).
-* the [MaX European Centre of Excellence](<http://www.max-centre.eu/>) funded by the Horizon 2020 EINFRA-5 program (Grant No. 676598).
+* the [MaX European Centre of Excellence](https://www.max-centre.eu/) funded by the Horizon 2020 EINFRA-5 program (Grant No. 676598).
 
 <div style="text-align:left">
  <img src="miscellaneous/logos/MARVEL.png" alt="MARVEL" height="75px">

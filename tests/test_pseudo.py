@@ -1,7 +1,7 @@
 import pytest
-from aiida import orm
 
-from aiidalab_qe.common.setup_pseudos import (
+from aiida import orm
+from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
     _construct_cmd,
@@ -11,7 +11,7 @@ from aiidalab_qe.common.setup_pseudos import (
 
 
 def test_setup_pseudos_cmd(tmp_path):
-    """Test _construct_cmd function in setup_pseudos.py."""
+    """Test _construct_cmd function in setup.pseudos"""
 
     # SSSP family
     pseudo_family = f"SSSP/{SSSP_VERSION}/PBE/efficiency"
@@ -96,7 +96,7 @@ def test_setup_pseudos_cmd(tmp_path):
         "--pseudo-format",
         "upf",
         "--from-download",
-        f"{str(tmp_path)}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
+        f"{tmp_path!s}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
     ]
 
 
@@ -111,7 +111,7 @@ def test_pseudos_installation():
     }
 
     # Install the pseudos
-    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS)]
+    list(_install_pseudos(EXPECTED_PSEUDOS))
 
     # Two pseudos are installed
     assert len(pseudos_to_install()) == 10
@@ -127,13 +127,13 @@ def test_download_and_install_pseudo_from_file(tmp_path):
     }
 
     # Download the pseudos to the tmp_path but not install
-    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, download_only=True, cwd=tmp_path)]
+    list(_install_pseudos(EXPECTED_PSEUDOS, download_only=True, cwd=tmp_path))
 
     assert len(pseudos_to_install()) == 12
     assert len(list(tmp_path.iterdir())) == 2
 
     # Install the pseudos from the tmp_path
-    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, cwd=tmp_path)]
+    list(_install_pseudos(EXPECTED_PSEUDOS, cwd=tmp_path))
 
     # Two pseudos are installed
     assert len(pseudos_to_install()) == 10

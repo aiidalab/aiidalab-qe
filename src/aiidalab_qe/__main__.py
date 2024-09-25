@@ -1,12 +1,9 @@
 """For running the app from the command line used for post_install script."""
 
-from pathlib import Path
 import sys
-import click
-from aiida import load_profile
+from pathlib import Path
 
-from aiidalab_qe.common.setup_codes import codes_are_setup
-from aiidalab_qe.common.setup_codes import install as install_qe_codes
+import click
 
 # The default profile name of AiiDAlab container.
 _DEFAULT_PROFILE = "default"
@@ -21,14 +18,17 @@ def cli():
 @click.option("-f", "--force", is_flag=True)
 @click.option("-p", "--profile", default=_DEFAULT_PROFILE)
 def install_qe(force, profile):
+    from aiida import load_profile
+    from aiidalab_qe.setup.codes import codes_are_setup, install
+
     load_profile(profile)
     try:
-        for msg in install_qe_codes(force=force):
+        for msg in install(force=force):
             click.echo(msg)
         assert codes_are_setup()
         click.secho("Codes are setup!", fg="green")
     except Exception as error:
-        raise click.ClickException(f"Failed to set up QE failed: {error}")
+        raise click.ClickException(f"Failed to set up QE failed: {error}") from error
 
 
 @cli.command()
@@ -44,7 +44,8 @@ def install_pseudos(profile, source):
     """Install pseudopotentials from a local folder if source is specified,
     otherwise download from remote repositories.
     """
-    from aiidalab_qe.common.setup_pseudos import install
+    from aiida import load_profile
+    from aiidalab_qe.setup.pseudos import install
 
     load_profile(profile)
 
@@ -53,7 +54,9 @@ def install_pseudos(profile, source):
             click.echo(msg)
         click.secho("Pseudopotentials are installed!", fg="green")
     except Exception as error:
-        raise click.ClickException(f"Failed to set up pseudo potentials: {error}")
+        raise click.ClickException(
+            f"Failed to set up pseudo potentials: {error}"
+        ) from error
 
 
 @cli.command()
@@ -65,7 +68,7 @@ def install_pseudos(profile, source):
     type=click.Path(exists=True, path_type=Path, resolve_path=True),
 )
 def download_pseudos(dest):
-    from aiidalab_qe.common.setup_pseudos import EXPECTED_PSEUDOS, _install_pseudos
+    from aiidalab_qe.setup.pseudos import EXPECTED_PSEUDOS, _install_pseudos
 
     try:
         for progress in _install_pseudos(
@@ -75,7 +78,9 @@ def download_pseudos(dest):
         click.secho("Pseudopotentials are downloaded!", fg="green")
 
     except Exception as error:
-        raise click.ClickException(f"Failed to download pseudo potentials: {error}")
+        raise click.ClickException(
+            f"Failed to download pseudo potentials: {error}"
+        ) from error
 
 
 @cli.command()
@@ -85,8 +90,10 @@ def download_pseudos(dest):
 )
 @click.option("-p", "--profile", default=_DEFAULT_PROFILE)
 def test_plugin(plugin_name, profile):
-    load_profile(profile)
+    from aiida import load_profile
     from aiidalab_qe.app.utils import test_plugin_functionality
+
+    load_profile(profile)
 
     try:
         success, message = test_plugin_functionality(plugin_name)

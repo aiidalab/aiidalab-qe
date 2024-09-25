@@ -37,14 +37,14 @@ def get_builder(codes, structure, parameters, **kwargs):
     for label in core_level_list:
         element = label.split("_")[0]
         pseudos[element] = {
-            "core_hole": [
+            "core_hole": next(
                 pseudo for pseudo in pseudo_group.nodes if pseudo.label == label
-            ][0],
-            "gipaw": [
+            ),
+            "gipaw": next(
                 pseudo
                 for pseudo in pseudo_group.nodes
                 if pseudo.label == f"{element}_gs"
-            ][0],
+            ),
         }
         correction_energies[element] = (
             all_correction_energies[label]["core"]
@@ -79,6 +79,10 @@ def get_builder(codes, structure, parameters, **kwargs):
         },
         "ch_scf": overrides_ch_scf,
     }
+    # Ensure that VdW corrections are not applied for the core-hole SCF calculation
+    # Required to resolve issue #765 (https://github.com/aiidalab/aiidalab-qe/issues/765)
+    overrides["ch_scf"]["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "none"
+
     builder = XpsWorkChain.get_builder_from_protocol(
         code=pw_code,
         structure=structure,

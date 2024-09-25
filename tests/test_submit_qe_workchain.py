@@ -61,6 +61,9 @@ def test_create_builder_advanced_settings(
     -collinear
     -tot_charge
     -initial_magnetic_moments
+    -vdw_corr
+    -electron_maxstep
+    -properties: bands, pdos
     """
 
     app = submit_app_generator(
@@ -69,6 +72,7 @@ def test_create_builder_advanced_settings(
         tot_charge=1.0,
         vdw_corr="dft-d3bj",
         initial_magnetic_moments=0.1,
+        electron_maxstep=100,
         properties=["bands", "pdos"],
     )
     submit_step = app.submit_step
@@ -88,6 +92,7 @@ def test_create_builder_advanced_settings(
         assert parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
         assert parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] == "dft-d3"
         assert parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] == 4
+        assert parameters["pw"]["parameters"]["ELECTRONS"]["electron_maxstep"] == 100
 
     # test initial_magnetic_moments set 'starting_magnetization' in pw.in
     assert (

@@ -15,19 +15,18 @@ import ase
 import ipywidgets as ipw
 import numpy as np
 import traitlets
-from aiida.orm import CalcJobNode
+from IPython.display import HTML, Javascript, clear_output, display
+from pymatgen.core.periodic_table import Element
+
+from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiida.orm import load_code, load_node
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_widgets_base import ComputationalResourcesWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
     string_range_to_list,
 )
-from IPython.display import HTML, Javascript, clear_output, display
-from pymatgen.core.periodic_table import Element
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -43,7 +42,7 @@ class RollingOutput(ipw.VBox):
     value = traitlets.Unicode()
     auto_scroll = traitlets.Bool()
 
-    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):
+    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):  # noqa: ARG002
         self._num_min_lines = num_min_lines
         self._output = ipw.HTML(layout=ipw.Layout(min_width="50em"))
         self._refresh_output()
@@ -121,14 +120,14 @@ class DownloadButton(ipw.Button):
         digest = hashlib.md5(self.payload).hexdigest()  # bypass browser cache
         payload = base64.b64encode(self.payload).decode()
 
-        id = f"dl_{digest}"
+        link_id = f"dl_{digest}"
 
         display(
             HTML(
                 f"""
             <html>
             <body>
-            <a id="{id}" download="{self.filename}" href="data:text/plain;base64,{payload}" download>
+            <a id="{link_id}" download="{self.filename}" href="data:text/plain;base64,{payload}" download>
             </a>
 
             <script>
@@ -304,7 +303,7 @@ class CalcJobOutputFollower(traitlets.HasTraits):
                 with calcjob.outputs.retrieved.base.repository.open(self.filename) as f:
                     return f.read().splitlines()
             except OSError:
-                return list()
+                return []
 
         elif "remote_folder" in calcjob.outputs:
             try:
@@ -314,9 +313,9 @@ class CalcJobOutputFollower(traitlets.HasTraits):
                     calcjob.outputs.remote_folder.getfile(fn_out, tmpfile.name)
                     return tmpfile.read().decode().splitlines()
             except OSError:
-                return list()
+                return []
         else:
-            return list()
+            return []
 
     _EOF = None
 
@@ -527,9 +526,7 @@ class AddingTagsEditor(ipw.VBox):
                 symbol = chemichal_symbols[index]
                 if tag == 0:
                     tag = ""
-                table_data.append(
-                    ["{}".format(index), "{}".format(symbol), "{}".format(tag)]
-                )
+                table_data.append([f"{index}", f"{symbol}", f"{tag}"])
 
             # Create an HTML table
             table_html = "<table>"
@@ -537,7 +534,7 @@ class AddingTagsEditor(ipw.VBox):
             for row in table_data:
                 table_html += "<tr>"
                 for cell in row:
-                    table_html += "<td>{}</td>".format(cell)
+                    table_html += f"<td>{cell}</td>"
                 table_html += "</tr>"
             table_html += "</table>"
 
@@ -843,7 +840,8 @@ class ParallelizationSettings(ipw.VBox):
                     children=[self.override, self.prompt, self.npool],
                     layout=ipw.Layout(justify_content="flex-start"),
                 ),
-            ]
+            ],
+            **kwargs,
         )
         # set the default visibility of the widget
         self.npool.layout.display = "none"
@@ -981,12 +979,15 @@ class HubbardWidget(ipw.VBox):
 
         if condition:
             hubbard_widget = ipw.VBox(
-                [ipw.HTML("Define U value [eV] ")]
-                + widgets_list
-                + [self.eigenvalues_help, self.eigenvalues_label]
+                [
+                    ipw.HTML("Define U value [eV] "),
+                    *widgets_list,
+                    self.eigenvalues_help,
+                    self.eigenvalues_label,
+                ]
             )
         else:
-            hubbard_widget = ipw.VBox([ipw.HTML("Define U value [eV] ")] + widgets_list)
+            hubbard_widget = ipw.VBox([ipw.HTML("Define U value [eV] "), *widgets_list])
         return hubbard_widget
 
     def _hubbard_widget_labels(self):
@@ -1106,9 +1107,9 @@ class HubbardWidget(ipw.VBox):
                             layout=ipw.Layout(
                                 justify_content="flex-start", width="50px"
                             ),
-                        )
-                    ]
-                    + widgets_list_up,
+                        ),
+                        *widgets_list_up,
+                    ],
                 )
 
                 row_down = ipw.HBox(
@@ -1118,9 +1119,9 @@ class HubbardWidget(ipw.VBox):
                             layout=ipw.Layout(
                                 justify_content="flex-start", width="50px"
                             ),
-                        )
-                    ]
-                    + widgets_list_down,
+                        ),
+                        *widgets_list_down,
+                    ],
                 )
                 eigenvalues_container = ipw.VBox(children=[row_up, row_down])
                 kind_container = ipw.HBox(

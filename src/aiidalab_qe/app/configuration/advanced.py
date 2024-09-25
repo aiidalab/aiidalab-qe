@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Widgets for the submission of bands work chains.
 
 Authors: AiiDAlab team
@@ -7,20 +6,21 @@ Authors: AiiDAlab team
 import os
 
 import ipywidgets as ipw
-import traitlets as tl
-from aiida import orm
 import numpy as np
+import traitlets as tl
+from IPython.display import clear_output, display
+
+from aiida import orm
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from IPython.display import clear_output, display
-
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.panel import Panel
-from aiidalab_qe.common.setup_pseudos import PseudoFamily
 from aiidalab_qe.common.widgets import HubbardWidget
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.setup.pseudos import PseudoFamily
+
 from .pseudos import PseudoFamilySelector, PseudoSetter
 
 
@@ -209,6 +209,10 @@ class AdvancedSettings(Panel):
             (self.etot_conv_thr, "disabled"),
             lambda override: not override,
         )
+
+        # Max electron SCF steps widget
+        self._create_electron_maxstep_widgets()
+
         # Spin-Orbit calculation
         self.spin_orbit = ipw.ToggleButtons(
             options=[
@@ -260,6 +264,8 @@ class AdvancedSettings(Panel):
                 [self.forc_conv_thr, self.etot_conv_thr, self.scf_conv_thr],
                 layout=ipw.Layout(height="50px", justify_content="flex-start"),
             ),
+            # Max electron SCF steps widget
+            self.electron_maxstep,
             # smearing setting widget
             self.smearing,
             # Kpoints setting widget
@@ -278,6 +284,22 @@ class AdvancedSettings(Panel):
 
         # Default settings to trigger the callback
         self.reset()
+
+    def _create_electron_maxstep_widgets(self):
+        self.electron_maxstep = ipw.BoundedIntText(
+            min=20,
+            max=1000,
+            step=1,
+            value=80,
+            description="Max. electron steps:",
+            style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self.override, "value"),
+            (self.electron_maxstep, "disabled"),
+            lambda override: not override,
+        )
+        self.electron_maxstep.observe(self._callback_value_set, "value")
 
     def set_value_and_step(self, attribute, value):
         """
@@ -459,6 +481,11 @@ class AdvancedSettings(Panel):
             self.etot_conv_thr.value
         )
 
+        # Max electron SCF steps
+        parameters["pw"]["parameters"]["ELECTRONS"]["electron_maxstep"] = (
+            self.electron_maxstep.value
+        )
+
         # Spin-Orbit calculation
         if self.spin_orbit.value == "soc":
             parameters["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
@@ -540,6 +567,14 @@ class AdvancedSettings(Panel):
                 .get("parameters", {})
                 .get("ELECTRONS", {})
                 .get("conv_thr", 0.0)
+            )
+
+            # Max electron SCF steps
+            self.electron_maxstep.value = (
+                parameters.get("pw", {})
+                .get("parameters", {})
+                .get("ELECTRONS", {})
+                .get("electron_maxstep", 80)
             )
 
         # Logic to set the magnetization

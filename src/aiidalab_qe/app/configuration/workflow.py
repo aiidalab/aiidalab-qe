@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 """Widgets for the submission of bands work chains.
 
 Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
-from aiida_quantumespresso.common.types import RelaxType
 
+from aiida_quantumespresso.common.types import RelaxType
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.panel import Panel

@@ -10,6 +10,7 @@ advanced:
         forc_conv_thr: 0.0001
       ELECTRONS:
         conv_thr: 4.0e-10
+        electron_maxstep: 80
       SYSTEM:
         degauss: 0.015
         ecutrho: 240.0

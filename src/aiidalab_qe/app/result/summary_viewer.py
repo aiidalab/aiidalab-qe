@@ -1,4 +1,5 @@
 import ipywidgets as ipw
+
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
 FUNCTIONAL_LINK_MAP = {
@@ -153,11 +154,11 @@ def _generate_report_html(report):
     """Read from the bulider parameters and generate a html for reporting
     the inputs for the `QeAppWorkChain`.
     """
-    from importlib import resources
+    from importlib.resources import files
 
     from jinja2 import Environment
 
-    from aiidalab_qe.app import static
+    from aiidalab_qe.app.static import styles, templates
 
     def _fmt_yes_no(truthy):
         return "Yes" if truthy else "No"
@@ -168,8 +169,8 @@ def _generate_report_html(report):
             "fmt_yes_no": _fmt_yes_no,
         }
     )
-    template = resources.read_text(static, "workflow_summary.jinja")
-    style = resources.read_text(static, "style.css")
+    template = files(templates).joinpath("workflow_summary.jinja").read_text()
+    style = files(styles).joinpath("style.css").read_text()
     report = {key: value for key, value in report.items() if value is not None}
 
     return env.from_string(template).render(style=style, **report)
