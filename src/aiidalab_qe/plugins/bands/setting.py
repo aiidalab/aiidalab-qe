@@ -49,6 +49,13 @@ class Setting(SettingPanel):
             self.settings_title,
             self.kpath_2d_help,
             self.kpath_2d,
+            ipw.HTML("""
+                <div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
+                    The band structure workflow will automatically detect the default
+                    path in reciprocal space using the
+                    <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">SeeK-path tool</a>.
+                </div>
+            """),
         ]
 
         self.rendered = True

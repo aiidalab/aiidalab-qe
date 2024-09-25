@@ -192,23 +192,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
             )
 
-            kwargs = {
-                "parent": self,
-                "identifier": identifier,
-                "config_model": self._model,
-            }
-            self.settings[identifier] = settings[identifier](**kwargs)
-
-        # # TODO move this somewhere else (below bands ideally)
-        # self.property_children.append(
-        #     ipw.HTML("""
-        #         <div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        #             The band structure workflow will automatically detect the default
-        #             path in reciprocal space using the
-        #             <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">SeeK-path tool</a>.
-        #         </div>
-        #     """)
-        # )
+            self.settings[identifier] = settings[identifier](
+                parent=self,
+                identifier=identifier,
+                config_model=self._model,
+            )
 
     def _update_panel(self, _=None):
         self.tab.children = self.built_in_settings
