@@ -494,15 +494,6 @@ class BandPdosWidget(ipw.VBox):
             layout=ipw.Layout(width="380px", visibility="hidden"),
         )
 
-        self.proj_bands_width_slider = ipw.FloatSlider(
-            description="Width",
-            min=0.01,
-            max=1.0,
-            step=0.01,
-            value=0.5,
-            style={"description_width": "initial"},
-        )
-
         # Information for the plot
         self.pdos_data = self._get_pdos_data()
         self.bands_data = self._get_bands_data()
