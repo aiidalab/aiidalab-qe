@@ -297,6 +297,16 @@ def projwfc_code(aiida_local_code_factory):
     )
 
 
+@pytest.fixture
+def projwfc_bands_code(aiida_local_code_factory):
+    """Return a `Code` configured for the projwfc.x executable."""
+    return aiida_local_code_factory(
+        label="projwfc_bands",
+        executable="bash",
+        entry_point="quantumespresso.projwfc",
+    )
+
+
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
@@ -324,7 +334,7 @@ def smearing_settings_generator():
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code):
+def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
     from aiidalab_qe.app.main import App
 
     # Since we use `qe_auto_setup=False`, which will skip the pseudo library installation
@@ -337,10 +347,12 @@ def app(pw_code, dos_code, projwfc_code):
     app.submit_step.pw_code.code_selection.refresh()
     app.submit_step.codes["dos"].code_selection.refresh()
     app.submit_step.codes["projwfc"].code_selection.refresh()
+    app.submit_step.codes["projwfc_bands"].code_selection.refresh()
 
     app.submit_step.pw_code.value = pw_code.uuid
     app.submit_step.codes["dos"].value = dos_code.uuid
     app.submit_step.codes["projwfc"].value = projwfc_code.uuid
+    app.submit_step.codes["projwfc_bands"].value = projwfc_bands_code.uuid
 
     yield app
 
@@ -635,6 +647,7 @@ def generate_qeapp_workchain(
     generate_workchain,
     generate_pdos_workchain,
     generate_bands_workchain,
+    fixture_code,
 ):
     """Generate an instance of the WorkChain."""
 
@@ -651,6 +664,7 @@ def generate_qeapp_workchain(
     ):
         from copy import deepcopy
 
+        from aiida.orm import Dict
         from aiida.orm.utils.serialize import serialize
         from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
         from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
@@ -696,12 +710,12 @@ def generate_qeapp_workchain(
         # step 3 setup code and resources
         s3: SubmitQeAppWorkChainStep = app.submit_step
         s3.pw_code.num_cpus.value = 4
+
         builder = s3._create_builder()
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
 
         # Setting up inputs for bands_projwfc
-
         inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
             inputs["bands"]["bands"]["scf"]["pw"]
         )
@@ -715,12 +729,12 @@ def generate_qeapp_workchain(
             "bands"
         ]["scf"]["pw"]["code"]
 
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = inputs["pdos"][
-            "projwfc"
-        ]["code"]
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = deepcopy(
-            inputs["pdos"]["projwfc"]["parameters"]
+        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = fixture_code(
+            "quantumespresso.projwfc"
         )
+        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
+            {"PROJWFC": {"DeltaE": 0.01}}
+        ).store()
 
         if run_bands:
             inputs["properties"].append("bands")

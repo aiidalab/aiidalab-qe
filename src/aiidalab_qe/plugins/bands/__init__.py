@@ -24,7 +24,7 @@ projwfc_code = QEAppComputationalResourcesWidget(
 
 bands = {
     "outline": BandsOutline,
-    "code": {"projwfc": projwfc_code},
+    "code": {"projwfc_bands": projwfc_code},
     "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,

@@ -37,7 +37,7 @@ def update_resources(builder, codes):
         set_component_resources(builder.bands_projwfc.scf.pw, codes.get("pw"))
         set_component_resources(builder.bands_projwfc.bands.pw, codes.get("pw"))
         set_component_resources(
-            builder.bands_projwfc.projwfc.projwfc, codes.get("projwfc")
+            builder.bands_projwfc.projwfc.projwfc, codes.get("projwfc_bands")
         )
 
 
@@ -57,7 +57,7 @@ def get_builder(codes, structure, parameters, **kwargs):
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
 
-    check_codes(pw_code, codes.get("projwfc")["code"])
+    check_codes(pw_code, codes.get("projwfc_bands")["code"])
 
     overrides = {
         "scf": scf_overrides,
@@ -72,7 +72,7 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     bands_builder = BandsWorkChain.get_builder_from_protocol(
         pw_code=pw_code,
-        projwfc_code=codes.get("projwfc")["code"],
+        projwfc_code=codes.get("projwfc_bands")["code"],
         structure=structure,
         simulation_mode=simulation_mode,
         protocol=protocol,
