@@ -1,4 +1,5 @@
 import numpy as np
+
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
@@ -16,7 +17,9 @@ def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distanc
     reciprocal_vector_a = scaled_vector_a.dot(reciprocal_cell)
     reciprocal_vector_b = scaled_vector_b.dot(reciprocal_cell)
     distance = np.linalg.norm(reciprocal_vector_a - reciprocal_vector_b)
-    return round(distance / bands_kpoints_distance)
+    return max(
+        2, int(np.round(distance / bands_kpoints_distance))
+    )  # at least two points for each segment, including both endpoints explicitly
 
 
 def calculate_bands_kpoints_distance(kpoints_distance):
@@ -133,42 +136,35 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
             ],
             "labels": [GAMMA, "X", "H_1", "C", "H", "Y", GAMMA],
         }
-    points_branch = []
-    num_per_branch = []
     path = selected_paths[kpath_2d]["path"]
     labels = selected_paths[kpath_2d]["labels"]
-    branches = zip(
-        path[:-1], path[1:]
-    )  # zip the path with the next point in the path to define the branches
+    branches = zip(path[:-1], path[1:])
+
+    all_kpoints = []  # List to hold all k-points
+    label_map = []  # List to hold labels and their corresponding k-point indices
 
     # Calculate the number of points per branch and generate the kpoints
-    for branch in branches:
+    index_offset = 0  # Start index for each segment
+    for (start, end), label_start, _label_end in zip(branches, labels[:-1], labels[1:]):
         num_points_per_branch = points_per_branch(
-            branch[0], branch[1], reciprocal_cell, bands_kpoints_distance
+            start, end, reciprocal_cell, bands_kpoints_distance
         )
-        if branch[1] == [1.0, 0.0, 0.0]:
-            points = np.linspace(
-                start=branch[0],
-                stop=branch[1],
-                endpoint=True,
-                num=num_points_per_branch,
-            )
-        else:
-            points = np.linspace(
-                start=branch[0], stop=branch[1], num=num_points_per_branch
-            )
-        points_branch.append(points.tolist())
-        num_per_branch.append(num_points_per_branch)
+        # Exclude endpoint except for the last segment to prevent duplication
+        points = np.linspace(start, end, num=num_points_per_branch, endpoint=False)
+        all_kpoints.extend(points)
+        label_map.append(
+            (index_offset, label_start)
+        )  # Label for the start of the segment
+        index_offset += len(points)
 
-    # Generate the kpoints as single list and add the labels
-    list_kpoints = [item for sublist in points_branch for item in sublist]
-    kpoints.set_kpoints(list_kpoints)
-    kpoints.labels = [
-        [index, labels[index]]
-        if index == 0
-        else [list_kpoints.index(value, 1), labels[index]]
-        for index, value in enumerate(path)
-    ]
+    # Include the last point and its label
+    all_kpoints.append(path[-1])
+    label_map.append((index_offset, labels[-1]))  # Label for the last point
+
+    # Set the kpoints and their labels in KpointsData
+    kpoints.set_kpoints(all_kpoints)
+    kpoints.labels = label_map
+
     return kpoints
 
 

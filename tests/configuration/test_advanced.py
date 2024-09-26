@@ -121,7 +121,6 @@ def test_advanced_tot_charge_settings():
 def test_advanced_kpoints_mesh():
     """Test Mesh Grid HTML widget."""
     from aiida import orm
-
     from aiidalab_qe.app.configuration.advanced import AdvancedSettings
 
     w = AdvancedSettings()

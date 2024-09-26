@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
-import selenium.webdriver.support.expected_conditions as EC
+import selenium.webdriver.support.expected_conditions as ec
 from requests.exceptions import ConnectionError
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
@@ -39,30 +39,33 @@ def aiidalab_exec(docker_compose):
             opts = f"{opts} --workdir={workdir}"
         command = f"exec {opts} aiidalab {command}"
 
-        return docker_compose.execute(command, **kwargs)
+        return docker_compose.execute(command, **kwargs).decode().strip()
 
     return execute
 
 
 @pytest.fixture(scope="session")
 def nb_user(aiidalab_exec):
-    return aiidalab_exec("bash -c 'echo \"${NB_USER}\"'").decode().strip()
+    return aiidalab_exec("bash -c 'echo \"${NB_USER}\"'")
 
 
 @pytest.fixture(scope="session")
-def notebook_service(docker_ip, docker_services):
+def notebook_service(docker_compose, docker_ip, docker_services):
     """Ensure that HTTP service is up and responsive."""
 
     # `port_for` takes a container port and returns the corresponding host port
     port = docker_services.port_for("aiidalab", 8888)
     url = f"http://{docker_ip}:{port}"
     token = os.environ.get("JUPYTER_TOKEN", "testtoken")
-    docker_services.wait_until_responsive(
-        # The timeout is very high for this test, because the installation of pseudo libraries.
-        timeout=180.0,
-        pause=0.1,
-        check=lambda: is_responsive(url),
-    )
+    try:
+        docker_services.wait_until_responsive(
+            timeout=60.0,
+            pause=1.0,
+            check=lambda: is_responsive(url),
+        )
+    except Exception as e:
+        print(docker_compose.execute("logs").decode().strip())
+        pytest.exit(e)
     return url, token
 
 
@@ -85,7 +88,7 @@ def selenium_driver(selenium, notebook_service):
         selenium.find_element(By.ID, "ipython-main-app")
         selenium.find_element(By.ID, "notebook-container")
         WebDriverWait(selenium, 100).until(
-            EC.invisibility_of_element((By.ID, "appmode-busy"))
+            ec.invisibility_of_element((By.ID, "appmode-busy"))
         )
 
         return selenium
@@ -114,12 +117,6 @@ def screenshot_dir():
     except FileExistsError:
         pass
     return sdir
-
-
-@pytest.fixture
-def firefox_options(firefox_options):
-    firefox_options.add_argument("--headless")
-    return firefox_options
 
 
 @pytest.fixture

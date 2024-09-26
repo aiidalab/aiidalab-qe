@@ -1,10 +1,9 @@
 # AiiDA imports.
+# AiiDA Quantum ESPRESSO plugin inputs.
 from aiida import orm
 from aiida.common import AttributeDict
 from aiida.engine import ToContext, WorkChain, if_
 from aiida.plugins import DataFactory
-
-# AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
@@ -20,6 +19,8 @@ Orbital = DataFactory("core.orbital")
 # because we want to decouple the workflows from the app, so I copied it here
 # instead of importing it.
 # load entry points
+
+
 def get_entries(entry_point_name="aiidalab_qe.property"):
     from importlib.metadata import entry_points
 
@@ -190,15 +191,6 @@ class QeAppWorkChain(WorkChain):
         relax_builder.pop("base_final_scf", None)  # never run a final scf
         builder.relax = relax_builder
 
-        # remove starting magnetization if tot_magnetization is set
-        if (
-            relax_builder["base"]["pw"]["parameters"]["SYSTEM"].get("tot_magnetization")
-            is not None
-        ):
-            builder.relax["base"]["pw"]["parameters"]["SYSTEM"].pop(
-                "starting_magnetization", None
-            )
-
         if properties is None:
             properties = []
         builder.properties = orm.List(list=properties)
@@ -211,7 +203,6 @@ class QeAppWorkChain(WorkChain):
                 plugin_builder = entry_point["get_builder"](
                     codes, builder.structure, copy.deepcopy(parameters), **kwargs
                 )
-                # check if the plugin has a clean_workdir input
                 plugin_workchain = entry_point["workchain"]
                 if plugin_workchain.spec().has_input("clean_workdir"):
                     plugin_builder.clean_workdir = clean_workdir

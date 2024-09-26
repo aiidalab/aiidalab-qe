@@ -1,7 +1,7 @@
 import ipywidgets as ipw
 
 
-def get_start_widget(appbase, jupbase, notebase):
+def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
     return ipw.HTML(
         f"""
         <table>

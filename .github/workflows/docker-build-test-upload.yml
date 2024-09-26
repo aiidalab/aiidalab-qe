@@ -1,77 +1,102 @@
 ---
-name: Build a new image and then upload the image, tags and manifests to GitHub artifacts
-
-env:
-    OWNER: ${{ github.repository_owner }}
+name: Build Docker image
 
 on:
-    workflow_call:
-        inputs:
-            image:
-                description: Image name
-                required: true
-                type: string
-            architecture:
-                description: Image architecture, e.g. amd64, arm64
-                required: true
-                type: string
-            runsOn:
-                description: GitHub Actions Runner image
-                required: true
-                type: string
+    pull_request:
+    push:
+        branches:
+            - main
+        tags:
+            - v*
+    workflow_dispatch:
+
+env:
+    FORCE_COLOR: 1
+    IMAGE: ghcr.io/aiidalab/qe
+    BUILDKIT_PROGRESS: plain
+
+# https://docs.github.com/en/actions/using-jobs/using-concurrency
+concurrency:
+    # only cancel in-progress jobs or runs for the current workflow - matches against branch & tags
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
     build-test-upload:
-        runs-on: ${{ inputs.runsOn }}
+        runs-on: ubuntu-latest
         continue-on-error: true
 
         steps:
             - name: Checkout Repo ⚡️
               uses: actions/checkout@v4
-            - name: Create dev environment 📦
-              uses: ./.github/actions/create-dev-env
+
+            - name: Login to Container Registry 🔑
+              uses: docker/login-action@v2
+              if: ${{ !github.event.pull_request.head.repo.fork }}
               with:
-                  architecture: ${{ inputs.architecture }}
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
 
-            # Self-hosted runners share a state (whole VM) between runs
-            # Also, they might have running or stopped containers,
-            # which are not cleaned up by `docker system prun`
-            - name: Reset docker state and cleanup artifacts 🗑️
-              if: ${{ inputs.platform != 'x86_64' }}
-              run: |
-                  docker kill $(docker ps --quiet) || true
-                  docker rm $(docker ps --all --quiet) || true
-                  docker system prune --all --force
-                  rm -rf /tmp/aiidalab/
-              shell: bash
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
 
-            - name: Build image 🛠
-              working-directory: docker
-              run: docker buildx bake --set qe.platform=linux/${{ inputs.architecture }} -f docker-bake.hcl -f build.json --load
+            - name: Docker meta 📝
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: |
+                      name=${{ env.IMAGE }}
+                  tags: |
+                      type=ref,event=pr
+                      type=edge,enable={{is_default_branch}}
+                      type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+            - name: Build and push image
+              id: build-upload
+              uses: docker/build-push-action@v5
+              with:
+                  tags: ${{ steps.meta.outputs.tags }}
+                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+                  push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
+                  context: .
+                  platforms: linux/amd64
+                  cache-to: |
+                      type=gha,scope=${{ github.workflow }},mode=min
+                  cache-from: |
+                      type=gha,scope=${{ github.workflow }}
+
+            - name: Set Up Python 🐍
+              uses: actions/setup-python@v5
+              with:
+                  python-version: 3.11
+
+            - name: Install Dev Dependencies 📦
+              run: pip install -r requirements-docker.txt
+
+            - name: Set jupyter token env
+              run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
+            - name: Run pytest for Chrome
+              run: pytest -sv --driver Chrome tests_integration/
               env:
-                  # Use buildx
-                  DOCKER_BUILDKIT: 1
-                  # Full logs for CI build
-                  BUILDKIT_PROGRESS: plain
-              shell: bash
+                  # We'd like to identify the image by its unique digest, i.e ghcr.io/aiidalab/qe@sha256:<digest>
+                  # but that sadly does not work when the image is loaded to Docker locally and not published on ghcr.io
+                  # as is the case for PRs from forks. Hence this super-ugly ternary expression...
+                  # For forks, we take the image as ghcr.io/aiidalab/qe:pr-XXX
+                  # which is stored in the steps.meta.outputs.tags variable
+                  QE_IMAGE: >-
+                      ${{
+                          github.event_name == 'pull_request' &&
+                          github.event.pull_request.head.repo.fork &&
+                          steps.meta.outputs.tags ||
+                          format('{0}@{1}', env.IMAGE, steps.build-upload.outputs.imageid)
+                      }}
 
-            - name: Run tests ✅
-              uses: ./.github/actions/integration-tests
-              with:
-                  architecture: ${{ inputs.architecture }}
-                  runsOn: ${{ inputs.runsOn }}
-
-            - name: Save image as a tar for later use 💾
-              run: |
-                  mkdir -p /tmp/aiidalab/
-                  docker save ${{ env.OWNER }}/${{ inputs.image }} -o /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
-              shell: bash
+            - name: Upload screenshots as artifacts
               if: always()
-
-            - name: Upload image as artifact 💾
               uses: actions/upload-artifact@v4
               with:
-                  name: ${{ inputs.image }}-${{ inputs.architecture }}
-                  path: /tmp/aiidalab/${{ inputs.image }}-${{ inputs.architecture }}.tar
-                  retention-days: 3
-              if: always()
+                  name: Screenshots
+                  path: screenshots/
+                  if-no-files-found: error

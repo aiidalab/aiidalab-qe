@@ -1,7 +1,7 @@
 import pytest
-from aiida import orm
 
-from aiidalab_qe.common.setup_pseudos import (
+from aiida import orm
+from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
     _construct_cmd,
@@ -11,7 +11,7 @@ from aiidalab_qe.common.setup_pseudos import (
 
 
 def test_setup_pseudos_cmd(tmp_path):
-    """Test _construct_cmd function in setup_pseudos.py."""
+    """Test _construct_cmd function in setup.pseudos"""
 
     # SSSP family
     pseudo_family = f"SSSP/{SSSP_VERSION}/PBE/efficiency"
@@ -96,7 +96,7 @@ def test_setup_pseudos_cmd(tmp_path):
         "--pseudo-format",
         "upf",
         "--from-download",
-        f"{str(tmp_path)}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
+        f"{tmp_path!s}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
     ]
 
 
@@ -104,39 +104,39 @@ def test_setup_pseudos_cmd(tmp_path):
 def test_pseudos_installation():
     """Test install_pseudos"""
     # Test by compare the pseudos_to_install before and after the installation
-    assert len(pseudos_to_install()) == 8
+    assert len(pseudos_to_install()) == 12
     EXPECTED_PSEUDOS = {
         f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/standard/upf",
         f"SSSP/{SSSP_VERSION}/PBE/efficiency",
     }
 
     # Install the pseudos
-    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS)]
+    list(_install_pseudos(EXPECTED_PSEUDOS))
 
     # Two pseudos are installed
-    assert len(pseudos_to_install()) == 6
+    assert len(pseudos_to_install()) == 10
 
 
 @pytest.mark.usefixtures("aiida_profile_clean")
 def test_download_and_install_pseudo_from_file(tmp_path):
     """Test download and install pseudo from file."""
-    assert len(pseudos_to_install()) == 8
+    assert len(pseudos_to_install()) == 12
     EXPECTED_PSEUDOS = {
         f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/standard/upf",
         f"SSSP/{SSSP_VERSION}/PBE/efficiency",
     }
 
     # Download the pseudos to the tmp_path but not install
-    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, download_only=True, cwd=tmp_path)]
+    list(_install_pseudos(EXPECTED_PSEUDOS, download_only=True, cwd=tmp_path))
 
-    assert len(pseudos_to_install()) == 8
+    assert len(pseudos_to_install()) == 12
     assert len(list(tmp_path.iterdir())) == 2
 
     # Install the pseudos from the tmp_path
-    [_ for _ in _install_pseudos(EXPECTED_PSEUDOS, cwd=tmp_path)]
+    list(_install_pseudos(EXPECTED_PSEUDOS, cwd=tmp_path))
 
     # Two pseudos are installed
-    assert len(pseudos_to_install()) == 6
+    assert len(pseudos_to_install()) == 10
 
 
 def test_pseudos_family_selector_widget():
@@ -147,7 +147,7 @@ def test_pseudos_family_selector_widget():
     assert w.override.value is False
 
     w.override.value = True
-
+    w.spin_orbit = "wo_soc"
     # test the default value
     assert w.value == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
@@ -162,6 +162,12 @@ def test_pseudos_family_selector_widget():
     # Test if selecet new pseudo library the value will be updated
     w.library_selection.value = "PseudoDojo stringent"
     assert w.value == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
+
+    # Test spin-orbit change will update
+
+    w.spin_orbit = "soc"
+    w.protocol = "moderate"
+    assert w.value == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/standard/upf"
 
 
 @pytest.mark.usefixtures("sssp")

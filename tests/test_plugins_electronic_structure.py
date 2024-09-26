@@ -1,10 +1,10 @@
 def test_electronic_structure(generate_qeapp_workchain):
     """Test the electronic structure tab."""
-    from aiida import engine
+    import plotly.graph_objects as go
 
+    from aiida import engine
     from aiidalab_qe.app.result.workchain_viewer import WorkChainViewer
     from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
-    import plotly.graph_objects as go
     from aiidalab_qe.plugins.electronic_structure.result import Result
 
     wkchain = generate_qeapp_workchain()
@@ -14,11 +14,11 @@ def test_electronic_structure(generate_qeapp_workchain):
     # find the tab with the identifier "electronic_structure"
     # the built-in summary and structure tabs is not a plugin panel,
     # thus don't have identifiers
-    tab = [
+    tab = next(
         tab
         for tab in wcv.result_tabs.children
         if getattr(tab, "identifier", "") == "electronic_structure"
-    ][0]
+    )
     # It should have one children: the _bands_plot_view
     assert len(tab.children) == 1
 

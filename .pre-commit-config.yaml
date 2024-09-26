@@ -5,7 +5,7 @@ ci:
 repos:
 
     - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.5.0
+      rev: v4.6.0
       hooks:
           - id: check-json
           - id: check-yaml
@@ -20,20 +20,9 @@ repos:
             exclude: tests
 
     - repo: https://github.com/sirosen/check-jsonschema
-      rev: 0.28.1
+      rev: 0.28.6
       hooks:
           - id: check-github-workflows
-
-    - repo: https://github.com/nbQA-dev/nbQA
-      rev: 1.8.5
-      hooks:
-          - id: nbqa-pyupgrade
-            args: [--py38-plus]
-          - id: nbqa-isort
-            args: [--profile=black]
-          - id: nbqa-ruff
-            # suppress E402
-            args: [--ignore=E402]
 
     - repo: https://github.com/kynan/nbstripout
       rev: 0.7.1
@@ -41,11 +30,10 @@ repos:
           - id: nbstripout
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      # Ruff version.
-      rev: v0.3.4
+      rev: v0.6.1
       hooks:
-        # Run the linter.
           - id: ruff
+            types_or: [python, pyi, jupyter]
             args: [--fix]
-        # Run the formatter.
           - id: ruff-format
+            types_or: [python, pyi, jupyter]

@@ -1,0 +1,48 @@
+/*
+  Override Jupyter width limitation to
+  make apps take full notebook width
+*/
+.output_subarea {
+  max-width: none !important;
+}
+/* end override */
+
+.app-header {
+  margin-bottom: 1em;
+}
+
+.logo {
+  text-align: center;
+}
+
+#subtitle {
+  text-align: center;
+  font-style: italic;
+}
+
+.info-toggles {
+  margin: 0 auto;
+}
+.info-toggles button {
+  width: 100px;
+  margin: 1em 0.5em;
+}
+.info-toggles button:focus {
+  outline: none !important;
+}
+
+.guide ol {
+  list-style: none;
+}
+.guide p:not(:last-of-type) {
+  margin-bottom: 0.5em;
+}
+
+#loading {
+  text-align: center;
+  font-size: large;
+}
+
+footer {
+  text-align: right;
+}

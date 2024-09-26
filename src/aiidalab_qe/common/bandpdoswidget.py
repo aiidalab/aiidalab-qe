@@ -1,14 +1,15 @@
 import base64
 import json
+import re
 
 import ipywidgets as ipw
 import numpy as np
 import plotly.graph_objects as go
-from aiida.orm import ProjectionData
-from aiidalab_widgets_base.utils import string_range_to_list, StatusHTML
 from IPython.display import clear_output, display
 from plotly.subplots import make_subplots
-import re
+
+from aiida.orm import ProjectionData
+from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 
 
 class BandPdosPlotly:
@@ -110,7 +111,7 @@ class BandPdosPlotly:
             return None
 
         bandyaxis = go.layout.YAxis(
-            title=dict(text="Electronic Bands (eV)", standoff=1),
+            title={"text": "Electronic Bands (eV)", "standoff": 1},
             side="left",
             showgrid=True,
             showline=True,
@@ -185,7 +186,7 @@ class BandPdosPlotly:
             for label in band_labels[1]:
                 fig.add_vline(
                     x=label,
-                    line=dict(color=self.SETTINGS["vertical_linecolor"], width=1),
+                    line={"color": self.SETTINGS["vertical_linecolor"], "width": 1},
                 )
 
             if self.project_bands:
@@ -196,9 +197,11 @@ class BandPdosPlotly:
             if self.plot_type == "pdos":
                 fig.add_vline(
                     x=0,
-                    line=dict(
-                        color=self.SETTINGS["vertical_linecolor"], width=1, dash="dot"
-                    ),
+                    line={
+                        "color": self.SETTINGS["vertical_linecolor"],
+                        "width": 1,
+                        "dash": "dot",
+                    },
                 )
 
         if self.plot_type == "combined":
@@ -274,11 +277,11 @@ class BandPdosPlotly:
                     x=x_bands_comb,
                     y=y_bands_comb - fermi_energy,
                     mode="lines",
-                    line=dict(
-                        color=colors[(spin_polarized, spin)],
-                        shape="spline",
-                        smoothing=1.3,
-                    ),
+                    line={
+                        "color": colors[(spin_polarized, spin)],
+                        "shape": "spline",
+                        "smoothing": 1.3,
+                    },
                     showlegend=False,
                 )
             )
@@ -319,7 +322,11 @@ class BandPdosPlotly:
                 y=y_data,
                 fill=fill,
                 name=trace["label"],
-                line=dict(color=trace["borderColor"], shape="spline", smoothing=1.0),
+                line={
+                    "color": trace["borderColor"],
+                    "shape": "spline",
+                    "smoothing": 1.0,
+                },
                 legendgroup=trace["label"],
             )
 
@@ -350,7 +357,7 @@ class BandPdosPlotly:
                     fill="toself",
                     legendgroup=proj_bands["label"],
                     mode="lines",
-                    line=dict(width=0, color=proj_bands["color"]),
+                    line={"width": 0, "color": proj_bands["color"]},
                     name=proj_bands["label"],
                     # If PDOS is present, use those legend entries
                     showlegend=True if self.plot_type == "bands" else False,
@@ -363,7 +370,7 @@ class BandPdosPlotly:
         self._customize_layout(fig, self._bands_xaxis, self._bands_yaxis)
         self._customize_layout(fig, self._pdos_xaxis, self._pdos_yaxis, col=2)
         fig.update_layout(
-            legend=dict(xanchor="left", x=1.06),
+            legend={"xanchor": "left", "x": 1.06},
             height=self.SETTINGS["combined_plot_height"],
             width=self.SETTINGS["combined_plot_width"],
             plot_bgcolor="white",
@@ -374,7 +381,11 @@ class BandPdosPlotly:
         fig.update_yaxes(patch=yaxis, row=row, col=col, showticklabels=True)
         fig.add_hline(
             y=0,
-            line=dict(color=self.SETTINGS["horizontal_linecolor"], width=1, dash="dot"),
+            line={
+                "color": self.SETTINGS["horizontal_linecolor"],
+                "width": 1,
+                "dash": "dot",
+            },
             row=row,
             col=col,
         )
@@ -420,7 +431,6 @@ class BandPdosWidget(ipw.VBox):
         Select the style of plotting the projected density of states.
         </div>"""
     )
-    projected_bands_width = 0.5
 
     def __init__(self, bands=None, pdos=None, **kwargs):
         if bands is None and pdos is None:
@@ -471,6 +481,18 @@ class BandPdosWidget(ipw.VBox):
             value=False,
             description="Add `fat bands` projections",
         )
+        self.proj_bands_width_slider = ipw.FloatSlider(
+            value=0.5,
+            min=0.01,
+            max=0.76,
+            step=0.01,
+            description="`Fat bands` max width (eV):",
+            orientation="horizontal",
+            readout=True,
+            readout_format=".2f",
+            style={"description_width": "initial"},
+            layout=ipw.Layout(width="380px", visibility="hidden"),
+        )
 
         # Information for the plot
         self.pdos_data = self._get_pdos_data()
@@ -494,6 +516,7 @@ class BandPdosWidget(ipw.VBox):
         # If projections are available in the bands data, include the box to plot fat-bands
         if self.bands_data and "projected_bands" in self.bands_data:
             pdos_options_list.insert(4, self.project_bands_box)
+            pdos_options_list.insert(5, self.proj_bands_width_slider)
 
         self.pdos_options = ipw.VBox(pdos_options_list)
 
@@ -502,6 +525,7 @@ class BandPdosWidget(ipw.VBox):
         # Set the event handlers
         self.download_button.on_click(self.download_data)
         self.update_plot_button.on_click(self._update_plot)
+        # self.proj_bands_width_slider.observe(self._update_plot, names='value')
 
         super().__init__(
             children=[
@@ -543,14 +567,14 @@ class BandPdosWidget(ipw.VBox):
         from IPython.display import Javascript
 
         javas = Javascript(
-            """
+            f"""
             var link = document.createElement('a');
             link.href = 'data:text/json;charset=utf-8;base64,{payload}'
             link.download = "{filename}"
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            """.format(payload=payload, filename=filename)
+            """
         )
         display(javas)
 
@@ -583,7 +607,7 @@ class BandPdosWidget(ipw.VBox):
                 group_tag=self.dos_atoms_group.value,
                 plot_tag=self.dos_plot_group.value,
                 selected_atoms=expanded_selection,
-                bands_width=self.projected_bands_width,
+                bands_width=self.proj_bands_width_slider.value,
             )
             return bands
         return None
@@ -611,6 +635,9 @@ class BandPdosWidget(ipw.VBox):
                     project_bands=self.project_bands_box.value,
                 ).bandspdosfigure
                 self._clear_output_and_display(self.bandsplot_widget)
+                self.proj_bands_width_slider.layout.visibility = (
+                    "visible" if self.project_bands_box.value else "hidden"
+                )
 
     def _clear_output_and_display(self, widget=None):
         clear_output(wait=True)
@@ -664,8 +691,8 @@ def _prepare_projections_to_plot(bands_data, projections, bands_width):
 
         for proj in projections[spin]:
             # Create the upper and lower boundary of the fat bands based on the orbital projections
-            y_bands_proj_upper = y_bands + bands_width * proj["projections"].T
-            y_bands_proj_lower = y_bands - bands_width * proj["projections"].T
+            y_bands_proj_upper = y_bands + bands_width / 2 * proj["projections"].T
+            y_bands_proj_lower = y_bands - bands_width / 2 * proj["projections"].T
             # As mentioned above, the bands need to be concatenated with their mirror image
             # to create the filled areas properly
             y_bands_mirror = np.hstack(
@@ -903,13 +930,9 @@ def _curate_orbitals(orbital):
         qn_j = orbital_data["total_angular_momentum"]
         qn_l = orbital_data["angular_momentum"]
         qn_m_j = orbital_data["magnetic_number"]
-        orbital_name = "j {j} l {l} m_j{m_j}".format(j=qn_j, l=qn_l, m_j=qn_m_j)
-        orbital_name_plotly = "j={j} <i>l</i>={l} m<sub>j</sub>={m_j}".format(
-            j=HTML_TAGS.get(qn_j, qn_j),
-            l=qn_l,
-            m_j=HTML_TAGS.get(qn_m_j, qn_m_j),
-        )
-        orbital_angular_momentum = "l {l} ".format(l=qn_l)
+        orbital_name = f"j {qn_j} l {qn_l} m_j{qn_m_j}"
+        orbital_name_plotly = f"j={HTML_TAGS.get(qn_j, qn_j)} <i>l</i>={qn_l} m<sub>j</sub>={HTML_TAGS.get(qn_m_j, qn_m_j)}"
+        orbital_angular_momentum = f"l {qn_l} "
 
     return orbital_name_plotly, orbital_angular_momentum, kind_name, atom_position
 
@@ -982,7 +1005,7 @@ def _projections_curated_options(
 
     curated_proj = []
     for label, (energy, proj_pdos) in _proj_pdos.items():
-        label += SPIN_LABELS[spin_type]
+        label += SPIN_LABELS[spin_type]  # noqa: PLW2901
         if projections_pdos == "pdos":
             orbital_proj_pdos = {
                 "label": label,
@@ -1054,4 +1077,4 @@ def cmap(label: str) -> str:
     ascn = sum([ord(c) for c in label])
     random.seed(ascn)
 
-    return "#%06x" % random.randint(0, 0xFFFFFF)
+    return f"#{random.randint(0, 0xFFFFFF):06x}"

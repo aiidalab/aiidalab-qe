@@ -9,16 +9,11 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
 import time
-
-# sys.path.insert(0, os.path.abspath('.'))
 
 # -- Project information -----------------------------------------------------
 
-version = "v24.04.0"
+version = "v24.10.0a1"
 release = f"{version}-dev"
 project = "Quantum ESPRESSO App"
 copyright_first_year = "2023"
@@ -30,9 +25,7 @@ copyright_year_string = (
     if current_year == copyright_first_year
     else f"{copyright_first_year}-{current_year}"
 )
-copyright = "{}, {}. All rights reserved".format(
-    copyright_year_string, copyright_owners
-)
+copyright = f"{copyright_year_string}, {copyright_owners}. All rights reserved"  # noqa: A001
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
