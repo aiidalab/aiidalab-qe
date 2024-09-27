@@ -10,6 +10,7 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.panel import Panel
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 from .advanced import AdvancedSettings
@@ -59,7 +60,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.advanced_settings,
         ]
 
-        self.settings = {
+        self.settings: dict[str, Panel] = {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
@@ -134,12 +135,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def set_configuration_parameters(self, parameters):
         self._model.set_model_state(parameters)
 
-    # TODO check logic
     def reset(self):
-        with self.hold_trait_notifications():
-            self._model.reset()
-            for _, settings in self.settings.items():
-                settings.reset()
+        self._model.reset()
+        for _, settings in self.settings.items():
+            settings.reset()
 
     @tl.observe("previous_step_state")
     def _on_previous_step_state_change(self, _):
@@ -151,7 +150,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.tab.children[tab].render()  # type: ignore
 
     def _on_input_structure_change(self, _):
-        self._model.advanced.update()
+        self.reset()
 
     def _on_protocol_change(self, _):
         self._model.advanced.update()

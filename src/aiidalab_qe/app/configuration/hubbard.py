@@ -241,11 +241,6 @@ class HubbardSettings(ipw.VBox):
 
         self.eigenvalues_widget.children = children
 
-    def _unsubscribe(self):
-        for link in self.links:
-            link.unlink()
-        self.links.clear()
-
     def _toggle_hubbard_widget(self, change):
         self.container.children = [self.hubbard_widget] if change["new"] else []
 
@@ -258,3 +253,8 @@ class HubbardSettings(ipw.VBox):
             if change["new"]
             else [*self.hubbard_widget.children][:-1]
         )
+
+    def _unsubscribe(self):
+        for link in self.links:
+            link.unlink()
+        self.links.clear()

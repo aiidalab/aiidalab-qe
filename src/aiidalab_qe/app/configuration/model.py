@@ -795,24 +795,17 @@ class AdvancedModel(SettingsModel):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.override = self.traits()["override"].default_value
             self.total_charge = self.traits()["total_charge"].default_value
             self.van_der_waals = self.traits()["van_der_waals"].default_value
-            self.spin_orbit = self.traits()["spin_orbit"].default_value
             self.forc_conv_thr = self.traits()["forc_conv_thr"].default_value
             self.forc_conv_thr_step = self.traits()["forc_conv_thr_step"].default_value
             self.etot_conv_thr = self.traits()["etot_conv_thr"].default_value
             self.etot_conv_thr_step = self.traits()["etot_conv_thr_step"].default_value
             self.scf_conv_thr = self.traits()["scf_conv_thr"].default_value
             self.scf_conv_thr_step = self.traits()["scf_conv_thr_step"].default_value
+            self.spin_orbit = self.traits()["spin_orbit"].default_value
             self.kpoints_distance = self.traits()["kpoints_distance"].default_value
-
-        with self.hold_trait_notifications():
-            self.smearing.reset()
-            self.hubbard.reset()
-            self.magnetization.reset()
-            self.pseudos.reset()
-            self.update()
+            self.override = self.traits()["override"].default_value
 
     def _set_value_and_step(self, attribute, value):
         """Sets the value and step size.
@@ -920,10 +913,7 @@ class ConfigurationModel(SettingsModel):
                     model.include = False
 
     def reset(self):
-        with self.hold_trait_notifications():
-            for model in self._models.values():
-                model.reset()
-            self.configuration_parameters = {}
+        self.configuration_parameters = {}
 
     def _get_properties(self):
         properties = []

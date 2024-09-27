@@ -45,7 +45,7 @@ class PseudoSettings(ipw.VBox):
             ["library", "functional"],
         )
 
-        self.setter_widget_links = []
+        self.links = []
 
         self.rendered = False
 
@@ -253,11 +253,12 @@ class PseudoSettings(ipw.VBox):
         self.rendered = True
 
     def reset(self):
+        self._unsubscribe()
         self._model.advanced.pseudos.reset()
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, _=None):
-        self._unsubscribe_setter_widget()
+        self._unsubscribe()
         self._model.advanced.pseudos.update()
         self._build_setter_widgets()
 
@@ -350,11 +351,11 @@ class PseudoSettings(ipw.VBox):
             cutoffs_link = ipw.dlink(
                 (self._model.advanced.pseudos, "cutoffs"),
                 (upload_widget, "cutoffs"),
-                lambda c, i=index: [c[0][i], c[1][i]],
+                lambda c, i=index: [c[0][i], c[1][i]] if len(c[0]) > i else [0.0, 0.0],
             )
             upload_widget.render()
 
-            self.setter_widget_links.extend(
+            self.links.extend(
                 [
                     pseudo_link,
                     cutoffs_link,
@@ -366,10 +367,10 @@ class PseudoSettings(ipw.VBox):
 
         self.setter_widget.children = children
 
-    def _unsubscribe_setter_widget(self):
-        for link in self.setter_widget_links:
+    def _unsubscribe(self):
+        for link in self.links:
             link.unlink()
-        self.setter_widget_links.clear()
+        self.links.clear()
 
 
 class PseudoUploadWidget(ipw.HBox):
