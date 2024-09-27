@@ -515,7 +515,11 @@ class BandPdosWidget(ipw.VBox):
 
     description = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        The plot is interactive: you can zoom in and out, as well as move the axes to explore specific regions of interest.
+        <br><br>
         Select the style of plotting the projected density of states.
+        <br><br>
+        Note: Labels containing <strong>r<sub>#</sub></strong> in the orbital contributions refer to the radial nodes of the orbitals, which are associated with the valence electrons from the pseudopotential used.
         </div>"""
     )
 
@@ -530,7 +534,7 @@ class BandPdosWidget(ipw.VBox):
             description="Group by:",
             options=[
                 ("Kinds", "kinds"),
-                ("Atoms", "atoms"),
+                ("Atomic position", "atoms"),
             ],
             value="kinds",
             style={"description_width": "initial"},
@@ -1009,13 +1013,17 @@ def _curate_orbitals(orbital):
     orbital_data = orbital.get_orbital_dict()
     kind_name = orbital_data["kind_name"]
     atom_position = [round(i, 2) for i in orbital_data["position"]]
+    radial_node = orbital_data["radial_nodes"]
 
     try:
         orbital_name = orbital.get_name_from_quantum_numbers(
             orbital_data["angular_momentum"], orbital_data["magnetic_number"]
         ).lower()
-        orbital_name_plotly = HTML_TAGS.get(orbital_name, orbital_name)
-        orbital_angular_momentum = orbital_name[0]
+        orbital_name_plotly = (
+            f"r{radial_node} {HTML_TAGS.get(orbital_name, orbital_name)}"
+        )
+        orbital_angular_momentum = f"r{radial_node} {orbital_name[0]}"
+
     except AttributeError:
         # Set quanutum numbers
         qn_j = orbital_data["total_angular_momentum"]
