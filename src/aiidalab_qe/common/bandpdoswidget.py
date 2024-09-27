@@ -375,6 +375,7 @@ class BandPdosPlotly:
             width=self.SETTINGS["combined_plot_width"],
             plot_bgcolor="white",
         )
+        self._update_dos_layout(fig)
 
     def _customize_layout(self, fig, xaxis, yaxis, row=1, col=1):
         fig.update_xaxes(patch=xaxis, row=row, col=col)
@@ -401,6 +402,92 @@ class BandPdosPlotly:
             height=self.SETTINGS[f"{self.plot_type}_plot_height"],
             width=self.SETTINGS[f"{self.plot_type}_plot_width"],
         )
+        self._update_dos_layout(fig)
+
+    def _update_dos_layout(self, fig):
+        def update_layout_spin_polarized(
+            x_data_up,
+            y_data_up,
+            x_data_down,
+            y_data_down,
+            x_min,
+            x_max,
+            update_func,
+            layout_type,
+        ):
+            most_negative_down, max_up = find_max_up_and_down(
+                x_data_up, y_data_up, x_data_down, y_data_down, x_min, x_max
+            )
+            if layout_type == "layout":
+                update_func(yaxis={"range": [most_negative_down * 1.10, max_up * 1.10]})
+            elif layout_type == "xaxes":
+                update_func(
+                    patch={"range": [most_negative_down * 1.10, max_up * 1.10]},
+                    row=1,
+                    col=2,
+                )
+
+        def update_layout_non_spin_polarized(
+            total_dos_xdata, total_dos_ydata, x_min, x_max, update_func, layout_type
+        ):
+            max_value = find_max_in_range(
+                total_dos_xdata, total_dos_ydata, x_min, x_max
+            )
+            if layout_type == "layout":
+                update_func(yaxis={"range": [0, max_value * 1.10]})
+            elif layout_type == "xaxes":
+                update_func(patch={"range": [0, max_value * 1.10]}, row=1, col=2)
+
+        def get_x_min_max(fermi_energy):
+            return (
+                self.SETTINGS["horizontal_range_pdos"][0] + fermi_energy,
+                self.SETTINGS["horizontal_range_pdos"][1] + fermi_energy,
+            )
+
+        def handle_spin_polarization(fermi_energy, update_func, layout_type):
+            spin_polarized = "(↑)" in self.pdos_data["dos"][0]["label"]
+            if not spin_polarized:
+                total_dos_xdata = self.pdos_data["dos"][0]["x"]
+                total_dos_ydata = self.pdos_data["dos"][0]["y"]
+                x_min, x_max = get_x_min_max(fermi_energy)
+                update_layout_non_spin_polarized(
+                    total_dos_xdata,
+                    total_dos_ydata,
+                    x_min,
+                    x_max,
+                    update_func,
+                    layout_type,
+                )
+            else:
+                x_data_up = self.pdos_data["dos"][0]["x"]
+                y_data_up = self.pdos_data["dos"][0]["y"]
+                x_data_down = self.pdos_data["dos"][1]["x"]
+                y_data_down = self.pdos_data["dos"][1]["y"]
+                x_min, x_max = get_x_min_max(fermi_energy)
+                update_layout_spin_polarized(
+                    x_data_up,
+                    y_data_up,
+                    x_data_down,
+                    y_data_down,
+                    x_min,
+                    x_max,
+                    update_func,
+                    layout_type,
+                )
+
+        # PDOS plot type
+        if self.plot_type == "pdos":
+            fermi_energy = self.fermi_energy.get(
+                "fermi_energy"
+            ) or self.fermi_energy.get("fermi_energy_up")
+            handle_spin_polarization(fermi_energy, fig.update_layout, "layout")
+
+        # Combined plot type
+        if self.plot_type == "combined":
+            fermi_energy = self.fermi_energy.get(
+                "fermi_energy"
+            ) or self.fermi_energy.get("fermi_energy_up")
+            handle_spin_polarization(fermi_energy, fig.update_xaxes, "xaxes")
 
 
 class BandPdosWidget(ipw.VBox):
@@ -459,13 +546,14 @@ class BandPdosWidget(ipw.VBox):
             style={"description_width": "initial"},
         )
         self.selected_atoms = ipw.Text(
+            placeholder="e.g. 1..5 8 10",
             description="Select atoms:",
             value="",
             style={"description_width": "initial"},
         )
         self._wrong_syntax = StatusHTML(clear_after=8)
         self.update_plot_button = ipw.Button(
-            description="Update Plot",
+            description="Apply selection",
             icon="pencil",
             button_style="primary",
             disabled=False,
@@ -510,8 +598,9 @@ class BandPdosWidget(ipw.VBox):
             self.description,
             self.dos_atoms_group,
             self.dos_plot_group,
-            ipw.HBox([self.selected_atoms, self._wrong_syntax]),
-            self.update_plot_button,
+            ipw.HBox(
+                [self.selected_atoms, self._wrong_syntax, self.update_plot_button]
+            ),
         ]
         # If projections are available in the bands data, include the box to plot fat-bands
         if self.bands_data and "projected_bands" in self.bands_data:
@@ -526,6 +615,8 @@ class BandPdosWidget(ipw.VBox):
         self.download_button.on_click(self.download_data)
         self.update_plot_button.on_click(self._update_plot)
         # self.proj_bands_width_slider.observe(self._update_plot, names='value')
+        self.dos_atoms_group.observe(self._update_plot, names="value")
+        self.dos_plot_group.observe(self._update_plot, names="value")
 
         super().__init__(
             children=[
@@ -1078,3 +1169,70 @@ def cmap(label: str) -> str:
     random.seed(ascn)
 
     return f"#{random.randint(0, 0xFFFFFF):06x}"
+
+
+def find_extreme_in_range(
+    x_data, y_data, x_min, x_max, is_max=True, initial_value=float("-inf")
+):
+    """
+    General function to find the extreme value (max or min) in a given range.
+
+    Parameters:
+    - x_data: List of x values.
+    - y_data: List of y values.
+    - x_min: Minimum x value for the range.
+    - x_max: Maximum x value for the range.
+    - is_max: Boolean to determine whether to find the maximum or minimum value.
+    - initial_value: Initial value for extreme (default is -inf for max and 0 for min).
+
+    Returns:
+    - Extreme value found in the range, or None if no valid values are found.
+    """
+    extreme_value = initial_value
+
+    for x, y in zip(x_data, y_data):
+        if x_min <= x <= x_max:
+            if (is_max and y > extreme_value) or (not is_max and y < extreme_value):
+                extreme_value = y
+
+    return extreme_value if extreme_value != initial_value else None
+
+
+def find_max_up_and_down(x_data_up, y_data_up, x_data_down, y_data_down, x_min, x_max):
+    """
+    Function to find the maximum positive value and the most negative value.
+
+    Parameters:
+    - x_data_up: List of x values for the positive part.
+    - y_data_up: List of y values for the positive part.
+    - x_data_down: List of x values for the negative part.
+    - y_data_down: List of y values for the negative part.
+    - x_min: Minimum x value for the range.
+    - x_max: Maximum x value for the range.
+
+    Returns:
+    - most_negative_down: Most negative value found in the down part.
+    - max_up: Maximum value found in the up part.
+    """
+    max_up = find_extreme_in_range(x_data_up, y_data_up, x_min, x_max, is_max=True)
+    most_negative_down = find_extreme_in_range(
+        x_data_down, y_data_down, x_min, x_max, is_max=False, initial_value=0
+    )
+
+    return most_negative_down, max_up
+
+
+def find_max_in_range(x_data, y_data, x_min, x_max):
+    """
+    Function to find the maximum value in a specified range.
+
+    Parameters:
+    - x_data: List of x values.
+    - y_data: List of y values.
+    - x_min: Minimum x value for the range.
+    - x_max: Maximum x value for the range.
+
+    Returns:
+    - Maximum value found in the range, or None if no valid values are found.
+    """
+    return find_extreme_in_range(x_data, y_data, x_min, x_max, is_max=True)
