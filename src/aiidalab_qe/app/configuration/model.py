@@ -878,7 +878,7 @@ class ConfigurationModel(SettingsModel):
             (self.advanced, "confirmed"),
         )
 
-        self._models = {
+        self._models: dict[str, SettingsModel] = {
             "workchain": self.workchain,
             "advanced": self.advanced,
         }
@@ -892,8 +892,10 @@ class ConfigurationModel(SettingsModel):
             (model, "confirmed"),
         )
 
-    def get_model(self, identifier):
-        return self._models.get(identifier)
+    def get_model(self, identifier) -> SettingsModel:
+        if identifier in self._models:
+            return self._models[identifier]
+        raise ValueError(f"Model with identifier '{identifier}' not found.")
 
     def get_model_state(self):
         parameters = {

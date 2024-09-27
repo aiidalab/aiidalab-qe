@@ -7,13 +7,13 @@ from aiida import orm
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
-from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 from aiidalab_qe.common.panel import SettingPanel
 
 
 class Setting(SettingPanel):
     title = "PDOS"
     identifier = "pdos"
+
     input_structure = tl.Instance(orm.StructureData, allow_none=True)
     protocol = tl.Unicode(allow_none=True)
 
@@ -21,72 +21,79 @@ class Setting(SettingPanel):
         if self.rendered:
             return
 
-        from aiidalab_qe.app.configuration.model import config_model
-
-        self.settings_title = ipw.HTML(
-            """<div style="padding-top: 0px; padding-bottom: 0px">
-            <h4>Settings</h4></div>"""
-        )
-        # nscf kpoints setting widget
         self.nscf_kpoints_distance = ipw.BoundedFloatText(
             min=0.001,
             step=0.01,
-            value=0.1,
             description="NSCF K-points distance (1/Å):",
-            disabled=False,
             style={"description_width": "initial"},
         )
+        ipw.link(
+            (self._model, "kpoints_distance"),
+            (self.nscf_kpoints_distance, "value"),
+        )
+        self.nscf_kpoints_distance.observe(
+            self._on_kpoints_distance_change,
+            "value",
+        )
+
         self.mesh_grid = ipw.HTML()
-        self.nscf_kpoints_distance.observe(self._display_mesh, "value")
-        self.nscf_kpoints_distance.observe(self._procotol_changed, "change")
+        ipw.dlink(
+            (self._model, "mesh_grid"),
+            (self.mesh_grid, "value"),
+        )
 
         self.children = [
-            self.settings_title,
-            ipw.HBox([self.nscf_kpoints_distance, self.mesh_grid]),
+            ipw.HTML("""
+                <div style="padding-top: 0px; padding-bottom: 0px">
+                    <h4>Settings</h4>
+                </div>
+            """),
+            ipw.HBox(
+                children=[
+                    self.nscf_kpoints_distance,
+                    self.mesh_grid,
+                ]
+            ),
         ]
 
-        ipw.dlink(
-            (config_model, "protocol"),
-            (self, "protocol"),
-        )
-        ipw.dlink(
-            (config_model, "input_structure"),
-            (self, "input_structure"),
-        )
+        with self.hold_trait_notifications():
+            ipw.dlink(
+                (self._config_model, "input_structure"),
+                (self, "input_structure"),
+            )
+            ipw.dlink(
+                (self._config_model.workchain, "protocol"),
+                (self._model, "protocol"),
+            )
+            ipw.dlink(
+                (self._model, "protocol"),
+                (self, "protocol"),
+            )
 
         self.rendered = True
 
-    @tl.observe("protocol")
-    def _procotol_changed(self, change):
-        self.nscf_kpoints_distance.value = PdosWorkChain.get_protocol_inputs(
-            change["new"]
-        )["nscf"]["kpoints_distance"]
-        self._display_mesh()
+    def reset(self):
+        self._model.reset()
 
     @tl.observe("input_structure")
-    def _update_structure(self, _=None):
-        self._display_mesh()
+    def _on_input_structure_change(self, _=None):
+        self._update_mesh()
 
-    def _display_mesh(self, _=None):
+    @tl.observe("protocol")
+    def _on_protocol_change(self, _):
+        self._model.update()
+        self._update_mesh()
+
+    def _on_kpoints_distance_change(self, _=None):
+        self._update_mesh()
+
+    def _update_mesh(self, _=None):
         if self.input_structure is None:
-            return
-        mesh = create_kpoints_from_distance.process_class._func(
-            self.input_structure,
-            orm.Float(self.nscf_kpoints_distance.value),
-            orm.Bool(False),
-        )
-        self.mesh_grid.value = "Mesh " + str(mesh.get_kpoints_mesh()[0])
-
-    def get_panel_value(self):
-        """Return a dictionary with the input parameters for the plugin."""
-        return {
-            "nscf_kpoints_distance": self.nscf_kpoints_distance.value,
-        }
-
-    def set_panel_value(self, input_dict):
-        """Load a dictionary with the input parameters for the plugin."""
-        self.nscf_kpoints_distance.value = input_dict.get("nscf_kpoints_distance", 0.1)
-
-    def reset(self):
-        """Reset the panel to its default values."""
-        self.nscf_kpoints_distance.value = 0.1
+            self._model.mesh_grid = ""
+        else:
+            mesh = create_kpoints_from_distance.process_class._func(
+                self.input_structure,
+                orm.Float(self._model.kpoints_distance),
+                orm.Bool(False),
+            )
+            self._model.mesh_grid = "Mesh " + str(mesh.get_kpoints_mesh()[0])

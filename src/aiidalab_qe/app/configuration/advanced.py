@@ -71,7 +71,10 @@ class AdvancedSettings(Panel):
             (self.override, "disabled"),
             lambda structure: structure is None,
         )
-        self.override.observe(self._on_override_change, "value")
+        self.override.observe(
+            self._on_override_change,
+            "value",
+        )
 
         # Smearing setting widget
         self.smearing.render()

@@ -12,10 +12,14 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
+from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
+
 if t.TYPE_CHECKING:
     from aiidalab_qe.app.configuration.model import ConfigurationModel
 
 DEFAULT_PARAMETERS = {}
+
+CodesDict = dict[str, QEAppComputationalResourcesWidget]
 
 
 class Panel(ipw.VBox):
@@ -99,6 +103,9 @@ class SettingsModel(tl.HasTraits):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.observe(self._unconfirm, tl.All)
+
+    def update(self):
+        raise NotImplementedError
 
     def get_model_state(self):
         raise NotImplementedError

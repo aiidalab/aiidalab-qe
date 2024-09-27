@@ -52,7 +52,10 @@ class HubbardSettings(ipw.VBox):
             (self.activate_hubbard, "disabled"),
             lambda override: not override,
         )
-        self.activate_hubbard.observe(self._on_hubbard_check, "value")
+        self.activate_hubbard.observe(
+            self._on_hubbard_check,
+            "value",
+        )
 
         self.eigenvalues_help = ipw.HTML(
             value="For transition metals and lanthanoids, the starting eigenvalues can be defined (Magnetic calculation).",
@@ -68,7 +71,10 @@ class HubbardSettings(ipw.VBox):
             (self._model.advanced.hubbard, "eigenvalues_label"),
             (self.eigenvalues_label, "value"),
         )
-        self.eigenvalues_label.observe(self._on_eigenvalues_check, "value")
+        self.eigenvalues_label.observe(
+            self._on_eigenvalues_check,
+            "value",
+        )
 
         self.hubbard_widget = ipw.VBox()
         self.eigenvalues_widget = ipw.VBox()
