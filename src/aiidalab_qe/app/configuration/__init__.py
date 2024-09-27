@@ -113,6 +113,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _observe_previous_step_state(self, _change):
         self._update_state()
 
+    @tl.observe("input_structure")
+    def _observe_input_structure(self, _change):
+        if self.input_structure is not None and self.input_structure.pbc == (False, False, False): 
+            pass
+
     def get_configuration_parameters(self):
         """Get the parameters of the configuration step."""
 
@@ -156,7 +161,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @tl.default("state")
     def _default_state(self):
         return self.State.INIT
-
+    
     def reset(self):
         """Reset the widgets in all settings to their initial states."""
         with self.hold_trait_notifications():

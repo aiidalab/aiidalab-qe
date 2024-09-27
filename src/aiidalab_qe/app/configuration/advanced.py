@@ -110,7 +110,7 @@ class AdvancedSettings(Panel):
         ipw.dlink(
             (self.override, "value"),
             (self.kpoints_distance, "disabled"),
-            lambda override: not override,
+            lambda override: not override if self.input_structure is not None and self.input_structure.pbc != (False, False, False) else True,
         )
         self.kpoints_distance.observe(self._callback_value_set, "value")
 
@@ -332,6 +332,9 @@ class AdvancedSettings(Panel):
             self.hubbard_widget.update_widgets(change["new"])
             if isinstance(self.input_structure, HubbardStructureData):
                 self.override.value = True
+            if self.input_structure.pbc == (False, False, False):
+                self.kpoints_distance.value = 10.0
+                self.kpoints_distance.disabled = True
         else:
             self.magnetization.input_structure = None
             self.pseudo_setter.structure = None
@@ -356,7 +359,14 @@ class AdvancedSettings(Panel):
 
         parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
 
-        self.kpoints_distance.value = parameters["kpoints_distance"]
+        if self.input_structure:
+            if self.input_structure.pbc == (False, False, False):
+                self.kpoints_distance.value = 10.0
+                self.kpoints_distance.disabled = True
+            else:
+                self.kpoints_distance.value = parameters["kpoints_distance"]
+        else:
+            self.kpoints_distance.value = parameters["kpoints_distance"]
 
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
@@ -630,6 +640,10 @@ class AdvancedSettings(Panel):
                 self.pseudo_setter._reset()
             else:
                 self.pseudo_setter._reset()
+                if self.input_structure.pbc == (False, False, False):
+                    self.kpoints_distance.value = 10.0
+                    self.kpoints_distance.disabled = True
+
             # reset the magnetization
             self.magnetization.reset()
             # reset the hubbard widget
