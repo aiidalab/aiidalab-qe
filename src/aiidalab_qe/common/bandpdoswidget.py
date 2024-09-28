@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from IPython.display import clear_output, display
 from plotly.subplots import make_subplots
 from pymatgen.core.periodic_table import Element
+
 from aiida.orm import ProjectionData
 from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 
@@ -991,19 +992,25 @@ noble_gas_configs = {
     "Xe": "1s-2s-2p-3s-3p-3d-4s-4p-4d-5s-5p",
     "Rn": "1s-2s-2p-3s-3p-3d-4s-4p-4d-5s-5p-4f-5d-6s-6p",
 }
+
+
 def _replace_noble_gas_configuration(config_string):
     # Find the noble gas pattern in the string
     noble_gas_match = re.search(r"\[([A-Za-z]+)\]", config_string)
 
     if noble_gas_match:
         noble_gas = noble_gas_match.group(1)  # Extract the noble gas (e.g., Ne)
-        
+
         if noble_gas in noble_gas_configs:
             # Replace the noble gas core with its full configuration
-            expanded_config = config_string.replace(f"[{noble_gas}]", noble_gas_configs[noble_gas])
+            expanded_config = config_string.replace(
+                f"[{noble_gas}]", noble_gas_configs[noble_gas]
+            )
 
             # Remove digits after the orbital labels
-            expanded_config = re.sub(r"([spdf])\d+", r"\1", expanded_config)  # Keep only the subshell letters
+            expanded_config = re.sub(
+                r"([spdf])\d+", r"\1", expanded_config
+            )  # Keep only the subshell letters
 
             # Replace dots with dashes
             expanded_config = expanded_config.replace(".", "-")
@@ -1014,13 +1021,17 @@ def _replace_noble_gas_configuration(config_string):
         expanded_config = re.sub(r"([spdf])\d+", r"\1", config_string)
         expanded_config = expanded_config.replace(".", "-")
         return expanded_config
+
+
 def _expanded_electronic_structure(element_name):
     return _replace_noble_gas_configuration(Element(element_name).electronic_structure)
+
+
 def _valence_or_semicore(element, nnodes, subshell_letter):
     electron_config = _expanded_electronic_structure(element)
     # Find all occurrences of the pattern like '1s', '2s', etc. for the given subshell letter
-    pattern = r"(\d+{})(?=-|$)".format(subshell_letter)
-    
+    pattern = rf"(\d+{subshell_letter})(?=-|$)"
+
     # Use regex to find all matches of 'digit+subshell' (e.g., '1s', '2s', etc.)
     matches = re.findall(pattern, electron_config)
 
@@ -1033,6 +1044,8 @@ def _valence_or_semicore(element, nnodes, subshell_letter):
         elif nnodes == 0 and len(matches) == 1:
             return matches[0]  # If there's only one occurrence, return that
     return None  # If no matches were found, return None
+
+
 def _curate_orbitals(orbital):
     """Curate and transform the orbital data into the desired format."""
     # Constants for HTML tags
@@ -1070,10 +1083,7 @@ def _curate_orbitals(orbital):
         orbital_name = orbital.get_name_from_quantum_numbers(
             orbital_data["angular_momentum"], orbital_data["magnetic_number"]
         ).lower()
-        orbital_name_plotly = (
-            
-            f"{_valence_or_semicore(kind_name, radial_node, orbital_name[0])} {HTML_TAGS.get(orbital_name, orbital_name)}"
-        )
+        orbital_name_plotly = f"{_valence_or_semicore(kind_name, radial_node, orbital_name[0])} {HTML_TAGS.get(orbital_name, orbital_name)}"
         orbital_angular_momentum = f"{_valence_or_semicore(kind_name, radial_node, orbital_name[0])} {orbital_name[0]}"
 
     except AttributeError:
