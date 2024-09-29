@@ -16,6 +16,7 @@ from aiidalab_qe.app.structure.model import StructureModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.app.submission.model import SubmissionModel
 from aiidalab_qe.common import QeAppWorkChainSelector
+from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
 
@@ -98,6 +99,11 @@ class App(ipw.VBox):
             "value",
         )
 
+        self._process_loading_message = LoadingWidget(
+            message="Loading process",
+            layout=ipw.Layout(display="none"),
+        )
+
         ipw.dlink(
             (self.submit_step, "process"),
             (self.work_chain_selector, "value"),
@@ -107,6 +113,7 @@ class App(ipw.VBox):
         super().__init__(
             children=[
                 self.work_chain_selector,
+                self._process_loading_message,
                 self._wizard_app_widget,
             ]
         )
@@ -122,22 +129,16 @@ class App(ipw.VBox):
     def _observe_selected_index(self, change):
         """Check unsaved change in the step when leaving the step."""
 
-        # no accordion tab is selected
-        if change["new"] is None:
+        if (new_idx := change["new"]) is None:
             return
-        new_idx = change["new"]
 
         step = self.steps[new_idx][1]
         step.render()
 
-        # only when entering the submit step, check and udpate the blocker messages
-        # steps[new_idx][0] is the title of the step
         if self.steps[new_idx][1] is not self.submit_step:
             return
         blockers = []
-        # Loop over all steps before the submit step
         for title, step in self.steps[:new_idx]:
-            # check if the step is saved
             if not step.is_saved():
                 step.state = WizardAppWidgetStep.State.CONFIGURED
                 blockers.append(
@@ -146,29 +147,32 @@ class App(ipw.VBox):
         self.submit_step.external_submission_blockers = blockers
 
     def _observe_process_selection(self, change):
-        if change["old"] == change["new"]:
-            return
-        pk = change["new"]
-        if pk is None:
+        if (pk := change["new"]) is None:
             self._wizard_app_widget.reset()
             self._wizard_app_widget.selected_index = 0
         else:
+            self._show_process_loading_message()
             process = load_node(pk)
+            self.structure_step.render()
+            self.configure_step.render()
+            self.submit_step.render()
             with self.structure_step.manager.hold_sync():
                 with self.structure_step.hold_sync():
                     self._wizard_app_widget.selected_index = 3
-                    self.structure_step.manager.viewer.structure = (
-                        process.inputs.structure.get_ase()
-                    )
-                    self.structure_step.structure = process.inputs.structure
+                    self.structure_step.set_structure(process.inputs.structure)
                     self.structure_step.confirm()
-                    self.submit_step.process = process
-            # set ui_parameters
-            # print out error message if yaml format ui_parameters is not reachable
-            ui_parameters = process.base.extras.get("ui_parameters", {})
-            if ui_parameters and isinstance(ui_parameters, str):
-                ui_parameters = deserialize_unsafe(ui_parameters)
-                self.configure_step.set_configuration_parameters(ui_parameters)
+                    self.submit_step.set_process(process)
+            parameters = process.base.extras.get("ui_parameters", {})
+            if parameters and isinstance(parameters, str):
+                parameters = deserialize_unsafe(parameters)
+                self.configure_step.set_configuration_parameters(parameters)
                 self.configure_step.confirm()
-                self.submit_step.set_submission_parameters(ui_parameters)
-                self.submit_step.state = self.submit_step.State.SUCCESS
+                self.submit_step.set_submission_parameters(parameters)
+                self.submit_step.state = WizardAppWidgetStep.State.SUCCESS
+            self._hide_process_loading_message()
+
+    def _show_process_loading_message(self):
+        self._process_loading_message.layout.display = "flex"
+
+    def _hide_process_loading_message(self):
+        self._process_loading_message.layout.display = "none"

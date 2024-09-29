@@ -883,7 +883,7 @@ class ConfigurationModel(SettingsModel):
             "advanced": self.advanced,
         }
 
-        self._default_models = [*self._models.keys()]
+        self._default_models = set(self._models.keys())
 
     def add_model(self, identifier, model):
         self._models[identifier] = model
@@ -903,21 +903,16 @@ class ConfigurationModel(SettingsModel):
             for identifier, model in self._models.items()
             if model.include
         }
-        # TODO necessary?
         parameters["workchain"].update({"properties": self._get_properties()})
         return parameters
 
     def set_model_state(self, parameters):
-        # TODO check logic
         with self.hold_trait_notifications():
-            properties = parameters.get("properties", [])
+            properties = set(parameters.get("workchain", {}).get("properties", []))
             for identifier, model in self._models.items():
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
-                if identifier in properties:
-                    model.include = True
-                else:
-                    model.include = False
+                model.include = identifier in self._default_models | properties
 
     def reset(self):
         self.configuration_parameters = {}

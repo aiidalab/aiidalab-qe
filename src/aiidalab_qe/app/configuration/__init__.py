@@ -117,10 +117,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = True
 
+    def get_configuration_parameters(self):
+        return self._model.get_model_state()
+
+    def set_configuration_parameters(self, parameters):
+        self._model.set_model_state(parameters)
+
     def is_saved(self):
-        """Check if the current step is saved.
-        That all changes are confirmed.
-        """
         # TODO reduce calls to model state
         new_parameters = self.get_configuration_parameters()
         return new_parameters == self._model.configuration_parameters
@@ -128,12 +131,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def confirm(self, _=None):
         self._model.configuration_parameters = self.get_configuration_parameters()
         self._model.confirmed = True
-
-    def get_configuration_parameters(self):
-        return self._model.get_model_state()
-
-    def set_configuration_parameters(self, parameters):
-        self._model.set_model_state(parameters)
 
     def reset(self):
         self._model.reset()
