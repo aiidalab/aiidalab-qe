@@ -25,9 +25,10 @@ class SubmissionModel(tl.HasTraits):
 
     submission_blocker_messages = tl.Unicode("")
 
-    installing_sssp = tl.Bool(allow_none=True)
+    installing_qe = tl.Bool(False)
+    installing_sssp = tl.Bool(False)
+    qe_installed = tl.Bool(allow_none=True)
     sssp_installed = tl.Bool(allow_none=True)
-    setting_up_qe = tl.Bool(allow_none=True)
 
     codes = tl.Dict(
         key_trait=tl.Unicode(),

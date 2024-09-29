@@ -323,7 +323,7 @@ def app(pw_code, dos_code, projwfc_code):
     # we need to mock set the installation status to `True` to avoid the blocker message pop up in the
     # submmision step.
     app = App(qe_auto_setup=False)
-    app.submit_step.sssp_installation_status.installed = True
+    app.submit_step.sssp_installation.installed = True
 
     # set up codes
     app.submit_step.pw_code.code_selection.refresh()

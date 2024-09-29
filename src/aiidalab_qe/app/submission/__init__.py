@@ -47,6 +47,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     )
     process = tl.Instance(orm.WorkChainNode, allow_none=True)
     input_parameters = tl.Dict()
+
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
 
@@ -60,11 +61,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self._model = model
 
-        # TODO for testing only - remove in PR
-        self._model.observe(
-            lambda change: print(change["new"]),
-            "input_parameters",
-        )
+        # # TODO for testing only - remove in PR
+        # self._model.observe(
+        #     lambda change: print(change["new"]),
+        #     "input_parameters",
+        # )
 
         self.qe_auto_setup = qe_auto_setup
 
@@ -93,9 +94,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             </div>
         """
 
-        self.blocked = False
-
         self.rendered = False
+
+    @property
+    def is_blocked(self):
+        return any(
+            [
+                *self.internal_submission_blockers,
+                *self.external_submission_blockers,
+            ]
+        )
 
     def render(self):
         if self.rendered:
@@ -159,42 +167,39 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         self.submit_button.on_click(self._on_submission)
 
-        self.sssp_installation_status = PseudosInstallWidget(
-            auto_start=self.qe_auto_setup
-        )
+        self.sssp_installation = PseudosInstallWidget(auto_start=self.qe_auto_setup)
         ipw.dlink(
-            (self.sssp_installation_status, "busy"),
+            (self.sssp_installation, "busy"),
             (self._model, "installing_sssp"),
         )
         ipw.dlink(
-            (self.sssp_installation_status, "installed"),
+            (self.sssp_installation, "installed"),
             (self._model, "sssp_installed"),
         )
-        # TODO why trigger these observers?
-        self.sssp_installation_status.observe(
-            self._on_setup_change,
+        self.sssp_installation.observe(
+            self._on_installation_change,
             ["busy", "installed"],
         )
-        self.sssp_installation_status.observe(
-            self._toggle_install_widgets,
+        self.sssp_installation.observe(
+            self._on_sssp_installed,
             "installed",
         )
 
-        self.qe_setup_status = QESetupWidget(auto_start=self.qe_auto_setup)
+        self.qe_setup = QESetupWidget(auto_start=self.qe_auto_setup)
         ipw.dlink(
-            (self.qe_setup_status, "busy"),
-            (self._model, "setting_up_qe"),
+            (self.qe_setup, "busy"),
+            (self._model, "installing_qe"),
         )
-        self.qe_setup_status.observe(
-            self._on_setup_change,
-            "busy",
+        ipw.dlink(
+            (self.qe_setup, "installed"),
+            (self._model, "qe_installed"),
         )
-        self.qe_setup_status.observe(
-            self._toggle_install_widgets,
-            "installed",
+        self.qe_setup.observe(
+            self._on_installation_change,
+            ["busy", "installed"],
         )
-        self.qe_setup_status.observe(
-            self._auto_select_code,
+        self.qe_setup.observe(
+            self._on_qe_installed,
             "installed",
         )
 
@@ -220,8 +225,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             """),
             *self.code_children,
             self.message_area,
-            self.sssp_installation_status,
-            self.qe_setup_status,
+            self.sssp_installation,
+            self.qe_setup,
             self.submission_blocker_messages,
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
@@ -267,6 +272,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def set_submission_parameters(self, parameters):
         self._model.set_model_state(parameters)
 
+    def set_process(self, process):
+        self._model.process = process
+
     def submit(self, _=None):
         """Submit the work chain with the current inputs."""
 
@@ -295,7 +303,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     @tl.observe("previous_step_state")
     def _on_previous_step_state_change(self, _):
-        self._update_state()
+        self._update()
 
     @tl.observe("input_structure")
     def _on_input_structure_change(self, _):
@@ -322,23 +330,33 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.submit_button.disabled = True
         self.submit()
 
-    def _on_setup_change(self, _):
-        self._update_submission_blockers()
-        self._update_state()
+    def _on_installation_change(self, _):
+        with self.hold_trait_notifications():
+            self._update_submission_blockers()
+            self._update_state()
+
+    def _on_qe_installed(self, change):
+        self._model.installing_qe = not change["new"]
+        self.qe_setup.layout.display = "none" if change["new"] else "block"
+        self._auto_select_code(change)
+
+    def _on_sssp_installed(self, change):
+        self._model.installing_sssp = not change["new"]
+        self.sssp_installation.layout.display = "none" if change["new"] else "block"
 
     def _update(self):
-        self._update_submission_blockers()
-        self._update_codes_display()
-        self._update_process_label()
-        self._update_state()
+        with self.hold_trait_notifications():
+            self._update_submission_blockers()
+            self._update_codes_display()
+            self._update_process_label()
+            self._update_state()
 
     def _update_submission_blockers(self):
-        self.internal_submission_blockers = list(self._identify_submission_blockers())
+        self.internal_submission_blockers = list(self._check_submission_blockers())
 
     def _update_submission_blocker_message(self):
         blockers = self.internal_submission_blockers + self.external_submission_blockers
         if any(blockers):
-            self.blocked = True
             fmt_list = "\n".join(f"<li>{item}</li>" for item in sorted(blockers))
             self._model.submission_blocker_messages = f"""
                 <div class="alert alert-info">
@@ -349,19 +367,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 </div>
             """
         else:
-            self.blocked = False
             self._model.submission_blocker_messages = ""
 
-    def _identify_submission_blockers(self):
+    def _check_submission_blockers(self):
         """Validate the resource inputs and identify blockers for the submission."""
 
         # Do not submit while any of the background setup processes are running.
-        if self._model.setting_up_qe or self._model.installing_sssp:
+        if self._model.installing_qe or self._model.installing_sssp:
             yield "Background setup processes must finish."
 
         # No pw code selected (this is ignored while the setup process is running).
         pw_code = self._model.get_code("pw")
-        if pw_code and pw_code.value is None and not self._model.setting_up_qe:
+        if pw_code and pw_code.value is None and not self._model.installing_qe:
             yield ("No pw code selected")
 
         # code related to the selected property is not installed
@@ -388,12 +405,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {name}."
                 )
 
-    def _toggle_install_widgets(self, change):
-        change["owner"].layout.display = "none" if change["new"] else "block"
-
     def _auto_select_code(self, change):
         if change["new"] and not change["old"]:
-            self._set_selected_codes(DEFAULT["codes"])
+            self._model.set_selected_codes(DEFAULT["codes"])
 
     def _show_alert_message(self, message, alert_class="info"):
         with self.message_area:
@@ -413,7 +427,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 continue
             code.layout.display = "none"
         for _, code in self._model.codes.items():
-            # if name in self.required_codes:
             code.layout.display = "block"
 
     def _update_process_label(self):
@@ -472,8 +485,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.INIT
         elif self._model.process is not None:
             self.state = self.State.SUCCESS
-        elif self.blocked:
-            self.state = self.State.READY
         else:
-            self.internal_submission_blockers = []
-            self.state = self.state.CONFIGURED
+            if self.is_blocked:
+                self.state = self.State.READY
+            else:
+                self.internal_submission_blockers = []
+                self.state = self.state.CONFIGURED
