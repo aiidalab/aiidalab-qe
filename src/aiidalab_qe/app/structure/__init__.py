@@ -85,9 +85,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
 
-        # add plugin specific structure importers
-        entries = get_entry_items("aiidalab_qe.properties", "importer")
-        importers.extend([entry_point() for entry_point in entries.values()])
+        plugin_importers = get_entry_items("aiidalab_qe.properties", "importer")
+        importers.extend([importer() for importer in plugin_importers.values()])
 
         editors = [
             BasicCellEditor(title="Edit cell"),
@@ -95,10 +94,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             AddingTagsEditor(title="Edit StructureData"),
         ]
 
-        # add plugin specific structure editors
-        entries = get_entry_items("aiidalab_qe.properties", "editor")
-        editors.extend([entry_point() for entry_point in entries.values()])
-        #
+        plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
+        editors.extend([editor() for editor in plugin_editors.values()])
+
         self.manager = StructureManagerWidget(
             importers=importers,
             editors=editors,
