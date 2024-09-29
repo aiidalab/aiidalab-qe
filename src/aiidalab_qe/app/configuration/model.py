@@ -528,6 +528,13 @@ class AdvancedModel(SettingsModel):
         super().__init__(*args, **kwargs)
         self.include = True
 
+        self.dftd3_version = {
+            "dft-d3": 3,
+            "dft-d3bj": 4,
+            "dft-d3m": 5,
+            "dft-d3mbj": 6,
+        }
+
         self.smearing = SmearingModel()
         ipw.dlink(
             (self, "protocol"),

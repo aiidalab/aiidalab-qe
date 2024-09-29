@@ -33,13 +33,6 @@ class AdvancedSettings(Panel):
         self.magnetization = MagnetizationSettings(model=model)
         self.pseudos = PseudoSettings(model=model)
 
-        self.dftd3_version = {
-            "dft-d3": 3,
-            "dft-d3bj": 4,
-            "dft-d3m": 5,
-            "dft-d3mbj": 6,
-        }
-
         self.rendered = False
 
     def render(self):
