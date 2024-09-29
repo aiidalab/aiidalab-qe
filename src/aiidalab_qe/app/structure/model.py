@@ -5,6 +5,10 @@ from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 
 class StructureModel(tl.HasTraits):
+    structure = tl.Instance(
+        orm.StructureData,
+        allow_none=True,
+    )
     confirmed_structure = tl.Union(
         [
             tl.Instance(orm.StructureData),

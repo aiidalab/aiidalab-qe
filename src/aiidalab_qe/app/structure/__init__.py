@@ -109,6 +109,11 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 "Download",
             ],
         )
+        ipw.dlink(
+            (self._model, "structure"),
+            (self.manager.viewer, "structure"),
+            lambda structure: structure.get_ase() if structure else None,
+        )
 
         self.structure_name_text = ipw.Text(
             placeholder="[No structure selected]",
@@ -158,7 +163,15 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.confirm_button,
         ]
 
+        ipw.dlink(
+            (self._model, "structure"),
+            (self, "structure"),
+        )
+
         self.rendered = True
+
+    def set_structure(self, structure):
+        self._model.structure = structure
 
     def is_saved(self):
         """Check if the current structure is confirmed."""
