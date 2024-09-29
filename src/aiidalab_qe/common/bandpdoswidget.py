@@ -519,8 +519,6 @@ class BandPdosWidget(ipw.VBox):
         The plot is interactive: you can zoom in and out, as well as move the axes to explore specific regions of interest.
         <br><br>
         Select the style of plotting the projected density of states.
-        <br><br>
-        Note: Labels containing <strong>r<sub>#</sub></strong> in the orbital contributions refer to the radial nodes of the orbitals, which are associated with the valence electrons from the pseudopotential used.
         </div>"""
     )
 
@@ -949,6 +947,11 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
     else:
         data_dict["fermi_energy"] = pdos.nscf.output_parameters["fermi_energy"]
 
+    # Updata labels if plot_tag is different than total
+    if plot_tag != "total":
+        data_dict = update_pdos_labels(data_dict)
+    #    data_dict = deepcopy(new_dict)
+
     return json.loads(json.dumps(data_dict))
 
 
@@ -965,9 +968,9 @@ def _get_grouping_key(
     key_formats = {
         ("atoms", "total"): r"{var1}-{var}",
         ("kinds", "total"): r"{var1}",
-        ("atoms", "orbital"): r"{var1}-{var}<br>{var2}",
+        ("atoms", "orbital"): r"{var1}-{var2}<br>{var}",
         ("kinds", "orbital"): r"{var1}-{var2}",
-        ("atoms", "angular_momentum"): r"{var1}-{var}<br>{var3}",
+        ("atoms", "angular_momentum"): r"{var1}-{var3}<br>{var}",
         ("kinds", "angular_momentum"): r"{var1}-{var3}",
     }
 
@@ -981,69 +984,6 @@ def _get_grouping_key(
         )
     else:
         return None
-
-
-# Dictionary with noble gases electronic configuration
-noble_gas_configs = {
-    "He": "1s",
-    "Ne": "1s-2s-2p",
-    "Ar": "1s-2s-2p-3s-3p",
-    "Kr": "1s-2s-2p-3s-3p-3d-4s-4p",
-    "Xe": "1s-2s-2p-3s-3p-3d-4s-4p-4d-5s-5p",
-    "Rn": "1s-2s-2p-3s-3p-3d-4s-4p-4d-5s-5p-4f-5d-6s-6p",
-}
-
-
-def _replace_noble_gas_configuration(config_string):
-    # Find the noble gas pattern in the string
-    noble_gas_match = re.search(r"\[([A-Za-z]+)\]", config_string)
-
-    if noble_gas_match:
-        noble_gas = noble_gas_match.group(1)  # Extract the noble gas (e.g., Ne)
-
-        if noble_gas in noble_gas_configs:
-            # Replace the noble gas core with its full configuration
-            expanded_config = config_string.replace(
-                f"[{noble_gas}]", noble_gas_configs[noble_gas]
-            )
-
-            # Remove digits after the orbital labels
-            expanded_config = re.sub(
-                r"([spdf])\d+", r"\1", expanded_config
-            )  # Keep only the subshell letters
-
-            # Replace dots with dashes
-            expanded_config = expanded_config.replace(".", "-")
-
-            return expanded_config
-    else:
-        # If no noble gas is found, just apply formatting (removing digits and replacing dots)
-        expanded_config = re.sub(r"([spdf])\d+", r"\1", config_string)
-        expanded_config = expanded_config.replace(".", "-")
-        return expanded_config
-
-
-def _expanded_electronic_structure(element_name):
-    return _replace_noble_gas_configuration(Element(element_name).electronic_structure)
-
-
-def _valence_or_semicore(element, nnodes, subshell_letter):
-    electron_config = _expanded_electronic_structure(element)
-    # Find all occurrences of the pattern like '1s', '2s', etc. for the given subshell letter
-    pattern = rf"(\d+{subshell_letter})(?=-|$)"
-
-    # Use regex to find all matches of 'digit+subshell' (e.g., '1s', '2s', etc.)
-    matches = re.findall(pattern, electron_config)
-
-    # Return the last occurrence if nnodes == 1, or the second-to-last occurrence if n == 0
-    if matches:
-        if nnodes == 1:
-            return matches[-1]  # Last occurrence
-        elif nnodes == 0 and len(matches) > 1:
-            return matches[-2]  # Second-to-last occurrence
-        elif nnodes == 0 and len(matches) == 1:
-            return matches[0]  # If there's only one occurrence, return that
-    return None  # If no matches were found, return None
 
 
 def _curate_orbitals(orbital):
@@ -1083,8 +1023,10 @@ def _curate_orbitals(orbital):
         orbital_name = orbital.get_name_from_quantum_numbers(
             orbital_data["angular_momentum"], orbital_data["magnetic_number"]
         ).lower()
-        orbital_name_plotly = f"{_valence_or_semicore(kind_name, radial_node, orbital_name[0])} {HTML_TAGS.get(orbital_name, orbital_name)}"
-        orbital_angular_momentum = f"{_valence_or_semicore(kind_name, radial_node, orbital_name[0])} {orbital_name[0]}"
+        orbital_name_plotly = (
+            f"r{radial_node} {HTML_TAGS.get(orbital_name, orbital_name)}"
+        )
+        orbital_angular_momentum = f"r{radial_node} {orbital_name[0]}"
 
     except AttributeError:
         # Set quanutum numbers
@@ -1306,3 +1248,176 @@ def find_max_in_range(x_data, y_data, x_min, x_max):
     - Maximum value found in the range, or None if no valid values are found.
     """
     return find_extreme_in_range(x_data, y_data, x_min, x_max, is_max=True)
+
+
+def get_labels_radial_nodes(pdos_dict):
+    """
+    Extracts the original labels from the PDOS data and constructs an orbital dictionary.
+
+    Args:
+        pdos_dict (dict): Dictionary containing PDOS data with 'dos' key representing orbital information.
+
+    Returns:
+        tuple:
+            - original_labels (list): List of strings representing the original orbital labels.
+            - orbital_dict (dict): A nested dictionary mapping atom kinds to orbital types and their corresponding radial nodes.
+    """
+    original_labels = []
+    orbital_dict = {}
+
+    for label_data in pdos_dict["dos"]:
+        label_str = label_data["label"]
+        original_labels.append(label_str)
+
+        parts = label_str.split("-")
+        if len(parts) < 2:
+            continue  # Skip invalid or non-orbital labels
+
+        atom = parts[0]  # Atom type (e.g., 'Fe1')
+        radial_orbital = parts[1].split()  # Splits 'r# orbital' (e.g., 'r0 s')
+
+        if len(radial_orbital) < 2:
+            continue  # Malformed label
+
+        radial_node = int(radial_orbital[0][1:])  # Extract radial index from 'r#'
+        orbital = radial_orbital[1][0]  # Orbital type ('s', 'p', 'd', 'f')
+
+        # Populate orbital_dict with atoms, orbitals, and radial nodes
+        orbital_dict.setdefault(atom, {}).setdefault(orbital, set()).add(radial_node)
+
+    return original_labels, orbital_dict
+
+
+def assign_orbital_labels(orbital_dict):
+    """
+    Assigns orbital labels to atoms based on their radial nodes and electronic structure.
+
+    Args:
+        orbital_dict (dict): A nested dictionary mapping atom kinds to orbital types and their corresponding radial nodes.
+
+    Returns:
+        dict: A dictionary mapping atoms and orbitals to their assigned radial labels.
+    """
+    result = {}
+
+    for atom_with_number, orbitals in orbital_dict.items():
+        # Extract element name (remove numeric suffixes)
+        atom = re.sub(r"\d+", "", atom_with_number)
+        element = Element(atom)
+        electronic_structure = list(reversed(element.full_electronic_structure))
+
+        orbital_assignment = {orb: {} for orb in ["s", "p", "d", "f"]}
+
+        # Map orbitals from electronic structure
+        orbital_map = {
+            "s": [
+                f"{n}{orbital}"
+                for n, orbital, _ in electronic_structure
+                if orbital == "s"
+            ],
+            "p": [
+                f"{n}{orbital}"
+                for n, orbital, _ in electronic_structure
+                if orbital == "p"
+            ],
+            "d": [
+                f"{n}{orbital}"
+                for n, orbital, _ in electronic_structure
+                if orbital == "d"
+            ],
+            "f": [
+                f"{n}{orbital}"
+                for n, orbital, _ in electronic_structure
+                if orbital == "f"
+            ],
+        }
+
+        # Assign radial nodes to orbitals in reverse order
+        for orb_type in ["s", "p", "d", "f"]:
+            if orb_type in orbitals:
+                sorted_indices = sorted(orbitals[orb_type], reverse=True)
+                for idx, radial_node in enumerate(sorted_indices):
+                    if radial_node < len(orbital_map[orb_type]):
+                        orbital_assignment[orb_type][idx] = orbital_map[orb_type][
+                            radial_node
+                        ][0]
+
+        # Clean up empty orbital assignments
+        result[atom_with_number] = {
+            orb: val for orb, val in orbital_assignment.items() if val
+        }
+
+    return result
+
+
+def get_new_pdos_labels(input_list, orbital_dict):
+    output_list = []
+
+    for item in input_list:
+        # Check if the label contains a '-' to proceed with splitting
+        if "-" in item:
+            before_dash, after_dash = item.split("-", 1)
+
+            # Split the part after the dash into words to isolate the radial node (r#)
+            parts = after_dash.split()
+
+            if parts[0].startswith("r"):
+                radial_index = int(parts[0][1:])  # Extract the number after 'r'
+
+                # Check if the first element after removing the radial part corresponds to an orbital
+                orbital = parts[1]
+
+                # If the atom and orbital type exist in the orbital_dict, map the radial node
+                if (
+                    before_dash in orbital_dict
+                    and orbital[0] in orbital_dict[before_dash]
+                ):
+                    if radial_index in orbital_dict[before_dash][orbital[0]]:
+                        # Get the mapped radial value
+                        new_radial_value = orbital_dict[before_dash][orbital[0]][
+                            radial_index
+                        ]
+
+                        # Rebuild the string, removing the space before the orbital
+                        after_dash = after_dash.replace(
+                            f"r{radial_index}", new_radial_value, 1
+                        )
+                        after_dash = after_dash.replace(
+                            " ", "", 1
+                        )  # Remove the space after the radial value
+                        new_item = f"{before_dash}-{after_dash}"
+                    else:
+                        new_item = (
+                            item  # If radial index not found, use the original item
+                        )
+                else:
+                    new_item = item  # If no match in orbital_dict, use original label
+            else:
+                new_item = item  # In case there's no valid 'r#' part
+        else:
+            new_item = item  # If no dash, use the original item
+
+        output_list.append(new_item)
+
+    return output_list
+
+
+def update_pdos_labels(pdos_data):
+    """
+    Updates PDOS labels by assigning correct radial nodes to orbitals based on their electronic structure.
+
+    Args:
+        pdos_data (dict): PDOS data structure containing 'dos' key with orbital information.
+
+    Returns:
+        tuple:
+            - pdos_data (dict): Updated PDOS data with correct orbital labels.
+    """
+    original_labels, orbital_dict = get_labels_radial_nodes(pdos_data)
+    orbital_assignment = assign_orbital_labels(orbital_dict)
+    updated_labels = get_new_pdos_labels(original_labels, orbital_assignment)
+
+    for idx, label in enumerate(updated_labels):
+        pdos_data["dos"][idx]["label"] = label
+
+    return pdos_data
