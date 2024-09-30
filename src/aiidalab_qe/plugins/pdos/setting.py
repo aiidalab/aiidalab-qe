@@ -10,6 +10,8 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 from aiidalab_qe.common.panel import Panel
 
+RYDBERG_TO_EV = 13.605703976
+
 
 class Setting(Panel):
     title = "PDOS"
@@ -31,14 +33,35 @@ class Setting(Panel):
             disabled=False,
             style={"description_width": "initial"},
         )
+        self.pdos_degauss = ipw.BoundedFloatText(
+            min=0.001,
+            step=0.001,
+            value=0.01,
+            description="PDOS degauss (Ry):",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        self.pdos_degauss_eV = ipw.HTML()
+        self.pdos_degauss_eV.value = (
+            f"({self.pdos_degauss.value * RYDBERG_TO_EV:.4f} eV)"
+        )
+
+        self.pdos_degauss.observe(self._update_pdos_degauss_ev, "value")
+
         self.mesh_grid = ipw.HTML()
         self.nscf_kpoints_distance.observe(self._display_mesh, "value")
         self.nscf_kpoints_distance.observe(self._procotol_changed, "change")
         self.children = [
             self.settings_title,
             ipw.HBox([self.nscf_kpoints_distance, self.mesh_grid]),
+            ipw.HBox([self.pdos_degauss, self.pdos_degauss_eV]),
         ]
         super().__init__(**kwargs)
+
+    def _update_pdos_degauss_ev(self, change):
+        new_value = change["new"] * RYDBERG_TO_EV
+        if self.pdos_degauss_eV.value != f"({new_value} eV)":
+            self.pdos_degauss_eV.value = f"({new_value:.4f} eV)"
 
     @tl.observe("protocol")
     def _procotol_changed(self, change):
@@ -65,12 +88,15 @@ class Setting(Panel):
         """Return a dictionary with the input parameters for the plugin."""
         return {
             "nscf_kpoints_distance": self.nscf_kpoints_distance.value,
+            "pdos_degauss": self.pdos_degauss.value,
         }
 
     def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.nscf_kpoints_distance.value = input_dict.get("nscf_kpoints_distance", 0.1)
+        self.pdos_degauss.value = input_dict.get("pdos_degauss", 0.01)
 
     def reset(self):
         """Reset the panel to its default values."""
         self.nscf_kpoints_distance.value = 0.1
+        self.pdos_degauss.value = 0.01
