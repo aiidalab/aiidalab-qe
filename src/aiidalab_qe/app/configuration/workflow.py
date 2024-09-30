@@ -4,7 +4,8 @@ Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
-
+import traitlets as tl
+from aiida import orm
 from aiida_quantumespresso.common.types import RelaxType
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
@@ -56,6 +57,8 @@ class WorkChainSettings(Panel):
         accuracy and speed. Choose the "fast" protocol for a faster calculation
         with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
     )
+
+    input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
         # RelaxType: degrees of freedom in geometry optimization
@@ -149,6 +152,25 @@ class WorkChainSettings(Panel):
         super().__init__(
             **kwargs,
         )
+
+    @tl.observe("input_structure")
+    def _on_input_structure_change(self, change):
+        if change["new"].pbc != (True, True, True):
+            self.relax_type.options = [
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+            ]
+            self.relax_type.value = "positions"
+            self.properties["bands"].run.value = False
+            self.properties["bands"].run.disabled = True    
+        else:
+            self.relax_type.options = [
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+                ("Full geometry", "positions_cell"),
+            ]
+            self.relax_type.value = "positions_cell"
+
 
     def get_panel_value(self):
         # Work chain settings
