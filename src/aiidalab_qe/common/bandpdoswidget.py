@@ -431,7 +431,6 @@ class BandPdosWidget(ipw.VBox):
         Select the style of plotting the projected density of states.
         </div>"""
     )
-    projected_bands_width = 0.5
 
     def __init__(self, bands=None, pdos=None, **kwargs):
         if bands is None and pdos is None:
@@ -482,6 +481,18 @@ class BandPdosWidget(ipw.VBox):
             value=False,
             description="Add `fat bands` projections",
         )
+        self.proj_bands_width_slider = ipw.FloatSlider(
+            value=0.5,
+            min=0.01,
+            max=0.76,
+            step=0.01,
+            description="`Fat bands` max width (eV):",
+            orientation="horizontal",
+            readout=True,
+            readout_format=".2f",
+            style={"description_width": "initial"},
+            layout=ipw.Layout(width="380px", visibility="hidden"),
+        )
 
         # Information for the plot
         self.pdos_data = self._get_pdos_data()
@@ -505,6 +516,7 @@ class BandPdosWidget(ipw.VBox):
         # If projections are available in the bands data, include the box to plot fat-bands
         if self.bands_data and "projected_bands" in self.bands_data:
             pdos_options_list.insert(4, self.project_bands_box)
+            pdos_options_list.insert(5, self.proj_bands_width_slider)
 
         self.pdos_options = ipw.VBox(pdos_options_list)
 
@@ -513,6 +525,7 @@ class BandPdosWidget(ipw.VBox):
         # Set the event handlers
         self.download_button.on_click(self.download_data)
         self.update_plot_button.on_click(self._update_plot)
+        # self.proj_bands_width_slider.observe(self._update_plot, names='value')
 
         super().__init__(
             children=[
@@ -594,7 +607,7 @@ class BandPdosWidget(ipw.VBox):
                 group_tag=self.dos_atoms_group.value,
                 plot_tag=self.dos_plot_group.value,
                 selected_atoms=expanded_selection,
-                bands_width=self.projected_bands_width,
+                bands_width=self.proj_bands_width_slider.value,
             )
             return bands
         return None
@@ -622,6 +635,9 @@ class BandPdosWidget(ipw.VBox):
                     project_bands=self.project_bands_box.value,
                 ).bandspdosfigure
                 self._clear_output_and_display(self.bandsplot_widget)
+                self.proj_bands_width_slider.layout.visibility = (
+                    "visible" if self.project_bands_box.value else "hidden"
+                )
 
     def _clear_output_and_display(self, widget=None):
         clear_output(wait=True)
@@ -675,8 +691,8 @@ def _prepare_projections_to_plot(bands_data, projections, bands_width):
 
         for proj in projections[spin]:
             # Create the upper and lower boundary of the fat bands based on the orbital projections
-            y_bands_proj_upper = y_bands + bands_width * proj["projections"].T
-            y_bands_proj_lower = y_bands - bands_width * proj["projections"].T
+            y_bands_proj_upper = y_bands + bands_width / 2 * proj["projections"].T
+            y_bands_proj_lower = y_bands - bands_width / 2 * proj["projections"].T
             # As mentioned above, the bands need to be concatenated with their mirror image
             # to create the filled areas properly
             y_bands_mirror = np.hstack(
