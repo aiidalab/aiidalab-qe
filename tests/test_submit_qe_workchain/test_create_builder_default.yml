@@ -43,7 +43,7 @@ codes:
     parallelization: {}
 pdos:
   nscf_kpoints_distance: 0.1
-  pdos_degauss: 0.01
+  pdos_degauss: 0.005
   use_pdos_degauss: false
 workchain:
   electronic_type: metal

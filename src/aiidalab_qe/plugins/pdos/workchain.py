@@ -57,7 +57,9 @@ def get_builder(codes, structure, parameters, **kwargs):
     projwfc_overrides = {"parameters": {"PROJWFC": {}}}
 
     if parameters["pdos"]["use_pdos_degauss"]:
-        dos_overrides["parameters"]["DOS"] = {"degauss": parameters["pdos"]["pdos_degauss"]}
+        dos_overrides["parameters"]["DOS"] = {
+            "degauss": parameters["pdos"]["pdos_degauss"]
+        }
         projwfc_overrides["parameters"]["PROJWFC"] = {
             "degauss": parameters["pdos"]["pdos_degauss"]
         }

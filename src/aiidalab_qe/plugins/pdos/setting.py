@@ -39,9 +39,9 @@ class Setting(Panel):
             style={"description_width": "initial"},
         )
         self.pdos_degauss = ipw.BoundedFloatText(
-            min=0.001,
+            min=0.00001,
             step=0.001,
-            value=0.01,
+            value=0.005,
             description="PDOS degauss (Ry):",
             disabled=True,
             style={"description_width": "initial"},
@@ -104,11 +104,11 @@ class Setting(Panel):
     def set_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.nscf_kpoints_distance.value = input_dict.get("nscf_kpoints_distance", 0.1)
-        self.pdos_degauss.value = input_dict.get("pdos_degauss", 0.01)
+        self.pdos_degauss.value = input_dict.get("pdos_degauss", 0.005)
         self.use_pdos_degauss.value = input_dict.get("use_pdos_degauss", False)
 
     def reset(self):
         """Reset the panel to its default values."""
         self.nscf_kpoints_distance.value = 0.1
-        self.pdos_degauss.value = 0.01
+        self.pdos_degauss.value = 0.005
         self.use_pdos_degauss.value = False
