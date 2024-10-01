@@ -56,10 +56,11 @@ def get_builder(codes, structure, parameters, **kwargs):
     dos_overrides = {"parameters": {"DOS": {}}}
     projwfc_overrides = {"parameters": {"PROJWFC": {}}}
 
-    dos_overrides["parameters"]["DOS"] = {"degauss": parameters["pdos"]["pdos_degauss"]}
-    projwfc_overrides["parameters"]["PROJWFC"] = {
-        "degauss": parameters["pdos"]["pdos_degauss"]
-    }
+    if parameters["pdos"]["use_pdos_degauss"]:
+        dos_overrides["parameters"]["DOS"] = {"degauss": parameters["pdos"]["pdos_degauss"]}
+        projwfc_overrides["parameters"]["PROJWFC"] = {
+            "degauss": parameters["pdos"]["pdos_degauss"]
+        }
 
     # Update the nscf kpoints distance from the setting panel
     nscf_overrides["kpoints_distance"] = parameters["pdos"]["nscf_kpoints_distance"]
