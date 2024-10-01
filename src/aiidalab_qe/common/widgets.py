@@ -465,12 +465,7 @@ class AddingTagsEditor(ipw.VBox):
             layout={"width": "initial"},
         )
         self.periodicity = ipw.RadioButtons(
-            options=[
-                "xyz",
-                "xy",
-                "x",
-                "molecule"
-            ],
+            options=["xyz", "xy", "x", "molecule"],
             value="xyz",
             description="Periodicty: ",
             layout={"width": "initial"},

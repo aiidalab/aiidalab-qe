@@ -90,6 +90,14 @@ def generate_structure_data():
 
             for site in sites:
                 structure.append_atom(position=site[2], symbols=site[0], name=site[1])
+
+        elif name == "H2O":
+            cell = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
+            structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
+            structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
+
         structure.pbc = pbc
 
         return structure
