@@ -24,6 +24,11 @@ class Setting(Panel):
             """<div style="padding-top: 0px; padding-bottom: 0px">
             <h4>Settings</h4></div>"""
         )
+        self.description = ipw.HTML(
+            """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+                By default, the tetrahedron method is used for PDOS calculation. If required you can apply Gaussian broadening with a custom degauss value.
+            </div>"""
+        )
         # nscf kpoints setting widget
         self.nscf_kpoints_distance = ipw.BoundedFloatText(
             min=0.001,
@@ -58,6 +63,7 @@ class Setting(Panel):
         self.nscf_kpoints_distance.observe(self._procotol_changed, "change")
         self.children = [
             self.settings_title,
+            self.description,
             ipw.HBox([self.nscf_kpoints_distance, self.mesh_grid]),
             self.use_pdos_degauss,
             ipw.HBox([self.pdos_degauss, self.pdos_degauss_eV]),
