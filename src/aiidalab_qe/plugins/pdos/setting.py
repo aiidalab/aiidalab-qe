@@ -51,9 +51,8 @@ class Setting(Panel):
             disabled=True,
             style={"description_width": "initial"},
         )
-        self.pdos_degauss_eV = ipw.HTML()
-        self.pdos_degauss_eV.value = (
-            f"({self.pdos_degauss.value * RYDBERG_TO_EV:.4f} eV)"
+        self.pdos_degauss_eV = ipw.HTML(
+            value=f"({self.pdos_degauss.value * RYDBERG_TO_EV:.4f} eV)",
         )
 
         self.use_pdos_degauss.observe(self._disable_pdos_degauss, "value")
