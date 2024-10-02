@@ -26,6 +26,21 @@ def test_create_builder_default(
 
 
 @pytest.mark.usefixtures("sssp")
+def test_create_process_label(
+    submit_app_generator,
+):
+    """ "Test the creation of the correct process label"""
+
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2 (relax: atoms+cell, moderate protocol) + bands, pdos"
+    )
+
+
+@pytest.mark.usefixtures("sssp")
 def test_create_builder_insulator(
     submit_app_generator,
 ):
