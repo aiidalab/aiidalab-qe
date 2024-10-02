@@ -23,7 +23,10 @@ class Setting(Panel):
         The band structure workflow will
         automatically detect the default path in reciprocal space using the
         <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
-        SeeK-path tool</a>.</div>"""
+        SeeK-path tool</a>.
+        <br><br>
+        Fat Bands is a band structure plot that includes the angular momentum contributions from specific atoms or orbitals to each energy band. The thickness of the bands represents the strength of these contributions, providing insight into the electronic structure.
+        </div>"""
         )
         self.projwfc_bands = ipw.Checkbox(
             description="Fat bands calculation",
