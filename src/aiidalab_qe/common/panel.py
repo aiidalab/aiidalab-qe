@@ -91,7 +91,14 @@ class SettingPanel(Panel):
         self._config_model = config_model
         self._model = config_model.get_model(self.identifier)
 
+        self.links = []
+
         self.rendered = False
+
+    def _unsubscribe(self):
+        for link in self.links:
+            link.unlink()
+        self.links.clear()
 
 
 class SettingsModel(tl.HasTraits):
