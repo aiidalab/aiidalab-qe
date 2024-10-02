@@ -31,6 +31,7 @@ class Setting(Panel):
         self.projwfc_bands = ipw.Checkbox(
             description="Fat bands calculation",
             value=False,
+            style={"description_width": "initial"},
         )
         self.children = [
             self.settings_title,
