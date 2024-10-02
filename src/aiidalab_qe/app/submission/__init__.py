@@ -369,17 +369,24 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         formula = self.input_structure.get_formula()
         workchain_data = self.input_parameters.get("workchain", {"properties": []})
         properties = [p for p in workchain_data["properties"] if p != "relax"]
+        # relax_info
         relax_type = workchain_data.get("relax_type", "none")
-        if relax_type != "none":
-            relax_info = "structure is relaxed"
+        if relax_type == "none":
+            relax_info = "not relaxed" 
         else:
-            relax_info = "structure is not relaxed"
+            relax_info = "relax: atoms+cell" if "cell" in relax_type else "relax: atoms only"
+        # protocol_info
+        protocol_and_magnetic_info = f"{workchain_data['protocol']} protocol"
+        # magnetic_info
+        if workchain_data["spin_type"] != "none":
+            protocol_and_magnetic_info+=", magnetic"
+        # properties_info
         if not properties:
             properties_info = ""
         else:
-            properties_info = f", properties on {', '.join(properties)}"
+            properties_info = f"+ {', '.join(properties)}"
 
-        label = f"{formula} {relax_info} {properties_info}"
+        label = f"{formula} ({relax_info}, {protocol_and_magnetic_info}) {properties_info}".strip()
         self.process_label.value = label
 
     def _create_builder(self) -> ProcessBuilderNamespace:
