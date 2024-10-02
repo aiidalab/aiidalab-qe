@@ -1,16 +1,13 @@
 """Panel for Bands plugin."""
 
 import ipywidgets as ipw
-import traitlets as tl
 
-from aiida import orm
 from aiidalab_qe.common.panel import Panel
 
 
 class Setting(Panel):
     title = "Bands Structure"
     identifier = "bands"
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
         self.settings_title = ipw.HTML(
