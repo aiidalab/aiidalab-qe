@@ -91,12 +91,6 @@ def update_inputs(inputs, ctx):
     """Update the inputs using context."""
     inputs.structure = ctx.current_structure
 
-    # inputs.bands.pw.parameters = inputs.bands.pw.parameters.get_dict()
-    # if ctx.bands.bands.current_number_of_bands:
-    #     inputs.bands.bands.scf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-    #         "nbnd", ctx.bands.bands.current_number_of_bands
-    #     )
-
 
 workchain_and_builder = {
     "workchain": BandsWorkChain,

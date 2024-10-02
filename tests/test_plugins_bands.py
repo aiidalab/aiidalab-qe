@@ -10,7 +10,6 @@ def test_result(generate_qeapp_workchain):
 
     wkchain = generate_qeapp_workchain()
     # generate structure for scf calculation
-    print(wkchain.outputs)
     result = Result(wkchain.node)
     result._update_view()
     assert isinstance(result.children[0], BandPdosWidget)
