@@ -372,14 +372,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # relax_info
         relax_type = workchain_data.get("relax_type", "none")
         if relax_type == "none":
-            relax_info = "not relaxed" 
+            relax_info = "not relaxed"
         else:
-            relax_info = "relax: atoms+cell" if "cell" in relax_type else "relax: atoms only"
+            relax_info = (
+                "relax: atoms+cell" if "cell" in relax_type else "relax: atoms only"
+            )
         # protocol_info
         protocol_and_magnetic_info = f"{workchain_data['protocol']} protocol"
         # magnetic_info
         if workchain_data["spin_type"] != "none":
-            protocol_and_magnetic_info+=", magnetic"
+            protocol_and_magnetic_info += ", magnetic"
         # properties_info
         if not properties:
             properties_info = ""
