@@ -26,6 +26,35 @@ def test_create_builder_default(
 
 
 @pytest.mark.usefixtures("sssp")
+def test_create_process_label(
+    submit_app_generator,
+):
+    """ "Test the creation of the correct process label"""
+
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+    # suppose we change the label of the structure:
+    submit_step.input_structure.label = "Si2, unit cell"
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2, unit cell [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+    # suppose by mistake we provide an empty label, we then fallback to use the formula:
+    submit_step.input_structure.label = ""
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+
+
+@pytest.mark.usefixtures("sssp")
 def test_create_builder_insulator(
     submit_app_generator,
 ):
