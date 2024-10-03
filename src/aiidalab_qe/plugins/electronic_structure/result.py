@@ -61,7 +61,7 @@ class Result(ResultPanel):
                 // Assuming only one plotly graph on the page; adjust if necessary
                 var plotElement = document.getElementsByClassName('plotly-graph-div')[0];
 
-                if (width < 1050) {{  // Adjust this value as needed
+                if (width < 1080) {{  // Adjust this value as needed
                     messageElement.innerHTML = "NOTE: The Electronic Plot window is too narrow - enlarge it to see also the legend and toggle the plot lines.";
                     messageElement.style.display = "block";
 
