@@ -102,7 +102,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 ProcessState.RUNNING,
                 ProcessState.WAITING,
             ):
-                self.kill_button.layout.display = "block"
                 self.state = self.State.ACTIVE
                 self.process_info.value = PROCESS_RUNNING
             elif (
@@ -110,12 +109,14 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 or process.is_failed
             ):
                 self.state = self.State.FAIL
-                self.kill_button.layout.display = "none"
                 self.process_info.value = PROCESS_EXCEPTED
             elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
-                self.kill_button.layout.display = "none"
                 self.process_info.value = PROCESS_COMPLETED
+            # trigger the update of kill and clean button.
+            if self.state in [self.State.SUCCESS, self.State.FAIL]:
+                self._update_kill_button_layout()
+                self._update_clean_scratch_button_layout()
 
     def _update_kill_button_layout(self):
         """Update the layout of the kill button."""
