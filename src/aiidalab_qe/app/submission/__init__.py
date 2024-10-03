@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import display
 
 from aiida import orm
 from aiida.common import NotExistent
@@ -65,8 +64,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     external_submission_blockers = tl.List(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
-        self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
+        self._submission_warning_messages = ipw.HTML()
 
         self.pw_code = PwCodeResourceSetupWidget(
             description="pw.x:", default_calc_job_plugin="quantumespresso.pw"
@@ -129,10 +128,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         super().__init__(
             children=[
                 *self.code_children,
-                self.message_area,
                 self.sssp_installation_status,
                 self.qe_setup_status,
                 self._submission_blocker_messages,
+                self._submission_warning_messages,
                 self.process_label_help,
                 self.process_label,
                 self.process_description,
@@ -142,6 +141,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
+
+        self.pw_code.num_cpus.observe(self._check_resources, "value")
+        self.pw_code.num_nodes.observe(self._check_resources, "value")
 
     @tl.observe("internal_submission_blockers", "external_submission_blockers")
     def _observe_submission_blockers(self, _change):
@@ -227,19 +229,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         </div>"""
 
     def _show_alert_message(self, message, alert_class="info"):
-        with self.message_area:
-            display(
-                ipw.HTML(
-                    self._ALERT_MESSAGE.format(alert_class=alert_class, message=message)
-                )
-            )
+        self._submission_warning_messages.value = self._ALERT_MESSAGE.format(
+            alert_class=alert_class, message=message
+        )
 
-    def _check_resources(self):
+    @tl.observe("input_structure")
+    def _check_resources(self, _change):
         """Check whether the currently selected resources will be sufficient and warn if not."""
         if not self.pw_code.value:
             return  # No code selected, nothing to do.
 
-        num_cpus = self.resources_config.num_cpus.value
+        num_cpus = self.pw_code.num_cpus.value * self.pw_code.num_nodes.value
         on_localhost = (
             orm.load_node(self.pw_code.value).computer.hostname == "localhost"
         )
@@ -264,6 +264,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "necessary.",
                 alert_class="warning",
             )
+        else:
+            self._submission_warning_messages.value = ""
 
     @tl.observe("state")
     def _observe_state(self, change):
