@@ -36,7 +36,7 @@ def test_create_process_label(
     submit_step._update_process_label()
     assert (
         submit_step.process_label.value
-        == "Si2 (relax: atoms+cell, moderate protocol) + bands, pdos"
+        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
     )
 
 

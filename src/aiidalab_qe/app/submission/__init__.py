@@ -366,27 +366,33 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Generate a label for the work chain based on the input parameters."""
         if not self.input_structure:
             return ""
-        formula = self.input_structure.get_formula()
+        structure_label = (
+            self.input_structure.label
+            if len(self.input_structure.label) > 0
+            else self.input_structure.get_formula()
+        )
         workchain_data = self.input_parameters.get("workchain", {"properties": []})
         properties = [p for p in workchain_data["properties"] if p != "relax"]
-        # relax_info
+        #  relax_info
         relax_type = workchain_data.get("relax_type", "none")
-        if relax_type == "none":
-            relax_info = "not relaxed" 
-        else:
-            relax_info = "relax: atoms+cell" if "cell" in relax_type else "relax: atoms only"
+        relax_info = "relax: none"
+        if relax_type != "none":
+            relax_info = (
+                relax_info.replace("none", "atoms+cell")
+                if "cell" in relax_type
+                else relax_info.replace("none", "atoms only")
+            )
         # protocol_info
         protocol_and_magnetic_info = f"{workchain_data['protocol']} protocol"
         # magnetic_info
         if workchain_data["spin_type"] != "none":
-            protocol_and_magnetic_info+=", magnetic"
+            protocol_and_magnetic_info += ", magnetic"
         # properties_info
-        if not properties:
-            properties_info = ""
-        else:
-            properties_info = f"+ {', '.join(properties)}"
+        properties_info = ""
+        if properties:
+            properties_info = f"→ {', '.join(properties)}"
 
-        label = f"{formula} ({relax_info}, {protocol_and_magnetic_info}) {properties_info}".strip()
+        label = f"{structure_label} [{relax_info}, {protocol_and_magnetic_info}] {properties_info}".strip()
         self.process_label.value = label
 
     def _create_builder(self) -> ProcessBuilderNamespace:
