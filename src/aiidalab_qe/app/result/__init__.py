@@ -162,7 +162,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                         )
                     except (OSError, KeyError):
                         pass
-            self.clean_scratch_button.disabled = False not in cleaned_bool
+            self.clean_scratch_button.disabled = all(cleaned_bool)
 
     def _on_click_kill_button(self, _=None):
         """callback for the kill button.
