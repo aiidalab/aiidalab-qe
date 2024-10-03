@@ -42,6 +42,7 @@ def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
     assert "bands_kpoints_distance" not in wkchain.inputs.bands.bands
     assert "bands_kpoints" in wkchain.inputs.bands.bands
     assert len(wkchain.inputs.bands.bands.bands_kpoints.labels) == 2
+    assert wkchain.inputs.bands.bands.bands_kpoints.labels == [(0, "Γ"), (9, "X")]
 
 
 @pytest.mark.usefixtures("sssp")
@@ -51,3 +52,9 @@ def test_structure_2d(generate_qeapp_workchain, generate_structure_data):
     assert "bands_kpoints_distance" not in wkchain.inputs.bands.bands
     assert "bands_kpoints" in wkchain.inputs.bands.bands
     assert len(wkchain.inputs.bands.bands.bands_kpoints.labels) == 4
+    assert wkchain.inputs.bands.bands.bands_kpoints.labels == [
+        (0, "Γ"),
+        (11, "M"),
+        (18, "K"),
+        (31, "Γ"),
+    ]
