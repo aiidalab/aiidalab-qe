@@ -4,7 +4,9 @@ from aiida import orm
 from aiida.common import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget
+from aiidalab_qe.common.widgets import (
+    QEAppComputationalResourcesWidget,
+)
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -31,13 +33,21 @@ class SubmissionModel(tl.HasTraits):
     sssp_installed = tl.Bool(allow_none=True)
 
     codes = tl.Dict(
-        key_trait=tl.Unicode(),
-        value_trait=tl.Instance(
-            PwCodeResourceSetupWidget,
-            default_value={},
+        key_trait=tl.Unicode(),  # plugin identifier
+        value_trait=tl.Dict(  # plugin codes
+            key_trait=tl.Unicode(),  # code name
+            value_trait=tl.Instance(  # code widget
+                QEAppComputationalResourcesWidget,
+                default_value={},
+            ),
         ),
         default_value={},
     )
+
+    def get_model_state(self):
+        return {
+            "codes": self.get_selected_codes(),
+        }
 
     def set_model_state(self, parameters):
         if "resources" in parameters:
@@ -56,17 +66,24 @@ class SubmissionModel(tl.HasTraits):
             self.process_label = self.process.label
             self.process_description = self.process.description
 
-    def add_code(self, name, code):
-        self.codes[name] = code  # type: ignore
+    def add_code(self, identifier, name, code):
+        if identifier not in self.codes:
+            self.codes[identifier] = {}  # type: ignore
+        self.codes[identifier][name] = code  # type: ignore
 
-    def get_code(self, name):
-        return self.codes.get(name)
+    def get_code(self, identifier, name):
+        if identifier in self.codes and name in self.codes[identifier]:  # type: ignore
+            return self.codes[identifier][name]  # type: ignore
+
+    def get_codes(self):
+        for codes in self.codes.values():
+            yield from codes.items()
 
     def get_selected_codes(self):
         return {
             name: code.parameters
-            for name, code in self.codes.items()
-            if code.layout.display != "none"  # TODO do this differently
+            for name, code in self.get_codes()
+            if code.layout.display != "none"  # TODO handle this differently
         }
 
     def set_selected_codes(self, code_data):
@@ -78,7 +95,7 @@ class SubmissionModel(tl.HasTraits):
                     return None
 
         with self.hold_trait_notifications():
-            for name, code in self.codes.items():
+            for name, code in self.get_codes():
                 if name not in code_data:
                     continue
                 code_options = [

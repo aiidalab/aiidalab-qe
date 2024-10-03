@@ -123,11 +123,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "value",
         )
         self.code_children.append(pw_code)
-        self._model.add_code("pw", pw_code)
+        self._model.add_code("dft", "pw", pw_code)
 
-        for codes_fetcher in self.code_fetchers.values():
+        for identifier, codes_fetcher in self.code_fetchers.items():
             for name, code in codes_fetcher.items():
-                self._model.add_code(name, code)
+                self._model.add_code(identifier, name, code)
                 code.observe(
                     self._update_state,
                     "value",
@@ -263,38 +263,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = True
 
-    # TODO seems to only be setting codes? rename for clarity? same with setter
-    def get_submission_parameters(self):
-        return {
-            "codes": self._model.get_selected_codes(),
-        }
-
     def set_submission_parameters(self, parameters):
         self._model.set_model_state(parameters)
 
     def set_process(self, process):
         self._model.process = process
-
-    def submit(self, _=None):
-        """Submit the work chain with the current inputs."""
-
-        parameters = deepcopy(self._model.input_parameters)
-        builder = self._create_builder(parameters)
-
-        with self.hold_trait_notifications():
-            process = aiida_submit(builder)
-
-            process.label = self._model.process_label
-            process.description = self._model.process_description
-            # since AiiDA data node may exist in the ui_parameters,
-            # we serialize it to yaml
-            process.base.extras.set("ui_parameters", serialize(parameters))
-            # store the workchain name in extras, this will help to filter the workchain in the future
-            process.base.extras.set("workchain", parameters["workchain"])  # type: ignore
-            process.base.extras.set("structure", self.input_structure.get_formula())
-            self._model.process = process
-
-        self._update_state()
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -327,8 +300,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._update_submission_blocker_message()
 
     def _on_submission(self, _):
-        self.submit_button.disabled = True
-        self.submit()
+        self._submit()
+        self._update_state()
 
     def _on_installation_change(self, _):
         with self.hold_trait_notifications():
@@ -343,6 +316,25 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_sssp_installed(self, change):
         self._model.installing_sssp = not change["new"]
         self.sssp_installation.layout.display = "none" if change["new"] else "block"
+
+    def _submit(self):
+        """Submit the work chain with the current inputs."""
+
+        parameters = deepcopy(self._model.input_parameters)
+        builder = self._create_builder(parameters)
+
+        with self.hold_trait_notifications():
+            process = aiida_submit(builder)
+
+            process.label = self._model.process_label
+            process.description = self._model.process_description
+            # since AiiDA data node may exist in the ui_parameters,
+            # we serialize it to yaml
+            process.base.extras.set("ui_parameters", serialize(parameters))
+            # store the workchain name in extras, this will help to filter the workchain in the future
+            process.base.extras.set("workchain", parameters["workchain"])  # type: ignore
+            process.base.extras.set("structure", self.input_structure.get_formula())
+            self._model.process = process
 
     def _update(self):
         with self.hold_trait_notifications():
@@ -377,7 +369,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "Background setup processes must finish."
 
         # No pw code selected (this is ignored while the setup process is running).
-        pw_code = self._model.get_code("pw")
+        pw_code = self._model.get_code("dft", "pw")
         if pw_code and pw_code.value is None and not self._model.installing_qe:
             yield ("No pw code selected")
 
@@ -396,7 +388,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "The SSSP library is not installed."
 
         # check if the QEAppComputationalResourcesWidget is used
-        for name, code in self._model.codes.items():
+        for name, code in self._model.get_codes():
             # skip if the code is not displayed, convenient for the plugin developer
             if code.layout.display == "none":
                 continue
@@ -422,12 +414,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _update_codes_display(self):
         """Hide code if no related property is selected."""
-        for name, code in self._model.codes.items():
+        for name, code in self._model.get_codes():
             if name == "pw":
                 continue
             code.layout.display = "none"
-        for _, code in self._model.codes.items():
-            code.layout.display = "block"
+        properties = self.input_parameters.get("workchain", {}).get("properties", [])
+        for identifier, codes in self._model.codes.items():
+            if identifier in properties:
+                for code in codes.values():
+                    code.layout.display = "block"
 
     def _update_process_label(self):
         """Generate a label for the work chain based on the input parameters."""
@@ -455,7 +450,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
         """Create the builder for the `QeAppWorkChain` submit."""
 
-        submission_parameters = self.get_submission_parameters()
+        submission_parameters = self._model.get_model_state()
         parameters.update(submission_parameters)
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
