@@ -514,11 +514,21 @@ class BandPdosWidget(ipw.VBox):
     - pdos_options_out: Output widget to clear specific widgets.
     """
 
+    widget_description = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; max-width: 600px;">
+        Hover over the plot to reveal controls for zoom, pan, and downloading the image. Use the zoom tools or your mouse to zoom in on specific regions, and click on the axes for interactive features. The home button resets to the default view, and the autoscale option displays all computed data, including semicore states.
+    </div>"""
+    )
+
     description = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        The plot is interactive: you can zoom in and out, as well as move the axes to explore specific regions of interest.
-        <br><br>
-        Select the style of plotting the projected density of states.
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; max-width: 600px;">
+    Select the style of plotting the projected density of states.
+    </div>"""
+    )
+
+    legend_interaction_description = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 5px; max-width: 600px;">
+        The legend entries can be clicked to hide or show the corresponding data. Double-clicking on a legend entry will isolate it.
         </div>"""
     )
 
@@ -571,6 +581,7 @@ class BandPdosWidget(ipw.VBox):
         self.project_bands_box = ipw.Checkbox(
             value=False,
             description="Add `fat bands` projections",
+            style={"description_width": "initial"},
         )
         self.proj_bands_width_slider = ipw.FloatSlider(
             value=0.5,
@@ -623,6 +634,7 @@ class BandPdosWidget(ipw.VBox):
 
         super().__init__(
             children=[
+                self.widget_description,
                 self.pdos_options_out,
                 self.download_button,
                 self.bands_widget,  # Add the output widget to the VBox
@@ -632,6 +644,16 @@ class BandPdosWidget(ipw.VBox):
 
         # Plot the options only if the pdos is provided or in case the bands data contains projections
         if self.pdos or (self.bands_data and "projected_bands" in self.bands_data):
+            # Add the legend interaction description after the download button
+            self.children = (
+                self.children[
+                    :3
+                ]  # Get the first three children: widget_description, pdos_options_out and download_button
+                + (
+                    self.legend_interaction_description,
+                )  # Add the legend interaction description as a tuple
+                + self.children[3:]  # Add the rest of the children
+            )
             with self.pdos_options_out:
                 display(self.pdos_options)
 
