@@ -51,7 +51,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     # Warn the user if they are trying to run calculations for a large
     # structure on localhost.
-    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
+    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 5
 
     # Put a limit on how many MPI tasks you want to run per k-pool by default
     MAX_MPI_PER_POOL = 20
@@ -142,6 +142,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
 
+        # observe these two for the resource checking:
         self.pw_code.num_cpus.observe(self._check_resources, "value")
         self.pw_code.num_nodes.observe(self._check_resources, "value")
 
@@ -243,7 +244,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         on_localhost = (
             orm.load_node(self.pw_code.value).computer.hostname == "localhost"
         )
-        if self.pw_code.value and on_localhost and num_cpus > 1:
+        if on_localhost and num_cpus > 1:
             self._show_alert_message(
                 "The selected code would be executed on the local host, but "
                 "the number of CPUs is larger than one. Please review "
@@ -259,9 +260,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ):
             self._show_alert_message(
                 "The selected code would be executed on the local host, but the "
-                "number of sites of the selected structure is relatively large. "
+                f"number of sites ({len(self.input_structure.sites)}) of the selected"
+                "structure is relatively large. "
                 "Consider to select a code that runs on a larger system if "
-                "necessary.",
+                "necessary, or to increase the resources.",
                 alert_class="warning",
             )
         else:
