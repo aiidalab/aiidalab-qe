@@ -7,7 +7,7 @@ from .workchain import workchain_and_builder
 
 
 class PdosOutline(OutlinePanel):
-    title = "Projected density of states"
+    title = "Projected Density of States (PDOS)"
     help = """"""
 
 
