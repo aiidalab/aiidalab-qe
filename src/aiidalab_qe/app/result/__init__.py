@@ -57,11 +57,11 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self.kill_button.on_click(self._on_click_kill_button)
 
         self.clean_scratch_button = ipw.Button(
-            description="Clean scratch",
+            description="Clean remote data",
             tooltip="Clean the remote folders of the workchain.",
             button_style="danger",
-            icon="window-close",
-            layout=ipw.Layout(width="120px", height="40px", display="none"),
+            icon="folder",
+            layout=ipw.Layout(width="150px", height="40px", display="none"),
         )
         self.clean_scratch_button.on_click(self._on_click_clean_scratch_button)
 
