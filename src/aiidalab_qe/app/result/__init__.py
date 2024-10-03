@@ -141,7 +141,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def _update_clean_scratch_button_layout(self):
         """Update the layout of the kill button."""
         # The button is hidden by default, but if we load a new process, we hide again.
-        if self.process is None or self.process == "":
+        if not self.process:
             self.clean_scratch_button.layout.display = "none"
         else:
             process = orm.load_node(self.process)
