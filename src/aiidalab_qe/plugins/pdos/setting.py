@@ -27,6 +27,8 @@ class Setting(Panel):
         self.description = ipw.HTML(
             """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
                 By default, the tetrahedron method is used for PDOS calculation. If required you can apply Gaussian broadening with a custom degauss value.
+                <br>
+                For molecules and systems with localized orbitals, it is recommended to use a custom degauss value.
             </div>"""
         )
         # nscf kpoints setting widget
@@ -87,6 +89,12 @@ class Setting(Panel):
     @tl.observe("input_structure")
     def _update_structure(self, _=None):
         self._display_mesh()
+        # For molecules this is compulsory
+        if self.input_structure.pbc == (False, False, False):
+            self.nscf_kpoints_distance.value = 100
+            self.nscf_kpoints_distance.disabled = True
+            self.use_pdos_degauss.value = True
+            self.use_pdos_degauss.disabled = True
 
     def _display_mesh(self, _=None):
         if self.input_structure is None:
