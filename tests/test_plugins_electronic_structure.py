@@ -25,31 +25,28 @@ def test_electronic_structure(generate_qeapp_workchain):
     result = Result(node=wkchain.node)
     result._update_view()
 
-    assert isinstance(result.children[0].children[1], BandPdosWidget)
-    assert isinstance(result.children[0].children[1].bandsplot_widget, go.FigureWidget)
+    assert isinstance(result.children[0], BandPdosWidget)
+    assert isinstance(result.children[0].bandsplot_widget, go.FigureWidget)
 
     # Check if data is correct
-    assert result.children[0].children[1].bands_data is not None
-    assert result.children[0].children[1].bands_data["pathlabels"] is not None
-    assert result.children[0].children[1].pdos_data is not None
+    assert result.children[0].bands_data is not None
+    assert result.children[0].bands_data["pathlabels"] is not None
+    assert result.children[0].pdos_data is not None
 
     # Check Bands axis
+    assert result.children[0].bandsplot_widget.layout.xaxis.title.text == "k-points"
     assert (
-        result.children[0].children[1].bandsplot_widget.layout.xaxis.title.text
-        == "k-points"
-    )
-    assert (
-        result.children[0].children[1].bandsplot_widget.layout.xaxis2.title.text
+        result.children[0].bandsplot_widget.layout.xaxis2.title.text
         == "Density of states"
     )
     assert (
-        result.children[0].children[1].bandsplot_widget.layout.yaxis.title.text
+        result.children[0].bandsplot_widget.layout.yaxis.title.text
         == "Electronic Bands (eV)"
     )
     assert isinstance(
-        result.children[0].children[1].bandsplot_widget.layout.xaxis.rangeslider,
+        result.children[0].bandsplot_widget.layout.xaxis.rangeslider,
         go.layout.xaxis.Rangeslider,
     )
-    assert result.children[0].children[1].bands_data["pathlabels"][0] == list(
-        result.children[0].children[1].bandsplot_widget.layout.xaxis.ticktext
+    assert result.children[0].bands_data["pathlabels"][0] == list(
+        result.children[0].bandsplot_widget.layout.xaxis.ticktext
     )

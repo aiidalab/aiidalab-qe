@@ -40,19 +40,5 @@ class Result(ResultPanel):
 
         _bands_dos_widget = BandPdosWidget(bands=bands_node, pdos=pdos_node)
 
-        plot_container = ipw.HTML(
-            """
-            <div style='overflow-x: auto; width: 80%; max-width: 80%;'>
-                <!-- Placeholder for the Plotly plot widget -->
-            </div>
-            """
-        )
         _bands_dos_widget.layout = ipw.Layout(width="1000px")
-        self.children = [
-            ipw.VBox(
-                [
-                    plot_container,  # The scrollable container
-                    _bands_dos_widget,  # The actual Plotly widget
-                ]
-            )
-        ]
+        self.children = [_bands_dos_widget]
