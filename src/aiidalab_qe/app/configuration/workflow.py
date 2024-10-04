@@ -40,14 +40,6 @@ class WorkChainSettings(Panel):
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Properties</h4></div>"""
     )
-    properties_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        The band structure workflow will
-        automatically detect the default path in reciprocal space using the
-        <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
-        SeeK-path tool</a>.</div>"""
-    )
-
     protocol_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Protocol</h4></div>"""
@@ -120,7 +112,6 @@ class WorkChainSettings(Panel):
             if name in setting_entries:
                 self.properties[name].run.observe(update_reminder_info, "value")
 
-        self.property_children.append(self.properties_help)
         self.children = [
             self.structure_title,
             self.structure_help,
