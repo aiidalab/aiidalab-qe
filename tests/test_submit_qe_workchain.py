@@ -73,8 +73,11 @@ def test_create_builder_insulator(
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
-    assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"] == "fixed"
-    assert "smearing" not in got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
+    assert (
+        got["bands"]["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"]
+        == "fixed"
+    )
+    assert "smearing" not in got["bands"]["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
 
 
 @pytest.mark.usefixtures("sssp")
@@ -111,7 +114,7 @@ def test_create_builder_advanced_settings(
     # test tot_charge is updated in the three steps
     for parameters in [
         got["relax"]["base"],
-        got["bands"]["scf"],
+        got["bands"]["bands"]["scf"],
         got["pdos"]["scf"],
         got["pdos"]["nscf"],
     ]:
