@@ -148,8 +148,21 @@ class WorkChainSettings(Panel):
     @tl.observe("input_structure")
     def _on_input_structure_change(self, change):
         """Update the relax type options based on the input structure."""
-        if change["new"] is not None and change["new"].pbc == (False, False, False):
-            # Update relax_type options for non-periodic boundary conditions
+        structure = change["new"]
+        if structure is None or structure.pbc != (False, False, False):
+            self.relax_type.options = [
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+                ("Full geometry", "positions_cell"),
+            ]
+            # Ensure the value is in the options
+            if self.relax_type.value not in [
+                option[1] for option in self.relax_type.options
+            ]:
+                self.relax_type.value = "positions_cell"
+
+            self.properties["bands"].run.disabled = False
+        elif structure.pbc == (False, False, False):
             self.relax_type.options = [
                 ("Structure as is", "none"),
                 ("Atomic positions", "positions"),
@@ -162,36 +175,6 @@ class WorkChainSettings(Panel):
 
             self.properties["bands"].run.value = False
             self.properties["bands"].run.disabled = True
-
-        elif change["new"] is not None and change["new"].pbc != (False, False, False):
-            # Update relax_type options for periodic boundary conditions
-            self.relax_type.options = [
-                ("Structure as is", "none"),
-                ("Atomic positions", "positions"),
-                ("Full geometry", "positions_cell"),
-            ]
-            # Ensure the value is in the options
-            if self.relax_type.value not in [
-                option[1] for option in self.relax_type.options
-            ]:
-                self.relax_type.value = "positions_cell"
-
-            self.properties["bands"].run.disabled = False
-
-        else:
-            # Default options when input_structure is None or other condition
-            self.relax_type.options = [
-                ("Structure as is", "none"),
-                ("Atomic positions", "positions"),
-                ("Full geometry", "positions_cell"),
-            ]
-            # Ensure the value is in the options
-            if self.relax_type.value not in [
-                option[1] for option in self.relax_type.options
-            ]:
-                self.relax_type.value = "positions_cell"
-
-            self.properties["bands"].run.disabled = False
 
     def get_panel_value(self):
         # Work chain settings

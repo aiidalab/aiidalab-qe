@@ -118,11 +118,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _observe_previous_step_state(self, _change):
         self._update_state()
 
-    @tl.observe("input_structure")
-    def _observe_input_structure(self, _change):
-        if _change["new"] is not None and _change["new"].pbc == (False, False, False):
-            self.workchain_settings._on_input_structure_change(_change)
-
     def get_configuration_parameters(self):
         """Get the parameters of the configuration step."""
 
