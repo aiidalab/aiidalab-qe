@@ -1,5 +1,7 @@
 """Electronic structure results view widgets"""
 
+import ipywidgets as ipw
+
 from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
 from aiidalab_qe.common.panel import ResultPanel
 
@@ -37,5 +39,6 @@ class Result(ResultPanel):
                 bands_node = bands_output
 
         _bands_dos_widget = BandPdosWidget(bands=bands_node, pdos=pdos_node)
-        # update the electronic structure tab
+
+        _bands_dos_widget.layout = ipw.Layout(width="1000px")
         self.children = [_bands_dos_widget]
