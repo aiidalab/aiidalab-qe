@@ -20,7 +20,7 @@ def test_electronic_structure(generate_qeapp_workchain):
         if getattr(tab, "identifier", "") == "electronic_structure"
     )
     # It should have one children: the _bands_plot_view
-    assert len(tab.children) == 2
+    assert len(tab.children) == 1
 
     result = Result(node=wkchain.node)
     result._update_view()
