@@ -90,7 +90,7 @@ class Setting(Panel):
     def _update_structure(self, _=None):
         self._display_mesh()
         # For molecules this is compulsory
-        if self.input_strucutre and self.input_structure.pbc == (False, False, False):
+        if self.input_structure and self.input_structure.pbc == (False, False, False):
             self.nscf_kpoints_distance.value = 100
             self.nscf_kpoints_distance.disabled = True
             self.use_pdos_degauss.value = True
