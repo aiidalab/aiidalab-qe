@@ -52,14 +52,30 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             tooltip="Kill the below workchain.",
             button_style="danger",
             icon="window-close",
-            layout=ipw.Layout(width="120px", height="40px"),
+            layout=ipw.Layout(width="120px", height="40px", display="none"),
         )
         self.kill_button.on_click(self._on_click_kill_button)
+
+        self.clean_scratch_button = ipw.Button(
+            description="Clean remote data",
+            tooltip="Clean the remote folders of the workchain.",
+            button_style="danger",
+            icon="folder",
+            layout=ipw.Layout(width="150px", height="40px", display="none"),
+        )
+        self.clean_scratch_button.on_click(self._on_click_clean_scratch_button)
+
         self.process_info = ipw.HTML()
 
         super().__init__(
             [
-                ipw.HBox(children=[self.kill_button, self.process_info]),
+                ipw.HBox(
+                    children=[
+                        self.kill_button,
+                        self.process_info,
+                        self.clean_scratch_button,
+                    ]
+                ),
                 self.process_status,
             ],
             **kwargs,
@@ -93,12 +109,14 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 or process.is_failed
             ):
                 self.state = self.State.FAIL
-                self.kill_button.layout.display = "none"
                 self.process_info.value = PROCESS_EXCEPTED
             elif process.is_finished_ok:
                 self.state = self.State.SUCCESS
-                self.kill_button.layout.display = "none"
                 self.process_info.value = PROCESS_COMPLETED
+            # trigger the update of kill and clean button.
+            if self.state in [self.State.SUCCESS, self.State.FAIL]:
+                self._update_kill_button_layout()
+                self._update_clean_scratch_button_layout()
 
     def _update_kill_button_layout(self):
         """Update the layout of the kill button."""
@@ -107,8 +125,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             self.kill_button.layout.display = "none"
         else:
             process = orm.load_node(self.process)
-            # If the process is finished or excepted, hide the button.
-            if process.is_finished or process.is_excepted:
+            # If the process is terminated, hide the button.
+            if process.is_terminated:
                 self.kill_button.layout.display = "none"
             else:
                 self.kill_button.layout.display = "block"
@@ -120,6 +138,32 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         else:
             self.kill_button.disabled = True
 
+    def _update_clean_scratch_button_layout(self):
+        """Update the layout of the kill button."""
+        # The button is hidden by default, but if we load a new process, we hide again.
+        if not self.process:
+            self.clean_scratch_button.layout.display = "none"
+        else:
+            process = orm.load_node(self.process)
+            # If the process is terminated, show the button.
+            if process.is_terminated:
+                self.clean_scratch_button.layout.display = "block"
+            else:
+                self.clean_scratch_button.layout.display = "none"
+
+            # If the scratch is already empty, we should deactivate the button.
+            # not sure about the performance if descendants are several.
+            cleaned_bool = []
+            for called_descendant in process.called_descendants:
+                if isinstance(called_descendant, orm.CalcJobNode):
+                    try:
+                        cleaned_bool.append(
+                            called_descendant.outputs.remote_folder.is_cleaned
+                        )
+                    except (OSError, KeyError):
+                        pass
+            self.clean_scratch_button.disabled = all(cleaned_bool)
+
     def _on_click_kill_button(self, _=None):
         """callback for the kill button.
         First kill the process, then update the kill button layout.
@@ -130,6 +174,22 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         # update the kill button layout
         self._update_kill_button_layout()
 
+    def _on_click_clean_scratch_button(self, _=None):
+        """callback for the clean scratch button.
+        First clean the remote folders, then update the clean button layout.
+        """
+        process = orm.load_node(self.process)
+
+        for called_descendant in process.called_descendants:
+            if isinstance(called_descendant, orm.CalcJobNode):
+                try:
+                    called_descendant.outputs.remote_folder._clean()
+                except (OSError, KeyError):
+                    pass
+
+        # update the kill button layout
+        self._update_clean_scratch_button_layout()
+
     @tl.observe("process")
     def _observe_process(self, _):
         """Callback for when the process is changed."""
@@ -137,3 +197,4 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         # as the self.state is updated in the _update_state method.
         self._update_state()
         self._update_kill_button_layout()
+        self._update_clean_scratch_button_layout()
