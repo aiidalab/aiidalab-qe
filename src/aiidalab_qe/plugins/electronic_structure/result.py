@@ -29,12 +29,12 @@ class Result(ResultPanel):
 
         plot_container = ipw.HTML(
             """
-            <div style='overflow-x: auto; width: 100%; max-width: 100%;'>
+            <div style='overflow-x: auto; width: 80%; max-width: 80%;'>
                 <!-- Placeholder for the Plotly plot widget -->
             </div>
             """
         )
-        _bands_dos_widget.layout = ipw.Layout(width="1100px")
+        _bands_dos_widget.layout = ipw.Layout(width="1000px")
         self.children = [
             ipw.VBox(
                 [
