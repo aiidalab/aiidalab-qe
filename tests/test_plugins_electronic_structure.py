@@ -34,7 +34,10 @@ def test_electronic_structure(generate_qeapp_workchain):
     assert result.children[0].children[1].pdos_data is not None
 
     # Check Bands axis
-    assert result.children[0].children[1].bandsplot_widget.layout.xaxis.title.text == "k-points"
+    assert (
+        result.children[0].children[1].bandsplot_widget.layout.xaxis.title.text
+        == "k-points"
+    )
     assert (
         result.children[0].children[1].bandsplot_widget.layout.xaxis2.title.text
         == "Density of states"
