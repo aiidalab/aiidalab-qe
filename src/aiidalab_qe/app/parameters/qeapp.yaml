@@ -29,6 +29,8 @@ codes:
         code: dos-7.2@localhost
     projwfc:
         code: projwfc-7.2@localhost
+    projwfc_bands:
+        code: projwfc-7.2@localhost
     pw:
         code: pw-7.2@localhost
     pp:
