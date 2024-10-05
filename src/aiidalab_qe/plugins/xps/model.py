@@ -1,6 +1,9 @@
 import traitlets as tl
 
+from aiida.orm import Group, QueryBuilder
 from aiidalab_qe.common.panel import SettingsModel
+
+BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
 
 
 class XpsModel(SettingsModel):
@@ -23,6 +26,10 @@ class XpsModel(SettingsModel):
         value_trait=tl.Bool(),
         default_value={},
     )
+
+    def update(self):
+        if self._pseudo_group_exists():
+            self._install_pseudos()
 
     def get_model_state(self):
         return {
@@ -57,3 +64,26 @@ class XpsModel(SettingsModel):
             "supercell_min_parameter"
         ].default_value
         self.calc_binding_energy = self.traits()["calc_binding_energy"].default_value
+
+    def _pseudo_group_exists(self, _=None):
+        qb = QueryBuilder()
+        qb.append(
+            Group,
+            filters={"label": self.pseudo_group},
+        )
+        return len(qb.all()) == 0
+
+    def _install_pseudos(self):
+        import os
+        from pathlib import Path
+        from subprocess import run
+
+        url = BASE_URL + self.pseudo_group + ".aiida"
+
+        env = os.environ.copy()
+        env["PATH"] = f"{env['PATH']}:{Path.home().joinpath('.local', 'bin')}"
+
+        def run_(*args, **kwargs):
+            return run(*args, env=env, capture_output=True, check=True, **kwargs)
+
+        run_(["verdi", "archive", "import", url, "--no-import-group"])

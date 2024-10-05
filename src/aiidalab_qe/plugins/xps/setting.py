@@ -7,8 +7,6 @@ from aiida.common import NotExistent
 from aiida.orm import Group, QueryBuilder, StructureData, load_group
 from aiidalab_qe.common.panel import SettingPanel
 
-BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
-
 
 class Setting(SettingPanel):
     title = "XPS Settings"
@@ -134,8 +132,7 @@ class Setting(SettingPanel):
 
     def _update(self):
         self._unsubscribe()
-        if self._pseudo_group_exists():
-            self._install_pseudos()
+        self._model.update()
         self._build_core_level_list()
 
     def _build_core_level_list(self):
@@ -202,26 +199,3 @@ class Setting(SettingPanel):
                 children.append(checkbox)
 
         self.core_level_list.children = children
-
-    def _pseudo_group_exists(self, _=None):
-        qb = QueryBuilder()
-        qb.append(
-            Group,
-            filters={"label": self._model.pseudo_group},
-        )
-        return len(qb.all()) == 0
-
-    def _install_pseudos(self):
-        import os
-        from pathlib import Path
-        from subprocess import run
-
-        url = BASE_URL + self._model.pseudo_group + ".aiida"
-
-        env = os.environ.copy()
-        env["PATH"] = f"{env['PATH']}:{Path.home().joinpath('.local', 'bin')}"
-
-        def run_(*args, **kwargs):
-            return run(*args, env=env, capture_output=True, check=True, **kwargs)
-
-        run_(["verdi", "archive", "import", url, "--no-import-group"])
