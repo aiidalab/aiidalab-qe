@@ -32,11 +32,11 @@ def test_update_codes_display():
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     submit = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    submit._update_codes_display()
-    assert submit.codes["dos"].layout.display == "none"
+    submit._update_active_codes()
+    assert submit.code_widgets["dos"].layout.display == "none"
     submit.input_parameters = {"workchain": {"properties": ["pdos"]}}
-    submit._update_codes_display()
-    assert submit.codes["dos"].layout.display == "block"
+    submit._update_active_codes()
+    assert submit.code_widgets["dos"].layout.display == "block"
 
 
 @pytest.mark.usefixtures("sssp")
@@ -66,11 +66,17 @@ def test_qeapp_computational_resources_widget():
     from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 
     new_submit_step = SubmitQeAppWorkChainStep(qe_auto_setup=False)
-    assert new_submit_step.codes["pw"].parallelization.npool.layout.display == "none"
-    new_submit_step.codes["pw"].parallelization.override.value = True
-    new_submit_step.codes["pw"].parallelization.npool.value = 2
-    assert new_submit_step.codes["pw"].parallelization.npool.layout.display == "block"
-    assert new_submit_step.codes["pw"].parameters == {
+    assert (
+        new_submit_step.code_widgets["pw"].parallelization.npool.layout.display
+        == "none"
+    )
+    new_submit_step.code_widgets["pw"].parallelization.override.value = True
+    new_submit_step.code_widgets["pw"].parallelization.npool.value = 2
+    assert (
+        new_submit_step.code_widgets["pw"].parallelization.npool.layout.display
+        == "block"
+    )
+    assert new_submit_step.code_widgets["pw"].parameters == {
         "code": None,
         "cpus": 1,
         "cpus_per_task": 1,

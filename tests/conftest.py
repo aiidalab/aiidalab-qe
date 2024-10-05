@@ -327,12 +327,12 @@ def app(pw_code, dos_code, projwfc_code):
 
     # set up codes
     app.submit_step.pw_code.code_selection.refresh()
-    app.submit_step.codes["dos"].code_selection.refresh()
-    app.submit_step.codes["projwfc"].code_selection.refresh()
+    app.submit_step.code_widgets["dos"].code_selection.refresh()
+    app.submit_step.code_widgets["projwfc"].code_selection.refresh()
 
     app.submit_step.pw_code.value = pw_code.uuid
-    app.submit_step.codes["dos"].value = dos_code.uuid
-    app.submit_step.codes["projwfc"].value = projwfc_code.uuid
+    app.submit_step.code_widgets["dos"].value = dos_code.uuid
+    app.submit_step.code_widgets["projwfc"].value = projwfc_code.uuid
 
     yield app
 

@@ -1,5 +1,5 @@
+from aiidalab_qe.app.submission.model import CodeModel
 from aiidalab_qe.common.panel import PanelOutline
-from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
 from .model import PdosModel
 from .result import Result
@@ -15,11 +15,13 @@ class PdosOutline(PanelOutline):
 pdos = {
     "outline": PdosOutline,
     "code": {
-        "dos": QEAppComputationalResourcesWidget(
+        "dos": CodeModel(
+            name="dos",
             description="dos.x",
             default_calc_job_plugin="quantumespresso.dos",
         ),
-        "projwfc": QEAppComputationalResourcesWidget(
+        "projwfc": CodeModel(
+            name="projwfc",
             description="projwfc.x",
             default_calc_job_plugin="quantumespresso.projwfc",
         ),
