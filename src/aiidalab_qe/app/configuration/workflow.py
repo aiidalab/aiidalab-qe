@@ -4,7 +4,9 @@ Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
+import traitlets as tl
 
+from aiida import orm
 from aiida_quantumespresso.common.types import RelaxType
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
@@ -48,6 +50,8 @@ class WorkChainSettings(Panel):
         accuracy and speed. Choose the "fast" protocol for a faster calculation
         with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
     )
+
+    input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     def __init__(self, **kwargs):
         # RelaxType: degrees of freedom in geometry optimization
@@ -141,6 +145,37 @@ class WorkChainSettings(Panel):
             **kwargs,
         )
 
+    @tl.observe("input_structure")
+    def _on_input_structure_change(self, change):
+        """Update the relax type options based on the input structure."""
+        structure = change["new"]
+        if structure is None or structure.pbc != (False, False, False):
+            self.relax_type.options = [
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+                ("Full geometry", "positions_cell"),
+            ]
+            # Ensure the value is in the options
+            if self.relax_type.value not in [
+                option[1] for option in self.relax_type.options
+            ]:
+                self.relax_type.value = "positions_cell"
+
+            self.properties["bands"].run.disabled = False
+        elif structure.pbc == (False, False, False):
+            self.relax_type.options = [
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+            ]
+            # Ensure the value is in the options
+            if self.relax_type.value not in [
+                option[1] for option in self.relax_type.options
+            ]:
+                self.relax_type.value = "positions"
+
+            self.properties["bands"].run.value = False
+            self.properties["bands"].run.disabled = True
+
     def get_panel_value(self):
         # Work chain settings
         relax_type = self.relax_type.value
@@ -192,6 +227,7 @@ class WorkChainSettings(Panel):
 
     def reset(self):
         """Reset the panel to the default value."""
+        self.input_structure = None
         for key in ["relax_type", "spin_type", "electronic_type"]:
             getattr(self, key).value = DEFAULT_PARAMETERS["workchain"][key]
         self.workchain_protocol.value = DEFAULT_PARAMETERS["workchain"]["protocol"]

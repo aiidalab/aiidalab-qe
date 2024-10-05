@@ -98,6 +98,13 @@ def generate_structure_data():
             structure.append_atom(position=(1.6, 0.92, 8.47), symbols="S")
             structure.append_atom(position=(1.6, 0.92, 11.6), symbols="S")
 
+        elif name == "H2O":
+            cell = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
+            structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
+            structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
+
         structure.pbc = pbc
 
         return structure
