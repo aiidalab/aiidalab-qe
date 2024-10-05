@@ -24,7 +24,7 @@ class PdosModel(SettingsModel):
     def set_model_state(self, parameters: dict):
         self.nscf_kpoints_distance = parameters.get(
             "nscf_kpoints_distance",
-            self.traits()["nscf_kpoints_distance"].default_value,
+            self.traits()["kpoints_distance"].default_value,
         )
 
     def reset(self):
