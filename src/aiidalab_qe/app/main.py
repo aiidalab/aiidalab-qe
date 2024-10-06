@@ -35,18 +35,15 @@ class App(ipw.VBox):
             model=struct_model,
             auto_advance=True,
         )
-
         self.configure_step = ConfigureQeAppWorkChainStep(
             model=config_model,
             auto_advance=True,
         )
-
         self.submit_step = SubmitQeAppWorkChainStep(
             model=submit_model,
             auto_advance=True,
             qe_auto_setup=qe_auto_setup,
         )
-
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep(model=results_model)
 
         # Link the models of the application steps
@@ -105,7 +102,7 @@ class App(ipw.VBox):
         )
 
         ipw.dlink(
-            (self.submit_step, "process"),
+            (submit_model, "process"),
             (self.work_chain_selector, "value"),
             transform=lambda node: None if node is None else node.pk,
         )

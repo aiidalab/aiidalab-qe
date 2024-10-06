@@ -1,7 +1,5 @@
 import ipywidgets as ipw
-import traitlets as tl
 
-from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 from .model import ConfigurationModel
@@ -9,14 +7,6 @@ from .model import ConfigurationModel
 
 class HubbardSettings(ipw.VBox):
     """Widget for setting up Hubbard parameters."""
-
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(orm.KpointsData),
-        ],
-        allow_none=True,
-    )
 
     def __init__(self, model: ConfigurationModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
@@ -27,6 +17,10 @@ class HubbardSettings(ipw.VBox):
         )
 
         self._model = model
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
 
         self.links = []
         self.eigenvalues_widget_links = []
@@ -78,6 +72,7 @@ class HubbardSettings(ipw.VBox):
 
         self.hubbard_widget = ipw.VBox()
         self.eigenvalues_widget = ipw.VBox()
+
         self.container = ipw.VBox()
 
         self.children = [
@@ -90,31 +85,27 @@ class HubbardSettings(ipw.VBox):
             self.container,
         ]
 
-        ipw.dlink(
-            (self._model, "input_structure"),
-            (self, "input_structure"),
-        )
-
         self.rendered = True
+
+        self._build_hubbard_widget()
 
     def reset(self):
         """Reset the widget."""
         self._unsubscribe()
         self._model.advanced.hubbard.reset()
 
-    @tl.observe("input_structure")
-    def _on_input_structure_change(self, change):
+    def _on_input_structure_change(self, _):
         self._unsubscribe()
         self._model.advanced.hubbard.update()
         self._build_hubbard_widget()
-        if isinstance(change["new"], HubbardStructureData):
+        if isinstance(self._model.input_structure, HubbardStructureData):
             self._model.advanced.hubbard.set_parameters_from_hubbard_structure()
 
-    def _on_hubbard_check(self, change):
-        self._toggle_hubbard_widget(change)
+    def _on_hubbard_check(self, _):
+        self._toggle_hubbard_widget()
 
-    def _on_eigenvalues_check(self, change):
-        self._toggle_eigenvalues_widget(change)
+    def _on_eigenvalues_check(self, _):
+        self._toggle_eigenvalues_widget()
 
     def _build_hubbard_widget(self):
         """Build the widget for defining Hubbard U values
@@ -124,6 +115,8 @@ class HubbardSettings(ipw.VBox):
             hubbard_widget (ipywidgets.VBox):
                 The widget containing the input fields for defining Hubbard U values.
         """
+        if not self.rendered:
+            return
 
         children = []
 
@@ -241,16 +234,17 @@ class HubbardSettings(ipw.VBox):
 
         self.eigenvalues_widget.children = children
 
-    def _toggle_hubbard_widget(self, change):
-        self.container.children = [self.hubbard_widget] if change["new"] else []
+    def _toggle_hubbard_widget(self):
+        widget = [self.hubbard_widget] if self._model.advanced.hubbard.activate else []
+        self.container.children = widget
 
-    def _toggle_eigenvalues_widget(self, change):
+    def _toggle_eigenvalues_widget(self):
         self.hubbard_widget.children = (
             [
                 *self.hubbard_widget.children,
                 self.eigenvalues_widget,
             ]
-            if change["new"]
+            if self._model.advanced.hubbard.eigenvalues_label
             else [*self.hubbard_widget.children][:-1]
         )
 

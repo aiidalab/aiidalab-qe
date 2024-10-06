@@ -1,12 +1,12 @@
 """Panel for Pdos plugin."""
 
 import ipywidgets as ipw
-import traitlets as tl
 
 from aiida import orm
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
+from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.common.panel import SettingPanel
 
 
@@ -14,8 +14,20 @@ class Setting(SettingPanel):
     title = "PDOS"
     identifier = "pdos"
 
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
-    protocol = tl.Unicode(allow_none=True)
+    def __init__(self, config_model: ConfigurationModel, **kwargs):
+        super().__init__(config_model, **kwargs)
+        ipw.dlink(
+            (self._config_model.workchain, "protocol"),
+            (self._model, "protocol"),
+        )
+        self._config_model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
+        self._config_model.workchain.observe(
+            self._on_protocol_change,
+            "protocol",
+        )
 
     def render(self):
         if self.rendered:
@@ -56,30 +68,14 @@ class Setting(SettingPanel):
             ),
         ]
 
-        with self.hold_trait_notifications():
-            ipw.dlink(
-                (self._config_model, "input_structure"),
-                (self, "input_structure"),
-            )
-            ipw.dlink(
-                (self._config_model.workchain, "protocol"),
-                (self._model, "protocol"),
-            )
-            ipw.dlink(
-                (self._model, "protocol"),
-                (self, "protocol"),
-            )
-
         self.rendered = True
 
     def reset(self):
         self._model.reset()
 
-    @tl.observe("input_structure")
     def _on_input_structure_change(self, _=None):
         self._update_mesh()
 
-    @tl.observe("protocol")
     def _on_protocol_change(self, _):
         self._model.update()
         self._update_mesh()
@@ -88,11 +84,11 @@ class Setting(SettingPanel):
         self._update_mesh()
 
     def _update_mesh(self, _=None):
-        if self.input_structure is None:
+        if self._config_model.input_structure is None:
             self._model.mesh_grid = ""
         else:
             mesh = create_kpoints_from_distance.process_class._func(
-                self.input_structure,
+                self._config_model.input_structure,
                 orm.Float(self._model.kpoints_distance),
                 orm.Bool(False),
             )

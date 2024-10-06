@@ -22,8 +22,6 @@ PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
-    process = tl.Unicode(allow_none=True)
-
     def __init__(self, model: ResultsModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
@@ -107,11 +105,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             "process",
         )
 
-        ipw.dlink(
-            (self._model, "process"),
-            (self, "process"),
-        )
-
         self.rendered = True
 
     def can_reset(self):
@@ -129,14 +122,14 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_kill_button_layout()
 
     def _on_click_kill_button(self, _=None):
-        workchain = [orm.load_node(self.process)]
+        workchain = [orm.load_node(self._model.process)]
         control.kill_processes(workchain)
         self._update_kill_button_layout()
 
     def _update_kill_button_layout(self):
         if (
-            self.process is None
-            or self.process == ""
+            self._model.process is None
+            or self._model.process == ""
             or self.state
             in (
                 self.State.SUCCESS,
@@ -145,17 +138,17 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         ):
             self.kill_button.layout.display = "none"
         else:
-            process = orm.load_node(self.process)
+            process = orm.load_node(self._model.process)
             if process.is_finished or process.is_excepted:
                 self.kill_button.layout.display = "none"
             else:
                 self.kill_button.layout.display = "block"
 
     def _update_state(self):
-        if self.process is None:
+        if self._model.process is None:
             self.state = self.State.INIT
         else:
-            process = orm.load_node(self.process)
+            process = orm.load_node(self._model.process)
             process_state = process.process_state
             if process_state in (
                 ProcessState.CREATED,

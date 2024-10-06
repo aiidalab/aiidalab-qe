@@ -21,17 +21,6 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 class PseudoSettings(ipw.VBox):
     """Widget to set the pseudopotentials for the calculation."""
 
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(orm.KpointsData),
-        ],
-        allow_none=True,
-    )
-    spin_orbit = tl.Unicode()
-    family = tl.Unicode()
-    override = tl.Bool()
-
     def __init__(self, model: ConfigurationModel, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading pseudopotentials widget")],
@@ -39,10 +28,25 @@ class PseudoSettings(ipw.VBox):
         )
 
         self._model = model
-
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
+        self._model.advanced.observe(
+            self._on_spin_orbit_change,
+            "spin_orbit",
+        )
+        self._model.advanced.observe(
+            self._on_override_change,
+            "override",
+        )
         self._model.advanced.pseudos.observe(
             self._on_family_parameters_change,
             ["library", "functional"],
+        )
+        self._model.advanced.pseudos.observe(
+            self._on_family_change,
+            "family",
         )
 
         self.links = []
@@ -232,55 +236,41 @@ class PseudoSettings(ipw.VBox):
             self._status_message,
         ]
 
-        with self.hold_trait_notifications():
-            ipw.dlink(
-                (self._model, "input_structure"),
-                (self, "input_structure"),
-            )
-            ipw.dlink(
-                (self._model.advanced, "spin_orbit"),
-                (self, "spin_orbit"),
-            )
-            ipw.dlink(
-                (self._model.advanced.pseudos, "family"),
-                (self, "family"),
-            )
-            ipw.dlink(
-                (self._model.advanced, "override"),
-                (self, "override"),
-            )
-
         self.rendered = True
+
+        self._build_setter_widgets()
+        self._toggle_setter_widgets()
+        self._update_library_options()
+        self._update_family_link()
 
     def reset(self):
         self._unsubscribe()
         self._model.advanced.pseudos.reset()
 
-    @tl.observe("input_structure")
-    def _on_input_structure_change(self, _=None):
+    def _on_input_structure_change(self, _):
         self._unsubscribe()
         self._model.advanced.pseudos.update()
         self._build_setter_widgets()
 
-    @tl.observe("spin_orbit")
     def _on_spin_orbit_change(self, _):
         self._update_library_options()
 
-    @tl.observe("family")
-    def _on_family_change(self, _=None):
+    def _on_override_change(self, _):
+        self._toggle_setter_widgets()
+
+    def _on_family_parameters_change(self, _):
+        self._model.advanced.pseudos.update_family()
+
+    def _on_family_change(self, _):
         self._update_family_link()
         self._model.advanced.pseudos.update_default_pseudos()
         self._model.advanced.pseudos.update_default_cutoffs()
 
-    @tl.observe("override")
-    def _on_override_change(self, change):
-        self._toggle_setter_widgets(change)
-
-    def _on_family_parameters_change(self, _=None):
-        self._model.advanced.pseudos.update_family()
-
     def _update_library_options(self):
         """Update pseudo library selection options w.r.t spin orbit."""
+        if not self.rendered:
+            return
+
         if self._model.advanced.spin_orbit == "soc":
             self.library.options = [
                 "PseudoDojo standard",
@@ -297,6 +287,9 @@ class PseudoSettings(ipw.VBox):
             self.family_help.value = self.PSEUDO_HELP_WO_SOC
 
     def _update_family_link(self):
+        if not self.rendered:
+            return
+
         library, accuracy = self._model.advanced.pseudos.library.split()
         if library == "SSSP":
             pseudo_family_link = (
@@ -315,17 +308,10 @@ class PseudoSettings(ipw.VBox):
             </div>
         """
 
-    def _toggle_setter_widgets(self, change):
-        if change["new"]:
-            self.container.children = [
-                self.setter_widget_helper,
-                self.setter_widget,
-            ]
-        else:
-            self.container.children = []
-
     def _build_setter_widgets(self):
         """Build the pseudo setter widgets."""
+        if not self.rendered:
+            return
 
         children = []
 
@@ -366,6 +352,17 @@ class PseudoSettings(ipw.VBox):
             children.append(upload_widget)
 
         self.setter_widget.children = children
+
+    def _toggle_setter_widgets(self):
+        if not self.rendered:
+            return
+        if self._model.advanced.override:
+            self.container.children = [
+                self.setter_widget_helper,
+                self.setter_widget,
+            ]
+        else:
+            self.container.children = []
 
     def _unsubscribe(self):
         for link in self.links:

@@ -1,6 +1,6 @@
 import traitlets as tl
 
-from aiida.orm import Group, QueryBuilder
+from aiida.orm import Group, QueryBuilder, StructureData
 from aiidalab_qe.common.panel import SettingsModel
 
 BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
@@ -8,6 +8,8 @@ BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
 
 class XpsModel(SettingsModel):
     """Model for the XPS plugin."""
+
+    input_structure = tl.Instance(StructureData, allow_none=True)
 
     core_hole_treatment = tl.Unicode("xch_smear")
     pseudo_group = tl.Unicode("pseudo_demo_pbe")

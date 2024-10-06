@@ -6,7 +6,6 @@ Authors: AiiDAlab team
 import pathlib
 
 import ipywidgets as ipw
-import traitlets as tl
 
 from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
@@ -48,8 +47,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     structure importers and the structure editors can be extended by plugins.
     """
 
-    structure = tl.Instance(orm.StructureData, allow_none=True)
-
     def __init__(self, model: StructureModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
@@ -62,6 +59,10 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self._model.observe(
             self._on_confirmation_change,
             "confirmed",
+        )
+        self._model.observe(
+            self._on_structure_change,
+            "structure",
         )
 
         self.rendered = False
@@ -135,13 +136,12 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             lambda state: state != self.State.CONFIGURED,
         )
         self.confirm_button.on_click(self.confirm)
+
         self.message_area = ipw.HTML()
 
-        # Create directional link from the (read-only) 'structure_node' traitlet of the
-        # structure manager to our 'structure' traitlet:
         ipw.dlink(
             (self.manager, "structure_node"),
-            (self, "structure"),
+            (self._model, "structure"),
         )
 
         self.children = [
@@ -163,11 +163,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.confirm_button,
         ]
 
-        ipw.dlink(
-            (self._model, "structure"),
-            (self, "structure"),
-        )
-
         self.rendered = True
 
     def set_structure(self, structure):
@@ -175,11 +170,11 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
     def is_saved(self):
         """Check if the current structure is confirmed."""
-        return self.structure == self._model.confirmed_structure
+        return self._model.structure == self._model.confirmed_structure
 
     def confirm(self, _=None):
         self.manager.store_structure()
-        self._model.confirmed_structure = self.structure
+        self._model.confirmed_structure = self._model.structure
         self._model.confirmed = True
         self.message_area.value = ""
 
@@ -194,7 +189,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.manager.viewer.structure = None
             self.manager.output.value = ""
 
-    @tl.observe("structure")
     def _on_structure_change(self, _):
         self._model.reset()
         self._update_widget_text()
@@ -204,17 +198,17 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         self._update_state()
 
     def _update_widget_text(self):
-        if self.structure is None:
+        if self._model.structure is None:
             self.structure_name_text.value = ""
             self.message_area.value = ""
         else:
             self.manager.output.value = ""
-            self.structure_name_text.value = str(self.structure.get_formula())
+            self.structure_name_text.value = str(self._model.structure.get_formula())
 
     def _update_state(self):
         if self._model.confirmed:
             self.state = self.State.SUCCESS
-        elif self.structure is None:
+        elif self._model.structure is None:
             self.state = self.State.READY
         else:
             self.state = self.State.CONFIGURED

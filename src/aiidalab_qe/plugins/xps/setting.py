@@ -1,18 +1,29 @@
 """Panel for XPS plugin."""
 
 import ipywidgets as ipw
-import traitlets as tl
 
 from aiida.common import NotExistent
-from aiida.orm import Group, QueryBuilder, StructureData, load_group
+from aiida.orm import Group, QueryBuilder, load_group
+from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.common.panel import SettingPanel
+
+from .model import BASE_URL
 
 
 class Setting(SettingPanel):
     title = "XPS Settings"
     identifier = "xps"
 
-    input_structure = tl.Instance(StructureData, allow_none=True)
+    def __init__(self, config_model: ConfigurationModel, **kwargs):
+        super().__init__(config_model, **kwargs)
+        ipw.dlink(
+            (self._config_model, "input_structure"),
+            (self._model, "input_structure"),
+        )
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
 
     def render(self):
         if self.rendered:
@@ -112,18 +123,14 @@ class Setting(SettingPanel):
             ipw.HBox([self.core_level_list]),
         ]
 
-        ipw.dlink(
-            (self._config_model, "input_structure"),
-            (self, "input_structure"),
-        )
-
         self.rendered = True
+
+        self._build_core_level_list()
 
     def reset(self):
         self._unsubscribe()
         self._model.reset()
 
-    @tl.observe("input_structure")
     def _on_input_structure_change(self, _=None):
         self._update()
 
@@ -136,12 +143,15 @@ class Setting(SettingPanel):
         self._build_core_level_list()
 
     def _build_core_level_list(self):
-        if self.input_structure is None:
+        if not self.rendered:
+            return
+
+        if self._model.input_structure is None:
             return
 
         children = []
 
-        kind_list = [Kind.symbol for Kind in self.input_structure.kinds]
+        kind_list = [Kind.symbol for Kind in self._model.input_structure.kinds]
 
         qb = QueryBuilder()
         qb.append(

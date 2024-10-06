@@ -14,7 +14,6 @@ from aiida import orm
 from aiida.engine import ProcessBuilderNamespace
 from aiida.engine import submit as aiida_submit
 from aiida.orm.utils.serialize import serialize
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
@@ -38,16 +37,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(HubbardStructureData),
-        ],
-        allow_none=True,
-    )
-    process = tl.Instance(orm.WorkChainNode, allow_none=True)
-    input_parameters = tl.Dict()
-
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
 
@@ -60,6 +49,18 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self._model = model
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
+        self._model.observe(
+            self._on_process_change,
+            "process",
+        )
+        self._model.observe(
+            self._on_input_parameters_change,
+            "input_parameters",
+        )
 
         # # TODO for testing only - remove in PR
         # self._model.observe(
@@ -250,20 +251,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.submit_button,
         ]
 
-        with self.hold_trait_notifications():
-            ipw.dlink(
-                (self._model, "input_structure"),
-                (self, "input_structure"),
-            )
-            ipw.dlink(
-                (self._model, "process"),
-                (self, "process"),
-            )
-            ipw.dlink(
-                (self._model, "input_parameters"),
-                (self, "input_parameters"),
-            )
-
         self.rendered = True
 
     def set_submission_parameters(self, parameters):
@@ -281,11 +268,14 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_previous_step_state_change(self, _):
         self._update()
 
-    @tl.observe("input_structure")
+    @tl.observe("internal_submission_blockers", "external_submission_blockers")
+    def _on_submission_blockers_change(self, _):
+        self._update_submission_blocker_message()
+        self._update_state()
+
     def _on_input_structure_change(self, _):
         self._update()
 
-    @tl.observe("process")
     def _on_process_change(self, change):
         with self.hold_trait_notifications():
             process_node = change["new"]
@@ -294,14 +284,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self._model.input_structure = process_node.inputs.structure
             self._update_state()
 
-    @tl.observe("input_parameters")
     def _on_input_parameters_change(self, _):
         self._update()
-
-    @tl.observe("internal_submission_blockers", "external_submission_blockers")
-    def _on_submission_blockers_change(self, _):
-        self._update_submission_blocker_message()
-        self._update_state()
 
     def _on_submission(self, _):
         self._submit()
@@ -367,7 +351,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             process.base.extras.set("ui_parameters", serialize(parameters))
             # store the workchain name in extras, this will help to filter the workchain in the future
             process.base.extras.set("workchain", parameters["workchain"])  # type: ignore
-            process.base.extras.set("structure", self.input_structure.get_formula())
+            process.base.extras.set(
+                "structure",
+                self._model.input_structure.get_formula(),
+            )
             self._model.process = process
 
     def _update(self):
@@ -472,7 +459,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         parameters.update(submission_parameters)
 
         builder = QeAppWorkChain.get_builder_from_protocol(
-            structure=self.input_structure,
+            structure=self._model.input_structure,
             parameters=deepcopy(parameters),  # TODO why deepcopy again?
         )
 

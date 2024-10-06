@@ -2,6 +2,7 @@
 
 import ipywidgets as ipw
 
+from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.common.panel import SettingPanel
 
 
@@ -10,6 +11,17 @@ class Setting(SettingPanel):
     identifier = "xas"
 
     # TODO: The element selection should lock the "Confirm" button if no elements have been selected for XAS calculation.
+
+    def __init__(self, config_model: ConfigurationModel, **kwargs):
+        super().__init__(config_model, **kwargs)
+        ipw.dlink(
+            (self._config_model, "input_structure"),
+            (self._model, "input_structure"),
+        )
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
 
     def render(self):
         if self.rendered:
@@ -113,17 +125,9 @@ class Setting(SettingPanel):
             ),
         ]
 
-        self._model.observe(
-            self._on_input_structure_change,
-            "input_structure",
-        )
-
-        ipw.dlink(
-            (self._config_model, "input_structure"),
-            (self._model, "input_structure"),
-        )
-
         self.rendered = True
+
+        self._build_element_core_treatment_widget()
 
     def _on_input_structure_change(self, _):
         self._unsubscribe()
@@ -131,6 +135,9 @@ class Setting(SettingPanel):
         self._build_element_core_treatment_widget()
 
     def _build_element_core_treatment_widget(self):
+        if not self.rendered:
+            return
+
         children = []
 
         info = "Recommended: <b>{recommended}</b> (PBE Core-Hole Pseudopotential)"
