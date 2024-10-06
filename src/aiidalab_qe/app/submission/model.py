@@ -24,7 +24,8 @@ class CodeModel(tl.HasTraits):
 
     def __init__(
         self,
-        name,
+        *,
+        name="pw",
         description,
         default_calc_job_plugin,
         setup_widget_class=QEAppComputationalResourcesWidget,
@@ -116,6 +117,7 @@ class SubmissionModel(tl.HasTraits):
 
     # TODO identifier not the clearest name
     def add_code(self, identifier, name, code):
+        code.name = name
         if identifier not in self.codes:
             self.codes[identifier] = {}  # type: ignore
         self.codes[identifier][name] = code  # type: ignore

@@ -16,12 +16,10 @@ pdos = {
     "outline": PdosOutline,
     "code": {
         "dos": CodeModel(
-            name="dos",
             description="dos.x",
             default_calc_job_plugin="quantumespresso.dos",
         ),
         "projwfc": CodeModel(
-            name="projwfc",
             description="projwfc.x",
             default_calc_job_plugin="quantumespresso.projwfc",
         ),

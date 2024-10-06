@@ -110,30 +110,31 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
 
-        pw_code = CodeModel(
-            name="pw",
-            description="pw.x:",
-            default_calc_job_plugin="quantumespresso.pw",
-            setup_widget_class=PwCodeResourceSetupWidget,
-        )
-        self._model.add_code("dft", "pw", pw_code)
-
         plugin_codes: PluginCodes = get_entry_items("aiidalab_qe.properties", "code")
+        plugin_codes.update(
+            {
+                "dft": {
+                    "pw": CodeModel(
+                        description="pw.x:",
+                        default_calc_job_plugin="quantumespresso.pw",
+                        setup_widget_class=PwCodeResourceSetupWidget,
+                    ),
+                },
+            }
+        )
         for identifier, codes in plugin_codes.items():
             for name, code in codes.items():
                 self._model.add_code(identifier, name, code)
+                code.observe(
+                    self._on_code_activation_change,
+                    "is_active",
+                )
+                code.observe(
+                    self._on_code_selection_change,
+                    "selected",
+                )
 
-        for _, code in self._model.get_codes(flat=True):
-            code.observe(
-                self._on_code_activation_change,
-                "is_active",
-            )
-            code.observe(
-                self._on_code_selection_change,
-                "selected",
-            )
-
-        pw_code.activate()
+        plugin_codes["dft"]["pw"].activate()
 
         # set process label and description
         self.process_label = ipw.Text(

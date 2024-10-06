@@ -9,8 +9,6 @@ BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
 class XpsModel(SettingsModel):
     """Model for the XPS plugin."""
 
-    protocol = tl.Unicode(allow_none=True)
-
     core_hole_treatment = tl.Unicode("xch_smear")
     pseudo_group = tl.Unicode("pseudo_demo_pbe")
     structure_type = tl.Unicode("crystal")
