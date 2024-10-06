@@ -2,10 +2,11 @@ from importlib import resources
 
 import yaml
 
+from aiidalab_qe.app.submission.model import CodeModel
 from aiidalab_qe.common.panel import PanelOutline
-from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 from aiidalab_qe.plugins import xas as xas_folder
 
+from .model import XasModel
 from .result import Result
 from .setting import Setting
 from .workchain import workchain_and_builder
@@ -20,12 +21,13 @@ class XasOutline(PanelOutline):
 
 xas = {
     "outline": XasOutline,
-    "code": lambda: {
-        "xspectra": QEAppComputationalResourcesWidget(
+    "code": {
+        "xspectra": CodeModel(
             description="xspectra.x",
             default_calc_job_plugin="quantumespresso.xspectra",
         )
     },
+    "model": XasModel,
     "setting": Setting,
     "result": Result,
     "workchain": workchain_and_builder,
