@@ -25,11 +25,10 @@ from aiidalab_qe.common.widgets import (
 from aiidalab_qe.workflows import QeAppWorkChain
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from .model import CodeModel, CodesDict, SubmissionModel
+from .code import CodeModel, PluginCodes
+from .model import SubmissionModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
-
-PluginCodes = dict[str, CodesDict]
 
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):

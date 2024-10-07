@@ -2,7 +2,7 @@ from importlib import resources
 
 import yaml
 
-from aiidalab_qe.app.submission.model import CodeModel
+from aiidalab_qe.app.submission.code import CodeModel
 from aiidalab_qe.common.panel import PanelOutline
 from aiidalab_qe.plugins import xas as xas_folder
 
