@@ -29,8 +29,8 @@ class AdvancedSettings(Panel):
         self._model = model
 
         self.smearing = SmearingSettings(model=model)
-        self.hubbard = HubbardSettings(model=model)
         self.magnetization = MagnetizationSettings(model=model)
+        self.hubbard = HubbardSettings(model=model)
         self.pseudos = PseudoSettings(model=model)
 
         self.rendered = False

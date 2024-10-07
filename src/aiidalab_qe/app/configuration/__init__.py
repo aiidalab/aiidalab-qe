@@ -42,7 +42,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._on_confirmation_change,
             "confirmed",
         )
-
         self._model.observe(
             self._on_input_structure_change,
             "input_structure",

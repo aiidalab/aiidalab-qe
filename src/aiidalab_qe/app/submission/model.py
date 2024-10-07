@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import typing as t
+from copy import deepcopy
 
 import traitlets as tl
 
 from aiida import orm
 from aiida.common import NotExistent
+from aiida.engine import ProcessBuilderNamespace
+from aiida.engine import submit as aiida_submit
+from aiida.orm.utils.serialize import serialize
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
+from aiidalab_qe.workflows import QeAppWorkChain
 
 from .code import CodeModel, CodesDict
 
@@ -45,6 +50,91 @@ class SubmissionModel(tl.HasTraits):
         default_value={},
     )
 
+    internal_submission_blockers = tl.List(tl.Unicode())
+    external_submission_blockers = tl.List(tl.Unicode())
+
+    code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
+
+    @property
+    def is_blocked(self):
+        return any(
+            [
+                *self.internal_submission_blockers,
+                *self.external_submission_blockers,
+            ]
+        )
+
+    def submit(self):
+        parameters = deepcopy(self.input_parameters)
+        builder = self._create_builder(parameters)
+
+        with self.hold_trait_notifications():
+            process = aiida_submit(builder)
+
+            process.label = self.process_label
+            process.description = self.process_description
+            # since AiiDA data node may exist in the ui_parameters,
+            # we serialize it to yaml
+            process.base.extras.set("ui_parameters", serialize(parameters))
+            # store the workchain name in extras, this will help to filter the workchain in the future
+            process.base.extras.set("workchain", parameters["workchain"])  # type: ignore
+            process.base.extras.set(
+                "structure",
+                self.input_structure.get_formula(),
+            )
+            self.process = process
+
+    def update_active_codes(self):
+        for name, code in self.get_codes(flat=True):
+            if name != "pw":
+                code.deactivate()
+        properties = self.get_properties()
+        for identifier, codes in self.get_codes():
+            if identifier in properties:
+                for code in codes.values():
+                    code.activate()
+
+    def update_process_label(self):
+        """Generate a label for the work chain based on the input parameters."""
+        if not self.input_structure:
+            return
+        formula = self.input_structure.get_formula()
+        workchain_data = self.input_parameters.get(
+            "workchain",
+            {"properties": []},
+        )
+        properties = [p for p in workchain_data["properties"] if p != "relax"]
+        relax_type = workchain_data.get("relax_type", "none")
+        if relax_type != "none":
+            relax_info = "structure is relaxed"
+        else:
+            relax_info = "structure is not relaxed"
+        if not properties:
+            properties_info = ""
+        else:
+            properties_info = f", properties on {', '.join(properties)}"
+
+        label = f"{formula} {relax_info} {properties_info}"
+        self.process_label = label
+
+    def update_submission_blockers(self):
+        self.internal_submission_blockers = list(self._check_submission_blockers())
+
+    def update_submission_blocker_message(self):
+        blockers = self.internal_submission_blockers + self.external_submission_blockers
+        if any(blockers):
+            fmt_list = "\n".join(f"<li>{item}</li>" for item in sorted(blockers))
+            self.submission_blocker_messages = f"""
+                <div class="alert alert-info">
+                    <b>The submission is blocked due to the following reason(s):</b>
+                    <ul>
+                        {fmt_list}
+                    </ul>
+                </div>
+            """
+        else:
+            self.submission_blocker_messages = ""
+
     def get_properties(self) -> list[str]:
         return self.input_parameters.get("workchain", {}).get("properties", [])
 
@@ -70,7 +160,6 @@ class SubmissionModel(tl.HasTraits):
             self.process_label = self.process.label
             self.process_description = self.process.description
 
-    # TODO identifier not the clearest name
     def add_code(self, identifier, name, code):
         code.name = name
         if identifier not in self.codes:
@@ -119,3 +208,76 @@ class SubmissionModel(tl.HasTraits):
             self.process_label = ""
             self.process_description = ""
             self.submission_blocker_messages = ""
+
+    def _create_builder(self, parameters) -> ProcessBuilderNamespace:
+        """Create the builder for the `QeAppWorkChain` submit."""
+
+        submission_parameters = self._get_submission_parameters()
+        parameters.update(submission_parameters)
+
+        builder = QeAppWorkChain.get_builder_from_protocol(
+            structure=self.input_structure,
+            parameters=deepcopy(parameters),  # TODO why deepcopy again?
+        )
+
+        codes = submission_parameters["codes"]
+
+        builder.relax.base.pw.metadata.options.resources = {
+            "num_machines": codes.get("pw")["nodes"],
+            "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
+            "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
+        }
+        builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = codes.get(
+            "pw"
+        )["max_wallclock_seconds"]
+        builder.relax.base.pw.parallelization = orm.Dict(
+            dict=codes["pw"]["parallelization"]
+        )
+
+        return builder
+
+    def _get_submission_parameters(self):
+        submission_parameters = self.get_model_state()
+        for name, code_widget in self.code_widgets.items():
+            if name in submission_parameters["codes"]:
+                for key, value in code_widget.parameters.items():
+                    if key != "code":
+                        submission_parameters["codes"][name][key] = value
+        return submission_parameters
+
+    def _check_submission_blockers(self):
+        """Validate the resource inputs and identify blockers for the submission."""
+
+        # Do not submit while any of the background setup processes are running.
+        if self.installing_qe or self.installing_sssp:
+            yield "Background setup processes must finish."
+
+        # SSSP library not installed
+        if not self.sssp_installed:
+            yield "The SSSP library is not installed."
+
+        # No pw code selected (this is ignored while the setup process is running).
+        pw_code = self.get_code(identifier="dft", name="pw")
+        if pw_code and not pw_code.selected and not self.installing_qe:
+            yield ("No pw code selected")
+
+        # code related to the selected property is not installed
+        properties = self.get_properties()
+        message = "Calculating the {property} property requires code {code} to be set."
+        for identifier, codes in self.get_codes():
+            if identifier in properties:
+                for code in codes.values():
+                    if not code.is_ready:
+                        yield message.format(property=identifier, code=code.description)
+
+        # check if the QEAppComputationalResourcesWidget is used
+        for name, code in self.get_codes(flat=True):
+            # skip if the code is not displayed, convenient for the plugin developer
+            if not code.is_ready:
+                continue
+            if not issubclass(
+                code.setup_widget_class, QEAppComputationalResourcesWidget
+            ):
+                yield (
+                    f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {name}."
+                )
