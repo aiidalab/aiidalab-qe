@@ -4,6 +4,7 @@ Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
+import traitlets as tl
 
 from aiida.orm import load_node
 from aiida.orm.utils.serialize import deserialize_unsafe
@@ -22,6 +23,8 @@ from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
+
+    blockers = tl.List(tl.Unicode(), default_value=[])
 
     def __init__(self, qe_auto_setup=True):
         # Initialize the models
@@ -46,7 +49,7 @@ class App(ipw.VBox):
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep(model=results_model)
 
-        # Link the models of the application steps
+        # Link wizard steps
         ipw.dlink(
             (self.structure_step, "state"),
             (self.configure_step, "previous_step_state"),
@@ -72,6 +75,10 @@ class App(ipw.VBox):
             (results_model, "process"),
             transform=lambda node: node.uuid if node is not None else None,
         )
+        ipw.dlink(
+            (self, "blockers"),
+            (submit_model, "external_submission_blockers"),
+        )
 
         # Add the application steps to the application
         self._wizard_app_widget = WizardAppWidget(
@@ -83,7 +90,7 @@ class App(ipw.VBox):
             ]
         )
         self._wizard_app_widget.observe(
-            self._observe_selected_index,
+            self._on_step_selection,
             "selected_index",
         )
 
@@ -92,7 +99,7 @@ class App(ipw.VBox):
             layout=ipw.Layout(width="auto")
         )
         self.work_chain_selector.observe(
-            self._observe_process_selection,
+            self._on_process_selection,
             "value",
         )
 
@@ -123,28 +130,36 @@ class App(ipw.VBox):
     def steps(self):
         return self._wizard_app_widget.steps
 
-    def _observe_selected_index(self, change):
-        """Check unsaved change in the step when leaving the step."""
-
-        if (new_idx := change["new"]) is None:
+    def _on_step_selection(self, change):
+        if (step_index := change["new"]) is None:
             return
 
-        step = self.steps[new_idx][1]
+        self._render_step(step_index)
+
+        if self.steps[step_index][1] is not self.submit_step:
+            return
+
+        self._update_blockers(step_index)
+
+    def _on_process_selection(self, change):
+        self._update_from_process(change["new"])
+
+    def _render_step(self, step_index):
+        step = self.steps[step_index][1]
         step.render()
 
-        if self.steps[new_idx][1] is not self.submit_step:
-            return
-        blockers = []
-        for title, step in self.steps[:new_idx]:
-            if not step.is_saved():
-                step.state = WizardAppWidgetStep.State.CONFIGURED
-                blockers.append(
-                    f"Unsaved changes in the <b>{title}</b> step. Please save the changes before submitting."
-                )
-        self.submit_step.external_submission_blockers = blockers
+    def _update_blockers(self, step_index):
+        with self.hold_trait_notifications():
+            self.blockers = []
+            for title, step in self.steps[:step_index]:
+                if not step.is_saved():
+                    step.state = WizardAppWidgetStep.State.CONFIGURED
+                    self.blockers.append(
+                        f"Unsaved changes in the <b>{title}</b> step. Please save the changes before submitting."
+                    )
 
-    def _observe_process_selection(self, change):
-        if (pk := change["new"]) is None:
+    def _update_from_process(self, pk):
+        if pk is None:
             self._wizard_app_widget.reset()
             self._wizard_app_widget.selected_index = 0
         else:

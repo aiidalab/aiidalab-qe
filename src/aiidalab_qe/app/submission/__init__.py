@@ -29,9 +29,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
-    internal_submission_blockers = tl.List(tl.Unicode())
-    external_submission_blockers = tl.List(tl.Unicode())
-
     def __init__(self, model: SubmissionModel, qe_auto_setup=True, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
@@ -356,5 +353,5 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             if self._model.is_blocked:
                 self.state = self.State.READY
             else:
-                self.internal_submission_blockers = []
+                self._model.internal_submission_blockers = []
                 self.state = self.state.CONFIGURED
