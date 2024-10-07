@@ -1,5 +1,7 @@
 """PDOS results view widgets"""
 
+import ipywidgets as ipw
+
 from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
 from aiidalab_qe.common.panel import ResultPanel
 
@@ -21,5 +23,6 @@ class Result(ResultPanel):
 
         _pdos_plot_view = BandPdosWidget(pdos=pdos_node)
 
-        # update the electronic structure tab
+        _pdos_plot_view.layout = ipw.Layout(width="1000px")
+
         self.children = [_pdos_plot_view]

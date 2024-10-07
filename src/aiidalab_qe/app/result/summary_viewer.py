@@ -23,6 +23,7 @@ PERIODICITY_MAPPING = {
     (True, True, True): "xyz",
     (True, True, False): "xy",
     (True, False, False): "x",
+    (False, False, False): "molecule",
 }
 
 VDW_CORRECTION_VERSION = {

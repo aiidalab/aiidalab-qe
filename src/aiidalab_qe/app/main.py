@@ -139,6 +139,7 @@ class App(ipw.VBox):
                     self.structure_step.structure = process.inputs.structure
                     self.structure_step.confirm()
                     self.submit_step.process = process
+
             # set ui_parameters
             # print out error message if yaml format ui_parameters is not reachable
             ui_parameters = process.base.extras.get("ui_parameters", {})
