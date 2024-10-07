@@ -237,7 +237,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @tl.observe("input_structure")
     def _check_resources(self, _change):
         """Check whether the currently selected resources will be sufficient and warn if not."""
-        if not self.pw_code.value:
+        if not self.pw_code.value or not self.input_structure:
             return  # No code selected, nothing to do.
 
         num_cpus = self.pw_code.num_cpus.value * self.pw_code.num_nodes.value
