@@ -51,7 +51,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     # Warn the user if they are trying to run calculations for a large
     # structure on localhost.
-    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 5
+    RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
     RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD = 1000  # \AA^3
 
     # Put a limit on how many MPI tasks you want to run per k-pool by default
@@ -247,47 +247,57 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
 
-        if on_localhost and num_cpus > 1:
-            self._show_alert_message(
-                "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
-                "the number of CPUs is larger than one. Please be sure that you local "
-                "environment have enough CPUs for the calculation. "
-                "Otherwise, consider to review the configuration (e.g. <i>fast protocol</i>) "
-                "and/or consider to select a code that runs "
-                "on a larger machine, if necessary.",
-                alert_class="warning",
-            )
-        elif (
-            self.input_structure
-            and on_localhost
-            and (
-                num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
-                or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
-            )
-            and num_cpus < 3
-        ):
-            self._show_alert_message(
-                "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host using less than 4 CPUs, but the "
-                f"number of sites ({num_sites}) and or the cell volume ({volume} Å<sup>3</sup>) of the selected "
-                "structure are relatively large to run locally in a reasonable amount of time. "
-                "Consider to select a code (on a remote machine) that runs on a larger system if "
-                "necessary, or to increase the resources (more than 2 CPUs, if possible).",
-                alert_class="warning",
-            )
-        elif (
+        if (
             self.input_structure
             and not on_localhost
             and (
                 num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
                 or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
             )
-            and num_cpus < 3
+            and num_cpus < 4
         ):
             self._show_alert_message(
-                "<span>&#9888;</span> Warning: the selected pw.x code will run using less than 4 CPUs, but the "
-                f"number of sites ({num_sites}) and or the cell volume ({volume} Å<sup>3</sup>) of the selected "
+                "<span>&#9888;</span> Warning: The system you want to simulate seems computationally demanding: the "
+                f"number of sites ({num_sites}) and/or the cell volume ({int(volume)} Å<sup>3</sup>) of the selected "
                 "structure are relatively large to run in a reasonable amount of time. "
-                "Consider to increase the resources (more than 2 CPUs, if possible).",
+                "We suggest to perform one (or more) of the following: "
+                "<ul>"
+                "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
+                "</ul>",
+                alert_class="warning",
+            )
+        if (
+            self.input_structure
+            and on_localhost
+            and (
+                num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+                or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
+            )
+            and num_cpus < 4
+        ):
+            self._show_alert_message(
+                "<span>&#9888;</span> Warning: The system you want to simulate seems computationally demanding: the "
+                f"number of sites ({num_sites}) and/or the cell volume ({int(volume)} Å<sup>3</sup>) of the selected "
+                "structure are relatively large to run locally in a reasonable amount of time. "
+                "We suggest to perform one (or more) of the following: "
+                "<ul>"
+                "<li>Select a code that runs on a larger machine</li>"
+                "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
+                "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
+                "</ul>",
+                alert_class="warning",
+            )
+        elif on_localhost and num_cpus > 1:
+            self._show_alert_message(
+                "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
+                "the number of CPUs is larger than one. Please be sure that your local "
+                "environment has enough free CPUs for the calculation. "
+                "We suggest to perform one (or more) of the following: "
+                "<ul>"
+                "<li>Consider to reduce the number of CPUs to avoid the overloading of the local machine "
+                "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
+                "<li>Select a code that runs on a larger machine</li>"
+                "</ul>",
                 alert_class="warning",
             )
         else:
