@@ -4,13 +4,12 @@ Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
+from IPython.display import Javascript, display
 
-from aiida.orm import load_node
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structure import StructureSelectionStep
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.common import QeAppWorkChainSelector
 from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
 
@@ -64,23 +63,26 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
+        # hide the header
+        self._wizard_app_widget.children[0].layout.display = "none"
         self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
 
-        # Add process selection header
-        self.work_chain_selector = QeAppWorkChainSelector(
-            layout=ipw.Layout(width="auto")
+        # Add a button to start a new calculation
+        self.new_work_chains_button = ipw.Button(
+            description="New calculation",
+            tooltip="Start a new calculation",
+            button_style="success",
+            icon="plus-circle",
         )
-        self.work_chain_selector.observe(self._observe_process_selection, "value")
 
-        ipw.dlink(
-            (self.submit_step, "process"),
-            (self.work_chain_selector, "value"),
-            transform=lambda node: None if node is None else node.pk,
-        )
+        def on_button_click(_):
+            display(Javascript("window.open('./qe.ipynb', '_blank')"))
+
+        self.new_work_chains_button.on_click(on_button_click)
 
         super().__init__(
             children=[
-                # self.work_chain_selector,
+                self.new_work_chains_button,
                 self._wizard_app_widget,
             ]
         )
@@ -118,34 +120,3 @@ class App(ipw.VBox):
                     f"Unsaved changes in the <b>{title}</b> step. Please save the changes before submitting."
                 )
         self.submit_step.external_submission_blockers = blockers
-
-    def _observe_process_selection(self, change):
-        from aiida.orm.utils.serialize import deserialize_unsafe
-
-        if change["old"] == change["new"]:
-            return
-        pk = change["new"]
-        if pk is None:
-            self._wizard_app_widget.reset()
-            self._wizard_app_widget.selected_index = 0
-        else:
-            process = load_node(pk)
-            with self.structure_step.manager.hold_sync():
-                with self.structure_step.hold_sync():
-                    self._wizard_app_widget.selected_index = 3
-                    self.structure_step.manager.viewer.structure = (
-                        process.inputs.structure.get_ase()
-                    )
-                    self.structure_step.structure = process.inputs.structure
-                    self.structure_step.confirm()
-                    self.submit_step.process = process
-
-            # set ui_parameters
-            # print out error message if yaml format ui_parameters is not reachable
-            ui_parameters = process.base.extras.get("ui_parameters", {})
-            if ui_parameters and isinstance(ui_parameters, str):
-                ui_parameters = deserialize_unsafe(ui_parameters)
-                self.configure_step.set_configuration_parameters(ui_parameters)
-                self.configure_step.confirm()
-                self.submit_step.set_submission_parameters(ui_parameters)
-                self.submit_step.state = self.submit_step.State.SUCCESS

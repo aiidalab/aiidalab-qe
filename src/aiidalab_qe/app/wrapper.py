@@ -49,24 +49,28 @@ class AppWrapperContoller:
         self._view.guide_toggle.disabled = False
         self._view.about_toggle.disabled = False
         self._view.job_list_toggle.disabled = False
-        self._view.plugin_list_toggle.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
+        if change["new"]:
+            self._view.job_list_toggle.value = False
         self._view.info_container.children = [self._view.guide] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
     @without_triggering("guide_toggle")
     def _on_about_toggle(self, change: dict):
         """Toggle the about section."""
+        if change["new"]:
+            self._view.job_list_toggle.value = False
         self._view.info_container.children = [self._view.about] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
-    @without_triggering("guide_toggle")
     def _on_job_list_toggle(self, change: dict):
-        """Toggle the about section."""
+        """Toggle the job list section."""
         if change["new"]:
+            self._view.about_toggle.value = False
+            self._view.guide_toggle.value = False
             self._view.job_list.setup_table()
             self._view.main.children = [
                 self._view.job_list.filters_layout,
@@ -143,18 +147,9 @@ class AppWrapperView(ipw.VBox):
 
         self.job_list_toggle = ipw.ToggleButton(
             button_style="",
-            icon="info",
+            icon="list",
             value=False,
             description="Job List",
-            tooltip="Learn about the app",
-            disabled=True,
-        )
-
-        self.plugin_list_toggle = ipw.ToggleButton(
-            button_style="",
-            icon="info",
-            value=False,
-            description="Plugin List",
             tooltip="Learn about the app",
             disabled=True,
         )
@@ -164,7 +159,6 @@ class AppWrapperView(ipw.VBox):
                 self.guide_toggle,
                 self.about_toggle,
                 self.job_list_toggle,
-                self.plugin_list_toggle,
             ]
         )
         info_toggles.add_class("info-toggles")
