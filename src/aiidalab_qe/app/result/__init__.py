@@ -158,9 +158,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 if isinstance(called_descendant, orm.CalcJobNode):
                     try:
                         cleaned_bool.append(
-                            called_descendant.outputs.remote_folder.is_cleaned
+                            called_descendant.outputs.remote_folder.is_empty
                         )
-                    except (OSError, KeyError):
+                    except Exception:
                         pass
             self.clean_scratch_button.disabled = all(cleaned_bool)
 
@@ -184,7 +184,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             if isinstance(called_descendant, orm.CalcJobNode):
                 try:
                     called_descendant.outputs.remote_folder._clean()
-                except (OSError, KeyError):
+                except Exception:
                     pass
 
         # update the kill button layout
