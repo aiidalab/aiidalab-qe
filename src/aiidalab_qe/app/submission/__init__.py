@@ -235,7 +235,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
     @tl.observe("input_structure")
-    def _check_resources(self, _change):
+    def _check_resources(self, _change=None):
         """Check whether the currently selected resources will be sufficient and warn if not."""
         if not self.pw_code.value or not self.input_structure:
             return  # No code selected, nothing to do.
@@ -256,6 +256,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             )
             and num_cpus < 4
         ):
+            # Warning-1
             self._show_alert_message(
                 f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
                 f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
@@ -275,6 +276,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             )
             and num_cpus < 4
         ):
+            # Warning-2
             self._show_alert_message(
                 f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
                 f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
@@ -287,6 +289,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 alert_class="warning",
             )
         elif on_localhost and num_cpus > 1:
+            # Warning-3
             self._show_alert_message(
                 "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
                 "the number of CPUs is larger than one. Please be sure that your local "

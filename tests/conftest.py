@@ -105,6 +105,14 @@ def generate_structure_data():
             structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
             structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
 
+        elif name == "H2O-larger":
+            # just a larger supercell. To test the warning messages
+            cell = [[20.0, 0.0, 0.0], [0.0, 20.0, 0.0], [0.0, 0.0, 20.0]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
+            structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
+            structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
+
         structure.pbc = pbc
 
         return structure
