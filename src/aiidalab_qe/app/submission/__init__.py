@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import display
 
 from aiida import orm
 from aiida.common import NotExistent
@@ -53,6 +52,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     # Warn the user if they are trying to run calculations for a large
     # structure on localhost.
     RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
+    RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD = 1000  # \AA^3
 
     # Put a limit on how many MPI tasks you want to run per k-pool by default
     MAX_MPI_PER_POOL = 20
@@ -65,8 +65,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     external_submission_blockers = tl.List(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
-        self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
+        self._submission_warning_messages = ipw.HTML()
 
         self.pw_code = PwCodeResourceSetupWidget(
             description="pw.x:", default_calc_job_plugin="quantumespresso.pw"
@@ -129,10 +129,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         super().__init__(
             children=[
                 *self.code_children,
-                self.message_area,
                 self.sssp_installation_status,
                 self.qe_setup_status,
                 self._submission_blocker_messages,
+                self._submission_warning_messages,
                 self.process_label_help,
                 self.process_label,
                 self.process_description,
@@ -142,6 +142,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
+
+        # observe these two for the resource checking:
+        self.pw_code.num_cpus.observe(self._check_resources, "value")
+        self.pw_code.num_nodes.observe(self._check_resources, "value")
 
     @tl.observe("internal_submission_blockers", "external_submission_blockers")
     def _observe_submission_blockers(self, _change):
@@ -222,48 +226,82 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     _ALERT_MESSAGE = """
         <div class="alert alert-{alert_class} alert-dismissible">
         <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
-        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
         <strong>{message}</strong>
         </div>"""
 
     def _show_alert_message(self, message, alert_class="info"):
-        with self.message_area:
-            display(
-                ipw.HTML(
-                    self._ALERT_MESSAGE.format(alert_class=alert_class, message=message)
-                )
-            )
+        self._submission_warning_messages.value = self._ALERT_MESSAGE.format(
+            alert_class=alert_class, message=message
+        )
 
-    def _check_resources(self):
+    @tl.observe("input_structure")
+    def _check_resources(self, _change=None):
         """Check whether the currently selected resources will be sufficient and warn if not."""
-        if not self.pw_code.value:
+        if not self.pw_code.value or not self.input_structure:
             return  # No code selected, nothing to do.
 
-        num_cpus = self.resources_config.num_cpus.value
+        num_cpus = self.pw_code.num_cpus.value * self.pw_code.num_nodes.value
         on_localhost = (
             orm.load_node(self.pw_code.value).computer.hostname == "localhost"
         )
-        if self.pw_code.value and on_localhost and num_cpus > 1:
+        num_sites = len(self.input_structure.sites)
+        volume = self.input_structure.get_cell_volume()
+
+        if (
+            self.input_structure
+            and not on_localhost
+            and (
+                num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+                or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
+            )
+            and num_cpus < 4
+        ):
+            # Warning-1
             self._show_alert_message(
-                "The selected code would be executed on the local host, but "
-                "the number of CPUs is larger than one. Please review "
-                "the configuration and consider to select a code that runs "
-                "on a larger system if necessary.",
+                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
+                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
+                "to run at the localhost.  Consider the following: "
+                "<ul>"
+                "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
+                "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
+                "</ul>",
                 alert_class="warning",
             )
         elif (
             self.input_structure
             and on_localhost
-            and len(self.input_structure.sites)
-            > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+            and (
+                num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+                or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
+            )
+            and num_cpus < 4
         ):
+            # Warning-2
             self._show_alert_message(
-                "The selected code would be executed on the local host, but the "
-                "number of sites of the selected structure is relatively large. "
-                "Consider to select a code that runs on a larger system if "
-                "necessary.",
+                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
+                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
+                "to run in a reasonable amount of time. Consider the following: "
+                "<ul>"
+                "<li>Select a code that runs on a larger machine</li>"
+                "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
+                "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
+                "</ul>",
                 alert_class="warning",
             )
+        elif on_localhost and num_cpus > 1:
+            # Warning-3
+            self._show_alert_message(
+                "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
+                "the number of CPUs is larger than one. Please be sure that your local "
+                "environment has enough free CPUs for the calculation. Consider the following: "
+                "<ul>"
+                "<li>Consider to reduce the number of CPUs to avoid the overloading of the local machine "
+                "<li>Select a code that runs on a larger machine </li>"
+                "</ul>",
+                alert_class="warning",
+            )
+        else:
+            self._submission_warning_messages.value = ""
 
     @tl.observe("state")
     def _observe_state(self, change):
