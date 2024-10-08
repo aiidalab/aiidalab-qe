@@ -48,6 +48,8 @@ class AppWrapperContoller:
         """Enable the toggle buttons."""
         self._view.guide_toggle.disabled = False
         self._view.about_toggle.disabled = False
+        self._view.job_list_toggle.disabled = False
+        self._view.plugin_list_toggle.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -61,10 +63,23 @@ class AppWrapperContoller:
         self._view.info_container.children = [self._view.about] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
+    @without_triggering("guide_toggle")
+    def _on_job_list_toggle(self, change: dict):
+        """Toggle the about section."""
+        if change["new"]:
+            self._view.job_list.setup_table()
+            self._view.main.children = [
+                self._view.job_list.filters_layout,
+                self._view.job_list.table,
+            ]
+        else:
+            self._view.main.children = [self._view.app]
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._view.guide_toggle.observe(self._on_guide_toggle, "value")
         self._view.about_toggle.observe(self._on_about_toggle, "value")
+        self._view.job_list_toggle.observe(self._on_job_list_toggle, "value")
 
 
 class AppWrapperModel(traitlets.HasTraits):
@@ -89,6 +104,7 @@ class AppWrapperView(ipw.VBox):
         from jinja2 import Environment
 
         from aiidalab_qe.app.static import templates
+        from aiidalab_qe.app.utils.search_jobs import QueryInterface
         from aiidalab_qe.common.infobox import InfoBox
         from aiidalab_qe.version import __version__
 
@@ -125,10 +141,30 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
+        self.job_list_toggle = ipw.ToggleButton(
+            button_style="",
+            icon="info",
+            value=False,
+            description="Job List",
+            tooltip="Learn about the app",
+            disabled=True,
+        )
+
+        self.plugin_list_toggle = ipw.ToggleButton(
+            button_style="",
+            icon="info",
+            value=False,
+            description="Plugin List",
+            tooltip="Learn about the app",
+            disabled=True,
+        )
+
         info_toggles = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
+                self.job_list_toggle,
+                self.plugin_list_toggle,
             ]
         )
         info_toggles.add_class("info-toggles")
@@ -141,6 +177,7 @@ class AppWrapperView(ipw.VBox):
         self.about = ipw.HTML(env.from_string(about_template).render())
 
         self.info_container = InfoBox()
+        self.job_list = QueryInterface()
 
         header = ipw.VBox(
             children=[

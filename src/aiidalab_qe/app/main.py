@@ -80,7 +80,7 @@ class App(ipw.VBox):
 
         super().__init__(
             children=[
-                self.work_chain_selector,
+                # self.work_chain_selector,
                 self._wizard_app_widget,
             ]
         )
