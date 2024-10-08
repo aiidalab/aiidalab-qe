@@ -67,8 +67,8 @@ class DownloadDataWidget(ipw.VBox):
         javas = Javascript(
             f"""
             var link = document.createElement('a');
-            link.href = 'data:application/octet-stream;base64,{payload}'
-            link.download = "{filename}"
+            link.href = 'data:application;base64,{payload}'
+            link.download = '{filename}'
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -88,7 +88,7 @@ class DownloadDataWidget(ipw.VBox):
                     zip_data = f.read()
 
                 # Convert the ZIP data to base64 so it can be used as a payload in JavaScript
-                bitestream = base64.b64encode(zip_data).decode("utf-8")
+                bitestream = base64.b64encode(zip_data).decode()
 
             elif what == "raw":
                 import shutil
@@ -105,7 +105,7 @@ class DownloadDataWidget(ipw.VBox):
                     raw_data = f.read()
 
                 # Convert the raw_data to base64 so it can be used as a payload in JavaScript
-                bitestream = base64.b64encode(raw_data).decode("utf-8")
+                bitestream = base64.b64encode(raw_data).decode()
 
             else:
                 raise KeyError("You should ask for `archive` or `raw` only!")
