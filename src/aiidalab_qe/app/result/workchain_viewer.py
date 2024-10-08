@@ -25,13 +25,14 @@ from .summary_viewer import SummaryView
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
 class WorkChainViewer(ipw.VBox):
     _results_shown = tl.Set()
+    process_uuid = tl.Unicode(allow_none=True)
 
     def __init__(self, node, **kwargs):
         if node.process_label != "QeAppWorkChain":
             super().__init__()
             return
 
-        self.node = node
+        self.process_uuid = node.uuid
         # In the new version of the plugin, the ui_parameters are stored as a yaml string
         # which is then converted to a dictionary
         ui_parameters = node.base.extras.get("ui_parameters", {})
@@ -41,12 +42,12 @@ class WorkChainViewer(ipw.VBox):
         self.title = ipw.HTML(
             f"""
             <hr style="height:2px;background-color:#2097F3;">
-            <h4>QE App Workflow (pk: {self.node.pk}) &mdash;
-                {self.node.inputs.structure.get_formula()}
+            <h4>QE App Workflow (pk: {node.pk}) &mdash;
+                {node.inputs.structure.get_formula()}
             </h4>
             """
         )
-        self.workflows_summary = SummaryView(self.node)
+        self.workflows_summary = SummaryView(node)
 
         self.summary_tab = ipw.VBox(children=[self.workflows_summary])
         # Only the summary tab is shown by default
@@ -59,7 +60,7 @@ class WorkChainViewer(ipw.VBox):
         self.results = {}
         entries = get_entry_items("aiidalab_qe.properties", "result")
         for identifier, entry_point in entries.items():
-            result = entry_point(self.node)
+            result = entry_point(node)
             self.results[identifier] = result
             self.results[identifier].identifier = identifier
 
@@ -83,29 +84,36 @@ class WorkChainViewer(ipw.VBox):
                 toggle_camera()
 
         self.result_tabs.observe(on_selected_index_change, "selected_index")
-        self._update_view()
 
         super().__init__(
             children=[self.title, self.result_tabs],
             **kwargs,
         )
-        self._process_monitor = ProcessMonitor(
-            process=self.node,
-            callbacks=[
+        self.process_monitor = ProcessMonitor(
+            timeout=1.0,
+            on_sealed=[
                 self._update_view,
             ],
         )
+        ipw.dlink((self, "process_uuid"), (self.process_monitor, "value"))
+
+    @property
+    def node(self):
+        """Load the workchain node using the process_uuid.
+        Because the workchain node is used in another thread inside the process monitor,
+        we need to load the node from the database, instead of passing the node object.
+        Otherwise, we will get a "Instance is not persistent" error.
+        """
+        return orm.load_node(self.process_uuid)
 
     def _update_view(self):
         with self.hold_trait_notifications():
-            if self.node.is_finished:
+            node = self.node
+            if node.is_finished:
                 self._show_workflow_output()
             # if the structure is present in the workchain,
             # the structure tab will be added.
-            if (
-                "structure" not in self._results_shown
-                and "structure" in self.node.outputs
-            ):
+            if "structure" not in self._results_shown and "structure" in node.outputs:
                 self._show_structure()
                 self.result_tabs.children += (self.structure_tab,)
                 # index of the last tab
@@ -119,7 +127,7 @@ class WorkChainViewer(ipw.VBox):
                 if result.identifier not in self._results_shown:
                     # check if the all required results are in the outputs
                     results_ready = [
-                        label in self.node.outputs for label in result.workchain_labels
+                        label in node.outputs for label in result.workchain_labels
                     ]
                     if all(results_ready):
                         result._update_view()
