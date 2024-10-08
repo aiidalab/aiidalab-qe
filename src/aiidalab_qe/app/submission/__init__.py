@@ -257,16 +257,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             and num_cpus < 4
         ):
             self._show_alert_message(
-                "<span>&#9888;</span> Warning: The system you want to simulate seems computationally demanding: the "
-                f"number of sites ({num_sites}) and/or the cell volume ({int(volume)} Å<sup>3</sup>) of the selected "
-                "structure are relatively large to run in a reasonable amount of time. "
-                "We suggest to perform one (or more) of the following: "
+                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
+                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
+                "to run at the localhost.  Consider the following: "
                 "<ul>"
                 "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
+                "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
                 "</ul>",
                 alert_class="warning",
             )
-        if (
+        elif (
             self.input_structure
             and on_localhost
             and (
@@ -276,14 +276,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             and num_cpus < 4
         ):
             self._show_alert_message(
-                "<span>&#9888;</span> Warning: The system you want to simulate seems computationally demanding: the "
-                f"number of sites ({num_sites}) and/or the cell volume ({int(volume)} Å<sup>3</sup>) of the selected "
-                "structure are relatively large to run locally in a reasonable amount of time. "
-                "We suggest to perform one (or more) of the following: "
+                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
+                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
+                "to run in a reasonable amount of time. Consider the following: "
                 "<ul>"
                 "<li>Select a code that runs on a larger machine</li>"
-                "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
                 "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
+                "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
                 "</ul>",
                 alert_class="warning",
             )
@@ -291,12 +290,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._show_alert_message(
                 "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
                 "the number of CPUs is larger than one. Please be sure that your local "
-                "environment has enough free CPUs for the calculation. "
-                "We suggest to perform one (or more) of the following: "
+                "environment has enough free CPUs for the calculation. Consider the following: "
                 "<ul>"
                 "<li>Consider to reduce the number of CPUs to avoid the overloading of the local machine "
-                "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
-                "<li>Select a code that runs on a larger machine</li>"
+                "<li>Select a code that runs on a larger machine </li>"
                 "</ul>",
                 alert_class="warning",
             )
