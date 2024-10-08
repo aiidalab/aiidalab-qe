@@ -33,8 +33,8 @@ def test_workchainview(generate_qeapp_workchain):
     from aiidalab_qe.app.result.workchain_viewer import WorkChainViewer
 
     wkchain = generate_qeapp_workchain()
+    wkchain.node.seal()
     wcv = WorkChainViewer(wkchain.node)
-    # wait for the tabs to be updated by the process monitor
     time.sleep(3)
     assert len(wcv.result_tabs.children) == 5
     assert wcv.result_tabs._titles["0"] == "Workflow Summary"

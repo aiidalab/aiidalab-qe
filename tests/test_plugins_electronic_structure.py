@@ -12,6 +12,7 @@ def test_electronic_structure(generate_qeapp_workchain):
     wkchain = generate_qeapp_workchain()
     wkchain.node.set_exit_status(0)
     wkchain.node.set_process_state(engine.ProcessState.FINISHED)
+    wkchain.node.seal()
     wcv = WorkChainViewer(wkchain.node)
     # wait for the tabs to be updated by the process monitor
     time.sleep(3)
