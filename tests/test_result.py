@@ -28,10 +28,14 @@ def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
 @pytest.mark.usefixtures("sssp")
 def test_workchainview(generate_qeapp_workchain):
     """Test the result tabs are properly updated"""
+    import time
+
     from aiidalab_qe.app.result.workchain_viewer import WorkChainViewer
 
     wkchain = generate_qeapp_workchain()
+    wkchain.node.seal()
     wcv = WorkChainViewer(wkchain.node)
+    time.sleep(3)
     assert len(wcv.result_tabs.children) == 5
     assert wcv.result_tabs._titles["0"] == "Workflow Summary"
     assert wcv.result_tabs._titles["1"] == "Final Geometry"
