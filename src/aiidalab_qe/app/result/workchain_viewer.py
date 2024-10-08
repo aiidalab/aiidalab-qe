@@ -91,7 +91,7 @@ class WorkChainViewer(ipw.VBox):
         )
         self.process_monitor = ProcessMonitor(
             timeout=1.0,
-            callbacks=[
+            on_sealed=[
                 self._update_view,
             ],
         )
