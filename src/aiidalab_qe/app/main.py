@@ -74,10 +74,11 @@ class App(ipw.VBox):
 
         # Add a button to start a new calculation
         self.new_work_chains_button = ipw.Button(
-            description="New calculation",
-            tooltip="Start a new calculation",
+            description="Start New Calculation",
+            tooltip="Open a new page to start a separate calculation",
             button_style="success",
             icon="plus-circle",
+            layout=ipw.Layout(width="30%"),
         )
 
         def on_button_click(_):

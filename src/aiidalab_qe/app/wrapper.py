@@ -48,13 +48,13 @@ class AppWrapperContoller:
         """Enable the toggle buttons."""
         self._view.guide_toggle.disabled = False
         self._view.about_toggle.disabled = False
-        self._view.job_list_toggle.disabled = False
+        self._view.job_history_toggle.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
         if change["new"]:
-            self._view.job_list_toggle.value = False
+            self._view.job_history_toggle.value = False
         self._view.info_container.children = [self._view.guide] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
@@ -62,19 +62,19 @@ class AppWrapperContoller:
     def _on_about_toggle(self, change: dict):
         """Toggle the about section."""
         if change["new"]:
-            self._view.job_list_toggle.value = False
+            self._view.job_history_toggle.value = False
         self._view.info_container.children = [self._view.about] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
 
-    def _on_job_list_toggle(self, change: dict):
+    def _on_job_history_toggle(self, change: dict):
         """Toggle the job list section."""
         if change["new"]:
             self._view.about_toggle.value = False
             self._view.guide_toggle.value = False
-            self._view.job_list.setup_table()
+            self._view.job_history.setup_table()
             self._view.main.children = [
-                self._view.job_list.filters_layout,
-                self._view.job_list.table,
+                self._view.job_history.filters_layout,
+                self._view.job_history.table,
             ]
         else:
             self._view.main.children = [self._view.app]
@@ -83,7 +83,7 @@ class AppWrapperContoller:
         """Set up event handlers."""
         self._view.guide_toggle.observe(self._on_guide_toggle, "value")
         self._view.about_toggle.observe(self._on_about_toggle, "value")
-        self._view.job_list_toggle.observe(self._on_job_list_toggle, "value")
+        self._view.job_history_toggle.observe(self._on_job_history_toggle, "value")
 
 
 class AppWrapperModel(traitlets.HasTraits):
@@ -145,20 +145,21 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.job_list_toggle = ipw.ToggleButton(
+        self.job_history_toggle = ipw.ToggleButton(
             button_style="",
             icon="list",
             value=False,
-            description="Job List",
-            tooltip="Learn about the app",
+            description="Job History",
+            tooltip="View all jobs run with this app",
             disabled=True,
+            layout=ipw.Layout(width="auto"),
         )
 
         info_toggles = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
-                self.job_list_toggle,
+                self.job_history_toggle,
             ]
         )
         info_toggles.add_class("info-toggles")
@@ -171,7 +172,7 @@ class AppWrapperView(ipw.VBox):
         self.about = ipw.HTML(env.from_string(about_template).render())
 
         self.info_container = InfoBox()
-        self.job_list = QueryInterface()
+        self.job_history = QueryInterface()
 
         header = ipw.VBox(
             children=[
