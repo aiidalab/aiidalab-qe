@@ -134,7 +134,7 @@ class AppWrapperView(ipw.VBox):
             description="Getting Started",
             tooltip="Learn how to use the app",
             disabled=True,
-            layout=ipw.Layout(width="50%"),
+            layout=ipw.Layout(width="140px"),
         )
 
         self.about_toggle = ipw.ToggleButton(
@@ -153,7 +153,7 @@ class AppWrapperView(ipw.VBox):
             description="Job History",
             tooltip="View all jobs run with this app",
             disabled=True,
-            layout=ipw.Layout(width="40%"),
+            layout=ipw.Layout(width="140px"),
         )
 
         info_toggles = ipw.HBox(
