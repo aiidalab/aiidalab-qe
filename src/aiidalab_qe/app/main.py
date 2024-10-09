@@ -6,15 +6,20 @@ Authors: AiiDAlab team
 import ipywidgets as ipw
 from IPython.display import Javascript, display
 
+from aiida.orm import load_node
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structure import StructureSelectionStep
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
+import traitlets as tl
 
 
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
+    # The PK or UUID of the work chain node.
+    process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
+
 
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
@@ -120,3 +125,35 @@ class App(ipw.VBox):
                     f"Unsaved changes in the <b>{title}</b> step. Please save the changes before submitting."
                 )
         self.submit_step.external_submission_blockers = blockers
+
+    @tl.observe("process")
+    def _observe_process(self, change):
+        from aiida.orm.utils.serialize import deserialize_unsafe
+
+        if change["old"] == change["new"]:
+            return
+        pk = change["new"]
+        if pk is None:
+            self._wizard_app_widget.reset()
+            self._wizard_app_widget.selected_index = 0
+        else:
+            process = load_node(pk)
+            with self.structure_step.manager.hold_sync():
+                with self.structure_step.hold_sync():
+                    self._wizard_app_widget.selected_index = 3
+                    self.structure_step.manager.viewer.structure = (
+                        process.inputs.structure.get_ase()
+                    )
+                    self.structure_step.structure = process.inputs.structure
+                    self.structure_step.confirm()
+                    self.submit_step.process = process
+
+            # set ui_parameters
+            # print out error message if yaml format ui_parameters is not reachable
+            ui_parameters = process.base.extras.get("ui_parameters", {})
+            if ui_parameters and isinstance(ui_parameters, str):
+                ui_parameters = deserialize_unsafe(ui_parameters)
+                self.configure_step.set_configuration_parameters(ui_parameters)
+                self.configure_step.confirm()
+                self.submit_step.set_submission_parameters(ui_parameters)
+                self.submit_step.state = self.submit_step.State.SUCCESS
