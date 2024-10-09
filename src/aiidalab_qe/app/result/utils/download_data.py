@@ -78,6 +78,28 @@ class DownloadDataWidget(ipw.VBox):
 
     @staticmethod
     def produce_bitestream(node, what="archive"):
+        """
+        Produce a base64-encoded bitstream of the specified node data.
+
+        Parameters:
+        node (orm.Node): The AiiDA node to be processed.
+        what (str): The type of data to produce. Options are "archive" or "raw".
+                    Defaults to "archive".
+
+        Returns:
+        str: A base64-encoded string representing the requested data.
+
+        Raises:
+        KeyError: If the 'what' parameter is not "archive" or "raw".
+
+        The function supports two modes:
+        1. "archive": Creates an AiiDA archive of the node.
+        2. "raw": Dumps the raw data of the process node into a zip file.
+
+        NB: The function uses a temporary directory to store the data before converting it to a base64 string.
+            Moreover, the node has to be reloaded because otherwise the SQLAlchemy will compleain on Db request
+            not being in the same thread (the notebook session) as the original node.
+        """
         from aiida import orm
 
         reloaded_node = orm.load_node(node.pk)
