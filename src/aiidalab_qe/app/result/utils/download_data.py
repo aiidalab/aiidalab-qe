@@ -34,7 +34,7 @@ class DownloadDataWidget(ipw.VBox):
             ],
         )
 
-    def _download_data(self, _=None):  # button_instance):
+    def _download_data(self, button_instance):
         """
         This method handles the download process when a download button is clicked.
         It updates the button's description to indicate that the download is in progress,
@@ -46,8 +46,8 @@ class DownloadDataWidget(ipw.VBox):
         Args:
             button_instance (ipywidgets.Button): The button instance that was clicked.
         """
-        # button_instance.description += "... Downloading now..."
-        if not "archive":  # in button_instance.description:
+        button_instance.description += "... Downloading now..."
+        if "archive" in button_instance.description:
             what = "archive"
             filename = f"export_{self.node.pk}.aiida"
         else:
@@ -56,9 +56,9 @@ class DownloadDataWidget(ipw.VBox):
         data = self.produce_bitestream(self.node, what=what)
         self._download(payload=data, filename=filename)
         del data
-        # button_instance.description = button_instance.description.replace(
-        #    "... Downloading now...", ""
-        # )
+        button_instance.description = button_instance.description.replace(
+            "... Downloading now...", ""
+        )
 
     @staticmethod
     def _download(payload, filename):
@@ -78,12 +78,15 @@ class DownloadDataWidget(ipw.VBox):
 
     @staticmethod
     def produce_bitestream(node, what="archive"):
+        from aiida import orm
+
+        reloaded_node = orm.load_node(node.pk)
         with tempfile.TemporaryDirectory() as dirpath:
             if what == "archive":
                 from aiida.tools.archive.create import create_archive
 
                 path = pathlib.Path(dirpath) / "archive.aiida"
-                create_archive(entities=[node], filename=path)
+                create_archive(entities=[reloaded_node], filename=path)
                 with open(path, "rb") as f:
                     zip_data = f.read()
 
@@ -98,7 +101,7 @@ class DownloadDataWidget(ipw.VBox):
                 path = pathlib.Path(dirpath) / "raw_data"
                 output_zip_path = pathlib.Path(dirpath) / "raw_data.zip"
                 dumper = ProcessDumper()
-                dumper.dump(process_node=node, output_path=path)
+                dumper.dump(process_node=reloaded_node, output_path=path)
                 # writing files to a zipfile
                 shutil.make_archive(pathlib.Path(dirpath) / "raw_data", "zip", path)
 
