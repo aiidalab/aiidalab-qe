@@ -4,6 +4,7 @@ Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
+import traitlets as tl
 from IPython.display import Javascript, display
 
 from aiida.orm import load_node
@@ -12,14 +13,13 @@ from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structure import StructureSelectionStep
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
-import traitlets as tl
 
 
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
+
     # The PK or UUID of the work chain node.
     process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
-
 
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
