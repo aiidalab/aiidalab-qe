@@ -14,7 +14,7 @@ class DownloadDataWidget(ipw.VBox):
             disabled=False,
             layout=ipw.Layout(width="auto"),
         )
-        self.download_archive_button.on_click(self.download_archive_data)
+        self.download_archive_button.on_click(self._download_data)
 
         self.download_raw_button = ipw.Button(
             description="Download AiiDA raw zip data",
@@ -23,7 +23,7 @@ class DownloadDataWidget(ipw.VBox):
             disabled=False,
             layout=ipw.Layout(width="auto"),
         )
-        self.download_raw_button.on_click(self.download_raw_data)
+        self.download_raw_button.on_click(self._download_data)
 
         self.node = qeapp_node
 
@@ -34,31 +34,31 @@ class DownloadDataWidget(ipw.VBox):
             ],
         )
 
-    def download_archive_data(self, _=None):
+    def _download_data(self, _=None):  # button_instance):
         """
-        Download both the phonopy.yaml and fc.hdf5 files.
-        """
-        self.download_archive_button.description += "... Downloading now..."
-        archive_data = self.produce_bitestream(self.node, what="archive")
-        self._download(payload=archive_data, filename=f"export_{self.node.pk}.aiida")
-        del archive_data
-        self.download_archive_button.description = (
-            self.download_archive_button.description.replace(
-                "... Downloading now...", ""
-            )
-        )
+        This method handles the download process when a download button is clicked.
+        It updates the button's description to indicate that the download is in progress,
+        determines whether to download the archive or raw data based on the button's description,
+        generates the appropriate bitstream from the specified node, initiates the download
+        with a filename based on the node's primary key, and then resets the button description
+        to its original state.
 
-    def download_raw_data(self, _=None):
+        Args:
+            button_instance (ipywidgets.Button): The button instance that was clicked.
         """
-        Download both the phonopy.yaml and fc.hdf5 files.
-        """
-        self.download_raw_button.description += "... Downloading now..."
-        raw_data = self.produce_bitestream(self.node, what="raw")
-        self._download(payload=raw_data, filename=f"export_{self.node.pk}_raw.zip")
-        del raw_data
-        self.download_raw_button.description = (
-            self.download_raw_button.description.replace("... Downloading now...", "")
-        )
+        # button_instance.description += "... Downloading now..."
+        if not "archive":  # in button_instance.description:
+            what = "archive"
+            filename = f"export_{self.node.pk}.aiida"
+        else:
+            what = "raw"
+            filename = f"export_{self.node.pk}_raw.zip"
+        data = self.produce_bitestream(self.node, what=what)
+        self._download(payload=data, filename=filename)
+        del data
+        # button_instance.description = button_instance.description.replace(
+        #    "... Downloading now...", ""
+        # )
 
     @staticmethod
     def _download(payload, filename):
@@ -97,7 +97,8 @@ class DownloadDataWidget(ipw.VBox):
 
                 path = pathlib.Path(dirpath) / "raw_data"
                 output_zip_path = pathlib.Path(dirpath) / "raw_data.zip"
-                ProcessDumper().dump(process_node=node, output_path=path)
+                dumper = ProcessDumper()
+                dumper.dump(process_node=node, output_path=path)
                 # writing files to a zipfile
                 shutil.make_archive(pathlib.Path(dirpath) / "raw_data", "zip", path)
 
