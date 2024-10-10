@@ -24,7 +24,7 @@ class XasModel(SettingsModel):
         key_trait=tl.Unicode(),  # element symbol
         value_trait=tl.Bool(),  # whether the element is included
     )
-    core_hole_treatment = tl.Dict(
+    core_hole_treatments = tl.Dict(
         key_trait=tl.Unicode(),  # element symbol
         value_trait=tl.Unicode(),  # core hole treatment type
         default_value={},
@@ -56,8 +56,9 @@ class XasModel(SettingsModel):
         self.core_wfc_data_dict = self.pseudo_data_dict["pbe"]["core_wavefunction_data"]
 
     def update(self):
-        self._update_pseudos()
-        self._update_core_hole_treatment_recommendations()
+        if self.include:
+            self._update_pseudos()
+            self._update_core_hole_treatment_recommendations()
 
     def get_model_state(self):
         pseudo_labels = {}
@@ -72,7 +73,7 @@ class XasModel(SettingsModel):
         parameters = {
             # "structure_type": self.structure_type,
             "elements_list": list(self.elements.keys()),
-            "core_hole_treatments": list(self.core_hole_treatment.values()),
+            "core_hole_treatments": list(self.core_hole_treatments.values()),
             "pseudo_labels": pseudo_labels,
             "core_wfc_data_labels": core_wfc_data_labels,
             "supercell_min_parameter": self.supercell_min_parameter,
@@ -92,7 +93,7 @@ class XasModel(SettingsModel):
             )
         )
 
-        self.core_hole_treatment = dict(
+        self.core_hole_treatments = dict(
             zip(
                 self.elements.keys(),
                 [
@@ -213,7 +214,7 @@ class XasModel(SettingsModel):
                 for kind in self.input_structure.kinds
                 if kind.symbol in self.core_hole_pseudos
             }
-            self.core_hole_treatment = {
+            self.core_hole_treatments = {
                 element: self.get_recommendation(element)
                 for element in self.elements.keys()
             }

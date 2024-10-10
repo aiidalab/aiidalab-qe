@@ -95,7 +95,6 @@ class SubmissionModel(tl.HasTraits):
                     code.activate()
 
     def update_process_label(self):
-        """Generate a label for the work chain based on the input parameters."""
         if not self.input_structure:
             return
         formula = self.input_structure.get_formula()
@@ -203,15 +202,14 @@ class SubmissionModel(tl.HasTraits):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.input_structure = None  # TODO why?
+            self.input_structure = None
+            self.input_parameters = {}
             self.process = None
             self.process_label = ""
             self.process_description = ""
             self.submission_blocker_messages = ""
 
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
-        """Create the builder for the `QeAppWorkChain` submit."""
-
         submission_parameters = self._get_submission_parameters()
         parameters.update(submission_parameters)
 
@@ -246,8 +244,6 @@ class SubmissionModel(tl.HasTraits):
         return submission_parameters
 
     def _check_submission_blockers(self):
-        """Validate the resource inputs and identify blockers for the submission."""
-
         # Do not submit while any of the background setup processes are running.
         if self.installing_qe or self.installing_sssp:
             yield "Background setup processes must finish."

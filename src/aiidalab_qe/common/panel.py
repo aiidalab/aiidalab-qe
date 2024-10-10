@@ -12,6 +12,8 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
+from aiidalab_qe.common.widgets import LoadingWidget
+
 if t.TYPE_CHECKING:
     from aiidalab_qe.app.configuration.model import ConfigurationModel
 
@@ -77,10 +79,10 @@ class SettingPanel(Panel):
     description = ""
 
     def __init__(self, config_model: ConfigurationModel, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
+        self.loading_message = LoadingWidget(f"Loading {self.identifier} settings")
 
         super().__init__(
-            children=[LoadingWidget(f"Loading {self.identifier} settings")],
+            children=[self.loading_message],
             **kwargs,
         )
 
@@ -90,6 +92,13 @@ class SettingPanel(Panel):
         self.links = []
 
         self.rendered = False
+        self.updated = False
+
+    def update(self):
+        pass
+
+    def render(self):
+        raise NotImplementedError
 
     def _unsubscribe(self):
         for link in self.links:

@@ -27,7 +27,7 @@ class Setting(SettingPanel):
         if self.rendered:
             return
 
-        self.element_and_core_hole_treatment = ipw.VBox(layout=ipw.Layout(width="100%"))
+        self.core_hole_treatments_widget = ipw.VBox(layout=ipw.Layout(width="100%"))
 
         # self.structure_type = ipw.ToggleButtons(
         #     options=[
@@ -104,7 +104,7 @@ class Setting(SettingPanel):
                 </div>
             """),
             ipw.HBox(
-                children=[self.element_and_core_hole_treatment],
+                children=[self.core_hole_treatments_widget],
                 layout=ipw.Layout(width="95%"),
             ),
             ipw.HTML("""
@@ -127,15 +127,36 @@ class Setting(SettingPanel):
 
         self.rendered = True
 
-        self._build_element_core_treatment_widget()
+    def update(self):
+        if not self.updated:
+            self._update()
+            self.updated = True
+
+    def reset(self):
+        if not self._config_model.input_structure:
+            self._unsubscribe()
+        self._model.reset()
+        self.updated = False
 
     def _on_input_structure_change(self, _):
-        self._unsubscribe()
-        self._model.update()
-        self._build_element_core_treatment_widget()
+        self._update(rebuild=True)
 
-    def _build_element_core_treatment_widget(self):
-        if not self.rendered:
+    def _update(self, rebuild=False):
+        self._unsubscribe()
+        self._show_loading()
+        self._model.update()
+        self._build_core_hole_treatments_widget(rebuild=rebuild)
+
+    def _show_loading(self):
+        if self.rendered:
+            self.core_hole_treatments_widget.children = [self.loading_message]
+
+    def _build_core_hole_treatments_widget(self, rebuild=False):
+        if (
+            not self.rendered
+            or len(self.core_hole_treatments_widget.children) > 1
+            and not rebuild
+        ):
             return
 
         children = []
@@ -172,12 +193,12 @@ class Setting(SettingPanel):
                 layout=ipw.Layout(width="15%"),
             )
             link = ipw.link(
-                (self._model, "core_hole_treatment"),
+                (self._model, "core_hole_treatments"),
                 (treatment_selector, "value"),
                 [
                     lambda cht, element=element: cht.get(element, "full"),
                     lambda value, element=element: {
-                        **self._model.core_hole_treatment,
+                        **self._model.core_hole_treatments,
                         element: value,
                     },
                 ],
@@ -200,7 +221,10 @@ class Setting(SettingPanel):
 
             children.append(widget)
 
-        self.element_and_core_hole_treatment.children = children
+        if not children:
+            children = [ipw.HTML("<b>No elements available for XAS calculations</b>")]
+
+        self.core_hole_treatments_widget.children = children
 
         # For reference:
         # This is the whole widget:
@@ -217,7 +241,3 @@ class Setting(SettingPanel):
         # This is the dropdown for the core-hole treatment option:
         # print(f"{self.element_and_ch_treatment.children[0].children[1]}\n")
         # print(f"{self.element_and_ch_treatment.children[0].children[1].value}\n")
-
-    def reset(self):
-        self._unsubscribe()
-        self._model.reset()

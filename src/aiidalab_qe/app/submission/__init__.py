@@ -92,8 +92,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.rendered:
             return
 
-        self.message_area = ipw.Output()
-
         self.code_widgets_container = ipw.VBox()
 
         self.code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
@@ -228,7 +226,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 </div>
             """),
             self.code_widgets_container,
-            self.message_area,
             self.sssp_installation,
             self.qe_setup,
             self.submission_blocker_messages,

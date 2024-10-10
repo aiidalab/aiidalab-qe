@@ -28,7 +28,7 @@ class XpsModel(SettingsModel):
     )
 
     def update(self):
-        if self._pseudo_group_exists():
+        if self.include and self._pseudo_group_exists():
             self._install_pseudos()
 
     def get_model_state(self):

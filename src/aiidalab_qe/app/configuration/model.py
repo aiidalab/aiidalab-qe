@@ -114,6 +114,7 @@ class MagnetizationModel(tl.HasTraits):
         allow_none=True,
     )
     electronic_type = tl.Unicode()
+    spin_type = tl.Unicode()
     override = tl.Bool()
 
     type = tl.Unicode("starting_magnetization")
@@ -138,7 +139,7 @@ class MagnetizationModel(tl.HasTraits):
             self.moments = self._get_default_moments()
 
     def _update_defaults(self):
-        if self.input_structure is None:
+        if self.spin_type == "none" or self.input_structure is None:
             self._default_moments = {}
         else:
             self._default_moments = {
@@ -200,7 +201,7 @@ class HubbardModel(tl.HasTraits):
             self.eigenvalues = self._get_default_eigenvalues()
 
     def _update_defaults(self):
-        if self.input_structure is None:
+        if not self.activate or self.input_structure is None:
             self.elements = []  # TODO: rename for clarity
             self.input_labels = []  # TODO: rename for clarity
             self._default_parameters = {}
@@ -236,12 +237,6 @@ class HubbardModel(tl.HasTraits):
         return deepcopy(self._default_eigenvalues)
 
     def _get_labels(self):
-        """Get a list of labels for the Hubbard widget.
-
-        Returns:
-            labels (list):
-                A list of labels in the format "{kind} - {manifold}".
-        """
         kind_list = self.input_structure.get_kind_names()
         hubbard_manifold_list = [
             self._get_manifold(Element(kind.symbol))
@@ -254,16 +249,6 @@ class HubbardModel(tl.HasTraits):
         return labels
 
     def _get_manifold(self, element):
-        """Get the Hubbard manifold for a given element.
-
-        Parameters:
-            element (Element):
-                The element for which to determine the Hubbard manifold.
-
-        Returns:
-            hubbard_manifold (str):
-                The Hubbard manifold for the given element.
-        """
         valence = [
             orbital
             for orbital in element.electronic_structure.split(".")
@@ -365,7 +350,7 @@ class PseudosModel(tl.HasTraits):
 
     def update_default_pseudos(self):
         try:
-            pseudo_family = self._get_pseudo_family()
+            pseudo_family = self._get_pseudo_family_from_database()
             pseudos = pseudo_family.get_pseudos(structure=self.input_structure)
         except ValueError as exception:
             self._status_message = f"""
@@ -383,7 +368,7 @@ class PseudosModel(tl.HasTraits):
     def update_default_cutoffs(self):
         """Update wavefunction and density cutoffs from pseudo family."""
         try:
-            pseudo_family = self._get_pseudo_family()
+            pseudo_family = self._get_pseudo_family_from_database()
             current_unit = pseudo_family.get_cutoffs_unit()
             cutoff_dict = pseudo_family.get_cutoffs()
         except exceptions.NotExistent:
@@ -476,7 +461,7 @@ class PseudosModel(tl.HasTraits):
             self.library = f"{pseudo_family.library} {pseudo_family.accuracy}"
             self.functional = pseudo_family.functional
 
-    def _get_pseudo_family(self):
+    def _get_pseudo_family_from_database(self):
         """Get the pseudo family from the database."""
         return (
             orm.QueryBuilder()
@@ -557,6 +542,10 @@ class AdvancedModel(SettingsModel):
         ipw.dlink(
             (self, "electronic_type"),
             (self.magnetization, "electronic_type"),
+        )
+        ipw.dlink(
+            (self, "spin_type"),
+            (self.magnetization, "spin_type"),
         )
         ipw.dlink(
             (self, "override"),
@@ -725,8 +714,6 @@ class AdvancedModel(SettingsModel):
         return parameters
 
     def set_model_state(self, parameters):
-        """Set the panel value from the given parameters."""
-
         if "pseudo_family" in parameters:
             pseudo_family = PseudoFamily.from_string(parameters["pseudo_family"])
             library = pseudo_family.library
@@ -815,14 +802,6 @@ class AdvancedModel(SettingsModel):
             self.override = self.traits()["override"].default_value
 
     def _set_value_and_step(self, attribute, value):
-        """Sets the value and step size.
-
-        Parameters:
-            attribute (str):
-                The attribute whose values are to be set (e.g., self.etot_conv_thr).
-            value (float):
-                The numerical value to set.
-        """
         setattr(self, attribute, value)
         if value != 0:
             order_of_magnitude = np.floor(np.log10(abs(value)))
@@ -916,6 +895,9 @@ class ConfigurationModel(SettingsModel):
 
     def reset(self):
         self.configuration_parameters = {}
+        for identifier, model in self._models.items():
+            if identifier not in self._default_models:
+                model.include = False
 
     def _get_properties(self):
         properties = []

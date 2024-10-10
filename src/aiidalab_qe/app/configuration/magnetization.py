@@ -1,5 +1,7 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.widgets import LoadingWidget
+
 from .model import ConfigurationModel
 
 
@@ -18,11 +20,11 @@ class MagnetizationSettings(ipw.VBox):
     """
 
     def __init__(self, model: ConfigurationModel, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
+        self.loading_message = LoadingWidget("Loading magnetization settings")
 
         super().__init__(
             layout={"justify_content": "space-between", **kwargs.get("layout", {})},
-            children=[LoadingWidget("Loading magnetization settings widget")],
+            children=[self.loading_message],
             **kwargs,
         )
 
@@ -35,6 +37,10 @@ class MagnetizationSettings(ipw.VBox):
             self._on_electronic_type_change,
             "electronic_type",
         )
+        self._model.workchain.observe(
+            self._on_spin_type_change,
+            "spin_type",
+        )
         self._model.advanced.magnetization.observe(
             self._on_magnetization_type_change,
             "type",
@@ -43,6 +49,7 @@ class MagnetizationSettings(ipw.VBox):
         self.links = []
 
         self.rendered = False
+        self.updated = False
 
     def render(self):
         if self.rendered:
@@ -85,7 +92,7 @@ class MagnetizationSettings(ipw.VBox):
             lambda override: not override,
         )
 
-        self.kinds = ipw.VBox()
+        self.kinds_widget = ipw.VBox()
 
         self.container = ipw.VBox(
             children=[
@@ -97,34 +104,55 @@ class MagnetizationSettings(ipw.VBox):
 
         self.rendered = True
 
-        self._build_kinds_widget()
-        self._switch_widgets()
-        self._toggle_widgets()
+        self.update()
+
+    def update(self):
+        if not self.updated:
+            self._update()
+            self.updated = True
 
     def reset(self):
+        if not self._model.input_structure:
+            self._unsubscribe()
         self._model.advanced.magnetization.reset()
+        self.updated = False
 
     def _on_input_structure_change(self, _):
         self._model.advanced.magnetization.update()
-        self._build_kinds_widget()
+        self._update(rebuild=True)
 
     def _on_electronic_type_change(self, _):
         self._switch_widgets()
 
+    def _on_spin_type_change(self, _):
+        self._update()
+
     def _on_magnetization_type_change(self, _):
         self._toggle_widgets()
 
-    def _build_kinds_widget(self):
-        if not self.rendered:
+    def _update(self, rebuild=False):
+        self._unsubscribe()
+        self._show_loading()
+        self._model.advanced.magnetization.update()
+        self._build_kinds_widget(rebuild=rebuild)
+        self._switch_widgets()
+        self._toggle_widgets()
+
+    def _show_loading(self):
+        if self.rendered:
+            self.kinds_widget.children = [self.loading_message]
+
+    def _build_kinds_widget(self, rebuild=False):
+        if not self.rendered or len(self.kinds_widget.children) > 0 and not rebuild:
             return
 
         children = []
 
-        if self._model.input_structure is None:
+        if (
+            self._model.workchain.spin_type == "none"
+            or self._model.input_structure is None
+        ):
             labels = []
-            for link in self.links:
-                link.unlink()
-            self.links.clear()
         else:
             labels = self._model.input_structure.get_kind_names()
 
@@ -155,22 +183,30 @@ class MagnetizationSettings(ipw.VBox):
             )
             children.append(kind_widget)
 
-        self.kinds.children = children
+        self.kinds_widget.children = children
 
     def _switch_widgets(self):
         if not self.rendered:
             return
-        children = [self.description]
-        if self._model.workchain.electronic_type == "metal":
-            children.extend([self.magnetization_type_toggle, self.container])
+        if self._model.workchain.spin_type == "none":
+            children = []
         else:
-            children.append(self.tot_magnetization)
+            children = [self.description]
+            if self._model.workchain.electronic_type == "metal":
+                children.extend([self.magnetization_type_toggle, self.container])
+            else:
+                children.append(self.tot_magnetization)
         self.children = children
 
     def _toggle_widgets(self):
-        if not self.rendered:
+        if self._model.workchain.spin_type == "none" or not self.rendered:
             return
         if self._model.advanced.magnetization.type == "tot_magnetization":
             self.container.children = [self.tot_magnetization]
         else:
-            self.container.children = [self.kinds]
+            self.container.children = [self.kinds_widget]
+
+    def _unsubscribe(self):
+        for link in self.links:
+            link.unlink()
+        self.links.clear()

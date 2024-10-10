@@ -5,25 +5,12 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import Panel
-
-from .model import ConfigurationModel
+from aiidalab_qe.common.panel import SettingPanel
 
 
-class WorkChainSettings(Panel):
+class WorkChainSettings(SettingPanel):
+    title = "Basic Settings"
     identifier = "workchain"
-
-    def __init__(self, model: ConfigurationModel, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
-        super().__init__(
-            children=[LoadingWidget("Loading workchain settings widget")],
-            **kwargs,
-        )
-
-        self._model = model
-
-        self.rendered = False
 
     def render(self):
         if self.rendered:
@@ -38,7 +25,7 @@ class WorkChainSettings(Panel):
             ],
         )
         ipw.link(
-            (self._model.workchain, "relax_type"),
+            (self._model, "relax_type"),
             (self.relax_type, "value"),
         )
 
@@ -48,7 +35,7 @@ class WorkChainSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model.workchain, "spin_type"),
+            (self._model, "spin_type"),
             (self.spin_type, "value"),
         )
 
@@ -58,7 +45,7 @@ class WorkChainSettings(Panel):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model.workchain, "electronic_type"),
+            (self._model, "electronic_type"),
             (self.electronic_type, "value"),
         )
 
@@ -67,7 +54,7 @@ class WorkChainSettings(Panel):
             options=["fast", "moderate", "precise"],
         )
         ipw.link(
-            (self._model.workchain, "protocol"),
+            (self._model, "protocol"),
             (self.protocol, "value"),
         )
 
@@ -138,4 +125,4 @@ class WorkChainSettings(Panel):
         self.rendered = True
 
     def reset(self):
-        self._model.workchain.reset()
+        self._model.reset()

@@ -28,56 +28,54 @@ class App(ipw.VBox):
 
     def __init__(self, qe_auto_setup=True):
         # Initialize the models
-        struct_model = StructureModel()
-        config_model = ConfigurationModel()
-        submit_model = SubmissionModel()
-        results_model = ResultsModel()
+        self.struct_model = StructureModel()
+        self.config_model = ConfigurationModel()
+        self.submit_model = SubmissionModel()
+        self.results_model = ResultsModel()
 
         # Create the application steps
         self.structure_step = StructureSelectionStep(
-            model=struct_model,
+            model=self.struct_model,
             auto_advance=True,
         )
         self.configure_step = ConfigureQeAppWorkChainStep(
-            model=config_model,
+            model=self.config_model,
             auto_advance=True,
         )
         self.submit_step = SubmitQeAppWorkChainStep(
-            model=submit_model,
+            model=self.submit_model,
             auto_advance=True,
             qe_auto_setup=qe_auto_setup,
         )
-        self.results_step = ViewQeAppWorkChainStatusAndResultsStep(model=results_model)
+        self.results_step = ViewQeAppWorkChainStatusAndResultsStep(
+            model=self.results_model,
+        )
 
-        # Link wizard steps
+        # Wizard step observations
         ipw.dlink(
             (self.structure_step, "state"),
             (self.configure_step, "previous_step_state"),
         )
-        ipw.dlink(
-            (struct_model, "confirmed_structure"),
-            (config_model, "input_structure"),
-        )
-        ipw.dlink(
-            (struct_model, "confirmed_structure"),
-            (submit_model, "input_structure"),
+        self.struct_model.observe(
+            self._on_structure_confirmation_change,
+            "confirmed",
         )
         ipw.dlink(
             (self.configure_step, "state"),
             (self.submit_step, "previous_step_state"),
         )
-        ipw.dlink(
-            (config_model, "configuration_parameters"),
-            (submit_model, "input_parameters"),
+        self.config_model.observe(
+            self._on_configuration_confirmation_change,
+            "confirmed",
         )
         ipw.dlink(
-            (submit_model, "process"),
-            (results_model, "process"),
+            (self.submit_model, "process"),
+            (self.results_model, "process"),
             transform=lambda node: node.uuid if node is not None else None,
         )
         ipw.dlink(
             (self, "blockers"),
-            (submit_model, "external_submission_blockers"),
+            (self.submit_model, "external_submission_blockers"),
         )
 
         # Add the application steps to the application
@@ -109,7 +107,7 @@ class App(ipw.VBox):
         )
 
         ipw.dlink(
-            (submit_model, "process"),
+            (self.submit_model, "process"),
             (self.work_chain_selector, "value"),
             transform=lambda node: None if node is None else node.pk,
         )
@@ -130,6 +128,13 @@ class App(ipw.VBox):
     def steps(self):
         return self._wizard_app_widget.steps
 
+    def _on_structure_confirmation_change(self, _):
+        self.config_model.input_structure = self.struct_model.confirmed_structure
+
+    def _on_configuration_confirmation_change(self, _):
+        self.submit_model.input_structure = self.struct_model.confirmed_structure
+        self.submit_model.input_parameters = self.config_model.configuration_parameters
+
     def _on_step_selection(self, change):
         if (step_index := change["new"]) is None:
             return
@@ -149,14 +154,13 @@ class App(ipw.VBox):
         step.render()
 
     def _update_blockers(self, step_index):
-        with self.hold_trait_notifications():
-            self.blockers = []
-            for title, step in self.steps[:step_index]:
-                if not step.is_saved():
-                    step.state = WizardAppWidgetStep.State.CONFIGURED
-                    self.blockers.append(
-                        f"Unsaved changes in the <b>{title}</b> step. Please save the changes before submitting."
-                    )
+        blockers = []
+        for title, step in self.steps[:step_index]:
+            if not step.is_saved():
+                blockers.append(
+                    f"Unsaved changes in the <b>{title}</b> step. Please confirm the changes before submitting."
+                )
+        self.blockers = blockers
 
     def _update_from_process(self, pk):
         if pk is None:

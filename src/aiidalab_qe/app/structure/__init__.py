@@ -170,13 +170,13 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
     def is_saved(self):
         """Check if the current structure is confirmed."""
-        return self._model.structure == self._model.confirmed_structure
+        return self._model.confirmed
 
     def confirm(self, _=None):
         self.manager.store_structure()
+        self.message_area.value = ""
         self._model.confirmed_structure = self._model.structure
         self._model.confirmed = True
-        self.message_area.value = ""
 
     def can_reset(self):
         return self._model.confirmed_structure is not None

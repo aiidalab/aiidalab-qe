@@ -22,8 +22,10 @@ class PseudoSettings(ipw.VBox):
     """Widget to set the pseudopotentials for the calculation."""
 
     def __init__(self, model: ConfigurationModel, **kwargs):
+        self.loading_message = LoadingWidget("Loading pseudopotential settings")
+
         super().__init__(
-            children=[LoadingWidget("Loading pseudopotentials widget")],
+            children=[self.loading_message],
             **kwargs,
         )
 
@@ -52,6 +54,7 @@ class PseudoSettings(ipw.VBox):
         self.links = []
 
         self.rendered = False
+        self.updated = False
 
     def render(self):
         if self.rendered:
@@ -238,19 +241,21 @@ class PseudoSettings(ipw.VBox):
 
         self.rendered = True
 
-        self._build_setter_widgets()
-        self._toggle_setter_widgets()
-        self._update_library_options()
-        self._update_family_link()
+        self.update()
+
+    def update(self):
+        if not self.updated:
+            self._update()
+            self.updated = True
 
     def reset(self):
-        self._unsubscribe()
+        if not self._model.input_structure:
+            self._unsubscribe()
         self._model.advanced.pseudos.reset()
+        self.updated = False
 
     def _on_input_structure_change(self, _):
-        self._unsubscribe()
-        self._model.advanced.pseudos.update()
-        self._build_setter_widgets()
+        self._update(rebuild=True)
 
     def _on_spin_orbit_change(self, _):
         self._update_library_options()
@@ -266,8 +271,16 @@ class PseudoSettings(ipw.VBox):
         self._model.advanced.pseudos.update_default_pseudos()
         self._model.advanced.pseudos.update_default_cutoffs()
 
+    def _update(self, rebuild=False):
+        self._unsubscribe()
+        self._show_loading()
+        self._model.advanced.pseudos.update()
+        self._build_setter_widgets(rebuild=rebuild)
+        self._toggle_setter_widgets()
+        self._update_library_options()
+        self._update_family_link()
+
     def _update_library_options(self):
-        """Update pseudo library selection options w.r.t spin orbit."""
         if not self.rendered:
             return
 
@@ -308,9 +321,13 @@ class PseudoSettings(ipw.VBox):
             </div>
         """
 
-    def _build_setter_widgets(self):
+    def _show_loading(self):
+        if self.rendered:
+            self.setter_widget.children = [self.loading_message]
+
+    def _build_setter_widgets(self, rebuild=False):
         """Build the pseudo setter widgets."""
-        if not self.rendered:
+        if not self.rendered or len(self.setter_widget.children) > 1 and not rebuild:
             return
 
         children = []

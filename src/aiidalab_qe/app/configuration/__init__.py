@@ -10,7 +10,7 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.panel import Panel
+from aiidalab_qe.common.panel import Panel, SettingPanel
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 from .advanced import AdvancedSettings
@@ -22,12 +22,6 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-
-    _no_structure_warning = """
-        <div style="color: red;">
-            Please set the input structure first.
-        </div>
-    """
 
     def __init__(self, model: ConfigurationModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
@@ -51,8 +45,15 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "protocol",
         )
 
-        self.workchain_settings = WorkChainSettings(model=model)
-        self.advanced_settings = AdvancedSettings(model=model)
+        self.missing_structure_message = """
+            <div class="alert alert-info">
+                <b>Please set the input structure first.</b>
+            </div>
+        """
+        self.structure_set_message = ipw.HTML(self.missing_structure_message)
+
+        self.workchain_settings = WorkChainSettings(config_model=model)
+        self.advanced_settings = AdvancedSettings(config_model=model)
 
         self.built_in_settings = [
             self.workchain_settings,
@@ -72,20 +73,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.rendered:
             return
 
-        self.structure_set_message = ipw.HTML()
-        ipw.dlink(
-            (self._model, "input_structure"),
-            (self.structure_set_message, "value"),
-            lambda structure: self._no_structure_warning if structure is None else "",
-        )
-
         self.tab = ipw.Tab(
             children=self.built_in_settings,
             layout=ipw.Layout(min_height="250px"),
             selected_index=None,
         )
-        self.tab.set_title(0, "Basic settings")
-        self.tab.set_title(1, "Advanced settings")
+        for i, setting in enumerate(self.built_in_settings):
+            self.tab.set_title(i, setting.title)
         self.tab.observe(
             self._on_tab_change,
             "selected_index",
@@ -123,9 +117,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.set_model_state(parameters)
 
     def is_saved(self):
-        # TODO reduce calls to model state
-        new_parameters = self.get_configuration_parameters()
-        return new_parameters == self._model.configuration_parameters
+        return self._model.confirmed
 
     def confirm(self, _=None):
         self._model.configuration_parameters = self.get_configuration_parameters()
@@ -133,6 +125,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def reset(self):
         self._model.reset()
+        if self.rendered:
+            self.tab.selected_index = 0
         for _, settings in self.settings.items():
             settings.reset()
 
@@ -141,17 +135,22 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._update_state()
 
     def _on_tab_change(self, change):
-        if (tab := change["new"]) is None:
+        if (tab_index := change["new"]) is None:
             return
-        self.tab.children[tab].render()  # type: ignore
+        tab: SettingPanel = self.tab.children[tab_index]  # type: ignore
+        tab.render()
+        tab.update()
 
     def _on_input_structure_change(self, _):
+        self._update_missing_structure_warning()
         self.reset()
 
     def _on_protocol_change(self, _):
         self._model.advanced.update()
 
     def _on_confirmation_change(self, _):
+        if not self._model.confirmed:
+            self._model.configuration_parameters = {}
         self._update_state()
 
     def _fetch_setting_entries(self):
@@ -202,6 +201,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 identifier=identifier,
                 config_model=self._model,
             )
+
+    def _update_missing_structure_warning(self):
+        self.structure_set_message.value = (
+            self.missing_structure_message
+            if self._model.input_structure is None
+            else ""
+        )
 
     def _update_panel(self, _=None):
         self.tab.children = self.built_in_settings

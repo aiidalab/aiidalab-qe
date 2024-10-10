@@ -1,6 +1,7 @@
 import ipywidgets as ipw
 
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.common.widgets import LoadingWidget
 
 from .model import ConfigurationModel
 
@@ -9,10 +10,10 @@ class HubbardSettings(ipw.VBox):
     """Widget for setting up Hubbard parameters."""
 
     def __init__(self, model: ConfigurationModel, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
+        self.loading_message = LoadingWidget("Loading Hubbard settings")
 
         super().__init__(
-            children=[LoadingWidget("Loading Hubbard settings widget")],
+            children=[self.loading_message],
             **kwargs,
         )
 
@@ -26,6 +27,7 @@ class HubbardSettings(ipw.VBox):
         self.eigenvalues_widget_links = []
 
         self.rendered = False
+        self.updated = False
 
     def render(self):
         if self.rendered:
@@ -87,40 +89,53 @@ class HubbardSettings(ipw.VBox):
 
         self.rendered = True
 
-        self._build_hubbard_widget()
+        self.update()
+
+    def update(self):
+        if not self.updated:
+            self._update()
+            self.updated = True
 
     def reset(self):
-        """Reset the widget."""
-        self._unsubscribe()
+        if not self._model.input_structure:
+            self._unsubscribe()
         self._model.advanced.hubbard.reset()
+        self.updated = False
 
     def _on_input_structure_change(self, _):
         self._unsubscribe()
         self._model.advanced.hubbard.update()
-        self._build_hubbard_widget()
+        self._build_hubbard_widget(rebuild=True)
         if isinstance(self._model.input_structure, HubbardStructureData):
             self._model.advanced.hubbard.set_parameters_from_hubbard_structure()
 
     def _on_hubbard_check(self, _):
+        self._model.advanced.hubbard.update()
+        self._build_hubbard_widget()
         self._toggle_hubbard_widget()
 
     def _on_eigenvalues_check(self, _):
         self._toggle_eigenvalues_widget()
 
-    def _build_hubbard_widget(self):
-        """Build the widget for defining Hubbard U values
-        for each atomic species in the input structure.
+    def _update(self, rebuild=False):
+        self._unsubscribe()
+        self._show_loading()
+        self._model.advanced.hubbard.update()
+        self._build_hubbard_widget(rebuild=rebuild)
+        self._toggle_hubbard_widget()
+        self._toggle_eigenvalues_widget()
 
-        Returns:
-            hubbard_widget (ipywidgets.VBox):
-                The widget containing the input fields for defining Hubbard U values.
-        """
-        if not self.rendered:
+    def _show_loading(self):
+        if self.rendered:
+            self.hubbard_widget.children = [self.loading_message]
+
+    def _build_hubbard_widget(self, rebuild=False):
+        if not self.rendered or len(self.hubbard_widget.children) > 0 and not rebuild:
             return
 
         children = []
 
-        if self._model.input_structure:
+        if self._model.advanced.hubbard.activate and self._model.input_structure:
             children.append(ipw.HTML("Define U value [eV] "))
 
         for label in self._model.advanced.hubbard.input_labels:
@@ -161,11 +176,6 @@ class HubbardSettings(ipw.VBox):
             self.eigenvalues_widget.children = []
 
     def _build_eigenvalues_widget(self):
-        """Build the widget for selecting eigenvalues of different kinds of atoms.
-
-        Returns:
-            ipywidgets.VBox: Widget for selecting eigenvalues.
-        """
 
         def update(index, spin, state, symbol, value):
             """Update the eigenvalues list."""

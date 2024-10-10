@@ -70,8 +70,14 @@ class Setting(SettingPanel):
 
         self.rendered = True
 
+    def update(self):
+        if self.updated:
+            return
+        self._update_mesh()
+        self.updated = True
     def reset(self):
         self._model.reset()
+        self.updated = False
 
     def _on_input_structure_change(self, _=None):
         self._update_mesh()
@@ -84,7 +90,7 @@ class Setting(SettingPanel):
         self._update_mesh()
 
     def _update_mesh(self, _=None):
-        if self._config_model.input_structure is None:
+        if not self._model.include or self._config_model.input_structure is None:
             self._model.mesh_grid = ""
         else:
             mesh = create_kpoints_from_distance.process_class._func(

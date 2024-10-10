@@ -3,7 +3,7 @@
 import ipywidgets as ipw
 
 from aiida.common import NotExistent
-from aiida.orm import Group, QueryBuilder, load_group
+from aiida.orm import load_group
 from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.common.panel import SettingPanel
 
@@ -56,7 +56,7 @@ class Setting(SettingPanel):
             "value",
         )
 
-        self.core_level_list = ipw.VBox()
+        self.core_levels_widget = ipw.VBox()
 
         self.structure_type = ipw.ToggleButtons(
             options=[
@@ -120,46 +120,52 @@ class Setting(SettingPanel):
                 <div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
                     The list of core-levels to be considered for analysis.
                 </div>"""),
-            ipw.HBox([self.core_level_list]),
+            ipw.HBox([self.core_levels_widget]),
         ]
 
         self.rendered = True
 
-        self._build_core_level_list()
+    def update(self):
+        if not self.updated:
+            self._update()
+            self.updated = True
 
     def reset(self):
-        self._unsubscribe()
+        if not self._config_model.input_structure:
+            self._unsubscribe()
         self._model.reset()
+        self.updated = False
 
     def _on_input_structure_change(self, _=None):
-        self._update()
+        self._update(rebuild=True)
 
     def _on_pseudo_group_change(self, _=None):
-        self._update()
+        self._update(rebuild=True)
 
-    def _update(self):
+    def _update(self, rebuild=False):
         self._unsubscribe()
+        self._show_loading()
         self._model.update()
-        self._build_core_level_list()
+        self._build_core_levels_widget(rebuild=rebuild)
 
-    def _build_core_level_list(self):
-        if not self.rendered:
+    def _show_loading(self):
+        if self.rendered:
+            self.core_levels_widget.children = [self.loading_message]
+
+    def _build_core_levels_widget(self, rebuild=False):
+        if (
+            not self.rendered
+            or len(self.core_levels_widget.children) > 1
+            and not rebuild
+        ):
             return
 
-        if self._model.input_structure is None:
+        if not self._model.include or self._model.input_structure is None:
             return
 
         children = []
 
         kind_list = [Kind.symbol for Kind in self._model.input_structure.kinds]
-
-        qb = QueryBuilder()
-        qb.append(
-            Group,
-            filters={"label": self._model.pseudo_group},
-        )
-        if len(qb.all()) == 0:
-            self._install_pseudos()
 
         try:
             group = load_group(self._model.pseudo_group)
@@ -208,4 +214,4 @@ class Setting(SettingPanel):
                 )
                 children.append(checkbox)
 
-        self.core_level_list.children = children
+        self.core_levels_widget.children = children
