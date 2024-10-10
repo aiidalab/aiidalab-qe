@@ -197,7 +197,7 @@ class HubbardModel(tl.HasTraits):
         with self.hold_trait_notifications():
             self.activate = self.traits()["activate"].default_value
             self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
-            self.parameters = {}  # TODO default parameters
+            self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
 
     def _update_defaults(self):

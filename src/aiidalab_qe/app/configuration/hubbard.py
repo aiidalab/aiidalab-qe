@@ -176,7 +176,6 @@ class HubbardSettings(ipw.VBox):
             self.eigenvalues_widget.children = []
 
     def _build_eigenvalues_widget(self):
-
         def update(index, spin, state, symbol, value):
             """Update the eigenvalues list."""
             eigenvalues = [*self._model.advanced.hubbard.eigenvalues]
