@@ -13,6 +13,7 @@ from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.common.widgets import (
+    LoadingWidget,
     PwCodeResourceSetupWidget,
     QEAppComputationalResourcesWidget,
 )
@@ -30,8 +31,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
     def __init__(self, model: SubmissionModel, qe_auto_setup=True, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
         super().__init__(
             children=[LoadingWidget("Loading workflow submission panel")],
             **kwargs,
@@ -260,10 +259,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     @tl.observe("previous_step_state")
     def _on_previous_step_state_change(self, _):
-        self._update()
+        self._update_state()
 
     def _on_input_structure_change(self, _):
-        self._update()
+        with self.hold_trait_notifications():
+            self._model.update_process_label()
+            self._model.update_submission_blockers()
 
     def _on_process_change(self, _):
         with self.hold_trait_notifications():
@@ -273,7 +274,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._update_state()
 
     def _on_input_parameters_change(self, _):
-        self._update()
+        with self.hold_trait_notifications():
+            self._model.update_active_codes()
+            self._model.update_process_label()
+            self._model.update_submission_blockers()
 
     def _on_submission_blockers_change(self, _):
         self._model.update_submission_blocker_message()
@@ -309,6 +313,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.qe_setup.layout.display = qe_installation_display
 
     def _toggle_code(self, code: CodeModel):
+        if not code.is_rendered:
+            loading_message = LoadingWidget(f"Loading {code.name} code")
+            self.code_widgets_container.children += (loading_message,)
         code_widget = code.get_setup_widget()
         code_widget.layout.display = "block" if code.is_active else "none"
         if not code.is_rendered:
@@ -328,16 +335,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             lambda change: setattr(code_widget, "parameters", change["new"]),
             "parameters",
         )
-        self.code_widgets_container.children += (code_widget,)
+        code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
+        self.code_widgets_container.children = [*code_widgets, code_widget]
         self._model.code_widgets[code.name] = code_widget
         self._model.set_selected_codes()
         code.is_rendered = True
-
-    def _update(self):
-        with self.hold_trait_notifications():
-            self._model.update_active_codes()
-            self._model.update_process_label()
-            self._model.update_submission_blockers()
 
     def _update_state(self, _=None):
         if self.previous_step_state is self.State.FAIL:
