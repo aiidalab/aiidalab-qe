@@ -96,6 +96,7 @@ class SubmissionModel(tl.HasTraits):
 
     def update_process_label(self):
         if not self.input_structure:
+            self.process_label = ""
             return
         formula = self.input_structure.get_formula()
         workchain_data = self.input_parameters.get(
@@ -205,9 +206,6 @@ class SubmissionModel(tl.HasTraits):
             self.input_structure = None
             self.input_parameters = {}
             self.process = None
-            self.process_label = ""
-            self.process_description = ""
-            self.submission_blocker_messages = ""
 
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
         submission_parameters = self._get_submission_parameters()

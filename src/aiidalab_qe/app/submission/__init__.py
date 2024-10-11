@@ -38,10 +38,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self._model = model
         self._model.observe(
-            self._on_input_structure_change,
-            "input_structure",
-        )
-        self._model.observe(
             self._on_process_change,
             "process",
         )
@@ -261,11 +257,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_previous_step_state_change(self, _):
         self._update_state()
 
-    def _on_input_structure_change(self, _):
-        with self.hold_trait_notifications():
-            self._model.update_process_label()
-            self._model.update_submission_blockers()
-
     def _on_process_change(self, _):
         with self.hold_trait_notifications():
             # TODO why here? Do we not populate traits earlier that would cover this?
@@ -274,19 +265,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._update_state()
 
     def _on_input_parameters_change(self, _):
-        with self.hold_trait_notifications():
-            self._model.update_active_codes()
-            self._model.update_process_label()
-            self._model.update_submission_blockers()
+        self._model.update_active_codes()
+        self._model.update_process_label()
+        self._model.update_submission_blockers()
 
     def _on_submission_blockers_change(self, _):
         self._model.update_submission_blocker_message()
         self._update_state()
 
     def _on_installation_change(self, _):
-        with self.hold_trait_notifications():
-            self._model.update_submission_blockers()
-            self._update_state()
+        self._model.update_submission_blockers()
 
     def _on_qe_installed(self, _):
         self._toggle_qe_installation_widget()
