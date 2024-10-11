@@ -9,7 +9,6 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.panel import Panel, SettingPanel
 from aiidalab_widgets_base import WizardAppWidgetStep
 
@@ -65,7 +64,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "advanced": self.advanced_settings,
         }
 
-        self._fetch_setting_entries()
+        self.workchain_settings.fetch_setting_entries(
+            register_setting_callback=self._register_setting,
+            update_tabs_callback=self._update_tabs,
+        )
 
         self.rendered = False
 
@@ -103,7 +105,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.children = [
             self.structure_set_message,
-            *self.property_children,
             self.tab,
             self.confirm_button,
         ]
@@ -153,54 +154,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self._model.configuration_parameters = {}
         self._update_state()
 
-    def _fetch_setting_entries(self):
-        """Handle plugin specific settings."""
-
-        self.properties = {}
-        self.reminder_info = {}
-        self.property_children = [ipw.HTML("Select which properties to calculate:")]
-
-        outlines = get_entry_items("aiidalab_qe.properties", "outline")
-        models = get_entry_items("aiidalab_qe.properties", "model")
-        settings = get_entry_items("aiidalab_qe.properties", "setting")
-        for identifier in settings:
-            model = models[identifier]()
-            self._model.add_model(identifier, model)
-
-            outline = outlines[identifier]()
-            info = ipw.HTML()
-            ipw.link(
-                (model, "include"),
-                (outline.include, "value"),
-            )
-
-            def toggle_plugin(change, identifier=identifier, info=info):
-                if change["new"]:
-                    info.value = f"Customize {identifier} settings below"
-                else:
-                    info.value = ""
-                self._update_panel()
-
-            model.observe(
-                toggle_plugin,
-                "include",
-            )
-
-            self.properties[identifier] = outline
-            self.property_children.append(
-                ipw.HBox(
-                    children=[
-                        outline,
-                        info,
-                    ]
-                )
-            )
-
-            self.settings[identifier] = settings[identifier](
-                parent=self,
-                identifier=identifier,
-                config_model=self._model,
-            )
+    def _register_setting(self, identifier, setting):
+        self.settings[identifier] = setting(
+            parent=self,
+            identifier=identifier,
+            config_model=self._model,
+        )
 
     def _update_missing_structure_warning(self):
         self.structure_set_message.value = (
@@ -209,9 +168,9 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             else ""
         )
 
-    def _update_panel(self, _=None):
+    def _update_tabs(self, properties):
         self.tab.children = self.built_in_settings
-        for identifier in self.properties:
+        for identifier in properties:
             model = self._model.get_model(identifier)
             setting = self.settings[identifier]
             if model and model.include:

@@ -3,14 +3,64 @@
 Authors: AiiDAlab team
 """
 
+import typing as t
+
 import ipywidgets as ipw
 
+from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.panel import SettingPanel
 
 
 class WorkChainSettings(SettingPanel):
     title = "Basic Settings"
     identifier = "workchain"
+
+    def fetch_setting_entries(
+        self,
+        register_setting_callback: t.Callable[[str, SettingPanel], None],
+        update_tabs_callback: t.Callable[[list[str]], None],
+    ):
+        self.properties = {}
+        self.reminder_info = {}
+        self.property_children = [ipw.HTML("Select which properties to calculate:")]
+
+        outlines = get_entry_items("aiidalab_qe.properties", "outline")
+        models = get_entry_items("aiidalab_qe.properties", "model")
+        settings = get_entry_items("aiidalab_qe.properties", "setting")
+        for identifier in settings:
+            model = models[identifier]()
+            self._config_model.add_model(identifier, model)
+
+            outline = outlines[identifier]()
+            info = ipw.HTML()
+            ipw.link(
+                (model, "include"),
+                (outline.include, "value"),
+            )
+
+            def toggle_plugin(change, identifier=identifier, info=info):
+                if change["new"]:
+                    info.value = f"Customize {identifier} settings below"
+                else:
+                    info.value = ""
+                update_tabs_callback(self.properties)
+
+            model.observe(
+                toggle_plugin,
+                "include",
+            )
+
+            self.properties[identifier] = outline
+            self.property_children.append(
+                ipw.HBox(
+                    children=[
+                        outline,
+                        info,
+                    ]
+                )
+            )
+
+            register_setting_callback(identifier, settings[identifier])
 
     def render(self):
         if self.rendered:
@@ -110,6 +160,7 @@ class WorkChainSettings(SettingPanel):
                     <h4>Protocol</h4>
                 </div>
             """),
+            *self.property_children,
             ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
             self.protocol,
             ipw.HTML("""
