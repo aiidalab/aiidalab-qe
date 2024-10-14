@@ -1,38 +1,51 @@
 import base64
 import pathlib
 import tempfile
+from threading import Thread
 
 import ipywidgets as ipw
 
 
 class DownloadDataWidget(ipw.VBox):
-    def __init__(self, qeapp_node):
+    def __init__(self, workchain_node):
         self.download_archive_button = ipw.Button(
-            description="Download AiiDA archive zip data",
+            description="Download AiiDA archive.aiida data",
             icon="download",
             button_style="primary",
             disabled=False,
+            tooltip="Download AiiDA archive of the simulation, ready to be shared or imported in another AiiDA profile",
             layout=ipw.Layout(width="auto"),
         )
-        self.download_archive_button.on_click(self._download_data)
+        self.download_archive_button.on_click(self._download_data_thread)
 
         self.download_raw_button = ipw.Button(
-            description="Download AiiDA raw zip data",
+            description="Download AiiDA raw data (zip format)",
             icon="download",
             button_style="primary",
             disabled=False,
+            tooltip="Download raw data of the simulation, organized in intuitive directory paths.",
             layout=ipw.Layout(width="auto"),
         )
-        self.download_raw_button.on_click(self._download_data)
+        self.download_raw_button.on_click(self._download_data_thread)
 
-        self.node = qeapp_node
+        self.node = workchain_node
 
         super().__init__(
             children=[
-                self.download_archive_button,
-                self.download_raw_button,
+                ipw.HBox(
+                    children=[self.download_archive_button],
+                    layout=ipw.Layout(width="500px"),  # Set the desired width here
+                ),
+                ipw.HBox(
+                    children=[self.download_raw_button],
+                    layout=ipw.Layout(width="500px"),  # Set the desired width here
+                ),
             ],
         )
+
+    def _download_data_thread(self, button_instance):
+        thread = Thread(target=lambda: self._download_data(button_instance))
+        thread.start()
 
     def _download_data(self, button_instance):
         """
@@ -46,19 +59,22 @@ class DownloadDataWidget(ipw.VBox):
         Args:
             button_instance (ipywidgets.Button): The button instance that was clicked.
         """
-        button_instance.description += "... Downloading now..."
+
         if "archive" in button_instance.description:
             what = "archive"
             filename = f"export_{self.node.pk}.aiida"
+            box = self.children[0]
         else:
             what = "raw"
             filename = f"export_{self.node.pk}_raw.zip"
+            box = self.children[1]
+
+        box.children += (ipw.HTML("Downloading data..."),)
+
         data = self.produce_bitestream(self.node, what=what)
         self._download(payload=data, filename=filename)
         del data
-        button_instance.description = button_instance.description.replace(
-            "... Downloading now...", ""
-        )
+        box.children = box.children[:1]
 
     @staticmethod
     def _download(payload, filename):

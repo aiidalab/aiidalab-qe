@@ -176,7 +176,7 @@ class WorkChainOutputs(ipw.VBox):
             icon="download",
         )
         self._download_archive_button.on_click(self._download_archive)
-        self._download_button_widget = DownloadDataWidget(qeapp_node=self.node)
+        self._download_button_widget = DownloadDataWidget(workchain_node=self.node)
 
         if node.exit_status != 0:
             title = ipw.HTML(
