@@ -3,10 +3,10 @@
 import ipywidgets as ipw
 
 from aiidalab_qe.app.configuration.model import ConfigurationModel
-from aiidalab_qe.common.panel import SettingPanel
+from aiidalab_qe.common.panel import SettingsPanel
 
 
-class Setting(SettingPanel):
+class Setting(SettingsPanel):
     title = "XAS Settings"
     identifier = "xas"
 

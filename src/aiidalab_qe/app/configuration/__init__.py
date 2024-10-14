@@ -9,7 +9,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.panel import Panel, SettingPanel
+from aiidalab_qe.common.panel import SettingsPanel
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 from .advanced import AdvancedSettings
@@ -59,7 +59,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.advanced_settings,
         ]
 
-        self.settings: dict[str, Panel] = {
+        self.settings: dict[str, SettingsPanel] = {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
@@ -138,7 +138,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
-        tab: SettingPanel = self.tab.children[tab_index]  # type: ignore
+        tab: SettingsPanel = self.tab.children[tab_index]  # type: ignore
         tab.render()
         tab.update()
 

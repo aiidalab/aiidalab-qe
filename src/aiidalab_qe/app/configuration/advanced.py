@@ -5,7 +5,7 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import SettingPanel
+from aiidalab_qe.common.panel import SettingsPanel
 
 from .hubbard import HubbardSettings
 from .magnetization import MagnetizationSettings
@@ -14,7 +14,7 @@ from .pseudos import PseudoSettings
 from .smearing import SmearingSettings
 
 
-class AdvancedSettings(SettingPanel):
+class AdvancedSettings(SettingsPanel):
     title = "Advanced Settings"
     identifier = "advanced"
 

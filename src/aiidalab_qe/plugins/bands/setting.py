@@ -2,10 +2,10 @@
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import SettingPanel
+from aiidalab_qe.common.panel import SettingsPanel
 
 
-class Setting(SettingPanel):
+class Setting(SettingsPanel):
     title = "Bands Structure"
     identifier = "bands"
 

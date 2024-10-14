@@ -74,7 +74,7 @@ class PanelOutline(Panel):
         )
 
 
-class SettingPanel(Panel):
+class SettingsPanel(Panel):
     title = "Settings"
     description = ""
 

@@ -5,12 +5,12 @@ import ipywidgets as ipw
 from aiida.common import NotExistent
 from aiida.orm import load_group
 from aiidalab_qe.app.configuration.model import ConfigurationModel
-from aiidalab_qe.common.panel import SettingPanel
+from aiidalab_qe.common.panel import SettingsPanel
 
 from .model import BASE_URL
 
 
-class Setting(SettingPanel):
+class Setting(SettingsPanel):
     title = "XPS Settings"
     identifier = "xps"
 

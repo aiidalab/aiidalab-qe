@@ -8,16 +8,16 @@ import typing as t
 import ipywidgets as ipw
 
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.panel import SettingPanel
+from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
 
 
-class WorkChainSettings(SettingPanel):
+class WorkChainSettings(SettingsPanel):
     title = "Basic Settings"
     identifier = "workchain"
 
     def fetch_setting_entries(
         self,
-        register_setting_callback: t.Callable[[str, SettingPanel], None],
+        register_setting_callback: t.Callable[[str, SettingsPanel], None],
         update_tabs_callback: t.Callable[[list[str]], None],
     ):
         self.properties = {}
@@ -28,7 +28,7 @@ class WorkChainSettings(SettingPanel):
         models = get_entry_items("aiidalab_qe.properties", "model")
         settings = get_entry_items("aiidalab_qe.properties", "setting")
         for identifier in settings:
-            model = models[identifier]()
+            model: SettingsModel = models[identifier]()
             self._config_model.add_model(identifier, model)
 
             outline = outlines[identifier]()

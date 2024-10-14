@@ -7,10 +7,10 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
     create_kpoints_from_distance,
 )
 from aiidalab_qe.app.configuration.model import ConfigurationModel
-from aiidalab_qe.common.panel import SettingPanel
+from aiidalab_qe.common.panel import SettingsPanel
 
 
-class Setting(SettingPanel):
+class Setting(SettingsPanel):
     title = "PDOS"
     identifier = "pdos"
 
@@ -75,6 +75,7 @@ class Setting(SettingPanel):
             return
         self._update_mesh()
         self.updated = True
+
     def reset(self):
         self._model.reset()
         self.updated = False
