@@ -5,7 +5,10 @@ Authors: AiiDAlab team
 
 from __future__ import annotations
 
+import os
+
 import ipywidgets as ipw
+import numpy as np
 import traitlets as tl
 
 from aiida import orm
@@ -238,7 +241,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _check_resources(self, _change=None):
         """Check whether the currently selected resources will be sufficient and warn if not."""
         if not self.pw_code.value or not self.input_structure:
-            return  # No code selected, nothing to do.
+            return  # No code selected or no structure, so nothing to do.
 
         num_cpus = self.pw_code.num_cpus.value * self.pw_code.num_nodes.value
         on_localhost = (
@@ -246,58 +249,64 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
+        localhost_cpus = len(os.sched_getaffinity(0))  # or os.cpu_count()
 
-        if (
-            self.input_structure
-            and not on_localhost
-            and (
-                num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
-                or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
+        # List of possible suggestions for warnings:
+        suggestions = {
+            "more_resources": "<li>Increase the resources (CPUs should be equal or more than 4, if possible) </li>",
+            "change_configuration": "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) </li>",
+            "go_remote": "<li>Select a code that runs on a larger machine</li>",
+            "avoid_overloading": "<li>Reduce the number of CPUs to avoid the overloading of the local machine </li>",
+        }
+
+        large_system = (
+            num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+            or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
+        )
+
+        if large_system and num_cpus < 4:
+            # This part is in common between Warnings 1 (2): (not) on localhost, big system and few cpus
+            warnings_1_2 = (
+                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites} > {self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD}) "
+                f"or a significant cell volume ({int(volume)} > {self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD} Å<sup>3</sup>), "
+                "making it computationally demanding "
+                "to run at the localhost. Consider the following: "
+                if on_localhost
+                else "to run in a reasonable amount of time. Consider the following: "
             )
-            and num_cpus < 4
-        ):
-            # Warning-1
+
+            # Warning 1: on localhost, big system and few cpus
+            if on_localhost:
+                self._show_alert_message(
+                    warnings_1_2
+                    + "<ul>"
+                    + suggestions["more_resources"]
+                    + suggestions["change_configuration"]
+                    + "</ul>",
+                    alert_class="warning",
+                )
+            # Warning 2: not on localhost, big system and few cpus
+            else:
+                self._show_alert_message(
+                    warnings_1_2
+                    + "<ul>"
+                    + suggestions["go_remote"]
+                    + suggestions["more_resources"]
+                    + suggestions["change_configuration"]
+                    + "</ul>",
+                    alert_class="warning",
+                )
+        elif on_localhost and num_cpus > np.ceil(localhost_cpus / 2):
+            # Warning-3: on localhost, more than half of the available cpus
             self._show_alert_message(
-                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
-                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
-                "to run at the localhost.  Consider the following: "
-                "<ul>"
-                "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
-                "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
-                "</ul>",
-                alert_class="warning",
-            )
-        elif (
-            self.input_structure
-            and on_localhost
-            and (
-                num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
-                or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
-            )
-            and num_cpus < 4
-        ):
-            # Warning-2
-            self._show_alert_message(
-                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
-                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
-                "to run in a reasonable amount of time. Consider the following: "
-                "<ul>"
-                "<li>Select a code that runs on a larger machine</li>"
-                "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
-                "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
-                "</ul>",
-                alert_class="warning",
-            )
-        elif on_localhost and num_cpus > 1:
-            # Warning-3
-            self._show_alert_message(
-                "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
-                "the number of CPUs is larger than one. Please be sure that your local "
+                "<span>&#9888;</span> Warning: the selected pw.x code will run locally, but "
+                f"the number of requested CPUs ({num_cpus}) is larger than half of the available resources ({localhost_cpus}). "
+                "Please be sure that your local "
                 "environment has enough free CPUs for the calculation. Consider the following: "
                 "<ul>"
-                "<li>Consider to reduce the number of CPUs to avoid the overloading of the local machine "
-                "<li>Select a code that runs on a larger machine </li>"
-                "</ul>",
+                + suggestions["avoid_overloading"]
+                + suggestions["go_remote"]
+                + "</ul>",
                 alert_class="warning",
             )
         else:
