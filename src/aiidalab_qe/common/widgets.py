@@ -923,3 +923,60 @@ class LoadingWidget(ipw.HBox):
             **kwargs,
         )
         self.add_class("loading")
+
+
+class OptimadeWrapper(ipw.VBox):
+    """A wrapper of the OPTIMADE widget that may be used to lazy-load OPTIMADE."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+
+    def __init__(self, embedded, title=None, **kwargs):
+        render_button = ipw.Button(
+            layout=ipw.Layout(margin="0 10px 0 0", width="fit-content"),
+            description="Load OPTIMADE",
+            icon="refresh",
+        )
+        render_button.on_click(self._on_render_click)
+
+        super().__init__(
+            children=[
+                ipw.HBox(
+                    layout=ipw.Layout(align_items="center"),
+                    children=[
+                        render_button,
+                        ipw.HTML("<span class='warning'>WARNING: </span>"),
+                        ipw.HTML("<span>OPTIMADE may take some time to load</span>"),
+                    ],
+                ),
+            ],
+            **kwargs,
+        )
+
+        self.embedded = embedded
+        self.title = title or "OPTIMADE"
+        self.params = kwargs
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
+        from aiidalab_qe.common.widgets import LoadingWidget
+        from aiidalab_widgets_base.databases import OptimadeQueryWidget
+
+        self.children = [LoadingWidget("Loading OPTIMADE")]
+
+        optimade = OptimadeQueryWidget(embedded=self.embedded)
+
+        ipw.dlink(
+            (optimade, "structure"),
+            (self, "structure"),
+        )
+
+        self.children = [optimade]
+
+        self.rendered = True
+
+    def _on_render_click(self, _):
+        self.render()

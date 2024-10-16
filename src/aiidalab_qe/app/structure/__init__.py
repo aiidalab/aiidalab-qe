@@ -11,11 +11,10 @@ from aiida import orm
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.app.structure.model import StructureModel
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common import AddingTagsEditor
+from aiidalab_qe.common import AddingTagsEditor, OptimadeWrapper
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
-    OptimadeWrapper,
     StructureBrowserWidget,
     StructureExamplesWidget,
     StructureManagerWidget,
