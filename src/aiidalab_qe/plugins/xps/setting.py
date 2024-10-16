@@ -2,8 +2,6 @@
 
 import ipywidgets as ipw
 
-from aiida.common import NotExistent
-from aiida.orm import load_group
 from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.common.panel import SettingsPanel
 
@@ -20,9 +18,13 @@ class Setting(SettingsPanel):
             (self._config_model, "input_structure"),
             (self._model, "input_structure"),
         )
-        self._model.observe(
+        self._config_model.observe(
             self._on_input_structure_change,
             "input_structure",
+        )
+        self._model.observe(
+            self._on_pseudo_group_change,
+            "pseudo_group",
         )
 
     def render(self):
@@ -50,10 +52,6 @@ class Setting(SettingsPanel):
         ipw.link(
             (self._model, "pseudo_group"),
             (self.pseudo_group, "value"),
-        )
-        self.pseudo_group.observe(
-            self._on_pseudo_group_change,
-            "value",
         )
 
         self.core_levels_widget = ipw.VBox()
@@ -167,20 +165,7 @@ class Setting(SettingsPanel):
 
         kind_list = [Kind.symbol for Kind in self._model.input_structure.kinds]
 
-        try:
-            group = load_group(self._model.pseudo_group)
-            self._model.correction_energies = group.base.extras.get("correction")
-        except NotExistent:
-            self._model.correction_energies = {}
-            # TODO What if the group does not exist? Should we proceed? Can this happen?
-
-        supported_core_levels = {}
-        for key in self._model.correction_energies:
-            element, orbital = key.split("_")
-            if element not in supported_core_levels:
-                supported_core_levels[element] = [key]
-            else:
-                supported_core_levels[element].append(key)
+        supported_core_levels = self._model.get_supported_core_levels()
 
         for element in kind_list:
             if element in supported_core_levels:

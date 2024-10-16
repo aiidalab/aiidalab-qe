@@ -387,11 +387,12 @@ class PseudoSettings(ipw.VBox):
         self.links.clear()
 
 
+# TODO implement/improve MVC in this widget
 class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
 
     pseudo = tl.Instance(UpfData, allow_none=True)
-    cutoffs = tl.List(tl.Float, [])
+    cutoffs = tl.List(tl.Float(), [])
     error_message = tl.Unicode(allow_none=True)
 
     def __init__(self, kind, **kwargs):

@@ -25,6 +25,15 @@ class AdvancedSettings(SettingsPanel):
             **kwargs,
         )
 
+        self._config_model.advanced.observe(
+            self._on_override_change,
+            "override",
+        )
+        self._config_model.advanced.observe(
+            self._on_kpoints_distance_change,
+            "kpoints_distance",
+        )
+
         self.smearing = SmearingSettings(model=config_model)
         self.magnetization = MagnetizationSettings(model=config_model)
         self.hubbard = HubbardSettings(model=config_model)
@@ -59,10 +68,6 @@ class AdvancedSettings(SettingsPanel):
             (self.override, "disabled"),
             lambda structure: structure is None,
         )
-        self.override.observe(
-            self._on_override_change,
-            "value",
-        )
 
         # Smearing setting widget
         self.smearing.render()
@@ -82,10 +87,6 @@ class AdvancedSettings(SettingsPanel):
             (self.override, "value"),
             (self.kpoints_distance, "disabled"),
             lambda override: not override,
-        )
-        self.kpoints_distance.observe(
-            self._on_kpoints_distance_change,
-            "value",
         )
         self.mesh_grid = ipw.HTML()
         ipw.dlink(

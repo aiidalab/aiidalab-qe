@@ -22,6 +22,14 @@ class HubbardSettings(ipw.VBox):
             self._on_input_structure_change,
             "input_structure",
         )
+        self._model.advanced.hubbard.observe(
+            self._on_hubbard_check,
+            "is_active",
+        )
+        self._model.advanced.hubbard.observe(
+            self._on_eigenvalues_check,
+            "eigenvalues_label",
+        )
 
         self.links = []
         self.eigenvalues_widget_links = []
@@ -35,22 +43,17 @@ class HubbardSettings(ipw.VBox):
 
         self.activate_hubbard = ipw.Checkbox(
             description="",
-            tooltip="Use Hubbard DFT+U.",
             indent=False,
             layout=ipw.Layout(max_width="10%"),
         )
         ipw.link(
-            (self._model.advanced.hubbard, "activate"),
+            (self._model.advanced.hubbard, "is_active"),
             (self.activate_hubbard, "value"),
         )
         ipw.dlink(
             (self._model.advanced, "override"),
             (self.activate_hubbard, "disabled"),
             lambda override: not override,
-        )
-        self.activate_hubbard.observe(
-            self._on_hubbard_check,
-            "value",
         )
 
         self.eigenvalues_help = ipw.HTML(
@@ -59,17 +62,12 @@ class HubbardSettings(ipw.VBox):
         )
         self.eigenvalues_label = ipw.Checkbox(
             description="Define eigenvalues",
-            tooltip="Define eigenvalues",
             indent=False,
             layout=ipw.Layout(max_width="30%"),
         )
         ipw.link(
             (self._model.advanced.hubbard, "eigenvalues_label"),
             (self.eigenvalues_label, "value"),
-        )
-        self.eigenvalues_label.observe(
-            self._on_eigenvalues_check,
-            "value",
         )
 
         self.hubbard_widget = ipw.VBox()
@@ -130,12 +128,12 @@ class HubbardSettings(ipw.VBox):
             self.hubbard_widget.children = [self.loading_message]
 
     def _build_hubbard_widget(self, rebuild=False):
-        if not self.rendered or len(self.hubbard_widget.children) > 0 and not rebuild:
+        if not self.rendered or len(self.hubbard_widget.children) > 1 and not rebuild:
             return
 
         children = []
 
-        if self._model.advanced.hubbard.activate and self._model.input_structure:
+        if self._model.input_structure and self._model.advanced.hubbard.is_active:
             children.append(ipw.HTML("Define U value [eV] "))
 
         for label in self._model.advanced.hubbard.input_labels:
@@ -203,8 +201,8 @@ class HubbardSettings(ipw.VBox):
                     (self._model.advanced.hubbard, "eigenvalues"),
                     (eigenvalues_up, "value"),
                     [
-                        lambda evs, ei=ei, si=si: evs[ei][0][si][-1],
-                        lambda v, ei=ei, si=si, es=es: update(ei, 0, si, es, v),
+                        lambda evs, ei=ei, si=si: str(evs[ei][0][si][-1]),
+                        lambda v, ei=ei, si=si, es=es: update(ei, 0, si, es, float(v)),
                     ],
                 )
                 self.links.append(link)
@@ -220,8 +218,8 @@ class HubbardSettings(ipw.VBox):
                     (self._model.advanced.hubbard, "eigenvalues"),
                     (eigenvalues_down, "value"),
                     [
-                        lambda evs, ei=ei, si=si: evs[ei][1][si][-1],
-                        lambda v, ei=ei, si=si, es=es: update(ei, 1, si, es, v),
+                        lambda evs, ei=ei, si=si: str(evs[ei][1][si][-1]),
+                        lambda v, ei=ei, si=si, es=es: update(ei, 1, si, es, float(v)),
                     ],
                 )
                 self.links.append(link)
@@ -244,10 +242,14 @@ class HubbardSettings(ipw.VBox):
         self.eigenvalues_widget.children = children
 
     def _toggle_hubbard_widget(self):
-        widget = [self.hubbard_widget] if self._model.advanced.hubbard.activate else []
+        if not self.rendered:
+            return
+        widget = [self.hubbard_widget] if self._model.advanced.hubbard.is_active else []
         self.container.children = widget
 
     def _toggle_eigenvalues_widget(self):
+        if not self.rendered:
+            return
         self.hubbard_widget.children = (
             [
                 *self.hubbard_widget.children,

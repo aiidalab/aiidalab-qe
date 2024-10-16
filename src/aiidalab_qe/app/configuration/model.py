@@ -160,7 +160,7 @@ class HubbardModel(tl.HasTraits):
     )
     override = tl.Bool()
 
-    activate = tl.Bool(False)
+    is_active = tl.Bool(False)
     eigenvalues_label = tl.Bool(False)  # TODO: rename (widget also)
     parameters = tl.Dict(
         key_trait=tl.Unicode(),  # element symbol
@@ -172,6 +172,8 @@ class HubbardModel(tl.HasTraits):
         default_value=[],
     )
 
+    elements = []
+    input_labels = []
     _default_parameters = {}
     _default_eigenvalues = []
 
@@ -182,6 +184,15 @@ class HubbardModel(tl.HasTraits):
             self.eigenvalues = self._get_default_eigenvalues()
             self.needs_eigenvalues_widget = len(self.elements) > 0
 
+    def get_active_eigenvalues(self):
+        return [
+            orbital_eigenvalue
+            for element_eigenvalues in self.eigenvalues
+            for spin_row in element_eigenvalues
+            for orbital_eigenvalue in spin_row
+            if orbital_eigenvalue[-1] != -1
+        ]
+
     def set_parameters_from_hubbard_structure(self):
         hubbard_parameters = self.input_structure.hubbard.dict()["parameters"]
         sites = self.input_structure.sites
@@ -191,22 +202,22 @@ class HubbardModel(tl.HasTraits):
         }
         with self.hold_trait_notifications():
             self.parameters = parameters
-            self.activate = True
+            self.is_active = True
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.activate = self.traits()["activate"].default_value
-            self.eigenvalues_label = self.traits()["eigenvalues_label"].default_value
+            self.is_active = False
+            self.eigenvalues_label = False
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
 
     def _update_defaults(self):
-        if not self.activate or self.input_structure is None:
+        if self.input_structure is None:
             self.elements = []  # TODO: rename for clarity
             self.input_labels = []  # TODO: rename for clarity
             self._default_parameters = {}
             self._default_eigenvalues = []
-        else:
+        elif self.is_active:
             self.input_labels = self._get_labels()
             self._default_parameters = {label: 0.0 for label in self.input_labels}
             self.elements = [
@@ -222,7 +233,7 @@ class HubbardModel(tl.HasTraits):
             self._default_eigenvalues = [
                 [
                     [
-                        [state + 1, spin, element.symbol, "-1"]  # default eigenvalue
+                        [state + 1, spin, element.symbol, -1]  # default eigenvalue
                         for state in range(5 if element.is_transition_metal else 7)
                     ]
                     for spin in range(2)  # spin up and down
@@ -320,7 +331,7 @@ class PseudosModel(tl.HasTraits):
     )
     functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
     cutoffs = tl.List(
-        trait=tl.List(tl.Float),  # [[ecutwfc values], [ecutrho values]]
+        trait=tl.List(tl.Float()),  # [[ecutwfc values], [ecutrho values]]
         default_value=[[0.0], [0.0]],
     )
     ecutwfc = tl.Float()
@@ -659,11 +670,11 @@ class AdvancedModel(SettingsModel):
             "kpoints_distance": self.kpoints_distance,
         }
 
-        if self.hubbard.activate:
+        if self.hubbard.is_active:
             parameters["hubbard_parameters"] = {"hubbard_u": self.hubbard.parameters}
             if self.hubbard.eigenvalues_label:
                 parameters["pw"]["parameters"]["SYSTEM"].update(
-                    {"starting_ns_eigenvalue": self.hubbard.eigenvalues}
+                    {"starting_ns_eigenvalue": self.hubbard.get_active_eigenvalues()}
                 )
 
         if self.pseudos.dictionary:
@@ -764,18 +775,22 @@ class AdvancedModel(SettingsModel):
 
         # Logic to set the magnetization
         if magnetic_moments := parameters.get("initial_magnetic_moments"):
+            if isinstance(magnetic_moments, (int, float)):
+                magnetic_moments = [magnetic_moments]
             if isinstance(magnetic_moments, list):
-                magnetic_moments = {
-                    kind: magnetic_moments[i]
-                    for i, kind in enumerate(self.input_structure.get_kind_names())
-                }
+                magnetic_moments = dict(
+                    zip(
+                        self.input_structure.get_kind_names(),
+                        magnetic_moments,
+                    )
+                )
             self.magnetization.moments = magnetic_moments
 
         if "tot_magnetization" in parameters["pw"]["parameters"]["SYSTEM"]:
             self.magnetization.type = "tot_magnetization"
 
         if parameters.get("hubbard_parameters"):
-            self.hubbard.activate = True
+            self.hubbard.is_active = True
             self.hubbard.parameters = parameters["hubbard_parameters"]["hubbard_u"]
             starting_ns_eigenvalue = (
                 parameters.get("pw", {})
@@ -870,6 +885,9 @@ class ConfigurationModel(SettingsModel):
             (self, "confirmed"),
             (model, "confirmed"),
         )
+
+    def get_models(self):
+        return self._models.items()
 
     def get_model(self, identifier) -> SettingsModel:
         if identifier in self._models:

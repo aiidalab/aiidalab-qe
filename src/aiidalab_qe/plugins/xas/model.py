@@ -73,7 +73,7 @@ class XasModel(SettingsModel):
         parameters = {
             # "structure_type": self.structure_type,
             "elements_list": list(self.elements.keys()),
-            "core_hole_treatments": list(self.core_hole_treatments.values()),
+            "core_hole_treatments": self.core_hole_treatments,
             "pseudo_labels": pseudo_labels,
             "core_wfc_data_labels": core_wfc_data_labels,
             "supercell_min_parameter": self.supercell_min_parameter,
@@ -83,27 +83,15 @@ class XasModel(SettingsModel):
     def set_model_state(self, parameters: dict):
         # TODO guard against mismatch in structure kinds and element list?
 
-        self.elements = dict(
-            zip(
-                self.elements.keys(),
-                [
-                    element in parameters["elements_list"]
-                    for element in self.elements.keys()
-                ],
-            )
-        )
+        self.elements = {
+            element: element in parameters["elements_list"]
+            for element in self.elements.keys()
+        }
 
-        self.core_hole_treatments = dict(
-            zip(
-                self.elements.keys(),
-                [
-                    parameters["core_hole_treatments"]
-                    if element in parameters["elements_list"]
-                    else "full"
-                    for element in self.elements.keys()
-                ],
-            )
-        )
+        self.core_hole_treatments = {
+            element: parameters["core_hole_treatments"].get(element, "full")
+            for element in self.elements.keys()
+        }
 
         self.supercell_min_parameter = parameters.get("supercell_min_parameter", 8.0)
         # self.structure_type = parameters.get("structure_type", "crystal")
@@ -207,12 +195,12 @@ class XasModel(SettingsModel):
     def _update_core_hole_treatment_recommendations(self):
         if self.input_structure is None:
             self.elements = {}
-            self.core_hold_treatment = {}
+            self.core_hole_treatments = {}
         else:
             self.elements = {
-                kind.symbol: self.elements.get(kind.symbol, False)
-                for kind in self.input_structure.kinds
-                if kind.symbol in self.core_hole_pseudos
+                symbol: self.elements.get(symbol, False)
+                for symbol in self.input_structure.get_kind_names()
+                if symbol in self.core_hole_pseudos
             }
             self.core_hole_treatments = {
                 element: self.get_recommendation(element)

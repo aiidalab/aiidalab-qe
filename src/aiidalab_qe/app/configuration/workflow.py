@@ -18,10 +18,8 @@ class WorkChainSettings(SettingsPanel):
     def fetch_setting_entries(
         self,
         register_setting_callback: t.Callable[[str, SettingsPanel], None],
-        update_tabs_callback: t.Callable[[list[str]], None],
+        update_tabs_callback: t.Callable[[], None],
     ):
-        self.properties = {}
-        self.reminder_info = {}
         self.property_children = [ipw.HTML("Select which properties to calculate:")]
 
         outlines = get_entry_items("aiidalab_qe.properties", "outline")
@@ -40,17 +38,18 @@ class WorkChainSettings(SettingsPanel):
 
             def toggle_plugin(change, identifier=identifier, info=info):
                 if change["new"]:
-                    info.value = f"Customize {identifier} settings below"
+                    info.value = (
+                        f"Customize {identifier} settings in the panel above if needed"
+                    )
                 else:
                     info.value = ""
-                update_tabs_callback(self.properties)
+                update_tabs_callback()
 
             model.observe(
                 toggle_plugin,
                 "include",
             )
 
-            self.properties[identifier] = outline
             self.property_children.append(
                 ipw.HBox(
                     children=[

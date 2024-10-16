@@ -12,11 +12,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import (
-    LoadingWidget,
-    PwCodeResourceSetupWidget,
-    QEAppComputationalResourcesWidget,
-)
+from aiidalab_qe.common.widgets import LoadingWidget, PwCodeResourceSetupWidget
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 from .code import CodeModel, PluginCodes
@@ -51,6 +47,22 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "internal_submission_blockers",
                 "external_submission_blockers",
             ],
+        )
+        self._model.observe(
+            self._on_installation_change,
+            ["installing_sssp", "sssp_installed"],
+        )
+        self._model.observe(
+            self._on_sssp_installed,
+            "sssp_installed",
+        )
+        self._model.observe(
+            self._on_installation_change,
+            ["installing_qe", "qe_installed"],
+        )
+        self._model.observe(
+            self._on_qe_installed,
+            "qe_installed",
         )
 
         # # TODO for testing only - remove in PR
@@ -88,8 +100,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return
 
         self.code_widgets_container = ipw.VBox()
-
-        self.code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
 
         plugin_codes: PluginCodes = get_entry_items("aiidalab_qe.properties", "code")
         plugin_codes.update(
@@ -164,14 +174,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.sssp_installation, "installed"),
             (self._model, "sssp_installed"),
         )
-        self.sssp_installation.observe(
-            self._on_installation_change,
-            ["busy", "installed"],
-        )
-        self.sssp_installation.observe(
-            self._on_sssp_installed,
-            "installed",
-        )
         if self.qe_auto_setup:
             self.sssp_installation.refresh()
 
@@ -188,14 +190,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ipw.dlink(
             (self.qe_setup, "installed"),
             (self._model, "qe_installed"),
-        )
-        self.qe_setup.observe(
-            self._on_installation_change,
-            ["busy", "installed"],
-        )
-        self.qe_setup.observe(
-            self._on_qe_installed,
-            "installed",
         )
         if self.qe_auto_setup:
             self.qe_setup.refresh()
@@ -326,7 +320,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
         self.code_widgets_container.children = [*code_widgets, code_widget]
         self._model.code_widgets[code.name] = code_widget
-        self._model.set_selected_codes()
+        self._model.set_selected_codes()  # TODO check logic
         code.is_rendered = True
 
     def _update_state(self, _=None):

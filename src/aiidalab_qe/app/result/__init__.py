@@ -31,6 +31,10 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self._model = model
+        self._model.observe(
+            self._on_process_change,
+            "process",
+        )
 
         self.rendered = False
 
@@ -100,12 +104,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             self.process_status,
         ]
 
-        self._model.observe(
-            self._on_process_change,
-            "process",
-        )
-
         self.rendered = True
+
+        self._update_kill_button_layout()
 
     def can_reset(self):
         return self.state is not self.State.ACTIVE
@@ -127,6 +128,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_kill_button_layout()
 
     def _update_kill_button_layout(self):
+        if not self.rendered:
+            return
         if (
             self._model.process is None
             or self._model.process == ""

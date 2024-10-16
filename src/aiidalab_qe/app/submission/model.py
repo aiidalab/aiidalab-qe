@@ -65,7 +65,7 @@ class SubmissionModel(tl.HasTraits):
         )
 
     def submit(self):
-        parameters = deepcopy(self.input_parameters)
+        parameters = self._get_submission_parameters()
         builder = self._create_builder(parameters)
 
         with self.hold_trait_notifications():
@@ -208,38 +208,35 @@ class SubmissionModel(tl.HasTraits):
             self.process = None
 
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
-        submission_parameters = self._get_submission_parameters()
-        parameters.update(submission_parameters)
-
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             parameters=deepcopy(parameters),  # TODO why deepcopy again?
         )
 
-        codes = submission_parameters["codes"]
+        codes = parameters["codes"]
 
         builder.relax.base.pw.metadata.options.resources = {
             "num_machines": codes.get("pw")["nodes"],
             "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
             "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
         }
-        builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = codes.get(
-            "pw"
-        )["max_wallclock_seconds"]
-        builder.relax.base.pw.parallelization = orm.Dict(
-            dict=codes["pw"]["parallelization"]
-        )
+        mws = codes.get("pw")["max_wallclock_seconds"]
+        builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = mws
+        parallelization = codes["pw"]["parallelization"]
+        builder.relax.base.pw.parallelization = orm.Dict(dict=parallelization)
 
         return builder
 
-    def _get_submission_parameters(self):
+    def _get_submission_parameters(self) -> dict:
         submission_parameters = self.get_model_state()
         for name, code_widget in self.code_widgets.items():
             if name in submission_parameters["codes"]:
                 for key, value in code_widget.parameters.items():
                     if key != "code":
                         submission_parameters["codes"][name][key] = value
-        return submission_parameters
+        parameters = deepcopy(self.input_parameters)
+        parameters.update(submission_parameters)
+        return parameters  # type: ignore
 
     def _check_submission_blockers(self):
         # Do not submit while any of the background setup processes are running.

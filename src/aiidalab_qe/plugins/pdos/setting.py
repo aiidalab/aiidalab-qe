@@ -28,6 +28,10 @@ class Setting(SettingsPanel):
             self._on_protocol_change,
             "protocol",
         )
+        self._model.observe(
+            self._on_kpoints_distance_change,
+            "kpoints_distance",
+        )
 
     def render(self):
         if self.rendered:
@@ -42,10 +46,6 @@ class Setting(SettingsPanel):
         ipw.link(
             (self._model, "kpoints_distance"),
             (self.nscf_kpoints_distance, "value"),
-        )
-        self.nscf_kpoints_distance.observe(
-            self._on_kpoints_distance_change,
-            "value",
         )
 
         self.mesh_grid = ipw.HTML()

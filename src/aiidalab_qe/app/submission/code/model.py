@@ -7,7 +7,7 @@ class CodeModel(tl.HasTraits):
     is_active = tl.Bool(False)
     selected = tl.Bool(False)
     options = tl.List(
-        trait=tl.Tuple(tl.Unicode, tl.Unicode),  # code option (label, uuid)
+        trait=tl.Tuple(tl.Unicode(), tl.Unicode()),  # code option (label, uuid)
         default_value=[],
     )
     parameters = tl.Dict()

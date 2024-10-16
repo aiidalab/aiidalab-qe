@@ -1,6 +1,7 @@
 import traitlets as tl
 
-from aiida.orm import Group, QueryBuilder, StructureData
+from aiida.common import NotExistent
+from aiida.orm import Group, QueryBuilder, StructureData, load_group
 from aiidalab_qe.common.panel import SettingsModel
 
 BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
@@ -17,19 +18,34 @@ class XpsModel(SettingsModel):
     supercell_min_parameter = tl.Float(8.0)
     calc_binding_energy = tl.Bool(False)
     correction_energies = tl.Dict(
-        key_trait=tl.Unicode(),
-        value_trait=tl.Dict(),
+        key_trait=tl.Unicode(),  # <element>_<orbital>
+        value_trait=tl.Dict(
+            key_trait=tl.Unicode(),
+            value_trait=tl.Float(),
+        ),
         default_value={},
     )
     core_levels = tl.Dict(
-        key_trait=tl.Unicode(),
-        value_trait=tl.Bool(),
+        key_trait=tl.Unicode(),  # core level
+        value_trait=tl.Bool(),  # whether the core level is included
         default_value={},
     )
 
+    def get_supported_core_levels(self):
+        supported_core_levels = {}
+        for key in self.correction_energies:
+            element = key.split("_")[0]
+            if element not in supported_core_levels:
+                supported_core_levels[element] = [key]
+            else:
+                supported_core_levels[element].append(key)
+        return supported_core_levels
+
     def update(self):
-        if self.include and self._pseudo_group_exists():
-            self._install_pseudos()
+        if self.include:
+            self._update_correction_energies()
+            if self._pseudo_group_exists():
+                self._install_pseudos()
 
     def get_model_state(self):
         return {
@@ -64,6 +80,14 @@ class XpsModel(SettingsModel):
             "supercell_min_parameter"
         ].default_value
         self.calc_binding_energy = self.traits()["calc_binding_energy"].default_value
+
+    def _update_correction_energies(self):
+        try:
+            group = load_group(self.pseudo_group)
+            self.correction_energies = group.base.extras.get("correction")
+        except NotExistent:
+            self.correction_energies = {}
+            # TODO What if the group does not exist? Should we proceed? Can this happen?
 
     def _pseudo_group_exists(self, _=None):
         qb = QueryBuilder()

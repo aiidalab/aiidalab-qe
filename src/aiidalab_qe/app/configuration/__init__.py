@@ -76,17 +76,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return
 
         self.tab = ipw.Tab(
-            children=self.built_in_settings,
             layout=ipw.Layout(min_height="250px"),
             selected_index=None,
         )
-        for i, setting in enumerate(self.built_in_settings):
-            self.tab.set_title(i, setting.title)
         self.tab.observe(
             self._on_tab_change,
             "selected_index",
         )
-        self.tab.selected_index = 0
+        self._update_tabs()
 
         self.confirm_button = ipw.Button(
             description="Confirm",
@@ -168,17 +165,17 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             else ""
         )
 
-    def _update_tabs(self, properties):
-        self.tab.children = self.built_in_settings
-        for identifier in properties:
-            model = self._model.get_model(identifier)
-            setting = self.settings[identifier]
-            if model and model.include:
-                self.tab.children += (setting,)
-                self.tab.set_title(
-                    len(self.tab.children) - 1,
-                    setting.title,
-                )
+    def _update_tabs(self):
+        children = []
+        for identifier, model in self._model.get_models():
+            if model.include:
+                setting = self.settings[identifier]
+                children.append(setting)
+        if hasattr(self, "tab"):
+            self.tab.children = children
+            for i, settings in enumerate(self.settings.values()):
+                self.tab.set_title(i, settings.title)
+            self.tab.selected_index = 0
 
     def _update_state(self, _=None):
         if self._model.confirmed:
