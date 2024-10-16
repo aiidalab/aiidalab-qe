@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.usefixtures("sssp")
 def test_electronic_structure(generate_qeapp_workchain):
     """Test the electronic structure tab."""
     import plotly.graph_objects as go

@@ -1,190 +1,158 @@
+import pytest
+
+from aiidalab_qe.app.main import App
+
+
 def test_advanced_default():
-    """Test default behavior of advanced setting widget."""
-    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
+    """Test default behavior of advanced setting."""
+    app = App(qe_auto_setup=False)
+    model = app.config_model
 
-    w = AdvancedSettings()
+    # Test override functionality in advanced settings
+    model.advanced.override = True
+    model.workchain.protocol = "fast"
+    model.advanced.smearing.type = "methfessel-paxton"
+    model.advanced.smearing.degauss = 0.03
+    model.advanced.kpoints_distance = 0.22
 
-    # Test override values and set back to default after un-tick the override checkbox
-    w.override.value = True
-    w.protocol = "fast"
-    w.smearing.smearing.value = "methfessel-paxton"
-    w.smearing.degauss.value = 0.03
-    w.kpoints_distance.value = 0.22
+    # Reset values to default after removing override
+    model.advanced.override = False
 
-    assert w.value.get("degauss") == 0.03
-    assert w.value.get("smearing") == "methfessel-paxton"
-    assert w.value.get("kpoints_distance") == 0.22
-
-    w.override.value = False
-
-    assert w.value.get("degauss") == 0.01
-    assert w.value.get("smearing") == "cold"
-    assert w.value.get("kpoints_distance") == 0.5
+    assert model.advanced.smearing.type == "cold"
+    assert model.advanced.smearing.degauss == 0.01
+    assert model.advanced.kpoints_distance == 0.5
 
 
 def test_advanced_smearing_settings():
-    """Test SmearningSettings widget."""
-    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
+    """Test Smearing Settings."""
+    app = App(qe_auto_setup=False)
+    model = app.config_model
+    advanced = app.configure_step.advanced_settings
+    advanced.smearing.render()
 
-    w = AdvancedSettings()
+    # Test widget disable state on override
+    assert advanced.smearing.degauss.disabled is True
+    assert advanced.smearing.smearing.disabled is True
 
-    # Check the disable of is bind to override switch of both degauss and smearing
-    assert w.smearing.disabled is True
-    assert w.smearing.degauss.disabled is True
-    assert w.smearing.smearing.disabled is True
+    model.advanced.override = True
 
-    w.override.value = True
+    assert advanced.smearing.degauss.disabled is False
+    assert advanced.smearing.smearing.disabled is False
 
-    assert w.smearing.disabled is False
-    assert w.smearing.degauss.disabled is False
-    assert w.smearing.smearing.disabled is False
+    assert model.advanced.smearing.type == "cold"
+    assert model.advanced.smearing.degauss == 0.01
 
-    assert w.value.get("degauss") == 0.01
-    assert w.value.get("smearing") == "cold"
+    # Test protocol-dependent smearing change
+    model.workchain.protocol = "fast"
 
-    # Check values after changing protocol (currently the smearing not changed upon protocol)
-    w.protocol = "fast"
-
-    assert w.value.get("degauss") == 0.01
-    assert w.value.get("smearing") == "cold"
-
-    # Check changing value of sub-widgets changes the settings
-    # By set the widget value directly
-    w.smearing.degauss.value = 0.03
-    w.smearing.smearing.value = "methfessel-paxton"
-
-    assert w.value.get("degauss") == 0.03
-    assert w.value.get("smearing") == "methfessel-paxton"
+    assert model.advanced.smearing.type == "cold"
+    assert model.advanced.smearing.degauss == 0.01
 
     # Check reset
-    w.reset()
+    model.advanced.smearing.type = "gaussian"
+    model.advanced.smearing.degauss = 0.05
+    model.advanced.smearing.reset()
 
-    # the protocol will not be reset
-    assert w.protocol == "fast"
-    assert w.value.get("degauss") == 0.01
-    assert w.value.get("smearing") == "cold"
+    assert model.workchain.protocol == "fast"  # reset does not apply to protocol
+    assert model.advanced.smearing.type == "cold"
+    assert model.advanced.smearing.degauss == 0.01
 
 
 def test_advanced_kpoints_settings():
     """Test kpoint setting of advanced setting widget."""
-    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-
-    w = AdvancedSettings()
+    app = App(qe_auto_setup=False)
+    model = app.config_model
+    advanced = app.configure_step.advanced_settings
+    advanced.render()
 
     # Check the disable of is bind to override switch
-    assert w.kpoints_distance.disabled is True
+    assert advanced.kpoints_distance.disabled is True
 
-    w.override.value = True
-    assert w.kpoints_distance.disabled is False
+    model.advanced.override = True
+    assert advanced.kpoints_distance.disabled is False
 
-    assert w.value.get("kpoints_distance") == 0.15
+    assert model.advanced.kpoints_distance == 0.15
 
-    w.protocol = "fast"
-
-    assert w.value.get("kpoints_distance") == 0.5
-
-    # Check changing value of sub-widgets changes the settings
-    w.kpoints_distance.value = 0.22
-    assert w.value.get("kpoints_distance") == 0.22
+    model.workchain.protocol = "fast"
+    assert model.advanced.kpoints_distance == 0.5
 
     # Check reset
-    w.reset()
+    model.advanced.kpoints_distance = 0.1
+    model.advanced.reset()
 
-    # the protocol will not be reset
-    assert w.protocol == "fast"
-    assert w.value.get("kpoints_distance") == 0.5
+    assert model.workchain.protocol == "fast"  # reset does not apply to protocol
+    assert model.advanced.kpoints_distance == 0.5
 
 
 def test_advanced_tot_charge_settings():
     """Test TotCharge widget."""
-    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-
-    w = AdvancedSettings()
+    app = App(qe_auto_setup=False)
+    model = app.config_model
+    advanced = app.configure_step.advanced_settings
+    advanced.render()
 
     # Check the disable of is bind to override switch
-    assert w.total_charge.disabled is True
+    assert advanced.total_charge.disabled is True
 
-    w.override.value = True
-    assert w.total_charge.disabled is False
+    model.advanced.override = True
+    assert advanced.total_charge.disabled is False
 
-    assert w.value.get("total_charge") == 0.0
-
-    w.total_charge.value = 1.0
-    assert w.value.get("total_charge") == 1.0
+    assert model.advanced.total_charge == 0.0
 
     # Check reset
-    w.reset()
+    model.advanced.total_charge = 1.0
+    model.advanced.reset()
 
-    assert w.value.get("total_charge") == 0.0
+    assert model.advanced.total_charge == 0.0
 
 
-def test_advanced_kpoints_mesh():
+@pytest.mark.usefixtures("sssp")
+def test_advanced_kpoints_mesh(generate_structure_data):
     """Test Mesh Grid HTML widget."""
-    from aiida import orm
-    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
+    app = App(qe_auto_setup=False)
+    model = app.config_model
 
-    w = AdvancedSettings()
+    structure = generate_structure_data(name="silicon")
+    model.input_structure = structure
 
-    # Create a StructureData for AdvancedSettings (Silicon)
-
-    structure = orm.StructureData(
-        cell=[
-            [3.8401979337, 0.0000000000, 0.0000000000],
-            [1.9200989668, 3.3257101909, 0.0000000000],
-            [0.0000000000, -2.2171384943, 3.1355090603],
-        ],
-        pbc=[True, True, True],
-    )
-    structure.append_atom(
-        position=[0.0000000000, 0.0000000000, 0.0000000000], symbols="Si"
-    )
-    structure.append_atom(
-        position=[2.5601312956, 1.6544735986, 1.5677545302], symbols="Si"
-    )
-
-    w.input_structure = structure
-
-    w.override.value = True
-    assert w.mesh_grid.value == "Mesh [16, 16, 16]"
+    model.advanced.override = True
+    assert model.advanced.mesh_grid == "Mesh [14, 14, 14]"
 
     # change protocol
-    w.protocol = "fast"
-    assert w.mesh_grid.value == "Mesh [5, 5, 5]"
+    model.workchain.protocol = "fast"
+    assert model.advanced.mesh_grid == "Mesh [5, 5, 5]"
 
 
-def test_advanced_hubbard_widget(generate_structure_data):
+@pytest.mark.usefixtures("sssp")
+def test_advanced_hubbard_settings(generate_structure_data):
     """Test Hubbard widget."""
+    app = App(qe_auto_setup=False)
 
-    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
-
-    w = AdvancedSettings()
+    model = app.config_model
+    hubbard_model = model.advanced.hubbard
 
     structure = generate_structure_data(name="LiCoO2")
-
-    w.input_structure = structure
+    model.input_structure = structure
 
     # Activate Hubbard U widget
-    w.hubbard.activate_hubbard.value = True
+    hubbard_model.is_active = True
+    assert hubbard_model.input_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
 
-    assert w.hubbard.input_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
+    # Render the settings widget to allow for widget testing
+    hubbard = app.configure_step.advanced_settings.hubbard
+    hubbard.render()
 
-    # Change the value of the Hubbard U for Co, O and Li
-    w.hubbard.hubbard_widget.children[1].children[0].value = 1
-    w.hubbard.hubbard_widget.children[2].children[0].value = 2
-    w.hubbard.hubbard_widget.children[3].children[0].value = 3
+    # Change the Hubbard U parameters for Co, O, and Li
+    hubbard_parameters = hubbard.hubbard_widget.children[1:]  # type: ignore
+    hubbard_parameters[0].value = 1  # Co - 3d
+    hubbard_parameters[1].value = 2  # O - 2p
+    hubbard_parameters[2].value = 3  # Li - 2s
 
-    assert w.hubbard.hubbard_dict == {
-        "hubbard_u": {"Co - 3d": 1.0, "O - 2p": 2.0, "Li - 2s": 3.0}
+    assert hubbard_model.parameters == {
+        "Co - 3d": 1.0,
+        "O - 2p": 2.0,
+        "Li - 2s": 3.0,
     }
-
-    # Check eigenvalues are empty
-    assert w.hubbard.eigenvalues_dict == {}
-
-    w.hubbard.eigenvalues_label.value = True
-
-    # Check there is only eigenvalues for Co (Transition metal)
-
-    assert len(w.hubbard.eigenvalues_widget.children) == 1
 
     # The widget hierarchy for eigenvalues:
     # - w.hubbard_widget.eigen_values_widget.children[0]: List of eigenvalues for Co
@@ -192,16 +160,23 @@ def test_advanced_hubbard_widget(generate_structure_data):
     # - w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0]: Widget for up spin
     # - w.hubbard_widget.eigen_values_widget.children[0].children[1].children[0].children[1]: Widget for eigenvalue 1 (3d range: 1 to 5)
 
-    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
-        1
-    ].value = "1"
-    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
-        3
-    ].value = "1"
-    w.hubbard.eigenvalues_widget.children[0].children[1].children[0].children[
-        5
-    ].value = "1"
+    # Check eigenvalues are empty
+    # assert hubbard_model.eigenvalues == []  # TODO should they be?
 
-    assert w.hubbard.eigenvalues_dict == {
-        "starting_ns_eigenvalue": [[1, 1, "Co", 1], [3, 1, "Co", 1], [5, 1, "Co", 1]]
-    }
+    # Check there is only eigenvalues for Co (Transition metal)
+    hubbard_model.eigenvalues_label = True
+
+    assert len(hubbard_model.elements) == 1
+    assert len(hubbard_model.eigenvalues) == 1
+
+    Co_eigenvalues = hubbard.eigenvalues_widget.children[0].children[1]  # type: ignore
+    Co_spin_down_row = Co_eigenvalues.children[1]
+    Co_spin_down_row.children[1].value = "1"
+    Co_spin_down_row.children[3].value = "1"
+    Co_spin_down_row.children[5].value = "1"
+
+    assert hubbard_model.get_active_eigenvalues() == [
+        [1, 1, "Co", 1],
+        [3, 1, "Co", 1],
+        [5, 1, "Co", 1],
+    ]

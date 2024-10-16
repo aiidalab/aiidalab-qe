@@ -7,6 +7,8 @@ import tempfile
 import pytest
 
 from aiida import orm
+from aiidalab_qe.app.configuration.model import ConfigurationModel
+from aiidalab_qe.app.main import App
 from aiidalab_qe.setup.pseudos import SSSP_VERSION
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
@@ -295,7 +297,8 @@ def workchain_settings_generator():
     from aiidalab_qe.app.configuration.workflow import WorkChainSettings
 
     def _workchain_settings_generator(**kwargs):
-        workchain_settings = WorkChainSettings()
+        model = ConfigurationModel()
+        workchain_settings = WorkChainSettings(config_model=model)
         workchain_settings._update_settings(**kwargs)
         return workchain_settings
 
@@ -308,7 +311,8 @@ def smearing_settings_generator():
     from aiidalab_qe.app.configuration.smearing import SmearingSettings
 
     def _smearing_settings_generator(**kwargs):
-        smearing_settings = SmearingSettings()
+        model = ConfigurationModel()
+        smearing_settings = SmearingSettings(model=model)
         smearing_settings.update_settings(**kwargs)
         return smearing_settings
 
@@ -319,28 +323,44 @@ def smearing_settings_generator():
 def app(pw_code, dos_code, projwfc_code):
     from aiidalab_qe.app.main import App
 
-    # Since we use `qe_auto_setup=False`, which will skip the pseudo library installation
-    # we need to mock set the installation status to `True` to avoid the blocker message pop up in the
-    # submmision step.
     app = App(qe_auto_setup=False)
+    app.structure_step.render()
+    app.configure_step.render()
+    app.submit_step.render()
+
+    # Since we use `qe_auto_setup=False`, which will skip the pseudo library
+    # installation, we need to mock set the installation status to `True` to
+    # avoid the blocker message pop up in the submission step.
     app.submit_step.sssp_installation.installed = True
 
     # set up codes
-    app.submit_step.pw_code.code_selection.refresh()
-    app.submit_step.code_widgets["dos"].code_selection.refresh()
-    app.submit_step.code_widgets["projwfc"].code_selection.refresh()
+    app.submit_model.get_code("pdos", "dos").activate()
+    app.submit_model.get_code("pdos", "projwfc").activate()
 
-    app.submit_step.pw_code.value = pw_code.uuid
-    app.submit_step.code_widgets["dos"].value = dos_code.uuid
-    app.submit_step.code_widgets["projwfc"].value = projwfc_code.uuid
+    app.submit_model.code_widgets["pw"].code_selection.refresh()
+    app.submit_model.code_widgets["dos"].code_selection.refresh()
+    app.submit_model.code_widgets["projwfc"].code_selection.refresh()
+
+    app.submit_model.code_widgets["pw"].value = pw_code.uuid
+    app.submit_model.code_widgets["dos"].value = dos_code.uuid
+    app.submit_model.code_widgets["projwfc"].value = projwfc_code.uuid
+
+    # TODO overrides app defaults - check!
+    app.submit_model.set_selected_codes(
+        {
+            "pw": {"code": pw_code.label},
+            "dos": {"code": dos_code.label},
+            "projwfc": {"code": projwfc_code.label},
+        }
+    )
 
     yield app
 
 
 @pytest.fixture()
-@pytest.mark.usefixtures("sssp")
+@pytest.mark.usefixtures("sssp")  # TODO ignored on fixtures in pytest>=9
 def submit_app_generator(
-    app,
+    app: App,
     generate_structure_data,
 ):
     """Return a function that generates a submit step widget."""
@@ -358,9 +378,8 @@ def submit_app_generator(
         vdw_corr="none",
         initial_magnetic_moments=0.0,
     ):
-        configure_step = app.configure_step
         # Settings
-        configure_step.input_structure = generate_structure_data()
+        app.config_model.input_structure = generate_structure_data()
         parameters = {
             "workchain": {
                 "relax_type": relax_type,
@@ -370,23 +389,27 @@ def submit_app_generator(
                 "protocol": workchain_protocol,
             }
         }
-        configure_step.set_configuration_parameters(parameters)
+        app.config_model.set_model_state(parameters)
         # Advanced settings
-        configure_step.advanced_settings.override.value = True
-        configure_step.advanced_settings.total_charge.value = tot_charge
-        configure_step.advanced_settings.van_der_waals.value = vdw_corr
-        configure_step.advanced_settings.kpoints_distance.value = kpoints_distance
-        configure_step.advanced_settings.magnetization._set_magnetization_values(
-            initial_magnetic_moments
+        app.config_model.advanced.override = True
+        app.config_model.advanced.total_charge = tot_charge
+        app.config_model.advanced.van_der_waals = vdw_corr
+        app.config_model.advanced.kpoints_distance = kpoints_distance
+        if isinstance(initial_magnetic_moments, (int, float)):
+            initial_magnetic_moments = [initial_magnetic_moments]
+        app.config_model.advanced.magnetization.moments = dict(
+            zip(
+                app.config_model.input_structure.get_kind_names(),
+                initial_magnetic_moments,
+            )
         )
         # mimic the behavior of the smearing widget set up
-        configure_step.advanced_settings.smearing.smearing.value = smearing
-        configure_step.advanced_settings.smearing.degauss.value = degauss
-        configure_step.confirm()
+        app.config_model.advanced.smearing.type = smearing
+        app.config_model.advanced.smearing.degauss = degauss
+        app.configure_step.confirm()
         #
-        submit_step = app.submit_step
-        submit_step.input_structure = generate_structure_data()
-        submit_step.pw_code.num_cpus.value = 2
+        app.submit_model.input_structure = generate_structure_data()
+        app.submit_model.code_widgets["pw"].num_cpus.value = 2
 
         return app
 
@@ -394,17 +417,16 @@ def submit_app_generator(
 
 
 @pytest.fixture
-def app_to_submit(app):
+def app_to_submit(app: App):
     # Step 1: select structure from example
-    step1 = app.structure_step
-    structure = step1.manager.children[0].children[3]
+    structure = app.structure_step.manager.children[0].children[3]  # type: ignore
     structure.children[0].value = structure.children[0].options[1][1]
-    step1.confirm()
+    app.structure_step.confirm()
     # Step 2: configure calculation
-    step2 = app.configure_step
-    step2.workchain_settings.properties["bands"].run.value = True
-    step2.workchain_settings.properties["pdos"].run.value = True
-    step2.confirm()
+    # TODO do we need to include bands and pdos here?
+    app.config_model.get_model("bands").include = True
+    app.config_model.get_model("pdos").include = True
+    app.configure_step.confirm()
     yield app
 
 
@@ -610,7 +632,7 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app,
+    app: App,
     generate_workchain,
     generate_pdos_workchain,
     generate_bands_workchain,
@@ -631,80 +653,98 @@ def generate_qeapp_workchain(
         from copy import deepcopy
 
         from aiida.orm.utils.serialize import serialize
-        from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-        from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
         from aiidalab_qe.workflows import QeAppWorkChain
 
         # Step 1: select structure from example
-        s1 = app.structure_step
         if structure is None:
-            from_example = s1.manager.children[0].children[3]
+            from_example = app.structure_step.manager.children[0].children[3]  # type: ignore
             # TODO: (unkpcz) using options to set value in test is cranky, instead, use fixture which will make the test more static and robust.
             from_example.children[0].value = from_example.children[0].options[1][1]
         else:
             structure.store()
-            aiida_database = s1.manager.children[0].children[2]
+            aiida_database = app.structure_step.manager.children[0].children[2]  # type: ignore
             aiida_database.search()
             aiida_database.results.value = structure
-        s1.confirm()
-        structure = s1.confirmed_structure
-        # step 2 configure
-        s2: ConfigureQeAppWorkChainStep = app.configure_step
-        s2.workchain_settings.relax_type.value = relax_type
-        # In order to parepare a complete inputs, I set all the properties to true
-        # this can be overrided later
-        s2.workchain_settings.properties["bands"].run.value = run_bands
-        s2.workchain_settings.properties["pdos"].run.value = run_pdos
-        s2.workchain_settings.protocol.value = "fast"
-        s2.workchain_settings.spin_type.value = spin_type
-        s2.workchain_settings.electronic_type.value = electronic_type
-        if spin_type == "collinear":
-            s2.advanced_settings.override.value = True
-            magnetization_values = (
-                initial_magnetic_moments
-                if magnetization_type == "starting_magnetization"
-                else tot_magnetization
-            )
-            s2.advanced_settings.magnetization._set_tot_magnetization(
-                tot_magnetization
-            ) if electronic_type == "insulator" else s2.advanced_settings.magnetization._set_magnetization_values(
-                magnetization_values
-            )
 
-        s2.confirm()
+        app.structure_step.confirm()
+
+        structure = app.struct_model.confirmed_structure  # type: ignore
+
+        # step 2 configure
+        app.config_model.workchain.relax_type = relax_type
+
+        # In order to prepare complete inputs, I set all the properties to true
+        # this can be overridden later
+        app.config_model.get_model("bands").include = run_bands
+        app.config_model.get_model("pdos").include = run_pdos
+
+        app.config_model.workchain.protocol = "fast"
+        app.config_model.workchain.spin_type = spin_type
+        app.config_model.workchain.electronic_type = electronic_type
+
+        if spin_type == "collinear":
+            app.config_model.advanced.override = True
+            magnetization = app.config_model.advanced.magnetization
+            if electronic_type == "insulator":
+                magnetization.total = tot_magnetization
+            elif magnetization_type == "starting_magnetization":
+                if isinstance(initial_magnetic_moments, (int, float)):
+                    initial_magnetic_moments = [initial_magnetic_moments]
+                magnetization.moments = dict(
+                    zip(
+                        structure.get_kind_names(),
+                        initial_magnetic_moments,
+                    )
+                )
+            else:
+                magnetization.total = tot_magnetization
+
+        app.configure_step.confirm()
+
         # step 3 setup code and resources
-        s3: SubmitQeAppWorkChainStep = app.submit_step
-        s3.pw_code.num_cpus.value = 4
-        builder = s3._create_builder()
+        app.submit_model.code_widgets["pw"].num_cpus.value = 4
+        parameters = app.submit_model._get_submission_parameters()
+        builder = app.submit_model._create_builder(parameters)
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
         if run_bands:
             inputs["properties"].append("bands")
         if run_pdos:
             inputs["properties"].append("pdos")
-        wkchain = generate_workchain(QeAppWorkChain, inputs)
-        wkchain.setup()
+        workchain = generate_workchain(QeAppWorkChain, inputs)
+        workchain.setup()
+
         # mock output
         if relax_type != "none":
-            wkchain.out("structure", s1.confirmed_structure)
+            workchain.out("structure", app.struct_model.confirmed_structure)
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
             pdos = generate_pdos_workchain(structure, spin_type)
-            wkchain.out_many(
-                wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
+            workchain.out_many(
+                workchain.exposed_outputs(
+                    pdos.node,
+                    PdosWorkChain,
+                    namespace="pdos",
+                )
             )
         if run_bands:
             from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
             bands = generate_bands_workchain(structure)
-            wkchain.out_many(
-                wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
+            workchain.out_many(
+                workchain.exposed_outputs(
+                    bands.node,
+                    PwBandsWorkChain,
+                    namespace="bands",
+                )
             )
-        wkchain.update_outputs()
+        workchain.update_outputs()
+
         # set ui_parameters
-        qeapp_node = wkchain.node
-        qeapp_node.base.extras.set("ui_parameters", serialize(s3.ui_parameters))
-        return wkchain
+        qeapp_node = workchain.node
+        qeapp_node.base.extras.set("ui_parameters", serialize(parameters))
+
+        return workchain
 
     return _generate_qeapp_workchain
