@@ -23,12 +23,12 @@ class HubbardSettings(ipw.VBox):
             "input_structure",
         )
         self._model.advanced.hubbard.observe(
-            self._on_hubbard_check,
+            self._on_hubbard_activation,
             "is_active",
         )
         self._model.advanced.hubbard.observe(
-            self._on_eigenvalues_check,
-            "eigenvalues_label",
+            self._on_eigenvalues_definition,
+            "has_eigenvalues",
         )
 
         self.links = []
@@ -41,18 +41,18 @@ class HubbardSettings(ipw.VBox):
         if self.rendered:
             return
 
-        self.activate_hubbard = ipw.Checkbox(
+        self.activate_hubbard_checkbox = ipw.Checkbox(
             description="",
             indent=False,
             layout=ipw.Layout(max_width="10%"),
         )
         ipw.link(
             (self._model.advanced.hubbard, "is_active"),
-            (self.activate_hubbard, "value"),
+            (self.activate_hubbard_checkbox, "value"),
         )
         ipw.dlink(
             (self._model.advanced, "override"),
-            (self.activate_hubbard, "disabled"),
+            (self.activate_hubbard_checkbox, "disabled"),
             lambda override: not override,
         )
 
@@ -60,14 +60,14 @@ class HubbardSettings(ipw.VBox):
             value="For transition metals and lanthanoids, the starting eigenvalues can be defined (Magnetic calculation).",
             layout=ipw.Layout(width="auto"),
         )
-        self.eigenvalues_label = ipw.Checkbox(
+        self.define_eigenvalues_checkbox = ipw.Checkbox(
             description="Define eigenvalues",
             indent=False,
             layout=ipw.Layout(max_width="30%"),
         )
         ipw.link(
-            (self._model.advanced.hubbard, "eigenvalues_label"),
-            (self.eigenvalues_label, "value"),
+            (self._model.advanced.hubbard, "has_eigenvalues"),
+            (self.define_eigenvalues_checkbox, "value"),
         )
 
         self.hubbard_widget = ipw.VBox()
@@ -79,7 +79,7 @@ class HubbardSettings(ipw.VBox):
             ipw.HBox(
                 children=[
                     ipw.HTML("<b>Hubbard (DFT+U)</b>"),
-                    self.activate_hubbard,
+                    self.activate_hubbard_checkbox,
                 ]
             ),
             self.container,
@@ -107,12 +107,12 @@ class HubbardSettings(ipw.VBox):
         if isinstance(self._model.input_structure, HubbardStructureData):
             self._model.advanced.hubbard.set_parameters_from_hubbard_structure()
 
-    def _on_hubbard_check(self, _):
+    def _on_hubbard_activation(self, _):
         self._model.advanced.hubbard.update()
         self._build_hubbard_widget()
         self._toggle_hubbard_widget()
 
-    def _on_eigenvalues_check(self, _):
+    def _on_eigenvalues_definition(self, _):
         self._toggle_eigenvalues_widget()
 
     def _update(self, rebuild=False):
@@ -136,7 +136,7 @@ class HubbardSettings(ipw.VBox):
         if self._model.input_structure and self._model.advanced.hubbard.is_active:
             children.append(ipw.HTML("Define U value [eV] "))
 
-        for label in self._model.advanced.hubbard.input_labels:
+        for label in self._model.advanced.hubbard.orbital_labels:
             float_widget = ipw.BoundedFloatText(
                 description=label,
                 min=0,
@@ -162,7 +162,7 @@ class HubbardSettings(ipw.VBox):
             children.extend(
                 [
                     self.eigenvalues_help,
-                    self.eigenvalues_label,
+                    self.define_eigenvalues_checkbox,
                 ]
             )
 
@@ -182,7 +182,7 @@ class HubbardSettings(ipw.VBox):
 
         children = []
 
-        for ei, element in enumerate(self._model.advanced.hubbard.elements):
+        for ei, element in enumerate(self._model.advanced.hubbard.applicable_elements):
             es = element.symbol
             num_states = 5 if element.is_transition_metal else 7  # d or f states
 
@@ -255,7 +255,7 @@ class HubbardSettings(ipw.VBox):
                 *self.hubbard_widget.children,
                 self.eigenvalues_widget,
             ]
-            if self._model.advanced.hubbard.eigenvalues_label
+            if self._model.advanced.hubbard.has_eigenvalues
             else [*self.hubbard_widget.children][:-1]
         )
 

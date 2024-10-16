@@ -136,7 +136,7 @@ def test_advanced_hubbard_settings(generate_structure_data):
 
     # Activate Hubbard U widget
     hubbard_model.is_active = True
-    assert hubbard_model.input_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
+    assert hubbard_model.orbital_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
 
     # Render the settings widget to allow for widget testing
     hubbard = app.configure_step.advanced_settings.hubbard
@@ -164,9 +164,8 @@ def test_advanced_hubbard_settings(generate_structure_data):
     # assert hubbard_model.eigenvalues == []  # TODO should they be?
 
     # Check there is only eigenvalues for Co (Transition metal)
-    hubbard_model.eigenvalues_label = True
-
-    assert len(hubbard_model.elements) == 1
+    hubbard_model.has_eigenvalues = True
+    assert len(hubbard_model.applicable_elements) == 1
     assert len(hubbard_model.eigenvalues) == 1
 
     Co_eigenvalues = hubbard.eigenvalues_widget.children[0].children[1]  # type: ignore

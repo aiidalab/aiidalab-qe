@@ -161,7 +161,7 @@ class HubbardModel(tl.HasTraits):
     override = tl.Bool()
 
     is_active = tl.Bool(False)
-    eigenvalues_label = tl.Bool(False)  # TODO: rename (widget also)
+    has_eigenvalues = tl.Bool(False)
     parameters = tl.Dict(
         key_trait=tl.Unicode(),  # element symbol
         value_trait=tl.Float(),  # U value
@@ -172,8 +172,8 @@ class HubbardModel(tl.HasTraits):
         default_value=[],
     )
 
-    elements = []
-    input_labels = []
+    applicable_elements = []
+    orbital_labels = []
     _default_parameters = {}
     _default_eigenvalues = []
 
@@ -182,7 +182,7 @@ class HubbardModel(tl.HasTraits):
             self._update_defaults()
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
-            self.needs_eigenvalues_widget = len(self.elements) > 0
+            self.needs_eigenvalues_widget = len(self.applicable_elements) > 0
 
     def get_active_eigenvalues(self):
         return [
@@ -207,20 +207,20 @@ class HubbardModel(tl.HasTraits):
     def reset(self):
         with self.hold_trait_notifications():
             self.is_active = False
-            self.eigenvalues_label = False
+            self.has_eigenvalues = False
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
 
     def _update_defaults(self):
         if self.input_structure is None:
-            self.elements = []  # TODO: rename for clarity
-            self.input_labels = []  # TODO: rename for clarity
+            self.applicable_elements = []
+            self.orbital_labels = []
             self._default_parameters = {}
             self._default_eigenvalues = []
         elif self.is_active:
-            self.input_labels = self._get_labels()
-            self._default_parameters = {label: 0.0 for label in self.input_labels}
-            self.elements = [
+            self.orbital_labels = self._get_labels()
+            self._default_parameters = {label: 0.0 for label in self.orbital_labels}
+            self.applicable_elements = [
                 *filter(
                     lambda element: (
                         element.is_transition_metal
@@ -238,7 +238,7 @@ class HubbardModel(tl.HasTraits):
                     ]
                     for spin in range(2)  # spin up and down
                 ]
-                for element in self.elements  # transition metals and lanthanoids
+                for element in self.applicable_elements  # transition metals and lanthanoids
             ]
 
     def _get_default_parameters(self):
@@ -419,7 +419,8 @@ class PseudosModel(tl.HasTraits):
     def update_family(self):
         library, accuracy = self.library.split()
         functional = self.functional
-        # XXX (jusong.yu): a validator is needed to check the family string is consistent with the list of pseudo families defined in the setup_pseudos.py
+        # XXX (jusong.yu): a validator is needed to check the family string is
+        # consistent with the list of pseudo families defined in the setup_pseudos.py
         if library == "PseudoDojo":
             if self.spin_orbit == "soc":
                 pseudo_family_string = (
@@ -672,7 +673,7 @@ class AdvancedModel(SettingsModel):
 
         if self.hubbard.is_active:
             parameters["hubbard_parameters"] = {"hubbard_u": self.hubbard.parameters}
-            if self.hubbard.eigenvalues_label:
+            if self.hubbard.has_eigenvalues:
                 parameters["pw"]["parameters"]["SYSTEM"].update(
                     {"starting_ns_eigenvalue": self.hubbard.get_active_eigenvalues()}
                 )
@@ -799,7 +800,7 @@ class AdvancedModel(SettingsModel):
                 .get("starting_ns_eigenvalue")
             )
             if starting_ns_eigenvalue is not None:
-                self.hubbard.eigenvalues_label = True
+                self.hubbard.has_eigenvalues = True
                 self.hubbard.eigenvalues = starting_ns_eigenvalue
 
     def reset(self):
@@ -922,7 +923,6 @@ class ConfigurationModel(SettingsModel):
         run_bands = False
         run_pdos = False
         for identifier, model in self._models.items():
-            # TODO consider handling this differently
             if identifier in self._default_models:
                 continue
             if model.include:
