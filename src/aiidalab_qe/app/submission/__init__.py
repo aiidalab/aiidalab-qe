@@ -413,12 +413,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         properties = [p for p in workchain_data["properties"] if p != "relax"]
         #  relax_info
         relax_type = workchain_data.get("relax_type", "none")
-        relax_info = "relax: none"
+        relax_info = "unrelaxed"
         if relax_type != "none":
             relax_info = (
-                relax_info.replace("none", "atoms+cell")
-                if "cell" in relax_type
-                else relax_info.replace("none", "atoms only")
+                "relax: atoms+cell" if "cell" in relax_type else "relax: atoms only"
             )
         # protocol_info
         protocol_and_magnetic_info = f"{workchain_data['protocol']} protocol"
