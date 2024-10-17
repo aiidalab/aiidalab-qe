@@ -39,15 +39,22 @@ def test_result(generate_qeapp_workchain):
 def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
     structure = generate_structure_data("silicon", pbc=(True, False, False))
     wkchain = generate_qeapp_workchain(structure=structure)
-    assert "bands_kpoints_distance" not in wkchain.inputs.bands
-    assert "bands_kpoints" in wkchain.inputs.bands
-    assert len(wkchain.inputs.bands.bands_kpoints.labels) == 2
+    assert "bands_kpoints_distance" not in wkchain.inputs.bands.bands
+    assert "bands_kpoints" in wkchain.inputs.bands.bands
+    assert len(wkchain.inputs.bands.bands.bands_kpoints.labels) == 2
+    assert wkchain.inputs.bands.bands.bands_kpoints.labels == [(0, "Γ"), (9, "X")]
 
 
 @pytest.mark.usefixtures("sssp")
 def test_structure_2d(generate_qeapp_workchain, generate_structure_data):
-    structure = generate_structure_data("silicon", pbc=(True, True, False))
+    structure = generate_structure_data("MoS2", pbc=(True, True, False))
     wkchain = generate_qeapp_workchain(structure=structure)
-    assert "bands_kpoints_distance" not in wkchain.inputs.bands
-    assert "bands_kpoints" in wkchain.inputs.bands
-    assert len(wkchain.inputs.bands.bands_kpoints.labels) == 4
+    assert "bands_kpoints_distance" not in wkchain.inputs.bands.bands
+    assert "bands_kpoints" in wkchain.inputs.bands.bands
+    assert len(wkchain.inputs.bands.bands.bands_kpoints.labels) == 4
+    assert wkchain.inputs.bands.bands.bands_kpoints.labels == [
+        (0, "Γ"),
+        (11, "M"),
+        (18, "K"),
+        (31, "Γ"),
+    ]

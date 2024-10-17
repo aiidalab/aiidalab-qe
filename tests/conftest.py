@@ -90,6 +90,29 @@ def generate_structure_data():
 
             for site in sites:
                 structure.append_atom(position=site[2], symbols=site[0], name=site[1])
+
+        elif name == "MoS2":
+            cell = [[3.1922, 0, 0], [-1.5961, 2.7646, 0], [0, 0, 13.3783]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(-0.0, 1.84, 10.03), symbols="Mo")
+            structure.append_atom(position=(1.6, 0.92, 8.47), symbols="S")
+            structure.append_atom(position=(1.6, 0.92, 11.6), symbols="S")
+
+        elif name == "H2O":
+            cell = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
+            structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
+            structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
+
+        elif name == "H2O-larger":
+            # just a larger supercell. To test the warning messages
+            cell = [[20.0, 0.0, 0.0], [0.0, 20.0, 0.0], [0.0, 0.0, 20.0]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
+            structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
+            structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
+
         structure.pbc = pbc
 
         return structure
@@ -289,6 +312,16 @@ def projwfc_code(aiida_local_code_factory):
     )
 
 
+@pytest.fixture
+def projwfc_bands_code(aiida_local_code_factory):
+    """Return a `Code` configured for the projwfc.x executable."""
+    return aiida_local_code_factory(
+        label="projwfc_bands",
+        executable="bash",
+        entry_point="quantumespresso.projwfc",
+    )
+
+
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
@@ -316,7 +349,7 @@ def smearing_settings_generator():
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code):
+def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
     from aiidalab_qe.app.main import App
 
     # Since we use `qe_auto_setup=False`, which will skip the pseudo library installation
@@ -329,10 +362,12 @@ def app(pw_code, dos_code, projwfc_code):
     app.submit_step.pw_code.code_selection.refresh()
     app.submit_step.codes["dos"].code_selection.refresh()
     app.submit_step.codes["projwfc"].code_selection.refresh()
+    app.submit_step.codes["projwfc_bands"].code_selection.refresh()
 
     app.submit_step.pw_code.value = pw_code.uuid
     app.submit_step.codes["dos"].value = dos_code.uuid
     app.submit_step.codes["projwfc"].value = projwfc_code.uuid
+    app.submit_step.codes["projwfc_bands"].value = projwfc_bands_code.uuid
 
     yield app
 
@@ -357,6 +392,7 @@ def submit_app_generator(
         tot_charge=0.0,
         vdw_corr="none",
         initial_magnetic_moments=0.0,
+        electron_maxstep=80,
     ):
         configure_step = app.configure_step
         # Settings
@@ -379,6 +415,7 @@ def submit_app_generator(
         configure_step.advanced_settings.magnetization._set_magnetization_values(
             initial_magnetic_moments
         )
+        configure_step.advanced_settings.electron_maxstep.value = electron_maxstep
         # mimic the behavior of the smearing widget set up
         configure_step.advanced_settings.smearing.smearing.value = smearing
         configure_step.advanced_settings.smearing.degauss.value = degauss
@@ -556,17 +593,17 @@ def generate_bands_workchain(
     """Generate an instance of a the WorkChain."""
 
     def _generate_bands_workchain(structure):
-        from copy import deepcopy
-
         from aiida import engine
         from aiida.orm import Dict
-        from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+        from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 
         pseudo_family = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
         inputs = {
-            "code": fixture_code("quantumespresso.pw"),
+            "pw_code": fixture_code("quantumespresso.pw"),
+            "projwfc_code": fixture_code("quantumespresso.projwfc"),
             "structure": structure,
+            "simulation_mode": "normal",
             "overrides": {
                 "scf": {
                     "pseudo_family": pseudo_family,
@@ -584,20 +621,31 @@ def generate_bands_workchain(
                 },
             },
         }
-        builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)
+        builder = BandsWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
-        inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
-        wkchain = generate_workchain(PwBandsWorkChain, inputs)
+        wkchain = generate_workchain(BandsWorkChain, inputs)
         wkchain.setup()
         # run bands and return the process
-        output_parameters = Dict(dict={"fermi_energy": 2.0})
-        output_parameters.store()
-        wkchain.out("scf_parameters", output_parameters)
-        wkchain.out("band_parameters", output_parameters)
+        fermi_dict = Dict(dict={"fermi_energy": 2.0})
+        fermi_dict.store()
+        output_parameters = {
+            "bands": {
+                "scf_parameters": fermi_dict,
+                "band_parameters": fermi_dict,
+            }
+        }
+
+        wkchain.out(
+            "bands.scf_parameters", output_parameters["bands"]["scf_parameters"]
+        )
+        wkchain.out(
+            "bands.band_parameters", output_parameters["bands"]["band_parameters"]
+        )
+
         #
         band_structure = generate_bands_data()
         band_structure.store()
-        wkchain.out("band_structure", band_structure)
+        wkchain.out("bands.band_structure", band_structure)
         wkchain.update_outputs()
         #
         bands_node = wkchain.node
@@ -614,6 +662,7 @@ def generate_qeapp_workchain(
     generate_workchain,
     generate_pdos_workchain,
     generate_bands_workchain,
+    fixture_code,
 ):
     """Generate an instance of the WorkChain."""
 
@@ -630,6 +679,7 @@ def generate_qeapp_workchain(
     ):
         from copy import deepcopy
 
+        from aiida.orm import Dict
         from aiida.orm.utils.serialize import serialize
         from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
         from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
@@ -675,13 +725,37 @@ def generate_qeapp_workchain(
         # step 3 setup code and resources
         s3: SubmitQeAppWorkChainStep = app.submit_step
         s3.pw_code.num_cpus.value = 4
+
         builder = s3._create_builder()
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
+
+        # Setting up inputs for bands_projwfc
+        inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
+            inputs["bands"]["bands"]["scf"]["pw"]
+        )
+        inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
+            inputs["bands"]["bands"]["bands"]["pw"]
+        )
+        inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
+            "bands"
+        ]["bands"]["pw"]["code"]
+        inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
+            "bands"
+        ]["scf"]["pw"]["code"]
+
+        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = fixture_code(
+            "quantumespresso.projwfc"
+        )
+        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
+            {"PROJWFC": {"DeltaE": 0.01}}
+        ).store()
+
         if run_bands:
             inputs["properties"].append("bands")
         if run_pdos:
             inputs["properties"].append("pdos")
+
         wkchain = generate_workchain(QeAppWorkChain, inputs)
         wkchain.setup()
         # mock output
@@ -695,11 +769,11 @@ def generate_qeapp_workchain(
                 wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
             )
         if run_bands:
-            from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+            from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 
             bands = generate_bands_workchain(structure)
             wkchain.out_many(
-                wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
+                wkchain.exposed_outputs(bands.node, BandsWorkChain, namespace="bands")
             )
         wkchain.update_outputs()
         # set ui_parameters

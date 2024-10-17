@@ -49,7 +49,7 @@ The dictionary has the following structure:
             "pseudo_family": "SSSP/1.3/PBEsol/efficiency",
             "kpoints_distance": 0.5,
         },
-        "bands": {"kpath_2d": "hexagonal"},
+        "bands": {},
         "pdos": {...},
         "plugin_1": {...},
         "plugin_2": {...},

@@ -26,6 +26,35 @@ def test_create_builder_default(
 
 
 @pytest.mark.usefixtures("sssp")
+def test_create_process_label(
+    submit_app_generator,
+):
+    """ "Test the creation of the correct process label"""
+
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+    # suppose we change the label of the structure:
+    submit_step.input_structure.label = "Si2, unit cell"
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2, unit cell [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+    # suppose by mistake we provide an empty label, we then fallback to use the formula:
+    submit_step.input_structure.label = ""
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+
+
+@pytest.mark.usefixtures("sssp")
 def test_create_builder_insulator(
     submit_app_generator,
 ):
@@ -44,8 +73,11 @@ def test_create_builder_insulator(
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
-    assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"] == "fixed"
-    assert "smearing" not in got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
+    assert (
+        got["bands"]["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"]
+        == "fixed"
+    )
+    assert "smearing" not in got["bands"]["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
 
 
 @pytest.mark.usefixtures("sssp")
@@ -58,6 +90,9 @@ def test_create_builder_advanced_settings(
     -collinear
     -tot_charge
     -initial_magnetic_moments
+    -vdw_corr
+    -electron_maxstep
+    -properties: bands, pdos
     """
 
     app = submit_app_generator(
@@ -66,6 +101,7 @@ def test_create_builder_advanced_settings(
         tot_charge=1.0,
         vdw_corr="dft-d3bj",
         initial_magnetic_moments=0.1,
+        electron_maxstep=100,
         properties=["bands", "pdos"],
     )
     submit_step = app.submit_step
@@ -78,13 +114,14 @@ def test_create_builder_advanced_settings(
     # test tot_charge is updated in the three steps
     for parameters in [
         got["relax"]["base"],
-        got["bands"]["scf"],
+        got["bands"]["bands"]["scf"],
         got["pdos"]["scf"],
         got["pdos"]["nscf"],
     ]:
         assert parameters["pw"]["parameters"]["SYSTEM"]["tot_charge"] == 1.0
         assert parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] == "dft-d3"
         assert parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] == 4
+        assert parameters["pw"]["parameters"]["ELECTRONS"]["electron_maxstep"] == 100
 
     # test initial_magnetic_moments set 'starting_magnetization' in pw.in
     assert (
@@ -92,6 +129,62 @@ def test_create_builder_advanced_settings(
             "Si"
         ]
         == 0.025
+    )
+
+
+@pytest.mark.usefixtures("sssp")
+def test_warning_messages(
+    generate_structure_data,
+    submit_app_generator,
+):
+    """ "Test the creation of the workchain builder.
+
+    metal, non-magnetic
+    """
+
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
+    submit_step.codes["pw"].num_cpus.value = 1
+    submit_step._check_resources()
+    # no warning:
+    assert submit_step._submission_warning_messages.value == ""
+
+    # now we increase the resources, so we should have the Warning-3
+    submit_step.codes["pw"].num_cpus.value = 8
+    submit_step._check_resources()
+    message = (
+        "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
+        "the number of CPUs is larger than one. Please be sure that your local "
+        "environment has enough free CPUs for the calculation. Consider the following: "
+        "<ul>"
+        "<li>Consider to reduce the number of CPUs to avoid the overloading of the local machine "
+        "<li>Select a code that runs on a larger machine </li>"
+        "</ul>"
+    )
+    assert (
+        submit_step._submission_warning_messages.value
+        == submit_step._ALERT_MESSAGE.format(alert_class="warning", message=message)
+    )
+
+    # now we use a large structure, so we should have the Warning-1 (and 2 if not on localhost)
+    structure = generate_structure_data("H2O-larger")
+    submit_step.input_structure = structure
+    num_sites, volume = len(structure.sites), structure.get_cell_volume()
+    submit_step.codes["pw"].num_cpus.value = 1
+    submit_step._check_resources()
+    message = (
+        f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
+        f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
+        "to run in a reasonable amount of time. Consider the following: "
+        "<ul>"
+        "<li>Select a code that runs on a larger machine</li>"
+        "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
+        "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
+        "</ul>"
+    )
+    assert (
+        submit_step._submission_warning_messages.value
+        == submit_step._ALERT_MESSAGE.format(alert_class="warning", message=message)
     )
 
 
