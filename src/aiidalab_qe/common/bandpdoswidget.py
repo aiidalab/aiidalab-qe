@@ -479,15 +479,15 @@ class BandPdosPlotly:
         # PDOS plot type
         if self.plot_type == "pdos":
             fermi_energy = self.fermi_energy.get(
-                "fermi_energy"
-            ) or self.fermi_energy.get("fermi_energy_up")
+                "fermi_energy", self.fermi_energy.get("fermi_energy_up")
+            )
             handle_spin_polarization(fermi_energy, fig.update_layout, "layout")
 
         # Combined plot type
         if self.plot_type == "combined":
             fermi_energy = self.fermi_energy.get(
-                "fermi_energy"
-            ) or self.fermi_energy.get("fermi_energy_up")
+                "fermi_energy", self.fermi_energy.get("fermi_energy_up")
+            )
             handle_spin_polarization(fermi_energy, fig.update_xaxes, "xaxes")
 
 
