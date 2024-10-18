@@ -29,6 +29,9 @@ class DownloadDataWidget(ipw.VBox):
         )
         try:
             # check that we can import the ProcessDumper (not implemented in old AiiDA versions)
+            # pre-commit: allow any unused imports in the next line
+            from aiida.tools.dumping.processes import ProcessDumper  # noqa: F401
+
             self.download_raw_button.on_click(self._download_data_thread)
             dumper_is_available = True
         except Exception:
