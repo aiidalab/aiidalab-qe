@@ -8,6 +8,7 @@ import ipywidgets as ipw
 
 class DownloadDataWidget(ipw.VBox):
     def __init__(self, workchain_node):
+        #
         self.download_archive_button = ipw.Button(
             description="Download AiiDA archive.aiida data",
             icon="download",
@@ -26,7 +27,14 @@ class DownloadDataWidget(ipw.VBox):
             tooltip="Download the raw data of the simulation, organized in intuitive directory paths.",
             layout=ipw.Layout(width="auto"),
         )
-        self.download_raw_button.on_click(self._download_data_thread)
+        try:
+            # check that we can import the ProcessDumper (not implemented in old AiiDA versions)
+            self.download_raw_button.on_click(self._download_data_thread)
+            dumper_is_available = True
+        except Exception:
+            dumper_is_available = False
+
+        self.download_raw_button.disabled = not dumper_is_available
 
         self.node = workchain_node
 
@@ -38,14 +46,21 @@ class DownloadDataWidget(ipw.VBox):
                 ),
                 ipw.HBox(
                     children=[self.download_raw_button],
-                    layout=ipw.Layout(width="500px"),  # Set the desired width here
+                    layout=ipw.Layout(width="700px"),  # Set the desired width here
                 ),
                 ipw.HBox(
                     children=[self.download_archive_button],
-                    layout=ipw.Layout(width="500px"),  # Set the desired width here
+                    layout=ipw.Layout(width="700px"),  # Set the desired width here
                 ),
             ],
         )
+
+        if not dumper_is_available:
+            self.children[1].children += (
+                ipw.HTML(
+                    "<p style='color:red;'>The raw data download is not available because the AiiDA version is too old.</p>"
+                ),
+            )
 
     def _download_data_thread(self, button_instance):
         thread = Thread(target=lambda: self._download_data(button_instance))
