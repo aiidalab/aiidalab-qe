@@ -140,6 +140,8 @@ def test_warning_messages(
     """Test the creation of the warning messages.
 
     For now, we test that the suggestions are indeed there.
+    We should check the whole message, but this is for now not easy to do: the message is built
+    on the fly with variables which are not accessible in this namespace.
     """
     import os
 
