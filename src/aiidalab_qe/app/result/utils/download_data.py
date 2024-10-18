@@ -33,9 +33,8 @@ class DownloadDataWidget(ipw.VBox):
         super().__init__(
             children=[
                 ipw.HTML(
-                    "<b>Download the data</b>"
-                    "<br>It is possible to download raw data (i.e. input and output files) and/or "
-                    "<br>the AiiDA archive (ready to be shared or imported into another AiiDA profile)"
+                    "<h3>Download the data</h3>"
+                    "It is possible to download raw data (i.e. input and output files) and/or the AiiDA archive (ready to be shared or imported into another AiiDA profile)"
                 ),
                 ipw.HBox(
                     children=[self.download_raw_button],
@@ -67,7 +66,7 @@ class DownloadDataWidget(ipw.VBox):
 
         if "archive" in button_instance.description:
             what = "archive"
-            filename = f"export_{self.node.pk}.aiida"
+            filename = f"export_qeapp_calculation_pk_{self.node.pk}.aiida"
             box = self.children[2]
         else:
             what = "raw"
