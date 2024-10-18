@@ -200,7 +200,7 @@ class WorkChainOutputs(ipw.VBox):
         super().__init__(
             children=[
                 ipw.HBox(
-                    children=[title, self._download_button_widget],
+                    children=[self._download_button_widget, title],
                     layout=ipw.Layout(justify_content="space-between", margin="10px"),
                 ),
                 output,

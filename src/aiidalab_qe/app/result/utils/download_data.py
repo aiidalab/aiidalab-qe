@@ -13,7 +13,7 @@ class DownloadDataWidget(ipw.VBox):
             icon="download",
             button_style="primary",
             disabled=False,
-            tooltip="Download AiiDA archive of the simulation, ready to be shared or imported in another AiiDA profile",
+            tooltip="Download the AiiDA archive of the simulation, ready to be shared or imported into another AiiDA profile",
             layout=ipw.Layout(width="auto"),
         )
         self.download_archive_button.on_click(self._download_data_thread)
@@ -23,7 +23,7 @@ class DownloadDataWidget(ipw.VBox):
             icon="download",
             button_style="primary",
             disabled=False,
-            tooltip="Download raw data of the simulation, organized in intuitive directory paths.",
+            tooltip="Download the raw data of the simulation, organized in intuitive directory paths.",
             layout=ipw.Layout(width="auto"),
         )
         self.download_raw_button.on_click(self._download_data_thread)
@@ -32,12 +32,17 @@ class DownloadDataWidget(ipw.VBox):
 
         super().__init__(
             children=[
-                ipw.HBox(
-                    children=[self.download_archive_button],
-                    layout=ipw.Layout(width="500px"),  # Set the desired width here
+                ipw.HTML(
+                    "<b>Download the data</b>"
+                    "<br>It is possible to download raw data (i.e. input and output files) and/or "
+                    "<br>the AiiDA archive (ready to be shared or imported into another AiiDA profile)"
                 ),
                 ipw.HBox(
                     children=[self.download_raw_button],
+                    layout=ipw.Layout(width="500px"),  # Set the desired width here
+                ),
+                ipw.HBox(
+                    children=[self.download_archive_button],
                     layout=ipw.Layout(width="500px"),  # Set the desired width here
                 ),
             ],
@@ -63,7 +68,7 @@ class DownloadDataWidget(ipw.VBox):
         if "archive" in button_instance.description:
             what = "archive"
             filename = f"export_{self.node.pk}.aiida"
-            box = self.children[0]
+            box = self.children[2]
         else:
             what = "raw"
             filename = f"export_{self.node.pk}_raw.zip"
