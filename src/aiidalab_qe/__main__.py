@@ -16,19 +16,20 @@ def cli():
 
 @cli.command()
 @click.option("-f", "--force", is_flag=True)
+@click.option("--computer")
 @click.option("-p", "--profile", default=_DEFAULT_PROFILE)
-def install_qe(force, profile):
+def install_qe(force, profile, computer):
     from aiida import load_profile
-    from aiidalab_qe.setup.codes import codes_are_setup, install
+    from aiidalab_qe.setup.codes import codes_are_setup, install_and_setup
 
     load_profile(profile)
     try:
-        for msg in install(force=force):
+        for msg in install_and_setup(computer=computer, force=force):
             click.echo(msg)
-        assert codes_are_setup()
+        assert codes_are_setup(computer=computer)
         click.secho("Codes are setup!", fg="green")
     except Exception as error:
-        raise click.ClickException(f"Failed to set up QE failed: {error}") from error
+        raise click.ClickException(f"Failed to set up QE: {error}") from error
 
 
 @cli.command()
