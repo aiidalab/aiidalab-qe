@@ -7,7 +7,7 @@ from aiidalab_qe.common.panel import SettingsPanel
 
 
 class Setting(SettingsPanel):
-    title = "XAS Settings"
+    title = "XAS"
     identifier = "xas"
 
     # TODO: The element selection should lock the "Confirm" button if no elements have been selected for XAS calculation.

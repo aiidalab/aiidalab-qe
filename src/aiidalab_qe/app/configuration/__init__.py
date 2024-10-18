@@ -167,14 +167,16 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _update_tabs(self):
         children = []
+        titles = []
         for identifier, model in self._model.get_models():
             if model.include:
                 setting = self.settings[identifier]
+                titles.append(setting.title)
                 children.append(setting)
         if hasattr(self, "tab"):
             self.tab.children = children
-            for i, settings in enumerate(self.settings.values()):
-                self.tab.set_title(i, settings.title)
+            for i, title in enumerate(titles):
+                self.tab.set_title(i, title)
             self.tab.selected_index = 0
 
     def _update_state(self, _=None):

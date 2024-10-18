@@ -9,7 +9,7 @@ from .model import BASE_URL
 
 
 class Setting(SettingsPanel):
-    title = "XPS Settings"
+    title = "XPS"
     identifier = "xps"
 
     def __init__(self, config_model: ConfigurationModel, **kwargs):
