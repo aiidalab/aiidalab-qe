@@ -302,7 +302,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # Warning-3: on localhost, more than half of the available cpus
             self._show_alert_message(
                 "<span>&#9888;</span> Warning: the selected pw.x code will run locally, but "
-                f"the number of requested CPUs ({num_cpus}) is larger than the 80\% of the available resources ({localhost_cpus}). "
+                f"the number of requested CPUs ({num_cpus}) is larger than the 80% of the available resources ({localhost_cpus}). "
                 "Please be sure that your local "
                 "environment has enough free CPUs for the calculation. Consider the following: "
                 "<ul>"
