@@ -8,7 +8,6 @@ from __future__ import annotations
 import os
 
 import ipywidgets as ipw
-import numpy as np
 import traitlets as tl
 
 from aiida import orm
@@ -249,7 +248,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
-        localhost_cpus = len(os.sched_getaffinity(0))  # or os.cpu_count()
+        try:
+            localhost_cpus = len(os.sched_getaffinity(0))
+        except Exception:
+            localhost_cpus = os.cpu_count()  # however, not so realiable in containers.
 
         # List of possible suggestions for warnings:
         suggestions = {
@@ -296,11 +298,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     + "</ul>",
                     alert_class="warning",
                 )
-        elif on_localhost and num_cpus > np.ceil(localhost_cpus / 2):
+        elif on_localhost and num_cpus / localhost_cpus > 0.8:
             # Warning-3: on localhost, more than half of the available cpus
             self._show_alert_message(
                 "<span>&#9888;</span> Warning: the selected pw.x code will run locally, but "
-                f"the number of requested CPUs ({num_cpus}) is larger than half of the available resources ({localhost_cpus}). "
+                f"the number of requested CPUs ({num_cpus}) is larger than the 80\% of the available resources ({localhost_cpus}). "
                 "Please be sure that your local "
                 "environment has enough free CPUs for the calculation. Consider the following: "
                 "<ul>"
