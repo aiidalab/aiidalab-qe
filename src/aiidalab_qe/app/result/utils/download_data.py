@@ -33,7 +33,7 @@ class DownloadDataWidget(ipw.VBox):
         super().__init__(
             children=[
                 ipw.HTML(
-                    "<b>Download the data</b>"
+                    "<h3>Download the data</h3>"
                     "<br>It is possible to download raw data (i.e. input and output files) and/or "
                     "<br>the AiiDA archive (ready to be shared or imported into another AiiDA profile)"
                 ),
