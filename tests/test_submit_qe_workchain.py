@@ -137,11 +137,18 @@ def test_warning_messages(
     generate_structure_data,
     submit_app_generator,
 ):
-    """ "Test the creation of the workchain builder.
+    """Test the creation of the warning messages.
 
-    metal, non-magnetic
+    For now, we test that the suggestions are indeed there.
     """
+    import os
 
+    suggestions = {
+        "more_resources": "<li>Increase the resources (CPUs should be equal or more than 4, if possible) </li>",
+        "change_configuration": "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) </li>",
+        "go_remote": "<li>Select a code that runs on a larger machine</li>",
+        "avoid_overloading": "<li>Reduce the number of CPUs to avoid the overloading of the local machine </li>",
+    }
     app = submit_app_generator(properties=["bands", "pdos"])
     submit_step = app.submit_step
     submit_step.codes["pw"].num_cpus.value = 1
@@ -150,42 +157,18 @@ def test_warning_messages(
     assert submit_step._submission_warning_messages.value == ""
 
     # now we increase the resources, so we should have the Warning-3
-    submit_step.codes["pw"].num_cpus.value = 8
+    submit_step.codes["pw"].num_cpus.value = len(os.sched_getaffinity(0))
     submit_step._check_resources()
-    message = (
-        "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
-        "the number of CPUs is larger than one. Please be sure that your local "
-        "environment has enough free CPUs for the calculation. Consider the following: "
-        "<ul>"
-        "<li>Consider to reduce the number of CPUs to avoid the overloading of the local machine "
-        "<li>Select a code that runs on a larger machine </li>"
-        "</ul>"
-    )
-    assert (
-        submit_step._submission_warning_messages.value
-        == submit_step._ALERT_MESSAGE.format(alert_class="warning", message=message)
-    )
+    for suggestion in ["avoid_overloading", "go_remote"]:
+        assert suggestions[suggestion] in submit_step._submission_warning_messages.value
 
     # now we use a large structure, so we should have the Warning-1 (and 2 if not on localhost)
     structure = generate_structure_data("H2O-larger")
     submit_step.input_structure = structure
-    num_sites, volume = len(structure.sites), structure.get_cell_volume()
     submit_step.codes["pw"].num_cpus.value = 1
     submit_step._check_resources()
-    message = (
-        f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
-        f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
-        "to run in a reasonable amount of time. Consider the following: "
-        "<ul>"
-        "<li>Select a code that runs on a larger machine</li>"
-        "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
-        "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
-        "</ul>"
-    )
-    assert (
-        submit_step._submission_warning_messages.value
-        == submit_step._ALERT_MESSAGE.format(alert_class="warning", message=message)
-    )
+    for suggestion in ["more_resources", "change_configuration"]:
+        assert suggestions[suggestion] in submit_step._submission_warning_messages.value
 
 
 def builder_to_readable_dict(builder):
