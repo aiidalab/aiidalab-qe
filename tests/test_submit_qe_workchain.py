@@ -169,6 +169,12 @@ def test_warning_messages(
     submit_step.input_structure = structure
     submit_step.codes["pw"].num_cpus.value = 1
     submit_step._check_resources()
+    num_sites = len(structure.sites)
+    volume = structure.get_cell_volume()
+    estimated_CPUs = submit_step._estimate_min_cpus(num_sites, volume)
+    suggestions["more_resources"] = (
+        f"<li>Increase the resources (CPUs should be equal or more than {min(100,estimated_CPUs)}, if possible) </li>"
+    )
     for suggestion in ["more_resources", "change_configuration"]:
         assert suggestions[suggestion] in submit_step._submission_warning_messages.value
 
