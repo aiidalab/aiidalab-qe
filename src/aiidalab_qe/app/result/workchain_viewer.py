@@ -20,6 +20,7 @@ from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 
 from .summary_viewer import SummaryView
+from .utils.download_data import DownloadDataWidget
 
 
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
@@ -175,7 +176,7 @@ class WorkChainOutputs(ipw.VBox):
             icon="download",
         )
         self._download_archive_button.on_click(self._download_archive)
-        self._download_button_container = ipw.Box([self._download_archive_button])
+        self._download_button_widget = DownloadDataWidget(workchain_node=self.node)
 
         if node.exit_status != 0:
             title = ipw.HTML(
@@ -198,8 +199,8 @@ class WorkChainOutputs(ipw.VBox):
 
         super().__init__(
             children=[
-                ipw.HBox(
-                    children=[title, self._download_button_container],
+                ipw.VBox(
+                    children=[self._download_button_widget, title],
                     layout=ipw.Layout(justify_content="space-between", margin="10px"),
                 ),
                 output,
