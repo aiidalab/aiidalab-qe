@@ -266,7 +266,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # List of possible suggestions for warnings:
         suggestions = {
-            "more_resources": f"<li>Increase the resources (CPUs should be equal or more than {min(100,estimated_CPUs)}, if possible) </li>",
+            "more_resources": f"<li>Increase the resources (total number of CPUs should be equal or more than {min(100,estimated_CPUs)}, if possible) </li>",
             "change_configuration": "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) </li>",
             "go_remote": "<li>Select a code that runs on a larger machine</li>",
             "avoid_overloading": "<li>Reduce the number of CPUs to avoid the overloading of the local machine </li>",
