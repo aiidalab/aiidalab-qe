@@ -5,6 +5,8 @@ Authors: AiiDAlab team
 
 from __future__ import annotations
 
+import os
+
 import ipywidgets as ipw
 import traitlets as tl
 
@@ -238,7 +240,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _check_resources(self, _change=None):
         """Check whether the currently selected resources will be sufficient and warn if not."""
         if not self.pw_code.value or not self.input_structure:
-            return  # No code selected, nothing to do.
+            return  # No code selected or no structure, so nothing to do.
 
         num_cpus = self.pw_code.num_cpus.value * self.pw_code.num_nodes.value
         on_localhost = (
@@ -246,62 +248,83 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
+        try:
+            localhost_cpus = len(os.sched_getaffinity(0))
+        except (
+            Exception
+        ):  # fallback, in some OS os.sched_getaffinity(0) is not supported
+            localhost_cpus = os.cpu_count()  # however, not so realiable in containers.
 
-        if (
-            self.input_structure
-            and not on_localhost
-            and (
-                num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
-                or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
+        large_system = (
+            num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+            or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
+        )
+
+        estimated_CPUs = self._estimate_min_cpus(
+            num_sites, volume
+        )  # estimated number of CPUs for a run less than 12 hours.
+
+        # List of possible suggestions for warnings:
+        suggestions = {
+            "more_resources": f"<li>Increase the resources (total number of CPUs should be equal or more than {min(100,estimated_CPUs)}, if possible) </li>",
+            "change_configuration": "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) </li>",
+            "go_remote": "<li>Select a code that runs on a larger machine</li>",
+            "avoid_overloading": "<li>Reduce the number of CPUs to avoid the overloading of the local machine </li>",
+        }
+
+        alert_message = ""
+        if large_system and estimated_CPUs > num_cpus:
+            # This part is in common between Warnings 1 (2): (not) on localhost, big system and few cpus
+            warnings_1_2 = (
+                f"<span>&#9888;</span> Warning: The selected structure is large, with {num_sites} atoms "
+                f"and a volume of {int(volume)} Å<sup>3</sup>, "
+                "making it computationally demanding "
+                "to run at the localhost. Consider the following: "
+                if on_localhost
+                else "to run in a reasonable amount of time. Consider the following: "
             )
-            and num_cpus < 4
-        ):
-            # Warning-1
-            self._show_alert_message(
-                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
-                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
-                "to run at the localhost.  Consider the following: "
-                "<ul>"
-                "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
-                "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
-                "</ul>",
-                alert_class="warning",
-            )
-        elif (
-            self.input_structure
-            and on_localhost
-            and (
-                num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
-                or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
-            )
-            and num_cpus < 4
-        ):
-            # Warning-2
-            self._show_alert_message(
-                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
-                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), making it computationally demanding "
-                "to run in a reasonable amount of time. Consider the following: "
-                "<ul>"
-                "<li>Select a code that runs on a larger machine</li>"
-                "<li>Increase the resources (CPUs should be equal or more than 4, if possible)</li>"
-                "<li>Consider to review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) "
-                "</ul>",
-                alert_class="warning",
-            )
-        elif on_localhost and num_cpus > 1:
-            # Warning-3
-            self._show_alert_message(
-                "<span>&#9888;</span> Warning: the selected pw.x code will run on the local host, but "
-                "the number of CPUs is larger than one. Please be sure that your local "
+
+            # Warning 1: on localhost, big system and few cpus
+            if on_localhost:
+                alert_message += (
+                    warnings_1_2
+                    + "<ul>"
+                    + suggestions["more_resources"]
+                    + suggestions["change_configuration"]
+                    + "</ul>"
+                )
+            # Warning 2: not on localhost, big system and few cpus
+            else:
+                alert_message += (
+                    warnings_1_2
+                    + "<ul>"
+                    + suggestions["go_remote"]
+                    + suggestions["more_resources"]
+                    + suggestions["change_configuration"]
+                    + "</ul>"
+                )
+        if on_localhost and num_cpus / localhost_cpus > 0.8:
+            # Warning-3: on localhost, more than half of the available cpus
+            alert_message += (
+                "<span>&#9888;</span> Warning: the selected pw.x code will run locally, but "
+                f"the number of requested CPUs ({num_cpus}) is larger than the 80% of the available resources ({localhost_cpus}). "
+                "Please be sure that your local "
                 "environment has enough free CPUs for the calculation. Consider the following: "
                 "<ul>"
-                "<li>Consider to reduce the number of CPUs to avoid the overloading of the local machine "
-                "<li>Select a code that runs on a larger machine </li>"
-                "</ul>",
+                + suggestions["avoid_overloading"]
+                + suggestions["go_remote"]
+                + "</ul>"
+            )
+
+        if not (on_localhost and num_cpus / localhost_cpus) > 0.8 and not (
+            large_system and estimated_CPUs > num_cpus
+        ):
+            self._submission_warning_messages.value = ""
+        else:
+            self._show_alert_message(
+                message=alert_message,
                 alert_class="warning",
             )
-        else:
-            self._submission_warning_messages.value = ""
 
     @tl.observe("state")
     def _observe_state(self, change):
@@ -461,6 +484,30 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )["max_wallclock_seconds"]
         builder.relax.base.pw.parallelization = orm.Dict(
             dict=codes["pw"]["parallelization"]
+        )
+
+    def _estimate_min_cpus(
+        self, n, v, n0=9, v0=117, num_cpus0=4, t0=129.6, tmax=12 * 60 * 60, scf_cycles=5
+    ):
+        """
+        Estimate the minimum number of CPUs required to complete a task within a given time limit.
+        Parameters:
+        n (int): The number of atoms in the system.
+        v (float): The volume of the system.
+        n0 (int, optional): Reference number of atoms. Default is 9.
+        v0 (float, optional): Reference volume. Default is 117.
+        num_cpus0 (int, optional): Reference number of CPUs. Default is 4.
+        scf_cycles (int, optional): Reference number of SCF cycles in a relaxation. Default is 5.
+
+        NB: Defaults (a part scf_cycles) are taken from a calculation done for SiO2. This is just a dummy
+            and not well tested estimation, placeholder for a more rigourous one.
+        """
+        import numpy as np
+
+        return int(
+            np.ceil(
+                scf_cycles * num_cpus0 * (n / n0) ** 3 * (v / v0) ** 1.5 * t0 / tmax
+            )
         )
 
     def set_submission_parameters(self, parameters):
