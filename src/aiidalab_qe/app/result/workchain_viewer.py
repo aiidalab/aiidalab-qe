@@ -16,10 +16,11 @@ from aiida.common import LinkType
 from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app.static import styles, templates
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
+from aiidalab_widgets_base import register_viewer_widget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 
 from .summary_viewer import SummaryView
+from .utils.download_data import DownloadDataWidget
 
 
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
@@ -84,18 +85,19 @@ class WorkChainViewer(ipw.VBox):
                 toggle_camera()
 
         self.result_tabs.observe(on_selected_index_change, "selected_index")
+        self._update_view()
 
         super().__init__(
             children=[self.title, self.result_tabs],
             **kwargs,
         )
-        self.process_monitor = ProcessMonitor(
-            timeout=1.0,
-            on_sealed=[
-                self._update_view,
-            ],
-        )
-        ipw.dlink((self, "process_uuid"), (self.process_monitor, "value"))
+        # self.process_monitor = ProcessMonitor(
+        #     timeout=1.0,
+        #     on_sealed=[
+        #         self._update_view,
+        #     ],
+        # )
+        # ipw.dlink((self, "process_uuid"), (self.process_monitor, "value"))
 
     @property
     def node(self):
@@ -175,7 +177,7 @@ class WorkChainOutputs(ipw.VBox):
             icon="download",
         )
         self._download_archive_button.on_click(self._download_archive)
-        self._download_button_container = ipw.Box([self._download_archive_button])
+        self._download_button_widget = DownloadDataWidget(workchain_node=self.node)
 
         if node.exit_status != 0:
             title = ipw.HTML(
@@ -198,8 +200,8 @@ class WorkChainOutputs(ipw.VBox):
 
         super().__init__(
             children=[
-                ipw.HBox(
-                    children=[title, self._download_button_container],
+                ipw.VBox(
+                    children=[self._download_button_widget, title],
                     layout=ipw.Layout(justify_content="space-between", margin="10px"),
                 ),
                 output,
