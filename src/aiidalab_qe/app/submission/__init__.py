@@ -276,8 +276,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if large_system and estimated_CPUs > num_cpus:
             # This part is in common between Warnings 1 (2): (not) on localhost, big system and few cpus
             warnings_1_2 = (
-                f"<span>&#9888;</span> Warning: The selected structure has a large number of atoms ({num_sites}) "
-                f"or a significant cell volume ({int(volume)} Å<sup>3</sup>), "
+                f"<span>&#9888;</span> Warning: The selected structure is large, with {num_sites} atoms "
+                f"and a volume of {int(volume)} Å<sup>3</sup>, "
                 "making it computationally demanding "
                 "to run at the localhost. Consider the following: "
                 if on_localhost
