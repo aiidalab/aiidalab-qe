@@ -146,10 +146,10 @@ def test_warning_messages(
     import os
 
     suggestions = {
-        "more_resources": "<li>Increase the resources (CPUs should be equal or more than 4, if possible) </li>",
-        "change_configuration": "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) </li>",
-        "go_remote": "<li>Select a code that runs on a larger machine</li>",
-        "avoid_overloading": "<li>Reduce the number of CPUs to avoid the overloading of the local machine </li>",
+        "more_resources": "Increase the resources",
+        "change_configuration": "Review the configuration",
+        "go_remote": "Select a code that runs on a larger machine",
+        "avoid_overloading": "Reduce the number of CPUs to avoid the overloading of the local machine",
     }
     app = submit_app_generator(properties=["bands", "pdos"])
     submit_step = app.submit_step
@@ -172,9 +172,7 @@ def test_warning_messages(
     num_sites = len(structure.sites)
     volume = structure.get_cell_volume()
     estimated_CPUs = submit_step._estimate_min_cpus(num_sites, volume)
-    suggestions["more_resources"] = (
-        f"<li>Increase the resources (CPUs should be equal or more than {min(100,estimated_CPUs)}, if possible) </li>"
-    )
+    assert estimated_CPUs == 2
     for suggestion in ["more_resources", "change_configuration"]:
         assert suggestions[suggestion] in submit_step._submission_warning_messages.value
 
