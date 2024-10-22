@@ -24,7 +24,6 @@ To include your plugin in the registry, follow these steps:
         documentation: "https://aiidalab-qe-xyz.readthedocs.io/"
         pip: "aiidalab-qe-xyz==version-of-the-code"
         post-install: "post-install-command"
-        package_name: "aiidalab-qe-xyz"
 
 3. Submit a Pull Request. Direct it to `this repository's Pull Requests section <https://github.com/aiidalab/aiidalab-qe/pulls>`_.
 
