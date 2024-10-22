@@ -57,7 +57,9 @@ def generate_report_parameters(qeapp_wc):
     if "workchain" not in ui_parameters:
         return {}
     report = {
-        "relaxed": None if ui_parameters["workchain"]["relax_type"] == 'none' else ui_parameters["workchain"]["relax_type"],
+        "relaxed": None
+        if ui_parameters["workchain"]["relax_type"] == "none"
+        else ui_parameters["workchain"]["relax_type"],
         "relax_method": ui_parameters["workchain"]["relax_type"],
         "electronic_type": ui_parameters["workchain"]["electronic_type"],
         "material_magnetic": ui_parameters["workchain"]["spin_type"],
