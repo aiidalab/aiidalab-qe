@@ -1,5 +1,7 @@
 def test_electronic_structure(generate_qeapp_workchain):
     """Test the electronic structure tab."""
+    import time
+
     import plotly.graph_objects as go
 
     from aiida import engine
@@ -10,7 +12,10 @@ def test_electronic_structure(generate_qeapp_workchain):
     wkchain = generate_qeapp_workchain()
     wkchain.node.set_exit_status(0)
     wkchain.node.set_process_state(engine.ProcessState.FINISHED)
+    wkchain.node.seal()
     wcv = WorkChainViewer(wkchain.node)
+    # wait for the tabs to be updated by the process monitor
+    time.sleep(3)
     # find the tab with the identifier "electronic_structure"
     # the built-in summary and structure tabs is not a plugin panel,
     # thus don't have identifiers

@@ -132,6 +132,51 @@ def test_create_builder_advanced_settings(
     )
 
 
+@pytest.mark.usefixtures("sssp")
+def test_warning_messages(
+    generate_structure_data,
+    submit_app_generator,
+):
+    """Test the creation of the warning messages.
+
+    For now, we test that the suggestions are indeed there.
+    We should check the whole message, but this is for now not easy to do: the message is built
+    on the fly with variables which are not accessible in this namespace.
+    """
+    import os
+
+    suggestions = {
+        "more_resources": "Increase the resources",
+        "change_configuration": "Review the configuration",
+        "go_remote": "Select a code that runs on a larger machine",
+        "avoid_overloading": "Reduce the number of CPUs to avoid the overloading of the local machine",
+    }
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
+    submit_step.codes["pw"].num_cpus.value = 1
+    submit_step._check_resources()
+    # no warning:
+    assert submit_step._submission_warning_messages.value == ""
+
+    # now we increase the resources, so we should have the Warning-3
+    submit_step.codes["pw"].num_cpus.value = len(os.sched_getaffinity(0))
+    submit_step._check_resources()
+    for suggestion in ["avoid_overloading", "go_remote"]:
+        assert suggestions[suggestion] in submit_step._submission_warning_messages.value
+
+    # now we use a large structure, so we should have the Warning-1 (and 2 if not on localhost)
+    structure = generate_structure_data("H2O-larger")
+    submit_step.input_structure = structure
+    submit_step.codes["pw"].num_cpus.value = 1
+    submit_step._check_resources()
+    num_sites = len(structure.sites)
+    volume = structure.get_cell_volume()
+    estimated_CPUs = submit_step._estimate_min_cpus(num_sites, volume)
+    assert estimated_CPUs == 2
+    for suggestion in ["more_resources", "change_configuration"]:
+        assert suggestions[suggestion] in submit_step._submission_warning_messages.value
+
+
 def builder_to_readable_dict(builder):
     """transverse the builder and return a dictionary with readable values."""
     from aiida import orm
