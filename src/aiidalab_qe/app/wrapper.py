@@ -54,28 +54,31 @@ class AppWrapperContoller:
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
         if change["new"]:
+            self._view.info_container.children = [self._view.guide]
+            self._view.info_container.layout.display = "flex"
             self._view.job_history_toggle.value = False
-        self._view.info_container.children = [self._view.guide] if change["new"] else []
-        self._view.info_container.layout.display = "flex" if change["new"] else "none"
+        else:
+            self._view.info_container.children = []
+            self._view.info_container.layout.display = "none"
 
     @without_triggering("guide_toggle")
     def _on_about_toggle(self, change: dict):
         """Toggle the about section."""
-        if change["new"]:
-            self._view.job_history_toggle.value = False
         self._view.info_container.children = [self._view.about] if change["new"] else []
         self._view.info_container.layout.display = "flex" if change["new"] else "none"
+        if change["new"]:
+            self._view.job_history_toggle.value = False
 
     def _on_job_history_toggle(self, change: dict):
         """Toggle the job list section."""
         if change["new"]:
-            self._view.about_toggle.value = False
-            self._view.guide_toggle.value = False
             self._view.job_history.setup_table()
             self._view.main.children = [
                 self._view.job_history.filters_layout,
                 self._view.job_history.table,
             ]
+            self._view.about_toggle.value = False
+            self._view.guide_toggle.value = False
         else:
             self._view.main.children = [self._view.app]
 
