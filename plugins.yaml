@@ -1,21 +1,21 @@
 ---
-Bader charge analysis (aiida-bader):
+aiida-bader:
+    title: Bader charge analysis (aiida-bader)
     description: Perform Bader charge analysis of the electronic charge density
     author: Xing Wang
     github: https://github.com/superstar54/aiida-bader
     documentation: https://aiida-bader.readthedocs.io/
     pip: aiida-bader
-    package_name: aiida-bader
 
-Phonons and IR/Raman (aiidalab-qe-vibroscopy):
-    description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials
+aiidalab-qe-vibroscopy:
+    title: Phonons and IR/Raman (aiidalab-qe-vibroscopy)
+    description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials via finite displacement and finite field approach.
     author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
     pip: aiidalab-qe-vibroscopy==1.1.1
     post_install: setup-phonopy
-    package_name: aiidalab-qe-vibroscopy
 
-Muon spectroscopy (aiidalab-qe-muon):
-    description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties
+aiidalab-qe-muon:
+    title: Muon spectroscopy (aiidalab-qe-muon)
+    description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties (local fields and polarization signals).
     author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
     github: https://github.com/mikibonacci/aiidalab-qe-muon
-    package_name: aiidalab-qe-muon

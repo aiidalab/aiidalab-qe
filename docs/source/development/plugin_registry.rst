@@ -17,6 +17,7 @@ To include your plugin in the registry, follow these steps:
    .. code-block:: yaml
 
       Top-level key:
+        title: "Description to show on top"
         description: "Quantum ESPRESSO plugin for XYZ by AiiDAlab."
         author: "Alice Doe"
         github: "https://github.com/alicedoe/aiidalab-qe-xyz"
@@ -32,9 +33,9 @@ Plugin Entry Requirements
 
 **Required Keys**
 
-- **Top-level key:**  Descriptive title for the plugin (e.g. "Phonons and IR/Raman (aiidalab-qe-vibroscopy)").
-- **description:** A brief description of your plugin.
-- **package_name**  The plugin's distribution name, which should be lowercase and prefixed by ``aiidalab-`` or ``aiida-``. For example, ``aiidalab-qe-coolfeature`` or ``aiidalab-neutron``.
+- **Top-level key:**   The plugin's distribution name, which should be lowercase and prefixed by ``aiidalab-`` or ``aiida-``. For example, ``aiidalab-qe-coolfeature`` or ``aiidalab-neutron``.
+- **title:** Brief title to show on top of the plugin entry. Should contain the main properties we can compute with the given plugin.
+- **description:** A brief description of your plugin. Can include more verbose informations with respect to the title.
 
 **Optional Keys**
 
