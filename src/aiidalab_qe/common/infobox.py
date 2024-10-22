@@ -20,3 +20,21 @@ class InfoBox(ipw.VBox):
             for custom_class in custom_classes.split(" "):
                 if custom_class:
                     self.add_class(custom_class)
+
+
+class InAppGuide(InfoBox):
+    """The `InfoAppGuide` is used to set up in-app guides that may be toggle in unison."""
+
+    def __init__(self, guide_class: str, classes: list[str] | None = None, **kwargs):
+        """`InAppGuide` constructor.
+
+        Parameters
+        ----------
+        `guide_class` : `str`
+            The unique identifier for the guide.
+        `classes` : `list[str]`, optional
+            One or more CSS classes.
+        """
+
+        classes = ["in-app-guide", *(classes or []), f"{guide_class}-guide-identifier"]
+        super().__init__(classes=classes, **kwargs)

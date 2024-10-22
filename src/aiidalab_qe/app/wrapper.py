@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets
+from IPython.display import Javascript, display
 
 
 def without_triggering(toggle: str):
@@ -54,7 +55,10 @@ class AppWrapperContoller:
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
         if change["new"]:
-            self._view.info_container.children = [self._view.guide]
+            self._view.info_container.children = [
+                self._view.guide,
+                self._view.guide_selection,
+            ]
             self._view.info_container.layout.display = "flex"
             self._view.job_history_toggle.value = False
         else:
@@ -82,11 +86,34 @@ class AppWrapperContoller:
         else:
             self._view.main.children = [self._view.app]
 
+    def _on_guide_select(self, change: dict):
+        """Toggle the guide section."""
+        display(
+            Javascript(f"""
+                document.querySelectorAll('.{change["old"]}-guide-identifier').forEach(
+                    (guide) => {'{'}
+                        guide.classList.remove('show');
+                    {'}'}
+                );
+            """)
+        )
+        if (guide_class := change["new"]) != "none":
+            display(
+                Javascript(f"""
+                    document.querySelectorAll('.{guide_class}-guide-identifier').forEach(
+                        (guide) => {'{'}
+                            guide.classList.add('show');
+                        {'}'}
+                    );
+                """)
+            )
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._view.guide_toggle.observe(self._on_guide_toggle, "value")
         self._view.about_toggle.observe(self._on_about_toggle, "value")
         self._view.job_history_toggle.observe(self._on_job_history_toggle, "value")
+        self._view.guide_selection.observe(self._on_guide_select, "value")
 
 
 class AppWrapperModel(traitlets.HasTraits):
@@ -107,7 +134,7 @@ class AppWrapperView(ipw.VBox):
         from datetime import datetime
 
         from importlib_resources import files
-        from IPython.display import Image, display
+        from IPython.display import Image
         from jinja2 import Environment
 
         from aiidalab_qe.app.static import templates
@@ -174,6 +201,12 @@ class AppWrapperView(ipw.VBox):
 
         self.guide = ipw.HTML(env.from_string(guide_template).render())
         self.about = ipw.HTML(env.from_string(about_template).render())
+
+        self.guide_selection = ipw.RadioButtons(
+            options=["none", "basic", "advanced"],
+            description="Guides:",
+            value="none",
+        )
 
         self.info_container = InfoBox()
         self.job_history = QueryInterface()
