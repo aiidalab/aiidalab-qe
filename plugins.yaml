@@ -5,7 +5,7 @@ Bader charge analysis (aiida-bader):
     github: https://github.com/superstar54/aiida-bader
     documentation: https://aiida-bader.readthedocs.io/
     pip: aiida-bader
-    package_name: aiida-bader 
+    package_name: aiida-bader
 
 Phonons and IR/Raman (aiidalab-qe-vibroscopy):
     description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials
