@@ -16,13 +16,14 @@ To include your plugin in the registry, follow these steps:
 
    .. code-block:: yaml
 
-      aiidalab-qe-xyz:
+      Top-level key:
         description: "Quantum ESPRESSO plugin for XYZ by AiiDAlab."
         author: "Alice Doe"
         github: "https://github.com/alicedoe/aiidalab-qe-xyz"
         documentation: "https://aiidalab-qe-xyz.readthedocs.io/"
         pip: "aiidalab-qe-xyz==version-of-the-code"
         post-install: "post-install-command"
+        package_name: "aiidalab-qe-xyz"
 
 3. Submit a Pull Request. Direct it to `this repository's Pull Requests section <https://github.com/aiidalab/aiidalab-qe/pulls>`_.
 
@@ -31,8 +32,9 @@ Plugin Entry Requirements
 
 **Required Keys**
 
-- **Top-level key:** The plugin's distribution name, which should be lowercase and prefixed by ``aiidalab-`` or ``aiida-``. For example, ``aiidalab-qe-coolfeature`` or ``aiidalab-neutron``.
+- **Top-level key:**  Descriptive title for the plugin (e.g. "Phonons and IR/Raman (aiidalab-qe-vibroscopy)").
 - **description:** A brief description of your plugin.
+- **package_name**  The plugin's distribution name, which should be lowercase and prefixed by ``aiidalab-`` or ``aiida-``. For example, ``aiidalab-qe-coolfeature`` or ``aiidalab-neutron``.
 
 **Optional Keys**
 
