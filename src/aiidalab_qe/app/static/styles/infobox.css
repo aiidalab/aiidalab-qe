@@ -13,3 +13,6 @@
 .info-box p {
   line-height: 24px;
 }
+.info-box.in-app-guide.show {
+  display: flex !important;
+}
