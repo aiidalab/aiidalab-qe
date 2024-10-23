@@ -274,14 +274,13 @@ class BandPdosPlotly:
             )
 
             scatter_objects.append(
-                go.Scatter(
+                go.Scattergl(
                     x=x_bands_comb,
                     y=y_bands_comb - fermi_energy,
                     mode="lines",
                     line={
                         "color": colors[(spin_polarized, spin)],
-                        "shape": "spline",
-                        "smoothing": 1.3,
+                        "shape": "linear",
                     },
                     showlegend=False,
                 )
@@ -318,15 +317,14 @@ class BandPdosPlotly:
             y_data = (
                 dos_np - fermi_energy if self.plot_type == "combined" else trace["y"]
             )
-            scatter_objects[i] = go.Scatter(
+            scatter_objects[i] = go.Scattergl(
                 x=x_data,
                 y=y_data,
                 fill=fill,
                 name=trace["label"],
                 line={
                     "color": trace["borderColor"],
-                    "shape": "spline",
-                    "smoothing": 1.0,
+                    "shape": "linear",
                 },
                 legendgroup=trace["label"],
             )
@@ -352,7 +350,7 @@ class BandPdosPlotly:
                 self.fermi_energy.get("fermi_energy"),
             )
             scatter_objects.append(
-                go.Scatter(
+                go.Scattergl(
                     x=proj_bands["x"],
                     y=np.array(proj_bands["y"]) - fermi_energy,
                     fill="toself",
@@ -479,15 +477,15 @@ class BandPdosPlotly:
         # PDOS plot type
         if self.plot_type == "pdos":
             fermi_energy = self.fermi_energy.get(
-                "fermi_energy"
-            ) or self.fermi_energy.get("fermi_energy_up")
+                "fermi_energy", self.fermi_energy.get("fermi_energy_up")
+            )
             handle_spin_polarization(fermi_energy, fig.update_layout, "layout")
 
         # Combined plot type
         if self.plot_type == "combined":
             fermi_energy = self.fermi_energy.get(
-                "fermi_energy"
-            ) or self.fermi_energy.get("fermi_energy_up")
+                "fermi_energy", self.fermi_energy.get("fermi_energy_up")
+            )
             handle_spin_polarization(fermi_energy, fig.update_xaxes, "xaxes")
 
 
@@ -586,7 +584,7 @@ class BandPdosWidget(ipw.VBox):
         self.proj_bands_width_slider = ipw.FloatSlider(
             value=0.5,
             min=0.01,
-            max=0.76,
+            max=2.0,
             step=0.01,
             description="`Fat bands` max width (eV):",
             orientation="horizontal",

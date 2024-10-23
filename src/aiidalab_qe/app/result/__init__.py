@@ -51,8 +51,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             description="Kill workchain",
             tooltip="Kill the below workchain.",
             button_style="danger",
-            icon="window-close",
-            layout=ipw.Layout(width="120px", height="40px", display="none"),
+            icon="stop",
+            layout=ipw.Layout(width="120px", display="none", margin="0px 20px 0px 0px"),
         )
         self.kill_button.on_click(self._on_click_kill_button)
 
@@ -60,19 +60,30 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             description="Clean remote data",
             tooltip="Clean the remote folders of the workchain.",
             button_style="danger",
-            icon="folder",
-            layout=ipw.Layout(width="150px", height="40px", display="none"),
+            icon="trash",
+            layout=ipw.Layout(width="150px", display="none", margin="0px 20px 0px 0px"),
         )
         self.clean_scratch_button.on_click(self._on_click_clean_scratch_button)
+        self.update_result_button = ipw.Button(
+            description="Update results tabs",
+            tooltip="Trigger the update of the results tabs.",
+            button_style="success",
+            icon="refresh",
+            layout=ipw.Layout(
+                width="150px", display="block", margin="0px 20px 0px 0px"
+            ),
+        )
+        self.update_result_button.on_click(self._on_click_update_result_button)
 
         self.process_info = ipw.HTML()
 
         super().__init__(
             [
+                self.process_info,
                 ipw.HBox(
                     children=[
                         self.kill_button,
-                        self.process_info,
+                        self.update_result_button,
                         self.clean_scratch_button,
                     ]
                 ),
@@ -158,9 +169,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 if isinstance(called_descendant, orm.CalcJobNode):
                     try:
                         cleaned_bool.append(
-                            called_descendant.outputs.remote_folder.is_cleaned
+                            called_descendant.outputs.remote_folder.is_empty
                         )
-                    except (OSError, KeyError):
+                    except Exception:
                         pass
             self.clean_scratch_button.disabled = all(cleaned_bool)
 
@@ -184,11 +195,17 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             if isinstance(called_descendant, orm.CalcJobNode):
                 try:
                     called_descendant.outputs.remote_folder._clean()
-                except (OSError, KeyError):
+                except Exception:
                     pass
 
         # update the kill button layout
         self._update_clean_scratch_button_layout()
+
+    def _on_click_update_result_button(self, _=None):
+        """Trigger the update of the results tabs."""
+        # change the node to trigger the update of the view.
+        self.node_view.node = None
+        self.node_view.node = orm.load_node(self.process)
 
     @tl.observe("process")
     def _observe_process(self, _):

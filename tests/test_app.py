@@ -12,7 +12,7 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
     )
     app = submit_app_generator()
     # select the pk
-    app.work_chain_selector.value = wkchain.node.pk
+    app.process = wkchain.node.pk
     # check if the value are reload correctly
     assert app.configure_step.workchain_settings.relax_type.value == "positions"
     assert app.configure_step.workchain_settings.spin_type.value == "collinear"
@@ -30,7 +30,7 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
     app._wizard_app_widget.selected_index = 2
     assert app.configure_step.state == app.configure_step.State.SUCCESS
     # new workflow, this will reset the GUI
-    app.work_chain_selector.value = None
+    app.process = None
     # check if the value are reload correctly
     assert app.structure_step.manager.structure is None
     assert app.configure_step.workchain_settings.relax_type.value == "positions_cell"
