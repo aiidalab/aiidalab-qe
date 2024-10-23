@@ -11,7 +11,7 @@ aiidalab-qe-vibroscopy:
     title: Phonons and IR/Raman (aiidalab-qe-vibroscopy)
     description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials via finite displacement and finite field approach.
     author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
-    pip: aiidalab-qe-vibroscopy==1.1.2
+    pip: aiidalab-qe-vibroscopy~=1.1.3
     post_install: setup-phonopy
 
 aiidalab-qe-muon:
