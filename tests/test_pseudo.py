@@ -139,62 +139,66 @@ def test_download_and_install_pseudo_from_file(tmp_path):
     assert len(pseudos_to_install()) == 10
 
 
-def test_pseudos_family_selector_widget():
-    """Test the pseudos widget."""
-    from aiidalab_qe.app.configuration.pseudos import PseudoFamilySelector
+@pytest.mark.usefixtures("aiida_profile_clean", "sssp", "pseudodojo")
+def test_pseudos_settings(generate_structure_data, generate_upf_data):
+    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+    from aiidalab_qe.app.configuration.model import ConfigurationModel
+    from aiidalab_qe.app.configuration.pseudos import PseudoUploadWidget
 
-    w = PseudoFamilySelector()
-    assert w.override.value is False
+    model = ConfigurationModel()
+    config = ConfigureQeAppWorkChainStep(model=model)
 
-    w.override.value = True
-    w.spin_orbit = "wo_soc"
-    # test the default value
-    assert w.value == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+    pseudos_model = model.advanced.pseudos
 
-    # Test if the protocol change the value will be updated
-    w.protocol = "precise"
-    assert w.value == f"SSSP/{SSSP_VERSION}/PBEsol/precision"
+    assert pseudos_model.override is False
 
-    # test the functional change will update the value
-    w.dft_functional.value = "PBE"
-    assert w.value == f"SSSP/{SSSP_VERSION}/PBE/precision"
+    # Test the default family
+    model.advanced.override = True
+    model.advanced.spin_orbit = "wo_soc"
+    assert pseudos_model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
-    # Test if selecet new pseudo library the value will be updated
-    w.library_selection.value = "PseudoDojo stringent"
-    assert w.value == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
+    # Test protocol-dependent family change
+    model.workchain.protocol = "precise"
+    assert pseudos_model.family == f"SSSP/{SSSP_VERSION}/PBEsol/precision"
 
-    # Test spin-orbit change will update
+    # Test functional-dependent family change
+    pseudos_model.functional = "PBE"
+    assert pseudos_model.family == f"SSSP/{SSSP_VERSION}/PBE/precision"
 
-    w.spin_orbit = "soc"
-    w.protocol = "moderate"
-    assert w.value == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/standard/upf"
-
-
-@pytest.mark.usefixtures("sssp")
-def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
-    """Test the pseudo setter widget."""
-    from aiidalab_qe.app.configuration.pseudos import PseudoSetter
-
-    # test the widget is set with the elements of the structure
-    silicon = generate_structure_data("silicon")
-    w = PseudoSetter(
-        structure=silicon, pseudo_family=f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+    # Test library-dependent family change
+    pseudos_model.library = "PseudoDojo stringent"
+    assert (
+        pseudos_model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
     )
 
-    assert "Si" in w.pseudos.keys()
-    assert w.ecutwfc == 30
-    assert w.ecutrho == 240
+    # Test spin-orbit-dependent family change
+    model.advanced.spin_orbit = "soc"
+    model.workchain.protocol = "moderate"
+    assert (
+        pseudos_model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/standard/upf"
+    )
 
-    # reset the structure, the widget should be reset
+    # Test structure-dependent family change
+    silicon = generate_structure_data("silicon")
+    model.input_structure = silicon
+    assert "Si" in pseudos_model.dictionary.keys()
+    assert pseudos_model.ecutwfc == 30
+    assert pseudos_model.ecutrho == 240
+
+    # Test that changing the structure triggers a reset
     silica = generate_structure_data("silica")
-    w.structure = silica
-    assert "Si" in w.pseudos.keys()
-    assert "O" in w.pseudos.keys()
+    model.input_structure = silica
+    assert "Si" in pseudos_model.dictionary.keys()
+    assert "O" in pseudos_model.dictionary.keys()
 
-    # Upload and set a new pseudo for O
+    # Test pseudo upload
+    config.render()
+    config.advanced_settings.render()
+    uploader: PseudoUploadWidget = (
+        config.advanced_settings.pseudos.setter_widget.children[1]  # type: ignore
+    )
     new_O_pseudo = generate_upf_data("O", "O_new.upf")
-    upload_w = w.pseudo_setting_widgets.children[1]
-    upload_w._on_file_upload(
+    uploader._on_file_upload(
         {
             "new": {
                 "O_new.upf": {
@@ -203,17 +207,20 @@ def test_pseudos_setter_widget(generate_structure_data, generate_upf_data):
             },
         }
     )
+    pseudo = pseudos_model.dictionary["O"]  # type: ignore
+    assert orm.load_node(pseudo).filename == "O_new.upf"
 
-    assert orm.load_node(w.pseudos["O"]).filename == "O_new.upf"
-    #
-    pseudos = w.pseudos
-    cutoffs = {"cutoff_wfc": w.ecutwfc, "cutoff_rho": w.ecutrho}
-    w._reset()
-    assert orm.load_node(w.pseudos["O"]).filename != "O_new.upf"
-    w.set_pseudos(pseudos, cutoffs)
-    assert orm.load_node(w.pseudos["O"]).filename == "O_new.upf"
+    # cutoffs = [pseudos_model.ecutwfc, pseudos_model.ecutrho]
+
+    pseudos_model.reset()
+    pseudo = pseudos_model.dictionary["O"]  # type: ignore
+    assert orm.load_node(pseudo).filename != "O_new.upf"
+
+    # pseudos_model.set_pseudos(pseudos, cutoffs)
+    # assert orm.load_node(pseudo).filename == "O_new.upf"
 
 
+# TODO test against model, not against widget
 def test_pseudo_upload_widget(generate_upf_data):
     """Test the pseudo upload widget."""
     from aiidalab_qe.app.configuration.pseudos import PseudoUploadWidget
@@ -222,15 +229,16 @@ def test_pseudo_upload_widget(generate_upf_data):
     # the widget initialize with the pseudo as input to mock how it will
     # be used in PseudoSetter when the pseudo family is set.
     old_pseudo = generate_upf_data("O", "O_old.upf")
-    w = PseudoUploadWidget(
-        kind="O1", pseudo=old_pseudo, cutoffs={"cutoff_wfc": 30, "cutoff_rho": 240}
-    )
+    w = PseudoUploadWidget(kind="O1")
+    w.pseudo = old_pseudo
+    w.cutoffs = [30, 240]
+    w.render()
 
-    # when initialized the traitlets should be set already
+    message = "Recommended ecutwfc: <b>{ecutwfc} Ry</b> ecutrho: <b>{ecutrho} Ry</b>"
+
     assert w.pseudo.filename == "O_old.upf"
     assert w.kind == "O1"
-    assert w.ecutrho == 240
-    assert w.ecutwfc == 30
+    assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.cutoff_message.value
     assert w.error_message is None
 
     # mimic upload a new pseudo and set cutoffs
@@ -260,8 +268,5 @@ def test_pseudo_upload_widget(generate_upf_data):
             }
         }
     )
-
     assert w.error_message is not None
     assert w.pseudo is None
-    assert w.ecutrho is None
-    assert w.ecutrho is None
