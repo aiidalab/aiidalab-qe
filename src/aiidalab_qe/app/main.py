@@ -4,18 +4,22 @@ Authors: AiiDAlab team
 """
 
 import ipywidgets as ipw
+import traitlets as tl
+from IPython.display import Javascript, display
 
 from aiida.orm import load_node
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.structure import StructureSelectionStep
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.common import QeAppWorkChainSelector
 from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
 
 
 class App(ipw.VBox):
     """The main widget that combines all the application steps together."""
+
+    # The PK or UUID of the work chain node.
+    process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
 
     def __init__(self, qe_auto_setup=True):
         # Create the application steps
@@ -64,23 +68,27 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
+        # hide the header
+        self._wizard_app_widget.children[0].layout.display = "none"
         self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
 
-        # Add process selection header
-        self.work_chain_selector = QeAppWorkChainSelector(
-            layout=ipw.Layout(width="auto")
+        # Add a button to start a new calculation
+        self.new_work_chains_button = ipw.Button(
+            description="Start New Calculation",
+            tooltip="Open a new page to start a separate calculation",
+            button_style="success",
+            icon="plus-circle",
+            layout=ipw.Layout(width="30%"),
         )
-        self.work_chain_selector.observe(self._observe_process_selection, "value")
 
-        ipw.dlink(
-            (self.submit_step, "process"),
-            (self.work_chain_selector, "value"),
-            transform=lambda node: None if node is None else node.pk,
-        )
+        def on_button_click(_):
+            display(Javascript("window.open('./qe.ipynb', '_blank')"))
+
+        self.new_work_chains_button.on_click(on_button_click)
 
         super().__init__(
             children=[
-                self.work_chain_selector,
+                self.new_work_chains_button,
                 self._wizard_app_widget,
             ]
         )
@@ -119,7 +127,8 @@ class App(ipw.VBox):
                 )
         self.submit_step.external_submission_blockers = blockers
 
-    def _observe_process_selection(self, change):
+    @tl.observe("process")
+    def _observe_process(self, change):
         from aiida.orm.utils.serialize import deserialize_unsafe
 
         if change["old"] == change["new"]:
