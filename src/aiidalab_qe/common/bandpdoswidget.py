@@ -759,7 +759,7 @@ class BandPdosWidget(ipw.VBox):
                 # Restore Old axis range. I do it after the plot is displayed to the Reset button always return to the Default SETTINGs
                 if self.bands_data:
                     self.bandsplot_widget.plotly_relayout({"yaxis.range": yaxis_range})
-                if self.pdos_data:
+                if self.pdos_data and not self.bands_data:
                     self.bandsplot_widget.plotly_relayout({"xaxis.range": xaxis_range})
 
                 self.proj_bands_width_slider.layout.visibility = (
