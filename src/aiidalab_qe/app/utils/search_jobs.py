@@ -1,18 +1,20 @@
+import ipywidgets as ipw
+import pandas as pd
+from IPython.display import display
+
+from aiida.orm import QueryBuilder
+
+
 class QueryInterface:
     def __init__(self):
         pass
 
     def setup_table(self):
-        import ipywidgets as ipw
-
         self.df = self.load_data()
         self.table = ipw.HTML()
         self.setup_widgets()
 
     def load_data(self):
-        import pandas as pd
-
-        from aiida.orm import QueryBuilder
         from aiidalab_qe.workflows import QeAppWorkChain
 
         projections = [
@@ -72,8 +74,6 @@ class QueryInterface:
         ]
 
     def setup_widgets(self):
-        import ipywidgets as ipw
-
         self.css_style = """
             <style>
                 .df { border: none; }
@@ -155,8 +155,6 @@ class QueryInterface:
         )
 
     def apply_filters(self, _):
-        import pandas as pd
-
         selected_properties = [
             cb.description for cb in self.properties_box.children if cb.value
         ]
@@ -190,7 +188,5 @@ class QueryInterface:
         self.get_table_value(filtered_df)
 
     def display(self):
-        from IPython.display import display
-
         display(self.filters_layout)
         display(self.table)

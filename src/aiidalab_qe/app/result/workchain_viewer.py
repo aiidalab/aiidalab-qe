@@ -91,13 +91,6 @@ class WorkChainViewer(ipw.VBox):
             children=[self.title, self.result_tabs],
             **kwargs,
         )
-        # self.process_monitor = ProcessMonitor(
-        #     timeout=1.0,
-        #     on_sealed=[
-        #         self._update_view,
-        #     ],
-        # )
-        # ipw.dlink((self, "process_uuid"), (self.process_monitor, "value"))
 
     @property
     def node(self):

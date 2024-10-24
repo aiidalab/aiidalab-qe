@@ -1,7 +1,7 @@
 import pytest
 
 
-@pytest.mark.usefixtures("sssp")
+@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_result(generate_qeapp_workchain):
     import plotly.graph_objects as go
 

@@ -8,91 +8,125 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida import orm
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from .advanced import AdvancedSettings
-from .workflow import WorkChainSettings
+from .advanced import AdvancedModel, AdvancedSettings
+from .basic import WorkChainModel, WorkChainSettings
+from .model import ConfigurationModel
+
+DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
-    confirmed = tl.Bool()
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
-    # output dictionary
-    configuration_parameters = tl.Dict()
+    def __init__(self, model: ConfigurationModel, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
 
-    def __init__(self, **kwargs):
-        self.workchain_settings = WorkChainSettings()
-        self.advanced_settings = AdvancedSettings()
+        super().__init__(
+            children=[LoadingWidget("Loading workflow configuration panel")],
+            **kwargs,
+        )
 
-        ipw.dlink(
-            (self.workchain_settings.workchain_protocol, "value"),
-            (self.advanced_settings, "protocol"),
+        self._model = model
+        self._model.observe(
+            self._on_confirmation_change,
+            "confirmed",
         )
-        ipw.dlink(
-            (self.workchain_settings.spin_type, "value"),
-            (self.advanced_settings, "spin_type"),
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
         )
+
+        self.structure_set_message = ipw.HTML()
         ipw.dlink(
-            (self.workchain_settings.electronic_type, "value"),
-            (self.advanced_settings, "electronic_type"),
+            (self._model, "input_structure"),
+            (self.structure_set_message, "value"),
+            lambda structure: ""
+            if structure
+            else """
+                <div class="alert alert-info">
+                    <b>Please set the input structure first.</b>
+                </div>
+            """,
         )
-        ipw.dlink(
-            (self, "input_structure"),
-            (self.advanced_settings, "input_structure"),
-        )
-        #
-        ipw.dlink(
-            (self, "input_structure"),
-            (self.workchain_settings, "input_structure"),
-        )
-        #
+
+        workchain_model = WorkChainModel(include=True)
+        self._model.add_model("workchain", workchain_model)
+        self.workchain_settings = WorkChainSettings(model=workchain_model)
+
+        advanced_model = AdvancedModel(include=True)
+        self._model.add_model("advanced", advanced_model)
+        self.advanced_settings = AdvancedSettings(model=advanced_model)
+
         self.built_in_settings = [
             self.workchain_settings,
             self.advanced_settings,
         ]
-        self.tab = ipw.Tab(
-            children=self.built_in_settings,
-            layout=ipw.Layout(min_height="250px"),
-        )
 
-        self.tab.set_title(0, "Basic settings")
-        self.tab.set_title(1, "Advanced settings")
-
-        # store the property identifier and setting panel for all plugins
-        # only show the setting panel when the corresponding property is selected
-        # first add the built-in settings
-        self.settings = {
+        self.settings: dict[str, SettingsPanel] = {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
 
-        # list of trailets to link
-        # if new trailets are added to the settings, they need to be added here
-        trailets_list = ["input_structure", "protocol", "electronic_type", "spin_type"]
+        self._fetch_plugin_settings()
+        self._link_models()
 
-        # then add plugin specific settings
-        entries = get_entry_items("aiidalab_qe.properties", "setting")
-        for identifier, entry_point in entries.items():
-            self.settings[identifier] = entry_point(parent=self)
-            self.settings[identifier].identifier = identifier
-            # link basic protocol to all plugin specific protocols
-            if identifier in self.workchain_settings.properties:
-                self.workchain_settings.properties[identifier].run.observe(
-                    self._update_panel, "value"
-                )
-            # link the trailets if they exist in the plugin specific settings
-            for trailet in trailets_list:
-                if hasattr(self.settings[identifier], trailet):
-                    ipw.dlink(
-                        (self.advanced_settings, trailet),
-                        (self.settings[identifier], trailet),
-                    )
+        self.rendered = False
 
-        self._submission_blocker_messages = ipw.HTML()
+    def render(self):
+        if self.rendered:
+            return
+
+        # RelaxType: degrees of freedom in geometry optimization
+        self.relax_type_help = ipw.HTML()
+        ipw.dlink(
+            (self._model, "relax_type_help"),
+            (self.relax_type_help, "value"),
+        )
+        self.relax_type = ipw.ToggleButtons(
+            options=[
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+                ("Full geometry", "positions_cell"),
+            ],
+        )
+        ipw.dlink(
+            (self._model, "relax_type_options"),
+            (self.relax_type, "options"),
+        )
+        ipw.link(
+            (self._model, "relax_type"),
+            (self.relax_type, "value"),
+        )
+
+        self.tab = ipw.Tab(
+            layout=ipw.Layout(min_height="250px"),
+            selected_index=None,
+        )
+        self.tab.observe(
+            self._on_tab_change,
+            "selected_index",
+        )
+        self._update_tabs()
+
+        self.sub_steps = ipw.Accordion(
+            children=[
+                ipw.VBox(
+                    children=[
+                        *self.property_children,
+                    ]
+                ),
+                self.tab,
+            ],
+            layout=ipw.Layout(margin="10px 2px"),
+            selected_index=None,
+        )
+        self.sub_steps.set_title(0, "Step 2.1: Select which properties to calculate")
+        self.sub_steps.set_title(1, "Step 2.2: Customize calculation parameters")
 
         self.confirm_button = ipw.Button(
             description="Confirm",
@@ -102,84 +136,148 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             disabled=True,
             layout=ipw.Layout(width="auto"),
         )
-
+        ipw.dlink(
+            (self, "state"),
+            (self.confirm_button, "disabled"),
+            lambda state: state != self.State.CONFIGURED,
+        )
         self.confirm_button.on_click(self.confirm)
 
-        super().__init__(
-            children=[
-                self.tab,
-                self._submission_blocker_messages,
-                self.confirm_button,
-            ],
-            **kwargs,
-        )
+        self.children = [
+            self.structure_set_message,
+            ipw.HTML("""
+                <div style="padding-top: 0px; padding-bottom: 0px">
+                    <h4>Structure relaxation</h4>
+                </div>
+            """),
+            self.relax_type_help,
+            self.relax_type,
+            self.sub_steps,
+            self.confirm_button,
+        ]
 
-    @tl.observe("previous_step_state")
-    def _observe_previous_step_state(self, _change):
-        self._update_state()
+        self.rendered = True
 
-    def get_configuration_parameters(self):
-        """Get the parameters of the configuration step."""
-
-        return {s.identifier: s.get_panel_value() for s in self.tab.children}
-
-    def set_configuration_parameters(self, parameters):
-        """Set the inputs in the GUI based on a set of parameters."""
-
-        with self.hold_trait_notifications():
-            for identifier, settings in self.settings.items():
-                if parameters.get(identifier):
-                    settings.set_panel_value(parameters[identifier])
-
-    def _update_state(self, _=None):
-        if self.previous_step_state == self.State.SUCCESS:
-            self.confirm_button.disabled = False
-            self._submission_blocker_messages.value = ""
-            self.state = self.State.CONFIGURED
-            # update plugin specific settings
-            for _, settings in self.settings.items():
-                settings._update_state()
-        elif self.previous_step_state == self.State.FAIL:
-            self.state = self.State.FAIL
-        else:
-            self.confirm_button.disabled = True
-            self.state = self.State.INIT
-            self.reset()
-
-    def confirm(self, _=None):
-        self.configuration_parameters = self.get_configuration_parameters()
-        self.confirm_button.disabled = False
-        self.state = self.State.SUCCESS
+        self._model.update()
 
     def is_saved(self):
-        """Check if the current step is saved.
-        That all changes are confirmed.
-        """
-        new_parameters = self.get_configuration_parameters()
-        return new_parameters == self.configuration_parameters
+        return self._model.confirmed
 
-    @tl.default("state")
-    def _default_state(self):
-        return self.State.INIT
+    def confirm(self, _=None):
+        self._model.confirmed = True
 
     def reset(self):
-        """Reset the widgets in all settings to their initial states."""
-        with self.hold_trait_notifications():
-            self.input_structure = None
-            for _, settings in self.settings.items():
-                settings.reset()
+        self._model.reset()
+        if self.rendered:
+            self.sub_steps.selected_index = None
+            self.tab.selected_index = 0
 
-    def _update_panel(self, _=None):
-        """Dynamic add/remove the panel based on the selected properties."""
-        # only keep basic and advanced settings
-        self.tab.children = self.built_in_settings
-        # add plugin specific settings
-        for identifier in self.workchain_settings.properties:
-            if (
-                identifier in self.settings
-                and self.workchain_settings.properties[identifier].run.value
-            ):
-                self.tab.children += (self.settings[identifier],)
-                self.tab.set_title(
-                    len(self.tab.children) - 1, self.settings[identifier].title
+    @tl.observe("previous_step_state")
+    def _on_previous_step_state_change(self, _):
+        self._update_state()
+
+    def _on_tab_change(self, change):
+        if (tab_index := change["new"]) is None:
+            return
+        tab: SettingsPanel = self.tab.children[tab_index]  # type: ignore
+        tab.render()
+
+    def _on_input_structure_change(self, _):
+        self._model.update()
+        self.reset()
+
+    def _on_confirmation_change(self, _):
+        self._update_state()
+
+    def _update_tabs(self):
+        children = []
+        titles = []
+        for identifier, model in self._model.get_models():
+            if model.include:
+                setting = self.settings[identifier]
+                titles.append(setting.title)
+                children.append(setting)
+        if hasattr(self, "tab"):
+            self.tab.children = children
+            for i, title in enumerate(titles):
+                self.tab.set_title(i, title)
+            self.tab.selected_index = 0
+
+    def _update_state(self, _=None):
+        if self._model.confirmed:
+            self.state = self.State.SUCCESS
+        elif self.previous_step_state is self.State.SUCCESS:
+            self.state = self.State.CONFIGURED
+        elif self.previous_step_state is self.State.FAIL:
+            self.state = self.State.FAIL
+        else:
+            self.state = self.State.INIT
+
+    def _fetch_plugin_settings(self):
+        self.property_children = []
+
+        outlines = get_entry_items("aiidalab_qe.properties", "outline")
+        models = get_entry_items("aiidalab_qe.properties", "model")
+        settings = get_entry_items("aiidalab_qe.properties", "setting")
+        for identifier in settings:
+            model: SettingsModel = models[identifier]()
+            self._model.add_model(identifier, model)
+
+            outline = outlines[identifier]()
+            info = ipw.HTML()
+            ipw.link(
+                (model, "include"),
+                (outline.include, "value"),
+            )
+
+            if identifier == "bands":
+                ipw.dlink(
+                    (self._model, "input_structure"),
+                    (outline.include, "disabled"),
+                    lambda _: not self._model.has_pbc,
+                )
+
+            def toggle_plugin(change, identifier=identifier, info=info):
+                if change["new"]:
+                    info.value = (
+                        f"Customize {identifier} settings in step 2.2 if needed"
+                    )
+                else:
+                    info.value = ""
+                self._update_tabs()
+
+            model.observe(
+                toggle_plugin,
+                "include",
+            )
+
+            self.property_children.append(
+                ipw.HBox(
+                    children=[
+                        outline,
+                        info,
+                    ]
+                )
+            )
+
+            self.settings[identifier] = settings[identifier](
+                parent=self,
+                identifier=identifier,
+                model=model,
+            )
+
+    def _link_models(self):
+        for identifier in self.settings:
+            settings_model = self._model.get_model(identifier)
+            for dependency in settings_model.dependencies:
+                dependency_parts = dependency.split(".")
+                if len(dependency_parts) == 1:  # from parent, e.g. input_structure
+                    target_model = self._model
+                    trait = dependency
+                else:  # from sibling, e.g. workchain.protocol
+                    sibling, trait = dependency_parts
+                    target_model = self._model.get_model(sibling)
+                ipw.dlink(
+                    (target_model, trait),
+                    (settings_model, trait),
                 )

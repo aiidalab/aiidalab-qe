@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_electronic_structure(generate_qeapp_workchain):
     """Test the electronic structure tab."""
     import time

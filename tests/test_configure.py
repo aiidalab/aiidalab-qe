@@ -1,83 +1,76 @@
+import pytest
+
+from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 
 def test_protocol():
-    """Test the protocol.
-    The protocol from workchain_settings will trigger the
-    update of the protocol in advanced_settings.
-    """
-    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-
-    wg = ConfigureQeAppWorkChainStep()
-    wg.workchain_settings.workchain_protocol.value = "fast"
-    assert wg.advanced_settings.protocol == "fast"
-    assert wg.advanced_settings.kpoints_distance.value == 0.5
+    model = ConfigurationModel()
+    _ = ConfigureQeAppWorkChainStep(model=model)
+    workchain_model = model.get_model("workchain")
+    advanced_model = model.get_model("advanced")
+    workchain_model.protocol = "fast"
+    assert advanced_model.protocol == "fast"
+    assert advanced_model.kpoints_distance == 0.5
 
 
 def test_get_configuration_parameters():
-    """Test the get_configuration_parameters method."""
-    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-
-    wg = ConfigureQeAppWorkChainStep()
-    parameters = wg.get_configuration_parameters()
+    model = ConfigurationModel()
+    _ = ConfigureQeAppWorkChainStep(model=model)
+    parameters = model.get_model_state()
     parameters_ref = {
-        "workchain": wg.workchain_settings.get_panel_value(),
-        "advanced": wg.advanced_settings.get_panel_value(),
+        "workchain": {
+            **model.get_model("workchain").get_model_state(),
+            "relax_type": model.relax_type,
+            "properties": model._get_properties(),
+        },
+        "advanced": model.get_model("advanced").get_model_state(),
     }
     assert parameters == parameters_ref
 
 
+@pytest.mark.usefixtures("aiida_profile_clean", "sssp", "pseudodojo")
 def test_set_configuration_parameters():
-    """Test the set_configuration_parameters method."""
-    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-
-    wg = ConfigureQeAppWorkChainStep()
-    parameters = wg.get_configuration_parameters()
+    model = ConfigurationModel()
+    _ = ConfigureQeAppWorkChainStep(model=model)
+    parameters = model.get_model_state()
     parameters["workchain"]["relax_type"] = "positions"
     parameters["advanced"]["pseudo_family"] = f"SSSP/{SSSP_VERSION}/PBE/efficiency"
-    wg.set_configuration_parameters(parameters)
-    new_parameters = wg.get_configuration_parameters()
+    model.set_model_state(parameters)
+    new_parameters = model.get_model_state()
     assert parameters == new_parameters
-    # test pseudodojo
     parameters["advanced"]["pseudo_family"] = (
         f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf"
     )
-    wg.set_configuration_parameters(parameters)
-    new_parameters = wg.get_configuration_parameters()
+    model.set_model_state(parameters)
+    new_parameters = model.get_model_state()
     assert parameters == new_parameters
 
 
 def test_panel():
     """Dynamic add/remove the panel based on the workchain settings."""
-    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-
-    wg = ConfigureQeAppWorkChainStep()
-    assert len(wg.tab.children) == 2
-    parameters = wg.get_configuration_parameters()
+    model = ConfigurationModel()
+    config = ConfigureQeAppWorkChainStep(model=model)
+    config.render()
+    assert len(config.tab.children) == 2
+    parameters = model.get_model_state()
     assert "bands" not in parameters
-    wg.workchain_settings.properties["bands"].run.value = True
-    assert len(wg.tab.children) == 3
-    parameters = wg.get_configuration_parameters()
+    model.get_model("bands").include = True
+    assert len(config.tab.children) == 3
+    parameters = model.get_model_state()
     assert "bands" in parameters
 
 
 def test_reminder_info():
     """Dynamic add/remove the reminder text based on the workchain settings."""
-    from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-
-    wg = ConfigureQeAppWorkChainStep()
-    assert wg.workchain_settings.reminder_info["bands"].value == ""
-    # select bands
-    wg.workchain_settings.properties["bands"].run.value = True
-    for name in wg.workchain_settings.reminder_info:
-        if name == "bands":
-            assert (
-                wg.workchain_settings.reminder_info["bands"].value
-                == "Customize bands settings in the panel above if needed."
-            )
-        else:
-            # all other reminder texts should be empty
-            assert wg.workchain_settings.reminder_info[name].value == ""
-    # unselect bands
-    wg.workchain_settings.properties["bands"].run.value = False
-    assert wg.workchain_settings.reminder_info["bands"].value == ""
+    model = ConfigurationModel()
+    config = ConfigureQeAppWorkChainStep(model=model)
+    config.render()
+    bands_info = config.property_children[0].children[1]
+    assert bands_info.value == ""
+    bands_model = model.get_model("bands")
+    bands_model.include = True
+    assert bands_info.value == "Customize bands settings in step 2.2 if needed"
+    bands_model.include = False
+    assert bands_info.value == ""
