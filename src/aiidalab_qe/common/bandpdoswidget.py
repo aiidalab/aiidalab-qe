@@ -744,12 +744,24 @@ class BandPdosWidget(ipw.VBox):
             else:
                 self.pdos_data = self._get_pdos_data()
                 self.bands_data = self._get_bands_data()
+
+                # Get current axis range
+                xaxis_range = list(self.bandsplot_widget.layout["xaxis"]["range"])
+                yaxis_range = list(self.bandsplot_widget.layout["yaxis"]["range"])
+
                 self.bandsplot_widget = BandPdosPlotly(
                     bands_data=self.bands_data,
                     pdos_data=self.pdos_data,
                     project_bands=self.project_bands_box.value,
                 ).bandspdosfigure
                 self._clear_output_and_display(self.bandsplot_widget)
+
+                # Restore Old axis range. I do it after the plot is displayed to the Reset button always return to the Default SETTINGs
+                if self.bands_data:
+                    self.bandsplot_widget.plotly_relayout({"yaxis.range": yaxis_range})
+                if self.pdos_data:
+                    self.bandsplot_widget.plotly_relayout({"xaxis.range": xaxis_range})
+
                 self.proj_bands_width_slider.layout.visibility = (
                     "visible" if self.project_bands_box.value else "hidden"
                 )
