@@ -1,7 +1,7 @@
 import pytest
 
 
-@pytest.mark.usefixtures("sssp")
+@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_result(generate_qeapp_workchain):
     import plotly.graph_objects as go
 
@@ -35,7 +35,7 @@ def test_result(generate_qeapp_workchain):
     )
 
 
-@pytest.mark.usefixtures("sssp")
+@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
     structure = generate_structure_data("silicon", pbc=(True, False, False))
     wkchain = generate_qeapp_workchain(structure=structure)
@@ -45,7 +45,7 @@ def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
     assert wkchain.inputs.bands.bands.bands_kpoints.labels == [(0, "Γ"), (9, "X")]
 
 
-@pytest.mark.usefixtures("sssp")
+@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_structure_2d(generate_qeapp_workchain, generate_structure_data):
     structure = generate_structure_data("MoS2", pbc=(True, True, False))
     wkchain = generate_qeapp_workchain(structure=structure)
