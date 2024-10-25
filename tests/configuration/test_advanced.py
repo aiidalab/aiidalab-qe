@@ -95,6 +95,43 @@ def test_advanced_kpoints_settings():
     assert w.value.get("kpoints_distance") == 0.5
 
 
+def test_advanced_molecule_settings(generate_structure_data):
+    """Test kpoint setting of advanced setting widget."""
+    from aiidalab_qe.app.configuration.advanced import AdvancedSettings
+
+    w = AdvancedSettings()
+
+    # Check the disable of is bind to override switch
+    assert w.kpoints_distance.disabled is True
+
+    w.override.value = True
+    assert w.kpoints_distance.disabled is False
+
+    # create molecule
+    structure = generate_structure_data(name="H2O", pbc=(False, False, False))
+    # Assign the molecule
+    w.input_structure = structure
+
+    # Check override can not modify the kpoints_distance
+    assert w.kpoints_distance.disabled is True
+    w.override.value = True
+    assert w.kpoints_distance.disabled is True
+
+    # Confirm the value of kpoints_distance is fixed
+    assert w.value.get("kpoints_distance") == 100.0
+
+    w.protocol = "fast"
+    assert w.value.get("kpoints_distance") == 100.0
+
+    # # Check reset
+    w.input_structure = None
+    w.reset()
+
+    # # the protocol will not be reset
+    assert w.protocol == "fast"
+    assert w.value.get("kpoints_distance") == 0.5
+
+
 def test_advanced_tot_charge_settings():
     """Test TotCharge widget."""
     from aiidalab_qe.app.configuration.advanced import AdvancedSettings

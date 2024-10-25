@@ -88,9 +88,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             description = ipw.HTML(
                 """
                 <p>Select a structure from one of the following sources and then click
-                "Confirm" to go to the next step. </p><i class="fa fa-exclamation-circle"
-                aria-hidden="true"></i> Currently only three-dimensional structures are
-                supported.
+                "Confirm" to go to the next step. </p>
                 """
             )
         self.description = description

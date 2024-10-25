@@ -26,6 +26,35 @@ def test_create_builder_default(
 
 
 @pytest.mark.usefixtures("sssp")
+def test_create_process_label(
+    submit_app_generator,
+):
+    """ "Test the creation of the correct process label"""
+
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+    # suppose we change the label of the structure:
+    submit_step.input_structure.label = "Si2, unit cell"
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2, unit cell [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+    # suppose by mistake we provide an empty label, we then fallback to use the formula:
+    submit_step.input_structure.label = ""
+    submit_step._update_process_label()
+    assert (
+        submit_step.process_label.value
+        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
+    )
+
+
+@pytest.mark.usefixtures("sssp")
 def test_create_builder_insulator(
     submit_app_generator,
 ):
@@ -44,8 +73,11 @@ def test_create_builder_insulator(
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
-    assert got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"] == "fixed"
-    assert "smearing" not in got["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
+    assert (
+        got["bands"]["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]["occupations"]
+        == "fixed"
+    )
+    assert "smearing" not in got["bands"]["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
 
 
 @pytest.mark.usefixtures("sssp")
@@ -82,7 +114,7 @@ def test_create_builder_advanced_settings(
     # test tot_charge is updated in the three steps
     for parameters in [
         got["relax"]["base"],
-        got["bands"]["scf"],
+        got["bands"]["bands"]["scf"],
         got["pdos"]["scf"],
         got["pdos"]["nscf"],
     ]:
@@ -98,6 +130,51 @@ def test_create_builder_advanced_settings(
         ]
         == 0.025
     )
+
+
+@pytest.mark.usefixtures("sssp")
+def test_warning_messages(
+    generate_structure_data,
+    submit_app_generator,
+):
+    """Test the creation of the warning messages.
+
+    For now, we test that the suggestions are indeed there.
+    We should check the whole message, but this is for now not easy to do: the message is built
+    on the fly with variables which are not accessible in this namespace.
+    """
+    import os
+
+    suggestions = {
+        "more_resources": "Increase the resources",
+        "change_configuration": "Review the configuration",
+        "go_remote": "Select a code that runs on a larger machine",
+        "avoid_overloading": "Reduce the number of CPUs to avoid the overloading of the local machine",
+    }
+    app = submit_app_generator(properties=["bands", "pdos"])
+    submit_step = app.submit_step
+    submit_step.codes["pw"].num_cpus.value = 1
+    submit_step._check_resources()
+    # no warning:
+    assert submit_step._submission_warning_messages.value == ""
+
+    # now we increase the resources, so we should have the Warning-3
+    submit_step.codes["pw"].num_cpus.value = len(os.sched_getaffinity(0))
+    submit_step._check_resources()
+    for suggestion in ["avoid_overloading", "go_remote"]:
+        assert suggestions[suggestion] in submit_step._submission_warning_messages.value
+
+    # now we use a large structure, so we should have the Warning-1 (and 2 if not on localhost)
+    structure = generate_structure_data("H2O-larger")
+    submit_step.input_structure = structure
+    submit_step.codes["pw"].num_cpus.value = 1
+    submit_step._check_resources()
+    num_sites = len(structure.sites)
+    volume = structure.get_cell_volume()
+    estimated_CPUs = submit_step._estimate_min_cpus(num_sites, volume)
+    assert estimated_CPUs == 2
+    for suggestion in ["more_resources", "change_configuration"]:
+        assert suggestions[suggestion] in submit_step._submission_warning_messages.value
 
 
 def builder_to_readable_dict(builder):

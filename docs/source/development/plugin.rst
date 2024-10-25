@@ -210,7 +210,7 @@ The `parameters` passed to the `get_builder` function has the following structur
             "pseudo_family": "SSSP/1.3/PBEsol/efficiency",
             "kpoints_distance": 0.5,
         },
-        "bands": {"kpath_2d": "hexagonal"},
+        "bands": {},
         "pdos": {...},
         "eos": {...},
         "plugin_1": {...},

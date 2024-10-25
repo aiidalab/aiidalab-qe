@@ -4,7 +4,7 @@ from threading import Thread
 import ipywidgets as ipw
 import traitlets
 
-from ..setup.codes import QE_VERSION, install
+from ..setup.codes import QE_VERSION, install_and_setup
 from .widgets import ProgressBar
 
 __all__ = [
@@ -66,7 +66,7 @@ class QESetupWidget(ipw.VBox):
         try:
             self.set_trait("busy", True)
 
-            for msg in install():
+            for msg in install_and_setup():
                 self.set_message(msg)
 
         except Exception as error:

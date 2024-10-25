@@ -107,11 +107,7 @@ class AdvancedSettings(Panel):
             style={"description_width": "initial"},
         )
         self.mesh_grid = ipw.HTML()
-        ipw.dlink(
-            (self.override, "value"),
-            (self.kpoints_distance, "disabled"),
-            lambda override: not override,
-        )
+        self.create_kpoints_distance_link()
         self.kpoints_distance.observe(self._callback_value_set, "value")
 
         # Hubbard setting widget
@@ -285,6 +281,20 @@ class AdvancedSettings(Panel):
         # Default settings to trigger the callback
         self.reset()
 
+    def create_kpoints_distance_link(self):
+        """Create the dlink for override and kpoints_distance."""
+        self.kpoints_distance_link = ipw.dlink(
+            (self.override, "value"),
+            (self.kpoints_distance, "disabled"),
+            lambda override: not override,
+        )
+
+    def remove_kpoints_distance_link(self):
+        """Remove the kpoints_distance_link."""
+        if hasattr(self, "kpoints_distance_link"):
+            self.kpoints_distance_link.unlink()
+            del self.kpoints_distance_link
+
     def _create_electron_maxstep_widgets(self):
         self.electron_maxstep = ipw.BoundedIntText(
             min=20,
@@ -332,10 +342,22 @@ class AdvancedSettings(Panel):
             self.hubbard_widget.update_widgets(change["new"])
             if isinstance(self.input_structure, HubbardStructureData):
                 self.override.value = True
+            if self.input_structure.pbc == (False, False, False):
+                self.kpoints_distance.value = 100.0
+                self.kpoints_distance.disabled = True
+                if hasattr(self, "kpoints_distance_link"):
+                    self.remove_kpoints_distance_link()
+            else:
+                # self.kpoints_distance.disabled = False
+                if not hasattr(self, "kpoints_distance_link"):
+                    self.create_kpoints_distance_link()
         else:
             self.magnetization.input_structure = None
             self.pseudo_setter.structure = None
             self.hubbard_widget.update_widgets(None)
+            self.kpoints_distance.disabled = False
+            if not hasattr(self, "kpoints_distance_link"):
+                self.create_kpoints_distance_link()
 
     @tl.observe("electronic_type")
     def _electronic_type_changed(self, change):
@@ -356,7 +378,14 @@ class AdvancedSettings(Panel):
 
         parameters = PwBaseWorkChain.get_protocol_inputs(protocol)
 
-        self.kpoints_distance.value = parameters["kpoints_distance"]
+        if self.input_structure:
+            if self.input_structure.pbc == (False, False, False):
+                self.kpoints_distance.value = 100.0
+                self.kpoints_distance.disabled = True
+            else:
+                self.kpoints_distance.value = parameters["kpoints_distance"]
+        else:
+            self.kpoints_distance.value = parameters["kpoints_distance"]
 
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
@@ -630,6 +659,10 @@ class AdvancedSettings(Panel):
                 self.pseudo_setter._reset()
             else:
                 self.pseudo_setter._reset()
+                if self.input_structure.pbc == (False, False, False):
+                    self.kpoints_distance.value = 100.0
+                    self.kpoints_distance.disabled = True
+
             # reset the magnetization
             self.magnetization.reset()
             # reset the hubbard widget

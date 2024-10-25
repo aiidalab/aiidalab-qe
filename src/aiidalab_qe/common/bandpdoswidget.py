@@ -7,6 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 from IPython.display import clear_output, display
 from plotly.subplots import make_subplots
+from pymatgen.core.periodic_table import Element
 
 from aiida.orm import ProjectionData
 from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
@@ -273,14 +274,13 @@ class BandPdosPlotly:
             )
 
             scatter_objects.append(
-                go.Scatter(
+                go.Scattergl(
                     x=x_bands_comb,
                     y=y_bands_comb - fermi_energy,
                     mode="lines",
                     line={
                         "color": colors[(spin_polarized, spin)],
-                        "shape": "spline",
-                        "smoothing": 1.3,
+                        "shape": "linear",
                     },
                     showlegend=False,
                 )
@@ -317,15 +317,14 @@ class BandPdosPlotly:
             y_data = (
                 dos_np - fermi_energy if self.plot_type == "combined" else trace["y"]
             )
-            scatter_objects[i] = go.Scatter(
+            scatter_objects[i] = go.Scattergl(
                 x=x_data,
                 y=y_data,
                 fill=fill,
                 name=trace["label"],
                 line={
                     "color": trace["borderColor"],
-                    "shape": "spline",
-                    "smoothing": 1.0,
+                    "shape": "linear",
                 },
                 legendgroup=trace["label"],
             )
@@ -351,7 +350,7 @@ class BandPdosPlotly:
                 self.fermi_energy.get("fermi_energy"),
             )
             scatter_objects.append(
-                go.Scatter(
+                go.Scattergl(
                     x=proj_bands["x"],
                     y=np.array(proj_bands["y"]) - fermi_energy,
                     fill="toself",
@@ -375,6 +374,7 @@ class BandPdosPlotly:
             width=self.SETTINGS["combined_plot_width"],
             plot_bgcolor="white",
         )
+        self._update_dos_layout(fig)
 
     def _customize_layout(self, fig, xaxis, yaxis, row=1, col=1):
         fig.update_xaxes(patch=xaxis, row=row, col=col)
@@ -401,6 +401,92 @@ class BandPdosPlotly:
             height=self.SETTINGS[f"{self.plot_type}_plot_height"],
             width=self.SETTINGS[f"{self.plot_type}_plot_width"],
         )
+        self._update_dos_layout(fig)
+
+    def _update_dos_layout(self, fig):
+        def update_layout_spin_polarized(
+            x_data_up,
+            y_data_up,
+            x_data_down,
+            y_data_down,
+            x_min,
+            x_max,
+            update_func,
+            layout_type,
+        ):
+            most_negative_down, max_up = find_max_up_and_down(
+                x_data_up, y_data_up, x_data_down, y_data_down, x_min, x_max
+            )
+            if layout_type == "layout":
+                update_func(yaxis={"range": [most_negative_down * 1.10, max_up * 1.10]})
+            elif layout_type == "xaxes":
+                update_func(
+                    patch={"range": [most_negative_down * 1.10, max_up * 1.10]},
+                    row=1,
+                    col=2,
+                )
+
+        def update_layout_non_spin_polarized(
+            total_dos_xdata, total_dos_ydata, x_min, x_max, update_func, layout_type
+        ):
+            max_value = find_max_in_range(
+                total_dos_xdata, total_dos_ydata, x_min, x_max
+            )
+            if layout_type == "layout":
+                update_func(yaxis={"range": [0, max_value * 1.10]})
+            elif layout_type == "xaxes":
+                update_func(patch={"range": [0, max_value * 1.10]}, row=1, col=2)
+
+        def get_x_min_max(fermi_energy):
+            return (
+                self.SETTINGS["horizontal_range_pdos"][0] + fermi_energy,
+                self.SETTINGS["horizontal_range_pdos"][1] + fermi_energy,
+            )
+
+        def handle_spin_polarization(fermi_energy, update_func, layout_type):
+            spin_polarized = "(↑)" in self.pdos_data["dos"][0]["label"]
+            if not spin_polarized:
+                total_dos_xdata = self.pdos_data["dos"][0]["x"]
+                total_dos_ydata = self.pdos_data["dos"][0]["y"]
+                x_min, x_max = get_x_min_max(fermi_energy)
+                update_layout_non_spin_polarized(
+                    total_dos_xdata,
+                    total_dos_ydata,
+                    x_min,
+                    x_max,
+                    update_func,
+                    layout_type,
+                )
+            else:
+                x_data_up = self.pdos_data["dos"][0]["x"]
+                y_data_up = self.pdos_data["dos"][0]["y"]
+                x_data_down = self.pdos_data["dos"][1]["x"]
+                y_data_down = self.pdos_data["dos"][1]["y"]
+                x_min, x_max = get_x_min_max(fermi_energy)
+                update_layout_spin_polarized(
+                    x_data_up,
+                    y_data_up,
+                    x_data_down,
+                    y_data_down,
+                    x_min,
+                    x_max,
+                    update_func,
+                    layout_type,
+                )
+
+        # PDOS plot type
+        if self.plot_type == "pdos":
+            fermi_energy = self.fermi_energy.get(
+                "fermi_energy", self.fermi_energy.get("fermi_energy_up")
+            )
+            handle_spin_polarization(fermi_energy, fig.update_layout, "layout")
+
+        # Combined plot type
+        if self.plot_type == "combined":
+            fermi_energy = self.fermi_energy.get(
+                "fermi_energy", self.fermi_energy.get("fermi_energy_up")
+            )
+            handle_spin_polarization(fermi_energy, fig.update_xaxes, "xaxes")
 
 
 class BandPdosWidget(ipw.VBox):
@@ -426,9 +512,21 @@ class BandPdosWidget(ipw.VBox):
     - pdos_options_out: Output widget to clear specific widgets.
     """
 
+    widget_description = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; max-width: 600px;">
+        Hover over the plot to reveal controls for zoom, pan, and downloading the image. Use the zoom tools or your mouse to zoom in on specific regions, and click on the axes for interactive features. The home button resets to the default view, and the autoscale option displays all computed data, including semicore states.
+    </div>"""
+    )
+
     description = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        Select the style of plotting the projected density of states.
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; max-width: 600px;">
+    Select the style of plotting the projected density of states.
+    </div>"""
+    )
+
+    legend_interaction_description = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 5px; max-width: 600px;">
+        The legend entries can be clicked to hide or show the corresponding data. Double-clicking on a legend entry will isolate it.
         </div>"""
     )
 
@@ -443,7 +541,7 @@ class BandPdosWidget(ipw.VBox):
             description="Group by:",
             options=[
                 ("Kinds", "kinds"),
-                ("Atoms", "atoms"),
+                ("Atomic position", "atoms"),
             ],
             value="kinds",
             style={"description_width": "initial"},
@@ -459,13 +557,14 @@ class BandPdosWidget(ipw.VBox):
             style={"description_width": "initial"},
         )
         self.selected_atoms = ipw.Text(
+            placeholder="e.g. 1..5 8 10",
             description="Select atoms:",
             value="",
             style={"description_width": "initial"},
         )
         self._wrong_syntax = StatusHTML(clear_after=8)
         self.update_plot_button = ipw.Button(
-            description="Update Plot",
+            description="Apply selection",
             icon="pencil",
             button_style="primary",
             disabled=False,
@@ -480,11 +579,12 @@ class BandPdosWidget(ipw.VBox):
         self.project_bands_box = ipw.Checkbox(
             value=False,
             description="Add `fat bands` projections",
+            style={"description_width": "initial"},
         )
         self.proj_bands_width_slider = ipw.FloatSlider(
             value=0.5,
             min=0.01,
-            max=0.76,
+            max=2.0,
             step=0.01,
             description="`Fat bands` max width (eV):",
             orientation="horizontal",
@@ -510,8 +610,9 @@ class BandPdosWidget(ipw.VBox):
             self.description,
             self.dos_atoms_group,
             self.dos_plot_group,
-            ipw.HBox([self.selected_atoms, self._wrong_syntax]),
-            self.update_plot_button,
+            ipw.HBox(
+                [self.selected_atoms, self._wrong_syntax, self.update_plot_button]
+            ),
         ]
         # If projections are available in the bands data, include the box to plot fat-bands
         if self.bands_data and "projected_bands" in self.bands_data:
@@ -525,10 +626,14 @@ class BandPdosWidget(ipw.VBox):
         # Set the event handlers
         self.download_button.on_click(self.download_data)
         self.update_plot_button.on_click(self._update_plot)
-        # self.proj_bands_width_slider.observe(self._update_plot, names='value')
+        self.proj_bands_width_slider.observe(self._update_plot, names="value")
+        self.project_bands_box.observe(self._update_plot, names="value")
+        self.dos_atoms_group.observe(self._update_plot, names="value")
+        self.dos_plot_group.observe(self._update_plot, names="value")
 
         super().__init__(
             children=[
+                self.widget_description,
                 self.pdos_options_out,
                 self.download_button,
                 self.bands_widget,  # Add the output widget to the VBox
@@ -538,6 +643,16 @@ class BandPdosWidget(ipw.VBox):
 
         # Plot the options only if the pdos is provided or in case the bands data contains projections
         if self.pdos or (self.bands_data and "projected_bands" in self.bands_data):
+            # Add the legend interaction description after the download button
+            self.children = (
+                self.children[
+                    :3
+                ]  # Get the first three children: widget_description, pdos_options_out and download_button
+                + (
+                    self.legend_interaction_description,
+                )  # Add the legend interaction description as a tuple
+                + self.children[3:]  # Add the rest of the children
+            )
             with self.pdos_options_out:
                 display(self.pdos_options)
 
@@ -772,6 +887,10 @@ def get_bands_projections_data(
         bands_data["projected_bands"] = _prepare_projections_to_plot(
             bands_data, projections, bands_width
         )
+        if plot_tag != "total":
+            bands_data["projected_bands"] = update_pdos_labels(
+                bands_data["projected_bands"]
+            )
     return bands_data
 
 
@@ -853,6 +972,11 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
     else:
         data_dict["fermi_energy"] = pdos.nscf.output_parameters["fermi_energy"]
 
+    # Updata labels if plot_tag is different than total
+    if plot_tag != "total":
+        data_dict = update_pdos_labels(data_dict)
+    #    data_dict = deepcopy(new_dict)
+
     return json.loads(json.dumps(data_dict))
 
 
@@ -869,9 +993,9 @@ def _get_grouping_key(
     key_formats = {
         ("atoms", "total"): r"{var1}-{var}",
         ("kinds", "total"): r"{var1}",
-        ("atoms", "orbital"): r"{var1}-{var}<br>{var2}",
+        ("atoms", "orbital"): r"{var1}-{var2}<br>{var}",
         ("kinds", "orbital"): r"{var1}-{var2}",
-        ("atoms", "angular_momentum"): r"{var1}-{var}<br>{var3}",
+        ("atoms", "angular_momentum"): r"{var1}-{var3}<br>{var}",
         ("kinds", "angular_momentum"): r"{var1}-{var3}",
     }
 
@@ -918,13 +1042,17 @@ def _curate_orbitals(orbital):
     orbital_data = orbital.get_orbital_dict()
     kind_name = orbital_data["kind_name"]
     atom_position = [round(i, 2) for i in orbital_data["position"]]
+    radial_node = orbital_data["radial_nodes"]
 
     try:
         orbital_name = orbital.get_name_from_quantum_numbers(
             orbital_data["angular_momentum"], orbital_data["magnetic_number"]
         ).lower()
-        orbital_name_plotly = HTML_TAGS.get(orbital_name, orbital_name)
-        orbital_angular_momentum = orbital_name[0]
+        orbital_name_plotly = (
+            f"r{radial_node} {HTML_TAGS.get(orbital_name, orbital_name)}"
+        )
+        orbital_angular_momentum = f"r{radial_node} {orbital_name[0]}"
+
     except AttributeError:
         # Set quanutum numbers
         qn_j = orbital_data["total_angular_momentum"]
@@ -1078,3 +1206,246 @@ def cmap(label: str) -> str:
     random.seed(ascn)
 
     return f"#{random.randint(0, 0xFFFFFF):06x}"
+
+
+def find_extreme_in_range(
+    x_data, y_data, x_min, x_max, is_max=True, initial_value=float("-inf")
+):
+    """
+    General function to find the extreme value (max or min) in a given range.
+
+    Parameters:
+    - x_data: List of x values.
+    - y_data: List of y values.
+    - x_min: Minimum x value for the range.
+    - x_max: Maximum x value for the range.
+    - is_max: Boolean to determine whether to find the maximum or minimum value.
+    - initial_value: Initial value for extreme (default is -inf for max and 0 for min).
+
+    Returns:
+    - Extreme value found in the range, or None if no valid values are found.
+    """
+    extreme_value = initial_value
+
+    for x, y in zip(x_data, y_data):
+        if x_min <= x <= x_max:
+            if (is_max and y > extreme_value) or (not is_max and y < extreme_value):
+                extreme_value = y
+
+    return extreme_value if extreme_value != initial_value else None
+
+
+def find_max_up_and_down(x_data_up, y_data_up, x_data_down, y_data_down, x_min, x_max):
+    """
+    Function to find the maximum positive value and the most negative value.
+
+    Parameters:
+    - x_data_up: List of x values for the positive part.
+    - y_data_up: List of y values for the positive part.
+    - x_data_down: List of x values for the negative part.
+    - y_data_down: List of y values for the negative part.
+    - x_min: Minimum x value for the range.
+    - x_max: Maximum x value for the range.
+
+    Returns:
+    - most_negative_down: Most negative value found in the down part.
+    - max_up: Maximum value found in the up part.
+    """
+    max_up = find_extreme_in_range(x_data_up, y_data_up, x_min, x_max, is_max=True)
+    most_negative_down = find_extreme_in_range(
+        x_data_down, y_data_down, x_min, x_max, is_max=False, initial_value=0
+    )
+
+    return most_negative_down, max_up
+
+
+def find_max_in_range(x_data, y_data, x_min, x_max):
+    """
+    Function to find the maximum value in a specified range.
+
+    Parameters:
+    - x_data: List of x values.
+    - y_data: List of y values.
+    - x_min: Minimum x value for the range.
+    - x_max: Maximum x value for the range.
+
+    Returns:
+    - Maximum value found in the range, or None if no valid values are found.
+    """
+    return find_extreme_in_range(x_data, y_data, x_min, x_max, is_max=True)
+
+
+def get_labels_radial_nodes(pdos_dict):
+    """
+    Extracts the original labels from the PDOS data and constructs an orbital dictionary.
+
+    Args:
+        pdos_dict (dict): Dictionary containing PDOS data with 'dos' key representing orbital information.
+
+    Returns:
+        tuple:
+            - original_labels (list): List of strings representing the original orbital labels.
+            - orbital_dict (dict): A nested dictionary mapping atom kinds to orbital types and their corresponding radial nodes.
+    """
+    original_labels = []
+    orbital_dict = {}
+
+    label_data_list = pdos_dict["dos"] if "dos" in pdos_dict else pdos_dict
+    for label_data in label_data_list:
+        # for label_data in pdos_dict["dos"]:
+        label_str = label_data["label"]
+        original_labels.append(label_str)
+
+        parts = label_str.split("-")
+        if len(parts) < 2:
+            continue  # Skip invalid or non-orbital labels
+
+        atom = parts[0]  # Atom type (e.g., 'Fe1')
+        radial_orbital = parts[1].split()  # Splits 'r# orbital' (e.g., 'r0 s')
+
+        if len(radial_orbital) < 2:
+            continue  # Malformed label
+
+        radial_node = int(radial_orbital[0][1:])  # Extract radial index from 'r#'
+        orbital = radial_orbital[1][0]  # Orbital type ('s', 'p', 'd', 'f')
+
+        # Populate orbital_dict with atoms, orbitals, and radial nodes
+        orbital_dict.setdefault(atom, {}).setdefault(orbital, set()).add(radial_node)
+
+    return original_labels, orbital_dict
+
+
+def assign_orbital_labels(orbital_dict):
+    """
+    Assigns orbital labels to atoms based on their radial nodes and electronic structure.
+
+    Args:
+        orbital_dict (dict): A nested dictionary mapping atom kinds to orbital types and their corresponding radial nodes.
+
+    Returns:
+        dict: A dictionary mapping atoms and orbitals to their assigned radial labels.
+    """
+    result = {}
+
+    for atom_with_number, orbitals in orbital_dict.items():
+        # Extract element name (remove numeric suffixes)
+        atom = re.sub(r"\d+", "", atom_with_number)
+        element = Element(atom)
+        electronic_structure = list(reversed(element.full_electronic_structure))
+
+        orbital_assignment = {orb: {} for orb in ["s", "p", "d", "f"]}
+
+        # Map orbitals from electronic structure
+        orbital_map = {
+            "s": [
+                f"{n}{orbital}"
+                for n, orbital, _ in electronic_structure
+                if orbital == "s"
+            ],
+            "p": [
+                f"{n}{orbital}"
+                for n, orbital, _ in electronic_structure
+                if orbital == "p"
+            ],
+            "d": [
+                f"{n}{orbital}"
+                for n, orbital, _ in electronic_structure
+                if orbital == "d"
+            ],
+            "f": [
+                f"{n}{orbital}"
+                for n, orbital, _ in electronic_structure
+                if orbital == "f"
+            ],
+        }
+
+        # Assign radial nodes to orbitals in reverse order
+        for orb_type in ["s", "p", "d", "f"]:
+            if orb_type in orbitals:
+                sorted_indices = sorted(orbitals[orb_type], reverse=True)
+                for idx, radial_node in enumerate(sorted_indices):
+                    if radial_node < len(orbital_map[orb_type]):
+                        orbital_assignment[orb_type][idx] = orbital_map[orb_type][
+                            radial_node
+                        ][0]
+
+        # Clean up empty orbital assignments
+        result[atom_with_number] = {
+            orb: val for orb, val in orbital_assignment.items() if val
+        }
+
+    return result
+
+
+def get_new_pdos_labels(input_list, orbital_dict):
+    output_list = []
+
+    for item in input_list:
+        # Check if the label contains a '-' to proceed with splitting
+        if "-" in item:
+            before_dash, after_dash = item.split("-", 1)
+
+            # Split the part after the dash into words to isolate the radial node (r#)
+            parts = after_dash.split()
+
+            if parts[0].startswith("r"):
+                radial_index = int(parts[0][1:])  # Extract the number after 'r'
+
+                # Check if the first element after removing the radial part corresponds to an orbital
+                orbital = parts[1]
+
+                # If the atom and orbital type exist in the orbital_dict, map the radial node
+                if (
+                    before_dash in orbital_dict
+                    and orbital[0] in orbital_dict[before_dash]
+                ):
+                    if radial_index in orbital_dict[before_dash][orbital[0]]:
+                        # Get the mapped radial value
+                        new_radial_value = orbital_dict[before_dash][orbital[0]][
+                            radial_index
+                        ]
+
+                        # Rebuild the string, removing the space before the orbital
+                        after_dash = after_dash.replace(
+                            f"r{radial_index}", new_radial_value, 1
+                        )
+                        after_dash = after_dash.replace(
+                            " ", "", 1
+                        )  # Remove the space after the radial value
+                        new_item = f"{before_dash}-{after_dash}"
+                    else:
+                        new_item = (
+                            item  # If radial index not found, use the original item
+                        )
+                else:
+                    new_item = item  # If no match in orbital_dict, use original label
+            else:
+                new_item = item  # In case there's no valid 'r#' part
+        else:
+            new_item = item  # If no dash, use the original item
+
+        output_list.append(new_item)
+
+    return output_list
+
+
+def update_pdos_labels(pdos_data):
+    """
+    Updates PDOS labels by assigning correct radial nodes to orbitals based on their electronic structure.
+
+    Args:
+        pdos_data (dict): PDOS data structure containing 'dos' key with orbital information.
+
+    Returns:
+        tuple:
+            - pdos_data (dict): Updated PDOS data with correct orbital labels.
+    """
+    original_labels, orbital_dict = get_labels_radial_nodes(pdos_data)
+    orbital_assignment = assign_orbital_labels(orbital_dict)
+    updated_labels = get_new_pdos_labels(original_labels, orbital_assignment)
+
+    label_data_list = pdos_data["dos"] if "dos" in pdos_data else pdos_data
+    for idx, label in enumerate(updated_labels):
+        label_data_list[idx]["label"] = label
+
+    return pdos_data
