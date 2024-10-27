@@ -135,7 +135,8 @@ class SettingsPanel(Panel):
             link.unlink()
         self.links.clear()
 
-    def _refresh(self):
+        if not self._model.include:
+            return
         self.updated = False
         self._unsubscribe()
         self._update()
