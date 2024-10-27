@@ -158,9 +158,9 @@ class AdvancedModel(SettingsModel):
             "kpoints_distance": self.traits()["kpoints_distance"].default_value,
         }
 
-    def update(self):
+    def update(self, which):
         with self.hold_trait_notifications():
-            self._update_defaults()
+            self._update_defaults(which)
             self.forc_conv_thr = self._defaults["forc_conv_thr"]
             self.forc_conv_thr_step = self._defaults["forc_conv_thr_step"]
             self.etot_conv_thr = self._defaults["etot_conv_thr"]
@@ -319,11 +319,14 @@ class AdvancedModel(SettingsModel):
             self.kpoints_distance = self._defaults["kpoints_distance"]
             self.override = self.traits()["override"].default_value
 
-    def _update_defaults(self):
-        parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
-
-        self._update_kpoints_distance(parameters)
+    def _update_defaults(self, what):
+        if what != "mesh":
+            parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
+            self._update_kpoints_distance(parameters)
         self.update_kpoints_mesh()
+
+        if what != "protocol":
+            return
 
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 

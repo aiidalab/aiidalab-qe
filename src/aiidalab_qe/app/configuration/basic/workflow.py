@@ -98,7 +98,7 @@ class WorkChainSettings(SettingsPanel):
 
         self.rendered = True
 
-        self._refresh()
+        self.refresh(which="all")
 
     def _on_input_structure_change(self, _):
-        self._refresh()
+        self.refresh(which="structure")

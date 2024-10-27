@@ -119,19 +119,19 @@ class Setting(SettingsPanel):
 
         self.rendered = True
 
-        self._refresh()
+        self.refresh(which="all")
 
     def _on_input_structure_change(self, _):
-        self._refresh()
+        self.refresh(which="structure")
 
     def _on_pseudo_group_change(self, _):
-        self._refresh()
+        self.refresh(which="pseudos")
 
-    def _update(self):
+    def _update(self, which):
         if self.updated:
             return
         self._show_loading()
-        self._model.update()
+        self._model.update(which)
         self._build_core_levels_widget()
         self.updated = True
 

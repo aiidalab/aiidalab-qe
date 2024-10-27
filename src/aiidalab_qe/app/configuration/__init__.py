@@ -181,6 +181,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return
         tab: SettingsPanel = self.tab.children[tab_index]  # type: ignore
         tab.render()
+        tab.refresh()
 
     def _on_input_structure_change(self, _):
         self._model.update()

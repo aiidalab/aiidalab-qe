@@ -126,19 +126,13 @@ class Setting(SettingsPanel):
 
         self.rendered = True
 
-        self._refresh()
+        self.refresh(which="all")
 
     def _on_input_structure_change(self, _):
-        self._refresh()
+        self.refresh(which="structure")
 
     def _on_protocol_change(self, _):
-        self._refresh()
+        self.refresh(which="protocol")
 
     def _on_kpoints_distance_change(self, _):
-        self._model.update_kpoints_mesh()
-
-    def _update(self):
-        if self.updated:
-            return
-        self._model.update()
-        self.updated = True
+        self.refresh(which="mesh")

@@ -29,9 +29,9 @@ class PdosModel(SettingsModel):
             "kpoints_distance": self.traits()["kpoints_distance"].default_value,
         }
 
-    def update(self):
+    def update(self, which):
         with self.hold_trait_notifications():
-            self._update_defaults()
+            self._update_defaults(which)
             self.kpoints_distance = self._defaults["kpoints_distance"]
 
     def update_kpoints_mesh(self, _=None):
@@ -70,9 +70,10 @@ class PdosModel(SettingsModel):
             self.use_pdos_degauss = self.traits()["use_pdos_degauss"].default_value
             self.pdos_degauss = self.traits()["pdos_degauss"].default_value
 
-    def _update_defaults(self):
-        parameters = PdosWorkChain.get_protocol_inputs(self.protocol)
-        self._update_kpoints_distance(parameters)
+    def _update_defaults(self, what):
+        if what != "mesh":
+            parameters = PdosWorkChain.get_protocol_inputs(self.protocol)
+            self._update_kpoints_distance(parameters)
         self.update_kpoints_mesh()
 
     def _update_kpoints_distance(self, parameters):

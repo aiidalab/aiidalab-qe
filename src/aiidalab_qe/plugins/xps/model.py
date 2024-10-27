@@ -33,10 +33,10 @@ class XpsModel(SettingsModel):
         default_value={},
     )
 
-    def update(self):
+    def update(self, which):
         self._update_correction_energies()
-        if self._pseudo_group_exists():
-            self._install_pseudos()
+        if which == "pseudo_group":
+            self._update_pseudos()
 
     def get_supported_core_levels(self):
         supported_core_levels = {}
@@ -91,6 +91,10 @@ class XpsModel(SettingsModel):
         except NotExistent:
             self.correction_energies = {}
             # TODO What if the group does not exist? Should we proceed? Can this happen?
+
+    def _update_pseudos(self):
+        if self._pseudo_group_exists():
+            self._install_pseudos()
 
     def _pseudo_group_exists(self, _=None):
         qb = QueryBuilder()

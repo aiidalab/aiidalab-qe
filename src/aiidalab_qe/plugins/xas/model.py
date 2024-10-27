@@ -57,7 +57,9 @@ class XasModel(SettingsModel):
         self.core_hole_pseudos = self.pseudo_data_dict["pbe"]["core_hole_pseudos"]["1s"]
         self.core_wfc_data_dict = self.pseudo_data_dict["pbe"]["core_wavefunction_data"]
 
-    def update(self):
+        self.installed_pseudos = False
+
+    def update(self, which):
         self._update_pseudos()
         self._update_core_hole_treatment_recommendations()
 
@@ -109,6 +111,9 @@ class XasModel(SettingsModel):
             # self.structure_type = self.traits()["structure_type"].default_value
 
     def _update_pseudos(self):
+        if self.installed_pseudos:
+            return
+
         for func in self.functionals:
             target_dir = f"{self.head_path}/{self.dir_header}/{func}"
             os.makedirs(target_dir, exist_ok=True)
@@ -155,6 +160,8 @@ class XasModel(SettingsModel):
                 in_dict=core_hole_pseudo_dict["1s"],
                 path=ch_pseudo_dir,
             )
+
+        self.installed_pseudos = True
 
     def _load_or_import_nodes_from_filenames(self, in_dict, path, core_wfc_data=False):
         for filename in in_dict.values():

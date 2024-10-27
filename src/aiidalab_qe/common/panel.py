@@ -86,7 +86,7 @@ class SettingsModel(tl.HasTraits):
             return self.input_structure is None or any(self.input_structure.pbc)
         return False
 
-    def update(self):
+    def update(self, which):
         pass
 
     def get_model_state(self) -> dict:
@@ -102,7 +102,7 @@ class SettingsModel(tl.HasTraits):
         if change["name"] != "confirmed":
             self.confirmed = False
 
-    def _update_defaults(self):
+    def _update_defaults(self, which):
         raise NotImplementedError
 
 
@@ -130,26 +130,27 @@ class SettingsPanel(Panel):
     def render(self):
         raise NotImplementedError
 
-    def _unsubscribe(self):
-        for link in self.links:
-            link.unlink()
-        self.links.clear()
-
+    def refresh(self, which):
         if not self._model.include:
             return
         self.updated = False
         self._unsubscribe()
-        self._update()
+        self._update(which)
         if "PYTEST_CURRENT_TEST" in os.environ:
             # Skip resetting to avoid having to inject a structure when testing
             return
         if not self._model.input_structure:
             self._model.reset()
 
-    def _update(self):
+    def _unsubscribe(self):
+        for link in self.links:
+            link.unlink()
+        self.links.clear()
+
+    def _update(self, which):
         if self.updated:
             return
-        self._model.update()
+        self._model.update(which)
         self.updated = True
 
 
