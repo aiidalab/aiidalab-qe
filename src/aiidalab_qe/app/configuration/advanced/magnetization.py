@@ -93,25 +93,25 @@ class MagnetizationSettings(AdvancedSubSettings):
 
         self.rendered = True
 
-        self._refresh()
+        self.refresh(which="all")
 
     def _on_input_structure_change(self, _):
-        self._refresh()
+        self.refresh(which="structure")
 
     def _on_electronic_type_change(self, _):
         self._switch_widgets()
 
     def _on_spin_type_change(self, _):
-        self._refresh()
+        self.refresh(which="spin")
 
     def _on_magnetization_type_change(self, _):
         self._toggle_widgets()
 
-    def _update(self):
+    def _update(self, which):
         if self.updated:
             return
         self._show_loading()
-        self._model.magnetization.update()
+        self._model.magnetization.update(which)
         self._build_kinds_widget()
         self._switch_widgets()
         self._toggle_widgets()

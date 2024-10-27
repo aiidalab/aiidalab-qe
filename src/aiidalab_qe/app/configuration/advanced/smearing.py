@@ -71,13 +71,7 @@ class SmearingSettings(AdvancedSubSettings):
 
         self.rendered = True
 
-        self._refresh()
+        self.refresh(which="all")
 
     def _on_protocol_change(self, _):
-        self._refresh()
-
-    def _update(self):
-        if self.updated:
-            return
-        self._model.smearing.update()
-        self.updated = True
+        self.refresh(which="protocol")

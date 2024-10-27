@@ -383,13 +383,13 @@ class AdvancedModel(SettingsModel):
 class AdvancedSubModel(tl.HasTraits):
     _defaults = {}
 
-    def update(self):
+    def update(self, which):
         raise NotImplementedError
 
     def reset(self):
         raise NotImplementedError
 
-    def _update_defaults(self):
+    def _update_defaults(self, which):
         raise NotImplementedError
 
 
@@ -408,9 +408,9 @@ class SmearingModel(AdvancedSubModel):
             "degauss": self.traits()["degauss"].default_value,
         }
 
-    def update(self):
+    def update(self, which):
         with self.hold_trait_notifications():
-            self._update_defaults()
+            self._update_defaults(which)
             self.type = self._defaults["type"]
             self.degauss = self._defaults["degauss"]
 
@@ -419,7 +419,7 @@ class SmearingModel(AdvancedSubModel):
             self.type = self._defaults["type"]
             self.degauss = self._defaults["degauss"]
 
-    def _update_defaults(self):
+    def _update_defaults(self, which):
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(self.protocol)
             .get("pw", {})
@@ -461,9 +461,9 @@ class MagnetizationModel(AdvancedSubModel):
             "moments": {},
         }
 
-    def update(self):
+    def update(self, which):
         with self.hold_trait_notifications():
-            self._update_defaults()
+            self._update_defaults(which)
             self.moments = self._get_default_moments()
 
     def reset(self):
@@ -472,7 +472,7 @@ class MagnetizationModel(AdvancedSubModel):
             self.total = self.traits()["total"].default_value
             self.moments = self._get_default_moments()
 
-    def _update_defaults(self):
+    def _update_defaults(self, which):
         if self.spin_type == "none" or self.input_structure is None:
             self._defaults["moments"] = {}
         else:
@@ -517,9 +517,9 @@ class HubbardModel(AdvancedSubModel):
             "eigenvalues": [],
         }
 
-    def update(self):
+    def update(self, which):
         with self.hold_trait_notifications():
-            self._update_defaults()
+            self._update_defaults(which)
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
             self.needs_eigenvalues_widget = len(self.applicable_elements) > 0
@@ -551,7 +551,7 @@ class HubbardModel(AdvancedSubModel):
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
 
-    def _update_defaults(self):
+    def _update_defaults(self, which):
         if self.input_structure is None:
             self.applicable_elements = []
             self.orbital_labels = []
@@ -757,9 +757,9 @@ class PseudosModel(AdvancedSubModel):
             "cutoffs": [[0.0], [0.0]],
         }
 
-    def update(self):
+    def update(self, which):
         with self.hold_trait_notifications():
-            self._update_defaults()
+            self._update_defaults(which)
 
     def update_default_pseudos(self):
         try:
@@ -894,7 +894,7 @@ class PseudosModel(AdvancedSubModel):
             self.family_help_message = self.PSEUDO_HELP_WO_SOC
             self.status_message = ""
 
-    def _update_defaults(self):
+    def _update_defaults(self, which):
         if self.input_structure is None:
             self._defaults.update(
                 {

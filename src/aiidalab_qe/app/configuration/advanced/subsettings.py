@@ -1,6 +1,6 @@
 import ipywidgets as ipw
 
-from .model import AdvancedModel
+from .model import AdvancedModel, AdvancedSubModel
 
 
 class AdvancedSubSettings(ipw.VBox):
@@ -23,6 +23,8 @@ class AdvancedSubSettings(ipw.VBox):
             "override",
         )
 
+        self._submodel: AdvancedSubModel = getattr(model, self.identifier)
+
         self.links = []
 
         self.rendered = False
@@ -31,19 +33,24 @@ class AdvancedSubSettings(ipw.VBox):
     def render(self):
         raise NotImplementedError
 
+    def refresh(self, which):
+        self.updated = False
+        self._unsubscribe()
+        self._update(which)
+        if not self._model.input_structure:
+            self._submodel.reset()
+
     def _on_override_change(self, change):
         if not change["new"]:
-            getattr(self._model, self.identifier).reset()
+            self._submodel.reset()
 
     def _unsubscribe(self):
         for link in self.links:
             link.unlink()
         self.links.clear()
 
-    def _refresh(self):
-        self.updated = False
-        self._unsubscribe()
-        self._update()
-
-    def _update(self):
-        raise NotImplementedError
+    def _update(self, which):
+        if self.updated:
+            return
+        self._submodel.update(which)
+        self.updated = True
