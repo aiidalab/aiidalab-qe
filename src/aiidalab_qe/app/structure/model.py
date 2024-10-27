@@ -36,6 +36,3 @@ class StructureModel(tl.HasTraits):
 
     def _unconfirm(self, _):
         self.confirmed = False
-
-
-struct_model = StructureModel()
