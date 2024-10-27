@@ -81,7 +81,7 @@ class QueryInterface:
             </style>
             """
 
-        unique_properties = set(self.df["Properties"].explode())
+        unique_properties = set(self.df["Properties"].explode().dropna())
         unique_properties.discard(None)
         property_checkboxes = [
             ipw.Checkbox(
