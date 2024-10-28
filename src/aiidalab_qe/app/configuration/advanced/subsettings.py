@@ -32,6 +32,10 @@ class AdvancedSubSettings(ipw.VBox):
         )
 
         self._model = model
+        self._model.observe(
+            self._on_override_change,
+            "override",
+        )
 
         self.links = []
 
