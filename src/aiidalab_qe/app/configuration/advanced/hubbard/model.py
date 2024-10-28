@@ -102,7 +102,7 @@ class HubbardModel(AdvancedSubModel):
                     ),
                     [
                         Element(symbol)
-                        for symbol in self.input_structure.get_kind_names()
+                        for symbol in self.input_structure.get_symbols_set()
                     ],
                 )
             ]
@@ -124,13 +124,16 @@ class HubbardModel(AdvancedSubModel):
         return deepcopy(self._defaults["eigenvalues"])
 
     def _get_labels(self):
-        symbols = self.input_structure.get_kind_names()
         hubbard_manifold_list = [
-            self._get_manifold(Element(symbol)) for symbol in symbols
+            self._get_manifold(Element(kind.symbol))
+            for kind in self.input_structure.kinds
         ]
         return [
-            f"{symbol} - {manifold}"
-            for symbol, manifold in zip(symbols, hubbard_manifold_list)
+            f"{kind_name} - {manifold}"
+            for kind_name, manifold in zip(
+                self.input_structure.get_kind_names(),
+                hubbard_manifold_list,
+            )
         ]
 
     def _get_manifold(self, element):

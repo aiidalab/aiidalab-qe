@@ -228,7 +228,7 @@ def test_pseudo_upload_widget(generate_upf_data):
     # the widget initialize with the pseudo as input to mock how it will
     # be used in PseudoSetter when the pseudo family is set.
     old_pseudo = generate_upf_data("O", "O_old.upf")
-    w = PseudoUploadWidget(element="O1")
+    w = PseudoUploadWidget(kind_name="O1")
     w.pseudo = old_pseudo
     w.cutoffs = [30, 240]
     w.render()
@@ -236,7 +236,7 @@ def test_pseudo_upload_widget(generate_upf_data):
     message = "Recommended ecutwfc: <b>{ecutwfc} Ry</b> ecutrho: <b>{ecutrho} Ry</b>"
 
     assert w.pseudo.filename == "O_old.upf"
-    assert w.element == "O1"
+    assert w.kind_name == "O1"
     assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.cutoff_message.value
     assert w.error_message is None
 
@@ -253,7 +253,7 @@ def test_pseudo_upload_widget(generate_upf_data):
     )
 
     assert w.pseudo.filename == "O_new.upf"
-    assert w.element == "O1"
+    assert w.kind_name == "O1"
     assert w.error_message is None
 
     # test upload a invalid pseudo of other element

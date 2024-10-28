@@ -287,22 +287,18 @@ class PseudoSettings(AdvancedSubSettings):
 
         children = []
 
-        elements = (
-            self._model.input_structure.get_kind_names()
-            if self._model.input_structure
-            else []
-        )
+        kinds = self._model.input_structure.kinds if self._model.input_structure else []
 
-        for index, element in enumerate(elements):
-            upload_widget = PseudoUploadWidget(element=element)
+        for index, kind in enumerate(kinds):
+            upload_widget = PseudoUploadWidget(kind_name=kind.name)
             pseudo_link = ipw.link(
                 (self._model, "dictionary"),
                 (upload_widget, "pseudo"),
                 [
-                    lambda d, element=element: orm.load_node(d.get(element)),
-                    lambda v, element=element: {
+                    lambda d, symbol=kind.symbol: orm.load_node(d.get(symbol)),
+                    lambda v, symbol=kind.symbol: {
                         **self._model.dictionary,
-                        element: v.uuid,
+                        symbol: v.uuid,
                     },
                 ],
             )
@@ -345,13 +341,13 @@ class PseudoUploadWidget(ipw.HBox):
     cutoffs = tl.List(tl.Float(), [])
     error_message = tl.Unicode(allow_none=True)
 
-    def __init__(self, element, **kwargs):
+    def __init__(self, kind_name, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading pseudopotential uploader")],
             **kwargs,
         )
 
-        self.element = element
+        self.kind_name = kind_name
 
         self.rendered = False
 
@@ -363,7 +359,7 @@ class PseudoUploadWidget(ipw.HBox):
             description="Upload",
             multiple=False,
         )
-        self.pseudo_text = ipw.Text(description=self.element)
+        self.pseudo_text = ipw.Text(description=self.kind_name)
         self.file_upload.observe(self._on_file_upload, "value")
 
         cutoffs_message_template = """
@@ -413,9 +409,9 @@ class PseudoUploadWidget(ipw.HBox):
             self.pseudo.store()
 
             # check if element is matched with the pseudo
-            element = "".join([i for i in self.element if not i.isdigit()])
+            element = "".join([i for i in self.kind_name if not i.isdigit()])
             if element != self.pseudo.element:
-                self.error_message = f"""<div class="alert alert-danger"> ERROR: Element {self.element} is not matched with the pseudo {self.pseudo.element}</div>"""
+                self.error_message = f"""<div class="alert alert-danger"> ERROR: Element {self.kind_name} is not matched with the pseudo {self.pseudo.element}</div>"""
                 self._reset()
             else:
                 self.pseudo_text.value = filename

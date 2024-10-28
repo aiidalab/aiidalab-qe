@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-import ipywidgets as ipw
 import traitlets as tl
 from aiida_pseudo.common.units import U
 
@@ -169,14 +168,12 @@ class PseudosModel(AdvancedSubModel):
                 </div>
             """
         else:
-            symbols = (
-                self.input_structure.get_kind_names() if self.input_structure else []
-            )
+            kinds = self.input_structure.kinds if self.input_structure else []
 
         ecutwfc_list = []
         ecutrho_list = []
-        for symbol in symbols:
-            cutoff = cutoff_dict.get(symbol, {})
+        for kind in kinds:
+            cutoff = cutoff_dict.get(kind.symbol, {})
             ecutrho, ecutwfc = (
                 U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
                 for v in cutoff.values()
