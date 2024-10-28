@@ -139,7 +139,7 @@ class SettingsPanel(Panel):
         if "PYTEST_CURRENT_TEST" in os.environ:
             # Skip resetting to avoid having to inject a structure when testing
             return
-        if not self._model.input_structure:
+        if hasattr(self._model, "input_structure") and not self._model.input_structure:
             self._model.reset()
 
     def _unsubscribe(self):
