@@ -7,15 +7,16 @@ import pathlib
 
 import ipywidgets as ipw
 
-from aiida import orm
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.app.structure.model import StructureModel
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common import AddingTagsEditor, OptimadeWrapper
+from aiidalab_qe.common import (
+    AddingTagsEditor,
+    LazyLoadedOptimade,
+    LazyLoadedStructureBrowser,
+)
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
-    StructureBrowserWidget,
     StructureExamplesWidget,
     StructureManagerWidget,
     StructureUploadWidget,
@@ -73,15 +74,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
         importers = [
             StructureUploadWidget(title="Upload file"),
-            OptimadeWrapper(embedded=False),
-            StructureBrowserWidget(
-                title="AiiDA database",
-                query_types=(
-                    orm.StructureData,
-                    orm.CifData,
-                    HubbardStructureData,
-                ),
-            ),
+            LazyLoadedOptimade(title="OPTIMADE"),
+            LazyLoadedStructureBrowser(title="AiiDA database"),
             StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
 

@@ -915,15 +915,19 @@ class LoadingWidget(ipw.HBox):
         self.add_class("loading")
 
 
-class OptimadeWrapper(ipw.VBox):
-    """A wrapper of the OPTIMADE widget that may be used to lazy-load OPTIMADE."""
+class LazyLoadedStructureImporter(ipw.VBox):
+    """A wrapper that may be used to lazy-load a structure import widget."""
+
+    warning_message = "This may take some time to load"
 
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
 
-    def __init__(self, embedded, title=None, **kwargs):
+    def __init__(self, title=None, **kwargs):
+        self.title = title or "Structure importer"
+
         render_button = ipw.Button(
             layout=ipw.Layout(margin="0 10px 0 0", width="auto"),
-            description="Load OPTIMADE",
+            description=f"Load {self.title} widget",
             icon="refresh",
         )
         render_button.on_click(self._on_render_click)
@@ -935,38 +939,61 @@ class OptimadeWrapper(ipw.VBox):
                     children=[
                         render_button,
                         ipw.HTML("<span class='warning'>WARNING: </span>"),
-                        ipw.HTML("<span>OPTIMADE may take some time to load</span>"),
+                        ipw.HTML(f"<span>{self.warning_message}</span>"),
                     ],
                 ),
             ],
             **kwargs,
         )
 
-        self.embedded = embedded
-        self.title = title or "OPTIMADE"
-        self.params = kwargs
-
         self.rendered = False
 
     def render(self):
         if self.rendered:
             return
-
         from aiidalab_qe.common.widgets import LoadingWidget
-        from aiidalab_widgets_base.databases import OptimadeQueryWidget
 
-        self.children = [LoadingWidget("Loading OPTIMADE")]
+        self.children = [LoadingWidget(f"Loading {self.title} widget")]
 
-        optimade = OptimadeQueryWidget(embedded=self.embedded)
-
+        widget = self._get_widget()
         ipw.dlink(
-            (optimade, "structure"),
+            (widget, "structure"),
             (self, "structure"),
         )
 
-        self.children = [optimade]
+        self.children = [widget]
 
         self.rendered = True
 
+    def _get_widget(self):
+        raise NotImplementedError
+
     def _on_render_click(self, _):
         self.render()
+
+
+class LazyLoadedOptimade(LazyLoadedStructureImporter):
+    warning_message = "OPTIMADE may take some time to load"
+
+    def _get_children(self):
+        from aiidalab_widgets_base.databases import OptimadeQueryWidget
+
+        return OptimadeQueryWidget(embedded=False)
+
+
+class LazyLoadedStructureBrowser(LazyLoadedStructureImporter):
+    warning_message = "The browser may take some time to load, depending on the size of your database."
+
+    def _get_widget(self):
+        from aiida import orm
+        from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+        from aiidalab_widgets_base.structures import StructureBrowserWidget
+
+        return StructureBrowserWidget(
+            title=self.title,
+            query_types=(
+                orm.StructureData,
+                orm.CifData,
+                HubbardStructureData,
+            ),
+        )
