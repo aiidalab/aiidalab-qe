@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import traitlets as tl
 
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
@@ -42,9 +44,7 @@ class SmearingModel(AdvancedSubModel):
             .get("parameters", {})
             .get("SYSTEM", {})
         )
-        self._defaults.update(
-            {
-                "type": parameters["smearing"],
-                "degauss": parameters["degauss"],
-            }
-        )
+        self._defaults |= {
+            "type": parameters["smearing"],
+            "degauss": parameters["degauss"],
+        }

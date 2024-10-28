@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing as t
 
+import ipywidgets as ipw
 import numpy as np
 import traitlets as tl
 
@@ -109,6 +110,10 @@ class AdvancedModel(SettingsModel):
 
     def add_model(self, identifier, model):
         self._models[identifier] = model
+        self._link_model(model)
+
+    def get_models(self):
+        return self._models.items()
 
     def get_model_state(self):
         parameters = {
@@ -136,9 +141,9 @@ class AdvancedModel(SettingsModel):
         if hubbard.is_active:
             parameters["hubbard_parameters"] = {"hubbard_u": hubbard.parameters}
             if hubbard.has_eigenvalues:
-                parameters["pw"]["parameters"]["SYSTEM"].update(
-                    {"starting_ns_eigenvalue": hubbard.get_active_eigenvalues()}
-                )
+                parameters["pw"]["parameters"]["SYSTEM"] |= {
+                    "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()
+                }
 
         pseudos: PseudosModel = self._get_model("pseudos")  # type: ignore
         parameters["pseudo_family"] = pseudos.family
@@ -251,13 +256,28 @@ class AdvancedModel(SettingsModel):
             self.kpoints_distance = self._defaults["kpoints_distance"]
             self.override = self.traits()["override"].default_value
 
-    def _update_defaults(self, what):
-        if what != "mesh":
+    def _link_model(self, model):
+        ipw.dlink(
+            (self, "override"),
+            (model, "override"),
+        )
+        model.observe(
+            self.unconfirm,
+            tl.All,
+        )
+        for trait in model.dependencies:
+            ipw.dlink(
+                (self, trait),
+                (model, trait),
+            )
+
+    def _update_defaults(self, which):
+        if which != "mesh":
             parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
             self._update_kpoints_distance(parameters)
         self.update_kpoints_mesh()
 
-        if what != "protocol":
+        if which != "protocol":
             return
 
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1

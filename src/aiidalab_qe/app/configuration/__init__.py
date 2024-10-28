@@ -54,26 +54,23 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             """,
         )
 
+        self.settings: dict[str, SettingsPanel] = {}
+
         workchain_model = WorkChainModel(include=True)
         self._model.add_model("workchain", workchain_model)
-        self.workchain_settings = WorkChainSettings(model=workchain_model)
 
         advanced_model = AdvancedModel(include=True)
         self._model.add_model("advanced", advanced_model)
+
+        self._fetch_plugin_settings()
+
+        self.workchain_settings = WorkChainSettings(model=workchain_model)
         self.advanced_settings = AdvancedSettings(model=advanced_model)
 
-        self.built_in_settings = [
-            self.workchain_settings,
-            self.advanced_settings,
-        ]
-
-        self.settings: dict[str, SettingsPanel] = {
+        self.settings |= {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
-
-        self._fetch_plugin_settings()
-        self._link_models()
 
         self.rendered = False
 
@@ -181,7 +178,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             return
         tab: SettingsPanel = self.tab.children[tab_index]  # type: ignore
         tab.render()
-        tab.refresh(which="all")
+        tab.refresh(which="all")  # TODO bad! Causes a panel reset - fix!!!
 
     def _on_input_structure_change(self, _):
         self._model.update()
@@ -195,9 +192,9 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         titles = []
         for identifier, model in self._model.get_models():
             if model.include:
-                setting = self.settings[identifier]
-                titles.append(setting.title)
-                children.append(setting)
+                settings = self.settings[identifier]
+                titles.append(settings.title)
+                children.append(settings)
         if hasattr(self, "tab"):
             self.tab.children = children
             for i, title in enumerate(titles):
@@ -266,19 +263,3 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 identifier=identifier,
                 model=model,
             )
-
-    def _link_models(self):
-        for identifier in self.settings:
-            settings_model = self._model.get_model(identifier)
-            for dependency in settings_model.dependencies:
-                dependency_parts = dependency.split(".")
-                if len(dependency_parts) == 1:  # from parent, e.g. input_structure
-                    target_model = self._model
-                    trait = dependency
-                else:  # from sibling, e.g. workchain.protocol
-                    sibling, trait = dependency_parts
-                    target_model = self._model.get_model(sibling)
-                ipw.dlink(
-                    (target_model, trait),
-                    (settings_model, trait),
-                )

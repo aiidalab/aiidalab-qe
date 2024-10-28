@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from copy import deepcopy
 
 import traitlets as tl
@@ -262,12 +264,10 @@ class PseudosModel(AdvancedSubModel):
 
     def _update_defaults(self, which):
         if self.input_structure is None:
-            self._defaults.update(
-                {
-                    "dictionary": {},
-                    "cutoffs": [[0.0], [0.0]],
-                }
-            )
+            self._defaults |= {
+                "dictionary": {},
+                "cutoffs": [[0.0], [0.0]],
+            }
         else:
             self.update_default_pseudos()
             self.update_default_cutoffs()

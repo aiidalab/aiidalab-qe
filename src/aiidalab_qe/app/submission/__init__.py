@@ -78,17 +78,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.qe_auto_setup = qe_auto_setup
 
         plugin_codes: PluginCodes = get_entry_items("aiidalab_qe.properties", "code")
-        plugin_codes.update(
-            {
-                "dft": {
-                    "pw": CodeModel(
-                        description="pw.x:",
-                        default_calc_job_plugin="quantumespresso.pw",
-                        setup_widget_class=PwCodeResourceSetupWidget,
-                    ),
-                },
-            }
-        )
+        plugin_codes |= {
+            "dft": {
+                "pw": CodeModel(
+                    description="pw.x:",
+                    default_calc_job_plugin="quantumespresso.pw",
+                    setup_widget_class=PwCodeResourceSetupWidget,
+                ),
+            },
+        }
         for identifier, codes in plugin_codes.items():
             for name, code in codes.items():
                 self._model.add_code(identifier, name, code)

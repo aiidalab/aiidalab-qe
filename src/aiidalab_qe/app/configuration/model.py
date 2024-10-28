@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ipywidgets as ipw
 import traitlets as tl
 
@@ -56,10 +58,7 @@ class ConfigurationModel(SettingsModel):
 
     def add_model(self, identifier, model):
         self._models[identifier] = model
-        ipw.link(
-            (self, "confirmed"),
-            (model, "confirmed"),
-        )
+        self._link_model(model)
 
     def get_models(self):
         return self._models.items()
@@ -75,12 +74,10 @@ class ConfigurationModel(SettingsModel):
             for identifier, model in self._models.items()
             if model.include
         }
-        parameters["workchain"].update(
-            {
-                "relax_type": self.relax_type,
-                "properties": self._get_properties(),
-            }
-        )
+        parameters["workchain"] |= {
+            "relax_type": self.relax_type,
+            "properties": self._get_properties(),
+        }
         return parameters
 
     def set_model_state(self, parameters):
@@ -101,6 +98,24 @@ class ConfigurationModel(SettingsModel):
         for identifier, model in self._models.items():
             if identifier not in self._default_models:
                 model.include = False
+
+    def _link_model(self, model: SettingsModel):
+        ipw.link(
+            (self, "confirmed"),
+            (model, "confirmed"),
+        )
+        for dependency in model.dependencies:
+            dependency_parts = dependency.split(".")
+            if len(dependency_parts) == 1:  # from parent, e.g. input_structure
+                target_model = self
+                trait = dependency
+            else:  # from sibling, e.g. workchain.protocol
+                sibling, trait = dependency_parts
+                target_model = self.get_model(sibling)
+            ipw.dlink(
+                (target_model, trait),
+                (model, trait),
+            )
 
     def _get_properties(self):
         properties = []

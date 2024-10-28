@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from copy import deepcopy
 
 import traitlets as tl
@@ -84,12 +86,10 @@ class HubbardModel(AdvancedSubModel):
         if self.input_structure is None:
             self.applicable_kinds = []
             self.orbital_labels = []
-            self._defaults.update(
-                {
-                    "parameters": {},
-                    "eigenvalues": [],
-                }
-            )
+            self._defaults |= {
+                "parameters": {},
+                "eigenvalues": [],
+            }
         else:
             self.orbital_labels = self._define_orbital_labels()
             self._defaults["parameters"] = self._define_default_parameters()

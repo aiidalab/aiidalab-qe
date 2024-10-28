@@ -70,8 +70,8 @@ class PdosModel(SettingsModel):
             self.use_pdos_degauss = self.traits()["use_pdos_degauss"].default_value
             self.pdos_degauss = self.traits()["pdos_degauss"].default_value
 
-    def _update_defaults(self, what):
-        if what != "mesh":
+    def _update_defaults(self, which):
+        if which != "mesh":
             parameters = PdosWorkChain.get_protocol_inputs(self.protocol)
             self._update_kpoints_distance(parameters)
         self.update_kpoints_mesh()

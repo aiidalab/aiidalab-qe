@@ -43,29 +43,21 @@ class AdvancedSettings(SettingsPanel):
         )
 
         smearing_model = SmearingModel()
-        self.smearing = SmearingSettings(model=smearing_model)
         model.add_model("smearing", smearing_model)
 
         magnetization_model = MagnetizationModel()
-        self.magnetization = MagnetizationSettings(model=magnetization_model)
         model.add_model("magnetization", magnetization_model)
 
         hubbard_model = HubbardModel()
-        self.hubbard = HubbardSettings(model=hubbard_model)
         model.add_model("hubbard", hubbard_model)
 
         pseudos_model = PseudosModel()
-        self.pseudos = PseudoSettings(model=pseudos_model)
         model.add_model("pseudos", pseudos_model)
 
-        self.sub_settings = {
-            "smearing": self.smearing,
-            "magnetization": self.magnetization,
-            "hubbard": self.hubbard,
-            "pseudos": self.pseudos,
-        }
-
-        self._link_models()
+        self.smearing = SmearingSettings(model=smearing_model)
+        self.magnetization = MagnetizationSettings(model=magnetization_model)
+        self.hubbard = HubbardSettings(model=hubbard_model)
+        self.pseudos = PseudoSettings(model=pseudos_model)
 
     def render(self):
         if self.rendered:
@@ -355,23 +347,3 @@ class AdvancedSettings(SettingsPanel):
     def _on_override_change(self, change):
         if not change["new"]:
             self._model.reset()
-
-    def _link_models(self):
-        from traitlets import All
-
-        model: AdvancedModel = self._model  # type: ignore
-        for identifier in self.sub_settings:
-            sub_settings_model = model._get_model(identifier)
-            ipw.dlink(
-                (model, "override"),
-                (sub_settings_model, "override"),
-            )
-            sub_settings_model.observe(
-                self._model.unconfirm,
-                All,
-            )
-            for trait in sub_settings_model.dependencies:
-                ipw.dlink(
-                    (self._model, trait),
-                    (sub_settings_model, trait),
-                )
