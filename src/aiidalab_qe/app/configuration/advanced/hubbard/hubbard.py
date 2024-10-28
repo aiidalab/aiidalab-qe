@@ -122,10 +122,10 @@ class HubbardSettings(AdvancedSubSettings):
                 (self._model, "parameters"),
                 (float_widget, "value"),
                 [
-                    lambda p, label=label: p.get(label, 0.0),
-                    lambda v, label=label: {
+                    lambda parameters, label=label: parameters.get(label, 0.0),
+                    lambda value, label=label: {
                         **self._model.parameters,
-                        label: v,
+                        label: value,
                     },
                 ],
             )
@@ -149,24 +149,22 @@ class HubbardSettings(AdvancedSubSettings):
 
     def _build_eigenvalues_widget(self):
         def update(index, spin, state, symbol, value):
-            """Update the eigenvalues list."""
             eigenvalues = [*self._model.eigenvalues]
             eigenvalues[index][spin][state] = [state + 1, spin, symbol, value]
             return eigenvalues
 
         children = []
 
-        for ei, element in enumerate(self._model.applicable_elements):
-            es = element.symbol
-            num_states = 5 if element.is_transition_metal else 7  # d or f states
+        for kind_index, (kind, num_states) in enumerate(self._model.applicable_kinds):
+            symbol = kind.symbol
 
             label_layout = ipw.Layout(justify_content="flex-start", width="50px")
             spin_up_row = ipw.HBox([ipw.Label("Up:", layout=label_layout)])
             spin_down_row = ipw.HBox([ipw.Label("Down:", layout=label_layout)])
 
-            for si in range(num_states):
+            for state_index in range(num_states):
                 eigenvalues_up = ipw.Dropdown(
-                    description=f"{si+1}",
+                    description=f"{state_index+1}",
                     options=["-1", "0", "1"],
                     layout=ipw.Layout(width="65px"),
                     style={"description_width": "initial"},
@@ -175,15 +173,28 @@ class HubbardSettings(AdvancedSubSettings):
                     (self._model, "eigenvalues"),
                     (eigenvalues_up, "value"),
                     [
-                        lambda evs, ei=ei, si=si: str(evs[ei][0][si][-1]),
-                        lambda v, ei=ei, si=si, es=es: update(ei, 0, si, es, float(v)),
+                        lambda eigenvalues,
+                        kind_index=kind_index,
+                        state_index=state_index: str(
+                            eigenvalues[kind_index][0][state_index][-1]
+                        ),
+                        lambda value,
+                        kind_index=kind_index,
+                        state_index=state_index,
+                        symbol=symbol: update(
+                            kind_index,
+                            0,
+                            state_index,
+                            symbol,
+                            float(value),
+                        ),
                     ],
                 )
                 self.links.append(link)
                 spin_up_row.children += (eigenvalues_up,)
 
                 eigenvalues_down = ipw.Dropdown(
-                    description=f"{si+1}",
+                    description=f"{state_index+1}",
                     options=["-1", "0", "1"],
                     layout=ipw.Layout(width="65px"),
                     style={"description_width": "initial"},
@@ -192,8 +203,21 @@ class HubbardSettings(AdvancedSubSettings):
                     (self._model, "eigenvalues"),
                     (eigenvalues_down, "value"),
                     [
-                        lambda evs, ei=ei, si=si: str(evs[ei][1][si][-1]),
-                        lambda v, ei=ei, si=si, es=es: update(ei, 1, si, es, float(v)),
+                        lambda eigenvalues,
+                        kind_index=kind_index,
+                        state_index=state_index: str(
+                            eigenvalues[kind_index][1][state_index][-1]
+                        ),
+                        lambda value,
+                        kind_index=kind_index,
+                        state_index=state_index,
+                        symbol=symbol: update(
+                            kind_index,
+                            1,
+                            state_index,
+                            symbol,
+                            float(value),
+                        ),
                     ],
                 )
                 self.links.append(link)
@@ -202,7 +226,7 @@ class HubbardSettings(AdvancedSubSettings):
             children.append(
                 ipw.HBox(
                     [
-                        ipw.Label(element.symbol, layout=label_layout),
+                        ipw.Label(kind.name, layout=label_layout),
                         ipw.VBox(
                             children=[
                                 spin_up_row,

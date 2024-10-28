@@ -295,17 +295,21 @@ class PseudoSettings(AdvancedSubSettings):
                 (self._model, "dictionary"),
                 (upload_widget, "pseudo"),
                 [
-                    lambda d, symbol=kind.symbol: orm.load_node(d.get(symbol)),
-                    lambda v, symbol=kind.symbol: {
+                    lambda dictionary, kind_name=kind.name: orm.load_node(
+                        dictionary.get(kind_name)
+                    ),
+                    lambda pseudo, kind_name=kind.name: {
                         **self._model.dictionary,
-                        symbol: v.uuid,
+                        kind_name: pseudo.uuid,
                     },
                 ],
             )
             cutoffs_link = ipw.dlink(
                 (self._model, "cutoffs"),
                 (upload_widget, "cutoffs"),
-                lambda c, i=index: [c[0][i], c[1][i]] if len(c[0]) > i else [0.0, 0.0],
+                lambda cutoffs, index=index: [cutoffs[0][index], cutoffs[1][index]]
+                if len(cutoffs[0]) > index
+                else [0.0, 0.0],
             )
             upload_widget.render()
 
@@ -373,15 +377,15 @@ class PseudoUploadWidget(ipw.HBox):
         pseudo_link = ipw.dlink(
             (self, "pseudo"),
             (self.pseudo_text, "value"),
-            lambda p: p.filename if p else "",
+            lambda pseudo: pseudo.filename if pseudo else "",
         )
 
         cutoff_link = ipw.dlink(
             (self, "cutoffs"),
             (self.cutoff_message, "value"),
-            lambda c: cutoffs_message_template.format(
-                ecutwfc=c[0] if len(c) else "not set",
-                ecutrho=c[1] if len(c) else "not set",
+            lambda cutoffs: cutoffs_message_template.format(
+                ecutwfc=cutoffs[0] if len(cutoffs) else "not set",
+                ecutrho=cutoffs[1] if len(cutoffs) else "not set",
             ),
         )
 

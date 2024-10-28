@@ -165,10 +165,10 @@ class Setting(SettingsPanel):
                         (self._model, "core_levels"),
                         (checkbox, "value"),
                         [
-                            lambda cl, orbital=orbital: cl.get(orbital, False),
-                            lambda v, orbital=orbital: {
+                            lambda levels, orbital=orbital: levels.get(orbital, False),
+                            lambda value, orbital=orbital: {
                                 **self._model.core_levels,
-                                orbital: v,
+                                orbital: value,
                             },
                         ],
                     )

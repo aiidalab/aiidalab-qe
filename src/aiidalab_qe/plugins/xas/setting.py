@@ -183,7 +183,7 @@ class Setting(SettingsPanel):
                 (self._model, "core_hole_treatments"),
                 (treatment_selector, "value"),
                 [
-                    lambda cht, element=element: cht.get(element, "full"),
+                    lambda treatments, element=element: treatments.get(element, "full"),
                     lambda value, element=element: {
                         **self._model.core_hole_treatments,
                         element: value,

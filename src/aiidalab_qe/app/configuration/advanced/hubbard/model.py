@@ -35,7 +35,7 @@ class HubbardModel(AdvancedSubModel):
         default_value=[],
     )
 
-    applicable_elements = []
+    applicable_kinds = []
     orbital_labels = []
 
     def __init__(self, *args, **kwargs):
@@ -51,7 +51,7 @@ class HubbardModel(AdvancedSubModel):
             self._update_defaults(which)
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
-            self.needs_eigenvalues_widget = len(self.applicable_elements) > 0
+            self.needs_eigenvalues_widget = len(self.applicable_kinds) > 0
 
     def get_active_eigenvalues(self):
         return [
@@ -82,7 +82,7 @@ class HubbardModel(AdvancedSubModel):
 
     def _update_defaults(self, which):
         if self.input_structure is None:
-            self.applicable_elements = []
+            self.applicable_kinds = []
             self.orbital_labels = []
             self._defaults.update(
                 {
@@ -91,39 +91,12 @@ class HubbardModel(AdvancedSubModel):
                 }
             )
         else:
-            self.orbital_labels = self._get_labels()
-            self._defaults["parameters"] = {label: 0.0 for label in self.orbital_labels}
-            self.applicable_elements = [
-                *filter(
-                    lambda element: (
-                        element.is_transition_metal
-                        or element.is_lanthanoid
-                        or element.is_actinoid
-                    ),
-                    [
-                        Element(symbol)
-                        for symbol in self.input_structure.get_symbols_set()
-                    ],
-                )
-            ]
-            self._defaults["eigenvalues"] = [
-                [
-                    [
-                        [state + 1, spin, element.symbol, -1]  # default eigenvalue
-                        for state in range(5 if element.is_transition_metal else 7)
-                    ]
-                    for spin in range(2)  # spin up and down
-                ]
-                for element in self.applicable_elements  # transition metals and lanthanoids
-            ]
+            self.orbital_labels = self._define_orbital_labels()
+            self._defaults["parameters"] = self._define_default_parameters()
+            self.applicable_kinds = self._define_applicable_kinds()
+            self._defaults["eigenvalues"] = self._define_default_eigenvalues()
 
-    def _get_default_parameters(self):
-        return deepcopy(self._defaults["parameters"])
-
-    def _get_default_eigenvalues(self):
-        return deepcopy(self._defaults["eigenvalues"])
-
-    def _get_labels(self):
+    def _define_orbital_labels(self):
         hubbard_manifold_list = [
             self._get_manifold(Element(kind.symbol))
             for kind in self.input_structure.kinds
@@ -135,6 +108,40 @@ class HubbardModel(AdvancedSubModel):
                 hubbard_manifold_list,
             )
         ]
+
+    def _define_default_parameters(self):
+        return {label: 0.0 for label in self.orbital_labels}
+
+    def _define_applicable_kinds(self):
+        applicable_kinds = []
+        for kind in self.input_structure.kinds:
+            element = Element(kind.symbol)
+            if (
+                element.is_transition_metal
+                or element.is_lanthanoid
+                or element.is_actinoid
+            ):
+                num_states = 5 if element.is_transition_metal else 7
+                applicable_kinds.append((kind, num_states))
+        return applicable_kinds
+
+    def _define_default_eigenvalues(self):
+        return [
+            [
+                [
+                    [state + 1, spin, kind.symbol, -1]  # default eigenvalue
+                    for state in range(num_states)
+                ]
+                for spin in range(2)  # spin up and down
+            ]
+            for kind, num_states in self.applicable_kinds  # transition metals and lanthanoids
+        ]
+
+    def _get_default_parameters(self):
+        return deepcopy(self._defaults["parameters"])
+
+    def _get_default_eigenvalues(self):
+        return deepcopy(self._defaults["eigenvalues"])
 
     def _get_manifold(self, element):
         valence = [

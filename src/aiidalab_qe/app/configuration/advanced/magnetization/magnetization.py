@@ -145,10 +145,10 @@ class MagnetizationSettings(AdvancedSubSettings):
                 (self._model, "moments"),
                 (element_widget, "value"),
                 [
-                    lambda d, symbol=symbol: d.get(symbol, 0.0),
-                    lambda v, symbol=symbol: {
+                    lambda moments, symbol=symbol: moments.get(symbol, 0.0),
+                    lambda value, symbol=symbol: {
                         **self._model.moments,
-                        symbol: v,
+                        symbol: value,
                     },
                 ],
             )
