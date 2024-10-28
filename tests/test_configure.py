@@ -71,6 +71,6 @@ def test_reminder_info():
     assert bands_info.value == ""
     bands_model = model.get_model("bands")
     bands_model.include = True
-    assert bands_info.value == "Customize bands settings in step 2.2 if needed"
+    assert bands_info.value == "Customize bands settings in <b>step 2.2</b> if needed"
     bands_model.include = False
     assert bands_info.value == ""

@@ -241,7 +241,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             def toggle_plugin(change, identifier=identifier, info=info):
                 if change["new"]:
                     info.value = (
-                        f"Customize {identifier} settings in step 2.2 if needed"
+                        f"Customize {identifier} settings in <b>Step 2.2</b> if needed"
                     )
                 else:
                     info.value = ""
