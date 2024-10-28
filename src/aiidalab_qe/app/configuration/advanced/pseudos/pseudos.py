@@ -10,8 +10,8 @@ from aiida.plugins import DataFactory, GroupFactory
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML
 
-from .model import AdvancedModel
-from .subsettings import AdvancedSubSettings
+from ..subsettings import AdvancedSubSettings
+from .model import PseudosModel
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -22,7 +22,7 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 class PseudoSettings(AdvancedSubSettings):
     identifier = "pseudos"
 
-    def __init__(self, model: AdvancedModel, **kwargs):
+    def __init__(self, model: PseudosModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
@@ -37,13 +37,24 @@ class PseudoSettings(AdvancedSubSettings):
             self._on_spin_orbit_change,
             "spin_orbit",
         )
-        self._model.pseudos.observe(
+        self._model.observe(
             self._on_family_parameters_change,
             ["library", "functional"],
         )
-        self._model.pseudos.observe(
+        self._model.observe(
             self._on_family_change,
             "family",
+        )
+
+        ipw.dlink(
+            (self._model, "cutoffs"),
+            (self._model, "ecutwfc"),
+            lambda cutoffs: max(cutoffs[0]),
+        )
+        ipw.dlink(
+            (self._model, "cutoffs"),
+            (self._model, "ecutrho"),
+            lambda cutoffs: max(cutoffs[1]),
         )
 
     def render(self):
@@ -54,7 +65,7 @@ class PseudoSettings(AdvancedSubSettings):
 
         self.family_help = ipw.HTML()
         ipw.dlink(
-            (self._model.pseudos, "family_help_message"),
+            (self._model, "family_help_message"),
             (self.family_help, "value"),
         )
 
@@ -74,11 +85,11 @@ class PseudoSettings(AdvancedSubSettings):
 
         self.functional = ipw.Dropdown(style={"description_width": "initial"})
         ipw.dlink(
-            (self._model.pseudos, "functional_options"),
+            (self._model, "functional_options"),
             (self.functional, "options"),
         )
         ipw.link(
-            (self._model.pseudos, "functional"),
+            (self._model, "functional"),
             (self.functional, "value"),
         )
         ipw.dlink(
@@ -89,11 +100,11 @@ class PseudoSettings(AdvancedSubSettings):
 
         self.library = ipw.ToggleButtons(layout=ipw.Layout(max_width="80%"))
         ipw.dlink(
-            (self._model.pseudos, "library_options"),
+            (self._model, "library_options"),
             (self.library, "options"),
         )
         ipw.link(
-            (self._model.pseudos, "library"),
+            (self._model, "library"),
             (self.library, "value"),
         )
         ipw.dlink(
@@ -116,7 +127,7 @@ class PseudoSettings(AdvancedSubSettings):
 
         self._status_message = StatusHTML(clear_after=20)
         ipw.dlink(
-            (self._model.pseudos, "status_message"),
+            (self._model, "status_message"),
             (self._status_message, "message"),
         )
 
@@ -131,7 +142,7 @@ class PseudoSettings(AdvancedSubSettings):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model.pseudos, "ecutwfc"),
+            (self._model, "ecutwfc"),
             (self.ecutwfc, "value"),
         )
         ipw.dlink(
@@ -144,7 +155,7 @@ class PseudoSettings(AdvancedSubSettings):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model.pseudos, "ecutrho"),
+            (self._model, "ecutrho"),
             (self.ecutrho, "value"),
         )
         ipw.dlink(
@@ -219,28 +230,28 @@ class PseudoSettings(AdvancedSubSettings):
         self.refresh(which="protocol")
 
     def _on_spin_orbit_change(self, _):
-        self._model.pseudos.update_library_options()
+        self._model.update_library_options()
 
     def _on_override_change(self, change):
         super()._on_override_change(change)
         self._toggle_setter_widgets()
 
     def _on_family_parameters_change(self, _):
-        self._model.pseudos.update_family()
+        self._model.update_family()
 
     def _on_family_change(self, _):
         self._update_family_link()
-        self._model.pseudos.update_default_pseudos()
-        self._model.pseudos.update_default_cutoffs()
+        self._model.update_default_pseudos()
+        self._model.update_default_cutoffs()
 
     def _update(self, which):
         if self.updated:
             return
         self._show_loading()
-        self._model.pseudos.update(which)
+        self._model.update(which)
         self._build_setter_widgets()
         self._toggle_setter_widgets()
-        self._model.pseudos.update_library_options()
+        self._model.update_library_options()
         self._update_family_link()
         self.updated = True
 
@@ -248,7 +259,7 @@ class PseudoSettings(AdvancedSubSettings):
         if not self.rendered:
             return
 
-        library, accuracy = self._model.pseudos.library.split()
+        library, accuracy = self._model.library.split()
         if library == "SSSP":
             pseudo_family_link = (
                 f"https://www.materialscloud.org/discover/sssp/table/{accuracy}"
@@ -285,18 +296,18 @@ class PseudoSettings(AdvancedSubSettings):
         for index, element in enumerate(elements):
             upload_widget = PseudoUploadWidget(element=element)
             pseudo_link = ipw.link(
-                (self._model.pseudos, "dictionary"),
+                (self._model, "dictionary"),
                 (upload_widget, "pseudo"),
                 [
                     lambda d, element=element: orm.load_node(d.get(element)),
                     lambda v, element=element: {
-                        **self._model.pseudos.dictionary,
+                        **self._model.dictionary,
                         element: v.uuid,
                     },
                 ],
             )
             cutoffs_link = ipw.dlink(
-                (self._model.pseudos, "cutoffs"),
+                (self._model, "cutoffs"),
                 (upload_widget, "cutoffs"),
                 lambda c, i=index: [c[0][i], c[1][i]] if len(c[0]) > i else [0.0, 0.0],
             )

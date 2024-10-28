@@ -1,13 +1,13 @@
 import ipywidgets as ipw
 
-from .model import AdvancedModel
-from .subsettings import AdvancedSubSettings
+from ..subsettings import AdvancedSubSettings
+from .model import SmearingModel
 
 
 class SmearingSettings(AdvancedSubSettings):
     identifier = "smearing"
 
-    def __init__(self, model: AdvancedModel, **kwargs):
+    def __init__(self, model: SmearingModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
@@ -26,7 +26,7 @@ class SmearingSettings(AdvancedSubSettings):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model.smearing, "type"),
+            (self._model, "type"),
             (self.smearing, "value"),
         )
         ipw.dlink(
@@ -42,7 +42,7 @@ class SmearingSettings(AdvancedSubSettings):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model.smearing, "degauss"),
+            (self._model, "degauss"),
             (self.degauss, "value"),
         )
         ipw.dlink(

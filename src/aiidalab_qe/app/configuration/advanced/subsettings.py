@@ -1,12 +1,26 @@
 import ipywidgets as ipw
+import traitlets as tl
 
-from .model import AdvancedModel, AdvancedSubModel
+
+class AdvancedSubModel(tl.HasTraits):
+    dependencies = []
+
+    _defaults = {}
+
+    def update(self, which):
+        raise NotImplementedError
+
+    def reset(self):
+        raise NotImplementedError
+
+    def _update_defaults(self, which):
+        raise NotImplementedError
 
 
 class AdvancedSubSettings(ipw.VBox):
     identifier = "sub"
 
-    def __init__(self, model: AdvancedModel, **kwargs):
+    def __init__(self, model: AdvancedSubModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         self.loading_message = LoadingWidget(f"Loading {self.identifier} settings")
@@ -18,12 +32,6 @@ class AdvancedSubSettings(ipw.VBox):
         )
 
         self._model = model
-        self._model.observe(
-            self._on_override_change,
-            "override",
-        )
-
-        self._submodel: AdvancedSubModel = getattr(model, self.identifier)
 
         self.links = []
 
@@ -37,12 +45,12 @@ class AdvancedSubSettings(ipw.VBox):
         self.updated = False
         self._unsubscribe()
         self._update(which)
-        if not self._model.input_structure:
-            self._submodel.reset()
+        if hasattr(self._model, "input_structure") and not self._model.input_structure:
+            self._model.reset()
 
     def _on_override_change(self, change):
         if not change["new"]:
-            self._submodel.reset()
+            self._model.reset()
 
     def _unsubscribe(self):
         for link in self.links:
@@ -52,5 +60,5 @@ class AdvancedSubSettings(ipw.VBox):
     def _update(self, which):
         if self.updated:
             return
-        self._submodel.update(which)
+        self._model.update(which)
         self.updated = True

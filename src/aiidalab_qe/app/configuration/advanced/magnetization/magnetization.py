@@ -1,7 +1,7 @@
 import ipywidgets as ipw
 
-from .model import AdvancedModel
-from .subsettings import AdvancedSubSettings
+from ..subsettings import AdvancedSubSettings
+from .model import MagnetizationModel
 
 
 class MagnetizationSettings(AdvancedSubSettings):
@@ -20,7 +20,7 @@ class MagnetizationSettings(AdvancedSubSettings):
 
     identifier = "magnetization"
 
-    def __init__(self, model: AdvancedModel, **kwargs):
+    def __init__(self, model: MagnetizationModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
@@ -35,7 +35,7 @@ class MagnetizationSettings(AdvancedSubSettings):
             self._on_spin_type_change,
             "spin_type",
         )
-        self._model.magnetization.observe(
+        self._model.observe(
             self._on_magnetization_type_change,
             "type",
         )
@@ -54,7 +54,7 @@ class MagnetizationSettings(AdvancedSubSettings):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model.magnetization, "type"),
+            (self._model, "type"),
             (self.magnetization_type_toggle, "value"),
         )
         ipw.dlink(
@@ -72,7 +72,7 @@ class MagnetizationSettings(AdvancedSubSettings):
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model.magnetization, "total"),
+            (self._model, "total"),
             (self.tot_magnetization, "value"),
         )
         ipw.dlink(
@@ -111,7 +111,7 @@ class MagnetizationSettings(AdvancedSubSettings):
         if self.updated:
             return
         self._show_loading()
-        self._model.magnetization.update(which)
+        self._model.update(which)
         self._build_kinds_widget()
         self._switch_widgets()
         self._toggle_widgets()
@@ -142,12 +142,12 @@ class MagnetizationSettings(AdvancedSubSettings):
                 disabled=True,
             )
             link = ipw.link(
-                (self._model.magnetization, "moments"),
+                (self._model, "moments"),
                 (element_widget, "value"),
                 [
                     lambda d, symbol=symbol: d.get(symbol, 0.0),
                     lambda v, symbol=symbol: {
-                        **self._model.magnetization.moments,
+                        **self._model.moments,
                         symbol: v,
                     },
                 ],
@@ -180,6 +180,6 @@ class MagnetizationSettings(AdvancedSubSettings):
             return
         self.container.children = [
             self.tot_magnetization
-            if self._model.magnetization.type == "tot_magnetization"
+            if self._model.type == "tot_magnetization"
             else self.elements_widget
         ]

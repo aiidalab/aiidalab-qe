@@ -77,7 +77,7 @@ class SettingsModel(tl.HasTraits):
 
     def __init__(self, include=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.observe(self._unconfirm, tl.All)
+        self.observe(self.unconfirm, tl.All)
         self.include = include
 
     @property
@@ -98,7 +98,7 @@ class SettingsModel(tl.HasTraits):
     def reset(self):
         pass
 
-    def _unconfirm(self, change):
+    def unconfirm(self, change):
         if change["name"] != "confirmed":
             self.confirmed = False
 

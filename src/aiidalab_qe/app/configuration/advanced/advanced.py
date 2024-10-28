@@ -7,11 +7,11 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import SettingsPanel
 
-from .hubbard import HubbardSettings
-from .magnetization import MagnetizationSettings
+from .hubbard import HubbardModel, HubbardSettings
+from .magnetization import MagnetizationModel, MagnetizationSettings
 from .model import AdvancedModel
-from .pseudos import PseudoSettings
-from .smearing import SmearingSettings
+from .pseudos import PseudoSettings, PseudosModel
+from .smearing import SmearingModel, SmearingSettings
 
 
 class AdvancedSettings(SettingsPanel):
@@ -42,10 +42,30 @@ class AdvancedSettings(SettingsPanel):
             "kpoints_distance",
         )
 
-        self.smearing = SmearingSettings(model=model)
-        self.magnetization = MagnetizationSettings(model=model)
-        self.hubbard = HubbardSettings(model=model)
-        self.pseudos = PseudoSettings(model=model)
+        smearing_model = SmearingModel()
+        self.smearing = SmearingSettings(model=smearing_model)
+        model.add_model("smearing", smearing_model)
+
+        magnetization_model = MagnetizationModel()
+        self.magnetization = MagnetizationSettings(model=magnetization_model)
+        model.add_model("magnetization", magnetization_model)
+
+        hubbard_model = HubbardModel()
+        self.hubbard = HubbardSettings(model=hubbard_model)
+        model.add_model("hubbard", hubbard_model)
+
+        pseudos_model = PseudosModel()
+        self.pseudos = PseudoSettings(model=pseudos_model)
+        model.add_model("pseudos", pseudos_model)
+
+        self.sub_settings = {
+            "smearing": self.smearing,
+            "magnetization": self.magnetization,
+            "hubbard": self.hubbard,
+            "pseudos": self.pseudos,
+        }
+
+        self._link_models()
 
     def render(self):
         if self.rendered:
@@ -335,3 +355,23 @@ class AdvancedSettings(SettingsPanel):
     def _on_override_change(self, change):
         if not change["new"]:
             self._model.reset()
+
+    def _link_models(self):
+        from traitlets import All
+
+        model: AdvancedModel = self._model  # type: ignore
+        for identifier in self.sub_settings:
+            sub_settings_model = model._get_model(identifier)
+            ipw.dlink(
+                (model, "override"),
+                (sub_settings_model, "override"),
+            )
+            sub_settings_model.observe(
+                self._model.unconfirm,
+                All,
+            )
+            for trait in sub_settings_model.dependencies:
+                ipw.dlink(
+                    (self._model, trait),
+                    (sub_settings_model, trait),
+                )

@@ -1,7 +1,6 @@
 import pytest
 
-from aiidalab_qe.app.configuration.advanced.advanced import AdvancedSettings
-from aiidalab_qe.app.configuration.advanced.model import AdvancedModel
+from aiidalab_qe.app.configuration.advanced import AdvancedModel, AdvancedSettings
 
 
 def test_advanced_default():
