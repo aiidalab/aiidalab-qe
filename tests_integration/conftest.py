@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -71,7 +72,7 @@ def notebook_service(docker_compose, docker_ip, docker_services):
 
 @pytest.fixture(scope="function")
 def selenium_driver(selenium, notebook_service):
-    def _selenium_driver(nb_path, wait_time=5.0):
+    def _selenium_driver(nb_path, wait_time=30.0):
         url, token = notebook_service
         url_with_token = urljoin(
             url, f"apps/apps/quantum-espresso/{nb_path}?token={token}"
@@ -90,6 +91,7 @@ def selenium_driver(selenium, notebook_service):
         WebDriverWait(selenium, 100).until(
             ec.invisibility_of_element((By.ID, "appmode-busy"))
         )
+        time.sleep(10)
 
         return selenium
 
