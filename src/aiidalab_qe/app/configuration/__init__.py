@@ -196,6 +196,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 titles.append(settings.title)
                 children.append(settings)
         if hasattr(self, "tab"):
+            self.tab.selected_index = None
             self.tab.children = children
             for i, title in enumerate(titles):
                 self.tab.set_title(i, title)
