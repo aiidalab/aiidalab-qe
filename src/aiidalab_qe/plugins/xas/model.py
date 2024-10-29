@@ -59,7 +59,7 @@ class XasModel(SettingsModel):
 
         self.installed_pseudos = False
 
-    def update(self, which):
+    def update(self, specific=""):
         self._update_pseudos()
         self._update_core_hole_treatment_recommendations()
 

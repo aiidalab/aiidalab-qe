@@ -46,4 +46,4 @@ class Setting(SettingsPanel):
 
         self.rendered = True
 
-        self.refresh(which="all")
+        self.refresh()

@@ -29,25 +29,10 @@ class PdosModel(SettingsModel):
             "kpoints_distance": self.traits()["kpoints_distance"].default_value,
         }
 
-    def update(self, which):
+    def update(self, specific=""):
         with self.hold_trait_notifications():
-            self._update_defaults(which)
+            self._update_defaults(specific)
             self.kpoints_distance = self._defaults["kpoints_distance"]
-
-    def update_kpoints_mesh(self, _=None):
-        if self.input_structure is None:
-            mesh_grid = ""
-        elif self.kpoints_distance > 0:
-            mesh = create_kpoints_from_distance.process_class._func(
-                self.input_structure,
-                orm.Float(self.kpoints_distance),
-                orm.Bool(False),
-            )
-            mesh_grid = f"Mesh {mesh.get_kpoints_mesh()[0]!s}"
-        else:
-            mesh_grid = "Please select a number higher than 0.0"
-        self._defaults["mesh_grid"] = mesh_grid
-        self.mesh_grid = mesh_grid
 
     def get_model_state(self):
         return {
@@ -70,11 +55,27 @@ class PdosModel(SettingsModel):
             self.use_pdos_degauss = self.traits()["use_pdos_degauss"].default_value
             self.pdos_degauss = self.traits()["pdos_degauss"].default_value
 
-    def _update_defaults(self, which):
-        if which != "mesh":
+    def _update_defaults(self, specific=""):
+        if not specific or specific != "mesh":
             parameters = PdosWorkChain.get_protocol_inputs(self.protocol)
             self._update_kpoints_distance(parameters)
-        self.update_kpoints_mesh()
+
+        self._update_kpoints_mesh()
+
+    def _update_kpoints_mesh(self, _=None):
+        if self.input_structure is None:
+            mesh_grid = ""
+        elif self.kpoints_distance > 0:
+            mesh = create_kpoints_from_distance.process_class._func(
+                self.input_structure,
+                orm.Float(self.kpoints_distance),
+                orm.Bool(False),
+            )
+            mesh_grid = f"Mesh {mesh.get_kpoints_mesh()[0]!s}"
+        else:
+            mesh_grid = "Please select a number higher than 0.0"
+        self._defaults["mesh_grid"] = mesh_grid
+        self.mesh_grid = mesh_grid
 
     def _update_kpoints_distance(self, parameters):
         if self.has_pbc:

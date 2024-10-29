@@ -48,9 +48,9 @@ class HubbardModel(AdvancedSubModel):
             "eigenvalues": [],
         }
 
-    def update(self, which):
+    def update(self, specific=""):
         with self.hold_trait_notifications():
-            self._update_defaults(which)
+            self._update_defaults(specific)
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
             self.needs_eigenvalues_widget = len(self.applicable_kinds) > 0
@@ -82,7 +82,7 @@ class HubbardModel(AdvancedSubModel):
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
 
-    def _update_defaults(self, which):
+    def _update_defaults(self, specific=""):
         if self.input_structure is None:
             self.applicable_kinds = []
             self.orbital_labels = []

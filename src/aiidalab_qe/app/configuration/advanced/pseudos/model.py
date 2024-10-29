@@ -127,9 +127,9 @@ class PseudosModel(AdvancedSubModel):
             "cutoffs": [[0.0], [0.0]],
         }
 
-    def update(self, which):
+    def update(self, specific=""):
         with self.hold_trait_notifications():
-            self._update_defaults(which)
+            self._update_defaults(specific)
 
     def update_default_pseudos(self):
         try:
@@ -262,7 +262,7 @@ class PseudosModel(AdvancedSubModel):
             self.family_help_message = self.PSEUDO_HELP_WO_SOC
             self.status_message = ""
 
-    def _update_defaults(self, which):
+    def _update_defaults(self, specific=""):
         if self.input_structure is None:
             self._defaults |= {
                 "dictionary": {},

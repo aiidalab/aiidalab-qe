@@ -34,9 +34,9 @@ class MagnetizationModel(AdvancedSubModel):
             "moments": {},
         }
 
-    def update(self, which):
+    def update(self, specific=""):
         with self.hold_trait_notifications():
-            self._update_defaults(which)
+            self._update_defaults(specific)
             self.moments = self._get_default_moments()
 
     def reset(self):
@@ -45,7 +45,7 @@ class MagnetizationModel(AdvancedSubModel):
             self.total = self.traits()["total"].default_value
             self.moments = self._get_default_moments()
 
-    def _update_defaults(self, which):
+    def _update_defaults(self, specific=""):
         if self.spin_type == "none" or self.input_structure is None:
             self._defaults["moments"] = {}
         else:

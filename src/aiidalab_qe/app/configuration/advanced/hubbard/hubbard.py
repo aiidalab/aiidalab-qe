@@ -75,10 +75,10 @@ class HubbardSettings(AdvancedSubSettings):
 
         self.rendered = True
 
-        self.refresh(which="all")
+        self.refresh()
 
     def _on_input_structure_change(self, _):
-        self.refresh(which="structure")
+        self.refresh(specific="structure")
 
     def _on_hubbard_activation(self, _):
         self._toggle_hubbard_widget()
@@ -86,11 +86,11 @@ class HubbardSettings(AdvancedSubSettings):
     def _on_eigenvalues_definition(self, _):
         self._toggle_eigenvalues_widget()
 
-    def _update(self, which):
+    def _update(self, specific=""):
         if self.updated:
             return
         self._show_loading()
-        self._model.update(which)
+        self._model.update(specific)
         self._build_hubbard_widget()
         if isinstance(self._model.input_structure, HubbardStructureData):
             self._model.set_parameters_from_hubbard_structure()

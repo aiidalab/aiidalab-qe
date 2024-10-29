@@ -7,13 +7,28 @@ class AdvancedSubModel(tl.HasTraits):
 
     _defaults = {}
 
-    def update(self, which):
+    def update(self, specific=""):
+        """Updates the model.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of update.
+        """
         raise NotImplementedError
 
     def reset(self):
+        """Resets the model to present defaults."""
         raise NotImplementedError
 
-    def _update_defaults(self, which):
+    def _update_defaults(self, specific=""):
+        """Updates the model's default values.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of update.
+        """
         raise NotImplementedError
 
 
@@ -45,24 +60,47 @@ class AdvancedSubSettings(ipw.VBox):
     def render(self):
         raise NotImplementedError
 
-    def refresh(self, which):
+    def refresh(self, specific=""):
+        """Refreshes the subsettings section.
+
+        Unlinks any linked widgets and updates the model's defaults.
+        Resets the model to these defaults if there is no input structure.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of refresh.
+        """
         self.updated = False
         self._unsubscribe()
-        self._update(which)
+        self._update(specific)
         if hasattr(self._model, "input_structure") and not self._model.input_structure:
-            self._model.reset()
+            self._reset()
 
     def _on_override_change(self, change):
         if not change["new"]:
-            self._model.reset()
+            self._reset()
+
+    def _update(self, specific=""):
+        """Updates the model if not yet updated.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of update.
+        """
+        if self.updated:
+            return
+        self._model.update(specific)
+        self.updated = True
 
     def _unsubscribe(self):
+        """Unlinks any linked widgets."""
         for link in self.links:
             link.unlink()
         self.links.clear()
 
-    def _update(self, which):
-        if self.updated:
-            return
-        self._model.update(which)
-        self.updated = True
+    def _reset(self):
+        """Resets the model to present defaults."""
+        self.updated = False
+        self._model.reset()

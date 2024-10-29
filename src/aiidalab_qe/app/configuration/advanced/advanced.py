@@ -333,16 +333,16 @@ class AdvancedSettings(SettingsPanel):
 
         self.rendered = True
 
-        self.refresh(which="all")
+        self.refresh()
 
     def _on_input_structure_change(self, _):
-        self.refresh(which="structure")
+        self.refresh(specific="structure")
 
     def _on_protocol_change(self, _):
-        self.refresh(which="protocol")
+        self.refresh(specific="protocol")
 
     def _on_kpoints_distance_change(self, _=None):
-        self.refresh(which="mesh")
+        self.refresh(specific="mesh")
 
     def _on_override_change(self, change):
         if not change["new"]:

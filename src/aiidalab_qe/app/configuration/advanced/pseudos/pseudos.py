@@ -221,13 +221,13 @@ class PseudoSettings(AdvancedSubSettings):
 
         self.rendered = True
 
-        self.refresh(which="all")
+        self.refresh()
 
     def _on_input_structure_change(self, _):
-        self.refresh(which="structure")
+        self.refresh(specific="structure")
 
     def _on_protocol_change(self, _):
-        self.refresh(which="protocol")
+        self.refresh(specific="protocol")
 
     def _on_spin_orbit_change(self, _):
         self._model.update_library_options()
@@ -244,11 +244,11 @@ class PseudoSettings(AdvancedSubSettings):
         self._model.update_default_pseudos()
         self._model.update_default_cutoffs()
 
-    def _update(self, which):
+    def _update(self, specific=""):
         if self.updated:
             return
         self._show_loading()
-        self._model.update(which)
+        self._model.update(specific)
         self._build_setter_widgets()
         self._toggle_setter_widgets()
         self._model.update_library_options()

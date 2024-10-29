@@ -26,9 +26,9 @@ class SmearingModel(AdvancedSubModel):
             "degauss": self.traits()["degauss"].default_value,
         }
 
-    def update(self, which):
+    def update(self, specific=""):
         with self.hold_trait_notifications():
-            self._update_defaults(which)
+            self._update_defaults(specific)
             self.type = self._defaults["type"]
             self.degauss = self._defaults["degauss"]
 
@@ -37,7 +37,7 @@ class SmearingModel(AdvancedSubModel):
             self.type = self._defaults["type"]
             self.degauss = self._defaults["degauss"]
 
-    def _update_defaults(self, which):
+    def _update_defaults(self, specific=""):
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(self.protocol)
             .get("pw", {})

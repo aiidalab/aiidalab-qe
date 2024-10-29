@@ -33,9 +33,9 @@ class XpsModel(SettingsModel):
         default_value={},
     )
 
-    def update(self, which):
+    def update(self, specific=""):
         self._update_correction_energies()
-        if which == "pseudo_group":
+        if not specific or specific == "pseudo_group":
             self._update_pseudos()
 
     def get_supported_core_levels(self):

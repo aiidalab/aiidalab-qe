@@ -86,23 +86,40 @@ class SettingsModel(tl.HasTraits):
             return self.input_structure is None or any(self.input_structure.pbc)
         return False
 
-    def update(self, which):
+    def update(self, specific=""):
+        """Updates the model.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of update.
+        """
         pass
 
     def get_model_state(self) -> dict:
+        """Retrieves the model current state as a dictionary."""
         raise NotImplementedError
 
     def set_model_state(self, parameters: dict):
+        """Distributes the parameters of a loaded calculation to the model."""
         raise NotImplementedError
 
     def reset(self):
+        """Resets the model to present defaults."""
         pass
 
     def unconfirm(self, change):
         if change["name"] != "confirmed":
             self.confirmed = False
 
-    def _update_defaults(self, which):
+    def _update_defaults(self, specific=""):
+        """Updates the model's default values.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of update.
+        """
         raise NotImplementedError
 
 
@@ -130,28 +147,52 @@ class SettingsPanel(Panel):
     def render(self):
         raise NotImplementedError
 
-    def refresh(self, which):
-        if not self._model.include:
-            return
+    def refresh(self, specific=""):
+        """Refreshes the settings panel.
+
+        Unlinks the panel's widgets. If the panel's model is included in the
+        calculation, also updates the model's defaults. Resets the model to
+        these defaults if there is no input structure.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of refresh.
+        """
         self.updated = False
         self._unsubscribe()
-        self._update(which)
+        if not self._model.include:
+            return
+        self.update(specific)
         if "PYTEST_CURRENT_TEST" in os.environ:
             # Skip resetting to avoid having to inject a structure when testing
             return
         if hasattr(self._model, "input_structure") and not self._model.input_structure:
-            self._model.reset()
+            self._reset()
+
+    def update(self, specific=""):
+        """Updates the model if not yet updated.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of update.
+        """
+        if self.updated:
+            return
+        self._model.update(specific)
+        self.updated = True
 
     def _unsubscribe(self):
+        """Unlinks any linked widgets."""
         for link in self.links:
             link.unlink()
         self.links.clear()
 
-    def _update(self, which):
-        if self.updated:
-            return
-        self._model.update(which)
-        self.updated = True
+    def _reset(self):
+        """Resets the model to present defaults."""
+        self.updated = False
+        self._model.reset()
 
 
 class ResultPanel(Panel):

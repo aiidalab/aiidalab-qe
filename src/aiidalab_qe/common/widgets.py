@@ -920,7 +920,13 @@ class LazyLoadedStructureImporter(ipw.VBox):
 
     warning_message = "This may take some time to load"
 
-    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    structure = traitlets.Union(
+        [
+            traitlets.Instance(ase.Atoms),
+            traitlets.Instance(orm_Data),
+        ],
+        allow_none=True,
+    )
 
     def __init__(self, title=None, **kwargs):
         self.title = title or "Structure importer"

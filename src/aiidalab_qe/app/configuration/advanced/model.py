@@ -82,9 +82,9 @@ class AdvancedModel(SettingsModel):
             "kpoints_distance": self.traits()["kpoints_distance"].default_value,
         }
 
-    def update(self, which):
+    def update(self, specific=""):
         with self.hold_trait_notifications():
-            self._update_defaults(which)
+            self._update_defaults(specific)
             self.forc_conv_thr = self._defaults["forc_conv_thr"]
             self.forc_conv_thr_step = self._defaults["forc_conv_thr_step"]
             self.etot_conv_thr = self._defaults["etot_conv_thr"]
@@ -92,21 +92,6 @@ class AdvancedModel(SettingsModel):
             self.scf_conv_thr = self._defaults["scf_conv_thr"]
             self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
             self.kpoints_distance = self._defaults["kpoints_distance"]
-
-    def update_kpoints_mesh(self, _=None):
-        if self.input_structure is None:
-            mesh_grid = ""
-        elif self.kpoints_distance > 0:
-            mesh = create_kpoints_from_distance.process_class._func(
-                self.input_structure,
-                orm.Float(self.kpoints_distance),
-                orm.Bool(False),
-            )
-            mesh_grid = f"Mesh {mesh.get_kpoints_mesh()[0]!s}"
-        else:
-            mesh_grid = "Please select a number higher than 0.0"
-        self._defaults["mesh_grid"] = mesh_grid
-        self.mesh_grid = mesh_grid
 
     def add_model(self, identifier, model):
         self._models[identifier] = model
@@ -271,15 +256,36 @@ class AdvancedModel(SettingsModel):
                 (model, trait),
             )
 
-    def _update_defaults(self, which):
-        if which != "mesh":
+    def _update_defaults(self, specific=""):
+        if not specific or specific != "mesh":
             parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
             self._update_kpoints_distance(parameters)
-        self.update_kpoints_mesh()
 
-        if which != "protocol":
-            return
+        self._update_kpoints_mesh()
 
+        if not specific or specific == "protocol":
+            self._update_thresholds(parameters)
+
+    def _update_kpoints_mesh(self, _=None):
+        if self.input_structure is None:
+            mesh_grid = ""
+        elif self.kpoints_distance > 0:
+            mesh = create_kpoints_from_distance.process_class._func(
+                self.input_structure,
+                orm.Float(self.kpoints_distance),
+                orm.Bool(False),
+            )
+            mesh_grid = f"Mesh {mesh.get_kpoints_mesh()[0]!s}"
+        else:
+            mesh_grid = "Please select a number higher than 0.0"
+        self._defaults["mesh_grid"] = mesh_grid
+        self.mesh_grid = mesh_grid
+
+    def _update_kpoints_distance(self, parameters):
+        kpoints_distance = parameters["kpoints_distance"] if self.has_pbc else 100.0
+        self._defaults["kpoints_distance"] = kpoints_distance
+
+    def _update_thresholds(self, parameters):
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
         etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
@@ -290,10 +296,6 @@ class AdvancedModel(SettingsModel):
 
         forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
         self._set_value_and_step("forc_conv_thr", forc_value)
-
-    def _update_kpoints_distance(self, parameters):
-        kpoints_distance = parameters["kpoints_distance"] if self.has_pbc else 100.0
-        self._defaults["kpoints_distance"] = kpoints_distance
 
     def _set_value_and_step(self, attribute, value):
         self._defaults[attribute] = value
