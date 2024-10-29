@@ -75,10 +75,9 @@ class SettingsModel(tl.HasTraits):
 
     _defaults = {}
 
-    def __init__(self, include=False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.observe(self.unconfirm, tl.All)
-        self.include = include
 
     @property
     def has_pbc(self):
@@ -111,16 +110,6 @@ class SettingsModel(tl.HasTraits):
     def unconfirm(self, change):
         if change["name"] != "confirmed":
             self.confirmed = False
-
-    def _update_defaults(self, specific=""):
-        """Updates the model's default values.
-
-        Parameters
-        ----------
-        `specific` : `str`, optional
-            If provided, specifies the level of update.
-        """
-        raise NotImplementedError
 
 
 class SettingsPanel(Panel):
@@ -161,9 +150,8 @@ class SettingsPanel(Panel):
         """
         self.updated = False
         self._unsubscribe()
-        if not self._model.include:
-            return
-        self.update(specific)
+        if self._model.include:
+            self.update(specific)
         if "PYTEST_CURRENT_TEST" in os.environ:
             # Skip resetting to avoid having to inject a structure when testing
             return

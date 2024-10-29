@@ -60,8 +60,10 @@ class AdvancedModel(SettingsModel):
     kpoints_distance = tl.Float(0.0)
     mesh_grid = tl.Unicode("")
 
-    def __init__(self, include=False, *args, **kwargs):
-        super().__init__(include, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.include = True
 
         self.dftd3_version = {
             "dft-d3": 3,
@@ -84,18 +86,20 @@ class AdvancedModel(SettingsModel):
 
     def update(self, specific=""):
         with self.hold_trait_notifications():
-            self._update_defaults(specific)
-            self.forc_conv_thr = self._defaults["forc_conv_thr"]
-            self.forc_conv_thr_step = self._defaults["forc_conv_thr_step"]
-            self.etot_conv_thr = self._defaults["etot_conv_thr"]
-            self.etot_conv_thr_step = self._defaults["etot_conv_thr_step"]
-            self.scf_conv_thr = self._defaults["scf_conv_thr"]
-            self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
-            self.kpoints_distance = self._defaults["kpoints_distance"]
+            if not specific or specific != "mesh":
+                parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
+                self._update_kpoints_distance(parameters)
+                self._update_thresholds(parameters)
+            self._update_kpoints_mesh()
 
     def add_model(self, identifier, model):
         self._models[identifier] = model
         self._link_model(model)
+
+    def get_model(self, identifier) -> AdvancedSubModel:
+        if identifier in self._models:
+            return self._models[identifier]
+        raise ValueError(f"Model with identifier '{identifier}' not found.")
 
     def get_models(self):
         return self._models.items()
@@ -122,7 +126,7 @@ class AdvancedModel(SettingsModel):
             "kpoints_distance": self.kpoints_distance,
         }
 
-        hubbard: HubbardModel = self._get_model("hubbard")  # type: ignore
+        hubbard: HubbardModel = self.get_model("hubbard")  # type: ignore
         if hubbard.is_active:
             parameters["hubbard_parameters"] = {"hubbard_u": hubbard.parameters}
             if hubbard.has_eigenvalues:
@@ -130,7 +134,7 @@ class AdvancedModel(SettingsModel):
                     "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()
                 }
 
-        pseudos: PseudosModel = self._get_model("pseudos")  # type: ignore
+        pseudos: PseudosModel = self.get_model("pseudos")  # type: ignore
         parameters["pseudo_family"] = pseudos.family
         if pseudos.dictionary:
             parameters["pw"]["pseudos"] = pseudos.dictionary
@@ -145,8 +149,8 @@ class AdvancedModel(SettingsModel):
                 self.dftd3_version[self.van_der_waals]
             )
 
-        smearing: SmearingModel = self._get_model("smearing")  # type: ignore
-        magnetization: MagnetizationModel = self._get_model("magnetization")  # type: ignore
+        smearing: SmearingModel = self.get_model("smearing")  # type: ignore
+        magnetization: MagnetizationModel = self.get_model("magnetization")  # type: ignore
         if self.spin_type == "collinear":
             parameters["initial_magnetic_moments"] = magnetization.moments
         if self.electronic_type == "metal":
@@ -181,7 +185,7 @@ class AdvancedModel(SettingsModel):
         return parameters
 
     def set_model_state(self, parameters):
-        pseudos: PseudosModel = self._get_model("pseudos")  # type: ignore
+        pseudos: PseudosModel = self.get_model("pseudos")  # type: ignore
         if "pseudo_family" in parameters:
             pseudo_family = PseudoFamily.from_string(parameters["pseudo_family"])
             library = pseudo_family.library
@@ -199,7 +203,7 @@ class AdvancedModel(SettingsModel):
         if (pw_parameters := parameters.get("pw", {}).get("parameters")) is not None:
             self._set_pw_parameters(pw_parameters)
 
-        magnetization: MagnetizationModel = self._get_model("magnetization")  # type: ignore
+        magnetization: MagnetizationModel = self.get_model("magnetization")  # type: ignore
         if magnetic_moments := parameters.get("initial_magnetic_moments"):
             if isinstance(magnetic_moments, (int, float)):
                 magnetic_moments = [magnetic_moments]
@@ -212,7 +216,7 @@ class AdvancedModel(SettingsModel):
                 )
             magnetization.moments = magnetic_moments
 
-        hubbard: HubbardModel = self._get_model("hubbard")  # type: ignore
+        hubbard: HubbardModel = self.get_model("hubbard")  # type: ignore
         if parameters.get("hubbard_parameters"):
             hubbard.is_active = True
             hubbard.parameters = parameters["hubbard_parameters"]["hubbard_u"]
@@ -256,16 +260,6 @@ class AdvancedModel(SettingsModel):
                 (model, trait),
             )
 
-    def _update_defaults(self, specific=""):
-        if not specific or specific != "mesh":
-            parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
-            self._update_kpoints_distance(parameters)
-
-        self._update_kpoints_mesh()
-
-        if not specific or specific == "protocol":
-            self._update_thresholds(parameters)
-
     def _update_kpoints_mesh(self, _=None):
         if self.input_structure is None:
             mesh_grid = ""
@@ -284,18 +278,25 @@ class AdvancedModel(SettingsModel):
     def _update_kpoints_distance(self, parameters):
         kpoints_distance = parameters["kpoints_distance"] if self.has_pbc else 100.0
         self._defaults["kpoints_distance"] = kpoints_distance
+        self.kpoints_distance = self._defaults["kpoints_distance"]
 
     def _update_thresholds(self, parameters):
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
         etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
         self._set_value_and_step("etot_conv_thr", etot_value)
+        self.etot_conv_thr = self._defaults["etot_conv_thr"]
+        self.etot_conv_thr_step = self._defaults["etot_conv_thr_step"]
 
         scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
         self._set_value_and_step("scf_conv_thr", scf_value)
+        self.scf_conv_thr = self._defaults["scf_conv_thr"]
+        self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
 
         forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
         self._set_value_and_step("forc_conv_thr", forc_value)
+        self.forc_conv_thr = self._defaults["forc_conv_thr"]
+        self.forc_conv_thr_step = self._defaults["forc_conv_thr_step"]
 
     def _set_value_and_step(self, attribute, value):
         self._defaults[attribute] = value
@@ -324,18 +325,13 @@ class AdvancedModel(SettingsModel):
             system_params.get("vdw_corr", "none"),
         )
 
-        smearing: SmearingModel = self._get_model("smearing")  # type: ignore
+        smearing: SmearingModel = self.get_model("smearing")  # type: ignore
         if "degauss" in system_params:
             smearing.degauss = system_params["degauss"]
 
         if "smearing" in system_params:
             smearing.type = system_params["smearing"]
 
-        magnetization: MagnetizationModel = self._get_model("magnetization")  # type: ignore
+        magnetization: MagnetizationModel = self.get_model("magnetization")  # type: ignore
         if "tot_magnetization" in system_params:
             magnetization.type = "tot_magnetization"
-
-    def _get_model(self, identifier) -> AdvancedSubModel:
-        if identifier in self._models:
-            return self._models[identifier]
-        raise ValueError(f"Model with identifier '{identifier}' not found.")

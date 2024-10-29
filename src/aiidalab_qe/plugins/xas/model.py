@@ -60,8 +60,9 @@ class XasModel(SettingsModel):
         self.installed_pseudos = False
 
     def update(self, specific=""):
-        self._update_pseudos()
-        self._update_core_hole_treatment_recommendations()
+        with self.hold_trait_notifications():
+            self._update_pseudos()
+            self._update_core_hole_treatment_recommendations()
 
     def get_model_state(self):
         pseudo_labels = {}

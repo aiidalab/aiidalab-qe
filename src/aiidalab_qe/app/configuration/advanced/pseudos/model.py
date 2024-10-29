@@ -129,7 +129,16 @@ class PseudosModel(AdvancedSubModel):
 
     def update(self, specific=""):
         with self.hold_trait_notifications():
-            self._update_defaults(specific)
+            if self.input_structure is None:
+                self._defaults |= {
+                    "dictionary": {},
+                    "cutoffs": [[0.0], [0.0]],
+                }
+            else:
+                self.update_default_pseudos()
+                self.update_default_cutoffs()
+            self.update_family_parameters()
+            self.update_family()
 
     def update_default_pseudos(self):
         try:
@@ -261,18 +270,6 @@ class PseudosModel(AdvancedSubModel):
             self.family = self._defaults["family"]
             self.family_help_message = self.PSEUDO_HELP_WO_SOC
             self.status_message = ""
-
-    def _update_defaults(self, specific=""):
-        if self.input_structure is None:
-            self._defaults |= {
-                "dictionary": {},
-                "cutoffs": [[0.0], [0.0]],
-            }
-        else:
-            self.update_default_pseudos()
-            self.update_default_cutoffs()
-        self.update_family_parameters()
-        self.update_family()
 
     def _get_pseudo_family_from_database(self):
         """Get the pseudo family from the database."""

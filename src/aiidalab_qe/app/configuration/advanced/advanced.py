@@ -341,7 +341,7 @@ class AdvancedSettings(SettingsPanel):
     def _on_protocol_change(self, _):
         self.refresh(specific="protocol")
 
-    def _on_kpoints_distance_change(self, _=None):
+    def _on_kpoints_distance_change(self, _):
         self.refresh(specific="mesh")
 
     def _on_override_change(self, change):

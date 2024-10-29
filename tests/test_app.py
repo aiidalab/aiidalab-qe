@@ -19,7 +19,8 @@ def test_reload_and_reset(generate_qeapp_workchain):
     assert app.configure_model.get_model("workchain").spin_type == "collinear"
     assert app.configure_model.get_model("bands").include is True
     assert app.configure_model.get_model("pdos").include is False
-    assert len(app.configure_model.get_model("advanced").pseudos.dictionary) > 0
+    advanced_model = app.configure_model.get_model("advanced")
+    assert len(advanced_model.get_model("pseudos").dictionary) > 0
     assert app.configure_step.state == app.configure_step.State.SUCCESS
 
 

@@ -142,54 +142,53 @@ def test_download_and_install_pseudo_from_file(tmp_path):
 
 @pytest.mark.usefixtures("aiida_profile_clean", "sssp", "pseudodojo")
 def test_pseudos_settings(generate_structure_data, generate_upf_data):
-    from aiidalab_qe.app.configuration.advanced import AdvancedModel
-    from aiidalab_qe.app.configuration.advanced.pseudos import PseudoSettings
+    from aiidalab_qe.app.configuration.advanced.pseudos import (
+        PseudoSettings,
+        PseudosModel,
+    )
 
-    model = AdvancedModel()
+    model = PseudosModel()
     pseudos = PseudoSettings(model=model)
 
-    assert model.pseudos.override is False
+    assert model.override is False
 
     # Test the default family
     model.override = True
     model.spin_orbit = "wo_soc"
-    assert model.pseudos.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+    assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
     # Test protocol-dependent family change
     model.protocol = "precise"
-    assert model.pseudos.family == f"SSSP/{SSSP_VERSION}/PBEsol/precision"
+    assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/precision"
 
     # Test functional-dependent family change
-    model.pseudos.functional = "PBE"
-    assert model.pseudos.family == f"SSSP/{SSSP_VERSION}/PBE/precision"
+    model.functional = "PBE"
+    assert model.family == f"SSSP/{SSSP_VERSION}/PBE/precision"
 
     # Test library-dependent family change
-    model.pseudos.library = "PseudoDojo stringent"
-    assert (
-        model.pseudos.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
-    )
+    model.library = "PseudoDojo stringent"
+    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
 
     # Test spin-orbit-dependent family change
     model.spin_orbit = "soc"
     model.protocol = "moderate"
-    assert (
-        model.pseudos.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/standard/upf"
-    )
+    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/standard/upf"
+
+    # Reset the external dependencies of the model
+    model.spin_orbit = "wo_soc"
 
     # Test structure-dependent family change
-    model.reset()
-
     silicon = generate_structure_data("silicon")
     model.input_structure = silicon
-    assert "Si" in model.pseudos.dictionary.keys()
-    assert model.pseudos.ecutwfc == 30
-    assert model.pseudos.ecutrho == 240
+    assert "Si" in model.dictionary.keys()
+    assert model.ecutwfc == 30
+    assert model.ecutrho == 240
 
     # Test that changing the structure triggers a reset
     silica = generate_structure_data("silica")
     model.input_structure = silica
-    assert "Si" in model.pseudos.dictionary.keys()
-    assert "O" in model.pseudos.dictionary.keys()
+    assert "Si" in model.dictionary.keys()
+    assert "O" in model.dictionary.keys()
 
     # Test pseudo upload
     pseudos.render()
@@ -205,18 +204,18 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
             },
         }
     )
-    pseudo = model.pseudos.dictionary["O"]  # type: ignore
+    pseudo = model.dictionary["O"]  # type: ignore
     assert orm.load_node(pseudo).filename == "O_new.upf"
 
     # TODO necessary for final test - see comment below
-    # cutoffs = [model.pseudos.ecutwfc, model.pseudos.ecutrho]
+    # cutoffs = [model.ecutwfc, model.ecutrho]
 
-    model.pseudos.reset()
-    pseudo = model.pseudos.dictionary["O"]  # type: ignore
+    model.reset()
+    pseudo = model.dictionary["O"]  # type: ignore
     assert orm.load_node(pseudo).filename != "O_new.upf"
 
     # TODO what is this about?
-    # model.pseudos.set_pseudos(pseudos, cutoffs)
+    # model.set_pseudos(pseudos, cutoffs)
     # assert orm.load_node(pseudo).filename == "O_new.upf"
 
 

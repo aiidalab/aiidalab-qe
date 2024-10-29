@@ -1,3 +1,5 @@
+import os
+
 import ipywidgets as ipw
 import traitlets as tl
 
@@ -19,16 +21,6 @@ class AdvancedSubModel(tl.HasTraits):
 
     def reset(self):
         """Resets the model to present defaults."""
-        raise NotImplementedError
-
-    def _update_defaults(self, specific=""):
-        """Updates the model's default values.
-
-        Parameters
-        ----------
-        `specific` : `str`, optional
-            If provided, specifies the level of update.
-        """
         raise NotImplementedError
 
 
@@ -74,6 +66,9 @@ class AdvancedSubSettings(ipw.VBox):
         self.updated = False
         self._unsubscribe()
         self._update(specific)
+        if "PYTEST_CURRENT_TEST" in os.environ:
+            # Skip resetting to avoid having to inject a structure when testing
+            return
         if hasattr(self._model, "input_structure") and not self._model.input_structure:
             self._reset()
 

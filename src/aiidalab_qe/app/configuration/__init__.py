@@ -56,10 +56,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.settings: dict[str, SettingsPanel] = {}
 
-        workchain_model = WorkChainModel(include=True)
+        workchain_model = WorkChainModel()
         self._model.add_model("workchain", workchain_model)
 
-        advanced_model = AdvancedModel(include=True)
+        advanced_model = AdvancedModel()
         self._model.add_model("advanced", advanced_model)
 
         self._fetch_plugin_settings()

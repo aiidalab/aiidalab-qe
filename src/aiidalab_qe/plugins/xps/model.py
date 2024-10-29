@@ -34,9 +34,10 @@ class XpsModel(SettingsModel):
     )
 
     def update(self, specific=""):
-        self._update_correction_energies()
-        if not specific or specific == "pseudo_group":
-            self._update_pseudos()
+        with self.hold_trait_notifications():
+            self._update_correction_energies()
+            if not specific or specific == "pseudo_group":
+                self._update_pseudos()
 
     def get_supported_core_levels(self):
         supported_core_levels = {}
@@ -67,7 +68,6 @@ class XpsModel(SettingsModel):
             self.traits()["structure_type"].default_value,
         )
 
-        # TODO check logic
         core_level_list = parameters.get("core_level_list", [])
         for orbital in self.core_levels:
             if orbital in core_level_list:

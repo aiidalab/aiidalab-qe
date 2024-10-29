@@ -51,22 +51,52 @@ class ConfigurationModel(SettingsModel):
         """
 
     def update(self):
-        self._update_defaults()
-        self.relax_type_help = self._get_default_relax_type_help()
-        self.relax_type_options = self._get_default_relax_type_options()
-        self.relax_type = self._get_default_relax_type()
+        if self.has_pbc:
+            relax_type_help = self.relax_type_help_template.format(
+                option_count="three",
+                full_relaxation_option=(
+                    """
+                    <br>
+                    (3) Full geometry: perform a full relaxation of the internal atomic
+                    coordinates and the cell parameters.
+                    """
+                ),
+            )
+            relax_type_options = [
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+                ("Full geometry", "positions_cell"),
+            ]
+        else:
+            relax_type_help = self.relax_type_help_template.format(
+                option_count="two",
+                full_relaxation_option="",
+            )
+            relax_type_options = [
+                ("Structure as is", "none"),
+                ("Atomic positions", "positions"),
+            ]
+        self._defaults = {
+            "relax_type_help": relax_type_help,
+            "relax_type_options": relax_type_options,
+            "relax_type": relax_type_options[-1][-1],
+        }
+        with self.hold_trait_notifications():
+            self.relax_type_help = self._get_default_relax_type_help()
+            self.relax_type_options = self._get_default_relax_type_options()
+            self.relax_type = self._get_default_relax_type()
 
     def add_model(self, identifier, model):
         self._models[identifier] = model
         self._link_model(model)
 
-    def get_models(self):
-        return self._models.items()
-
     def get_model(self, identifier) -> SettingsModel:
         if identifier in self._models:
             return self._models[identifier]
         raise ValueError(f"Model with identifier '{identifier}' not found.")
+
+    def get_models(self):
+        return self._models.items()
 
     def get_model_state(self):
         parameters = {
@@ -86,9 +116,9 @@ class ConfigurationModel(SettingsModel):
             self.relax_type = workchain_parameters.get("relax_type")
             properties = set(workchain_parameters.get("properties", []))
             for identifier, model in self._models.items():
+                model.include = identifier in self._default_models | properties
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
-                model.include = identifier in self._default_models | properties
 
     def reset(self):
         self.confirmed = False
@@ -133,38 +163,6 @@ class ConfigurationModel(SettingsModel):
         ):
             properties.append("relax")
         return properties
-
-    def _update_defaults(self):
-        if self.has_pbc:
-            relax_type_help = self.relax_type_help_template.format(
-                option_count="three",
-                full_relaxation_option=(
-                    """
-                    <br>
-                    (3) Full geometry: perform a full relaxation of the internal atomic
-                    coordinates and the cell parameters.
-                    """
-                ),
-            )
-            relax_type_options = [
-                ("Structure as is", "none"),
-                ("Atomic positions", "positions"),
-                ("Full geometry", "positions_cell"),
-            ]
-        else:
-            relax_type_help = self.relax_type_help_template.format(
-                option_count="two",
-                full_relaxation_option="",
-            )
-            relax_type_options = [
-                ("Structure as is", "none"),
-                ("Atomic positions", "positions"),
-            ]
-        self._defaults = {
-            "relax_type_help": relax_type_help,
-            "relax_type_options": relax_type_options,
-            "relax_type": relax_type_options[-1][-1],
-        }
 
     def _get_default_relax_type_help(self):
         return self._defaults.get("relax_type_help", "")

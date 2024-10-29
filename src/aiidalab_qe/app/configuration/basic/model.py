@@ -18,8 +18,10 @@ class WorkChainModel(SettingsModel):
     spin_type = tl.Unicode(DEFAULT["workchain"]["spin_type"])
     electronic_type = tl.Unicode(DEFAULT["workchain"]["electronic_type"])
 
-    def __init__(self, include=False, *args, **kwargs):
-        super().__init__(include, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.include = True
 
         self._defaults = {
             "protocol": self.traits()["protocol"].default_value,

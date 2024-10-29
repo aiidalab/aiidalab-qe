@@ -49,8 +49,19 @@ class HubbardModel(AdvancedSubModel):
         }
 
     def update(self, specific=""):
+        if self.input_structure is None:
+            self.applicable_kinds = []
+            self.orbital_labels = []
+            self._defaults |= {
+                "parameters": {},
+                "eigenvalues": [],
+            }
+        else:
+            self.orbital_labels = self._define_orbital_labels()
+            self._defaults["parameters"] = self._define_default_parameters()
+            self.applicable_kinds = self._define_applicable_kinds()
+            self._defaults["eigenvalues"] = self._define_default_eigenvalues()
         with self.hold_trait_notifications():
-            self._update_defaults(specific)
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
             self.needs_eigenvalues_widget = len(self.applicable_kinds) > 0
@@ -81,20 +92,6 @@ class HubbardModel(AdvancedSubModel):
             self.has_eigenvalues = False
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
-
-    def _update_defaults(self, specific=""):
-        if self.input_structure is None:
-            self.applicable_kinds = []
-            self.orbital_labels = []
-            self._defaults |= {
-                "parameters": {},
-                "eigenvalues": [],
-            }
-        else:
-            self.orbital_labels = self._define_orbital_labels()
-            self._defaults["parameters"] = self._define_default_parameters()
-            self.applicable_kinds = self._define_applicable_kinds()
-            self._defaults["eigenvalues"] = self._define_default_eigenvalues()
 
     def _define_orbital_labels(self):
         hubbard_manifold_list = [

@@ -957,7 +957,6 @@ class LazyLoadedStructureImporter(ipw.VBox):
     def render(self):
         if self.rendered:
             return
-        from aiidalab_qe.common.widgets import LoadingWidget
 
         self.children = [LoadingWidget(f"Loading {self.title} widget")]
 

@@ -7,27 +7,31 @@ def test_advanced_default():
     """Test default behavior of advanced setting."""
     model = AdvancedModel()
     _ = AdvancedSettings(model=model)
+    smearing = model.get_model("smearing")
 
     # Test override functionality in advanced settings
     model.override = True
     model.protocol = "fast"
-    model.smearing.type = "methfessel-paxton"
-    model.smearing.degauss = 0.03
+    smearing.type = "methfessel-paxton"
+    smearing.degauss = 0.03
     model.kpoints_distance = 0.22
 
     # Reset values to default w.r.t protocol
     model.override = False
 
-    assert model.smearing.type == "cold"
-    assert model.smearing.degauss == 0.01
+    assert smearing.type == "cold"
+    assert smearing.degauss == 0.01
     assert model.kpoints_distance == 0.5
 
 
 def test_advanced_smearing_settings():
     """Test Smearing Settings."""
-    from aiidalab_qe.app.configuration.advanced.smearing import SmearingSettings
+    from aiidalab_qe.app.configuration.advanced.smearing import (
+        SmearingModel,
+        SmearingSettings,
+    )
 
-    model = AdvancedModel()
+    model = SmearingModel()
     smearing = SmearingSettings(model=model)
     smearing.render()
 
@@ -40,23 +44,22 @@ def test_advanced_smearing_settings():
     assert smearing.degauss.disabled is False
     assert smearing.smearing.disabled is False
 
-    assert model.smearing.type == "cold"
-    assert model.smearing.degauss == 0.01
+    assert model.type == "cold"
+    assert model.degauss == 0.01
 
     # Test protocol-dependent smearing change
     model.protocol = "fast"
 
-    assert model.smearing.type == "cold"
-    assert model.smearing.degauss == 0.01
+    assert model.type == "cold"
+    assert model.degauss == 0.01
 
     # Check reset
-    model.smearing.type = "gaussian"
-    model.smearing.degauss = 0.05
-    model.smearing.reset()
+    model.type = "gaussian"
+    model.degauss = 0.05
+    model.override = False
 
-    assert model.protocol == "fast"  # reset does not apply to protocol
-    assert model.smearing.type == "cold"
-    assert model.smearing.degauss == 0.01
+    assert model.type == "cold"
+    assert model.degauss == 0.01
 
 
 def test_advanced_kpoints_settings():
@@ -156,9 +159,12 @@ def test_advanced_kpoints_mesh(generate_structure_data):
 @pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_advanced_hubbard_settings(generate_structure_data):
     """Test Hubbard widget."""
-    from aiidalab_qe.app.configuration.advanced.hubbard import HubbardSettings
+    from aiidalab_qe.app.configuration.advanced.hubbard import (
+        HubbardModel,
+        HubbardSettings,
+    )
 
-    model = AdvancedModel()
+    model = HubbardModel()
     hubbard = HubbardSettings(model=model)
     hubbard.render()
 
@@ -166,8 +172,8 @@ def test_advanced_hubbard_settings(generate_structure_data):
     model.input_structure = structure
 
     # Activate Hubbard U widget
-    model.hubbard.is_active = True
-    assert model.hubbard.orbital_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
+    model.is_active = True
+    assert model.orbital_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
 
     # Change the Hubbard U parameters for Co, O, and Li
     hubbard_parameters = hubbard.hubbard_widget.children[1:]  # type: ignore
@@ -175,7 +181,7 @@ def test_advanced_hubbard_settings(generate_structure_data):
     hubbard_parameters[1].value = 2  # O - 2p
     hubbard_parameters[2].value = 3  # Li - 2s
 
-    assert model.hubbard.parameters == {
+    assert model.parameters == {
         "Co - 3d": 1.0,
         "O - 2p": 2.0,
         "Li - 2s": 3.0,
@@ -191,9 +197,9 @@ def test_advanced_hubbard_settings(generate_structure_data):
     # assert model.hubbard.eigenvalues == []  # TODO should they be?
 
     # Check there is only eigenvalues for Co (Transition metal)
-    model.hubbard.has_eigenvalues = True
-    assert len(model.hubbard.applicable_kinds) == 1
-    assert len(model.hubbard.eigenvalues) == 1
+    model.has_eigenvalues = True
+    assert len(model.applicable_kinds) == 1
+    assert len(model.eigenvalues) == 1
 
     Co_eigenvalues = hubbard.eigenvalues_widget.children[0].children[1]  # type: ignore
     Co_spin_down_row = Co_eigenvalues.children[1]
@@ -201,7 +207,7 @@ def test_advanced_hubbard_settings(generate_structure_data):
     Co_spin_down_row.children[3].value = "1"
     Co_spin_down_row.children[5].value = "1"
 
-    assert model.hubbard.get_active_eigenvalues() == [
+    assert model.get_active_eigenvalues() == [
         [1, 1, "Co", 1],
         [3, 1, "Co", 1],
         [5, 1, "Co", 1],

@@ -461,15 +461,16 @@ def submit_app_generator(
         advanced_model.electron_maxstep = electron_maxstep
         if isinstance(initial_magnetic_moments, (int, float)):
             initial_magnetic_moments = [initial_magnetic_moments]
-        advanced_model.magnetization.moments = dict(
+        advanced_model.get_model("magnetization").moments = dict(
             zip(
                 app.configure_model.input_structure.get_kind_names(),
                 initial_magnetic_moments,
             )
         )
         # mimic the behavior of the smearing widget set up
-        advanced_model.smearing.type = smearing
-        advanced_model.smearing.degauss = degauss
+        smearing_model = advanced_model.get_model("smearing")
+        smearing_model.type = smearing
+        smearing_model.degauss = degauss
         app.configure_step.confirm()
 
         app.submit_model.input_structure = generate_structure_data()
@@ -739,7 +740,9 @@ def generate_qeapp_workchain(
             from_example.children[0].value = from_example.children[0].options[1][1]
         else:
             structure.store()
-            aiida_database = app.structure_step.manager.children[0].children[2]  # type: ignore
+            aiida_database_wrapper = app.structure_step.manager.children[0].children[2]  # type: ignore
+            aiida_database_wrapper.render()
+            aiida_database = aiida_database_wrapper.children[0]  # type: ignore
             aiida_database.search()
             aiida_database.results.value = structure
 
@@ -764,20 +767,20 @@ def generate_qeapp_workchain(
 
         if spin_type == "collinear":
             advanced_model.override = True
-            magnetization = advanced_model.magnetization
+            magnetization_model = advanced_model.get_model("magnetization")
             if electronic_type == "insulator":
-                magnetization.total = tot_magnetization
+                magnetization_model.total = tot_magnetization
             elif magnetization_type == "starting_magnetization":
                 if isinstance(initial_magnetic_moments, (int, float)):
                     initial_magnetic_moments = [initial_magnetic_moments]
-                magnetization.moments = dict(
+                magnetization_model.moments = dict(
                     zip(
                         structure.get_kind_names(),
                         initial_magnetic_moments,
                     )
                 )
             else:
-                magnetization.total = tot_magnetization
+                magnetization_model.total = tot_magnetization
 
         app.configure_step.confirm()
 
