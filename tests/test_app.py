@@ -15,11 +15,11 @@ def test_reload_and_reset(generate_qeapp_workchain):
 
     # Test if the app can be loaded from process
     app.process = workchain.node.pk
-    assert app.config_model.relax_type == "positions"
-    assert app.config_model.get_model("workchain").spin_type == "collinear"
-    assert app.config_model.get_model("bands").include is True
-    assert app.config_model.get_model("pdos").include is False
-    assert len(app.config_model.get_model("advanced").pseudos.dictionary) > 0
+    assert app.configure_model.relax_type == "positions"
+    assert app.configure_model.get_model("workchain").spin_type == "collinear"
+    assert app.configure_model.get_model("bands").include is True
+    assert app.configure_model.get_model("pdos").include is False
+    assert len(app.configure_model.get_model("advanced").pseudos.dictionary) > 0
     assert app.configure_step.state == app.configure_step.State.SUCCESS
 
 
@@ -42,7 +42,7 @@ def test_unsaved_changes(app_to_submit):
     app: App = app_to_submit
     # go to the configure step, and make some changes
     app._wizard_app_widget.selected_index = 1
-    app.config_model.relax_type = "positions"
+    app.configure_model.relax_type = "positions"
     # go to the submit step
     app._wizard_app_widget.selected_index = 2
     # the state of the configure step should be updated.

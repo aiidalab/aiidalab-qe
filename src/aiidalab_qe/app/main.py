@@ -29,18 +29,18 @@ class App(ipw.VBox):
 
     def __init__(self, qe_auto_setup=True):
         # Initialize the models
-        self.struct_model = StructureModel()
-        self.config_model = ConfigurationModel()
+        self.structure_model = StructureModel()
+        self.configure_model = ConfigurationModel()
         self.submit_model = SubmissionModel()
         self.results_model = ResultsModel()
 
         # Create the application steps
         self.structure_step = StructureSelectionStep(
-            model=self.struct_model,
+            model=self.structure_model,
             auto_advance=True,
         )
         self.configure_step = ConfigureQeAppWorkChainStep(
-            model=self.config_model,
+            model=self.configure_model,
             auto_advance=True,
         )
         self.submit_step = SubmitQeAppWorkChainStep(
@@ -57,7 +57,7 @@ class App(ipw.VBox):
             (self.structure_step, "state"),
             (self.configure_step, "previous_step_state"),
         )
-        self.struct_model.observe(
+        self.structure_model.observe(
             self._on_structure_confirmation_change,
             "confirmed",
         )
@@ -65,7 +65,7 @@ class App(ipw.VBox):
             (self.configure_step, "state"),
             (self.submit_step, "previous_step_state"),
         )
-        self.config_model.observe(
+        self.configure_model.observe(
             self._on_configuration_confirmation_change,
             "confirmed",
         )
@@ -136,16 +136,16 @@ class App(ipw.VBox):
             self._render_step(step_index)
 
     def _on_structure_confirmation_change(self, _):
-        if self.struct_model.confirmed:
-            self.config_model.input_structure = self.struct_model.structure
+        if self.structure_model.confirmed:
+            self.configure_model.input_structure = self.structure_model.structure
         else:
-            self.config_model.input_structure = None
+            self.configure_model.input_structure = None
         self._update_blockers()
 
     def _on_configuration_confirmation_change(self, _):
-        if self.config_model.confirmed:
-            self.submit_model.input_structure = self.struct_model.structure
-            self.submit_model.input_parameters = self.config_model.get_model_state()
+        if self.configure_model.confirmed:
+            self.submit_model.input_structure = self.structure_model.structure
+            self.submit_model.input_parameters = self.configure_model.get_model_state()
         else:
             self.submit_model.input_structure = None
             self.submit_model.input_parameters = {}
@@ -177,13 +177,13 @@ class App(ipw.VBox):
             self._show_process_loading_message()
             process = load_node(pk)
             self._wizard_app_widget.selected_index = 3
-            self.struct_model.structure = process.inputs.structure
-            self.struct_model.confirmed = True
+            self.structure_model.structure = process.inputs.structure
+            self.structure_model.confirmed = True
             parameters = process.base.extras.get("ui_parameters", {})
             if parameters and isinstance(parameters, str):
                 parameters = deserialize_unsafe(parameters)
-            self.config_model.set_model_state(parameters)
-            self.config_model.confirmed = True
+            self.configure_model.set_model_state(parameters)
+            self.configure_model.confirmed = True
             self.submit_model.process = process
             self.submit_model.set_model_state(parameters)
             self.submit_step.state = WizardAppWidgetStep.State.SUCCESS

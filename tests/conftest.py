@@ -439,7 +439,7 @@ def submit_app_generator(
         electron_maxstep=80,
     ):
         # Settings
-        app.config_model.input_structure = generate_structure_data()
+        app.configure_model.input_structure = generate_structure_data()
         parameters = {
             "workchain": {
                 "relax_type": relax_type,
@@ -449,10 +449,10 @@ def submit_app_generator(
                 "protocol": workchain_protocol,
             }
         }
-        app.config_model.set_model_state(parameters)
+        app.configure_model.set_model_state(parameters)
 
         # Advanced settings
-        advanced_model = app.config_model.get_model("advanced")
+        advanced_model = app.configure_model.get_model("advanced")
 
         advanced_model.override = True
         advanced_model.total_charge = tot_charge
@@ -463,7 +463,7 @@ def submit_app_generator(
             initial_magnetic_moments = [initial_magnetic_moments]
         advanced_model.magnetization.moments = dict(
             zip(
-                app.config_model.input_structure.get_kind_names(),
+                app.configure_model.input_structure.get_kind_names(),
                 initial_magnetic_moments,
             )
         )
@@ -488,8 +488,8 @@ def app_to_submit(app: App):
     app.structure_step.confirm()
     # Step 2: configure calculation
     # TODO do we need to include bands and pdos here?
-    app.config_model.get_model("bands").include = True
-    app.config_model.get_model("pdos").include = True
+    app.configure_model.get_model("bands").include = True
+    app.configure_model.get_model("pdos").include = True
     app.configure_step.confirm()
     yield app
 
@@ -745,18 +745,18 @@ def generate_qeapp_workchain(
 
         app.structure_step.confirm()
 
-        structure = app.struct_model.structure  # type: ignore
+        structure = app.structure_model.structure  # type: ignore
 
         # step 2 configure
-        workchain_model = app.config_model.get_model("workchain")
-        advanced_model = app.config_model.get_model("advanced")
+        workchain_model = app.configure_model.get_model("workchain")
+        advanced_model = app.configure_model.get_model("advanced")
 
-        app.config_model.relax_type = relax_type
+        app.configure_model.relax_type = relax_type
 
         # In order to prepare complete inputs, I set all the properties to true
         # this can be overridden later
-        app.config_model.get_model("bands").include = run_bands
-        app.config_model.get_model("pdos").include = run_pdos
+        app.configure_model.get_model("bands").include = run_bands
+        app.configure_model.get_model("pdos").include = run_pdos
 
         workchain_model.protocol = "fast"
         workchain_model.spin_type = spin_type
@@ -820,7 +820,7 @@ def generate_qeapp_workchain(
 
         # mock output
         if relax_type != "none":
-            workchain.out("structure", app.struct_model.structure)
+            workchain.out("structure", app.structure_model.structure)
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 

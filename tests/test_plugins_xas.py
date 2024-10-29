@@ -8,7 +8,7 @@ def test_settings(submit_app_generator):
     """Test the settings of the xas app."""
     app: App = submit_app_generator(properties=["xas"])
 
-    xas_model = app.config_model.get_model("xas")
+    xas_model = app.configure_model.get_model("xas")
     xas_model.update()
 
     # Test getting the model state
