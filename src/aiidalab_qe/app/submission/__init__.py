@@ -75,8 +75,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         #     "input_parameters",
         # )
 
-        self.qe_auto_setup = qe_auto_setup
-
         plugin_codes: PluginCodes = get_entry_items("aiidalab_qe.properties", "code")
         plugin_codes |= {
             "dft": {
@@ -100,6 +98,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
 
         self.rendered = False
+
+        self._install_sssp(qe_auto_setup)
+        self._set_up_qe(qe_auto_setup)
 
     def render(self):
         if self.rendered:
@@ -138,40 +139,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             lambda state: state != self.State.CONFIGURED,
         )
         self.submit_button.on_click(self._on_submission)
-
-        self.sssp_installation = PseudosInstallWidget(auto_start=False)
-        ipw.dlink(
-            (self.sssp_installation, "busy"),
-            (self._model, "installing_sssp"),
-        )
-        ipw.dlink(
-            (self.sssp_installation, "installed"),
-            (self._model, "installing_sssp"),
-            lambda installed: not installed,
-        )
-        ipw.dlink(
-            (self.sssp_installation, "installed"),
-            (self._model, "sssp_installed"),
-        )
-        if self.qe_auto_setup:
-            self.sssp_installation.refresh()
-
-        self.qe_setup = QESetupWidget(auto_start=False)
-        ipw.dlink(
-            (self.qe_setup, "busy"),
-            (self._model, "installing_qe"),
-        )
-        ipw.dlink(
-            (self.qe_setup, "installed"),
-            (self._model, "installing_qe"),
-            lambda installed: not installed,
-        )
-        ipw.dlink(
-            (self.qe_setup, "installed"),
-            (self._model, "qe_installed"),
-        )
-        if self.qe_auto_setup:
-            self.qe_setup.refresh()
 
         self.submission_blocker_messages = ipw.HTML()
         ipw.dlink(
@@ -341,3 +308,39 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.READY
         else:
             self.state = self.state.CONFIGURED
+
+    def _install_sssp(self, qe_auto_setup):
+        self.sssp_installation = PseudosInstallWidget(auto_start=False)
+        ipw.dlink(
+            (self.sssp_installation, "busy"),
+            (self._model, "installing_sssp"),
+        )
+        ipw.dlink(
+            (self.sssp_installation, "installed"),
+            (self._model, "installing_sssp"),
+            lambda installed: not installed,
+        )
+        ipw.dlink(
+            (self.sssp_installation, "installed"),
+            (self._model, "sssp_installed"),
+        )
+        if qe_auto_setup:
+            self.sssp_installation.refresh()
+
+    def _set_up_qe(self, qe_auto_setup):
+        self.qe_setup = QESetupWidget(auto_start=False)
+        ipw.dlink(
+            (self.qe_setup, "busy"),
+            (self._model, "installing_qe"),
+        )
+        ipw.dlink(
+            (self.qe_setup, "installed"),
+            (self._model, "installing_qe"),
+            lambda installed: not installed,
+        )
+        ipw.dlink(
+            (self.qe_setup, "installed"),
+            (self._model, "qe_installed"),
+        )
+        if qe_auto_setup:
+            self.qe_setup.refresh()
