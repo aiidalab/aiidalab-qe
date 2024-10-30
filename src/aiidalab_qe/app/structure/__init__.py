@@ -175,7 +175,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def confirm(self, _=None):
         self.manager.store_structure()
         self._model.message_area = ""
-        self._model.confirmed = True
+        self._model.confirm()
 
     def can_reset(self):
         return self._model.confirmed

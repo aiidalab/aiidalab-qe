@@ -171,12 +171,12 @@ class App(ipw.VBox):
             process = load_node(pk)
             self._wizard_app_widget.selected_index = 3
             self.structure_model.structure = process.inputs.structure
-            self.structure_model.confirmed = True
+            self.structure_model.confirm()
             parameters = process.base.extras.get("ui_parameters", {})
             if parameters and isinstance(parameters, str):
                 parameters = deserialize_unsafe(parameters)
             self.configure_model.set_model_state(parameters)
-            self.configure_model.confirmed = True
+            self.configure_model.confirm()
             self.submit_model.process = process
             self.submit_model.set_model_state(parameters)
             self.submit_step.state = WizardAppWidgetStep.State.SUCCESS

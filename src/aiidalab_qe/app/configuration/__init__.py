@@ -158,7 +158,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         return self._model.confirmed
 
     def confirm(self, _=None):
-        self._model.confirmed = True
+        self._model.confirm()
 
     def reset(self):
         self._model.reset()

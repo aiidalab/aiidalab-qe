@@ -120,6 +120,9 @@ class ConfigurationModel(SettingsModel):
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
 
+    def confirm(self):
+        self.confirmed = True
+
     def reset(self):
         self.confirmed = False
         self.relax_type_help = self._get_default_relax_type_help()

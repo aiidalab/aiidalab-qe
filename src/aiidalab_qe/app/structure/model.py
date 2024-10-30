@@ -28,6 +28,9 @@ class StructureModel(tl.HasTraits):
             self.manager_output = ""
             self.structure_name = str(self.structure.get_formula())
 
+    def confirm(self):
+        self.confirmed = True
+
     def reset(self):
         self.structure = None
         self.structure_name = ""
