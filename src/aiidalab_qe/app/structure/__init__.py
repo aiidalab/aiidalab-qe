@@ -93,8 +93,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
 
         # HACK structure manager resets the structure node on initialization,
         # causing the structure in the model (if exists) to reset. To avoid
-        # this issue, we store the structure in a variable and reassign it
-        # to the model after the initialization of the structure manager.
+        # this issue, we store the structure in a variable and assign it to
+        # the manager's viewer after the initialization of the structure manager.
         # TODO fix this issue in the structure manager and remove this hack!
 
         structure = self._model.structure
@@ -112,11 +112,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             ],
         )
         ipw.dlink(
-            (self._model, "structure"),
-            (self.manager, "structure"),
-            lambda structure: structure.get_ase() if structure else None,
-        )
-        ipw.dlink(
             (self.manager, "structure_node"),
             (self._model, "structure"),
         )
@@ -125,7 +120,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             (self.manager.output, "value"),
         )
 
-        self._model.structure = structure
+        if structure:  # loaded from process
+            self.manager.viewer.structure = structure.get_ase()  # TODO why ase?
 
         self.structure_name_text = ipw.Text(
             placeholder="[No structure selected]",

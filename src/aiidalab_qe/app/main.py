@@ -154,13 +154,6 @@ class App(ipw.VBox):
     def _render_step(self, step_index):
         step = self.steps[step_index][1]
         step.render()
-        if step is self.structure_step:
-            # HACK to fix the rendering of the ngl viewer
-            # Reason: If a process is loaded prior to the rendering of the
-            # structure step, the ngl viewer will assume a size of zero.
-            # This code will reset the size and render the selected structure.
-            self.structure_step.manager.viewer._viewer.handle_resize()
-            self.structure_step.manager.viewer._viewer.control.zoom(0)
 
     def _update_blockers(self):
         self.submit_model.external_submission_blockers = [
