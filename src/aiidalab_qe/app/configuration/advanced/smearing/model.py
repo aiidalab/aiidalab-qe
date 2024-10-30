@@ -26,7 +26,7 @@ class SmearingModel(AdvancedSubModel):
             "degauss": self.traits()["degauss"].default_value,
         }
 
-    def update(self, specific=""):
+    def update(self, specific=""):  # noqa: ARG002
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(self.protocol)
             .get("pw", {})

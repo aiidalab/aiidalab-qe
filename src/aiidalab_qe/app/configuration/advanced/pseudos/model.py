@@ -127,7 +127,7 @@ class PseudosModel(AdvancedSubModel):
             "cutoffs": [[0.0], [0.0]],
         }
 
-    def update(self, specific=""):
+    def update(self, specific=""):  # noqa: ARG002
         with self.hold_trait_notifications():
             if self.input_structure is None:
                 self._defaults |= {

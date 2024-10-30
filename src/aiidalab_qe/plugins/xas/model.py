@@ -59,7 +59,7 @@ class XasModel(SettingsModel):
 
         self.installed_pseudos = False
 
-    def update(self, specific=""):
+    def update(self, specific=""):  # noqa: ARG002
         with self.hold_trait_notifications():
             self._update_pseudos()
             self._update_core_hole_treatment_recommendations()

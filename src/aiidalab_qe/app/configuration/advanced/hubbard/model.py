@@ -48,7 +48,7 @@ class HubbardModel(AdvancedSubModel):
             "eigenvalues": [],
         }
 
-    def update(self, specific=""):
+    def update(self, specific=""):  # noqa: ARG002
         if self.input_structure is None:
             self.applicable_kinds = []
             self.orbital_labels = []
