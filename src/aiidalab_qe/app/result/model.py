@@ -27,7 +27,7 @@ class ResultsModel(tl.HasTraits):
 
     def kill_process(self):
         if process := self._get_process_node():
-            control.kill_processes(process)
+            control.kill_processes([process])
 
     def clean_remote_data(self):
         if self.process_node is None:
