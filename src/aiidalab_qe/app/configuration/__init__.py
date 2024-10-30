@@ -233,13 +233,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     lambda _: not self._model.has_pbc,
                 )
 
-            def toggle_plugin(change, identifier=identifier, info=info):
+            def toggle_plugin(change, identifier=identifier, model=model, info=info):
                 if change["new"]:
                     info.value = (
                         f"Customize {identifier} settings in <b>Step 2.2</b> if needed"
                     )
                 else:
                     info.value = ""
+                model.update()
                 self._update_tabs()
 
             model.observe(
