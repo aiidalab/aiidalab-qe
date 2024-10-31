@@ -105,7 +105,7 @@ def generate_report_parameters(qeapp_wc):
     energy_cutoff_wfc = pw_parameters["SYSTEM"]["ecutwfc"]
     energy_cutoff_rho = pw_parameters["SYSTEM"]["ecutrho"]
     occupation = pw_parameters["SYSTEM"]["occupations"]
-    scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
+    scf_kpoints_distance = ui_parameters["advanced"]["kpoints_distance"]
     report.update(
         {
             "energy_cutoff_wfc": energy_cutoff_wfc,
@@ -145,9 +145,7 @@ def generate_report_parameters(qeapp_wc):
         )["bands_kpoints_distance"]
 
     if "pdos" in qeapp_wc.inputs:
-        report["nscf_kpoints_distance"] = (
-            qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
-        )
+        report["nscf_kpoints_distance"] = ui_parameters["pdos"]["nscf_kpoints_distance"]
     return report
 
 
