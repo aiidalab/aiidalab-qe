@@ -101,6 +101,7 @@ def test_setup_pseudos_cmd(tmp_path):
     ]
 
 
+@pytest.mark.slow
 @pytest.mark.usefixtures("aiida_profile_clean")
 def test_pseudos_installation():
     """Test install_pseudos"""
@@ -118,6 +119,7 @@ def test_pseudos_installation():
     assert len(pseudos_to_install()) == 10
 
 
+@pytest.mark.slow
 @pytest.mark.usefixtures("aiida_profile_clean")
 def test_download_and_install_pseudo_from_file(tmp_path):
     """Test download and install pseudo from file."""
