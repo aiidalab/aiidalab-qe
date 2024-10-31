@@ -12,10 +12,14 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import LoadingWidget, PwCodeResourceSetupWidget
+from aiidalab_qe.common.widgets import (
+    LoadingWidget,
+    PwCodeResourceSetupWidget,
+    QEAppComputationalResourcesWidget,
+)
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from .code import CodeModel, PluginCodes
+from .code import CodeModel, PluginCodes, PwCodeModel
 from .model import SubmissionModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -75,32 +79,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         #     "input_parameters",
         # )
 
-        plugin_codes: PluginCodes = get_entry_items("aiidalab_qe.properties", "code")
-        plugin_codes |= {
-            "dft": {
-                "pw": CodeModel(
-                    description="pw.x:",
-                    default_calc_job_plugin="quantumespresso.pw",
-                    setup_widget_class=PwCodeResourceSetupWidget,
-                ),
-            },
-        }
-        for identifier, codes in plugin_codes.items():
-            for name, code in codes.items():
-                self._model.add_code(identifier, name, code)
-                code.observe(
-                    self._on_code_activation_change,
-                    "is_active",
-                )
-                code.observe(
-                    self._on_code_selection_change,
-                    "selected",
-                )
-
-        self.rendered = False
+        self.code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
 
         self._install_sssp(qe_auto_setup)
         self._set_up_qe(qe_auto_setup)
+        self._set_up_codes()
+
+        self.rendered = False
 
     def render(self):
         if self.rendered:
@@ -189,23 +174,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = True
 
-        # Render and set up default PW code
-        pw_code = self._model.get_code("dft", "pw")
-        pw_code.activate()
-        pw_code_widget = pw_code.get_setup_widget()
-        pw_code_widget.num_cpus.observe(
-            self._on_pw_code_resource_change,
-            "value",
-        )
-        pw_code_widget.num_nodes.observe(
-            self._on_pw_code_resource_change,
-            "value",
-        )
-
-        # Render any other active codes
-        self._toggle_code(pw_code)
-        for _, code in self._model.get_codes(flat=True):
-            if code is not pw_code and code.is_active:
+        # Render any active codes
+        self._model.get_code("dft", "pw").activate()
+        for _, code in self._model.get_code_models(flat=True):
+            if code.is_active:
                 self._toggle_code(code)
 
     def reset(self):
@@ -241,6 +213,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _on_qe_installed(self, _):
         self._toggle_qe_installation_widget()
+        if self._model.qe_installed:
+            self._model.refresh_codes()
 
     def _on_sssp_installed(self, _):
         self._toggle_sssp_installation_widget()
@@ -257,57 +231,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_submission(self, _):
         self._model.submit()
         self._update_state()
-
-    def _toggle_sssp_installation_widget(self):
-        sssp_installation_display = "none" if self._model.sssp_installed else "block"
-        self.sssp_installation.layout.display = sssp_installation_display
-
-    def _toggle_qe_installation_widget(self):
-        qe_installation_display = "none" if self._model.qe_installed else "block"
-        self.qe_setup.layout.display = qe_installation_display
-
-    def _toggle_code(self, code: CodeModel):
-        if not self.rendered:
-            return
-        if not code.is_rendered:
-            loading_message = LoadingWidget(f"Loading {code.name} code")
-            self.code_widgets_container.children += (loading_message,)
-        code_widget = code.get_setup_widget()
-        code_widget.layout.display = "block" if code.is_active else "none"
-        if not code.is_rendered:
-            self._render_code_widget(code, code_widget)
-
-    def _render_code_widget(self, code, code_widget):
-        ipw.dlink(
-            (code_widget.code_selection.code_select_dropdown, "options"),
-            (code, "options"),
-        )
-        ipw.dlink(
-            (code_widget, "value"),
-            (code, "selected"),
-            lambda value: value is not None,
-        )
-        code.observe(
-            lambda change: setattr(code_widget, "parameters", change["new"]),
-            "parameters",
-        )
-        code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
-        self.code_widgets_container.children = [*code_widgets, code_widget]
-        self._model.code_widgets[code.name] = code_widget
-        self._model.set_selected_codes()  # TODO check logic
-        code.is_rendered = True
-
-    def _update_state(self, _=None):
-        if self.previous_step_state is self.State.FAIL:
-            self.state = self.State.FAIL
-        elif self.previous_step_state is not self.State.SUCCESS:
-            self.state = self.State.INIT
-        elif self._model.process is not None:
-            self.state = self.State.SUCCESS
-        elif self._model.is_blocked:
-            self.state = self.State.READY
-        else:
-            self.state = self.state.CONFIGURED
 
     def _install_sssp(self, qe_auto_setup):
         self.sssp_installation = PseudosInstallWidget(auto_start=False)
@@ -344,3 +267,119 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         if qe_auto_setup:
             self.qe_setup.refresh()
+
+    def _set_up_codes(self):
+        codes: PluginCodes = {
+            "dft": {
+                "pw": PwCodeModel(
+                    description="pw.x",
+                    default_calc_job_plugin="quantumespresso.pw",
+                    code_widget_class=PwCodeResourceSetupWidget,
+                ),
+            },
+            **get_entry_items("aiidalab_qe.properties", "code"),
+        }
+        for identifier, code_models in codes.items():
+            for name, code_model in code_models.items():
+                self._model.add_code(identifier, name, code_model)
+                code_model.observe(
+                    self._on_code_activation_change,
+                    "is_active",
+                )
+                code_model.observe(
+                    self._on_code_selection_change,
+                    "selected",
+                )
+
+    def _toggle_sssp_installation_widget(self):
+        sssp_installation_display = "none" if self._model.sssp_installed else "block"
+        self.sssp_installation.layout.display = sssp_installation_display
+
+    def _toggle_qe_installation_widget(self):
+        qe_installation_display = "none" if self._model.qe_installed else "block"
+        self.qe_setup.layout.display = qe_installation_display
+
+    def _toggle_code(self, code_model: CodeModel):
+        if not self.rendered:
+            return
+        if not code_model.is_rendered:
+            loading_message = LoadingWidget(f"Loading {code_model.name} code")
+            self.code_widgets_container.children += (loading_message,)
+        if code_model.name not in self.code_widgets:
+            code_widget = code_model.code_widget_class(
+                description=code_model.description,
+                default_calc_job_plugin=code_model.default_calc_job_plugin,
+            )
+            self.code_widgets[code_model.name] = code_widget
+        else:
+            code_widget = self.code_widgets[code_model.name]
+        code_widget.layout.display = "block" if code_model.is_active else "none"
+        if not code_model.is_rendered:
+            self._render_code_widget(code_model, code_widget)
+
+    def _render_code_widget(
+        self,
+        code_model: CodeModel,
+        code_widget: QEAppComputationalResourcesWidget,
+    ):
+        ipw.dlink(
+            (code_model, "options"),
+            (code_widget.code_selection.code_select_dropdown, "options"),
+        )
+        ipw.link(
+            (code_model, "selected"),
+            (code_widget.code_selection.code_select_dropdown, "value"),
+        )
+        ipw.dlink(
+            (code_model, "selected"),
+            (code_widget.code_selection.code_select_dropdown, "disabled"),
+            lambda selected: not selected,
+        )
+        ipw.link(
+            (code_model, "num_cpus"),
+            (code_widget.num_cpus, "value"),
+        )
+        ipw.link(
+            (code_model, "num_nodes"),
+            (code_widget.num_nodes, "value"),
+        )
+        ipw.link(
+            (code_model, "ntasks_per_node"),
+            (code_widget.resource_detail.ntasks_per_node, "value"),
+        )
+        ipw.link(
+            (code_model, "cpus_per_task"),
+            (code_widget.resource_detail.cpus_per_task, "value"),
+        )
+        ipw.link(
+            (code_model, "max_wallclock_seconds"),
+            (code_widget.resource_detail.max_wallclock_seconds, "value"),
+        )
+        if isinstance(code_widget, PwCodeResourceSetupWidget):
+            ipw.link(
+                (code_model, "override"),
+                (code_widget.parallelization.override, "value"),
+            )
+            ipw.link(
+                (code_model, "npool"),
+                (code_widget.parallelization.npool, "value"),
+            )
+            code_model.observe(
+                self._on_pw_code_resource_change,
+                ["num_cpus", "num_nodes"],
+            )
+        code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
+        self.code_widgets_container.children = [*code_widgets, code_widget]
+        code_model.is_rendered = True
+
+    def _update_state(self, _=None):
+        if self.previous_step_state is self.State.FAIL:
+            self.state = self.State.FAIL
+        elif self.previous_step_state is not self.State.SUCCESS:
+            self.state = self.State.INIT
+        elif self._model.process is not None:
+            self.state = self.State.SUCCESS
+        elif self._model.is_blocked:
+            self.state = self.State.READY
+        else:
+            self.state = self.state.CONFIGURED

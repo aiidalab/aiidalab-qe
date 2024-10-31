@@ -1,9 +1,6 @@
-import pytest
-
 from aiidalab_qe.app.main import App
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_reload_and_reset(generate_qeapp_workchain):
     app = App(qe_auto_setup=False)
     workchain = generate_qeapp_workchain(
@@ -35,7 +32,6 @@ def test_selecting_new_structure_unconfirms_model(generate_structure_data):
     assert not model.confirmed
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_unsaved_changes(app_to_submit):
     """Test if the unsaved changes are handled correctly"""
     from aiidalab_widgets_base import WizardAppWidgetStep
@@ -52,7 +48,7 @@ def test_unsaved_changes(app_to_submit):
     assert len(app.submit_model.external_submission_blockers) == 1
     # confirm the changes
     app._wizard_app_widget.selected_index = 1
-    app.configure_step.confirm()
+    app.configure_model.confirm()
     app._wizard_app_widget.selected_index = 2
     # the blocker should be removed
     assert len(app.submit_model.external_submission_blockers) == 0

@@ -1,5 +1,3 @@
-import pytest
-
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 from aiidalab_qe.app.configuration.model import ConfigurationModel
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
@@ -30,7 +28,6 @@ def test_get_configuration_parameters():
     assert parameters == parameters_ref
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp", "pseudodojo")
 def test_set_configuration_parameters():
     model = ConfigurationModel()
     _ = ConfigureQeAppWorkChainStep(model=model)

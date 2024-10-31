@@ -235,8 +235,8 @@ def generate_projection_data(generate_bands_data):
     return _generate_projection_data
 
 
-@pytest.fixture(scope="function")
-def sssp(generate_upf_data):
+@pytest.fixture(scope="session", autouse=True)
+def sssp(generate_upf_data_for_session):
     """Create SSSP pseudopotentials from scratch."""
     from aiida_pseudo.groups.family import SsspFamily
 
@@ -247,7 +247,7 @@ def sssp(generate_upf_data):
         dirpath = pathlib.Path(d)
 
         for element in ELEMENTS:
-            upf = generate_upf_data(element)
+            upf = generate_upf_data_for_session(element)
             filename = dirpath / f"{element}.upf"
 
             with open(filename, "w+b") as handle:
@@ -267,8 +267,8 @@ def sssp(generate_upf_data):
                 family.set_cutoffs(cutoffs, stringency, unit="Ry")
 
 
-@pytest.fixture(scope="function")
-def pseudodojo(generate_upf_data):
+@pytest.fixture(scope="session", autouse=True)
+def pseudodojo(generate_upf_data_for_session):
     """Create pseudodojo pseudopotentials from scratch."""
     from aiida_pseudo.data.pseudo import UpfData
     from aiida_pseudo.groups.family import PseudoDojoFamily
@@ -279,10 +279,7 @@ def pseudodojo(generate_upf_data):
         dirpath = pathlib.Path(d)
 
         for element in ELEMENTS:
-            upf = generate_upf_data(element)
-            filename = dirpath / f"{element}.upf"
-
-            upf = generate_upf_data(element)
+            upf = generate_upf_data_for_session(element)
             filename = dirpath / f"{element}.upf"
 
             with open(filename, "w+b") as handle:
@@ -311,6 +308,28 @@ def pseudodojo(generate_upf_data):
 @pytest.fixture(scope="function")
 def generate_upf_data():
     """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
+
+    def _generate_upf_data(element, filename=None):
+        """Return `UpfData` node."""
+        from aiida_pseudo.data.pseudo import UpfData
+
+        content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="4.0"\n/></UPF>\n'
+        stream = io.BytesIO(content.encode("utf-8"))
+
+        if filename is None:
+            filename = f"{element}.upf"
+
+        return UpfData(stream, filename=filename)
+
+    return _generate_upf_data
+
+
+@pytest.fixture(scope="session")
+def generate_upf_data_for_session():
+    """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`.
+
+    NOTE: Duplicated fixture for use in the session-scoped pseudos fixtures
+    """
 
     def _generate_upf_data(element, filename=None):
         """Return `UpfData` node."""
@@ -394,36 +413,27 @@ def smearing_settings_generator():
 
 @pytest.fixture
 def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
-    from aiidalab_qe.app.main import App
-
     app = App(qe_auto_setup=False)
-    app.structure_step.render()
-    app.configure_step.render()
-    app.submit_step.render()
-    app.results_step.render()
 
     # Since we use `qe_auto_setup=False`, which will skip the pseudo library
     # installation, we need to mock set the installation status to `True` to
     # avoid the blocker message pop up in the submission step.
-    app.submit_step.sssp_installation.installed = True
-    app.submit_step.qe_setup.installed = True
+    app.submit_model.installing_qe = False
+    app.submit_model.installing_sssp = False
+    app.submit_model.sssp_installed = True
+    app.submit_model.qe_installed = True
 
     # set up codes
-    app.submit_model.get_code("pdos", "dos").activate()
-    app.submit_model.get_code("pdos", "projwfc").activate()
-    app.submit_model.get_code("bands", "projwfc_bands").activate()
+    pw_code_model = app.submit_model.get_code("dft", "pw")
+    dos_code_model = app.submit_model.get_code("pdos", "dos")
+    projwfc_code_model = app.submit_model.get_code("pdos", "projwfc")
+    projwfc_bands_code_model = app.submit_model.get_code("bands", "projwfc_bands")
 
-    app.submit_model.code_widgets["pw"].code_selection.refresh()
-    app.submit_model.code_widgets["dos"].code_selection.refresh()
-    app.submit_model.code_widgets["projwfc"].code_selection.refresh()
-    app.submit_model.code_widgets["projwfc_bands"].code_selection.refresh()
+    pw_code_model.activate()
+    dos_code_model.activate()
+    projwfc_code_model.activate()
+    projwfc_bands_code_model.activate()
 
-    app.submit_model.code_widgets["pw"].value = pw_code.uuid
-    app.submit_model.code_widgets["dos"].value = dos_code.uuid
-    app.submit_model.code_widgets["projwfc"].value = projwfc_code.uuid
-    app.submit_model.code_widgets["projwfc_bands"].value = projwfc_bands_code.uuid
-
-    # TODO overrides app defaults - check!
     app.submit_model.set_selected_codes(
         {
             "pw": {"code": pw_code.label},
@@ -490,10 +500,10 @@ def submit_app_generator(
         smearing_model = advanced_model.get_model("smearing")
         smearing_model.type = smearing
         smearing_model.degauss = degauss
-        app.configure_step.confirm()
+        app.configure_model.confirm()
 
         app.submit_model.input_structure = generate_structure_data()
-        app.submit_model.code_widgets["pw"].num_cpus.value = 2
+        app.submit_model.get_code("dft", "pw").num_cpus = 2
 
         return app
 
@@ -501,16 +511,15 @@ def submit_app_generator(
 
 
 @pytest.fixture
-def app_to_submit(app: App):
+def app_to_submit(app: App, generate_structure_data):
     # Step 1: select structure from example
-    structure = app.structure_step.manager.children[0].children[3]  # type: ignore
-    structure.children[0].value = structure.children[0].options[1][1]
-    app.structure_step.confirm()
+    app.structure_model.structure = generate_structure_data()
+    app.structure_model.confirm()
     # Step 2: configure calculation
     # TODO do we need to include bands and pdos here?
     app.configure_model.get_model("bands").include = True
     app.configure_model.get_model("pdos").include = True
-    app.configure_step.confirm()
+    app.configure_model.confirm()
     yield app
 
 
@@ -728,6 +737,7 @@ def generate_bands_workchain(
 @pytest.fixture
 def generate_qeapp_workchain(
     app: App,
+    generate_structure_data,
     generate_workchain,
     generate_pdos_workchain,
     generate_bands_workchain,
@@ -754,20 +764,17 @@ def generate_qeapp_workchain(
 
         # Step 1: select structure from example
         if structure is None:
-            from_example = app.structure_step.manager.children[0].children[3]  # type: ignore
-            # TODO: (unkpcz) using options to set value in test is cranky, instead, use fixture which will make the test more static and robust.
-            from_example.children[0].value = from_example.children[0].options[1][1]
+            structure = generate_structure_data()
         else:
             structure.store()
-            aiida_database_wrapper = app.structure_step.manager.children[0].children[2]  # type: ignore
-            aiida_database_wrapper.render()
-            aiida_database = aiida_database_wrapper.children[0]  # type: ignore
-            aiida_database.search()
-            aiida_database.results.value = structure
+            # aiida_database_wrapper = app.structure_step.manager.children[0].children[2]  # type: ignore
+            # aiida_database_wrapper.render()
+            # aiida_database = aiida_database_wrapper.children[0]  # type: ignore
+            # aiida_database.search()
+            # aiida_database.results.value = structure
 
-        app.structure_step.confirm()
-
-        structure = app.structure_model.structure  # type: ignore
+        app.structure_model.structure = structure
+        app.structure_model.confirm()
 
         # step 2 configure
         workchain_model = app.configure_model.get_model("workchain")
@@ -801,11 +808,11 @@ def generate_qeapp_workchain(
             else:
                 magnetization_model.total = tot_magnetization
 
-        app.configure_step.confirm()
+        app.configure_model.confirm()
 
         # step 3 setup code and resources
-        app.submit_model.code_widgets["pw"].num_cpus.value = 4
-        parameters = app.submit_model._get_submission_parameters()
+        app.submit_model.get_code("dft", "pw").num_cpus = 4
+        parameters = app.submit_model.get_model_state()
         builder = app.submit_model._create_builder(parameters)
 
         inputs = builder._inputs()

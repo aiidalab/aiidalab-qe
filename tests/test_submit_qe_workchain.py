@@ -1,9 +1,6 @@
-import pytest
-
 from aiidalab_qe.app.main import App
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_create_builder_default(
     data_regression,
     submit_app_generator,
@@ -15,7 +12,7 @@ def test_create_builder_default(
 
     app: App = submit_app_generator(properties=["bands", "pdos"])
 
-    parameters = app.submit_model._get_submission_parameters()
+    parameters = app.submit_model.get_model_state()
     app.submit_model._create_builder(parameters)
     # since uuid is specific to each run, we remove it from the output
     ui_parameters = remove_uuid_fields(parameters)
@@ -27,7 +24,6 @@ def test_create_builder_default(
     # In the future, we will check the builder parameters using regresion test
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_create_process_label(submit_app_generator):
     """Test the creation of the correct process label."""
     app: App = submit_app_generator(properties=["bands", "pdos"])
@@ -53,7 +49,6 @@ def test_create_process_label(submit_app_generator):
     )
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_create_builder_insulator(
     submit_app_generator,
 ):
@@ -65,7 +60,7 @@ def test_create_builder_insulator(
     app: App = submit_app_generator(
         electronic_type="insulator", properties=["bands", "pdos"]
     )
-    parameters = app.submit_model._get_submission_parameters()
+    parameters = app.submit_model.get_model_state()
     builder = app.submit_model._create_builder(parameters)
 
     # check and validate the builder
@@ -78,7 +73,6 @@ def test_create_builder_insulator(
     assert "smearing" not in got["bands"]["bands"]["scf"]["pw"]["parameters"]["SYSTEM"]
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_create_builder_advanced_settings(
     submit_app_generator,
 ):
@@ -102,7 +96,7 @@ def test_create_builder_advanced_settings(
         electron_maxstep=100,
         properties=["bands", "pdos"],
     )
-    parameters = app.submit_model._get_submission_parameters()
+    parameters = app.submit_model.get_model_state()
     builder = app.submit_model._create_builder(parameters)
 
     # check and validate the builder
@@ -129,7 +123,6 @@ def test_create_builder_advanced_settings(
     )
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_warning_messages(
     generate_structure_data,
     submit_app_generator,
@@ -150,32 +143,31 @@ def test_warning_messages(
     }
 
     app: App = submit_app_generator(properties=["bands", "pdos"])
-    submit_step = app.submit_step
     submit_model = app.submit_model
 
-    pw_code = submit_model.get_code("dft", "pw").get_setup_widget()
-    pw_code.num_cpus.value = 1
+    pw_code = submit_model.get_code("dft", "pw")
+    pw_code.num_cpus = 1
     submit_model.check_resources()
     # no warning:
-    assert submit_step.submission_warning_messages.value == ""
+    assert submit_model.submission_warning_messages == ""
 
     # now we increase the resources, so we should have the Warning-3
-    pw_code.num_cpus.value = len(os.sched_getaffinity(0))
+    pw_code.num_cpus = len(os.sched_getaffinity(0))
     submit_model.check_resources()
     for suggestion in ["avoid_overloading", "go_remote"]:
-        assert suggestions[suggestion] in submit_step.submission_warning_messages.value
+        assert suggestions[suggestion] in submit_model.submission_warning_messages
 
     # now we use a large structure, so we should have the Warning-1 (and 2 if not on localhost)
     structure = generate_structure_data("H2O-larger")
     submit_model.input_structure = structure
-    pw_code.num_cpus.value = 1
+    pw_code.num_cpus = 1
     submit_model.check_resources()
     num_sites = len(structure.sites)
     volume = structure.get_cell_volume()
     estimated_CPUs = submit_model._estimate_min_cpus(num_sites, volume)
     assert estimated_CPUs == 2
     for suggestion in ["more_resources", "change_configuration"]:
-        assert suggestions[suggestion] in submit_step.submission_warning_messages.value
+        assert suggestions[suggestion] in submit_model.submission_warning_messages
 
 
 def builder_to_readable_dict(builder):

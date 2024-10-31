@@ -7,7 +7,6 @@ from copy import deepcopy
 import traitlets as tl
 
 from aiida import orm
-from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace
 from aiida.engine import submit as aiida_submit
 from aiida.orm.utils.serialize import serialize
@@ -55,8 +54,6 @@ class SubmissionModel(tl.HasTraits):
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
 
-    code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -72,6 +69,11 @@ class SubmissionModel(tl.HasTraits):
             </div>
         """
 
+        # Used by the code-setup thread to fetch code options
+        # This is necessary to avoid passing the User object
+        # between session in separate threads.
+        self._default_user_email = orm.User.collection.get_default().email
+
     @property
     def is_blocked(self):
         return any(
@@ -82,7 +84,7 @@ class SubmissionModel(tl.HasTraits):
         )
 
     def submit(self):
-        parameters = self._get_submission_parameters()
+        parameters = self.get_model_state()
         builder = self._create_builder(parameters)
 
         with self.hold_trait_notifications():
@@ -102,14 +104,13 @@ class SubmissionModel(tl.HasTraits):
             self.process = process
 
     def check_resources(self):
-        pw_code_model = self.get_code("dft", "pw")
+        pw_code = self.get_code("dft", "pw")
 
-        if not self.input_structure or not pw_code_model.selected:
+        if not self.input_structure or not pw_code.selected:
             return  # No code selected or no structure, so nothing to do
 
-        pw_code = pw_code_model.get_setup_widget()
-        num_cpus = pw_code.num_cpus.value * pw_code.num_nodes.value
-        on_localhost = orm.load_node(pw_code.value).computer.hostname == "localhost"
+        num_cpus = pw_code.num_cpus * pw_code.num_nodes
+        on_localhost = orm.load_node(pw_code.selected).computer.hostname == "localhost"
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
 
@@ -184,15 +185,19 @@ class SubmissionModel(tl.HasTraits):
             )
         )
 
+    def refresh_codes(self):
+        for _, code_model in self.get_code_models(flat=True):
+            code_model.update(self._default_user_email)  # type: ignore
+
     def update_active_codes(self):
-        for name, code in self.get_codes(flat=True):
+        for name, code_model in self.get_code_models(flat=True):
             if name != "pw":
-                code.deactivate()
-        properties = self.get_properties()
-        for identifier, codes in self.get_codes():
+                code_model.deactivate()
+        properties = self._get_properties()
+        for identifier, code_models in self.get_code_models():
             if identifier in properties:
-                for code in codes.values():
-                    code.activate()
+                for code_model in code_models.values():
+                    code_model.activate()
 
     def update_process_label(self):
         if not self.input_structure:
@@ -239,13 +244,10 @@ class SubmissionModel(tl.HasTraits):
         else:
             self.submission_blocker_messages = ""
 
-    def get_properties(self) -> list[str]:
-        return self.input_parameters.get("workchain", {}).get("properties", [])
-
     def get_model_state(self) -> dict[str, dict[str, dict]]:
-        return {
-            "codes": self.get_selected_codes(),
-        }
+        parameters: dict = deepcopy(self.input_parameters)  # type: ignore
+        parameters["codes"] = self.get_selected_codes()
+        return parameters
 
     def set_model_state(self, parameters):
         if "resources" in parameters:
@@ -274,7 +276,10 @@ class SubmissionModel(tl.HasTraits):
         if identifier in self.codes and name in self.codes[identifier]:  # type: ignore
             return self.codes[identifier][name]  # type: ignore
 
-    def get_codes(self, flat=False) -> t.Iterator[tuple[str, CodesDict | CodeModel]]:
+    def get_code_models(
+        self,
+        flat=False,
+    ) -> t.Iterator[tuple[str, CodesDict | CodeModel]]:
         if flat:
             for codes in self.codes.values():
                 yield from codes.items()
@@ -283,33 +288,25 @@ class SubmissionModel(tl.HasTraits):
 
     def get_selected_codes(self) -> dict[str, dict]:
         return {
-            name: code.parameters
-            for name, code in self.get_codes(flat=True)
-            if code.is_ready
-        }  # type: ignore
+            name: code_model.get_model_state()
+            for name, code_model in self.get_code_models(flat=True)
+            if code_model.is_ready
+        }
 
     def set_selected_codes(self, code_data=DEFAULT["codes"]):
-        def get_code_uuid(code):
-            if code is not None:
-                try:
-                    return orm.load_code(code).uuid
-                except NotExistent:
-                    return None
-
         with self.hold_trait_notifications():
-            for name, code in self.get_codes(flat=True):
+            for name, code_model in self.get_code_models(flat=True):
                 if name in code_data:
-                    parameters = code_data[name]
-                    code_uuid = get_code_uuid(parameters["code"])
-                    if code_uuid in [opt[1] for opt in code.options]:
-                        parameters["code"] = code_uuid
-                        code.parameters = parameters
+                    code_model.set_model_state(code_data[name])
 
     def reset(self):
         with self.hold_trait_notifications():
             self.input_structure = None
             self.input_parameters = {}
             self.process = None
+
+    def _get_properties(self) -> list[str]:
+        return self.input_parameters.get("workchain", {}).get("properties", [])
 
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
         builder = QeAppWorkChain.get_builder_from_protocol(
@@ -331,17 +328,6 @@ class SubmissionModel(tl.HasTraits):
 
         return builder
 
-    def _get_submission_parameters(self) -> dict:
-        submission_parameters = self.get_model_state()
-        for name, code_widget in self.code_widgets.items():
-            if name in submission_parameters["codes"]:
-                for key, value in code_widget.parameters.items():
-                    if key != "code":
-                        submission_parameters["codes"][name][key] = value
-        parameters = deepcopy(self.input_parameters)
-        parameters.update(submission_parameters)
-        return parameters  # type: ignore
-
     def _check_submission_blockers(self):
         # Do not submit while any of the background setup processes are running.
         if self.installing_qe or self.installing_sssp:
@@ -357,21 +343,21 @@ class SubmissionModel(tl.HasTraits):
             yield ("No pw code selected")
 
         # code related to the selected property is not installed
-        properties = self.get_properties()
+        properties = self._get_properties()
         message = "Calculating the {property} property requires code {code} to be set."
-        for identifier, codes in self.get_codes():
+        for identifier, codes in self.get_code_models():
             if identifier in properties:
                 for code in codes.values():
                     if not code.is_ready:
                         yield message.format(property=identifier, code=code.description)
 
         # check if the QEAppComputationalResourcesWidget is used
-        for name, code in self.get_codes(flat=True):
+        for name, code in self.get_code_models(flat=True):
             # skip if the code is not displayed, convenient for the plugin developer
             if not code.is_ready:
                 continue
             if not issubclass(
-                code.setup_widget_class, QEAppComputationalResourcesWidget
+                code.code_widget_class, QEAppComputationalResourcesWidget
             ):
                 yield (
                     f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {name}."

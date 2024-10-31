@@ -1,9 +1,6 @@
-import pytest
-
 from aiidalab_qe.app.main import App
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_settings(submit_app_generator):
     """Test the settings of the xas app."""
     app: App = submit_app_generator(properties=["xas"])

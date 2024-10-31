@@ -1,5 +1,3 @@
-import pytest
-
 from aiidalab_qe.app.configuration.advanced import AdvancedModel, AdvancedSettings
 
 
@@ -87,7 +85,6 @@ def test_advanced_kpoints_settings():
     assert model.kpoints_distance == 0.5
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_advanced_molecule_settings(generate_structure_data):
     """Test kpoints setting of advanced setting widget."""
     model = AdvancedModel()
@@ -139,7 +136,6 @@ def test_advanced_tot_charge_settings():
     assert model.total_charge == 0.0
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_advanced_kpoints_mesh(generate_structure_data):
     """Test Mesh Grid HTML widget."""
     model = AdvancedModel()
@@ -156,7 +152,6 @@ def test_advanced_kpoints_mesh(generate_structure_data):
     assert model.mesh_grid == "Mesh [5, 5, 5]"
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_advanced_hubbard_settings(generate_structure_data):
     """Test Hubbard widget."""
     from aiidalab_qe.app.configuration.advanced.hubbard import (

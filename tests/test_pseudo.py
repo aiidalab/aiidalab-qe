@@ -142,7 +142,6 @@ def test_download_and_install_pseudo_from_file(tmp_path):
     assert len(pseudos_to_install()) == 10
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp", "pseudodojo")
 def test_pseudos_settings(generate_structure_data, generate_upf_data):
     from aiidalab_qe.app.configuration.advanced.pseudos import (
         PseudoSettings,

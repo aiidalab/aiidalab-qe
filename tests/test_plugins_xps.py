@@ -1,9 +1,6 @@
-import pytest
-
 from aiidalab_qe.app.configuration.model import ConfigurationModel
 
 
-@pytest.mark.usefixtures("aiida_profile_clean", "sssp")
 def test_settings():
     """Test the settings of the xps app."""
 
