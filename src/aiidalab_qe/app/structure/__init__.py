@@ -121,7 +121,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         if structure:  # loaded from process
-            self.manager.viewer.structure = structure.get_ase()  # TODO why ase?
+            self.manager.viewer.structure = structure
 
         self.structure_name_text = ipw.Text(
             placeholder="[No structure selected]",
