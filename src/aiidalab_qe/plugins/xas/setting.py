@@ -64,54 +64,6 @@ def _download_extract_pseudo_archive(func):
         tarfil.extractall(target_dir)
 
 
-url = f"{base_url}"
-for func in functionals:
-    target_dir = f"{head_path}/{dir_header}/{func}"
-    os.makedirs(target_dir, exist_ok=True)
-    archive_filename = f"{func}_ch_pseudos.tgz"
-    archive_found = False
-    for entry in os.listdir(target_dir):
-        if entry == archive_filename:
-            archive_found = True
-    if not archive_found:
-        _download_extract_pseudo_archive(func)
-
-
-# Check all the pseudos/core-wfc data files in the TOC dictionary
-# and load/check all of them before proceeding. Note that this
-# approach relies on there not being multiple instances of nodes
-# with the same label.
-for func in functionals:
-    gipaw_pseudo_dict = pseudo_data_dict[func]["gipaw_pseudos"]
-    core_wfc_dict = pseudo_data_dict[func]["core_wavefunction_data"]
-    core_hole_pseudo_dict = pseudo_data_dict[func]["core_hole_pseudos"]
-    main_path = f"{head_path}/{dir_header}/{func}"
-    core_wfc_dir = f"{main_path}/core_wfc_data"
-    gipaw_dir = f"{main_path}/gipaw_pseudos"
-    ch_pseudo_dir = f"{main_path}/ch_pseudos/star1s"
-    # First, check that the local directories contain what's in the pseudo_toc
-    for pseudo_dir, pseudo_dict in zip(
-        [gipaw_dir, core_wfc_dir, ch_pseudo_dir],
-        [gipaw_pseudo_dict, core_wfc_dict, core_hole_pseudo_dict],
-    ):
-        pseudo_toc_mismatch = os.listdir(pseudo_dir) != pseudo_dict.values()
-
-    # Re-download the relevant archive if there is a mismatch
-    if pseudo_toc_mismatch:
-        _download_extract_pseudo_archive(func)
-
-    _load_or_import_nodes_from_filenames(
-        in_dict=gipaw_pseudo_dict,
-        path=gipaw_dir,
-    )
-    _load_or_import_nodes_from_filenames(
-        in_dict=core_wfc_dict, path=core_wfc_dir, core_wfc_data=True
-    )
-    _load_or_import_nodes_from_filenames(
-        in_dict=core_hole_pseudo_dict["1s"], path=ch_pseudo_dir
-    )
-
-
 class Setting(Panel):
     title = "XAS Settings"
     identifier = "xas"
@@ -259,6 +211,51 @@ class Setting(Panel):
     @tl.observe("input_structure")
     def _update_structure(self, _=None):
         self._update_element_select_panel()
+
+        for func in functionals:
+            target_dir = f"{head_path}/{dir_header}/{func}"
+            os.makedirs(target_dir, exist_ok=True)
+            archive_filename = f"{func}_ch_pseudos.tgz"
+            archive_found = False
+            for entry in os.listdir(target_dir):
+                if entry == archive_filename:
+                    archive_found = True
+            if not archive_found:
+                _download_extract_pseudo_archive(func)
+
+        # Check all the pseudos/core-wfc data files in the TOC dictionary
+        # and load/check all of them before proceeding. Note that this
+        # approach relies on there not being multiple instances of nodes
+        # with the same label.
+        for func in functionals:
+            gipaw_pseudo_dict = pseudo_data_dict[func]["gipaw_pseudos"]
+            core_wfc_dict = pseudo_data_dict[func]["core_wavefunction_data"]
+            core_hole_pseudo_dict = pseudo_data_dict[func]["core_hole_pseudos"]
+            main_path = f"{head_path}/{dir_header}/{func}"
+            core_wfc_dir = f"{main_path}/core_wfc_data"
+            gipaw_dir = f"{main_path}/gipaw_pseudos"
+            ch_pseudo_dir = f"{main_path}/ch_pseudos/star1s"
+            # First, check that the local directories contain what's in the pseudo_toc
+            for pseudo_dir, pseudo_dict in zip(
+                [gipaw_dir, core_wfc_dir, ch_pseudo_dir],
+                [gipaw_pseudo_dict, core_wfc_dict, core_hole_pseudo_dict],
+            ):
+                pseudo_toc_mismatch = os.listdir(pseudo_dir) != pseudo_dict.values()
+
+            # Re-download the relevant archive if there is a mismatch
+            if pseudo_toc_mismatch:
+                _download_extract_pseudo_archive(func)
+
+            _load_or_import_nodes_from_filenames(
+                in_dict=gipaw_pseudo_dict,
+                path=gipaw_dir,
+            )
+            _load_or_import_nodes_from_filenames(
+                in_dict=core_wfc_dict, path=core_wfc_dir, core_wfc_data=True
+            )
+            _load_or_import_nodes_from_filenames(
+                in_dict=core_hole_pseudo_dict["1s"], path=ch_pseudo_dir
+            )
 
     def _update_element_select_panel(self):
         if self.input_structure is None:
