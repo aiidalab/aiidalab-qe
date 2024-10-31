@@ -52,12 +52,26 @@ def get_builder(codes, structure, parameters, **kwargs):
     scf_overrides = deepcopy(parameters["advanced"])
     nscf_overrides = deepcopy(parameters["advanced"])
 
+    # Dos Projwfc overrides
+    dos_overrides = {"parameters": {"DOS": {}}}
+    projwfc_overrides = {"parameters": {"PROJWFC": {}}}
+
+    if parameters["pdos"]["use_pdos_degauss"]:
+        dos_overrides["parameters"]["DOS"] = {
+            "degauss": parameters["pdos"]["pdos_degauss"]
+        }
+        projwfc_overrides["parameters"]["PROJWFC"] = {
+            "degauss": parameters["pdos"]["pdos_degauss"]
+        }
+
     # Update the nscf kpoints distance from the setting panel
     nscf_overrides["kpoints_distance"] = parameters["pdos"]["nscf_kpoints_distance"]
 
     overrides = {
         "scf": scf_overrides,
         "nscf": nscf_overrides,
+        "dos": dos_overrides,
+        "projwfc": projwfc_overrides,
     }
     if dos_code is not None and projwfc_code is not None:
         pdos = PdosWorkChain.get_builder_from_protocol(

@@ -5,9 +5,10 @@ Authors: AiiDAlab team
 
 from __future__ import annotations
 
+import os
+
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import display
 
 from aiida import orm
 from aiida.common import NotExistent
@@ -53,6 +54,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     # Warn the user if they are trying to run calculations for a large
     # structure on localhost.
     RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
+    RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD = 1000  # \AA^3
 
     # Put a limit on how many MPI tasks you want to run per k-pool by default
     MAX_MPI_PER_POOL = 20
@@ -65,8 +67,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     external_submission_blockers = tl.List(tl.Unicode())
 
     def __init__(self, qe_auto_setup=True, **kwargs):
-        self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
+        self._submission_warning_messages = ipw.HTML()
 
         self.pw_code = PwCodeResourceSetupWidget(
             description="pw.x:", default_calc_job_plugin="quantumespresso.pw"
@@ -129,10 +131,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         super().__init__(
             children=[
                 *self.code_children,
-                self.message_area,
                 self.sssp_installation_status,
                 self.qe_setup_status,
                 self._submission_blocker_messages,
+                self._submission_warning_messages,
                 self.process_label_help,
                 self.process_label,
                 self.process_description,
@@ -142,6 +144,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
         # set default codes
         self.set_selected_codes(DEFAULT_PARAMETERS["codes"])
+
+        # observe these two for the resource checking:
+        self.pw_code.num_cpus.observe(self._check_resources, "value")
+        self.pw_code.num_nodes.observe(self._check_resources, "value")
 
     @tl.observe("internal_submission_blockers", "external_submission_blockers")
     def _observe_submission_blockers(self, _change):
@@ -222,46 +228,101 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     _ALERT_MESSAGE = """
         <div class="alert alert-{alert_class} alert-dismissible">
         <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
-        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
         <strong>{message}</strong>
         </div>"""
 
     def _show_alert_message(self, message, alert_class="info"):
-        with self.message_area:
-            display(
-                ipw.HTML(
-                    self._ALERT_MESSAGE.format(alert_class=alert_class, message=message)
-                )
-            )
+        self._submission_warning_messages.value = self._ALERT_MESSAGE.format(
+            alert_class=alert_class, message=message
+        )
 
-    def _check_resources(self):
+    @tl.observe("input_structure")
+    def _check_resources(self, _change=None):
         """Check whether the currently selected resources will be sufficient and warn if not."""
-        if not self.pw_code.value:
-            return  # No code selected, nothing to do.
+        if not self.pw_code.value or not self.input_structure:
+            return  # No code selected or no structure, so nothing to do.
 
-        num_cpus = self.resources_config.num_cpus.value
+        num_cpus = self.pw_code.num_cpus.value * self.pw_code.num_nodes.value
         on_localhost = (
             orm.load_node(self.pw_code.value).computer.hostname == "localhost"
         )
-        if self.pw_code.value and on_localhost and num_cpus > 1:
-            self._show_alert_message(
-                "The selected code would be executed on the local host, but "
-                "the number of CPUs is larger than one. Please review "
-                "the configuration and consider to select a code that runs "
-                "on a larger system if necessary.",
-                alert_class="warning",
+        num_sites = len(self.input_structure.sites)
+        volume = self.input_structure.get_cell_volume()
+        try:
+            localhost_cpus = len(os.sched_getaffinity(0))
+        except (
+            Exception
+        ):  # fallback, in some OS os.sched_getaffinity(0) is not supported
+            localhost_cpus = os.cpu_count()  # however, not so realiable in containers.
+
+        large_system = (
+            num_sites > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+            or volume > self.RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD
+        )
+
+        estimated_CPUs = self._estimate_min_cpus(
+            num_sites, volume
+        )  # estimated number of CPUs for a run less than 12 hours.
+
+        # List of possible suggestions for warnings:
+        suggestions = {
+            "more_resources": f"<li>Increase the resources (total number of CPUs should be equal or more than {min(100,estimated_CPUs)}, if possible) </li>",
+            "change_configuration": "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) </li>",
+            "go_remote": "<li>Select a code that runs on a larger machine</li>",
+            "avoid_overloading": "<li>Reduce the number of CPUs to avoid the overloading of the local machine </li>",
+        }
+
+        alert_message = ""
+        if large_system and estimated_CPUs > num_cpus:
+            # This part is in common between Warnings 1 (2): (not) on localhost, big system and few cpus
+            warnings_1_2 = (
+                f"<span>&#9888;</span> Warning: The selected structure is large, with {num_sites} atoms "
+                f"and a volume of {int(volume)} Å<sup>3</sup>, "
+                "making it computationally demanding "
+                "to run at the localhost. Consider the following: "
+                if on_localhost
+                else "to run in a reasonable amount of time. Consider the following: "
             )
-        elif (
-            self.input_structure
-            and on_localhost
-            and len(self.input_structure.sites)
-            > self.RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
+
+            # Warning 1: on localhost, big system and few cpus
+            if on_localhost:
+                alert_message += (
+                    warnings_1_2
+                    + "<ul>"
+                    + suggestions["more_resources"]
+                    + suggestions["change_configuration"]
+                    + "</ul>"
+                )
+            # Warning 2: not on localhost, big system and few cpus
+            else:
+                alert_message += (
+                    warnings_1_2
+                    + "<ul>"
+                    + suggestions["go_remote"]
+                    + suggestions["more_resources"]
+                    + suggestions["change_configuration"]
+                    + "</ul>"
+                )
+        if on_localhost and num_cpus / localhost_cpus > 0.8:
+            # Warning-3: on localhost, more than half of the available cpus
+            alert_message += (
+                "<span>&#9888;</span> Warning: the selected pw.x code will run locally, but "
+                f"the number of requested CPUs ({num_cpus}) is larger than the 80% of the available resources ({localhost_cpus}). "
+                "Please be sure that your local "
+                "environment has enough free CPUs for the calculation. Consider the following: "
+                "<ul>"
+                + suggestions["avoid_overloading"]
+                + suggestions["go_remote"]
+                + "</ul>"
+            )
+
+        if not (on_localhost and num_cpus / localhost_cpus) > 0.8 and not (
+            large_system and estimated_CPUs > num_cpus
         ):
+            self._submission_warning_messages.value = ""
+        else:
             self._show_alert_message(
-                "The selected code would be executed on the local host, but the "
-                "number of sites of the selected structure is relatively large. "
-                "Consider to select a code that runs on a larger system if "
-                "necessary.",
+                message=alert_message,
                 alert_class="warning",
             )
 
@@ -366,20 +427,31 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Generate a label for the work chain based on the input parameters."""
         if not self.input_structure:
             return ""
-        formula = self.input_structure.get_formula()
+        structure_label = (
+            self.input_structure.label
+            if len(self.input_structure.label) > 0
+            else self.input_structure.get_formula()
+        )
         workchain_data = self.input_parameters.get("workchain", {"properties": []})
         properties = [p for p in workchain_data["properties"] if p != "relax"]
+        #  relax_info
         relax_type = workchain_data.get("relax_type", "none")
+        relax_info = "unrelaxed"
         if relax_type != "none":
-            relax_info = "structure is relaxed"
-        else:
-            relax_info = "structure is not relaxed"
-        if not properties:
-            properties_info = ""
-        else:
-            properties_info = f", properties on {', '.join(properties)}"
+            relax_info = (
+                "relax: atoms+cell" if "cell" in relax_type else "relax: atoms only"
+            )
+        # protocol_info
+        protocol_and_magnetic_info = f"{workchain_data['protocol']} protocol"
+        # magnetic_info
+        if workchain_data["spin_type"] != "none":
+            protocol_and_magnetic_info += ", magnetic"
+        # properties_info
+        properties_info = ""
+        if properties:
+            properties_info = f"→ {', '.join(properties)}"
 
-        label = f"{formula} {relax_info} {properties_info}"
+        label = f"{structure_label} [{relax_info}, {protocol_and_magnetic_info}] {properties_info}".strip()
         self.process_label.value = label
 
     def _create_builder(self) -> ProcessBuilderNamespace:
@@ -412,6 +484,30 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )["max_wallclock_seconds"]
         builder.relax.base.pw.parallelization = orm.Dict(
             dict=codes["pw"]["parallelization"]
+        )
+
+    def _estimate_min_cpus(
+        self, n, v, n0=9, v0=117, num_cpus0=4, t0=129.6, tmax=12 * 60 * 60, scf_cycles=5
+    ):
+        """
+        Estimate the minimum number of CPUs required to complete a task within a given time limit.
+        Parameters:
+        n (int): The number of atoms in the system.
+        v (float): The volume of the system.
+        n0 (int, optional): Reference number of atoms. Default is 9.
+        v0 (float, optional): Reference volume. Default is 117.
+        num_cpus0 (int, optional): Reference number of CPUs. Default is 4.
+        scf_cycles (int, optional): Reference number of SCF cycles in a relaxation. Default is 5.
+
+        NB: Defaults (a part scf_cycles) are taken from a calculation done for SiO2. This is just a dummy
+            and not well tested estimation, placeholder for a more rigourous one.
+        """
+        import numpy as np
+
+        return int(
+            np.ceil(
+                scf_cycles * num_cpus0 * (n / n0) ** 3 * (v / v0) ** 1.5 * t0 / tmax
+            )
         )
 
     def set_submission_parameters(self, parameters):

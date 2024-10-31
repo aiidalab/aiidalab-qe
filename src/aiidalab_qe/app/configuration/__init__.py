@@ -45,6 +45,11 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.advanced_settings, "input_structure"),
         )
         #
+        ipw.dlink(
+            (self, "input_structure"),
+            (self.workchain_settings, "input_structure"),
+        )
+        #
         self.built_in_settings = [
             self.workchain_settings,
             self.advanced_settings,
