@@ -5,24 +5,16 @@ from copy import deepcopy
 import traitlets as tl
 from pymatgen.core.periodic_table import Element
 
-from aiida import orm
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.common.mixins import HasInputStructure
 
 from ..subsettings import AdvancedSubModel
 
 
-class HubbardModel(AdvancedSubModel):
+class HubbardModel(AdvancedSubModel, HasInputStructure):
     dependencies = [
         "input_structure",
     ]
 
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(HubbardStructureData),
-        ],
-        allow_none=True,
-    )
     override = tl.Bool()
 
     is_active = tl.Bool(False)

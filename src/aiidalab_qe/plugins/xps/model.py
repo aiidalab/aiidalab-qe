@@ -2,17 +2,16 @@ import traitlets as tl
 
 from aiida.common import NotExistent
 from aiida.orm import Group, QueryBuilder, StructureData, load_group
+from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import SettingsModel
 
 BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
 
 
-class XpsModel(SettingsModel):
+class XpsModel(SettingsModel, HasInputStructure):
     dependencies = [
         "input_structure",
     ]
-
-    input_structure = tl.Instance(StructureData, allow_none=True)
 
     core_hole_treatment = tl.Unicode("xch_smear")
     pseudo_group = tl.Unicode("pseudo_demo_pbe")

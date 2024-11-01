@@ -12,6 +12,8 @@ import os
 import ipywidgets as ipw
 import traitlets as tl
 
+from aiidalab_qe.common.mixins import Confirmable, HasTraitsAndMixins
+
 DEFAULT_PARAMETERS = {}
 
 
@@ -66,24 +68,13 @@ class SettingsOutline(ipw.HBox):
         )
 
 
-class SettingsModel(tl.HasTraits):
+class SettingsModel(HasTraitsAndMixins, Confirmable):
     title = "Model"
     dependencies: list[str] = []
 
     include = tl.Bool()
-    confirmed = tl.Bool(False)
 
     _defaults = {}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.observe(self.unconfirm, tl.All)
-
-    @property
-    def has_pbc(self):
-        if hasattr(self, "input_structure"):
-            return self.input_structure is None or any(self.input_structure.pbc)
-        return False
 
     def update(self, specific=""):
         """Updates the model.
@@ -106,10 +97,6 @@ class SettingsModel(tl.HasTraits):
     def reset(self):
         """Resets the model to present defaults."""
         pass
-
-    def unconfirm(self, change):
-        if change["name"] != "confirmed":
-            self.confirmed = False
 
 
 class SettingsPanel(Panel):

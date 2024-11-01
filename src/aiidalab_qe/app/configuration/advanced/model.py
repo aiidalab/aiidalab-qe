@@ -10,23 +10,28 @@ from aiida import orm
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
     create_kpoints_from_distance,
 )
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.mixins import HasInputStructure, HasModels
 from aiidalab_qe.common.panel import SettingsModel
 from aiidalab_qe.setup.pseudos import PseudoFamily
+
+from .subsettings import AdvancedSubModel
 
 if t.TYPE_CHECKING:
     from .hubbard.hubbard import HubbardModel
     from .magnetization import MagnetizationModel
     from .pseudos.pseudos import PseudosModel
     from .smearing import SmearingModel
-    from .subsettings import AdvancedSubModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class AdvancedModel(SettingsModel):
+class AdvancedModel(
+    SettingsModel,
+    HasModels[AdvancedSubModel],
+    HasInputStructure,
+):
     dependencies = [
         "input_structure",
         "workchain.protocol",
@@ -34,13 +39,6 @@ class AdvancedModel(SettingsModel):
         "workchain.electronic_type",
     ]
 
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(HubbardStructureData),
-        ],
-        allow_none=True,
-    )
     protocol = tl.Unicode()
     spin_type = tl.Unicode()
     electronic_type = tl.Unicode()
@@ -72,8 +70,6 @@ class AdvancedModel(SettingsModel):
             "dft-d3mbj": 6,
         }
 
-        self._models: dict[str, AdvancedSubModel] = {}
-
         self._defaults = {
             "forc_conv_thr": self.traits()["forc_conv_thr"].default_value,
             "forc_conv_thr_step": self.traits()["forc_conv_thr_step"].default_value,
@@ -91,18 +87,6 @@ class AdvancedModel(SettingsModel):
                 self._update_kpoints_distance(parameters)
                 self._update_thresholds(parameters)
             self._update_kpoints_mesh()
-
-    def add_model(self, identifier, model):
-        self._models[identifier] = model
-        self._link_model(model)
-
-    def get_model(self, identifier) -> AdvancedSubModel:
-        if identifier in self._models:
-            return self._models[identifier]
-        raise ValueError(f"Model with identifier '{identifier}' not found.")
-
-    def get_models(self):
-        return self._models.items()
 
     def get_model_state(self):
         parameters = {
@@ -245,7 +229,7 @@ class AdvancedModel(SettingsModel):
             self.kpoints_distance = self._defaults["kpoints_distance"]
             self.override = self.traits()["override"].default_value
 
-    def _link_model(self, model):
+    def _link_model(self, model: AdvancedSubModel):
         ipw.dlink(
             (self, "override"),
             (model, "override"),

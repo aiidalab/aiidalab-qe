@@ -5,16 +5,16 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
     create_kpoints_from_distance,
 )
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
+from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import SettingsModel
 
 
-class PdosModel(SettingsModel):
+class PdosModel(SettingsModel, HasInputStructure):
     dependencies = [
         "input_structure",
         "workchain.protocol",
     ]
 
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
     protocol = tl.Unicode(allow_none=True)
 
     kpoints_distance = tl.Float(0.1)

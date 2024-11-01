@@ -8,16 +8,15 @@ import traitlets as tl
 import yaml
 
 from aiida import orm
+from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import SettingsModel
 from aiidalab_qe.plugins import xas as xas_folder
 
 
-class XasModel(SettingsModel):
+class XasModel(SettingsModel, HasInputStructure):
     dependencies = [
         "input_structure",
     ]
-
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
 
     # structure_type = tl.Unicode("crystal")
     supercell_min_parameter = tl.Float(8.0)

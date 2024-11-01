@@ -1,9 +1,10 @@
 import traitlets as tl
 
 from aiida import orm
+from aiidalab_qe.common.mixins import Confirmable, HasTraitsAndMixins
 
 
-class StructureModel(tl.HasTraits):
+class StructureModel(HasTraitsAndMixins, Confirmable):
     structure = tl.Instance(
         orm.StructureData,
         allow_none=True,
@@ -11,14 +12,6 @@ class StructureModel(tl.HasTraits):
     structure_name = tl.Unicode("")
     manager_output = tl.Unicode("")
     message_area = tl.Unicode("")
-    confirmed = tl.Bool(False)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.observe(
-            self._unconfirm,
-            "structure",
-        )
 
     def update_widget_text(self):
         if self.structure is None:
@@ -28,14 +21,8 @@ class StructureModel(tl.HasTraits):
             self.manager_output = ""
             self.structure_name = str(self.structure.get_formula())
 
-    def confirm(self):
-        self.confirmed = True
-
     def reset(self):
         self.structure = None
         self.structure_name = ""
         self.manager_output = ""
         self.message_area = ""
-
-    def _unconfirm(self, _):
-        self.confirmed = False

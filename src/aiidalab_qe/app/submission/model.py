@@ -10,8 +10,8 @@ from aiida import orm
 from aiida.engine import ProcessBuilderNamespace
 from aiida.engine import submit as aiida_submit
 from aiida.orm.utils.serialize import serialize
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.mixins import HasInputStructure, HasTraitsAndMixins
 from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
@@ -20,14 +20,7 @@ from .code import CodeModel, CodesDict
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmissionModel(tl.HasTraits):
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(HubbardStructureData),
-        ],
-        allow_none=True,
-    )
+class SubmissionModel(HasTraitsAndMixins, HasInputStructure):
     input_parameters = tl.Dict()
 
     process = tl.Instance(orm.WorkChainNode, allow_none=True)

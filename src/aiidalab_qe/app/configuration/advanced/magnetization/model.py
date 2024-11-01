@@ -2,19 +2,18 @@ from copy import deepcopy
 
 import traitlets as tl
 
-from aiida import orm
+from aiidalab_qe.common.mixins import HasInputStructure
 
 from ..subsettings import AdvancedSubModel
 
 
-class MagnetizationModel(AdvancedSubModel):
+class MagnetizationModel(AdvancedSubModel, HasInputStructure):
     dependencies = [
         "input_structure",
         "electronic_type",
         "spin_type",
     ]
 
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
     electronic_type = tl.Unicode()
     spin_type = tl.Unicode()
     override = tl.Bool()

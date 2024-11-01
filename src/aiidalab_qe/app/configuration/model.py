@@ -3,34 +3,31 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida import orm
 from aiida_quantumespresso.common.types import RelaxType
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.mixins import (
+    Confirmable,
+    HasInputStructure,
+    HasModels,
+    HasTraitsAndMixins,
+)
 from aiidalab_qe.common.panel import SettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class ConfigurationModel(SettingsModel):
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(HubbardStructureData),
-        ],
-        allow_none=True,
-    )
-
+class ConfigurationModel(
+    HasTraitsAndMixins,
+    HasModels[SettingsModel],
+    Confirmable,
+    HasInputStructure,
+):
     relax_type_help = tl.Unicode()
     relax_type_options = tl.List([DEFAULT["workchain"]["relax_type"]])
     relax_type = tl.Unicode(DEFAULT["workchain"]["relax_type"])
 
-    confirmed = tl.Bool(False)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self._models: dict[str, SettingsModel] = {}
 
         self._default_models = {
             "workchain",
@@ -86,18 +83,6 @@ class ConfigurationModel(SettingsModel):
             self.relax_type_options = self._get_default_relax_type_options()
             self.relax_type = self._get_default_relax_type()
 
-    def add_model(self, identifier, model):
-        self._models[identifier] = model
-        self._link_model(model)
-
-    def get_model(self, identifier) -> SettingsModel:
-        if identifier in self._models:
-            return self._models[identifier]
-        raise ValueError(f"Model with identifier '{identifier}' not found.")
-
-    def get_models(self):
-        return self._models.items()
-
     def get_model_state(self):
         parameters = {
             identifier: model.get_model_state()
@@ -119,9 +104,6 @@ class ConfigurationModel(SettingsModel):
                 model.include = identifier in self._default_models | properties
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
-
-    def confirm(self):
-        self.confirmed = True
 
     def reset(self):
         self.confirmed = False

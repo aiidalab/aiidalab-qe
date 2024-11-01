@@ -10,6 +10,7 @@ from aiida.common import exceptions
 from aiida.plugins import GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 
 from ..subsettings import AdvancedSubModel
@@ -21,14 +22,13 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class PseudosModel(AdvancedSubModel):
+class PseudosModel(AdvancedSubModel, HasInputStructure):
     dependencies = [
         "input_structure",
         "protocol",
         "spin_orbit",
     ]
 
-    input_structure = tl.Instance(orm.StructureData, allow_none=True)
     protocol = tl.Unicode()
     spin_orbit = tl.Unicode()
     override = tl.Bool()
