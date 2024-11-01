@@ -91,14 +91,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
         editors.extend([editor() for editor in plugin_editors.values()])
 
-        # HACK structure manager resets the structure node on initialization,
-        # causing the structure in the model (if exists) to reset. To avoid
-        # this issue, we store the structure in a variable and assign it to
-        # the manager's viewer after the initialization of the structure manager.
-        # TODO fix this issue in the structure manager and remove this hack!
-
-        structure = self._model.structure
-
         self.manager = StructureManagerWidget(
             importers=importers,
             editors=editors,
@@ -111,6 +103,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 "Download",
             ],
         )
+        # A structure may have been loaded from a structure,
+        # so we assign it here as the manager's input structure.
+        self.manager.input_structure = self._model.structure
         ipw.dlink(
             (self.manager, "structure_node"),
             (self._model, "structure"),
@@ -119,9 +114,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             (self._model, "manager_output"),
             (self.manager.output, "value"),
         )
-
-        if structure:  # loaded from process
-            self.manager.viewer.structure = structure
 
         self.structure_name_text = ipw.Text(
             placeholder="[No structure selected]",
