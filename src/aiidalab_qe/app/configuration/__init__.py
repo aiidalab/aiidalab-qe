@@ -81,13 +81,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self._model, "relax_type_help"),
             (self.relax_type_help, "value"),
         )
-        self.relax_type = ipw.ToggleButtons(
-            options=[
-                ("Structure as is", "none"),
-                ("Atomic positions", "positions"),
-                ("Full geometry", "positions_cell"),
-            ],
-        )
+        self.relax_type = ipw.ToggleButtons()
         ipw.dlink(
             (self._model, "relax_type_options"),
             (self.relax_type, "options"),
