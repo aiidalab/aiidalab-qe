@@ -103,9 +103,13 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 "Download",
             ],
         )
-        # A structure may have been loaded from a structure,
-        # so we assign it here as the manager's input structure.
-        self.manager.input_structure = self._model.structure
+
+        if self._model.confirmed:  # loaded from a process
+            # NOTE important to do this prior to setting up the links
+            # to avoid an override of the structure in the model,
+            # which in turn would trigger a reset of the model
+            self.manager.input_structure = self._model.structure
+
         ipw.dlink(
             (self.manager, "structure_node"),
             (self._model, "structure"),
