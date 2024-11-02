@@ -154,7 +154,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
     def _on_update_results_button_click(self, _):
         self.node_view.node = None
-        self.node_view.node = self._model.process_node
+        self.node_view.node = self._model.get_process_node()
 
     def _on_clean_scratch_button_click(self, _):
         self._model.clean_remote_data()
@@ -164,9 +164,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         if not self.rendered:
             return
         if (
-            not self._model.process
-            or self._model.process_node.is_finished
-            or self._model.process_node.is_excepted
+            not (process_node := self._model.get_process_node())
+            or process_node.is_finished
+            or process_node.is_excepted
             or self.state
             in (
                 self.State.SUCCESS,
@@ -180,15 +180,16 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def _update_clean_scratch_button_layout(self):
         if not self.rendered:
             return
-        if self._model.process and self._model.process_node.is_terminated:
+        process_node = self._model.get_process_node()
+        if process_node and process_node.is_terminated:
             self.clean_scratch_button.layout.display = "block"
         else:
             self.clean_scratch_button.layout.display = "none"
 
     def _update_state(self):
-        if not self._model.process:
+        if not (process_node := self._model.get_process_node()):
             self.state = self.State.INIT
-        elif self._model.process_node.process_state in (
+        elif process_node.process_state in (
             ProcessState.CREATED,
             ProcessState.RUNNING,
             ProcessState.WAITING,
@@ -196,15 +197,15 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.ACTIVE
             self._model.process_info = PROCESS_RUNNING
         elif (
-            self._model.process_node.process_state
+            process_node.process_state
             in (
                 ProcessState.EXCEPTED,
                 ProcessState.KILLED,
             )
-            or self._model.process_node.is_failed
+            or process_node.is_failed
         ):
             self.state = self.State.FAIL
             self._model.process_info = PROCESS_EXCEPTED
-        elif self._model.process_node.is_finished_ok:
+        elif process_node.is_finished_ok:
             self.state = self.State.SUCCESS
             self._model.process_info = PROCESS_COMPLETED

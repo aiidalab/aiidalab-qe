@@ -1,7 +1,7 @@
 import traitlets as tl
 
 from aiida.common import NotExistent
-from aiida.orm import Group, QueryBuilder, StructureData, load_group
+from aiida.orm import Group, QueryBuilder, load_group
 from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import SettingsModel
 

@@ -5,6 +5,7 @@ import contextlib
 import traitlets as tl
 
 from aiida import orm
+from aiida.common.exceptions import NotExistent
 from aiida.engine.processes import control
 
 
@@ -14,25 +15,27 @@ class ResultsModel(tl.HasTraits):
     process_info = tl.Unicode("")
     process_remote_folder_is_clean = tl.Bool(False)
 
-    _process_node: orm.ProcessNode | None = None
-
     @property
     def process_node(self):
-        if self._process_node is None:
-            self._process_node = self._get_process_node()
-        return self._process_node
+        return self.get_process_node()
 
     def update(self):
         self._update_process_remote_folder_state()
 
+    def get_process_node(self):
+        try:
+            return orm.load_node(self.process) if self.process else None
+        except NotExistent:
+            return None
+
     def kill_process(self):
-        if process := self._get_process_node():
-            control.kill_processes([process])
+        if process_node := self.get_process_node():
+            control.kill_processes([process_node])
 
     def clean_remote_data(self):
-        if self.process_node is None:
+        if not (process_node := self.get_process_node()):
             return
-        for called_descendant in self.process_node.called_descendants:
+        for called_descendant in process_node.called_descendants:
             if isinstance(called_descendant, orm.CalcJobNode):
                 with contextlib.suppress(Exception):
                     called_descendant.outputs.remote_folder._clean()
@@ -42,14 +45,11 @@ class ResultsModel(tl.HasTraits):
         self.process = None
         self.process_info = ""
 
-    def _get_process_node(self):
-        return orm.load_node(self.process) if self.process else None
-
     def _update_process_remote_folder_state(self):
-        if self.process_node is None:
+        if not (process_node := self.get_process_node()):
             return
         cleaned = []
-        for called_descendant in self.process_node.called_descendants:
+        for called_descendant in process_node.called_descendants:
             if isinstance(called_descendant, orm.CalcJobNode):
                 with contextlib.suppress(Exception):
                     cleaned.append(called_descendant.outputs.remote_folder.is_empty)
