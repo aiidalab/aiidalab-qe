@@ -248,7 +248,8 @@ class PseudoSettings(AdvancedSubSettings):
         if self.updated:
             return
         self._show_loading()
-        self._model.update(specific)
+        if not self._model.loaded_from_process:
+            self._model.update(specific)
         self._build_setter_widgets()
         self._toggle_setter_widgets()
         self._model.update_library_options()

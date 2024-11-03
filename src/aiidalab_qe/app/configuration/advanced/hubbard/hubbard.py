@@ -95,7 +95,8 @@ class HubbardSettings(AdvancedSubSettings):
         if self.updated:
             return
         self._show_loading()
-        self._model.update(specific)
+        if not self._model.loaded_from_process:
+            self._model.update(specific)
         self._build_hubbard_widget()
         if isinstance(self._model.input_structure, HubbardStructureData):
             self._model.set_parameters_from_hubbard_structure()

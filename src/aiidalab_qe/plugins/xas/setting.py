@@ -134,7 +134,8 @@ class Setting(SettingsPanel):
         if self.updated:
             return
         self._show_loading()
-        self._model.update(specific)
+        if not self._model.loaded_from_process:
+            self._model.update(specific)
         self._build_core_hole_treatments_widget()
         self.updated = True
 

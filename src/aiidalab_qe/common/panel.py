@@ -72,7 +72,8 @@ class SettingsModel(HasTraitsAndMixins, Confirmable):
     title = "Model"
     dependencies: list[str] = []
 
-    include = tl.Bool()
+    include = tl.Bool(False)
+    loaded_from_process = tl.Bool(False)
 
     _defaults = {}
 
@@ -155,7 +156,8 @@ class SettingsPanel(Panel):
         """
         if self.updated:
             return
-        self._model.update(specific)
+        if not self._model.loaded_from_process:
+            self._model.update(specific)
         self.updated = True
 
     def _unsubscribe(self):

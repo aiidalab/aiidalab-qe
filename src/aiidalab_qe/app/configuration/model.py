@@ -104,6 +104,7 @@ class ConfigurationModel(
                 model.include = identifier in self._default_models | properties
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
+                    model.loaded_from_process = True
 
     def reset(self):
         self.confirmed = False

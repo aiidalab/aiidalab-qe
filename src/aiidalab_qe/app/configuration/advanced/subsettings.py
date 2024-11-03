@@ -7,6 +7,8 @@ import traitlets as tl
 class AdvancedSubModel(tl.HasTraits):
     dependencies = []
 
+    loaded_from_process = tl.Bool(False)
+
     _defaults = {}
 
     def update(self, specific=""):
@@ -86,7 +88,8 @@ class AdvancedSubSettings(ipw.VBox):
         """
         if self.updated:
             return
-        self._model.update(specific)
+        if not self._model.loaded_from_process:
+            self._model.update(specific)
         self.updated = True
 
     def _unsubscribe(self):

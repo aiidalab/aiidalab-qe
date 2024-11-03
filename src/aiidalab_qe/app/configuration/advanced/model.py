@@ -230,6 +230,10 @@ class AdvancedModel(
 
     def _link_model(self, model: AdvancedSubModel):
         ipw.dlink(
+            (self, "loaded_from_process"),
+            (model, "loaded_from_process"),
+        )
+        ipw.dlink(
             (self, "override"),
             (model, "override"),
         )
