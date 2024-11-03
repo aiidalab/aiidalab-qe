@@ -57,6 +57,11 @@ class HubbardSettings(AdvancedSubSettings):
             (self._model, "has_eigenvalues"),
             (self.define_eigenvalues_checkbox, "value"),
         )
+        ipw.dlink(
+            (self._model, "override"),
+            (self.define_eigenvalues_checkbox, "disabled"),
+            lambda override: not override,
+        )
 
         self.hubbard_widget = ipw.VBox()
         self.eigenvalues_widget = ipw.VBox()
@@ -95,6 +100,7 @@ class HubbardSettings(AdvancedSubSettings):
         if isinstance(self._model.input_structure, HubbardStructureData):
             self._model.set_parameters_from_hubbard_structure()
         self._toggle_hubbard_widget()
+        self._toggle_eigenvalues_widget()
         self.updated = True
 
     def _show_loading(self):
@@ -156,8 +162,6 @@ class HubbardSettings(AdvancedSubSettings):
         children = []
 
         for kind_index, (kind, num_states) in enumerate(self._model.applicable_kinds):
-            symbol = kind.symbol
-
             label_layout = ipw.Layout(justify_content="flex-start", width="50px")
             spin_up_row = ipw.HBox([ipw.Label("Up:", layout=label_layout)])
             spin_down_row = ipw.HBox([ipw.Label("Down:", layout=label_layout)])
@@ -181,12 +185,12 @@ class HubbardSettings(AdvancedSubSettings):
                         lambda value,
                         kind_index=kind_index,
                         state_index=state_index,
-                        symbol=symbol: update(
+                        kind_name=kind.name: update(
                             kind_index,
                             0,
                             state_index,
-                            symbol,
-                            float(value),
+                            kind_name,
+                            int(value),
                         ),
                     ],
                 )
@@ -211,12 +215,12 @@ class HubbardSettings(AdvancedSubSettings):
                         lambda value,
                         kind_index=kind_index,
                         state_index=state_index,
-                        symbol=symbol: update(
+                        kind_name=kind.name: update(
                             kind_index,
                             1,
                             state_index,
-                            symbol,
-                            float(value),
+                            kind_name,
+                            int(value),
                         ),
                     ],
                 )

@@ -211,8 +211,7 @@ class AdvancedModel(
                 .get("starting_ns_eigenvalue")
             )
             if starting_ns_eigenvalue is not None:
-                hubbard.has_eigenvalues = True
-                hubbard.eigenvalues = starting_ns_eigenvalue
+                hubbard.set_active_eigenvalues(starting_ns_eigenvalue)
 
     def reset(self):
         with self.hold_trait_notifications():
