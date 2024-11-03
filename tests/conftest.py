@@ -513,7 +513,7 @@ def submit_app_generator(
 @pytest.fixture
 def app_to_submit(app: App, generate_structure_data):
     # Step 1: select structure from example
-    app.structure_model.structure = generate_structure_data()
+    app.structure_model.input_structure = generate_structure_data()
     app.structure_model.confirm()
     # Step 2: configure calculation
     # TODO do we need to include bands and pdos here?
@@ -767,13 +767,14 @@ def generate_qeapp_workchain(
             structure = generate_structure_data()
         else:
             structure.store()
+            # TODO is this necessary?
             # aiida_database_wrapper = app.structure_step.manager.children[0].children[2]  # type: ignore
             # aiida_database_wrapper.render()
             # aiida_database = aiida_database_wrapper.children[0]  # type: ignore
             # aiida_database.search()
             # aiida_database.results.value = structure
 
-        app.structure_model.structure = structure
+        app.structure_model.input_structure = structure
         app.structure_model.confirm()
 
         # step 2 configure
@@ -849,7 +850,7 @@ def generate_qeapp_workchain(
 
         # mock output
         if relax_type != "none":
-            workchain.out("structure", app.structure_model.structure)
+            workchain.out("structure", app.structure_model.input_structure)
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 

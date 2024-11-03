@@ -25,10 +25,10 @@ def test_selecting_new_structure_unconfirms_model(generate_structure_data):
     from aiidalab_qe.app.structure.model import StructureModel
 
     model = StructureModel()
-    model.structure = generate_structure_data()
-    assert model.structure is not None
+    model.input_structure = generate_structure_data()
+    assert model.input_structure is not None
     model.confirm()
-    model.structure = generate_structure_data()
+    model.input_structure = generate_structure_data()
     assert not model.confirmed
 
 

@@ -73,12 +73,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "qe_installed",
         )
 
-        # # TODO for testing only - remove in PR
-        # self._model.observe(
-        #     lambda change: print(change["new"]),
-        #     "input_parameters",
-        # )
-
         self.code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
 
         self._install_sssp(qe_auto_setup)

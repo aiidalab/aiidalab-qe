@@ -61,8 +61,8 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             "confirmed",
         )
         self._model.observe(
-            self._on_structure_change,
-            "structure",
+            self._on_input_structure_change,
+            "input_structure",
         )
 
         self.rendered = False
@@ -108,11 +108,11 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             # NOTE important to do this prior to setting up the links
             # to avoid an override of the structure in the model,
             # which in turn would trigger a reset of the model
-            self.manager.input_structure = self._model.structure
+            self.manager.input_structure = self._model.input_structure
 
         ipw.dlink(
             (self.manager, "structure_node"),
-            (self._model, "structure"),
+            (self._model, "input_structure"),
         )
         ipw.link(
             (self._model, "manager_output"),
@@ -179,7 +179,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def reset(self):
         self._model.reset()
 
-    def _on_structure_change(self, _):
+    def _on_input_structure_change(self, _):
         self._model.update_widget_text()
         self._update_state()
 
@@ -189,7 +189,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     def _update_state(self):
         if self._model.confirmed:
             self.state = self.State.SUCCESS
-        elif self._model.structure is None:
+        elif self._model.input_structure is None:
             self.state = self.State.READY
         else:
             self.state = self.State.CONFIGURED

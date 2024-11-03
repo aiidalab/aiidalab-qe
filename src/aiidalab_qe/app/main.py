@@ -137,14 +137,14 @@ class App(ipw.VBox):
 
     def _on_structure_confirmation_change(self, _):
         if self.structure_model.confirmed:
-            self.configure_model.input_structure = self.structure_model.structure
+            self.configure_model.input_structure = self.structure_model.input_structure
         else:
             self.configure_model.input_structure = None
         self._update_blockers()
 
     def _on_configuration_confirmation_change(self, _):
         if self.configure_model.confirmed:
-            self.submit_model.input_structure = self.structure_model.structure
+            self.submit_model.input_structure = self.structure_model.input_structure
             self.submit_model.input_parameters = self.configure_model.get_model_state()
         else:
             self.submit_model.input_structure = None
@@ -170,7 +170,7 @@ class App(ipw.VBox):
             self._show_process_loading_message()
             process = load_node(pk)
             self._wizard_app_widget.selected_index = 3
-            self.structure_model.structure = process.inputs.structure
+            self.structure_model.input_structure = process.inputs.structure
             self.structure_model.confirm()
             parameters = process.base.extras.get("ui_parameters", {})
             if parameters and isinstance(parameters, str):
