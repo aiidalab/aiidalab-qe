@@ -63,6 +63,13 @@ class HubbardSettings(AdvancedSubSettings):
             lambda override: not override,
         )
 
+        self.eigenvalues_container = ipw.VBox(
+            children=[
+                self.eigenvalues_help,
+                self.define_eigenvalues_checkbox,
+            ]
+        )
+
         self.hubbard_widget = ipw.VBox()
         self.eigenvalues_widget = ipw.VBox()
 
@@ -140,19 +147,12 @@ class HubbardSettings(AdvancedSubSettings):
             children.append(float_widget)
 
         if self._model.needs_eigenvalues_widget:
-            children.extend(
-                [
-                    self.eigenvalues_help,
-                    self.define_eigenvalues_checkbox,
-                ]
-            )
-
-        self.hubbard_widget.children = children
-
-        if self._model.needs_eigenvalues_widget:
+            children.append(self.eigenvalues_container)
             self._build_eigenvalues_widget()
         else:
             self.eigenvalues_widget.children = []
+
+        self.hubbard_widget.children = children
 
     def _build_eigenvalues_widget(self):
         def update(index, spin, state, symbol, value):
@@ -255,11 +255,15 @@ class HubbardSettings(AdvancedSubSettings):
     def _toggle_eigenvalues_widget(self):
         if not self.rendered:
             return
-        self.hubbard_widget.children = (
+        self.eigenvalues_container.children = (
             [
-                *self.hubbard_widget.children,
+                self.eigenvalues_help,
+                self.define_eigenvalues_checkbox,
                 self.eigenvalues_widget,
             ]
             if self._model.has_eigenvalues
-            else [*self.hubbard_widget.children][:-1]
+            else [
+                self.eigenvalues_help,
+                self.define_eigenvalues_checkbox,
+            ]
         )
