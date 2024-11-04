@@ -14,7 +14,7 @@ from .pseudos import PseudoSettings, PseudosModel
 from .smearing import SmearingModel, SmearingSettings
 
 
-class AdvancedSettings(SettingsPanel):
+class AdvancedSettings(SettingsPanel[AdvancedModel]):
     title = "Advanced Settings"
     identifier = "advanced"
 

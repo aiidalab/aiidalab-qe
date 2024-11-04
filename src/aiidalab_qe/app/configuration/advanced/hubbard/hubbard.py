@@ -6,7 +6,7 @@ from ..subsettings import AdvancedSubSettings
 from .model import HubbardModel
 
 
-class HubbardSettings(AdvancedSubSettings):
+class HubbardSettings(AdvancedSubSettings[HubbardModel]):
     identifier = "hubbard"
 
     def __init__(self, model: HubbardModel, **kwargs):

@@ -7,7 +7,7 @@ from aiidalab_qe.common.panel import SettingsPanel
 from .model import BASE_URL, XpsModel
 
 
-class Setting(SettingsPanel):
+class Setting(SettingsPanel[XpsModel]):
     title = "XPS"
     identifier = "xps"
 

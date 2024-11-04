@@ -1,4 +1,5 @@
 import os
+import typing as t
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -26,10 +27,13 @@ class AdvancedSubModel(tl.HasTraits):
         raise NotImplementedError
 
 
-class AdvancedSubSettings(ipw.VBox):
+M = t.TypeVar("M", bound=AdvancedSubModel)
+
+
+class AdvancedSubSettings(ipw.VBox, t.Generic[M]):
     identifier = "sub"
 
-    def __init__(self, model: AdvancedSubModel, **kwargs):
+    def __init__(self, model: M, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         self.loading_message = LoadingWidget(f"Loading {self.identifier} settings")

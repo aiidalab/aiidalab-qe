@@ -3,9 +3,10 @@
 import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import SettingsPanel
+from aiidalab_qe.plugins.bands.model import BandsModel
 
 
-class Setting(SettingsPanel):
+class Setting(SettingsPanel[BandsModel]):
     title = "Bands Structure"
     identifier = "bands"
 

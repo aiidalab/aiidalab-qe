@@ -4,7 +4,7 @@ from ..subsettings import AdvancedSubSettings
 from .model import SmearingModel
 
 
-class SmearingSettings(AdvancedSubSettings):
+class SmearingSettings(AdvancedSubSettings[SmearingModel]):
     identifier = "smearing"
 
     def __init__(self, model: SmearingModel, **kwargs):

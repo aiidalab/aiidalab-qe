@@ -4,7 +4,7 @@ from ..subsettings import AdvancedSubSettings
 from .model import MagnetizationModel
 
 
-class MagnetizationSettings(AdvancedSubSettings):
+class MagnetizationSettings(AdvancedSubSettings[MagnetizationModel]):
     """Widget to set the type of magnetization used in the calculation:
     1) Tot_magnetization: Total majority spin charge - minority spin charge.
     2) Starting magnetization: Starting spin polarization on atomic type 'i' in a spin polarized (LSDA or noncollinear/spin-orbit) calculation.

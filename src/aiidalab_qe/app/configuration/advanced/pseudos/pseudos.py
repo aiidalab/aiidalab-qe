@@ -19,7 +19,7 @@ PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
 CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 
 
-class PseudoSettings(AdvancedSubSettings):
+class PseudoSettings(AdvancedSubSettings[PseudosModel]):
     identifier = "pseudos"
 
     def __init__(self, model: PseudosModel, **kwargs):

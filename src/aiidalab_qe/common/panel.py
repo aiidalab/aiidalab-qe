@@ -8,6 +8,7 @@ Authors:
 from __future__ import annotations
 
 import os
+import typing as t
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -100,11 +101,14 @@ class SettingsModel(HasTraitsAndMixins, Confirmable):
         pass
 
 
-class SettingsPanel(Panel):
+M = t.TypeVar("M", bound=SettingsModel)
+
+
+class SettingsPanel(Panel, t.Generic[M]):
     title = "Settings"
     description = ""
 
-    def __init__(self, model: SettingsModel, **kwargs):
+    def __init__(self, model: M, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         self.loading_message = LoadingWidget(f"Loading {self.identifier} settings")

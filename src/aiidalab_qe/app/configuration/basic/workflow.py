@@ -5,14 +5,15 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
+from aiidalab_qe.app.configuration.basic.model import WorkChainModel
+from aiidalab_qe.common.panel import SettingsPanel
 
 
-class WorkChainSettings(SettingsPanel):
+class WorkChainSettings(SettingsPanel[WorkChainModel]):
     title = "Basic Settings"
     identifier = "workchain"
 
-    def __init__(self, model: SettingsModel, **kwargs):
+    def __init__(self, model: WorkChainModel, **kwargs):
         super().__init__(model, **kwargs)
         self._model.observe(
             self._on_input_structure_change,
