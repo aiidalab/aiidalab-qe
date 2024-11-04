@@ -176,6 +176,7 @@ class AdvancedModel(
             accuracy = pseudo_family.accuracy
             pseudos.library = f"{library} {accuracy}"
             pseudos.functional = pseudo_family.functional
+            pseudos.family = parameters["pseudo_family"]
 
         if "pseudos" in parameters["pw"]:
             pseudos.dictionary = parameters["pw"]["pseudos"]

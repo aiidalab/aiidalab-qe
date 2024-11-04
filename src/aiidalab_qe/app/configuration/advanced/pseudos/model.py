@@ -141,6 +141,8 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
             self.update_family()
 
     def update_default_pseudos(self):
+        if self.loaded_from_process:
+            return
         try:
             pseudo_family = self._get_pseudo_family_from_database()
             pseudos = pseudo_family.get_pseudos(structure=self.input_structure)
@@ -159,6 +161,8 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
 
     def update_default_cutoffs(self):
         """Update wavefunction and density cutoffs from pseudo family."""
+        if self.loaded_from_process:
+            return
         try:
             pseudo_family = self._get_pseudo_family_from_database()
             current_unit = pseudo_family.get_cutoffs_unit()
@@ -196,6 +200,8 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
         self.cutoffs = self._get_default_cutoffs()
 
     def update_library_options(self):
+        if self.loaded_from_process:
+            return
         if self.spin_orbit == "soc":
             library_options = [
                 "PseudoDojo standard",
@@ -216,6 +222,8 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
         self.update_family_parameters()
 
     def update_family_parameters(self):
+        if self.loaded_from_process:
+            return
         if self.spin_orbit == "soc":
             if self.protocol in ["fast", "moderate"]:
                 pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
@@ -236,6 +244,8 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
             self.functional = self._defaults["functional"]
 
     def update_family(self):
+        if self.loaded_from_process:
+            return
         library, accuracy = self.library.split()
         functional = self.functional
         # XXX (jusong.yu): a validator is needed to check the family string is
