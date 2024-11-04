@@ -151,21 +151,21 @@ class Setting(SettingsPanel):
 
         info = "Recommended: <b>{recommended}</b> (PBE Core-Hole Pseudopotential)"
 
-        for element in self._model.get_elements():
-            element_checkbox = ipw.Checkbox(
-                description=element,
+        for kind_name in self._model.get_kind_names():
+            checkbox = ipw.Checkbox(
+                description=kind_name,
                 disabled=False,
                 style={"description_width": "initial"},
                 layout=ipw.Layout(width="7%"),
             )
             link = ipw.link(
-                (self._model, "elements"),
-                (element_checkbox, "value"),
+                (self._model, "kind_names"),
+                (checkbox, "value"),
                 [
-                    lambda elements, element=element: elements.get(element, False),
-                    lambda value, element=element: {
+                    lambda kinds, kind_name=kind_name: kinds.get(kind_name, False),
+                    lambda value, kind_name=kind_name: {
                         **self._model.elements,
-                        element: value,
+                        kind_name: value,
                     },
                 ],
             )
@@ -184,10 +184,12 @@ class Setting(SettingsPanel):
                 (self._model, "core_hole_treatments"),
                 (treatment_selector, "value"),
                 [
-                    lambda treatments, element=element: treatments.get(element, "full"),
-                    lambda value, element=element: {
+                    lambda treatments, kind_name=kind_name: treatments.get(
+                        kind_name, "full"
+                    ),
+                    lambda value, kind_name=kind_name: {
                         **self._model.core_hole_treatments,
-                        element: value,
+                        kind_name: value,
                     },
                 ],
             )
@@ -195,11 +197,11 @@ class Setting(SettingsPanel):
 
             widget = ipw.HBox(
                 children=[
-                    element_checkbox,
+                    checkbox,
                     treatment_selector,
                     ipw.HTML(
                         value=info.format(
-                            recommended=self._model.get_recommendation(element)
+                            recommended=self._model.get_recommendation(kind_name)
                         ),
                         layout=ipw.Layout(width="78%"),
                     ),
@@ -216,16 +218,16 @@ class Setting(SettingsPanel):
 
         # For reference:
         # This is the whole widget:
-        # print(f"{self.element_and_ch_treatment}\n")
+        # print(f"{self.core_hole_treatments_widget}\n")
 
         # This is the tuple of selected element and core-hole treatment:
-        # print(f"{self.element_and_ch_treatment.children[0]}\n")
+        # print(f"{self.core_hole_treatments_widget.children[0]}\n")
 
         # This is the checkbox for the element, giving element name and whether to add it to the elements list
-        # print(f"{self.element_and_ch_treatment.children[0].children[0]}\n")
-        # print(f"{self.element_and_ch_treatment.children[0].children[0].value}\n")
-        # print(f"{self.element_and_ch_treatment.children[0].children[0].description}\n")
+        # print(f"{self.core_hole_treatments_widget.children[0].children[0]}\n")
+        # print(f"{self.core_hole_treatments_widget.children[0].children[0].value}\n")
+        # print(f"{self.core_hole_treatments_widget.children[0].children[0].description}\n")
 
         # This is the dropdown for the core-hole treatment option:
-        # print(f"{self.element_and_ch_treatment.children[0].children[1]}\n")
-        # print(f"{self.element_and_ch_treatment.children[0].children[1].value}\n")
+        # print(f"{self.core_hole_treatments_widget.children[0].children[1]}\n")
+        # print(f"{self.core_hole_treatments_widget.children[0].children[1].value}\n")

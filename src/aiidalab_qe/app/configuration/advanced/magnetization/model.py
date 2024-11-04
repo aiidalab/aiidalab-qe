@@ -21,7 +21,7 @@ class MagnetizationModel(AdvancedSubModel, HasInputStructure):
     type = tl.Unicode("starting_magnetization")
     total = tl.Float(0.0)
     moments = tl.Dict(
-        key_trait=tl.Unicode(),  # element symbol
+        key_trait=tl.Unicode(),  # kind name
         value_trait=tl.Float(),  # magnetic moment
         default_value={},
     )
@@ -38,7 +38,7 @@ class MagnetizationModel(AdvancedSubModel, HasInputStructure):
             self._defaults["moments"] = {}
         else:
             self._defaults["moments"] = {
-                symbol: 0.0 for symbol in self.input_structure.get_kind_names()
+                kind_name: 0.0 for kind_name in self.input_structure.get_kind_names()
             }
         with self.hold_trait_notifications():
             self.moments = self._get_default_moments()

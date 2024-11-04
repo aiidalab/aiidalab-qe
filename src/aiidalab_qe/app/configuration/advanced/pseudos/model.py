@@ -34,7 +34,7 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
     override = tl.Bool()
 
     dictionary = tl.Dict(
-        key_trait=tl.Unicode(),  # element symbol
+        key_trait=tl.Unicode(),  # kind name
         value_trait=tl.Unicode(),  # pseudopotential node uuid
         default_value={},
     )

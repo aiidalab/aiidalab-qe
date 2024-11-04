@@ -81,7 +81,7 @@ class MagnetizationSettings(AdvancedSubSettings):
             lambda override: not override,
         )
 
-        self.elements_widget = ipw.VBox()
+        self.kind_moment_widgets = ipw.VBox()
 
         self.container = ipw.VBox(
             children=[
@@ -120,7 +120,7 @@ class MagnetizationSettings(AdvancedSubSettings):
 
     def _show_loading(self):
         if self.rendered:
-            self.elements_widget.children = [self.loading_message]
+            self.kind_moment_widgets.children = [self.loading_message]
 
     def _build_kinds_widget(self):
         if not self.rendered:
@@ -128,15 +128,15 @@ class MagnetizationSettings(AdvancedSubSettings):
 
         children = []
 
-        symbols = (
+        kind_names = (
             self._model.input_structure.get_kind_names()
             if self._model.input_structure
             else []
         )
 
-        for symbol in symbols:
-            element_widget = ipw.BoundedFloatText(
-                description=symbol,
+        for kind_name in kind_names:
+            kind_moment_widget = ipw.BoundedFloatText(
+                description=kind_name,
                 min=-4,
                 max=4,
                 step=0.1,
@@ -144,24 +144,24 @@ class MagnetizationSettings(AdvancedSubSettings):
             )
             link = ipw.link(
                 (self._model, "moments"),
-                (element_widget, "value"),
+                (kind_moment_widget, "value"),
                 [
-                    lambda moments, symbol=symbol: moments.get(symbol, 0.0),
-                    lambda value, symbol=symbol: {
+                    lambda moments, kind_name=kind_name: moments.get(kind_name, 0.0),
+                    lambda value, kind_name=kind_name: {
                         **self._model.moments,
-                        symbol: value,
+                        kind_name: value,
                     },
                 ],
             )
             self.links.append(link)
             ipw.dlink(
                 (self._model, "override"),
-                (element_widget, "disabled"),
+                (kind_moment_widget, "disabled"),
                 lambda override: not override,
             )
-            children.append(element_widget)
+            children.append(kind_moment_widget)
 
-        self.elements_widget.children = children
+        self.kind_moment_widgets.children = children
 
     def _switch_widgets(self):
         if not self.rendered:
@@ -182,5 +182,5 @@ class MagnetizationSettings(AdvancedSubSettings):
         self.container.children = [
             self.tot_magnetization
             if self._model.type == "tot_magnetization"
-            else self.elements_widget
+            else self.kind_moment_widgets
         ]

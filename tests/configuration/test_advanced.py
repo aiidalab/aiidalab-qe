@@ -193,7 +193,7 @@ def test_advanced_hubbard_settings(generate_structure_data):
 
     # Check there is only eigenvalues for Co (Transition metal)
     model.has_eigenvalues = True
-    assert len(model.applicable_kinds) == 1
+    assert len(model.applicable_kind_names) == 1
     assert len(model.eigenvalues) == 1
 
     Co_eigenvalues = hubbard.eigenvalues_widget.children[0].children[1]  # type: ignore

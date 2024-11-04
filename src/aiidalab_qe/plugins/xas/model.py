@@ -21,12 +21,12 @@ class XasModel(SettingsModel, HasInputStructure):
     # structure_type = tl.Unicode("crystal")
     supercell_min_parameter = tl.Float(8.0)
 
-    elements = tl.Dict(
-        key_trait=tl.Unicode(),  # element symbol
+    kind_names = tl.Dict(
+        key_trait=tl.Unicode(),  # kind name
         value_trait=tl.Bool(),  # whether the element is included
     )
     core_hole_treatments = tl.Dict(
-        key_trait=tl.Unicode(),  # element symbol
+        key_trait=tl.Unicode(),  # kind name
         value_trait=tl.Unicode(),  # core hole treatment type
         default_value={},
     )
@@ -66,7 +66,7 @@ class XasModel(SettingsModel, HasInputStructure):
     def get_model_state(self):
         pseudo_labels = {}
         core_wfc_data_labels = {}
-        for element in self.elements.keys():
+        for element in self.kind_names.keys():
             pseudo_labels[element] = {
                 "gipaw": self.gipaw_pseudos[element],
                 "core_hole": self.core_hole_pseudos[element],
@@ -75,7 +75,7 @@ class XasModel(SettingsModel, HasInputStructure):
 
         return {
             # "structure_type": self.structure_type,
-            "elements_list": list(self.elements.keys()),
+            "elements_list": list(self.kind_names.keys()),
             "core_hole_treatments": self.core_hole_treatments,
             "pseudo_labels": pseudo_labels,
             "core_wfc_data_labels": core_wfc_data_labels,
@@ -83,22 +83,21 @@ class XasModel(SettingsModel, HasInputStructure):
         }
 
     def set_model_state(self, parameters: dict):
-        # TODO guard against mismatch in structure kinds and element list?
-
-        self.elements = {
-            element: element in parameters["elements_list"] for element in self.elements
+        self.kind_names = {
+            kind_name: kind_name in parameters["elements_list"]
+            for kind_name in self.kind_names
         }
 
         self.core_hole_treatments = {
-            element: parameters["core_hole_treatments"].get(element, "full")
-            for element in self.elements
+            kind_name: parameters["core_hole_treatments"].get(kind_name, "full")
+            for kind_name in self.kind_names
         }
 
         self.supercell_min_parameter = parameters.get("supercell_min_parameter", 8.0)
         # self.structure_type = parameters.get("structure_type", "crystal")
 
-    def get_elements(self):
-        return list(self.elements)
+    def get_kind_names(self):
+        return list(self.kind_names)
 
     def get_recommendation(self, element):
         return "xch_smear" if element in self.xch_elements else "full"
@@ -200,14 +199,15 @@ class XasModel(SettingsModel, HasInputStructure):
 
     def _update_core_hole_treatment_recommendations(self):
         if self.input_structure is None:
-            self.elements = {}
+            self.kind_names = {}
             self.core_hole_treatments = {}
         else:
-            self.elements = {
-                symbol: self.elements.get(symbol, False)
-                for symbol in self.input_structure.get_kind_names()
-                if symbol in self.core_hole_pseudos
+            self.kind_names = {
+                kind_name: self.kind_names.get(kind_name, False)
+                for kind_name in self.input_structure.get_kind_names()
+                if kind_name in self.core_hole_pseudos
             }
             self.core_hole_treatments = {
-                element: self.get_recommendation(element) for element in self.elements
+                kind_name: self.get_recommendation(kind_name)
+                for kind_name in self.kind_names
             }

@@ -9,7 +9,7 @@ def test_settings(submit_app_generator):
     xas_model.update()
 
     # Test getting the model state
-    xas_model.elements["Si"] = True
+    xas_model.kind_names["Si"] = True
     xas_model.supercell_min_parameter = 4.0
     parameters = xas_model.get_model_state()
     assert parameters["core_hole_treatments"] == {"Si": "full"}

@@ -162,7 +162,10 @@ class HubbardSettings(AdvancedSubSettings):
 
         children = []
 
-        for kind_index, (kind, num_states) in enumerate(self._model.applicable_kinds):
+        for (
+            kind_index,
+            (kind_name, num_states),
+        ) in enumerate(self._model.applicable_kind_names):
             label_layout = ipw.Layout(justify_content="flex-start", width="50px")
             spin_up_row = ipw.HBox([ipw.Label("Up:", layout=label_layout)])
             spin_down_row = ipw.HBox([ipw.Label("Down:", layout=label_layout)])
@@ -186,7 +189,7 @@ class HubbardSettings(AdvancedSubSettings):
                         lambda value,
                         kind_index=kind_index,
                         state_index=state_index,
-                        kind_name=kind.name: update(
+                        kind_name=kind_name: update(
                             kind_index,
                             0,
                             state_index,
@@ -216,7 +219,7 @@ class HubbardSettings(AdvancedSubSettings):
                         lambda value,
                         kind_index=kind_index,
                         state_index=state_index,
-                        kind_name=kind.name: update(
+                        kind_name=kind_name: update(
                             kind_index,
                             1,
                             state_index,
@@ -231,7 +234,7 @@ class HubbardSettings(AdvancedSubSettings):
             children.append(
                 ipw.HBox(
                     [
-                        ipw.Label(kind.name, layout=label_layout),
+                        ipw.Label(kind_name, layout=label_layout),
                         ipw.VBox(
                             children=[
                                 spin_up_row,

@@ -146,7 +146,7 @@ class Setting(SettingsPanel):
 
         children = []
 
-        symbols = (
+        kind_names = (
             self._model.input_structure.get_kind_names()
             if self._model.input_structure
             else []
@@ -154,9 +154,9 @@ class Setting(SettingsPanel):
 
         supported_core_levels = self._model.get_supported_core_levels()
 
-        for symbol in symbols:
-            if symbol in supported_core_levels:
-                for orbital in supported_core_levels[symbol]:
+        for kind_name in kind_names:
+            if kind_name in supported_core_levels:
+                for orbital in supported_core_levels[kind_name]:
                     checkbox = ipw.Checkbox(
                         description=orbital,
                         indent=False,
@@ -177,7 +177,7 @@ class Setting(SettingsPanel):
                     children.append(checkbox)
             else:
                 checkbox = ipw.Checkbox(
-                    description=f"{symbol}, not supported by the selected pseudo group",
+                    description=f"{kind_name}, not supported by the selected pseudo group",
                     indent=False,
                     disabled=True,
                     value=False,
