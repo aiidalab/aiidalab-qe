@@ -198,7 +198,7 @@ class XasModel(SettingsModel, HasInputStructure):
             tarfil.extractall(target_dir)
 
     def _update_core_hole_treatment_recommendations(self):
-        if self.input_structure is None:
+        if not self.has_structure:
             self.kind_names = {}
             self.core_hole_treatments = {}
         else:

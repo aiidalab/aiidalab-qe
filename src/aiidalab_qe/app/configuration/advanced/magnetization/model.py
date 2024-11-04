@@ -34,7 +34,7 @@ class MagnetizationModel(AdvancedSubModel, HasInputStructure):
         }
 
     def update(self, specific=""):  # noqa: ARG002
-        if self.spin_type == "none" or self.input_structure is None:
+        if self.spin_type == "none" or not self.has_structure:
             self._defaults["moments"] = {}
         else:
             self._defaults["moments"] = {

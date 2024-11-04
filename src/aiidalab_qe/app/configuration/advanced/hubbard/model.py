@@ -42,7 +42,7 @@ class HubbardModel(AdvancedSubModel, HasInputStructure):
         }
 
     def update(self, specific=""):  # noqa: ARG002
-        if self.input_structure is None:
+        if not self.has_structure:
             self.applicable_kind_names = []
             self.orbital_labels = []
             self._defaults |= {

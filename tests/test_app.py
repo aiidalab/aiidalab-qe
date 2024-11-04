@@ -26,7 +26,7 @@ def test_selecting_new_structure_unconfirms_model(generate_structure_data):
 
     model = StructureModel()
     model.input_structure = generate_structure_data()
-    assert model.input_structure is not None
+    assert model.has_structure
     model.confirm()
     model.input_structure = generate_structure_data()
     assert not model.confirmed

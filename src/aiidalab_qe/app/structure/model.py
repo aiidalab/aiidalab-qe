@@ -9,7 +9,7 @@ class StructureModel(HasTraitsAndMixins, Confirmable, HasInputStructure):
     message_area = tl.Unicode("")
 
     def update_widget_text(self):
-        if self.input_structure is None:
+        if not self.has_structure:
             self.structure_name = ""
             self.message_area = ""
         else:

@@ -129,7 +129,7 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
 
     def update(self, specific=""):  # noqa: ARG002
         with self.hold_trait_notifications():
-            if self.input_structure is None:
+            if not self.has_structure:
                 self._defaults |= {
                     "dictionary": {},
                     "cutoffs": [[0.0], [0.0]],

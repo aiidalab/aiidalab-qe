@@ -38,18 +38,6 @@ class HasTraitsAndMixins(tl.HasTraits, metaclass=MetaMixinTraitsRegister):
     """An extension of `traitlet`'s `HasTraits` to support trait-ful mixins."""
 
 
-class Confirmable(tl.HasTraits):
-    confirmed = tl.Bool(False)
-
-    def confirm(self):
-        self.confirmed = True
-
-    @tl.observe(tl.All)
-    def unconfirm(self, change=None):
-        if change and change["name"] != "confirmed":
-            self.confirmed = False
-
-
 class HasInputStructure(tl.HasTraits):
     input_structure = tl.Union(
         [
@@ -60,8 +48,12 @@ class HasInputStructure(tl.HasTraits):
     )
 
     @property
+    def has_structure(self):
+        return self.input_structure is not None
+
+    @property
     def has_pbc(self):
-        return self.input_structure is None or any(self.input_structure.pbc)
+        return not self.has_structure or any(self.input_structure.pbc)
 
 
 class HasModels(t.Generic[T]):
@@ -82,3 +74,15 @@ class HasModels(t.Generic[T]):
 
     def _link_model(self, model: T):
         raise NotImplementedError()
+
+
+class Confirmable(tl.HasTraits):
+    confirmed = tl.Bool(False)
+
+    def confirm(self):
+        self.confirmed = True
+
+    @tl.observe(tl.All)
+    def unconfirm(self, change=None):
+        if change and change["name"] != "confirmed":
+            self.confirmed = False

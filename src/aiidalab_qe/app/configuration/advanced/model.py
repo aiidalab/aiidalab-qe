@@ -248,7 +248,7 @@ class AdvancedModel(
             )
 
     def _update_kpoints_mesh(self, _=None):
-        if self.input_structure is None:
+        if not self.has_structure:
             mesh_grid = ""
         elif self.kpoints_distance > 0:
             mesh = create_kpoints_from_distance.process_class._func(
