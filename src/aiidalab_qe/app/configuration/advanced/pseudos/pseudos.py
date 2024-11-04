@@ -164,8 +164,6 @@ class PseudoSettings(AdvancedSubSettings):
             lambda override: not override,
         )
 
-        self.container = ipw.VBox()
-
         self.children = [
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 10px">
@@ -208,7 +206,8 @@ class PseudoSettings(AdvancedSubSettings):
                     ),
                 ]
             ),
-            self.container,
+            self.setter_widget_helper,
+            self.setter_widget,
             self.cutoff_helper,
             ipw.HBox(
                 children=[
@@ -232,10 +231,6 @@ class PseudoSettings(AdvancedSubSettings):
     def _on_spin_orbit_change(self, _):
         self._model.update_library_options()
 
-    def _on_override_change(self, change):
-        super()._on_override_change(change)
-        self._toggle_setter_widgets()
-
     def _on_family_parameters_change(self, _):
         self._model.update_family()
 
@@ -251,7 +246,6 @@ class PseudoSettings(AdvancedSubSettings):
         if not self._model.loaded_from_process:
             self._model.update(specific)
         self._build_setter_widgets()
-        self._toggle_setter_widgets()
         self._model.update_library_options()
         self._update_family_link()
         self.updated = True
@@ -305,6 +299,10 @@ class PseudoSettings(AdvancedSubSettings):
                     },
                 ],
             )
+            pseudo_override_link = ipw.dlink(
+                (self._model, "override"),
+                (upload_widget, "override"),
+            )
             cutoffs_link = ipw.dlink(
                 (self._model, "cutoffs"),
                 (upload_widget, "cutoffs"),
@@ -317,6 +315,7 @@ class PseudoSettings(AdvancedSubSettings):
             self.links.extend(
                 [
                     pseudo_link,
+                    pseudo_override_link,
                     cutoffs_link,
                     *upload_widget.links,
                 ]
@@ -326,21 +325,12 @@ class PseudoSettings(AdvancedSubSettings):
 
         self.setter_widget.children = children
 
-    def _toggle_setter_widgets(self):
-        if not self.rendered:
-            return
-        if self._model.override:
-            self.container.children = [
-                self.setter_widget_helper,
-                self.setter_widget,
-            ]
-        else:
-            self.container.children = []
-
 
 # TODO implement/improve MVC in this widget
 class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
+
+    override = tl.Bool(False)
 
     pseudo = tl.Instance(UpfData, allow_none=True)
     cutoffs = tl.List(tl.Float(), [])
@@ -360,11 +350,26 @@ class PseudoUploadWidget(ipw.HBox):
         if self.rendered:
             return
 
+        self.pseudo_text = ipw.Text(description=self.kind_name)
+        pseudo_link = ipw.dlink(
+            (self, "pseudo"),
+            (self.pseudo_text, "value"),
+            lambda pseudo: pseudo.filename if pseudo else "",
+        )
+        pseudo_override_link = ipw.dlink(
+            (self, "override"),
+            (self.pseudo_text, "disabled"),
+            lambda override: not override,
+        )
         self.file_upload = ipw.FileUpload(
             description="Upload",
             multiple=False,
         )
-        self.pseudo_text = ipw.Text(description=self.kind_name)
+        upload_link = ipw.dlink(
+            (self, "override"),
+            (self.file_upload, "disabled"),
+            lambda override: not override,
+        )
         self.file_upload.observe(self._on_file_upload, "value")
 
         cutoffs_message_template = """
@@ -374,13 +379,6 @@ class PseudoUploadWidget(ipw.HBox):
         """
 
         self.cutoff_message = ipw.HTML()
-
-        pseudo_link = ipw.dlink(
-            (self, "pseudo"),
-            (self.pseudo_text, "value"),
-            lambda pseudo: pseudo.filename if pseudo else "",
-        )
-
         cutoff_link = ipw.dlink(
             (self, "cutoffs"),
             (self.cutoff_message, "value"),
@@ -390,7 +388,12 @@ class PseudoUploadWidget(ipw.HBox):
             ),
         )
 
-        self.links = [pseudo_link, cutoff_link]
+        self.links = [
+            pseudo_link,
+            pseudo_override_link,
+            upload_link,
+            cutoff_link,
+        ]
 
         self.error_message = None
 
