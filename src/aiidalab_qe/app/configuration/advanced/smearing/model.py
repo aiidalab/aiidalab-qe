@@ -16,15 +16,7 @@ class SmearingModel(AdvancedSubModel):
     override = tl.Bool()
 
     type = tl.Unicode("cold")
-    degauss = tl.Float(0.0)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._defaults = {
-            "type": self.traits()["type"].default_value,
-            "degauss": self.traits()["degauss"].default_value,
-        }
+    degauss = tl.Float(0.01)
 
     def update(self, specific=""):  # noqa: ARG002
         parameters = (
@@ -43,5 +35,8 @@ class SmearingModel(AdvancedSubModel):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.type = self._defaults["type"]
-            self.degauss = self._defaults["degauss"]
+            self.type = self._get_default("type")
+            self.degauss = self._get_default("degauss")
+
+    def _get_default(self, trait):
+        return self._defaults.get(trait, self.traits()[trait].default_value)

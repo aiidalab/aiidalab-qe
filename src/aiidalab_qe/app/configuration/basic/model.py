@@ -18,16 +18,7 @@ class WorkChainModel(SettingsModel):
     spin_type = tl.Unicode(DEFAULT["workchain"]["spin_type"])
     electronic_type = tl.Unicode(DEFAULT["workchain"]["electronic_type"])
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.include = True
-
-        self._defaults = {
-            "protocol": self.traits()["protocol"].default_value,
-            "spin_type": self.traits()["spin_type"].default_value,
-            "electronic_type": self.traits()["electronic_type"].default_value,
-        }
+    include = True
 
     def get_model_state(self):
         return {
@@ -43,6 +34,6 @@ class WorkChainModel(SettingsModel):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.protocol = self._defaults["protocol"]
-            self.spin_type = self._defaults["spin_type"]
-            self.electronic_type = self._defaults["electronic_type"]
+            self.protocol = self.traits()["protocol"].default_value
+            self.spin_type = self.traits()["spin_type"].default_value
+            self.electronic_type = self.traits()["electronic_type"].default_value

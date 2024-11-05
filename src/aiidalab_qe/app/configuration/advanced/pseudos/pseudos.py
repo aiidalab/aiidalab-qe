@@ -220,7 +220,7 @@ class PseudoSettings(AdvancedSubSettings[PseudosModel]):
 
         self.rendered = True
 
-        self.refresh()
+        self.refresh(specific="widgets")
 
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
@@ -243,7 +243,7 @@ class PseudoSettings(AdvancedSubSettings[PseudosModel]):
         if self.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process:
+        if not self._model.loaded_from_process or specific and specific != "widgets":
             self._model.update(specific)
         self._build_setter_widgets()
         self._model.update_library_options()

@@ -46,5 +46,3 @@ class Setting(SettingsPanel[BandsModel]):
         ]
 
         self.rendered = True
-
-        self.refresh()

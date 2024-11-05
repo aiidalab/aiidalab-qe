@@ -22,13 +22,6 @@ class PdosModel(SettingsModel, HasInputStructure):
     use_pdos_degauss = tl.Bool(False)
     pdos_degauss = tl.Float(0.005)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._defaults = {
-            "kpoints_distance": self.traits()["kpoints_distance"].default_value,
-        }
-
     def update(self, specific=""):
         with self.hold_trait_notifications():
             if not specific or specific != "mesh":
@@ -54,9 +47,12 @@ class PdosModel(SettingsModel, HasInputStructure):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.kpoints_distance = self._defaults["kpoints_distance"]
-            self.use_pdos_degauss = self.traits()["use_pdos_degauss"].default_value
-            self.pdos_degauss = self.traits()["pdos_degauss"].default_value
+            self.kpoints_distance = self._get_default("kpoints_distance")
+            self.use_pdos_degauss = self._get_default("use_pdos_degauss")
+            self.pdos_degauss = self._get_default("pdos_degauss")
+
+    def _get_default(self, trait):
+        return self._defaults.get(trait, self.traits()[trait].default_value)
 
     def _update_kpoints_mesh(self, _=None):
         if not self.has_structure:

@@ -19,8 +19,8 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 class ConfigurationModel(
     HasTraitsAndMixins,
     HasModels[SettingsModel],
-    Confirmable,
     HasInputStructure,
+    Confirmable,
 ):
     relax_type_help = tl.Unicode()
     relax_type_options = tl.List([DEFAULT["workchain"]["relax_type"]])

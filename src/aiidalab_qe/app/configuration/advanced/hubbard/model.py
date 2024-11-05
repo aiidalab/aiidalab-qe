@@ -6,6 +6,7 @@ import numpy as np
 import traitlets as tl
 from pymatgen.core.periodic_table import Element
 
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.common.mixins import HasInputStructure
 
 from ..subsettings import AdvancedSubModel
@@ -33,14 +34,6 @@ class HubbardModel(AdvancedSubModel, HasInputStructure):
     applicable_kind_names = []
     orbital_labels = []
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._defaults = {
-            "parameters": {},
-            "eigenvalues": [],
-        }
-
     def update(self, specific=""):  # noqa: ARG002
         if not self.has_structure:
             self.applicable_kind_names = []
@@ -51,7 +44,13 @@ class HubbardModel(AdvancedSubModel, HasInputStructure):
             }
         else:
             self.orbital_labels = self._define_orbital_labels()
-            self._defaults["parameters"] = self._define_default_parameters()
+            if isinstance(self.input_structure, HubbardStructureData):
+                self._defaults["parameters"] = (
+                    self.get_parameters_from_hubbard_structure()
+                )
+                self.is_active = True
+            else:
+                self._defaults["parameters"] = self._define_default_parameters()
             self.applicable_kind_names = self._define_applicable_kind_names()
             self._defaults["eigenvalues"] = self._define_default_eigenvalues()
         with self.hold_trait_notifications():
@@ -80,16 +79,13 @@ class HubbardModel(AdvancedSubModel, HasInputStructure):
         self.eigenvalues = eigenvalues_array.reshape(new_shape).tolist()
         self.has_eigenvalues = True
 
-    def set_parameters_from_hubbard_structure(self):
+    def get_parameters_from_hubbard_structure(self):
         hubbard_parameters = self.input_structure.hubbard.dict()["parameters"]
         sites = self.input_structure.sites
-        parameters = {
+        return {
             f"{sites[hp['atom_index']].kind_name} - {hp['atom_manifold']}": hp["value"]
             for hp in hubbard_parameters
         }
-        with self.hold_trait_notifications():
-            self.parameters = parameters
-            self.is_active = True
 
     def reset(self):
         with self.hold_trait_notifications():

@@ -79,53 +79,31 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
     )
     ecutwfc = tl.Float()
     ecutrho = tl.Float()
-    status_message = tl.Unicode()
-    family_help_message = tl.Unicode()
+    status_message = tl.Unicode("")
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    PSEUDO_HELP_SOC = """
+        <div class="pseudo-text">
+            Spin-orbit coupling (SOC) calculations are supported exclusively with
+            PseudoDojo pseudopotentials. PseudoDojo offers these pseudopotentials
+            in two versions: standard and stringent. Here, we utilize the FR
+            (fully relativistic) type from PseudoDojo. Please ensure you choose
+            appropriate cutoff values for your calculations.
+        </div>
+    """
 
-        self.PSEUDO_HELP_SOC = """
-            <div class="pseudo-text">
-                Spin-orbit coupling (SOC) calculations are supported exclusively with
-                PseudoDojo pseudopotentials. PseudoDojo offers these pseudopotentials
-                in two versions: standard and stringent. Here, we utilize the FR
-                (fully relativistic) type from PseudoDojo. Please ensure you choose
-                appropriate cutoff values for your calculations.
-            </div>
-        """
+    PSEUDO_HELP_WO_SOC = """
+        <div class="pseudo-text">
+            If you are unsure, select 'SSSP efficiency', which for most
+            calculations will produce sufficiently accurate results at
+            comparatively small computational costs. If your calculations require a
+            higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent',
+            which will be computationally more expensive. SSSP is the standard
+            solid-state pseudopotentials. The PseudoDojo used here has the SR
+            relativistic type.
+        </div>
+    """
 
-        self.PSEUDO_HELP_WO_SOC = """
-            <div class="pseudo-text">
-                If you are unsure, select 'SSSP efficiency', which for most
-                calculations will produce sufficiently accurate results at
-                comparatively small computational costs. If your calculations require a
-                higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent',
-                which will be computationally more expensive. SSSP is the standard
-                solid-state pseudopotentials. The PseudoDojo used here has the SR
-                relativistic type.
-            </div>
-        """
-
-        self.family_help_message = self.PSEUDO_HELP_WO_SOC
-
-        self._defaults = {
-            "family": self.traits()["family"].default_value,
-            "functional": self.traits()["functional"].default_value,
-            "functional_options": [
-                "PBE",
-                "PBEsol",
-            ],
-            "library": self.traits()["library"].default_value,
-            "library_options": [
-                "SSSP efficiency",
-                "SSSP precision",
-                "PseudoDojo standard",
-                "PseudoDojo stringent",
-            ],
-            "dictionary": {},
-            "cutoffs": [[0.0], [0.0]],
-        }
+    family_help_message = tl.Unicode(PSEUDO_HELP_WO_SOC)
 
     def update(self, specific=""):  # noqa: ARG002
         with self.hold_trait_notifications():
@@ -271,15 +249,40 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.dictionary = self._get_default_dictionary()
-            self.cutoffs = self._get_default_cutoffs()
-            self.library_options = self._defaults["library_options"]
-            self.library = self._defaults["library"]
-            self.functional = self._defaults["functional"]
-            self.functional_options = self._defaults["functional_options"]
-            self.family = self._defaults["family"]
-            self.family_help_message = self.PSEUDO_HELP_WO_SOC
-            self.status_message = ""
+            self.dictionary = self._get_default("dictionary")
+            self.cutoffs = self._get_default("cutoffs")
+            self.library_options = self._get_default("library_options")
+            self.library = self._get_default("library")
+            self.functional = self._get_default("functional")
+            self.functional_options = self._get_default("functional_options")
+            self.family = self._get_default("family")
+            self.family_help_message = self._get_default("family_help_message")
+            self.status_message = self._get_default("status_message")
+
+    def _get_default(self, trait):
+        if trait == "dictionary":
+            return deepcopy(self._defaults.get(trait, {}))
+        if trait == "cutoffs":
+            return deepcopy(self._defaults.get(trait, [[0.0], [0.0]]))
+        if trait == "functional_options":
+            return self._defaults.get(
+                trait,
+                [
+                    "PBE",
+                    "PBEsol",
+                ],
+            )
+        if trait == "library_options":
+            return self._defaults.get(
+                trait,
+                [
+                    "SSSP efficiency",
+                    "SSSP precision",
+                    "PseudoDojo standard",
+                    "PseudoDojo stringent",
+                ],
+            )
+        return self._defaults.get(trait, self.traits()[trait].default_value)
 
     def _get_pseudo_family_from_database(self):
         """Get the pseudo family from the database."""

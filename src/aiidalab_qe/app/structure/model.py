@@ -3,7 +3,11 @@ import traitlets as tl
 from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasTraitsAndMixins
 
 
-class StructureModel(HasTraitsAndMixins, Confirmable, HasInputStructure):
+class StructureModel(
+    HasTraitsAndMixins,
+    HasInputStructure,
+    Confirmable,
+):
     structure_name = tl.Unicode("")
     manager_output = tl.Unicode("")
     message_area = tl.Unicode("")

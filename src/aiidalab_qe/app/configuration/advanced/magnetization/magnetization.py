@@ -93,7 +93,7 @@ class MagnetizationSettings(AdvancedSubSettings[MagnetizationModel]):
 
         self.rendered = True
 
-        self.refresh()
+        self.refresh(specific="widgets")
 
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
@@ -111,7 +111,7 @@ class MagnetizationSettings(AdvancedSubSettings[MagnetizationModel]):
         if self.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process:
+        if not self._model.loaded_from_process or specific and specific != "widgets":
             self._model.update(specific)
         self._build_kinds_widget()
         self._switch_widgets()

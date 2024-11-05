@@ -1,7 +1,5 @@
 import ipywidgets as ipw
 
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-
 from ..subsettings import AdvancedSubSettings
 from .model import HubbardModel
 
@@ -87,7 +85,7 @@ class HubbardSettings(AdvancedSubSettings[HubbardModel]):
 
         self.rendered = True
 
-        self.refresh()
+        self.refresh(specific="widgets")
 
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
@@ -102,11 +100,9 @@ class HubbardSettings(AdvancedSubSettings[HubbardModel]):
         if self.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process:
+        if not self._model.loaded_from_process or specific and specific != "widgets":
             self._model.update(specific)
         self._build_hubbard_widget()
-        if isinstance(self._model.input_structure, HubbardStructureData):
-            self._model.set_parameters_from_hubbard_structure()
         self._toggle_hubbard_widget()
         self._toggle_eigenvalues_widget()
         self.updated = True

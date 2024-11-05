@@ -126,8 +126,6 @@ class Setting(SettingsPanel[PdosModel]):
 
         self.rendered = True
 
-        self.refresh()
-
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
 

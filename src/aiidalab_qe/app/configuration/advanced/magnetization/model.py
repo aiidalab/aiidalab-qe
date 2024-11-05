@@ -26,13 +26,6 @@ class MagnetizationModel(AdvancedSubModel, HasInputStructure):
         default_value={},
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._defaults = {
-            "moments": {},
-        }
-
     def update(self, specific=""):  # noqa: ARG002
         if self.spin_type == "none" or not self.has_structure:
             self._defaults["moments"] = {}
@@ -50,4 +43,4 @@ class MagnetizationModel(AdvancedSubModel, HasInputStructure):
             self.moments = self._get_default_moments()
 
     def _get_default_moments(self):
-        return deepcopy(self._defaults["moments"])
+        return deepcopy(self._defaults.get("moments", {}))

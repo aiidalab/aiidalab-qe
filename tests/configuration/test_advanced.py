@@ -5,59 +5,56 @@ def test_advanced_default():
     """Test default behavior of advanced setting."""
     model = AdvancedModel()
     _ = AdvancedSettings(model=model)
-    smearing = model.get_model("smearing")
+    smearing_model = model.get_model("smearing")
 
     # Test override functionality in advanced settings
     model.override = True
     model.protocol = "fast"
-    smearing.type = "methfessel-paxton"
-    smearing.degauss = 0.03
+    smearing_model.type = "methfessel-paxton"
+    smearing_model.degauss = 0.03
     model.kpoints_distance = 0.22
 
     # Reset values to default w.r.t protocol
     model.override = False
 
-    assert smearing.type == "cold"
-    assert smearing.degauss == 0.01
+    assert smearing_model.type == "cold"
+    assert smearing_model.degauss == 0.01
     assert model.kpoints_distance == 0.5
 
 
 def test_advanced_smearing_settings():
     """Test Smearing Settings."""
-    from aiidalab_qe.app.configuration.advanced.smearing import (
-        SmearingModel,
-        SmearingSettings,
-    )
 
-    model = SmearingModel()
-    smearing = SmearingSettings(model=model)
-    smearing.render()
+    model = AdvancedModel()
+    advanced = AdvancedSettings(model=model)
+    advanced.render()
+    smearing_model = model.get_model("smearing")
 
     # Test widget disable state on override
-    assert smearing.degauss.disabled is True
-    assert smearing.smearing.disabled is True
+    assert advanced.smearing.degauss.disabled is True
+    assert advanced.smearing.smearing.disabled is True
 
     model.override = True
 
-    assert smearing.degauss.disabled is False
-    assert smearing.smearing.disabled is False
+    assert advanced.smearing.degauss.disabled is False
+    assert advanced.smearing.smearing.disabled is False
 
-    assert model.type == "cold"
-    assert model.degauss == 0.01
+    assert smearing_model.type == "cold"
+    assert smearing_model.degauss == 0.01
 
     # Test protocol-dependent smearing change
     model.protocol = "fast"
 
-    assert model.type == "cold"
-    assert model.degauss == 0.01
+    assert smearing_model.type == "cold"
+    assert smearing_model.degauss == 0.01
 
     # Check reset
-    model.type = "gaussian"
-    model.degauss = 0.05
+    smearing_model.type = "gaussian"
+    smearing_model.degauss = 0.05
     model.override = False
 
-    assert model.type == "cold"
-    assert model.degauss == 0.01
+    assert smearing_model.type == "cold"
+    assert smearing_model.degauss == 0.01
 
 
 def test_advanced_kpoints_settings():

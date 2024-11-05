@@ -58,27 +58,14 @@ class AdvancedModel(
     kpoints_distance = tl.Float(0.0)
     mesh_grid = tl.Unicode("")
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    include = True
 
-        self.include = True
-
-        self.dftd3_version = {
-            "dft-d3": 3,
-            "dft-d3bj": 4,
-            "dft-d3m": 5,
-            "dft-d3mbj": 6,
-        }
-
-        self._defaults = {
-            "forc_conv_thr": self.traits()["forc_conv_thr"].default_value,
-            "forc_conv_thr_step": self.traits()["forc_conv_thr_step"].default_value,
-            "etot_conv_thr": self.traits()["etot_conv_thr"].default_value,
-            "etot_conv_thr_step": self.traits()["etot_conv_thr_step"].default_value,
-            "scf_conv_thr": self.traits()["scf_conv_thr"].default_value,
-            "scf_conv_thr_step": self.traits()["scf_conv_thr_step"].default_value,
-            "kpoints_distance": self.traits()["kpoints_distance"].default_value,
-        }
+    dftd3_version = {
+        "dft-d3": 3,
+        "dft-d3bj": 4,
+        "dft-d3m": 5,
+        "dft-d3mbj": 6,
+    }
 
     def update(self, specific=""):
         with self.hold_trait_notifications():
@@ -134,14 +121,15 @@ class AdvancedModel(
             )
 
         smearing: SmearingModel = self.get_model("smearing")  # type: ignore
-        magnetization: MagnetizationModel = self.get_model("magnetization")  # type: ignore
-        if self.spin_type == "collinear":
-            parameters["initial_magnetic_moments"] = magnetization.moments
         if self.electronic_type == "metal":
             # smearing type setting
             parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = smearing.type
             # smearing degauss setting
             parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = smearing.degauss
+
+        magnetization: MagnetizationModel = self.get_model("magnetization")  # type: ignore
+        if self.spin_type == "collinear":
+            parameters["initial_magnetic_moments"] = magnetization.moments
 
         # Set tot_magnetization for collinear simulations.
         if self.spin_type == "collinear":
@@ -216,18 +204,21 @@ class AdvancedModel(
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.total_charge = self.traits()["total_charge"].default_value
-            self.van_der_waals = self.traits()["van_der_waals"].default_value
-            self.forc_conv_thr = self._defaults["forc_conv_thr"]
-            self.forc_conv_thr_step = self._defaults["forc_conv_thr_step"]
-            self.etot_conv_thr = self._defaults["etot_conv_thr"]
-            self.etot_conv_thr_step = self._defaults["etot_conv_thr_step"]
-            self.scf_conv_thr = self._defaults["scf_conv_thr"]
-            self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
-            self.electron_maxstep = self.traits()["electron_maxstep"].default_value
-            self.spin_orbit = self.traits()["spin_orbit"].default_value
-            self.kpoints_distance = self._defaults["kpoints_distance"]
-            self.override = self.traits()["override"].default_value
+            self.total_charge = self._get_default("total_charge")
+            self.van_der_waals = self._get_default("van_der_waals")
+            self.forc_conv_thr = self._get_default("forc_conv_thr")
+            self.forc_conv_thr_step = self._get_default("forc_conv_thr_step")
+            self.etot_conv_thr = self._get_default("etot_conv_thr")
+            self.etot_conv_thr_step = self._get_default("etot_conv_thr_step")
+            self.scf_conv_thr = self._get_default("scf_conv_thr")
+            self.scf_conv_thr_step = self._get_default("scf_conv_thr_step")
+            self.electron_maxstep = self._get_default("electron_maxstep")
+            self.spin_orbit = self._get_default("spin_orbit")
+            self.kpoints_distance = self._get_default("kpoints_distance")
+            self.override = self._get_default("override")
+
+    def _get_default(self, trait):
+        return self._defaults.get(trait, self.traits()[trait].default_value)
 
     def _link_model(self, model: AdvancedSubModel):
         ipw.dlink(
