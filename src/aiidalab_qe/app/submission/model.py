@@ -47,6 +47,8 @@ class SubmissionModel(HasTraitsAndMixins, HasInputStructure):
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
 
+    submitted = tl.Bool(False)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -95,6 +97,8 @@ class SubmissionModel(HasTraitsAndMixins, HasInputStructure):
                 self.input_structure.get_formula(),
             )
             self.process = process
+
+        self.submitted = True
 
     def check_resources(self):
         pw_code = self.get_code("dft", "pw")

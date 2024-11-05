@@ -38,6 +38,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self._model = model
         self._model.observe(
+            self._on_submission,
+            "submitted",
+        )
+        self._model.observe(
             self._on_input_structure_change,
             "input_structure",
         )
@@ -117,7 +121,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.submit_button, "disabled"),
             lambda state: state != self.State.CONFIGURED,
         )
-        self.submit_button.on_click(self._on_submission)
+        self.submit_button.on_click(self.submit)
 
         self.submission_blocker_messages = ipw.HTML()
         ipw.dlink(
@@ -174,6 +178,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             if code.is_active:
                 self._toggle_code(code)
 
+    def submit(self, _=None):
+        self._model.submit()
+
     def reset(self):
         with self.hold_trait_notifications():
             self._model.reset()
@@ -223,7 +230,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.check_resources()
 
     def _on_submission(self, _):
-        self._model.submit()
         self._update_state()
 
     def _install_sssp(self, qe_auto_setup):

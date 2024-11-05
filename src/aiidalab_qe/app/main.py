@@ -69,10 +69,9 @@ class App(ipw.VBox):
             self._on_configuration_confirmation_change,
             "confirmed",
         )
-        ipw.dlink(
-            (self.submit_model, "process"),
-            (self.results_model, "process"),
-            transform=lambda node: node.uuid if node is not None else None,
+        self.submit_model.observe(
+            self._on_submission,
+            "submitted",
         )
 
         # Add the application steps to the application
@@ -136,24 +135,37 @@ class App(ipw.VBox):
             self._render_step(step_index)
 
     def _on_structure_confirmation_change(self, _):
+        self._update_configuration_step()
+        self._update_blockers()
+
+    def _on_configuration_confirmation_change(self, _):
+        self._update_submission_step()
+        self._update_blockers()
+
+    def _on_submission(self, _):
+        self._update_results_step()
+
+    def _render_step(self, step_index):
+        step = self.steps[step_index][1]
+        step.render()
+
+    def _update_configuration_step(self):
         if self.structure_model.confirmed:
             self.configure_model.input_structure = self.structure_model.input_structure
         else:
             self.configure_model.input_structure = None
-        self._update_blockers()
 
-    def _on_configuration_confirmation_change(self, _):
+    def _update_submission_step(self):
         if self.configure_model.confirmed:
             self.submit_model.input_structure = self.structure_model.input_structure
             self.submit_model.input_parameters = self.configure_model.get_model_state()
         else:
             self.submit_model.input_structure = None
             self.submit_model.input_parameters = {}
-        self._update_blockers()
 
-    def _render_step(self, step_index):
-        step = self.steps[step_index][1]
-        step.render()
+    def _update_results_step(self):
+        node = self.submit_model.process
+        self.results_model.process = node.uuid if node is not None else None
 
     def _update_blockers(self):
         self.submit_model.external_submission_blockers = [
