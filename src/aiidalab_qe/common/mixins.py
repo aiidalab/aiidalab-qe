@@ -83,6 +83,9 @@ class Confirmable(tl.HasTraits):
         self.confirmed = True
 
     @tl.observe(tl.All)
-    def unconfirm(self, change=None):
+    def _on_any_change(self, change):
         if change and change["name"] != "confirmed":
-            self.confirmed = False
+            self._unconfirm()
+
+    def _unconfirm(self):
+        self.confirmed = False

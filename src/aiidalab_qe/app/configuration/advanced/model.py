@@ -230,7 +230,7 @@ class AdvancedModel(
             (model, "override"),
         )
         model.observe(
-            self.unconfirm,
+            self._on_any_change,
             tl.All,
         )
         for trait in model.dependencies:
