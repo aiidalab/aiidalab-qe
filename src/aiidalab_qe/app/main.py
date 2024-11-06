@@ -71,7 +71,7 @@ class App(ipw.VBox):
         )
         self.submit_model.observe(
             self._on_submission,
-            "submitted",
+            "confirmed",
         )
 
         # Add the application steps to the application
@@ -164,7 +164,7 @@ class App(ipw.VBox):
             self.submit_model.input_parameters = {}
 
     def _update_results_step(self):
-        node = self.submit_model.process
+        node = self.submit_model.process_node
         self.results_model.process = node.uuid if node is not None else None
 
     def _update_blockers(self):
@@ -180,18 +180,18 @@ class App(ipw.VBox):
             self._wizard_app_widget.selected_index = 0
         else:
             self._show_process_loading_message()
-            process = load_node(pk)
-            self._wizard_app_widget.selected_index = 3
-            self.structure_model.input_structure = process.inputs.structure
+            process_node = load_node(pk)
+            self.structure_model.input_structure = process_node.inputs.structure
             self.structure_model.confirm()
-            parameters = process.base.extras.get("ui_parameters", {})
+            parameters = process_node.base.extras.get("ui_parameters", {})
             if parameters and isinstance(parameters, str):
                 parameters = deserialize_unsafe(parameters)
             self.configure_model.set_model_state(parameters)
             self.configure_model.confirm()
-            self.submit_model.process = process
+            self.submit_model.process_node = process_node
             self.submit_model.set_model_state(parameters)
-            self.submit_step.state = WizardAppWidgetStep.State.SUCCESS
+            self.submit_model.confirm()
+            self._wizard_app_widget.selected_index = 3
             self._hide_process_loading_message()
 
     def _show_process_loading_message(self):

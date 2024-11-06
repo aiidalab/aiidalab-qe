@@ -7,11 +7,10 @@ from copy import deepcopy
 import traitlets as tl
 
 from aiida import orm
-from aiida.engine import ProcessBuilderNamespace
-from aiida.engine import submit as aiida_submit
+from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.mixins import HasInputStructure, HasTraitsAndMixins
+from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasTraitsAndMixins
 from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 from aiidalab_qe.workflows import QeAppWorkChain
 
@@ -20,10 +19,14 @@ from .code import CodeModel, CodesDict
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmissionModel(HasTraitsAndMixins, HasInputStructure):
+class SubmissionModel(
+    HasTraitsAndMixins,
+    HasInputStructure,
+    Confirmable,
+):
     input_parameters = tl.Dict()
 
-    process = tl.Instance(orm.WorkChainNode, allow_none=True)
+    process_node = tl.Instance(orm.WorkChainNode, allow_none=True)
     process_label = tl.Unicode("")
     process_description = tl.Unicode("")
 
@@ -46,8 +49,6 @@ class SubmissionModel(HasTraitsAndMixins, HasInputStructure):
 
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
-
-    submitted = tl.Bool(False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -78,27 +79,10 @@ class SubmissionModel(HasTraitsAndMixins, HasInputStructure):
             ]
         )
 
-    def submit(self):
-        parameters = self.get_model_state()
-        builder = self._create_builder(parameters)
-
-        with self.hold_trait_notifications():
-            process = aiida_submit(builder)
-
-            process.label = self.process_label
-            process.description = self.process_description
-            # since AiiDA data node may exist in the ui_parameters,
-            # we serialize it to yaml
-            process.base.extras.set("ui_parameters", serialize(parameters))
-            # store the workchain name in extras, this will help to filter the workchain in the future
-            process.base.extras.set("workchain", parameters["workchain"])  # type: ignore
-            process.base.extras.set(
-                "structure",
-                self.input_structure.get_formula(),
-            )
-            self.process = process
-
-        self.submitted = True
+    def confirm(self):
+        if not self.process_node:
+            self._submit()
+        super().confirm()
 
     def check_resources(self):
         pw_code = self.get_code("dft", "pw")
@@ -259,9 +243,10 @@ class SubmissionModel(HasTraitsAndMixins, HasInputStructure):
                 "npool": parameters["resources"]["npools"]
             }
         self.set_selected_codes(parameters["codes"])
-        if self.process:
-            self.process_label = self.process.label
-            self.process_description = self.process.description
+        if self.process_node:
+            self.process_label = self.process_node.label
+            self.process_description = self.process_node.description
+            self.loaded_from_process = True
 
     def add_code(self, identifier, name, code):
         code.name = name
@@ -300,7 +285,27 @@ class SubmissionModel(HasTraitsAndMixins, HasInputStructure):
         with self.hold_trait_notifications():
             self.input_structure = None
             self.input_parameters = {}
-            self.process = None
+            self.process_node = None
+
+    def _submit(self):
+        parameters = self.get_model_state()
+        builder = self._create_builder(parameters)
+
+        with self.hold_trait_notifications():
+            process_node = submit(builder)
+
+            process_node.label = self.process_label
+            process_node.description = self.process_description
+            # since AiiDA data node may exist in the ui_parameters,
+            # we serialize it to yaml
+            process_node.base.extras.set("ui_parameters", serialize(parameters))
+            # store the workchain name in extras, this will help to filter the workchain in the future
+            process_node.base.extras.set("workchain", parameters["workchain"])  # type: ignore
+            process_node.base.extras.set(
+                "structure",
+                self.input_structure.get_formula(),
+            )
+            self.process_node = process_node
 
     def _get_properties(self) -> list[str]:
         return self.input_parameters.get("workchain", {}).get("properties", [])

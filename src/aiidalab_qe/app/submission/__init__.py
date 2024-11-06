@@ -39,7 +39,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model = model
         self._model.observe(
             self._on_submission,
-            "submitted",
+            "confirmed",
         )
         self._model.observe(
             self._on_input_structure_change,
@@ -179,7 +179,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self._toggle_code(code)
 
     def submit(self, _=None):
-        self._model.submit()
+        self._model.confirm()
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -201,8 +201,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_process_change(self, _):
         with self.hold_trait_notifications():
             # TODO why here? Do we not populate traits earlier that would cover this?
-            if self._model.process is not None:
-                self._model.input_structure = self._model.process.inputs.structure
+            if self._model.process_node is not None:
+                self._model.input_structure = self._model.process_node.inputs.structure
             self._update_state()
 
     def _on_submission_blockers_change(self, _):
@@ -377,7 +377,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.FAIL
         elif self.previous_step_state is not self.State.SUCCESS:
             self.state = self.State.INIT
-        elif self._model.process is not None:
+        elif self._model.process_node is not None:
             self.state = self.State.SUCCESS
         elif self._model.is_blocked:
             self.state = self.State.READY
