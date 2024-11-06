@@ -980,7 +980,7 @@ class LazyLoadedStructureImporter(ipw.VBox):
 class LazyLoadedOptimade(LazyLoadedStructureImporter):
     warning_message = "OPTIMADE may take some time to load"
 
-    def _get_children(self):
+    def _get_widget(self):
         from aiidalab_widgets_base.databases import OptimadeQueryWidget
 
         return OptimadeQueryWidget(embedded=False)

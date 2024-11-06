@@ -18,7 +18,7 @@ from aiidalab_qe.app.structure.model import StructureModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.app.submission.model import SubmissionModel
 from aiidalab_qe.common.widgets import LoadingWidget
-from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
+from aiidalab_widgets_base import WizardAppWidget
 
 
 class App(ipw.VBox):
