@@ -1,4 +1,5 @@
 import subprocess
+import json
 from pathlib import Path
 from shutil import which
 
@@ -44,18 +45,40 @@ CODE_NAMES = (
 
 
 def qe_installed():
-    import json
+    """Check if Quantum Espresso (QE) is installed in the specified conda environment.
+    
+    Returns:
+        bool: True if the environment exists and QE is installed; False otherwise.
+    """
+    try:
+        # Verify if the specified conda environment exists
+        env_exist = get_qe_env().exists()
+        
+        if not env_exist:
+            return False
+        
+        # Run the conda list command to check for the QE package
+        proc = subprocess.run(
+            ["conda", "list", "-n", f"{get_qe_env().name}", "--json", "--full-name", "qe"],
+            check=True,
+            capture_output=True,
+        )
+        
+        # Load and interpret the JSON output
+        info = json.loads(proc.stdout.decode())
+        
+        # Check if 'qe' is listed in the environment
+        for package in info:
+            if package.get("name") == "qe":
+                return True
+        return False
 
-    env_exist = get_qe_env().exists()
-    proc = subprocess.run(
-        ["conda", "list", "-n", f"{get_qe_env().name}", "--json", "--full-name", "qe"],
-        check=True,
-        capture_output=True,
-    )
-
-    info = json.loads(str(proc.stdout.decode()))[0]
-
-    return env_exist and "qe" == info["name"]
+    except subprocess.CalledProcessError as e:
+        # Handle cases where the conda list command fails
+        return False
+    except (json.JSONDecodeError, IndexError) as e:
+        # Handle cases where the JSON output is invalid or missing expected data
+        return False
 
 
 def install_qe():
