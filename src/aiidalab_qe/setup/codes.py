@@ -79,8 +79,7 @@ def qe_installed():
         for package in info:
             if package.get("name") == "qe":
                 return True
-        else:
-            return False
+        return False
 
     except subprocess.CalledProcessError:
         # Handle cases where the conda list command fails
