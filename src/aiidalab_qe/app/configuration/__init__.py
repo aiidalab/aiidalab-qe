@@ -41,6 +41,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "input_structure",
         )
 
+        self.rendered = False
+
         self.structure_set_message = ipw.HTML()
         ipw.dlink(
             (self._model, "input_structure"),
@@ -67,9 +69,9 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "advanced": self.advanced_settings,
         }
 
-        self._fetch_plugin_settings()
+        self.property_children = []
 
-        self.rendered = False
+        self._fetch_plugin_settings()
 
     def render(self):
         if self.rendered:
@@ -91,15 +93,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.relax_type, "value"),
         )
 
-        self.tab = ipw.Tab(
+        self.tabs = ipw.Tab(
             layout=ipw.Layout(min_height="250px"),
             selected_index=None,
         )
-        self.tab.observe(
+        self.tabs.observe(
             self._on_tab_change,
             "selected_index",
         )
-        self._update_tabs()
 
         self.sub_steps = ipw.Accordion(
             children=[
@@ -108,7 +109,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         *self.property_children,
                     ]
                 ),
-                self.tab,
+                self.tabs,
             ],
             layout=ipw.Layout(margin="10px 2px"),
             selected_index=None,
@@ -146,6 +147,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = True
 
+        self._update_tabs()
+
         if self._model.confirmed:  # loaded from a process
             return
 
@@ -166,7 +169,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.reset()
         if self.rendered:
             self.sub_steps.selected_index = None
-            self.tab.selected_index = 0
+            self.tabs.selected_index = 0
 
     @tl.observe("previous_step_state")
     def _on_previous_step_state_change(self, _):
@@ -175,7 +178,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
-        tab: SettingsPanel = self.tab.children[tab_index]  # type: ignore
+        tab: SettingsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
         tab.update()
 
@@ -194,12 +197,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 settings = self.settings[identifier]
                 titles.append(settings.title)
                 children.append(settings)
-        if hasattr(self, "tab"):
-            self.tab.selected_index = None
-            self.tab.children = children
+        if self.rendered:
+            self.tabs.selected_index = None
+            self.tabs.children = children
             for i, title in enumerate(titles):
-                self.tab.set_title(i, title)
-            self.tab.selected_index = 0
+                self.tabs.set_title(i, title)
+            self.tabs.selected_index = 0
 
     def _update_state(self, _=None):
         if self._model.confirmed:
@@ -212,13 +215,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.INIT
 
     def _fetch_plugin_settings(self):
-        self.property_children = []
-
         outlines = get_entry_items("aiidalab_qe.properties", "outline")
-        models = get_entry_items("aiidalab_qe.properties", "model")
-        settings = get_entry_items("aiidalab_qe.properties", "setting")
-        for identifier in settings:
-            model: SettingsModel = models[identifier]()
+        entries = get_entry_items("aiidalab_qe.properties", "setting")
+        for identifier, entry in entries.items():
+            for key in ("panel", "model"):
+                if key not in entry:
+                    raise ValueError(f"Entry {identifier} is missing the '{key}' key")
+            panel = entry["panel"]
+            model: SettingsModel = entry["model"]()
             self._model.add_model(identifier, model)
 
             outline = outlines[identifier]()
@@ -259,7 +263,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
             )
 
-            self.settings[identifier] = settings[identifier](
+            self.settings[identifier] = panel(
                 parent=self,
                 identifier=identifier,
                 model=model,

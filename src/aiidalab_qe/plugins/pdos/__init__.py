@@ -3,7 +3,7 @@ from aiidalab_qe.common.panel import SettingsOutline
 
 from .model import PdosModel
 from .result import Result
-from .setting import Setting
+from .setting import PdosSettings
 from .workchain import workchain_and_builder
 
 
@@ -23,8 +23,10 @@ pdos = {
             default_calc_job_plugin="quantumespresso.projwfc",
         ),
     },
-    "model": PdosModel,
-    "setting": Setting,
+    "setting": {
+        "panel": PdosSettings,
+        "model": PdosModel,
+    },
     "result": Result,
     "workchain": workchain_and_builder,
 }

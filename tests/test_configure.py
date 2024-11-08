@@ -50,11 +50,11 @@ def test_panel():
     model = ConfigurationModel()
     config = ConfigureQeAppWorkChainStep(model=model)
     config.render()
-    assert len(config.tab.children) == 2
+    assert len(config.tabs.children) == 2
     parameters = model.get_model_state()
     assert "bands" not in parameters
     model.get_model("bands").include = True
-    assert len(config.tab.children) == 3
+    assert len(config.tabs.children) == 3
     parameters = model.get_model_state()
     assert "bands" in parameters
 

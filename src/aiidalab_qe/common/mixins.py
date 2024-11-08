@@ -8,36 +8,6 @@ from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 T = t.TypeVar("T")
 
 
-class MissingMixinError(Exception):
-    """Raised when no mixin is found in a class definition."""
-
-    def __init__(self, *args: object) -> None:
-        super().__init__("expected at least one mixin in class definion", *args)
-
-
-class MetaMixinTraitsRegister(tl.MetaHasTraits):
-    """A metaclass to register traits from `HasTraits`-subclassed mixins.
-
-    The metaclass removes the `HasTraits` base class from the mixin to
-    avoid MRO conflicts.
-    """
-
-    def __new__(cls, name, bases, classdict):
-        if len(bases) == 1 and not issubclass(bases[0], tl.HasTraits):
-            raise MissingMixinError()
-        for base in bases:
-            if issubclass(base, tl.HasTraits):
-                for name, trait in base.class_traits().items():
-                    if name not in classdict:
-                        classdict[name] = trait
-        bases = tuple(filter(lambda base: base is not tl.HasTraits, bases))
-        return super().__new__(cls, name, bases, classdict)
-
-
-class HasTraitsAndMixins(tl.HasTraits, metaclass=MetaMixinTraitsRegister):
-    """An extension of `traitlet`'s `HasTraits` to support trait-ful mixins."""
-
-
 class HasInputStructure(tl.HasTraits):
     input_structure = tl.Union(
         [

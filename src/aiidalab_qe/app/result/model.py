@@ -7,9 +7,10 @@ import traitlets as tl
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida.engine.processes import control
+from aiidalab_qe.common.mvc import Model
 
 
-class ResultsModel(tl.HasTraits):
+class ResultsModel(Model):
     process = tl.Unicode(allow_none=True)
 
     process_info = tl.Unicode("")

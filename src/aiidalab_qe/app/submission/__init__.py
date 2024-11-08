@@ -77,13 +77,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "qe_installed",
         )
 
+        self.rendered = False
+
         self.code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
 
         self._install_sssp(qe_auto_setup)
         self._set_up_qe(qe_auto_setup)
         self._set_up_codes()
-
-        self.rendered = False
 
     def render(self):
         if self.rendered:

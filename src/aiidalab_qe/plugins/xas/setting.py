@@ -7,7 +7,7 @@ from aiidalab_qe.common.panel import SettingsPanel
 from .model import XasModel
 
 
-class Setting(SettingsPanel[XasModel]):
+class XasSettings(SettingsPanel[XasModel]):
     title = "XAS"
     identifier = "xas"
 

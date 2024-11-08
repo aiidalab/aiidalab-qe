@@ -6,7 +6,7 @@ from aiidalab_qe.common.panel import SettingsPanel
 from aiidalab_qe.plugins.bands.model import BandsModel
 
 
-class Setting(SettingsPanel[BandsModel]):
+class BandsSettings(SettingsPanel[BandsModel]):
     title = "Bands Structure"
     identifier = "bands"
 

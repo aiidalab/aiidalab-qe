@@ -4,8 +4,10 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
+from aiidalab_qe.common.mvc import Model
 
-class AdvancedSubModel(tl.HasTraits):
+
+class AdvancedSubModel(Model):
     dependencies = []
 
     loaded_from_process = tl.Bool(False)
@@ -50,10 +52,10 @@ class AdvancedSubSettings(ipw.VBox, t.Generic[M]):
             "override",
         )
 
-        self.links = []
-
         self.rendered = False
         self.updated = False
+
+        self.links = []
 
     def render(self):
         raise NotImplementedError

@@ -13,7 +13,8 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiidalab_qe.common.mixins import Confirmable, HasTraitsAndMixins
+from aiidalab_qe.common.mixins import Confirmable
+from aiidalab_qe.common.mvc import Model
 
 DEFAULT_PARAMETERS = {}
 
@@ -69,7 +70,7 @@ class SettingsOutline(ipw.HBox):
         )
 
 
-class SettingsModel(HasTraitsAndMixins, Confirmable):
+class SettingsModel(Model, Confirmable):
     title = "Model"
     dependencies: list[str] = []
 
@@ -101,14 +102,14 @@ class SettingsModel(HasTraitsAndMixins, Confirmable):
         pass
 
 
-M = t.TypeVar("M", bound=SettingsModel)
+SM = t.TypeVar("SM", bound=SettingsModel)
 
 
-class SettingsPanel(Panel, t.Generic[M]):
+class SettingsPanel(Panel, t.Generic[SM]):
     title = "Settings"
     description = ""
 
-    def __init__(self, model: M, **kwargs):
+    def __init__(self, model: SM, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         self.loading_message = LoadingWidget(f"Loading {self.identifier} settings")
@@ -120,10 +121,10 @@ class SettingsPanel(Panel, t.Generic[M]):
 
         self._model = model
 
-        self.links = []
-
         self.rendered = False
         self.updated = False
+
+        self.links = []
 
     def render(self):
         raise NotImplementedError

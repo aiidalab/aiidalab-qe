@@ -9,7 +9,7 @@ from .model import PdosModel
 RYDBERG_TO_EV = 13.605703976
 
 
-class Setting(SettingsPanel[PdosModel]):
+class PdosSettings(SettingsPanel[PdosModel]):
     title = "PDOS"
     identifier = "pdos"
 

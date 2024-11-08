@@ -3,10 +3,11 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.common import NotExistent
+from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
 
-class CodeModel(tl.HasTraits):
+class CodeModel(Model):
     is_active = tl.Bool(False)
     options = tl.List(
         trait=tl.Tuple(tl.Unicode(), tl.Unicode()),  # code option (label, uuid)

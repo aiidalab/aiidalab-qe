@@ -9,15 +9,15 @@ from aiidalab_qe.common.mixins import (
     Confirmable,
     HasInputStructure,
     HasModels,
-    HasTraitsAndMixins,
 )
+from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.panel import SettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class ConfigurationModel(
-    HasTraitsAndMixins,
+    Model,
     HasModels[SettingsModel],
     HasInputStructure,
     Confirmable,

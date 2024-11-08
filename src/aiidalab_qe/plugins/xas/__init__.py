@@ -8,7 +8,7 @@ from aiidalab_qe.plugins import xas as xas_folder
 
 from .model import XasModel
 from .result import Result
-from .setting import Setting
+from .setting import XasSettings
 from .workchain import workchain_and_builder
 
 PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
@@ -26,8 +26,10 @@ xas = {
             default_calc_job_plugin="quantumespresso.xspectra",
         )
     },
-    "model": XasModel,
-    "setting": Setting,
+    "setting": {
+        "panel": XasSettings,
+        "model": XasModel,
+    },
     "result": Result,
     "workchain": workchain_and_builder,
 }

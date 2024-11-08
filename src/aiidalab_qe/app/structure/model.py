@@ -1,10 +1,11 @@
 import traitlets as tl
 
-from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasTraitsAndMixins
+from aiidalab_qe.common.mixins import Confirmable, HasInputStructure
+from aiidalab_qe.common.mvc import Model
 
 
 class StructureModel(
-    HasTraitsAndMixins,
+    Model,
     HasInputStructure,
     Confirmable,
 ):
