@@ -80,13 +80,10 @@ def qe_installed():
             if package.get("name") == "qe":
                 return True
         return False  # noqa: TRY300
-
-    except subprocess.CalledProcessError:
-        # Handle cases where the conda list command fails
-        return False
-    except (json.JSONDecodeError, IndexError):
-        # Handle cases where the JSON output is invalid or missing expected data
-        return False
+    except Exception as error:
+        raise RuntimeError(
+            "Failed to check if Quantum Espresso is installed."
+        ) from error
 
 
 def install_qe():
