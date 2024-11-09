@@ -9,15 +9,12 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
 import time
-
-# sys.path.insert(0, os.path.abspath('.'))
 
 # -- Project information -----------------------------------------------------
 
+version = "v24.10.0a3"
+release = f"{version}-dev"
 project = "Quantum ESPRESSO App"
 copyright_first_year = "2023"
 copyright_owners = "The AiiDAlab Team"
@@ -28,9 +25,7 @@ copyright_year_string = (
     if current_year == copyright_first_year
     else f"{copyright_first_year}-{current_year}"
 )
-copyright = "{}, {}. All rights reserved".format(
-    copyright_year_string, copyright_owners
-)
+copyright = f"{copyright_year_string}, {copyright_owners}. All rights reserved"  # noqa: A001
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
@@ -75,14 +70,19 @@ exclude_patterns = []
 #
 html_theme = "pydata_sphinx_theme"
 
-# The name of an image file (relative to this directory) to place at the top
-# of the sidebar.
-html_logo = "_static/images/full_logo.png"
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+# Using this instead of `html_logo` to handle light/dark modes
+# See https://pydata-sphinx-theme.readthedocs.io
+html_theme_options = {
+    "logo": {
+        "image_light": "logo.png",
+        "image_dark": "logo_dark.png",
+    },
+}
 
 # If true, links to the reST sources are added to the pages.
 html_show_sourcelink = False

@@ -1,8 +1,10 @@
 """Widgets related to process management."""
+
 from dataclasses import make_dataclass
 
 import ipywidgets as ipw
 import traitlets as tl
+
 from aiida.tools.query.calculation import CalculationQueryBuilder
 
 
@@ -86,9 +88,9 @@ class WorkChainSelector(ipw.HBox):
         self.refresh_work_chains()
         # the following is needed to disable the button.
 
-    def parse_extra_info(self, pk: int) -> dict:
+    def parse_extra_info(self, _pk: int) -> dict:
         """Parse extra information about the work chain."""
-        return dict()
+        return {}
 
     def find_work_chains(self):
         builder = CalculationQueryBuilder()

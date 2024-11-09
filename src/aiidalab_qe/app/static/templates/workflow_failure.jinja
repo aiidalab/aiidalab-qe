@@ -1,0 +1,29 @@
+<body>
+
+<div class="alert alert-danger error-container">
+
+<p>
+Oh no... It seems the workflow did not complete successfully.
+Unfortunately, DFT calculations are not guaranteed to run to completion in all cases.
+You can either consult the workflow report below or download the calculation files to help understand what went wrong.
+</p>
+
+<p>
+The returned error message of the final failed calculation is:
+
+<pre>{{ calcjob_exit_message }}</pre>
+
+</p>
+
+<details class="error">
+    <summary class="summary">
+        <i class="fa fa-clipboard"></i> View the full workflow report
+    </summary>
+    <div class="code-holder">
+        <code>{{ process_report }}</code>
+    </div>
+</details>
+
+<div>
+
+</body>

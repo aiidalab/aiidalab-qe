@@ -5,9 +5,13 @@ Authors: AiiDAlab team
 
 import pathlib
 
-import aiida
 import ipywidgets as ipw
-import traitlets
+import traitlets as tl
+
+import aiida
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common import AddingTagsEditor
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
@@ -19,22 +23,21 @@ from aiidalab_widgets_base import (
     WizardAppWidgetStep,
 )
 
-from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common import AddingTagsEditor
-
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
 file_path = pathlib.Path(__file__).parent
 Examples = [
-    ("Silicon (diamond)", file_path / "examples" / "Si.xyz"),
-    ("Silicon oxide", file_path / "examples" / "SiO2.xyz"),
-    ("Diamond", file_path / "examples" / "diamond.cif"),
-    ("Gallium arsenide", file_path / "examples" / "GaAs.xyz"),
-    ("Gold (fcc)", file_path / "examples" / "Au.cif"),
-    ("Cobalt (hcp)", file_path / "examples" / "Co.cif"),
+    ("Bulk silicon (primitive cell)", file_path / "examples" / "Si.cif"),
+    ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
+    ("Diamond (primitive cell)", file_path / "examples" / "Diamond.cif"),
+    ("Gallium arsenide (primitive cell)", file_path / "examples" / "GaAs.cif"),
+    ("Gold (conventional cell)", file_path / "examples" / "Au.cif"),
+    ("Cobalt (primitive cell)", file_path / "examples" / "Co.cif"),
+    ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
+    ("Phenylacetylene molecule", file_path / "examples" / "Phenylacetylene.xyz"),
+    ("ETFA molecule", file_path / "examples" / "ETFA.xyz"),
+    ("LiCoO2", file_path / "examples" / "LiCoO2.cif"),
 ]
-
-OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
 
 
 class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
@@ -44,14 +47,21 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     structure importers and the structure editors can be extended by plugins.
     """
 
-    structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
-    confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
+    structure = tl.Instance(aiida.orm.StructureData, allow_none=True)
+    confirmed_structure = tl.Instance(aiida.orm.StructureData, allow_none=True)
 
     def __init__(self, description=None, **kwargs):
         importers = [
             StructureUploadWidget(title="Upload file"),
             OptimadeQueryWidget(embedded=False),
-            StructureBrowserWidget(title="AiiDA database"),
+            StructureBrowserWidget(
+                title="AiiDA database",
+                query_types=(
+                    aiida.orm.StructureData,
+                    aiida.orm.CifData,
+                    HubbardStructureData,
+                ),
+            ),
             StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
         # add plugin specific structure importers
@@ -78,9 +88,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             description = ipw.HTML(
                 """
                 <p>Select a structure from one of the following sources and then click
-                "Confirm" to go to the next step. </p><i class="fa fa-exclamation-circle"
-                aria-hidden="true"></i> Currently only three-dimensional structures are
-                supported.
+                "Confirm" to go to the next step. </p>
                 """
             )
         self.description = description
@@ -115,10 +123,10 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.message_area,
                 self.confirm_button,
             ],
-            **kwargs
+            **kwargs,
         )
 
-    @traitlets.default("state")
+    @tl.default("state")
     def _default_state(self):
         return self.State.INIT
 
@@ -134,7 +142,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             else:
                 self.state = self.State.SUCCESS
 
-    @traitlets.observe("structure")
+    @tl.observe("structure")
     def _observe_structure(self, change):
         structure = change["new"]
         with self.hold_trait_notifications():
@@ -145,12 +153,12 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
                 self.structure_name_text.value = str(self.structure.get_formula())
             self._update_state()
 
-    @traitlets.observe("confirmed_structure")
+    @tl.observe("confirmed_structure")
     def _observe_confirmed_structure(self, _):
         with self.hold_trait_notifications():
             self._update_state()
 
-    @traitlets.observe("state")
+    @tl.observe("state")
     def _observe_state(self, change):
         with self.hold_trait_notifications():
             state = change["new"]

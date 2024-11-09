@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """This module contains project version information for both the app and the workflow."""
 
-__version__ = "v23.11.0rc0"
+__version__ = "v24.10.0a3"

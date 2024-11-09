@@ -1,4 +1,5 @@
 import ipywidgets as ipw
+
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 
 FUNCTIONAL_LINK_MAP = {
@@ -22,6 +23,16 @@ PERIODICITY_MAPPING = {
     (True, True, True): "xyz",
     (True, True, False): "xy",
     (True, False, False): "x",
+    (False, False, False): "molecule",
+}
+
+VDW_CORRECTION_VERSION = {
+    3: "Grimme-D3",
+    4: "Grimme-D3BJ",
+    5: "Grimme-D3M",
+    6: "Grimme-D3MBJ",
+    "ts-vdw": "Tkatchenko-Scheffler",
+    "none": "None",
 }
 
 
@@ -46,7 +57,9 @@ def generate_report_parameters(qeapp_wc):
     if "workchain" not in ui_parameters:
         return {}
     report = {
-        "relaxed": ui_parameters["workchain"]["relax_type"],
+        "relaxed": None
+        if ui_parameters["workchain"]["relax_type"] == "none"
+        else ui_parameters["workchain"]["relax_type"],
         "relax_method": ui_parameters["workchain"]["relax_type"],
         "electronic_type": ui_parameters["workchain"]["electronic_type"],
         "material_magnetic": ui_parameters["workchain"]["spin_type"],
@@ -94,7 +107,9 @@ def generate_report_parameters(qeapp_wc):
     energy_cutoff_wfc = pw_parameters["SYSTEM"]["ecutwfc"]
     energy_cutoff_rho = pw_parameters["SYSTEM"]["ecutrho"]
     occupation = pw_parameters["SYSTEM"]["occupations"]
-    scf_kpoints_distance = qeapp_wc.inputs.relax.base.kpoints_distance.value
+    scf_kpoints_distance = (
+        qeapp_wc.inputs.relax.base.kpoints_distance.base.attributes.get("value")
+    )
     report.update(
         {
             "energy_cutoff_wfc": energy_cutoff_wfc,
@@ -107,9 +122,26 @@ def generate_report_parameters(qeapp_wc):
         report["degauss"] = pw_parameters["SYSTEM"]["degauss"]
         report["smearing"] = pw_parameters["SYSTEM"]["smearing"]
     report["tot_charge"] = pw_parameters["SYSTEM"].get("tot_charge", 0.0)
+    report["vdw_corr"] = VDW_CORRECTION_VERSION.get(
+        pw_parameters["SYSTEM"].get("dftd3_version"),
+        pw_parameters["SYSTEM"].get("vdw_corr", "none"),
+    )
     report["periodicity"] = PERIODICITY_MAPPING.get(
         qeapp_wc.inputs.structure.pbc, "xyz"
     )
+
+    # Spin-Oribit coupling
+    report["spin_orbit"] = pw_parameters["SYSTEM"].get("lspinorb", False)
+
+    # DFT+U
+    hubbard_dict = ui_parameters["advanced"].pop("hubbard_parameters", None)
+    if hubbard_dict:
+        hubbard_parameters = hubbard_dict["hubbard_u"]
+        report["hubbard_u"] = hubbard_parameters
+    report["tot_magnetization"] = pw_parameters["SYSTEM"].get(
+        "tot_magnetization", False
+    )
+
     # hard code bands and pdos
     if "bands" in qeapp_wc.inputs:
         report["bands_kpoints_distance"] = PwBandsWorkChain.get_protocol_inputs(
@@ -117,9 +149,9 @@ def generate_report_parameters(qeapp_wc):
         )["bands_kpoints_distance"]
 
     if "pdos" in qeapp_wc.inputs:
-        report[
-            "nscf_kpoints_distance"
-        ] = qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
+        report["nscf_kpoints_distance"] = (
+            qeapp_wc.inputs.pdos.nscf.kpoints_distance.base.attributes.get("value")
+        )
     return report
 
 
@@ -127,11 +159,11 @@ def _generate_report_html(report):
     """Read from the bulider parameters and generate a html for reporting
     the inputs for the `QeAppWorkChain`.
     """
-    from importlib import resources
+    from importlib.resources import files
 
     from jinja2 import Environment
 
-    from aiidalab_qe.app import static
+    from aiidalab_qe.app.static import styles, templates
 
     def _fmt_yes_no(truthy):
         return "Yes" if truthy else "No"
@@ -142,8 +174,8 @@ def _generate_report_html(report):
             "fmt_yes_no": _fmt_yes_no,
         }
     )
-    template = resources.read_text(static, "workflow_summary.jinja")
-    style = resources.read_text(static, "style.css")
+    template = files(templates).joinpath("workflow_summary.jinja").read_text()
+    style = files(styles).joinpath("style.css").read_text()
     report = {key: value for key, value in report.items() if value is not None}
 
     return env.from_string(template).render(style=style, **report)

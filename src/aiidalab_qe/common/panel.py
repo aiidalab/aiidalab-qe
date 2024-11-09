@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """Class to .
 
 Authors:
 
     AiiDAlab Team
 """
+
 import ipywidgets as ipw
 
 DEFAULT_PARAMETERS = {}
@@ -71,7 +71,7 @@ class OutlinePanel(Panel):
             description=self.title,
             indent=False,
             value=False,
-            layout=ipw.Layout(max_width="50%"),
+            style={"description_width": "initial"},
         )
         self.description_html = ipw.HTML(
             f"""<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">

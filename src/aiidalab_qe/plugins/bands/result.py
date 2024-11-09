@@ -1,28 +1,7 @@
-"""Bands results view widgets
+"""Bands results view widgets"""
 
-"""
-
-
+from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
 from aiidalab_qe.common.panel import ResultPanel
-
-
-def export_bands_data(outputs, fermi_energy=None):
-    """Export the bands data from the outputs of the calculation."""
-    import json
-
-    from monty.json import jsanitize
-
-    if "band_structure" in outputs:
-        data = json.loads(
-            outputs.band_structure._exportcontent("json", comments=False)[0]
-        )
-        # The fermi energy from band calculation is not robust.
-        data["fermi_level"] = fermi_energy or outputs.band_parameters["fermi_energy"]
-        return [
-            jsanitize(data),
-        ]
-    else:
-        return None
 
 
 class Result(ResultPanel):
@@ -35,12 +14,24 @@ class Result(ResultPanel):
         super().__init__(node=node, **kwargs)
 
     def _update_view(self):
-        from widget_bandsplot import BandsPlotWidget
+        # Initialize bands_node to None by default
+        bands_node = None
 
-        bands_data = export_bands_data(self.outputs.bands)
-        _bands_plot_view = BandsPlotWidget(
-            bands=bands_data,
-        )
+        # Check if the workchain has the 'bands' output
+        if hasattr(self.node.outputs, "bands"):
+            bands_output = self.node.outputs.bands
+
+            # Check for 'bands' or 'bands_projwfc' attributes within 'bands' output
+            if hasattr(bands_output, "bands"):
+                bands_node = bands_output.bands
+            elif hasattr(bands_output, "bands_projwfc"):
+                bands_node = bands_output.bands_projwfc
+            else:
+                # If neither 'bands' nor 'bands_projwfc' exist, use 'bands_output' itself
+                # This is the case for compatibility with older versions of the plugin
+                bands_node = bands_output
+
+        _bands_plot_view = BandPdosWidget(bands=bands_node)
         self.children = [
             _bands_plot_view,
         ]

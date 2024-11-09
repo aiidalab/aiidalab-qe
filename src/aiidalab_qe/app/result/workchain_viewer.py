@@ -1,37 +1,39 @@
 import shutil
 import typing as t
-from importlib import resources
+from importlib.resources import files
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida import orm
-from aiida.cmdline.utils.common import get_workchain_report
-from aiida.common import LinkType
-from aiida.orm.utils.serialize import deserialize_unsafe
-from aiidalab_widgets_base import ProcessMonitor, register_viewer_widget
-from aiidalab_widgets_base.viewers import StructureDataViewer
 from filelock import FileLock, Timeout
 from IPython.display import HTML, display
 from jinja2 import Environment
 
-from aiidalab_qe.app import static
+from aiida import orm
+from aiida.cmdline.utils.common import get_workchain_report
+from aiida.common import LinkType
+from aiida.orm.utils.serialize import deserialize_unsafe
+from aiidalab_qe.app.static import styles, templates
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_widgets_base import register_viewer_widget
+from aiidalab_widgets_base.viewers import StructureDataViewer
 
 from .summary_viewer import SummaryView
+from .utils.download_data import DownloadDataWidget
 
 
 @register_viewer_widget("process.workflow.workchain.WorkChainNode.")
 class WorkChainViewer(ipw.VBox):
     _results_shown = tl.Set()
+    process_uuid = tl.Unicode(allow_none=True)
 
     def __init__(self, node, **kwargs):
         if node.process_label != "QeAppWorkChain":
             super().__init__()
             return
 
-        self.node = node
+        self.process_uuid = node.uuid
         # In the new version of the plugin, the ui_parameters are stored as a yaml string
         # which is then converted to a dictionary
         ui_parameters = node.base.extras.get("ui_parameters", {})
@@ -41,12 +43,12 @@ class WorkChainViewer(ipw.VBox):
         self.title = ipw.HTML(
             f"""
             <hr style="height:2px;background-color:#2097F3;">
-            <h4>QE App Workflow (pk: {self.node.pk}) &mdash;
-                {self.node.inputs.structure.get_formula()}
+            <h4>QE App Workflow (pk: {node.pk}) &mdash;
+                {node.inputs.structure.get_formula()}
             </h4>
             """
         )
-        self.workflows_summary = SummaryView(self.node)
+        self.workflows_summary = SummaryView(node)
 
         self.summary_tab = ipw.VBox(children=[self.workflows_summary])
         # Only the summary tab is shown by default
@@ -59,7 +61,7 @@ class WorkChainViewer(ipw.VBox):
         self.results = {}
         entries = get_entry_items("aiidalab_qe.properties", "result")
         for identifier, entry_point in entries.items():
-            result = entry_point(self.node)
+            result = entry_point(node)
             self.results[identifier] = result
             self.results[identifier].identifier = identifier
 
@@ -89,23 +91,31 @@ class WorkChainViewer(ipw.VBox):
             children=[self.title, self.result_tabs],
             **kwargs,
         )
-        self._process_monitor = ProcessMonitor(
-            process=self.node,
-            callbacks=[
-                self._update_view,
-            ],
-        )
+        # self.process_monitor = ProcessMonitor(
+        #     timeout=1.0,
+        #     on_sealed=[
+        #         self._update_view,
+        #     ],
+        # )
+        # ipw.dlink((self, "process_uuid"), (self.process_monitor, "value"))
+
+    @property
+    def node(self):
+        """Load the workchain node using the process_uuid.
+        Because the workchain node is used in another thread inside the process monitor,
+        we need to load the node from the database, instead of passing the node object.
+        Otherwise, we will get a "Instance is not persistent" error.
+        """
+        return orm.load_node(self.process_uuid)
 
     def _update_view(self):
         with self.hold_trait_notifications():
-            if self.node.is_finished:
+            node = self.node
+            if node.is_finished:
                 self._show_workflow_output()
             # if the structure is present in the workchain,
             # the structure tab will be added.
-            if (
-                "structure" not in self._results_shown
-                and "structure" in self.node.outputs
-            ):
+            if "structure" not in self._results_shown and "structure" in node.outputs:
                 self._show_structure()
                 self.result_tabs.children += (self.structure_tab,)
                 # index of the last tab
@@ -119,7 +129,7 @@ class WorkChainViewer(ipw.VBox):
                 if result.identifier not in self._results_shown:
                     # check if the all required results are in the outputs
                     results_ready = [
-                        label in self.node.outputs for label in result.workchain_labels
+                        label in node.outputs for label in result.workchain_labels
                     ]
                     if all(results_ready):
                         result._update_view()
@@ -147,7 +157,9 @@ class WorkChainOutputs(ipw.VBox):
     _busy = tl.Bool(read_only=True)
 
     def __init__(self, node, export_dir=None, **kwargs):
-        self.export_dir = Path.cwd().joinpath("exports")
+        if export_dir is None:
+            export_dir = Path.cwd().joinpath("exports")
+        self.export_dir = export_dir
 
         if node.process_label != "QeAppWorkChain":
             raise KeyError(str(node.node_type))
@@ -165,7 +177,7 @@ class WorkChainOutputs(ipw.VBox):
             icon="download",
         )
         self._download_archive_button.on_click(self._download_archive)
-        self._download_button_container = ipw.Box([self._download_archive_button])
+        self._download_button_widget = DownloadDataWidget(workchain_node=self.node)
 
         if node.exit_status != 0:
             title = ipw.HTML(
@@ -173,8 +185,8 @@ class WorkChainOutputs(ipw.VBox):
             )
             final_calcjob = self._get_final_calcjob(node)
             env = Environment()
-            template = resources.read_text(static, "workflow_failure.jinja")
-            style = resources.read_text(static, "style.css")
+            template = files(templates).joinpath("workflow_failure.jinja").read_text()
+            style = files(styles).joinpath("style.css").read_text()
             output = ipw.HTML(
                 env.from_string(template).render(
                     style=style,
@@ -188,8 +200,8 @@ class WorkChainOutputs(ipw.VBox):
 
         super().__init__(
             children=[
-                ipw.HBox(
-                    children=[title, self._download_button_container],
+                ipw.VBox(
+                    children=[self._download_button_widget, title],
                     layout=ipw.Layout(justify_content="space-between", margin="10px"),
                 ),
                 output,
@@ -233,7 +245,7 @@ class WorkChainOutputs(ipw.VBox):
         finally:
             self.set_trait("_busy", False)
 
-        id = f"dl_{self.node.uuid}"
+        link_id = f"dl_{self.node.uuid}"
 
         display(
             HTML(
@@ -241,7 +253,7 @@ class WorkChainOutputs(ipw.VBox):
         <html>
         <body>
         <a
-            id="{id}"
+            id="{link_id}"
             href="{fn_archive.relative_to(Path.cwd())}"
             download="{fn_archive.stem}"
         ></a>

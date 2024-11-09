@@ -5,7 +5,9 @@ import pathlib
 import tempfile
 
 import pytest
+
 from aiida import orm
+from aiidalab_qe.setup.pseudos import SSSP_VERSION
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 
@@ -69,7 +71,50 @@ def generate_structure_data():
             structure.append_atom(position=(1.28, 1.28, 0.0), symbols="O")
             structure.append_atom(position=(2.9, 2.9, 0.0), symbols="O")
             structure.append_atom(position=(0.81, 3.37, 1.33), symbols="O")
+
+        elif name == "LiCoO2":
+            a, b, c, d = (
+                1.4060463552647,
+                0.81178124180108,
+                4.6012019181836,
+                1.6235624832021,
+            )
+            cell = [[a, -b, c], [0.0, d, c], [-a, -b, c]]
+            sites = [
+                ["Co", "Co", (0, 0, 0)],
+                ["O", "O", (0, 0, 3.6020728736387)],
+                ["O", "O", (0, 0, 10.201532881212)],
+                ["Li", "Li", (0, 0, 6.9018028772754)],
+            ]
+            structure = orm.StructureData(cell=cell)
+
+            for site in sites:
+                structure.append_atom(position=site[2], symbols=site[0], name=site[1])
+
+        elif name == "MoS2":
+            cell = [[3.1922, 0, 0], [-1.5961, 2.7646, 0], [0, 0, 13.3783]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(-0.0, 1.84, 10.03), symbols="Mo")
+            structure.append_atom(position=(1.6, 0.92, 8.47), symbols="S")
+            structure.append_atom(position=(1.6, 0.92, 11.6), symbols="S")
+
+        elif name == "H2O":
+            cell = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
+            structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
+            structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
+
+        elif name == "H2O-larger":
+            # just a larger supercell. To test the warning messages
+            cell = [[20.0, 0.0, 0.0], [0.0, 20.0, 0.0], [0.0, 0.0, 20.0]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
+            structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
+            structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
+
         structure.pbc = pbc
+
         return structure
 
     return _generate_structure_data
@@ -85,10 +130,6 @@ def generate_xy_data():
         """
         from aiida.orm import XyData
 
-        xvals = xvals
-        yvals = yvals
-        xlabel = xlabel
-        ylabel = ylabel
         xunits = "n/a"
         yunits = ["n/a"] * len(ylabel)
 
@@ -108,6 +149,7 @@ def generate_bands_data():
     def _generate_bands_data():
         """Return a `BandsData` instance with some basic `kpoints` and `bands` arrays."""
         import numpy as np
+
         from aiida.plugins import DataFactory
 
         BandsData = DataFactory("core.array.bands")
@@ -131,6 +173,7 @@ def generate_projection_data(generate_bands_data):
     def _generate_projection_data():
         """Return an ``ProjectionData`` node."""
         import numpy as np
+
         from aiida.plugins import DataFactory, OrbitalFactory
 
         ProjectionData = DataFactory("core.array.projection")
@@ -175,33 +218,34 @@ def sssp(aiida_profile, generate_upf_data):
     cutoffs = {}
     stringency = "standard"
 
-    with tempfile.TemporaryDirectory() as dirpath:
+    actinides = (
+        "Ac",
+        "Th",
+        "Pa",
+        "U",
+        "Np",
+        "Pu",
+        "Am",
+        "Cm",
+        "Bk",
+        "Cf",
+        "Es",
+        "Fm",
+        "Md",
+        "No",
+        "Lr",
+    )
+
+    with tempfile.TemporaryDirectory() as d:
+        dirpath = pathlib.Path(d)
+
         for values in elements.values():
             element = values["symbol"]
-
-            actinides = (
-                "Ac",
-                "Th",
-                "Pa",
-                "U",
-                "Np",
-                "Pu",
-                "Am",
-                "Cm",
-                "Bk",
-                "Cf",
-                "Es",
-                "Fm",
-                "Md",
-                "No",
-                "Lr",
-            )
 
             if element in actinides:
                 continue
 
             upf = generate_upf_data(element)
-            dirpath = pathlib.Path(dirpath)
             filename = dirpath / f"{element}.upf"
 
             with open(filename, "w+b") as handle:
@@ -214,7 +258,7 @@ def sssp(aiida_profile, generate_upf_data):
                 "cutoff_rho": 240.0,
             }
 
-        label = "SSSP/1.2/PBEsol/efficiency"
+        label = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
         family = SsspFamily.create_from_folder(dirpath, label)
 
     family.set_cutoffs(cutoffs, stringency, unit="Ry")
@@ -268,6 +312,16 @@ def projwfc_code(aiida_local_code_factory):
     )
 
 
+@pytest.fixture
+def projwfc_bands_code(aiida_local_code_factory):
+    """Return a `Code` configured for the projwfc.x executable."""
+    return aiida_local_code_factory(
+        label="projwfc_bands",
+        executable="bash",
+        entry_point="quantumespresso.projwfc",
+    )
+
+
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
@@ -295,7 +349,7 @@ def smearing_settings_generator():
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code):
+def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
     from aiidalab_qe.app.main import App
 
     # Since we use `qe_auto_setup=False`, which will skip the pseudo library installation
@@ -305,13 +359,15 @@ def app(pw_code, dos_code, projwfc_code):
     app.submit_step.sssp_installation_status.installed = True
 
     # set up codes
-    app.submit_step.pw_code.refresh()
-    app.submit_step.codes["dos"].refresh()
-    app.submit_step.codes["projwfc"].refresh()
+    app.submit_step.pw_code.code_selection.refresh()
+    app.submit_step.codes["dos"].code_selection.refresh()
+    app.submit_step.codes["projwfc"].code_selection.refresh()
+    app.submit_step.codes["projwfc_bands"].code_selection.refresh()
 
     app.submit_step.pw_code.value = pw_code.uuid
     app.submit_step.codes["dos"].value = dos_code.uuid
     app.submit_step.codes["projwfc"].value = projwfc_code.uuid
+    app.submit_step.codes["projwfc_bands"].value = projwfc_bands_code.uuid
 
     yield app
 
@@ -334,7 +390,9 @@ def submit_app_generator(
         smearing="methfessel-paxton",
         degauss=0.015,
         tot_charge=0.0,
+        vdw_corr="none",
         initial_magnetic_moments=0.0,
+        electron_maxstep=80,
     ):
         configure_step = app.configure_step
         # Settings
@@ -352,10 +410,12 @@ def submit_app_generator(
         # Advanced settings
         configure_step.advanced_settings.override.value = True
         configure_step.advanced_settings.total_charge.value = tot_charge
+        configure_step.advanced_settings.van_der_waals.value = vdw_corr
         configure_step.advanced_settings.kpoints_distance.value = kpoints_distance
         configure_step.advanced_settings.magnetization._set_magnetization_values(
             initial_magnetic_moments
         )
+        configure_step.advanced_settings.electron_maxstep.value = electron_maxstep
         # mimic the behavior of the smearing widget set up
         configure_step.advanced_settings.smearing.smearing.value = smearing
         configure_step.advanced_settings.smearing.degauss.value = degauss
@@ -363,7 +423,7 @@ def submit_app_generator(
         #
         submit_step = app.submit_step
         submit_step.input_structure = generate_structure_data()
-        submit_step.resources_config.num_cpus.value = 2
+        submit_step.pw_code.num_cpus.value = 2
 
         return app
 
@@ -419,15 +479,26 @@ def generate_pdos_workchain(
 
     def _generate_pdos_workchain(structure, spin_type="none"):
         import numpy as np
+
         from aiida import engine
         from aiida.orm import Dict, FolderData, RemoteData
         from aiida_quantumespresso.workflows.pdos import PdosWorkChain
+
+        pseudo_family = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
         inputs = {
             "pw_code": fixture_code("quantumespresso.pw"),
             "dos_code": fixture_code("quantumespresso.dos"),
             "projwfc_code": fixture_code("quantumespresso.projwfc"),
             "structure": structure,
+            "overrides": {
+                "scf": {
+                    "pseudo_family": pseudo_family,
+                },
+                "nscf": {
+                    "pseudo_family": pseudo_family,
+                },
+            },
         }
         builder = PdosWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
@@ -515,39 +586,66 @@ def generate_pdos_workchain(
 
 @pytest.fixture
 def generate_bands_workchain(
-    fixture_localhost,
     fixture_code,
-    generate_xy_data,
     generate_bands_data,
     generate_workchain,
 ):
     """Generate an instance of a the WorkChain."""
 
     def _generate_bands_workchain(structure):
-        from copy import deepcopy
-
         from aiida import engine
         from aiida.orm import Dict
-        from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+        from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
+
+        pseudo_family = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
         inputs = {
-            "code": fixture_code("quantumespresso.pw"),
+            "pw_code": fixture_code("quantumespresso.pw"),
+            "projwfc_code": fixture_code("quantumespresso.projwfc"),
             "structure": structure,
+            "simulation_mode": "normal",
+            "overrides": {
+                "scf": {
+                    "pseudo_family": pseudo_family,
+                },
+                "bands": {
+                    "pseudo_family": pseudo_family,
+                },
+                "relax": {
+                    "base": {
+                        "pseudo_family": pseudo_family,
+                    },
+                    "base_final_scf": {
+                        "pseudo_family": pseudo_family,
+                    },
+                },
+            },
         }
-        builder = PwBandsWorkChain.get_builder_from_protocol(**inputs)
+        builder = BandsWorkChain.get_builder_from_protocol(**inputs)
         inputs = builder._inputs()
-        inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
-        wkchain = generate_workchain(PwBandsWorkChain, inputs)
+        wkchain = generate_workchain(BandsWorkChain, inputs)
         wkchain.setup()
         # run bands and return the process
-        output_parameters = Dict(dict={"fermi_energy": 2.0})
-        output_parameters.store()
-        wkchain.out("scf_parameters", output_parameters)
-        wkchain.out("band_parameters", output_parameters)
+        fermi_dict = Dict(dict={"fermi_energy": 2.0})
+        fermi_dict.store()
+        output_parameters = {
+            "bands": {
+                "scf_parameters": fermi_dict,
+                "band_parameters": fermi_dict,
+            }
+        }
+
+        wkchain.out(
+            "bands.scf_parameters", output_parameters["bands"]["scf_parameters"]
+        )
+        wkchain.out(
+            "bands.band_parameters", output_parameters["bands"]["band_parameters"]
+        )
+
         #
         band_structure = generate_bands_data()
         band_structure.store()
-        wkchain.out("band_structure", band_structure)
+        wkchain.out("bands.band_structure", band_structure)
         wkchain.update_outputs()
         #
         bands_node = wkchain.node
@@ -564,6 +662,7 @@ def generate_qeapp_workchain(
     generate_workchain,
     generate_pdos_workchain,
     generate_bands_workchain,
+    fixture_code,
 ):
     """Generate an instance of the WorkChain."""
 
@@ -573,12 +672,17 @@ def generate_qeapp_workchain(
         run_bands=True,
         run_pdos=True,
         spin_type="none",
+        electronic_type="metal",
+        magnetization_type="starting_magnetization",  # Options: "starting_magnetization", "tot_magnetization"
         initial_magnetic_moments=0.0,
+        tot_magnetization=0.0,
     ):
         from copy import deepcopy
 
+        from aiida.orm import Dict
         from aiida.orm.utils.serialize import serialize
-
+        from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+        from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
         from aiidalab_qe.workflows import QeAppWorkChain
 
         # Step 1: select structure from example
@@ -595,7 +699,7 @@ def generate_qeapp_workchain(
         s1.confirm()
         structure = s1.confirmed_structure
         # step 2 configure
-        s2 = app.configure_step
+        s2: ConfigureQeAppWorkChainStep = app.configure_step
         s2.workchain_settings.relax_type.value = relax_type
         # In order to parepare a complete inputs, I set all the properties to true
         # this can be overrided later
@@ -603,20 +707,55 @@ def generate_qeapp_workchain(
         s2.workchain_settings.properties["pdos"].run.value = run_pdos
         s2.workchain_settings.workchain_protocol.value = "fast"
         s2.workchain_settings.spin_type.value = spin_type
-        s2.advanced_settings.magnetization._set_magnetization_values(
-            initial_magnetic_moments
-        )
+        s2.workchain_settings.electronic_type.value = electronic_type
+        if spin_type == "collinear":
+            s2.advanced_settings.override.value = True
+            magnetization_values = (
+                initial_magnetic_moments
+                if magnetization_type == "starting_magnetization"
+                else tot_magnetization
+            )
+            s2.advanced_settings.magnetization._set_tot_magnetization(
+                tot_magnetization
+            ) if electronic_type == "insulator" else s2.advanced_settings.magnetization._set_magnetization_values(
+                magnetization_values
+            )
+
         s2.confirm()
         # step 3 setup code and resources
-        s3 = app.submit_step
-        s3.resources_config.num_cpus.value = 4
+        s3: SubmitQeAppWorkChainStep = app.submit_step
+        s3.pw_code.num_cpus.value = 4
+
         builder = s3._create_builder()
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
+
+        # Setting up inputs for bands_projwfc
+        inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
+            inputs["bands"]["bands"]["scf"]["pw"]
+        )
+        inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
+            inputs["bands"]["bands"]["bands"]["pw"]
+        )
+        inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
+            "bands"
+        ]["bands"]["pw"]["code"]
+        inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
+            "bands"
+        ]["scf"]["pw"]["code"]
+
+        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = fixture_code(
+            "quantumespresso.projwfc"
+        )
+        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
+            {"PROJWFC": {"DeltaE": 0.01}}
+        ).store()
+
         if run_bands:
             inputs["properties"].append("bands")
         if run_pdos:
             inputs["properties"].append("pdos")
+
         wkchain = generate_workchain(QeAppWorkChain, inputs)
         wkchain.setup()
         # mock output
@@ -630,11 +769,11 @@ def generate_qeapp_workchain(
                 wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
             )
         if run_bands:
-            from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+            from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 
             bands = generate_bands_workchain(structure)
             wkchain.out_many(
-                wkchain.exposed_outputs(bands.node, PwBandsWorkChain, namespace="bands")
+                wkchain.exposed_outputs(bands.node, BandsWorkChain, namespace="bands")
             )
         wkchain.update_outputs()
         # set ui_parameters

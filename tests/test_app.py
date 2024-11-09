@@ -12,7 +12,7 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
     )
     app = submit_app_generator()
     # select the pk
-    app.work_chain_selector.value = wkchain.node.pk
+    app.process = wkchain.node.pk
     # check if the value are reload correctly
     assert app.configure_step.workchain_settings.relax_type.value == "positions"
     assert app.configure_step.workchain_settings.spin_type.value == "collinear"
@@ -24,8 +24,13 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
         )
         > 0
     )
+    assert app.configure_step.state == app.configure_step.State.SUCCESS
+    # in the reload case, go to the submit step should not
+    # trigger the reset of previous steps
+    app._wizard_app_widget.selected_index = 2
+    assert app.configure_step.state == app.configure_step.State.SUCCESS
     # new workflow, this will reset the GUI
-    app.work_chain_selector.value = None
+    app.process = None
     # check if the value are reload correctly
     assert app.structure_step.manager.structure is None
     assert app.configure_step.workchain_settings.relax_type.value == "positions_cell"
@@ -39,7 +44,7 @@ def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
         )
         == 0
     )
-    assert app.submit_step.resources_config.num_cpus.value == 1
+    assert app.submit_step.pw_code.num_cpus.value == 4
 
 
 def test_select_new_structure(app_to_submit, generate_structure_data):

@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
 
-import selenium.webdriver.support.expected_conditions as EC
+import selenium.webdriver.support.expected_conditions as EC  # noqa: N812
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -20,13 +20,15 @@ def test_qe_app_select_silicon_and_confirm(
     driver = selenium_driver("qe.ipynb", wait_time=30.0)
     driver.set_window_size(1920, 1485)
 
-    element = WebDriverWait(driver, 60).until(
+    element = WebDriverWait(driver, 60 * 2).until(
         EC.presence_of_element_located((By.XPATH, "//*[text()='From Examples']"))
     )
     element.click()
 
     try:
-        driver.find_element(By.XPATH, "//option[@value='Diamond']").click()
+        driver.find_element(
+            By.XPATH, "//option[@value='Diamond (primitive cell)']"
+        ).click()
         time.sleep(10)
         element = WebDriverWait(driver, 60).until(
             EC.element_to_be_clickable((By.XPATH, "//button[text()='Confirm']"))
