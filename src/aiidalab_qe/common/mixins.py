@@ -46,6 +46,14 @@ class HasModels(t.Generic[T]):
         raise NotImplementedError()
 
 
+class HasProcess(tl.HasTraits):
+    process_node = tl.Instance(orm.Node, allow_none=True)
+
+    @property
+    def has_process(self):
+        return self.process_node is not None
+
+
 class Confirmable(tl.HasTraits):
     confirmed = tl.Bool(False)
 

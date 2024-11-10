@@ -12,7 +12,7 @@ from aiidalab_widgets_base import (
 from .model import ResultsModel
 
 # trigger registration of the viewer widget:
-from .workchain_viewer import WorkChainViewer  # noqa: F401
+from .viewer import WorkChainViewer  # noqa: F401
 
 PROCESS_COMPLETED = "<h4>Workflow completed successfully!</h4>"
 PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
@@ -31,7 +31,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._model = model
         self._model.observe(
             self._on_process_change,
-            "process",
+            "process_uuid",
         )
 
         self.rendered = False
@@ -42,7 +42,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink(
-            (self._model, "process"),
+            (self._model, "process_uuid"),
             (self.process_tree, "value"),
         )
 
@@ -68,7 +68,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             ],
         )
         ipw.dlink(
-            (self._model, "process"),
+            (self._model, "process_uuid"),
             (self.process_monitor, "value"),
         )
 

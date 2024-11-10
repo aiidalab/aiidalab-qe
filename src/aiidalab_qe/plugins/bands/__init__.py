@@ -3,7 +3,7 @@ from aiidalab_qe.app.submission.code.model import CodeModel
 from aiidalab_qe.common.panel import SettingsOutline
 
 from .model import BandsModel
-from .result import Result
+from .result import BandsResult, BandsResultModel
 from .setting import BandsSettings
 from .workchain import workchain_and_builder
 
@@ -24,6 +24,9 @@ bands = {
         "panel": BandsSettings,
         "model": BandsModel,
     },
-    "result": Result,
+    "result": {
+        "panel": BandsResult,
+        "model": BandsResultModel,
+    },
     "workchain": workchain_and_builder,
 }

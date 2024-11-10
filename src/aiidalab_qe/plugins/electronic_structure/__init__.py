@@ -1,5 +1,8 @@
-from .result import Result
+from .result import ElectronicStructureResult, ElectronicStructureResultModel
 
 electronic_structure = {
-    "result": Result,
+    "result": {
+        "panel": ElectronicStructureResult,
+        "model": ElectronicStructureResultModel,
+    },
 }

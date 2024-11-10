@@ -13,7 +13,7 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiidalab_qe.common.mixins import Confirmable
+from aiidalab_qe.common.mixins import Confirmable, HasProcess
 from aiidalab_qe.common.mvc import Model
 
 DEFAULT_PARAMETERS = {}
@@ -177,7 +177,21 @@ class SettingsPanel(Panel, t.Generic[SM]):
         self._model.reset()
 
 
-class ResultPanel(Panel):
+class ResultsModel(Model, HasProcess):
+    title = "Model"
+
+    data = tl.Any()
+
+    @property
+    def outputs(self):
+        """Outputs of the calculation."""
+        return self.process_node.outputs if self.has_process else None
+
+
+RM = t.TypeVar("RM", bound=ResultsModel)
+
+
+class ResultsPanel(Panel, t.Generic[RM]):
     """Base class for all the result panels.
 
     The base class has a method to load the result of the calculation.
@@ -186,28 +200,26 @@ class ResultPanel(Panel):
     """
 
     title = "Result"
-    # to specify which plugins (outputs) are needed for this result panel.
+
+    # To specify which plugins (outputs) are needed
+    # for this result panel.
     workchain_labels = []
 
-    def __init__(self, node=None, **kwargs):
-        self.node = node
+    def __init__(self, model: RM, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
+        self.loading_message = LoadingWidget(f"Loading {self.identifier} results")
+
         super().__init__(
-            children=[
-                ipw.VBox(
-                    [ipw.Label(f"{self.title} not available.")],
-                    layout=ipw.Layout(min_height="380px"),
-                )
-            ],
+            children=[self.loading_message],
             **kwargs,
         )
 
-    @property
-    def outputs(self):
-        """Outputs of the calculation."""
-        return None if self.node is None else self.node.outputs
+        self._model = model
 
-    def _update_view(self):
-        """Update the result in the panel.
+        self.rendered = False
 
-        :param result: the result of the calculation.
-        """
+        self.links = []
+
+    def render(self):
+        raise NotImplementedError

@@ -264,7 +264,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             )
 
             self.settings[identifier] = panel(
-                parent=self,
                 identifier=identifier,
                 model=model,
             )

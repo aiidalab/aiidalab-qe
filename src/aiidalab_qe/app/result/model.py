@@ -11,7 +11,7 @@ from aiidalab_qe.common.mvc import Model
 
 
 class ResultsModel(Model):
-    process = tl.Unicode(allow_none=True)
+    process_uuid = tl.Unicode(allow_none=True)
 
     process_info = tl.Unicode("")
     process_remote_folder_is_clean = tl.Bool(False)
@@ -25,7 +25,7 @@ class ResultsModel(Model):
 
     def get_process_node(self):
         try:
-            return orm.load_node(self.process) if self.process else None
+            return orm.load_node(self.process_uuid) if self.process_uuid else None
         except NotExistent:
             return None
 
@@ -43,7 +43,7 @@ class ResultsModel(Model):
         self.process_remote_folder_is_clean = True
 
     def reset(self):
-        self.process = None
+        self.process_uuid = None
         self.process_info = ""
 
     def _update_process_remote_folder_state(self):

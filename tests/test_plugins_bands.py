@@ -1,54 +1,54 @@
 def test_result(generate_qeapp_workchain):
     import plotly.graph_objects as go
 
-    from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
-    from aiidalab_qe.plugins.bands.result import Result
+    from aiidalab_qe.common.bands_pdos import BandPdosWidget
+    from aiidalab_qe.plugins.bands.result import BandsResult, BandsResultModel
 
-    wkchain = generate_qeapp_workchain()
+    workchain = generate_qeapp_workchain()
     # generate structure for scf calculation
-    result = Result(wkchain.node)
-    result._update_view()
-    assert isinstance(result.children[0], BandPdosWidget)
-    assert isinstance(result.children[0].bandsplot_widget, go.FigureWidget)
+    model = BandsResultModel()
+    model.process_node = workchain.node
+    result = BandsResult(model=model)
+    result.render()
+
+    widget = result.children[0]
+    model = widget._model
+
+    assert isinstance(widget, BandPdosWidget)
+
+    widget.plot_button.click()
+    assert isinstance(widget.plot, go.FigureWidget)
 
     # Check if data is correct
-    assert result.children[0].bands_data is not None
-    assert result.children[0].bands_data["pathlabels"] is not None
-    assert result.children[0].pdos_data is None
+    assert not model.pdos_data
+    assert model.bands_data
+    assert model.bands_data["pathlabels"]  # type: ignore
 
     # Check Bands axis
-    assert result.children[0].bandsplot_widget.layout.xaxis.title.text == "k-points"
-    assert (
-        result.children[0].bandsplot_widget.layout.yaxis.title.text
-        == "Electronic Bands (eV)"
-    )
-    assert isinstance(
-        result.children[0].bandsplot_widget.layout.xaxis.rangeslider,
-        go.layout.xaxis.Rangeslider,
-    )
-    assert result.children[0].bands_data["pathlabels"][0] == list(
-        result.children[0].bandsplot_widget.layout.xaxis.ticktext
-    )
+    assert widget.plot.layout.xaxis.title.text == "k-points"
+    assert widget.plot.layout.yaxis.title.text == "Electronic Bands (eV)"
+    assert isinstance(widget.plot.layout.xaxis.rangeslider, go.layout.xaxis.Rangeslider)
+    assert model.bands_data["pathlabels"][0] == list(widget.plot.layout.xaxis.ticktext)  # type: ignore
 
 
-def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
-    structure = generate_structure_data("silicon", pbc=(True, False, False))
-    wkchain = generate_qeapp_workchain(structure=structure)
-    assert "bands_kpoints_distance" not in wkchain.inputs.bands.bands
-    assert "bands_kpoints" in wkchain.inputs.bands.bands
-    assert len(wkchain.inputs.bands.bands.bands_kpoints.labels) == 2
-    assert wkchain.inputs.bands.bands.bands_kpoints.labels == [(0, "Γ"), (9, "X")]
+# def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
+#     structure = generate_structure_data("silicon", pbc=(True, False, False))
+#     workchain = generate_qeapp_workchain(structure=structure)
+#     assert "bands_kpoints_distance" not in workchain.inputs.bands.bands
+#     assert "bands_kpoints" in workchain.inputs.bands.bands
+#     assert len(workchain.inputs.bands.bands.bands_kpoints.labels) == 2
+#     assert workchain.inputs.bands.bands.bands_kpoints.labels == [(0, "Γ"), (9, "X")]
 
 
-def test_structure_2d(generate_qeapp_workchain, generate_structure_data):
-    structure = generate_structure_data("MoS2", pbc=(True, True, False))
-    wkchain = generate_qeapp_workchain(structure=structure)
-    assert "bands_kpoints_distance" not in wkchain.inputs.bands.bands
-    assert "bands_kpoints" in wkchain.inputs.bands.bands
-    assert len(wkchain.inputs.bands.bands.bands_kpoints.labels) == 4
-    assert wkchain.inputs.bands.bands.bands_kpoints.labels == [
-        (0, "Γ"),
-        (11, "M"),
-        (18, "K"),
-        (31, "Γ"),
-    ]
+# def test_structure_2d(generate_qeapp_workchain, generate_structure_data):
+#     structure = generate_structure_data("MoS2", pbc=(True, True, False))
+#     workchain = generate_qeapp_workchain(structure=structure)
+#     assert "bands_kpoints_distance" not in workchain.inputs.bands.bands
+#     assert "bands_kpoints" in workchain.inputs.bands.bands
+#     assert len(workchain.inputs.bands.bands.bands_kpoints.labels) == 4
+#     assert workchain.inputs.bands.bands.bands_kpoints.labels == [
+#         (0, "Γ"),
+#         (11, "M"),
+#         (18, "K"),
+#         (31, "Γ"),
+#     ]

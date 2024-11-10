@@ -1,7 +1,7 @@
 from aiidalab_qe.common.panel import SettingsOutline
 
 from .model import XpsModel
-from .result import Result
+from .result import XpsResult, XpsResultModel
 from .setting import XpsSettings
 from .workchain import workchain_and_builder
 
@@ -16,6 +16,9 @@ xps = {
         "panel": XpsSettings,
         "model": XpsModel,
     },
-    "result": Result,
+    "result": {
+        "panel": XpsResult,
+        "model": XpsResultModel,
+    },
     "workchain": workchain_and_builder,
 }

@@ -165,7 +165,7 @@ class App(ipw.VBox):
 
     def _update_results_step(self):
         node = self.submit_model.process_node
-        self.results_model.process = node.uuid if node is not None else None
+        self.results_model.process_uuid = node.uuid if node is not None else None
 
     def _update_blockers(self):
         self.submit_model.external_submission_blockers = [

@@ -915,6 +915,28 @@ class LoadingWidget(ipw.HBox):
         self.add_class("loading")
 
 
+class LazyLoader(ipw.VBox):
+    identifier = "widget"
+
+    def __init__(self, widget_class, widget_kwargs, **kwargs):
+        super().__init__(
+            children=[LoadingWidget(f"Loading {self.identifier}")],
+            **kwargs,
+        )
+
+        self._widget_class = widget_class
+        self._widget_kwargs = widget_kwargs
+
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+        self.widget = self._widget_class(**self._widget_kwargs)
+        self.children = [self.widget]
+        self.rendered = True
+
+
 class LazyLoadedStructureImporter(ipw.VBox):
     """A wrapper that may be used to lazy-load a structure import widget."""
 
