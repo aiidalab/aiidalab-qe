@@ -13,8 +13,30 @@ class XpsModel(SettingsModel, HasInputStructure):
         "input_structure",
     ]
 
+    core_hole_treatment_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["XCH(smear)", "xch_smear"],
+            ["XCH(fixed)", "xch_fixed"],
+            ["Full", "full"],
+        ],
+    )
     core_hole_treatment = tl.Unicode("xch_smear")
+    pseudo_group_options = tl.List(
+        trait=tl.Unicode(),
+        default_value=[
+            "pseudo_demo_pbe",
+            "pseudo_demo_pbesol",
+        ],
+    )
     pseudo_group = tl.Unicode("pseudo_demo_pbe")
+    structure_type_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["Molecule", "molecule"],
+            ["Crystal", "crystal"],
+        ],
+    )
     structure_type = tl.Unicode("crystal")
     supercell_min_parameter = tl.Float(8.0)
     calc_binding_energy = tl.Bool(False)

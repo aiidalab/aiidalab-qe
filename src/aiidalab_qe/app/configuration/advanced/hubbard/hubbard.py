@@ -169,11 +169,14 @@ class HubbardSettings(AdvancedSubSettings[HubbardModel]):
             for state_index in range(num_states):
                 eigenvalues_up = ipw.Dropdown(
                     description=f"{state_index+1}",
-                    options=["-1", "0", "1"],
                     layout=ipw.Layout(width="65px"),
                     style={"description_width": "initial"},
                 )
-                link = ipw.link(
+                options_link = ipw.dlink(
+                    (self._model, "eigenvalue_options"),
+                    (eigenvalues_up, "options"),
+                )
+                value_link = ipw.link(
                     (self._model, "eigenvalues"),
                     (eigenvalues_up, "value"),
                     [
@@ -194,16 +197,19 @@ class HubbardSettings(AdvancedSubSettings[HubbardModel]):
                         ),
                     ],
                 )
-                self.links.append(link)
+                self.links.extend([options_link, value_link])
                 spin_up_row.children += (eigenvalues_up,)
 
                 eigenvalues_down = ipw.Dropdown(
                     description=f"{state_index+1}",
-                    options=["-1", "0", "1"],
                     layout=ipw.Layout(width="65px"),
                     style={"description_width": "initial"},
                 )
-                link = ipw.link(
+                options_link = ipw.dlink(
+                    (self._model, "eigenvalue_options"),
+                    (eigenvalues_down, "options"),
+                )
+                value_link = ipw.link(
                     (self._model, "eigenvalues"),
                     (eigenvalues_down, "value"),
                     [
@@ -224,7 +230,7 @@ class HubbardSettings(AdvancedSubSettings[HubbardModel]):
                         ),
                     ],
                 )
-                self.links.append(link)
+                self.links.extend([options_link, value_link])
                 spin_down_row.children += (eigenvalues_down,)
 
             children.append(

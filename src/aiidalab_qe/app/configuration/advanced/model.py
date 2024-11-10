@@ -46,7 +46,25 @@ class AdvancedModel(
     clean_workdir = tl.Bool(False)
     override = tl.Bool(False)
     total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
+    van_der_waals_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["None", "none"],
+            ["Grimme-D3", "dft-d3"],
+            ["Grimme-D3BJ", "dft-d3bj"],
+            ["Grimme-D3M", "dft-d3m"],
+            ["Grimme-D3MBJ", "dft-d3mbj"],
+            ["Tkatchenko-Scheffler", "ts-vdw"],
+        ],
+    )
     van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
+    spin_orbit_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["Off", "wo_soc"],
+            ["On", "soc"],
+        ],
+    )
     spin_orbit = tl.Unicode("wo_soc")
     forc_conv_thr = tl.Float(0.0)
     forc_conv_thr_step = tl.Float(1e-4)

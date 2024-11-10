@@ -27,12 +27,10 @@ class XpsSettings(SettingsPanel[XpsModel]):
         if self.rendered:
             return
 
-        self.core_hole_treatment = ipw.ToggleButtons(
-            options=[
-                ("XCH(smear)", "xch_smear"),
-                ("XCH(fixed)", "xch_fixed"),
-                ("Full", "full"),
-            ],
+        self.core_hole_treatment = ipw.ToggleButtons()
+        ipw.dlink(
+            (self._model, "core_hole_treatment_options"),
+            (self.core_hole_treatment, "options"),
         )
         ipw.link(
             (self._model, "core_hole_treatment"),
@@ -40,10 +38,12 @@ class XpsSettings(SettingsPanel[XpsModel]):
         )
 
         self.pseudo_group = ipw.Dropdown(
-            options=["pseudo_demo_pbe", "pseudo_demo_pbesol"],
             description="Group:",
-            disabled=False,
             style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self._model, "pseudo_group_options"),
+            (self.pseudo_group, "options"),
         )
         ipw.link(
             (self._model, "pseudo_group"),
@@ -52,11 +52,10 @@ class XpsSettings(SettingsPanel[XpsModel]):
 
         self.core_levels_widget = ipw.VBox()
 
-        self.structure_type = ipw.ToggleButtons(
-            options=[
-                ("Molecule", "molecule"),
-                ("Crystal", "crystal"),
-            ],
+        self.structure_type = ipw.ToggleButtons()
+        ipw.dlink(
+            (self._model, "structure_type_options"),
+            (self.structure_type, "options"),
         )
         ipw.link(
             (self._model, "structure_type"),

@@ -26,6 +26,10 @@ class HubbardModel(AdvancedSubModel, HasInputStructure):
         value_trait=tl.Float(),  # U value
         default_value={},
     )
+    eigenvalue_options = tl.List(
+        trait=tl.Unicode(),
+        default_value=["-1", "0", "1"],
+    )
     eigenvalues = tl.List(
         trait=tl.List(),  # [[[[state, spin, kind name, eigenvalue] # state] # spin] # kind name]
         default_value=[],

@@ -141,16 +141,12 @@ class AdvancedSettings(SettingsPanel[AdvancedModel]):
 
         # Van der Waals setting widget
         self.van_der_waals = ipw.Dropdown(
-            options=[
-                ("None", "none"),
-                ("Grimme-D3", "dft-d3"),
-                ("Grimme-D3BJ", "dft-d3bj"),
-                ("Grimme-D3M", "dft-d3m"),
-                ("Grimme-D3MBJ", "dft-d3mbj"),
-                ("Tkatchenko-Scheffler", "ts-vdw"),
-            ],
             description="Van der Waals correction:",
             style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self._model, "van_der_waals_options"),
+            (self.van_der_waals, "options"),
         )
         ipw.link(
             (self._model, "van_der_waals"),
@@ -242,12 +238,12 @@ class AdvancedSettings(SettingsPanel[AdvancedModel]):
 
         # Spin-Orbit calculation
         self.spin_orbit = ipw.ToggleButtons(
-            options=[
-                ("Off", "wo_soc"),
-                ("On", "soc"),
-            ],
             description="Spin-Orbit:",
             style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self._model, "spin_orbit_options"),
+            (self.spin_orbit, "options"),
         )
         ipw.link(
             (self._model, "spin_orbit"),

@@ -25,9 +25,10 @@ class WorkChainSettings(SettingsPanel[WorkChainModel]):
             return
 
         # SpinType: magnetic properties of material
-        self.spin_type = ipw.ToggleButtons(
-            options=[("Off", "none"), ("On", "collinear")],
-            style={"description_width": "initial"},
+        self.spin_type = ipw.ToggleButtons(style={"description_width": "initial"})
+        ipw.dlink(
+            (self._model, "spin_type_options"),
+            (self.spin_type, "options"),
         )
         ipw.link(
             (self._model, "spin_type"),
@@ -35,9 +36,10 @@ class WorkChainSettings(SettingsPanel[WorkChainModel]):
         )
 
         # ElectronicType: electronic properties of material
-        self.electronic_type = ipw.ToggleButtons(
-            options=[("Metal", "metal"), ("Insulator", "insulator")],
-            style={"description_width": "initial"},
+        self.electronic_type = ipw.ToggleButtons(style={"description_width": "initial"})
+        ipw.dlink(
+            (self._model, "electronic_type_options"),
+            (self.electronic_type, "options"),
         )
         ipw.link(
             (self._model, "electronic_type"),
@@ -45,8 +47,10 @@ class WorkChainSettings(SettingsPanel[WorkChainModel]):
         )
 
         # Work chain protocol
-        self.protocol = ipw.ToggleButtons(
-            options=["fast", "moderate", "precise"],
+        self.protocol = ipw.ToggleButtons()
+        ipw.dlink(
+            (self._model, "protocol_options"),
+            (self.protocol, "options"),
         )
         ipw.link(
             (self._model, "protocol"),

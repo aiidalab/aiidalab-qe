@@ -46,20 +46,20 @@ class MagnetizationSettings(AdvancedSubSettings[MagnetizationModel]):
 
         self.description = ipw.HTML("<b>Magnetization:</b>")
 
-        self.magnetization_type_toggle = ipw.ToggleButtons(
-            options=[
-                ("Starting Magnetization", "starting_magnetization"),
-                ("Tot. Magnetization", "tot_magnetization"),
-            ],
+        self.magnetization_type = ipw.ToggleButtons(
             style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self._model, "type_options"),
+            (self.magnetization_type, "options"),
         )
         ipw.link(
             (self._model, "type"),
-            (self.magnetization_type_toggle, "value"),
+            (self.magnetization_type, "value"),
         )
         ipw.dlink(
             (self._model, "override"),
-            (self.magnetization_type_toggle, "disabled"),
+            (self.magnetization_type, "disabled"),
             lambda override: not override,
         )
 
@@ -171,7 +171,12 @@ class MagnetizationSettings(AdvancedSubSettings[MagnetizationModel]):
         else:
             children = [self.description]
             if self._model.electronic_type == "metal":
-                children.extend([self.magnetization_type_toggle, self.container])
+                children.extend(
+                    [
+                        self.magnetization_type,
+                        self.container,
+                    ]
+                )
             else:
                 children.append(self.tot_magnetization)
         self.children = children

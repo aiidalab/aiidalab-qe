@@ -14,8 +14,30 @@ class WorkChainModel(SettingsModel):
 
     input_structure = tl.Union([tl.Instance(orm.StructureData)], allow_none=True)
 
+    protocol_options = tl.List(
+        trait=tl.Unicode(),
+        default_value=[
+            "fast",
+            "moderate",
+            "precise",
+        ],
+    )
     protocol = tl.Unicode(DEFAULT["workchain"]["protocol"])
+    spin_type_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["Off", "none"],
+            ["On", "collinear"],
+        ],
+    )
     spin_type = tl.Unicode(DEFAULT["workchain"]["spin_type"])
+    electronic_type_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["Metal", "metal"],
+            ["Insulator", "insulator"],
+        ],
+    )
     electronic_type = tl.Unicode(DEFAULT["workchain"]["electronic_type"])
 
     include = True

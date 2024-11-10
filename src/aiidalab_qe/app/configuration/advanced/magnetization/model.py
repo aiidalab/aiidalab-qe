@@ -18,6 +18,13 @@ class MagnetizationModel(AdvancedSubModel, HasInputStructure):
     spin_type = tl.Unicode()
     override = tl.Bool()
 
+    type_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["Starting Magnetization", "starting_magnetization"],
+            ["Tot. Magnetization", "tot_magnetization"],
+        ],
+    )
     type = tl.Unicode("starting_magnetization")
     total = tl.Float(0.0)
     moments = tl.Dict(

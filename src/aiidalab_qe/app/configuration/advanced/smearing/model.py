@@ -15,6 +15,15 @@ class SmearingModel(AdvancedSubModel):
     protocol = tl.Unicode()
     override = tl.Bool()
 
+    type_options = tl.List(
+        trait=tl.Unicode(),
+        default_value=[
+            "cold",
+            "gaussian",
+            "fermi-dirac",
+            "methfessel-paxton",
+        ],
+    )
     type = tl.Unicode("cold")
     degauss = tl.Float(0.01)
 

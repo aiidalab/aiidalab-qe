@@ -27,11 +27,10 @@ class XasSettings(SettingsPanel[XasModel]):
 
         self.core_hole_treatments_widget = ipw.VBox(layout=ipw.Layout(width="100%"))
 
-        # self.structure_type = ipw.ToggleButtons(
-        #     options=[
-        #         ("Molecule", "molecule"),
-        #         ("Crystal", "crystal"),
-        #     ],
+        # self.structure_type = ipw.ToggleButtons()
+        # ipw.dlink(
+        #     (self._model, "structure_type_options"),
+        #     (self.structure_type, "options"),
         # )
         # ipw.link(
         #     (self._model, "structure_type"),
@@ -171,16 +170,12 @@ class XasSettings(SettingsPanel[XasModel]):
             )
             self.links.append(link)
 
-            treatment_selector = ipw.Dropdown(
-                options=[
-                    ("FCH", "full"),
-                    ("XCH (Smearing)", "xch_smear"),
-                    ("XCH (Fixed)", "xch_fixed"),
-                ],
-                disabled=False,
-                layout=ipw.Layout(width="15%"),
+            treatment_selector = ipw.Dropdown(layout=ipw.Layout(width="15%"))
+            options_link = ipw.dlink(
+                (self._model, "core_hole_treatments_options"),
+                (treatment_selector, "options"),
             )
-            link = ipw.link(
+            value_link = ipw.link(
                 (self._model, "core_hole_treatments"),
                 (treatment_selector, "value"),
                 [
@@ -193,7 +188,7 @@ class XasSettings(SettingsPanel[XasModel]):
                     },
                 ],
             )
-            self.links.append(link)
+            self.links.extend([options_link, value_link])
 
             widget = ipw.HBox(
                 children=[

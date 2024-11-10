@@ -20,10 +20,12 @@ class SmearingSettings(AdvancedSubSettings[SmearingModel]):
             return
 
         self.smearing = ipw.Dropdown(
-            options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
             description="Smearing type:",
-            disabled=False,
             style={"description_width": "initial"},
+        )
+        ipw.dlink(
+            (self._model, "type_options"),
+            (self.smearing, "options"),
         )
         ipw.link(
             (self._model, "type"),
@@ -38,7 +40,6 @@ class SmearingSettings(AdvancedSubSettings[SmearingModel]):
         self.degauss = ipw.FloatText(
             step=0.005,
             description="Smearing width (Ry):",
-            disabled=False,
             style={"description_width": "initial"},
         )
         ipw.link(

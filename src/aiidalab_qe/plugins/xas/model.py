@@ -18,12 +18,28 @@ class XasModel(SettingsModel, HasInputStructure):
         "input_structure",
     ]
 
+    # structure_type_options = tl.List(
+    #     trait=tl.List(tl.Unicode(), tl.Unicode()),
+    #     default_value=[
+    #         ["Molecule", "molecule"],
+    #         ["Crystal", "crystal"],
+    #     ],
+    # )
     # structure_type = tl.Unicode("crystal")
+
     supercell_min_parameter = tl.Float(8.0)
 
     kind_names = tl.Dict(
         key_trait=tl.Unicode(),  # kind name
         value_trait=tl.Bool(),  # whether the element is included
+    )
+    core_hole_treatments_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["FCH", "full"],
+            ["XCH (Smearing)", "xch_smear"],
+            ["XCH (Fixed)", "xch_fixed"],
+        ],
     )
     core_hole_treatments = tl.Dict(
         key_trait=tl.Unicode(),  # kind name
