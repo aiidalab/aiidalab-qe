@@ -234,3 +234,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         elif process_node.is_finished_ok:
             self.state = self.State.SUCCESS
             self._model.process_info = PROCESS_COMPLETED
+        if self.state in (self.State.SUCCESS, self.State.FAIL):
+            self._update_kill_button_layout()
+            self._update_clean_scratch_button_layout()

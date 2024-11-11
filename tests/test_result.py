@@ -3,7 +3,7 @@ import time
 from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.main import App
-from aiidalab_qe.app.result.summary import WorkChainSummary, WorkChainSummaryModel
+from aiidalab_qe.app.result.summary import WorkChainSummaryModel
 from aiidalab_qe.app.result.viewer import WorkChainViewer
 
 
