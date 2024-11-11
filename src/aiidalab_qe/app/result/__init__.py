@@ -130,6 +130,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_clean_scratch_button_layout()
 
     def can_reset(self):
+        "Checks if process is running (active), which disallows a reset."
         return self.state is not self.State.ACTIVE
 
     def reset(self):
@@ -153,20 +154,22 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_kill_button_layout()
 
     def _on_update_results_button_click(self, _):
-        self.node_view.node = None
-        self.node_view.node = self._model.get_process_node()
+        self._update_node_view(self.process_tree.selected_nodes, refresh=True)
 
     def _on_clean_scratch_button_click(self, _):
         self._model.clean_remote_data()
         self._update_clean_scratch_button_layout()
 
-    def _update_node_view(self, nodes):
+    def _update_node_view(self, nodes, refresh=False):
         """Update the node view based on the selected nodes.
 
         parameters
         ----------
         `nodes`: `list`
             List of selected nodes.
+        `refresh`: `bool`, optional
+            If True, the viewer will be refreshed.
+            Occurs when user presses the "Update results" button.
         """
         from aiidalab_widgets_base.viewers import viewer
 
@@ -175,14 +178,14 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         # only show the first selected node
         node = nodes[0]
         # check if the viewer is already added
-        if node.uuid in self.node_views:
-            node_view = self.node_views[node.uuid]
+        if node.uuid in self.node_views and not refresh:
+            self.node_view = self.node_views[node.uuid]
         else:
-            node_view = viewer(node)
-            self.node_views[node.uuid] = node_view
+            self.node_view = viewer(node)
+            self.node_views[node.uuid] = self.node_view
         self.process_status.children = [
             self.process_tree,
-            node_view,
+            self.node_view,
         ]
 
     def _update_kill_button_layout(self):
