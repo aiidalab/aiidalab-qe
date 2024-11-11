@@ -3,7 +3,6 @@ import traitlets as tl
 
 from aiida.engine import ProcessState
 from aiidalab_widgets_base import (
-    AiidaNodeViewWidget,
     ProcessMonitor,
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
@@ -36,6 +35,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = False
 
+        self.node_views = {}  # keep track of the node views
+
     def render(self):
         if self.rendered:
             return
@@ -45,18 +46,14 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             (self._model, "process_uuid"),
             (self.process_tree, "value"),
         )
-
-        self.node_view = AiidaNodeViewWidget(layout={"width": "auto", "height": "auto"})
-        ipw.dlink(
-            (self.process_tree, "selected_nodes"),
-            (self.node_view, "node"),
-            transform=lambda nodes: nodes[0] if nodes else None,
+        self.process_tree.observe(
+            self._on_node_selection_change,
+            "selected_nodes",
         )
 
         self.process_status = ipw.VBox(
             children=[
                 self.process_tree,
-                self.node_view,
             ],
         )
 
@@ -148,6 +145,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
+    def _on_node_selection_change(self, change):
+        self._update_node_view(change["new"])
+
     def _on_kill_button_click(self, _):
         self._model.kill_process()
         self._update_kill_button_layout()
@@ -159,6 +159,31 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def _on_clean_scratch_button_click(self, _):
         self._model.clean_remote_data()
         self._update_clean_scratch_button_layout()
+
+    def _update_node_view(self, nodes):
+        """Update the node view based on the selected nodes.
+
+        parameters
+        ----------
+        `nodes`: `list`
+            List of selected nodes.
+        """
+        from aiidalab_widgets_base.viewers import viewer
+
+        if not nodes:
+            return
+        # only show the first selected node
+        node = nodes[0]
+        # check if the viewer is already added
+        if node.uuid in self.node_views:
+            node_view = self.node_views[node.uuid]
+        else:
+            node_view = viewer(node)
+            self.node_views[node.uuid] = node_view
+        self.process_status.children = [
+            self.process_tree,
+            node_view,
+        ]
 
     def _update_kill_button_layout(self):
         if not self.rendered:
