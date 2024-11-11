@@ -5,7 +5,6 @@ from aiida import orm
 from aiida.engine import ProcessState
 from aiida.engine.processes import control
 from aiidalab_widgets_base import (
-    AiidaNodeViewWidget,
     ProcessMonitor,
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
@@ -28,14 +27,10 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             (self, "process"),
             (self.process_tree, "value"),
         )
-
-        self.node_view = AiidaNodeViewWidget(layout={"width": "auto", "height": "auto"})
-        ipw.dlink(
-            (self.process_tree, "selected_nodes"),
-            (self.node_view, "node"),
-            transform=lambda nodes: nodes[0] if nodes else None,
-        )
-        self.process_status = ipw.VBox(children=[self.process_tree, self.node_view])
+        self.process_tree.observe(self._update_node_view, names="selected_nodes")
+        # keep track of the node views
+        self.node_views = {}
+        self.process_status = ipw.VBox(children=[self.process_tree])
 
         # Setup process monitor
         self.process_monitor = ProcessMonitor(
@@ -215,3 +210,20 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_state()
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
+
+    def _update_node_view(self, change):
+        """Callback for when the a new node is selected."""
+        from aiidalab_widgets_base.viewers import viewer
+
+        nodes = change["new"]
+        if not nodes:
+            return
+        # only show the first selected node
+        node = nodes[0]
+        # check if the viewer is already added
+        if node.uuid in self.node_views:
+            node_view = self.node_views[node.uuid]
+        else:
+            node_view = viewer(node)
+            self.node_views[node.uuid] = node_view
+        self.process_status.children = [self.process_tree, node_view]
