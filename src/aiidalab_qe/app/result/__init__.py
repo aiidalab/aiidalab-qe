@@ -199,8 +199,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def _on_click_update_result_button(self, _=None):
         """Trigger the update of the results tabs."""
         # change the node to trigger the update of the view.
-        self.node_view.node = None
-        self.node_view.node = orm.load_node(self.process)
+        self._update_node_view({"new": self.process_tree.selected_nodes}, refresh=True)
 
     @tl.observe("process")
     def _observe_process(self, _):
@@ -211,7 +210,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
-    def _update_node_view(self, change):
+    def _update_node_view(self, change, refresh=False):
         """Callback for when the a new node is selected."""
         from aiidalab_widgets_base.viewers import viewer
 
@@ -221,7 +220,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         # only show the first selected node
         node = nodes[0]
         # check if the viewer is already added
-        if node.uuid in self.node_views:
+        if node.uuid in self.node_views and not refresh:
             node_view = self.node_views[node.uuid]
         else:
             node_view = viewer(node)
