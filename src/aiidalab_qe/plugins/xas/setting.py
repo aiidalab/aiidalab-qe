@@ -163,7 +163,7 @@ class XasSettings(SettingsPanel[XasModel]):
                 [
                     lambda kinds, kind_name=kind_name: kinds.get(kind_name, False),
                     lambda value, kind_name=kind_name: {
-                        **self._model.elements,
+                        **self._model.kind_names,
                         kind_name: value,
                     },
                 ],
