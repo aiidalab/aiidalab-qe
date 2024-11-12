@@ -1,7 +1,7 @@
-from .model import PdosResultModel
-from .result import PdosResult
+from .model import PdosResultsModel
+from .result import PdosResults
 
 __all__ = [
-    "PdosResultModel",
-    "PdosResult",
+    "PdosResultsModel",
+    "PdosResults",
 ]

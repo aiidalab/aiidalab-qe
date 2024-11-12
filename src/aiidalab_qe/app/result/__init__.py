@@ -1,6 +1,7 @@
 import ipywidgets as ipw
 import traitlets as tl
 
+from aiida import orm
 from aiida.engine import ProcessState
 from aiidalab_widgets_base import (
     ProcessMonitor,
@@ -8,10 +9,8 @@ from aiidalab_widgets_base import (
     WizardAppWidgetStep,
 )
 
-from .model import ResultsModel
-
-# trigger registration of the viewer widget:
-from .viewer import WorkChainViewer  # noqa: F401
+from .model import ResultsStepModel
+from .viewer import WorkChainViewer, WorkChainViewerModel  # noqa: F401
 
 PROCESS_COMPLETED = "<h4>Workflow completed successfully!</h4>"
 PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
@@ -19,7 +18,7 @@ PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
-    def __init__(self, model: ResultsModel, **kwargs):
+    def __init__(self, model: ResultsStepModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -35,20 +34,20 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = False
 
-        self.node_views = {}  # keep track of the node views
+        self.node_views = {}  # node-view cache
 
     def render(self):
         if self.rendered:
             return
 
         self.process_tree = ProcessNodesTreeWidget()
-        ipw.dlink(
-            (self._model, "process_uuid"),
-            (self.process_tree, "value"),
-        )
         self.process_tree.observe(
             self._on_node_selection_change,
             "selected_nodes",
+        )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.process_tree, "value"),
         )
 
         self.process_status = ipw.VBox(
@@ -61,12 +60,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             timeout=0.2,
             callbacks=[
                 self.process_tree.update,
+                self._update_status,
                 self._update_state,
             ],
-        )
-        ipw.dlink(
-            (self._model, "process_uuid"),
-            (self.process_monitor, "value"),
         )
 
         self.kill_button = ipw.Button(
@@ -129,6 +125,12 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
+        # This starts the monitor on a separate thread
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.process_monitor, "value"),
+        )
+
     def can_reset(self):
         "Checks if process is running (active), which disallows a reset."
         return self.state is not self.State.ACTIVE
@@ -181,7 +183,22 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         if node.uuid in self.node_views and not refresh:
             self.node_view = self.node_views[node.uuid]
         else:
-            self.node_view = viewer(node)
+            kwargs = {}
+            if isinstance(node, orm.WorkChainNode):
+                model = WorkChainViewerModel()
+                ipw.dlink(
+                    (self._model, "process_uuid"),
+                    (model, "process_uuid"),
+                )
+                ipw.dlink(
+                    (self._model, "monitor_counter"),
+                    (model, "monitor_counter"),
+                )
+                kwargs["model"] = model
+            self.node_view = viewer(node, **kwargs)
+            # TODO this should work - fix!
+            # if isinstance(self.node_view, WorkChainViewer):
+            #     self.node_view.render()
             self.node_views[node.uuid] = self.node_view
         self.process_status.children = [
             self.process_tree,
@@ -191,8 +208,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def _update_kill_button_layout(self):
         if not self.rendered:
             return
+        process_node = self._model.fetch_process_node()
         if (
-            not (process_node := self._model.get_process_node())
+            not self._model.has_process
             or process_node.is_finished
             or process_node.is_excepted
             or self.state
@@ -208,14 +226,18 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def _update_clean_scratch_button_layout(self):
         if not self.rendered:
             return
-        process_node = self._model.get_process_node()
+        process_node = self._model.fetch_process_node()
         if process_node and process_node.is_terminated:
             self.clean_scratch_button.layout.display = "block"
         else:
             self.clean_scratch_button.layout.display = "none"
 
+    def _update_status(self):
+        self._model.monitor_counter += 1
+
     def _update_state(self):
-        if not (process_node := self._model.get_process_node()):
+        process_node = self._model.fetch_process_node()
+        if not self._model.has_process:
             self.state = self.State.INIT
         elif process_node.process_state in (
             ProcessState.CREATED,

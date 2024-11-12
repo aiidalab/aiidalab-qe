@@ -22,9 +22,9 @@ def test_reload_and_reset(generate_qeapp_workchain):
 
 
 def test_selecting_new_structure_unconfirms_model(generate_structure_data):
-    from aiidalab_qe.app.structure.model import StructureModel
+    from aiidalab_qe.app.structure.model import StructureStepModel
 
-    model = StructureModel()
+    model = StructureStepModel()
     model.input_structure = generate_structure_data()
     assert model.has_structure
     model.confirm()

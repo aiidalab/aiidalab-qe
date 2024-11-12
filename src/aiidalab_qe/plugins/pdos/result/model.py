@@ -1,9 +1,9 @@
 from aiidalab_qe.common.panel import ResultsModel
 
 
-class PdosResultModel(ResultsModel):
+class PdosResultsModel(ResultsModel):
     def get_pdos_node(self):
         try:
-            return self.process_node.outputs.pdos
+            return self.outputs.pdos
         except AttributeError:
             return None

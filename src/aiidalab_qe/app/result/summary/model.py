@@ -36,6 +36,8 @@ VDW_CORRECTION_VERSION = {
 
 
 class WorkChainSummaryModel(ResultsModel):
+    identifier = "summary"
+
     include = True
 
     def generate_report_html(self):

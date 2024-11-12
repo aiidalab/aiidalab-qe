@@ -13,6 +13,7 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
+from aiida import orm
 from aiidalab_qe.common.mixins import Confirmable, HasProcess
 from aiidalab_qe.common.mvc import Model
 
@@ -33,6 +34,9 @@ class Panel(ipw.VBox):
 
     title = "Panel"
 
+    # TODO remove `identifier` (and `parent`) from signature
+    # TODO add `model` parameter
+    # TODO add `identifier` property to route to model.identifier
     def __init__(self, parent=None, identifier=None, **kwargs):
         """Initialize the panel.
 
@@ -179,13 +183,83 @@ class SettingsPanel(Panel, t.Generic[SM]):
 
 class ResultsModel(Model, HasProcess):
     title = "Model"
+    identifier = "model"
 
-    data = tl.Any()
+    this_process_uuid = tl.Unicode(allow_none=True)
+    process_state_notification = tl.Unicode("")
+
+    include = False
+    _this_process_label = ""
+
+    CSS_MAP = {
+        "finished": "success",
+        "excepted": "danger",
+        "killed": "danger",
+        "queued": "warning",
+        "waiting": "info",
+        "running": "info",
+        "created": "info",
+    }
 
     @property
-    def outputs(self):
-        """Outputs of the calculation."""
-        return self.process_node.outputs if self.has_process else None
+    def has_results(self):
+        return self.identifier in self.outputs
+
+    @property
+    def process_state(self):
+        node = self._fetch_this_process_node()
+        return node.process_state.value if node and node.process_state else "queued"
+
+    def update_process_state_notification(self):
+        self.process_state_notification = f"""
+            <div class="alert alert-{self.CSS_MAP.get(self.process_state, "info")}">
+                <b>Status:</b> {self.process_state.upper()}
+            </div>
+        """
+
+    @tl.observe("process_uuid")
+    def _on_process_uuid_change(self, _):
+        super()._on_process_uuid_change(_)
+        if self.identifier != "summary":
+            self._set_this_process_uuid()
+
+    def _set_this_process_uuid(self):
+        if not self.process_uuid:
+            return
+        try:
+            self.this_process_uuid = (
+                orm.QueryBuilder()
+                .append(
+                    orm.WorkChainNode,
+                    filters={"uuid": self.process_node.uuid},
+                    tag="root_process",
+                )
+                .append(
+                    orm.WorkChainNode,
+                    filters={"attributes.process_label": self._this_process_label},
+                    project="uuid",
+                    with_incoming="root_process",
+                )
+                .first(flat=True)
+            )
+        except Exception:
+            self.this_process_uuid = None
+
+    def _fetch_this_process_node(self):
+        return (
+            orm.QueryBuilder()
+            .append(
+                orm.WorkChainNode,
+                filters={"uuid": self.process_node.uuid},
+                tag="root_process",
+            )
+            .append(
+                orm.WorkChainNode,
+                filters={"attributes.process_label": self._this_process_label},
+                with_incoming="root_process",
+            )
+            .first(flat=True)
+        )
 
 
 RM = t.TypeVar("RM", bound=ResultsModel)
@@ -216,10 +290,62 @@ class ResultsPanel(Panel, t.Generic[RM]):
         )
 
         self._model = model
+        self._model.observe(
+            self._on_monitor_counter_change,
+            "monitor_counter",
+        )
 
         self.rendered = False
 
         self.links = []
 
     def render(self):
+        if self.rendered:
+            return
+
+        self.process_state_notification = ipw.HTML()
+        ipw.dlink(
+            (self._model, "process_state_notification"),
+            (self.process_state_notification, "value"),
+        )
+
+        self.load_results_button = ipw.Button(
+            description="Load results",
+            button_style="warning",
+            tooltip="Load the results",
+            icon="refresh",
+        )
+        ipw.dlink(
+            (self._model, "monitor_counter"),
+            (self.load_results_button, "disabled"),
+            lambda _: not self._model.has_results,
+        )
+        self.load_results_button.on_click(self._on_load_results_click)
+
+        self.children = [
+            self.process_state_notification,
+            ipw.HBox(
+                children=[
+                    self.load_results_button,
+                    ipw.HTML("""
+                        <div style="margin-left: 10px">
+                            <b>Note:</b> Load time may vary depending on the size of the calculation
+                        </div>
+                    """),
+                ]
+            ),
+        ]
+
+        self.rendered = True
+
+        self._model.update_process_state_notification()
+
+    def _on_load_results_click(self, _):
+        self.children = [self.loading_message]
+        self._update_view()
+
+    def _on_monitor_counter_change(self, _):
+        self._model.update_process_state_notification()
+
+    def _update_view(self):
         raise NotImplementedError

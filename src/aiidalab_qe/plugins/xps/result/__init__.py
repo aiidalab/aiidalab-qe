@@ -1,7 +1,7 @@
-from .model import XpsResultModel
-from .result import XpsResult
+from .model import XpsResultsModel
+from .result import XpsResults
 
 __all__ = [
-    "XpsResultModel",
-    "XpsResult",
+    "XpsResultsModel",
+    "XpsResults",
 ]

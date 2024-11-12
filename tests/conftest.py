@@ -7,7 +7,7 @@ import tempfile
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.configuration.model import ConfigurationModel
+from aiidalab_qe.app.configuration.model import ConfigurationStepModel
 from aiidalab_qe.app.main import App
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
@@ -389,7 +389,7 @@ def workchain_settings_generator():
     from aiidalab_qe.app.configuration.basic.workflow import BasicSettings
 
     def _workchain_settings_generator(**kwargs):
-        model = ConfigurationModel()
+        model = ConfigurationStepModel()
         workchain_settings = BasicSettings(config_model=model)
         workchain_settings._update_settings(**kwargs)
         return workchain_settings
@@ -403,7 +403,7 @@ def smearing_settings_generator():
     from aiidalab_qe.app.configuration.advanced.smearing import SmearingSettings
 
     def _smearing_settings_generator(**kwargs):
-        model = ConfigurationModel()
+        model = ConfigurationStepModel()
         smearing_settings = SmearingSettings(model=model)
         smearing_settings.update_settings(**kwargs)
         return smearing_settings

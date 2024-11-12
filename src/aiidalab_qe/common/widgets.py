@@ -918,16 +918,19 @@ class LoadingWidget(ipw.HBox):
 class LazyLoader(ipw.VBox):
     identifier = "widget"
 
-    def __init__(self, widget_class, widget_kwargs, **kwargs):
+    def __init__(self, widget_class, widget_kwargs=None, **kwargs):
         super().__init__(
             children=[LoadingWidget(f"Loading {self.identifier}")],
             **kwargs,
         )
 
         self._widget_class = widget_class
-        self._widget_kwargs = widget_kwargs
+        self._widget_kwargs = widget_kwargs or {}
 
         self.rendered = False
+
+    def set_widget_kwargs(self, kwargs):
+        self._widget_kwargs = kwargs
 
     def render(self):
         if self.rendered:

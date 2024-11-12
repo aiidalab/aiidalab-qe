@@ -5,7 +5,7 @@ from aiidalab_qe.common.panel import ResultsModel
 from .utils import export_xps_data, xps_spectra_broadening
 
 
-class XpsResultModel(ResultsModel):
+class XpsResultsModel(ResultsModel):
     spectra_type_options = tl.List(
         trait=tl.List(tl.Unicode()),
         default_value=[

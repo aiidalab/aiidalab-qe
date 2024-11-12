@@ -15,7 +15,7 @@ from aiidalab_widgets_base import WizardAppWidgetStep
 
 from .advanced import AdvancedModel, AdvancedSettings
 from .basic import WorkChainModel, WorkChainSettings
-from .model import ConfigurationModel
+from .model import ConfigurationStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -23,7 +23,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
-    def __init__(self, model: ConfigurationModel, **kwargs):
+    def __init__(self, model: ConfigurationStepModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(

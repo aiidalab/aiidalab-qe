@@ -5,10 +5,10 @@ import ipywidgets as ipw
 from aiidalab_qe.common.bands_pdos import BandPdosWidget, BandsPdosModel
 from aiidalab_qe.common.panel import ResultsPanel
 
-from .model import PdosResultModel
+from .model import PdosResultsModel
 
 
-class PdosResult(ResultsPanel[PdosResultModel]):
+class PdosResults(ResultsPanel[PdosResultsModel]):
     title = "PDOS"
     identifier = "pdos"
     workchain_labels = ["pdos"]

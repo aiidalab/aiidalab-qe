@@ -20,7 +20,7 @@ from .code import CodeModel, CodesDict
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmissionModel(
+class SubmissionStepModel(
     Model,
     HasInputStructure,
     Confirmable,

@@ -4,7 +4,7 @@ from aiidalab_qe.common.mixins import Confirmable, HasInputStructure
 from aiidalab_qe.common.mvc import Model
 
 
-class StructureModel(
+class StructureStepModel(
     Model,
     HasInputStructure,
     Confirmable,

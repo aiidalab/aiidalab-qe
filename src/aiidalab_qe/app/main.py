@@ -10,13 +10,13 @@ from IPython.display import Javascript, display
 from aiida.orm import load_node
 from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-from aiidalab_qe.app.configuration.model import ConfigurationModel
+from aiidalab_qe.app.configuration.model import ConfigurationStepModel
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
-from aiidalab_qe.app.result.model import ResultsModel
+from aiidalab_qe.app.result.model import ResultsStepModel
 from aiidalab_qe.app.structure import StructureSelectionStep
-from aiidalab_qe.app.structure.model import StructureModel
+from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.app.submission.model import SubmissionModel
+from aiidalab_qe.app.submission.model import SubmissionStepModel
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import WizardAppWidget
 
@@ -29,10 +29,10 @@ class App(ipw.VBox):
 
     def __init__(self, qe_auto_setup=True):
         # Initialize the models
-        self.structure_model = StructureModel()
-        self.configure_model = ConfigurationModel()
-        self.submit_model = SubmissionModel()
-        self.results_model = ResultsModel()
+        self.structure_model = StructureStepModel()
+        self.configure_model = ConfigurationStepModel()
+        self.submit_model = SubmissionStepModel()
+        self.results_model = ResultsStepModel()
 
         # Create the application steps
         self.structure_step = StructureSelectionStep(

@@ -2,7 +2,7 @@ from aiidalab_qe.app.submission.code import CodeModel
 from aiidalab_qe.common.panel import SettingsOutline
 
 from .model import PdosModel
-from .result import PdosResult, PdosResultModel
+from .result import PdosResults, PdosResultsModel
 from .setting import PdosSettings
 from .workchain import workchain_and_builder
 
@@ -28,8 +28,8 @@ pdos = {
         "model": PdosModel,
     },
     "result": {
-        "panel": PdosResult,
-        "model": PdosResultModel,
+        "panel": PdosResults,
+        "model": PdosResultsModel,
     },
     "workchain": workchain_and_builder,
 }

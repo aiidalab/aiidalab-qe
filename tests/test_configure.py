@@ -1,10 +1,10 @@
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-from aiidalab_qe.app.configuration.model import ConfigurationModel
+from aiidalab_qe.app.configuration.model import ConfigurationStepModel
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 
 def test_protocol():
-    model = ConfigurationModel()
+    model = ConfigurationStepModel()
     _ = ConfigureQeAppWorkChainStep(model=model)
     workchain_model = model.get_model("workchain")
     advanced_model = model.get_model("advanced")
@@ -14,7 +14,7 @@ def test_protocol():
 
 
 def test_get_configuration_parameters():
-    model = ConfigurationModel()
+    model = ConfigurationStepModel()
     _ = ConfigureQeAppWorkChainStep(model=model)
     parameters = model.get_model_state()
     parameters_ref = {
@@ -29,7 +29,7 @@ def test_get_configuration_parameters():
 
 
 def test_set_configuration_parameters():
-    model = ConfigurationModel()
+    model = ConfigurationStepModel()
     _ = ConfigureQeAppWorkChainStep(model=model)
     parameters = model.get_model_state()
     parameters["workchain"]["relax_type"] = "positions"
@@ -47,7 +47,7 @@ def test_set_configuration_parameters():
 
 def test_panel():
     """Dynamic add/remove the panel based on the workchain settings."""
-    model = ConfigurationModel()
+    model = ConfigurationStepModel()
     config = ConfigureQeAppWorkChainStep(model=model)
     config.render()
     assert len(config.tabs.children) == 2
@@ -61,7 +61,7 @@ def test_panel():
 
 def test_reminder_info():
     """Dynamic add/remove the reminder text based on the workchain settings."""
-    model = ConfigurationModel()
+    model = ConfigurationStepModel()
     config = ConfigureQeAppWorkChainStep(model=model)
     config.render()
     bands_info = config.property_children[0].children[1]

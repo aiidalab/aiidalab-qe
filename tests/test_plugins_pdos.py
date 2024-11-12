@@ -2,13 +2,13 @@ def test_result(generate_qeapp_workchain):
     import plotly.graph_objects as go
 
     from aiidalab_qe.common.bands_pdos import BandPdosWidget
-    from aiidalab_qe.plugins.pdos.result import PdosResult, PdosResultModel
+    from aiidalab_qe.plugins.pdos.result import PdosResults, PdosResultsModel
 
     workchain = generate_qeapp_workchain()
     # generate structure for scf calculation
-    model = PdosResultModel()
+    model = PdosResultsModel()
     model.process_node = workchain.node
-    result = PdosResult(model=model)
+    result = PdosResults(model=model)
     result.render()
 
     widget = result.children[0]

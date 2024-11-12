@@ -16,7 +16,7 @@ from aiidalab_qe.common.panel import SettingsModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class ConfigurationModel(
+class ConfigurationStepModel(
     Model,
     HasModels[SettingsModel],
     HasInputStructure,
@@ -135,18 +135,12 @@ class ConfigurationModel(
 
     def _get_properties(self):
         properties = []
-        run_bands = False
-        run_pdos = False
         for identifier, model in self._models.items():
             if identifier in self._default_models:
                 continue
             if model.include:
                 properties.append(identifier)
-            if identifier in ("bands", "pdos"):
-                run_bands = True
-        if RelaxType(self.relax_type) is not RelaxType.NONE or not (
-            run_bands or run_pdos
-        ):
+        if RelaxType(self.relax_type) is not RelaxType.NONE or not properties:
             properties.append("relax")
         return properties
 

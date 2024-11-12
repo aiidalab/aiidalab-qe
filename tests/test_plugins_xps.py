@@ -1,4 +1,4 @@
-from aiidalab_qe.app.configuration.model import ConfigurationModel
+from aiidalab_qe.app.configuration.model import ConfigurationStepModel
 
 
 def test_settings():
@@ -10,7 +10,7 @@ def test_settings():
     from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
 
     # TODO use submit_app_generator(properties=["xps"]) instead? See xas test
-    config_model = ConfigurationModel()
+    config_model = ConfigurationStepModel()
     _ = ConfigureQeAppWorkChainStep(model=config_model)
 
     # Set the input structure

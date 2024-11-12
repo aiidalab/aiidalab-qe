@@ -5,10 +5,10 @@ import plotly.graph_objects as go
 
 from aiidalab_qe.common.panel import ResultsPanel
 
-from .model import XpsResultModel
+from .model import XpsResultsModel
 
 
-class XpsResult(ResultsPanel[XpsResultModel]):
+class XpsResults(ResultsPanel[XpsResultsModel]):
     title = "XPS"
     identifier = "xps"
     workchain_labels = ["xps"]

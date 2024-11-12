@@ -20,7 +20,7 @@ from aiidalab_qe.common.widgets import (
 from aiidalab_widgets_base import WizardAppWidgetStep
 
 from .code import CodeModel, PluginCodes, PwCodeModel
-from .model import SubmissionModel
+from .model import SubmissionStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -30,7 +30,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
-    def __init__(self, model: SubmissionModel, qe_auto_setup=True, **kwargs):
+    def __init__(self, model: SubmissionStepModel, qe_auto_setup=True, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading workflow submission panel")],
             **kwargs,

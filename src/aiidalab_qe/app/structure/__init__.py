@@ -7,7 +7,7 @@ import pathlib
 
 import ipywidgets as ipw
 
-from aiidalab_qe.app.structure.model import StructureModel
+from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common import (
     AddingTagsEditor,
@@ -47,7 +47,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     structure importers and the structure editors can be extended by plugins.
     """
 
-    def __init__(self, model: StructureModel, **kwargs):
+    def __init__(self, model: StructureStepModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(

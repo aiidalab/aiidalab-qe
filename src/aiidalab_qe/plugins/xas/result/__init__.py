@@ -1,7 +1,7 @@
-from .model import XasResultModel
-from .result import XasResult
+from .model import XasResultsModel
+from .result import XasResults
 
 __all__ = [
-    "XasResultModel",
-    "XasResult",
+    "XasResultsModel",
+    "XasResults",
 ]

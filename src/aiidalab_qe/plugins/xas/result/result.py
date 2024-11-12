@@ -5,12 +5,12 @@ import plotly.graph_objects as go
 
 from aiidalab_qe.common.panel import ResultsPanel
 
-from .model import XasResultModel
+from .model import XasResultsModel
 from .spectrum_button import SpectrumDownloadButton
 from .utils import write_csv
 
 
-class XasResult(ResultsPanel[XasResultModel]):
+class XasResults(ResultsPanel[XasResultsModel]):
     title = "XAS"
     identifier = "xas"
     workchain_labels = ["xas"]

@@ -3,6 +3,7 @@ import typing as t
 import traitlets as tl
 
 from aiida import orm
+from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 T = t.TypeVar("T")
@@ -47,11 +48,36 @@ class HasModels(t.Generic[T]):
 
 
 class HasProcess(tl.HasTraits):
-    process_node = tl.Instance(orm.Node, allow_none=True)
+    process_uuid = tl.Unicode(allow_none=True)
+    monitor_counter = tl.Int(0)
+
+    process_node = None
 
     @property
     def has_process(self):
         return self.process_node is not None
+
+    @property
+    def inputs(self):
+        return self.process_node.inputs if self.has_process else None
+
+    @property
+    def properties(self):
+        return self.process_node.inputs.properties if self.has_process else None
+
+    @property
+    def outputs(self):
+        return self.process_node.outputs if self.has_process else None
+
+    def fetch_process_node(self):
+        try:
+            return orm.load_node(self.process_uuid) if self.process_uuid else None
+        except NotExistent:
+            return None
+
+    @tl.observe("process_uuid")
+    def _on_process_uuid_change(self, _):
+        self.process_node = self.fetch_process_node()
 
 
 class Confirmable(tl.HasTraits):

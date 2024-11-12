@@ -7,7 +7,7 @@ from aiidalab_qe.common.panel import ResultsModel
 from .utils import broaden_xas, export_xas_data, get_aligned_spectra
 
 
-class XasResultModel(ResultsModel):
+class XasResultsModel(ResultsModel):
     spectrum_options = tl.List(
         trait=tl.Unicode(),
         default_value=[],

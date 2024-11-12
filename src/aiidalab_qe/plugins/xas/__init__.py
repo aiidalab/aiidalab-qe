@@ -7,7 +7,7 @@ from aiidalab_qe.common.panel import SettingsOutline
 from aiidalab_qe.plugins import xas as xas_folder
 
 from .model import XasModel
-from .result import XasResult, XasResultModel
+from .result import XasResults, XasResultsModel
 from .setting import XasSettings
 from .workchain import workchain_and_builder
 
@@ -31,8 +31,8 @@ xas = {
         "model": XasModel,
     },
     "result": {
-        "panel": XasResult,
-        "model": XasResultModel,
+        "panel": XasResults,
+        "model": XasResultsModel,
     },
     "workchain": workchain_and_builder,
 }

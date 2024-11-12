@@ -162,17 +162,17 @@ class BandPdosWidget(ipw.VBox):
             layout=ipw.Layout(display="none"),
         )
 
-        self.plot_button = ipw.Button(
-            description="Plot",
-            icon="line-chart",
-            button_style="success",
-        )
-        ipw.dlink(
-            (self._model, "ready"),
-            (self.plot_button, "disabled"),
-            lambda ready: not ready,
-        )
-        self.plot_button.on_click(self._update_plot)
+        # self.plot_button = ipw.Button(
+        #     description="Plot",
+        #     icon="line-chart",
+        #     button_style="success",
+        # )
+        # ipw.dlink(
+        #     (self._model, "ready"),
+        #     (self.plot_button, "disabled"),
+        #     lambda ready: not ready,
+        # )
+        # self.plot_button.on_click(self._update_plot)
 
         self.pdos_options = ipw.VBox(
             children=[
@@ -219,12 +219,12 @@ class BandPdosWidget(ipw.VBox):
                 </div>
             """),
             self.pdos_options,
-            ipw.HBox(
-                children=[
-                    self.plot_button,
-                    self.download_button,
-                ],
-            ),
+            self.download_button,
+            # ipw.HBox(
+            #     children=[
+            #         self.plot_button,
+            #     ],
+            # ),
             self.legend_interaction_description,
             self.bands_widget,
         ]
@@ -234,6 +234,7 @@ class BandPdosWidget(ipw.VBox):
         self._initial_view()
         self._toggle_projection_controls()
         self._toggle_pdos_options()
+        self._update_plot()
 
     def _on_needs_bands_projections_change(self, _):
         self._toggle_projection_controls()

@@ -1,6 +1,6 @@
 from aiidalab_qe.app.main import App
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.app.submission.model import SubmissionModel
+from aiidalab_qe.app.submission.model import SubmissionStepModel
 
 
 def test_code_not_selected(submit_app_generator):
@@ -17,7 +17,7 @@ def test_set_selected_codes(submit_app_generator):
     """Test set_selected_codes method."""
     app: App = submit_app_generator()
     parameters = app.submit_model.get_model_state()
-    model = SubmissionModel()
+    model = SubmissionStepModel()
     _ = SubmitQeAppWorkChainStep(model=model, qe_auto_setup=False)
     for identifier, code_models in app.submit_model.get_code_models():
         for name, code_model in code_models.items():
