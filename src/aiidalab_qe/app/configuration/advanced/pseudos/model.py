@@ -121,11 +121,15 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
     def update_default_pseudos(self):
         if self.loaded_from_process:
             return
+
+        pseudos = {}
+        self.status_message = ""
+
         try:
             pseudo_family = self._get_pseudo_family_from_database()
             pseudos = pseudo_family.get_pseudos(structure=self.input_structure)
         except ValueError as exception:
-            self._status_message = f"""
+            self.status_message = f"""
                 <div class='alert alert-danger'>
                     ERROR: {exception!s}
                 </div>
@@ -141,12 +145,16 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
         """Update wavefunction and density cutoffs from pseudo family."""
         if self.loaded_from_process:
             return
+
+        kinds = []
+        self.status_message = ""
+
         try:
             pseudo_family = self._get_pseudo_family_from_database()
             current_unit = pseudo_family.get_cutoffs_unit()
             cutoff_dict = pseudo_family.get_cutoffs()
         except exceptions.NotExistent:
-            self._status_message = f"""
+            self.status_message = f"""
                 <div class='alert alert-danger'>
                     ERROR: required pseudo family `{self.family}` is
                     not installed. Please use `aiida-pseudo install` to install
@@ -154,7 +162,7 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
                 </div>
             """
         except ValueError as exception:
-            self._status_message = f"""
+            self.status_message = f"""
                 <div class='alert alert-danger'>
                     ERROR: failed to obtain recommended cutoffs for pseudos
                     `{pseudo_family}`: {exception}
