@@ -108,7 +108,6 @@ class BandPdosWidget(ipw.VBox):
             description="Apply selection",
             icon="pencil",
             button_style="primary",
-            disabled=False,
         )
         self.update_plot_button.on_click(self._update_plot)
 
@@ -116,7 +115,6 @@ class BandPdosWidget(ipw.VBox):
             description="Download Data",
             icon="download",
             button_style="primary",
-            disabled=False,
             layout=ipw.Layout(visibility="hidden"),
         )
         self.download_button.on_click(self._model.download_data)

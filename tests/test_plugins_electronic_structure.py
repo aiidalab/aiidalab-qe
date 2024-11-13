@@ -3,15 +3,15 @@ def test_electronic_structure(generate_qeapp_workchain):
 
     from aiidalab_qe.common.bands_pdos import BandPdosWidget
     from aiidalab_qe.plugins.electronic_structure.result import (
-        ElectronicStructureResult,
-        ElectronicStructureResultModel,
+        ElectronicStructureResults,
+        ElectronicStructureResultsModel,
     )
 
     workchain = generate_qeapp_workchain()
     # generate structure for scf calculation
-    model = ElectronicStructureResultModel()
+    model = ElectronicStructureResultsModel()
     model.process_node = workchain.node
-    result = ElectronicStructureResult(model=model)
+    result = ElectronicStructureResults(model=model)
     result.render()
 
     widget = result.children[0]

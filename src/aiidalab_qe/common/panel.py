@@ -188,7 +188,6 @@ class ResultsModel(Model, HasProcess):
     this_process_uuid = tl.Unicode(allow_none=True)
     process_state_notification = tl.Unicode("")
 
-    include = False
     _this_process_label = ""
 
     CSS_MAP = {
@@ -200,6 +199,10 @@ class ResultsModel(Model, HasProcess):
         "running": "info",
         "created": "info",
     }
+
+    @property
+    def include(self):
+        return self.identifier in self.properties
 
     @property
     def has_results(self):
@@ -216,34 +219,6 @@ class ResultsModel(Model, HasProcess):
                 <b>Status:</b> {self.process_state.upper()}
             </div>
         """
-
-    @tl.observe("process_uuid")
-    def _on_process_uuid_change(self, _):
-        super()._on_process_uuid_change(_)
-        if self.identifier != "summary":
-            self._set_this_process_uuid()
-
-    def _set_this_process_uuid(self):
-        if not self.process_uuid:
-            return
-        try:
-            self.this_process_uuid = (
-                orm.QueryBuilder()
-                .append(
-                    orm.WorkChainNode,
-                    filters={"uuid": self.process_node.uuid},
-                    tag="root_process",
-                )
-                .append(
-                    orm.WorkChainNode,
-                    filters={"attributes.process_label": self._this_process_label},
-                    project="uuid",
-                    with_incoming="root_process",
-                )
-                .first(flat=True)
-            )
-        except Exception:
-            self.this_process_uuid = None
 
     def _fetch_this_process_node(self):
         return (
@@ -282,7 +257,7 @@ class ResultsPanel(Panel, t.Generic[RM]):
     def __init__(self, model: RM, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
-        self.loading_message = LoadingWidget(f"Loading {self.identifier} results")
+        self.loading_message = LoadingWidget(f"Loading {self.title.lower()} results")
 
         super().__init__(
             children=[self.loading_message],
@@ -337,8 +312,6 @@ class ResultsPanel(Panel, t.Generic[RM]):
         ]
 
         self.rendered = True
-
-        self._model.update_process_state_notification()
 
     def _on_load_results_click(self, _):
         self.children = [self.loading_message]

@@ -10,25 +10,17 @@ class BandsResultsModel(ResultsModel):
         # Check for 'bands' or 'bands_projwfc' attributes within 'bands' output
         if self._has_bands:
             return self.outputs.bands.bands
-        elif self._has_bands_projwfc:
+        elif self._has_band_projections:
             return self.outputs.bands.bands_projwfc
-        elif self._has_bands_output:
+        elif self.has_results:
             # If neither 'bands' nor 'bands_projwfc' exist, use 'bands_output' itself
             # This is the case for compatibility with older versions of the plugin
             return self.outputs.bands
 
     @property
-    def _has_bands_output(self):
-        return hasattr(self.outputs, "bands")
-
-    @property
     def _has_bands(self):
-        if not self._has_bands_output:
-            return False
-        return hasattr(self.outputs.bands, "bands")
+        return self.has_results and hasattr(self.outputs.bands, "bands")
 
     @property
-    def _has_bands_projwfc(self):
-        if not self._has_bands_output:
-            return False
-        return hasattr(self.outputs.bands, "bands_projwfc")
+    def _has_band_projections(self):
+        return self.has_results and hasattr(self.outputs.bands, "bands_projwfc")

@@ -49,7 +49,7 @@ class WorkChainViewer(ipw.VBox):
 
         self._fetch_plugin_results()
 
-        # HACK
+        # HACK should be called from result step - fix!
         self.render()
 
     def render(self):
@@ -114,9 +114,6 @@ class WorkChainViewer(ipw.VBox):
 
     def _fetch_plugin_results(self):
         entries = get_entry_items("aiidalab_qe.properties", "result")
-        needs_electronic_structure = all(
-            identifier in self._model.properties for identifier in ("bands", "pdos")
-        )
         for identifier, entry in entries.items():
             for key in ("panel", "model"):
                 if key not in entry:
@@ -126,10 +123,6 @@ class WorkChainViewer(ipw.VBox):
             panel = entry["panel"]
             model = entry["model"]()
             self._model.add_model(identifier, model)
-            if identifier == "electronic_structure" and needs_electronic_structure:
-                model.include = True
-            else:
-                model.include = identifier in self._model.properties
             self.results[identifier] = panel(
                 identifier=identifier,
                 model=model,

@@ -38,7 +38,9 @@ VDW_CORRECTION_VERSION = {
 class WorkChainSummaryModel(ResultsModel):
     identifier = "summary"
 
-    include = True
+    @property
+    def include(self):
+        return True
 
     def generate_report_html(self):
         """Read from the bulider parameters and generate a html for reporting
