@@ -8,6 +8,8 @@ from .utils import broaden_xas, export_xas_data, get_aligned_spectra
 
 
 class XasResultsModel(ResultsModel):
+    identifier = "xas"
+
     spectrum_options = tl.List(
         trait=tl.Unicode(),
         default_value=[],
@@ -24,15 +26,18 @@ class XasResultsModel(ResultsModel):
 
     total_multiplicity = 0
 
+    _this_process_label = "XspectraCrystalWorkChain"
+
     def update_spectrum_options(self):
+        node = self._fetch_child_process_node()
         (
             self.final_spectra,
             self.equivalent_sites_data,
-        ) = export_xas_data(self.outputs.xas)
+        ) = export_xas_data(node.outputs)
         xas_workchain = next(
             node
             for node in self.process_node.called
-            if node.process_label == "XspectraCrystalWorkChain"
+            if node.process_label == self._this_process_label
         )
         core_workchains = {
             node.get_metadata_inputs()["metadata"]["call_link_label"]: node

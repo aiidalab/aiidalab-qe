@@ -6,6 +6,8 @@ from .utils import export_xps_data, xps_spectra_broadening
 
 
 class XpsResultsModel(ResultsModel):
+    identifier = "xps"
+
     spectra_type_options = tl.List(
         trait=tl.List(tl.Unicode()),
         default_value=[
@@ -30,12 +32,15 @@ class XpsResultsModel(ResultsModel):
     equivalent_sites_data = {}
     experimental_data = None
 
+    _this_process_label = "XpsWorkChain"
+
     def update_spectrum_options(self):
+        node = self._fetch_child_process_node()
         (
             self.chemical_shifts,
             self.binding_energies,
             self.equivalent_sites_data,
-        ) = export_xps_data(self.outputs.xps)
+        ) = export_xps_data(node.outputs)
         options = [key.split("_")[0] for key in self.chemical_shifts.keys()]
         self.spectrum_options = options
         self.spectrum = options[0] if options else None
