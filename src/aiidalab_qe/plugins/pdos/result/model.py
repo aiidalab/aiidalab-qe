@@ -1,3 +1,4 @@
+from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.panel import ResultsModel
 
 
@@ -7,15 +8,17 @@ class PdosResultsModel(ResultsModel):
     _this_process_label = "PdosWorkChain"
 
     def get_pdos_node(self):
-        try:
-            return self.outputs.pdos
-        except AttributeError:
-            return None
+        if not (node := self._fetch_child_process_node()):
+            return
+        outputs = {key: getattr(node.outputs, key) for key in node.outputs}
+        return AttributeDict(outputs)
 
     @property
     def _has_dos(self):
-        return self.has_results and hasattr(self.outputs.pdos, "dos")
+        node = self._fetch_child_process_node()
+        return node and "dos" in node.outputs
 
     @property
     def _has_dos_projections(self):
-        return self.has_results and hasattr(self.outputs.pdos, "projwfc")
+        node = self._fetch_child_process_node()
+        return node and "projwfc" in node.outputs

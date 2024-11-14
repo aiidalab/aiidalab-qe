@@ -1,4 +1,6 @@
-from aiida import orm
+from __future__ import annotations
+
+from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.panel import ResultsModel
 
 
@@ -7,22 +9,29 @@ from aiidalab_qe.common.panel import ResultsModel
 class ElectronicStructureResultsModel(ResultsModel):
     identifier = "electronic_structure"
 
+    _bands_process_label = "BandsWorkChain"
+    _bands_process_uuid = None
+
+    _pdos_process_label = "PdosWorkChain"
+    _pdos_process_uuid = None
+
     def get_pdos_node(self):
-        try:
-            return self.outputs.pdos
-        except AttributeError:
-            return None
+        if not (node := self._fetch_child_process_node("pdos")):
+            return
+        outputs = {key: getattr(node.outputs, key) for key in node.outputs}
+        return AttributeDict(outputs)
 
     def get_bands_node(self):
-        # Check for 'bands' or 'bands_projwfc' attributes within 'bands' output
+        if not (node := self._fetch_child_process_node("bands")):
+            return
         if self._has_bands:
-            return self.outputs.bands.bands
+            return node.outputs.bands
         elif self._has_band_projections:
-            return self.outputs.bands.bands_projwfc
-        elif self._has_bands_output:
-            # If neither 'bands' nor 'bands_projwfc' exist, use 'bands_output' itself
+            return node.outputs.bands_projwfc
+        else:
+            # If neither 'bands' nor 'bands_projwfc' exist, use the 'outputs' node itself
             # This is the case for compatibility with older versions of the plugin
-            return self.outputs.bands
+            return node.outputs
 
     @property
     def include(self):
@@ -36,10 +45,11 @@ class ElectronicStructureResultsModel(ResultsModel):
 
     @property
     def process_states(self):
-        nodes = self._fetch_electronic_structure_process_nodes()
+        bands_node = self._fetch_child_process_node("bands")
+        pdos_node = self._fetch_child_process_node("pdos")
         return [
             node.process_state.value if node and node.process_state else "queued"
-            for node in nodes
+            for node in (bands_node, pdos_node)
         ]
 
     def update_process_state_notification(self):
@@ -55,48 +65,21 @@ class ElectronicStructureResultsModel(ResultsModel):
         )
 
     @property
-    def _has_bands_output(self):
-        return hasattr(self.outputs, "bands")
-
-    @property
     def _has_bands(self):
-        return self._has_bands_output and hasattr(self.outputs.bands, "bands")
+        node = self._fetch_child_process_node("bands")
+        return node and "bands" in node.outputs
 
     @property
     def _has_band_projections(self):
-        return self._has_bands_output and hasattr(self.outputs.bands, "bands_projwfc")
-
-    @property
-    def _has_pdos_output(self):
-        return hasattr(self.outputs, "pdos")
+        node = self._fetch_child_process_node("bands")
+        return node and "bands_projwfc" in node.outputs
 
     @property
     def _has_dos(self):
-        return self._has_pdos_output and hasattr(self.outputs.pdos, "dos")
+        node = self._fetch_child_process_node("pdos")
+        return node and "dos" in node.outputs
 
     @property
     def _has_dos_projections(self):
-        return self._has_pdos_output and hasattr(self.outputs.pdos, "projwfc")
-
-    def _fetch_electronic_structure_process_nodes(self):
-        return (
-            orm.QueryBuilder()
-            .append(
-                orm.WorkChainNode,
-                filters={"uuid": self.process_node.uuid},
-                tag="root_process",
-            )
-            .append(
-                orm.WorkChainNode,
-                filters={
-                    "attributes.process_label": {
-                        "in": [
-                            "BandsWorkChain",
-                            "PdosWorkChain",
-                        ]
-                    }
-                },
-                with_incoming="root_process",
-            )
-            .all(flat=True)
-        )
+        node = self._fetch_child_process_node("pdos")
+        return node and "projwfc" in node.outputs

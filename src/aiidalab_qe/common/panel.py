@@ -185,10 +185,10 @@ class ResultsModel(Model, HasProcess):
     title = "Model"
     identifier = "model"
 
-    this_process_uuid = tl.Unicode(allow_none=True)
     process_state_notification = tl.Unicode("")
 
     _this_process_label = ""
+    _this_process_uuid = None
 
     CSS_MAP = {
         "finished": "success",
@@ -206,11 +206,12 @@ class ResultsModel(Model, HasProcess):
 
     @property
     def has_results(self):
-        return self.identifier in self.outputs
+        node = self._fetch_child_process_node()
+        return node and node.is_finished_ok
 
     @property
     def process_state(self):
-        node = self._fetch_this_process_node()
+        node = self._fetch_child_process_node()
         return node.process_state.value if node and node.process_state else "queued"
 
     def update_process_state_notification(self):
@@ -221,21 +222,28 @@ class ResultsModel(Model, HasProcess):
             </div>
         """
 
-    def _fetch_this_process_node(self):
-        return (
-            orm.QueryBuilder()
-            .append(
-                orm.WorkChainNode,
-                filters={"uuid": self.process_node.uuid},
-                tag="root_process",
+    def _fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
+        if not self.process_node:
+            return
+        uuid = getattr(self, f"_{child}_process_uuid")
+        label = getattr(self, f"_{child}_process_label")
+        if not uuid:
+            uuid = (
+                orm.QueryBuilder()
+                .append(
+                    orm.WorkChainNode,
+                    filters={"uuid": self.process_node.uuid},
+                    tag="root_process",
+                )
+                .append(
+                    orm.WorkChainNode,
+                    filters={"attributes.process_label": label},
+                    project="uuid",
+                    with_incoming="root_process",
+                )
+                .first(flat=True)
             )
-            .append(
-                orm.WorkChainNode,
-                filters={"attributes.process_label": self._this_process_label},
-                with_incoming="root_process",
-            )
-            .first(flat=True)
-        )
+        return orm.load_node(uuid) if uuid else None  # type: ignore
 
 
 RM = t.TypeVar("RM", bound=ResultsModel)
