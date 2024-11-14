@@ -40,10 +40,11 @@ class BandsPdosModel(Model):
     project_bands_box = tl.Bool(False)
     proj_bands_width = tl.Float(0.5)
 
-    pdos_data = tl.Dict()
-    bands_data = tl.Dict()
     needs_pdos_options = tl.Bool(False)
     needs_projections_controls = tl.Bool(False)
+
+    pdos_data = {}
+    bands_data = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

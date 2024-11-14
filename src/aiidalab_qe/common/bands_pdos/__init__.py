@@ -1,7 +1,7 @@
-from .bandpdoswidget import BandPdosWidget
+from .bandpdoswidget import BandsPdosWidget
 from .model import BandsPdosModel
 
 __all__ = [
-    "BandPdosWidget",
+    "BandsPdosWidget",
     "BandsPdosModel",
 ]

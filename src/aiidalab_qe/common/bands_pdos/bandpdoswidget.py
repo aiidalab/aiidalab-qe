@@ -8,7 +8,7 @@ from .bandpdosplotly import BandPdosPlotly
 from .model import BandsPdosModel
 
 
-class BandPdosWidget(ipw.VBox):
+class BandsPdosWidget(ipw.VBox):
     """
     A widget for plotting band structure and projected density of states (PDOS) data.
 
