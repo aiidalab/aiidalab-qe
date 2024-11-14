@@ -15,8 +15,6 @@ def test_result(generate_qeapp_workchain):
     model = widget._model
 
     assert isinstance(widget, BandPdosWidget)
-
-    widget.plot_button.click()
     assert isinstance(widget.plot, go.FigureWidget)
 
     # Check if data is correct

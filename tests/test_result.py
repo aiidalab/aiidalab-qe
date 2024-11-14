@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.main import App
 from aiidalab_qe.app.result.summary import WorkChainSummaryModel
-from aiidalab_qe.app.result.viewer import WorkChainViewer
+from aiidalab_qe.app.result.viewer import WorkChainViewer, WorkChainViewerModel
 
 
 def test_result_step(app_to_submit, generate_qeapp_workchain):
@@ -32,7 +32,8 @@ def test_workchainview(generate_qeapp_workchain):
 
     workchain = generate_qeapp_workchain()
     workchain.node.seal()
-    viewer = WorkChainViewer(workchain.node)
+    model = WorkChainViewerModel()
+    viewer = WorkChainViewer(workchain.node, model=model)
     time.sleep(3)
     assert len(viewer.tabs.children) == 5
     assert viewer.tabs._titles["0"] == "Workflow Summary"  # type: ignore
