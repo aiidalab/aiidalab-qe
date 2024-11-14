@@ -3,7 +3,6 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida import orm
 from aiidalab_qe.app.result.summary.model import WorkChainSummaryModel
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.panel import ResultsPanel
@@ -19,11 +18,7 @@ from .outputs import WorkChainOutputs
 class WorkChainViewer(ipw.VBox):
     _results_shown = tl.Set()
 
-    def __init__(self, node: orm.Node, model: WorkChainViewerModel, **kwargs):
-        if node.process_label != "QeAppWorkChain":
-            super().__init__()
-            return
-
+    def __init__(self, node, model: WorkChainViewerModel, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
@@ -32,6 +27,7 @@ class WorkChainViewer(ipw.VBox):
         )
 
         self._model = model
+        self._model.process_node = node
 
         self.rendered = False
 
@@ -48,9 +44,6 @@ class WorkChainViewer(ipw.VBox):
             self._add_structure_panel()
 
         self._fetch_plugin_results()
-
-        # HACK should be called from result step - fix!
-        self.render()
 
     def render(self):
         if self.rendered:

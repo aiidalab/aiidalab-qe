@@ -8,9 +8,10 @@ from aiidalab_widgets_base import (
     ProcessNodesTreeWidget,
     WizardAppWidgetStep,
 )
+from aiidalab_widgets_base.viewers import viewer as node_viewer
 
 from .model import ResultsStepModel
-from .viewer import WorkChainViewer, WorkChainViewerModel  # noqa: F401
+from .viewer import WorkChainViewer, WorkChainViewerModel
 
 PROCESS_COMPLETED = "<h4>Workflow completed successfully!</h4>"
 PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
@@ -173,37 +174,39 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             If True, the viewer will be refreshed.
             Occurs when user presses the "Update results" button.
         """
-        from aiidalab_widgets_base.viewers import viewer
 
         if not nodes:
             return
         # only show the first selected node
         node = nodes[0]
+
         # check if the viewer is already added
         if node.uuid in self.node_views and not refresh:
             self.node_view = self.node_views[node.uuid]
-        else:
-            kwargs = {}
-            if isinstance(node, orm.WorkChainNode):
-                model = WorkChainViewerModel()
-                ipw.dlink(
-                    (self._model, "process_uuid"),
-                    (model, "process_uuid"),
-                )
-                ipw.dlink(
-                    (self._model, "monitor_counter"),
-                    (model, "monitor_counter"),
-                )
-                kwargs["model"] = model
-            self.node_view = viewer(node, **kwargs)
-            # TODO this should work - fix!
-            # if isinstance(self.node_view, WorkChainViewer):
-            #     self.node_view.render()
+        elif not isinstance(node, orm.WorkChainNode):
+            self.node_view = node_viewer(node)
             self.node_views[node.uuid] = self.node_view
+        elif node.process_label == "QeAppWorkChain":
+            self._create_workchain_viewer(node)
+
         self.process_status.children = [
             self.process_tree,
             self.node_view,
         ]
+
+    def _create_workchain_viewer(self, node):
+        model = WorkChainViewerModel()
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (model, "process_uuid"),
+        )
+        ipw.dlink(
+            (self._model, "monitor_counter"),
+            (model, "monitor_counter"),
+        )
+        self.node_view: WorkChainViewer = node_viewer(node, model=model)
+        self.node_view.render()
+        self.node_views[node.uuid] = self.node_view
 
     def _update_kill_button_layout(self):
         if not self.rendered:

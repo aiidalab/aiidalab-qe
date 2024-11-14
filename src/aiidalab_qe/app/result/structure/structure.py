@@ -5,7 +5,7 @@ from .model import StructureResultsModel
 
 
 class StructureResults(ResultsPanel[StructureResultsModel]):
-    title = "Final geometry"
+    title = "Final Geometry"
     identifier = "structure"
 
     def render(self):

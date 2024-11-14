@@ -1,5 +1,3 @@
-import time
-
 from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.main import App
@@ -33,8 +31,9 @@ def test_workchainview(generate_qeapp_workchain):
     workchain = generate_qeapp_workchain()
     workchain.node.seal()
     model = WorkChainViewerModel()
+    model.process_uuid = workchain.node.uuid
     viewer = WorkChainViewer(workchain.node, model=model)
-    time.sleep(3)
+    viewer.render()
     assert len(viewer.tabs.children) == 5
     assert viewer.tabs._titles["0"] == "Workflow Summary"  # type: ignore
     assert viewer.tabs._titles["1"] == "Final Geometry"  # type: ignore
