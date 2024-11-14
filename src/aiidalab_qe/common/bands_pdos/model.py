@@ -45,35 +45,23 @@ class BandsPdosModel(Model):
     needs_pdos_options = tl.Bool(False)
     needs_projections_controls = tl.Bool(False)
 
-    ready = tl.Bool(False)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         ipw.dlink(
             (self, "bands"),
             (self, "needs_projections_controls"),
-            lambda node: node is not None and "projwfc" in node,
+            lambda _: self._has_bands_projections,
         )
         ipw.dlink(
             (self, "pdos"),
             (self, "needs_pdos_options"),
-            lambda _: self.pdos is not None or self.needs_projections_controls,
+            lambda _: self._has_pdos or self.needs_projections_controls,
         )
         ipw.dlink(
             (self, "needs_projections_controls"),
             (self, "needs_pdos_options"),
-            lambda _: self.pdos is not None or self.needs_projections_controls,
-        )
-        ipw.dlink(
-            (self, "bands"),
-            (self, "ready"),
-            lambda node: bool(node),
-        )
-        ipw.dlink(
-            (self, "pdos"),
-            (self, "ready"),
-            lambda node: bool(node),
+            lambda _: self._has_pdos or self.needs_projections_controls,
         )
 
     def fetch_data(self):
@@ -82,6 +70,18 @@ class BandsPdosModel(Model):
             self.bands_data = self._get_bands_data()
         if self.pdos:
             self.pdos_data = self._get_pdos_data()
+
+    @property
+    def _has_bands(self):
+        return bool(self.bands)
+
+    @property
+    def _has_pdos(self):
+        return bool(self.pdos)
+
+    @property
+    def _has_bands_projections(self):
+        return self._has_bands and "projwfc" in self.bands
 
     def _get_pdos_data(self):
         if not self.pdos:

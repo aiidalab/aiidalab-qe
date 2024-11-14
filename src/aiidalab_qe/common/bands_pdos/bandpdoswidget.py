@@ -160,18 +160,6 @@ class BandPdosWidget(ipw.VBox):
             layout=ipw.Layout(display="none"),
         )
 
-        # self.plot_button = ipw.Button(
-        #     description="Plot",
-        #     icon="line-chart",
-        #     button_style="success",
-        # )
-        # ipw.dlink(
-        #     (self._model, "ready"),
-        #     (self.plot_button, "disabled"),
-        #     lambda ready: not ready,
-        # )
-        # self.plot_button.on_click(self._update_plot)
-
         self.pdos_options = ipw.VBox(
             children=[
                 ipw.HTML("""
@@ -218,11 +206,6 @@ class BandPdosWidget(ipw.VBox):
             """),
             self.pdos_options,
             self.download_button,
-            # ipw.HBox(
-            #     children=[
-            #         self.plot_button,
-            #     ],
-            # ),
             self.legend_interaction_description,
             self.bands_widget,
         ]
