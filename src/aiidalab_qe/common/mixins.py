@@ -59,15 +59,15 @@ class HasProcess(tl.HasTraits):
 
     @property
     def inputs(self):
-        return self.process_node.inputs if self.has_process else None
+        return self.process_node.inputs if self.has_process else []
 
     @property
     def properties(self):
-        return self.process_node.inputs.properties if self.has_process else None
+        return self.process_node.inputs.properties if self.has_process else []
 
     @property
     def outputs(self):
-        return self.process_node.outputs if self.has_process else None
+        return self.process_node.outputs if self.has_process else []
 
     def fetch_process_node(self):
         try:

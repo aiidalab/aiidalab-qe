@@ -66,10 +66,6 @@ class WorkChainViewer(ipw.VBox):
         """)
 
         self.tabs = ipw.Tab(selected_index=None)
-        self.tabs.observe(
-            self._on_tab_change,
-            "selected_index",
-        )
 
         self.children = [
             self.title,
@@ -83,12 +79,6 @@ class WorkChainViewer(ipw.VBox):
         if node.is_finished:
             self._add_workflow_output_widget()
 
-    def _on_tab_change(self, change):
-        if (tab_index := change["new"]) is None:
-            return
-        tab: ResultsPanel = self.tabs.children[tab_index]  # type: ignore
-        tab.render()
-
     def _update_tabs(self):
         children = []
         titles = []
@@ -101,6 +91,7 @@ class WorkChainViewer(ipw.VBox):
         for i, title in enumerate(titles):
             self.tabs.set_title(i, title)
         self.tabs.selected_index = 0
+        self.summary.render()
 
     def _add_workflow_output_widget(self):
         self.summary.children += (WorkChainOutputs(self._model.process_node),)
@@ -122,8 +113,8 @@ class WorkChainViewer(ipw.VBox):
                     )
             panel = entry["panel"]
             model = entry["model"]()
-            self._model.add_model(identifier, model)
             self.results[identifier] = panel(
                 identifier=identifier,
                 model=model,
             )
+            self._model.add_model(identifier, model)

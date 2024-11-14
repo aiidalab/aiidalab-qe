@@ -84,6 +84,8 @@ class SubmissionStepModel(
         if not self.process_node:
             self._submit()
         super().confirm()
+        # Once submitted, nothing should unconfirm the model!
+        self.unobserve_all("confirmed")
 
     def check_resources(self):
         pw_code = self.get_code("dft", "pw")
