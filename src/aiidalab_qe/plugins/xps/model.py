@@ -114,16 +114,19 @@ class XpsModel(SettingsModel, HasInputStructure):
             # TODO What if the group does not exist? Should we proceed? Can this happen?
 
     def _update_pseudos(self):
-        if self._pseudo_group_exists():
+        if not self._pseudo_group_exists():
             self._install_pseudos()
 
     def _pseudo_group_exists(self, _=None):
-        qb = QueryBuilder()
-        qb.append(
-            Group,
-            filters={"label": self.pseudo_group},
+        groups = (
+            QueryBuilder()
+            .append(
+                Group,
+                filters={"label": self.pseudo_group},
+            )
+            .all(flat=True)
         )
-        return len(qb.all()) == 0
+        return len(groups) and [len(group.nodes) for group in groups]
 
     def _install_pseudos(self):
         import os
