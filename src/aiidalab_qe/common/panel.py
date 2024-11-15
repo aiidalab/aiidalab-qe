@@ -95,11 +95,11 @@ class SettingsModel(Model, Confirmable):
 
     def get_model_state(self) -> dict:
         """Retrieves the model current state as a dictionary."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def set_model_state(self, parameters: dict):
         """Distributes the parameters of a loaded calculation to the model."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def reset(self):
         """Resets the model to present defaults."""
@@ -131,7 +131,7 @@ class SettingsPanel(Panel, t.Generic[SM]):
         self.links = []
 
     def render(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def refresh(self, specific=""):
         """Refreshes the settings panel.
@@ -317,7 +317,7 @@ class ResultsPanel(Panel, t.Generic[RM]):
         )
 
     def render(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def _on_load_results_click(self, _):
         self.render()

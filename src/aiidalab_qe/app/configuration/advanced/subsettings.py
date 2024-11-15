@@ -22,11 +22,11 @@ class AdvancedSubModel(Model):
         `specific` : `str`, optional
             If provided, specifies the level of update.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def reset(self):
         """Resets the model to present defaults."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 M = t.TypeVar("M", bound=AdvancedSubModel)
@@ -58,7 +58,7 @@ class AdvancedSubSettings(ipw.VBox, t.Generic[M]):
         self.links = []
 
     def render(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def refresh(self, specific=""):
         """Refreshes the subsettings section.

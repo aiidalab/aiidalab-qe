@@ -996,7 +996,7 @@ class LazyLoadedStructureImporter(ipw.VBox):
         self.rendered = True
 
     def _get_widget(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def _on_render_click(self, _):
         self.render()
