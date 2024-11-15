@@ -328,6 +328,7 @@ class ResultsPanel(Panel, t.Generic[RM]):
         raise NotImplementedError()
 
     def _on_load_results_click(self, _):
+        self.children = [self.loading_message]
         self.render()
 
     def _on_monitor_counter_change(self, _):
