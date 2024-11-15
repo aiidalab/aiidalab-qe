@@ -14,6 +14,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
+from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.mixins import Confirmable, HasProcess
 from aiidalab_qe.common.mvc import Model
 
@@ -221,6 +222,13 @@ class ResultsModel(Model, HasProcess):
                 <b>Status:</b> {state.upper()}
             </div>
         """
+
+    def _get_child_outputs(self, child="this"):
+        if not (node := self._fetch_child_process_node(child)):
+            outputs = super().outputs
+            child = child if child != "this" else self.identifier
+            return getattr(outputs, child) if child in outputs else AttributeDict({})
+        return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
 
     def _fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
         if not self.process_node:

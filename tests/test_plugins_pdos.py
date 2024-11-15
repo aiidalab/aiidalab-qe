@@ -1,23 +1,17 @@
-from aiida.common.extendeddicts import AttributeDict
-
-
 def test_result(generate_qeapp_workchain):
     import plotly.graph_objects as go
 
-    from aiidalab_qe.common.bands_pdos import BandsPdosModel, BandsPdosWidget
+    from aiidalab_qe.common.bands_pdos import BandsPdosWidget
+    from aiidalab_qe.plugins.pdos.result import PdosResults, PdosResultsModel
 
     workchain = generate_qeapp_workchain()
+    model = PdosResultsModel()
+    model.process_node = workchain.node
+    result = PdosResults(model=model)
+    result.render()
 
-    # NOTE the actual widget fails because the workchain is not actually attached
-    # to the QeAppWorkchain, so the bands widget receives `None` and raises an
-    # exception. Instead, we mock the render behavior, but bypass the node fetching
-    # by setting the node directly from the outputs of the generated workchain.
-    # TODO rethink test
-
-    pdos_node = AttributeDict(workchain.outputs["pdos"])
-    model = BandsPdosModel()
-    widget = BandsPdosWidget(model=model, pdos=pdos_node)
-    widget.render()
+    widget = result.children[0]
+    model = widget._model
 
     assert isinstance(widget, BandsPdosWidget)
     assert isinstance(widget.plot, go.FigureWidget)

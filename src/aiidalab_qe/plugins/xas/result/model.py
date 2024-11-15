@@ -29,11 +29,11 @@ class XasResultsModel(ResultsModel):
     _this_process_label = "XspectraCrystalWorkChain"
 
     def update_spectrum_options(self):
-        node = self._fetch_child_process_node()
+        outputs = self._get_child_outputs()
         (
             self.final_spectra,
             self.equivalent_sites_data,
-        ) = export_xas_data(node.outputs)
+        ) = export_xas_data(outputs)
         xas_workchain = next(
             node
             for node in self.process_node.called

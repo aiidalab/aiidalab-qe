@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.panel import ResultsModel
 
 
@@ -16,40 +15,36 @@ class ElectronicStructureResultsModel(ResultsModel):
     _pdos_process_uuid = None
 
     def get_pdos_node(self):
-        if not (node := self._fetch_child_process_node("pdos")):
-            return
-        outputs = {key: getattr(node.outputs, key) for key in node.outputs}
-        return AttributeDict(outputs)
+        return self._get_child_outputs("pdos")
 
     def get_bands_node(self):
-        if not (node := self._fetch_child_process_node("bands")):
-            return
-        if self._has_bands:
-            return node.outputs.bands
-        elif self._has_band_projections:
-            return node.outputs.bands_projwfc
+        outputs = self._get_child_outputs("bands")
+        if "bands" in outputs:
+            return outputs.bands
+        elif "bands_projwfc" in outputs:
+            return outputs.bands_projwfc
         else:
-            # If neither 'bands' nor 'bands_projwfc' exist, use the 'outputs' node itself
+            # If neither 'bands' nor 'bands_projwfc' exist, use 'bands_output' itself
             # This is the case for compatibility with older versions of the plugin
-            return node.outputs
+            return outputs
 
     @property
     def include(self):
-        # TODO `and` should be `or` if combined
         return all(identifier in self.properties for identifier in ("bands", "pdos"))
 
     @property
     def has_results(self):
-        # TODO first `and` should be `or` if combined
-        return self._has_bands and (self._has_dos and self._has_dos_projections)
+        # TODO should be `or` if merged
+        return self._has_bands and self._has_pdos
 
     @property
     def process_states(self):
-        bands_node = self._fetch_child_process_node("bands")
-        pdos_node = self._fetch_child_process_node("pdos")
         return [
             node.process_state.value if node and node.process_state else "queued"
-            for node in (bands_node, pdos_node)
+            for node in (
+                self._fetch_child_process_node("bands"),
+                self._fetch_child_process_node("pdos"),
+            )
         ]
 
     def update_process_state_notification(self):
@@ -66,20 +61,10 @@ class ElectronicStructureResultsModel(ResultsModel):
 
     @property
     def _has_bands(self):
-        node = self._fetch_child_process_node("bands")
-        return node and "bands" in node.outputs
+        outputs = self._get_child_outputs("bands")
+        return any(output in outputs for output in ("bands", "bands_projwfc"))
 
     @property
-    def _has_band_projections(self):
-        node = self._fetch_child_process_node("bands")
-        return node and "bands_projwfc" in node.outputs
-
-    @property
-    def _has_dos(self):
-        node = self._fetch_child_process_node("pdos")
-        return node and "dos" in node.outputs
-
-    @property
-    def _has_dos_projections(self):
-        node = self._fetch_child_process_node("pdos")
-        return node and "projwfc" in node.outputs
+    def _has_pdos(self):
+        outputs = self._get_child_outputs("pdos")
+        return all(output in outputs for output in ("dos", "projwfc"))

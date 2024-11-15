@@ -35,12 +35,12 @@ class XpsResultsModel(ResultsModel):
     _this_process_label = "XpsWorkChain"
 
     def update_spectrum_options(self):
-        node = self._fetch_child_process_node()
+        outputs = self._get_child_outputs()
         (
             self.chemical_shifts,
             self.binding_energies,
             self.equivalent_sites_data,
-        ) = export_xps_data(node.outputs)
+        ) = export_xps_data(outputs)
         options = [key.split("_")[0] for key in self.chemical_shifts.keys()]
         self.spectrum_options = options
         self.spectrum = options[0] if options else None
