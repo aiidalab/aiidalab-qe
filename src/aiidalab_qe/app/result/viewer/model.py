@@ -12,10 +12,6 @@ class WorkChainViewerModel(
 ):
     def _link_model(self, model: ResultsModel):
         ipw.dlink(
-            (self, "process_uuid"),
-            (model, "process_uuid"),
-        )
-        ipw.dlink(
             (self, "monitor_counter"),
             (model, "monitor_counter"),
         )

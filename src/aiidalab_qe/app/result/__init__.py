@@ -197,10 +197,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def _create_workchain_viewer(self, node):
         model = WorkChainViewerModel()
         ipw.dlink(
-            (self._model, "process_uuid"),
-            (model, "process_uuid"),
-        )
-        ipw.dlink(
             (self._model, "monitor_counter"),
             (model, "monitor_counter"),
         )

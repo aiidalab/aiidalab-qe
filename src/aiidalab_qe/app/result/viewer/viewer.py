@@ -27,7 +27,7 @@ class WorkChainViewer(ipw.VBox):
         )
 
         self._model = model
-        self._model.process_node = node
+        self._model.process_uuid = node.uuid
 
         self.rendered = False
 
@@ -91,6 +91,7 @@ class WorkChainViewer(ipw.VBox):
 
     def _add_structure_panel(self):
         structure_model = StructureResultsModel()
+        structure_model.process_uuid = self._model.process_uuid
         self.structure_results = StructureResults(model=structure_model)
         identifier = self.structure_results.identifier
         self._model.add_model(identifier, structure_model)
@@ -106,6 +107,7 @@ class WorkChainViewer(ipw.VBox):
                     )
             panel = entry["panel"]
             model = entry["model"]()
+            model.process_uuid = self._model.process_uuid
             self.results[identifier] = panel(
                 identifier=identifier,
                 model=model,
