@@ -6,7 +6,7 @@ def test_result(generate_qeapp_workchain):
 
     workchain = generate_qeapp_workchain()
     model = PdosResultsModel()
-    model.process_node = workchain.node
+    model.process_uuid = workchain.node.uuid
     result = PdosResults(model=model)
     result.render()
 

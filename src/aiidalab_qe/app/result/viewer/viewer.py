@@ -32,6 +32,7 @@ class WorkChainViewer(ipw.VBox):
         self.rendered = False
 
         summary_model = WorkChainSummaryModel()
+        summary_model.process_uuid = node.uuid
         self.summary = WorkChainSummary(model=summary_model)
         self._model.add_model("summary", summary_model)
 
@@ -49,14 +50,18 @@ class WorkChainViewer(ipw.VBox):
         if self.rendered:
             return
 
-        node = self._model.process_node
+        node = self._model.fetch_process_node()
 
-        self.title = ipw.HTML(f"""
-            <hr style="height:2px;background-color:#2097F3;">
-            <h4>
-                QE App Workflow (pk: {node.pk}) &mdash; {node.inputs.structure.get_formula()}
-            </h4>
-        """)
+        self.title = ipw.HTML()
+
+        title = "<hr style='height:2px;background-color:#2097F3;'>"
+        if node:
+            formula = node.inputs.structure.get_formula()
+            title += f"\n<h4>QE App Workflow (pk: {node.pk}) &mdash; {formula}</h4>"
+        else:
+            title += "\n<h4>QE App Workflow</h4>"
+
+        self.title.value = title
 
         self.tabs = ipw.Tab(selected_index=None)
 
@@ -69,7 +74,7 @@ class WorkChainViewer(ipw.VBox):
 
         self._update_tabs()
 
-        if node.is_finished:
+        if node and node.is_finished:
             self._add_workflow_output_widget()
 
     def _update_tabs(self):
@@ -87,7 +92,8 @@ class WorkChainViewer(ipw.VBox):
         self.summary.render()
 
     def _add_workflow_output_widget(self):
-        self.summary.children += (WorkChainOutputs(self._model.process_node),)
+        process_node = self._model.fetch_process_node()
+        self.summary.children += (WorkChainOutputs(node=process_node),)
 
     def _add_structure_panel(self):
         structure_model = StructureResultsModel()

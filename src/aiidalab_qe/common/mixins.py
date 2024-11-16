@@ -49,35 +49,28 @@ class HasModels(t.Generic[T]):
 
 class HasProcess(tl.HasTraits):
     process_uuid = tl.Unicode(allow_none=True)
-    monitor_counter = tl.Int(0)
-
-    process_node = None
-
-    @property
-    def has_process(self):
-        return self.process_node is not None
+    monitor_counter = tl.Int(0)  # used for continuous updates
 
     @property
     def inputs(self):
-        return self.process_node.inputs if self.has_process else []
+        process_node = self.fetch_process_node()
+        return process_node.inputs if process_node else []
 
     @property
     def properties(self):
-        return self.process_node.inputs.properties if self.has_process else []
+        process_node = self.fetch_process_node()
+        return process_node.inputs.properties if process_node else []
 
     @property
     def outputs(self):
-        return self.process_node.outputs if self.has_process else []
+        process_node = self.fetch_process_node()
+        return process_node.outputs if process_node else []
 
     def fetch_process_node(self):
         try:
             return orm.load_node(self.process_uuid) if self.process_uuid else None
         except NotExistent:
             return None
-
-    @tl.observe("process_uuid")
-    def _on_process_uuid_change(self, _):
-        self.process_node = self.fetch_process_node()
 
 
 class Confirmable(tl.HasTraits):

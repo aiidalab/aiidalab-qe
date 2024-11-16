@@ -231,7 +231,7 @@ class ResultsModel(Model, HasProcess):
         return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
 
     def _fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
-        if not self.process_node:
+        if not self.process_uuid:
             return
         uuid = getattr(self, f"_{child}_process_uuid")
         label = getattr(self, f"_{child}_process_label")
@@ -240,7 +240,7 @@ class ResultsModel(Model, HasProcess):
                 orm.QueryBuilder()
                 .append(
                     orm.WorkChainNode,
-                    filters={"uuid": self.process_node.uuid},
+                    filters={"uuid": self.process_uuid},
                     tag="root_process",
                 )
                 .append(

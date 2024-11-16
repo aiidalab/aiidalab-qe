@@ -209,7 +209,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             return
         process_node = self._model.fetch_process_node()
         if (
-            not self._model.has_process
+            not process_node
             or process_node.is_finished
             or process_node.is_excepted
             or self.state
@@ -236,7 +236,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
     def _update_state(self):
         process_node = self._model.fetch_process_node()
-        if not self._model.has_process:
+        if not process_node:
             self.state = self.State.INIT
         elif process_node.process_state in (
             ProcessState.CREATED,

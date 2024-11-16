@@ -125,7 +125,8 @@ class WorkChainSummaryModel(ResultsModel):
         """
         from aiida.orm.utils.serialize import deserialize_unsafe
 
-        qeapp_wc = self.process_node
+        if not (qeapp_wc := self.fetch_process_node()):
+            return {"error": "WorkChain not found."}
 
         ui_parameters = qeapp_wc.base.extras.get("ui_parameters", {})
         if isinstance(ui_parameters, str):

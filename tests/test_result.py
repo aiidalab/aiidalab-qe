@@ -43,7 +43,7 @@ def test_summary_report(data_regression, generate_qeapp_workchain):
     """Test the summary report can be properly generated."""
     workchain = generate_qeapp_workchain()
     model = WorkChainSummaryModel()
-    model.process_node = workchain.node
+    model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     data_regression.check(report_parameters)
 
@@ -54,7 +54,7 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
         spin_type="collinear", electronic_type="metal", initial_magnetic_moments=0.1
     )
     model = WorkChainSummaryModel()
-    model.process_node = workchain.node
+    model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     assert report_parameters["initial_magnetic_moments"]["Si"] == 0.1
 
@@ -63,7 +63,7 @@ def test_summary_view(generate_qeapp_workchain):
     """Test the report html can be properly generated."""
     workchain = generate_qeapp_workchain()
     model = WorkChainSummaryModel()
-    model.process_node = workchain.node
+    model.process_uuid = workchain.node.uuid
     report_html = model.generate_report_html()
     parsed = BeautifulSoup(report_html, "html.parser")
     # find the td with the text "Initial Magnetic Moments"

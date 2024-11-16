@@ -9,7 +9,7 @@ def test_electronic_structure(generate_qeapp_workchain):
 
     workchain = generate_qeapp_workchain()
     model = ElectronicStructureResultsModel()
-    model.process_node = workchain.node
+    model.process_uuid = workchain.node.uuid
     result = ElectronicStructureResults(model=model)
     result.render()
 
