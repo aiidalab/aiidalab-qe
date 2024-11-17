@@ -186,13 +186,14 @@ class ResultsModel(Model, HasProcess):
     title = "Model"
     identifier = "model"
 
-    process_state_notification = tl.Unicode("")
+    process_status_notification = tl.Unicode("")
 
     _this_process_label = ""
     _this_process_uuid = None
 
     CSS_MAP = {
         "finished": "success",
+        "failed": "danger",
         "excepted": "danger",
         "killed": "danger",
         "queued": "warning",
@@ -210,18 +211,27 @@ class ResultsModel(Model, HasProcess):
         node = self._fetch_child_process_node()
         return node and node.is_finished_ok
 
-    @property
-    def process_state(self):
-        node = self._fetch_child_process_node()
-        return node.process_state.value if node and node.process_state else "queued"
+    def update_process_status_notification(self):
+        self.process_status_notification = self._get_child_process_status()
 
-    def update_process_state_notification(self):
-        state = self.process_state
-        self.process_state_notification = f"""
+    def _get_child_process_status(self, child="this"):
+        state, exit_message = self._get_child_state_and_exit_message(child)
+        status = state.upper()
+        if exit_message:
+            status = f"{status} ({exit_message})"
+        label = "Status" if child == "this" else f"{child.capitalize()} status"
+        return f"""
             <div class="alert alert-{self.CSS_MAP.get(state, "info")}">
-                <b>Status:</b> {state.upper()}
+                <b>{label}:</b> {status}
             </div>
         """
+
+    def _get_child_state_and_exit_message(self, child="this"):
+        if not (node := self._fetch_child_process_node(child)):
+            return "queued", None
+        if node.is_failed:
+            return "failed", node.exit_message
+        return node.process_state.value, None
 
     def _get_child_outputs(self, child="this"):
         if not (node := self._fetch_child_process_node(child)):
@@ -233,6 +243,7 @@ class ResultsModel(Model, HasProcess):
     def _fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
         if not self.process_uuid:
             return
+        child = child.lower()
         uuid = getattr(self, f"_{child}_process_uuid")
         label = getattr(self, f"_{child}_process_label")
         if not uuid:
@@ -288,10 +299,10 @@ class ResultsPanel(Panel, t.Generic[RM]):
 
         self.links = []
 
-        self.process_state_notification = ipw.HTML()
+        self.process_status_notification = ipw.HTML()
         ipw.dlink(
-            (self._model, "process_state_notification"),
-            (self.process_state_notification, "value"),
+            (self._model, "process_status_notification"),
+            (self.process_status_notification, "value"),
         )
 
         self.load_results_button = ipw.Button(
@@ -309,7 +320,7 @@ class ResultsPanel(Panel, t.Generic[RM]):
 
         super().__init__(
             children=[
-                self.process_state_notification,
+                self.process_status_notification,
                 ipw.HBox(
                     children=[
                         self.load_results_button,
@@ -332,4 +343,4 @@ class ResultsPanel(Panel, t.Generic[RM]):
         self.render()
 
     def _on_monitor_counter_change(self, _):
-        self._model.update_process_state_notification()
+        self._model.update_process_status_notification()
