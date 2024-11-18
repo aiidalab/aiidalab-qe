@@ -1,5 +1,6 @@
 import typing as t
 
+import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
@@ -7,6 +8,23 @@ from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 T = t.TypeVar("T")
+
+
+class DependentStep:
+    missing_information_warning = "Missing information"
+    previous_children = []
+
+    def show_missing_information_warning(self):
+        self.children = [
+            ipw.HTML(f"""
+                <div class="alert alert-danger">
+                    <b>Warning:</b> {self.missing_information_warning}
+                </div>
+            """)
+        ]
+
+    def hide_missing_information_warning(self):
+        self.children = self.previous_children
 
 
 class HasInputStructure(tl.HasTraits):
@@ -87,12 +105,16 @@ class HasProcess(tl.HasTraits):
 class Confirmable(tl.HasTraits):
     confirmed = tl.Bool(False)
 
+    confirmation_exceptions = [
+        "confirmed",
+    ]
+
     def confirm(self):
         self.confirmed = True
 
     @tl.observe(tl.All)
     def _on_any_change(self, change):
-        if change and change["name"] != "confirmed":
+        if change and change["name"] not in self.confirmation_exceptions:
             self._unconfirm()
 
     def _unconfirm(self):
