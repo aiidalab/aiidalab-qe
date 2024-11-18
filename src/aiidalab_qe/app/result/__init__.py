@@ -4,6 +4,7 @@ import traitlets as tl
 from aiida import orm
 from aiida.engine import ProcessState
 from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.mixins import DependentStep
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import (
     ProcessMonitor,
@@ -20,7 +21,15 @@ PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
 PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 
 
-class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
+class ViewQeAppWorkChainStatusAndResultsStep(
+    ipw.VBox,
+    WizardAppWidgetStep,
+    DependentStep,
+):
+    missing_information_warning = (
+        "No available results. Did you submit or load a calculation?"
+    )
+
     def __init__(self, model: ResultsStepModel, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading results step")],
