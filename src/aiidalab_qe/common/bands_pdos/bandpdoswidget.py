@@ -138,6 +138,7 @@ class BandsPdosWidget(ipw.VBox):
             step=0.01,
             description="`Fat bands` max width (eV):",
             orientation="horizontal",
+            continuous_update=False,
             readout=True,
             readout_format=".2f",
             style={"description_width": "initial"},
@@ -265,22 +266,27 @@ class BandsPdosWidget(ipw.VBox):
             else:
                 self._model.fetch_data()
 
+                if hasattr(self, "plot"):
+                    # Get current axis range
+                    xaxis_range = list(self.plot.layout["xaxis"]["range"])  # type: ignore
+                    yaxis_range = list(self.plot.layout["yaxis"]["range"])  # type: ignore
+                else:
+                    xaxis_range = []
+                    yaxis_range = []
+
                 self.plot = BandPdosPlotly(
                     bands_data=self._model.bands_data,
                     pdos_data=self._model.pdos_data,
                     project_bands=self._model.project_bands_box,
                 ).bandspdosfigure
 
-                # Get current axis range
-                xaxis_range = list(self.plot.layout["xaxis"]["range"])
-                yaxis_range = list(self.plot.layout["yaxis"]["range"])
-
                 self._clear_output_and_display()
 
                 # Restore Old axis range. I do it after the plot is displayed to the Reset button always return to the Default SETTINGs
                 if self._model.bands_data:
-                    self.plot.plotly_relayout({"yaxis.range": yaxis_range})
-                if self._model.pdos_data and not self._model.bands_data:
+                    if yaxis_range:
+                        self.plot.plotly_relayout({"yaxis.range": yaxis_range})
+                elif self._model.pdos_data and xaxis_range:
                     self.plot.plotly_relayout({"xaxis.range": xaxis_range})
 
                 self.proj_bands_width_slider.layout.visibility = (
