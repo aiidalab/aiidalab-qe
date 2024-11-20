@@ -19,10 +19,10 @@ FUNCTIONAL_REPORT_MAP = {
 
 # Periodicity
 PERIODICITY_MAPPING = {
-    (True, True, True): "xyz",
-    (True, True, False): "xy",
-    (True, False, False): "x",
-    (False, False, False): "molecule",
+    (True, True, True): "3D",
+    (True, True, False): "2D",
+    (True, False, False): "1D",
+    (False, False, False): "Molecule",
 }
 
 VDW_CORRECTION_VERSION = {

@@ -465,12 +465,12 @@ class AddingTagsEditor(ipw.VBox):
         )
         self.periodicity = ipw.RadioButtons(
             options=[
-                "xyz",
-                "xy",
-                "x",
-                "molecule",
+                "3D",
+                "2D",
+                "1D",
+                "Molecule",
             ],
-            value="xyz",
+            value="3D",
             description="Periodicty: ",
             layout={"width": "initial"},
         )
@@ -612,10 +612,10 @@ class AddingTagsEditor(ipw.VBox):
     def _select_periodicity(self, _=None):
         """Select periodicity."""
         periodicity_options = {
-            "xyz": (True, True, True),
-            "xy": (True, True, False),
-            "x": (True, False, False),
-            "molecule": (False, False, False),
+            "3D": (True, True, True),
+            "2D": (True, True, False),
+            "1D": (True, False, False),
+            "Molecule": (False, False, False),
         }
         new_structure = deepcopy(self.structure)
         new_structure.set_pbc(periodicity_options[self.periodicity.value])
