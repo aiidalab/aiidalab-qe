@@ -293,7 +293,6 @@ The integration is made possible by several key aspects:
 Each plugin is responsible for the calculation of a single property.
 For instance, we could create a PDOS plugin, including its settings, workchain, and result analysis.
 
-.. TODO modify below
 The GUI of the PDOS plugin is only loaded when the user selects to run it.
 Here is an example, where two new setting panels are shown when the user selects to run the properties.
 
