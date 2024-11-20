@@ -1,57 +1,38 @@
 def test_electronic_structure(generate_qeapp_workchain):
-    """Test the electronic structure tab."""
-    import time
-
     import plotly.graph_objects as go
 
-    from aiida import engine
-    from aiidalab_qe.app.result.workchain_viewer import WorkChainViewer
-    from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
-    from aiidalab_qe.plugins.electronic_structure.result import Result
-
-    wkchain = generate_qeapp_workchain()
-    wkchain.node.set_exit_status(0)
-    wkchain.node.set_process_state(engine.ProcessState.FINISHED)
-    wkchain.node.seal()
-    wcv = WorkChainViewer(wkchain.node)
-    # wait for the tabs to be updated by the process monitor
-    time.sleep(3)
-    # find the tab with the identifier "electronic_structure"
-    # the built-in summary and structure tabs is not a plugin panel,
-    # thus don't have identifiers
-    tab = next(
-        tab
-        for tab in wcv.result_tabs.children
-        if getattr(tab, "identifier", "") == "electronic_structure"
+    from aiidalab_qe.common.bands_pdos import BandsPdosWidget
+    from aiidalab_qe.plugins.electronic_structure.result import (
+        ElectronicStructureResults,
+        ElectronicStructureResultsModel,
     )
-    # It should have one children: the _bands_plot_view
-    assert len(tab.children) == 1
 
-    result = Result(node=wkchain.node)
-    result._update_view()
+    workchain = generate_qeapp_workchain()
+    model = ElectronicStructureResultsModel()
+    model.process_uuid = workchain.node.uuid
+    result = ElectronicStructureResults(model=model)
+    result.render()
 
-    assert isinstance(result.children[0], BandPdosWidget)
-    assert isinstance(result.children[0].bandsplot_widget, go.FigureWidget)
+    widget = result.children[0]
+    model = widget._model
+
+    assert isinstance(widget, BandsPdosWidget)
+    assert isinstance(widget.plot, go.FigureWidget)
 
     # Check if data is correct
-    assert result.children[0].bands_data is not None
-    assert result.children[0].bands_data["pathlabels"] is not None
-    assert result.children[0].pdos_data is not None
+
+    assert model.bands_data is not None
+    assert model.bands_data["pathlabels"] is not None  # type: ignore
+    assert model.pdos_data is not None
 
     # Check Bands axis
-    assert result.children[0].bandsplot_widget.layout.xaxis.title.text == "k-points"
-    assert (
-        result.children[0].bandsplot_widget.layout.xaxis2.title.text
-        == "Density of states"
-    )
-    assert (
-        result.children[0].bandsplot_widget.layout.yaxis.title.text
-        == "Electronic Bands (eV)"
-    )
+    assert widget.plot.layout.xaxis.title.text == "k-points"
+    assert widget.plot.layout.xaxis2.title.text == "Density of states"
+    assert widget.plot.layout.yaxis.title.text == "Electronic Bands (eV)"
     assert isinstance(
-        result.children[0].bandsplot_widget.layout.xaxis.rangeslider,
+        widget.plot.layout.xaxis.rangeslider,
         go.layout.xaxis.Rangeslider,
     )
-    assert result.children[0].bands_data["pathlabels"][0] == list(
-        result.children[0].bandsplot_widget.layout.xaxis.ticktext
+    assert model.bands_data["pathlabels"][0] == list(  # type: ignore
+        widget.plot.layout.xaxis.ticktext
     )

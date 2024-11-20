@@ -8,11 +8,17 @@ import traitlets as tl
 from IPython.display import Javascript, display
 
 from aiida.orm import load_node
+from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
+from aiidalab_qe.app.configuration.model import ConfigurationStepModel
 from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
+from aiidalab_qe.app.result.model import ResultsStepModel
 from aiidalab_qe.app.structure import StructureSelectionStep
+from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_widgets_base import WizardAppWidget, WizardAppWidgetStep
+from aiidalab_qe.app.submission.model import SubmissionStepModel
+from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_widgets_base import WizardAppWidget
 
 
 class App(ipw.VBox):
@@ -22,41 +28,50 @@ class App(ipw.VBox):
     process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
 
     def __init__(self, qe_auto_setup=True):
+        # Initialize the models
+        self.structure_model = StructureStepModel()
+        self.configure_model = ConfigurationStepModel()
+        self.submit_model = SubmissionStepModel()
+        self.results_model = ResultsStepModel()
+
         # Create the application steps
-        self.structure_step = StructureSelectionStep(auto_advance=True)
-        self.structure_step.observe(self._observe_structure_selection, "structure")
-        self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
+        self.structure_step = StructureSelectionStep(
+            model=self.structure_model,
+            auto_advance=True,
+        )
+        self.configure_step = ConfigureQeAppWorkChainStep(
+            model=self.configure_model,
+            auto_advance=True,
+        )
         self.submit_step = SubmitQeAppWorkChainStep(
+            model=self.submit_model,
             auto_advance=True,
             qe_auto_setup=qe_auto_setup,
         )
-        self.results_step = ViewQeAppWorkChainStatusAndResultsStep()
+        self.results_step = ViewQeAppWorkChainStatusAndResultsStep(
+            model=self.results_model,
+        )
 
-        # Link the application steps
+        # Wizard step observations
         ipw.dlink(
             (self.structure_step, "state"),
             (self.configure_step, "previous_step_state"),
         )
-        ipw.dlink(
-            (self.structure_step, "confirmed_structure"),
-            (self.submit_step, "input_structure"),
-        )
-        ipw.dlink(
-            (self.structure_step, "confirmed_structure"),
-            (self.configure_step, "input_structure"),
+        self.structure_model.observe(
+            self._on_structure_confirmation_change,
+            "confirmed",
         )
         ipw.dlink(
             (self.configure_step, "state"),
             (self.submit_step, "previous_step_state"),
         )
-        ipw.dlink(
-            (self.configure_step, "configuration_parameters"),
-            (self.submit_step, "input_parameters"),
+        self.configure_model.observe(
+            self._on_configuration_confirmation_change,
+            "confirmed",
         )
-        ipw.dlink(
-            (self.submit_step, "process"),
-            (self.results_step, "process"),
-            transform=lambda node: node.uuid if node is not None else None,
+        self.submit_model.observe(
+            self._on_submission,
+            "confirmed",
         )
 
         # Add the application steps to the application
@@ -68,93 +83,119 @@ class App(ipw.VBox):
                 ("Status & Results", self.results_step),
             ]
         )
-        # hide the header
-        self._wizard_app_widget.children[0].layout.display = "none"
-        self._wizard_app_widget.observe(self._observe_selected_index, "selected_index")
-
-        # Add a button to start a new calculation
-        self.new_work_chains_button = ipw.Button(
-            description="Start New Calculation",
-            tooltip="Open a new page to start a separate calculation",
-            button_style="success",
-            icon="plus-circle",
-            layout=ipw.Layout(width="30%"),
+        self._wizard_app_widget.observe(
+            self._on_step_change,
+            "selected_index",
         )
 
-        def on_button_click(_):
-            display(Javascript("window.open('./qe.ipynb', '_blank')"))
+        # Hide the header
+        self._wizard_app_widget.children[0].layout.display = "none"  # type: ignore
 
-        self.new_work_chains_button.on_click(on_button_click)
+        # Add a button to start a new calculation
+        self.new_workchain_button = ipw.Button(
+            layout=ipw.Layout(width="auto"),
+            button_style="success",
+            icon="plus-circle",
+            description="Start New Calculation",
+            tooltip="Open a new page to start a separate calculation",
+        )
+
+        self.new_workchain_button.on_click(self._on_new_workchain_button_click)
+
+        self._process_loading_message = LoadingWidget(
+            message="Loading process",
+            layout=ipw.Layout(display="none"),
+        )
 
         super().__init__(
             children=[
-                self.new_work_chains_button,
+                self.new_workchain_button,
+                self._process_loading_message,
                 self._wizard_app_widget,
             ]
         )
+
+        self._wizard_app_widget.selected_index = None
+
+        self._update_blockers()
 
     @property
     def steps(self):
         return self._wizard_app_widget.steps
 
-    # Reset the confirmed_structure in case that a new structure is selected
-    def _observe_structure_selection(self, change):
-        with self.structure_step.hold_sync():
-            if (
-                self.structure_step.confirmed_structure is not None
-                and self.structure_step.confirmed_structure != change["new"]
-            ):
-                self.structure_step.confirmed_structure = None
-
-    def _observe_selected_index(self, change):
-        """Check unsaved change in the step when leaving the step."""
-        # no accordion tab is selected
-        if not change["new"]:
-            return
-        new_idx = change["new"]
-        # only when entering the submit step, check and udpate the blocker messages
-        # steps[new_idx][0] is the title of the step
-        if self.steps[new_idx][1] is not self.submit_step:
-            return
-        blockers = []
-        # Loop over all steps before the submit step
-        for title, step in self.steps[:new_idx]:
-            # check if the step is saved
-            if not step.is_saved():
-                step.state = WizardAppWidgetStep.State.CONFIGURED
-                blockers.append(
-                    f"Unsaved changes in the <b>{title}</b> step. Please save the changes before submitting."
-                )
-        self.submit_step.external_submission_blockers = blockers
-
     @tl.observe("process")
-    def _observe_process(self, change):
-        from aiida.orm.utils.serialize import deserialize_unsafe
+    def _on_process_change(self, change):
+        self._update_from_process(change["new"])
 
-        if change["old"] == change["new"]:
-            return
-        pk = change["new"]
+    def _on_new_workchain_button_click(self, _):
+        display(Javascript("window.open('./qe.ipynb', '_blank')"))
+
+    def _on_step_change(self, change):
+        if (step_index := change["new"]) is not None:
+            self._render_step(step_index)
+
+    def _on_structure_confirmation_change(self, _):
+        self._update_configuration_step()
+        self._update_blockers()
+
+    def _on_configuration_confirmation_change(self, _):
+        self._update_submission_step()
+        self._update_blockers()
+
+    def _on_submission(self, _):
+        self._update_results_step()
+
+    def _render_step(self, step_index):
+        step = self.steps[step_index][1]
+        step.render()
+
+    def _update_configuration_step(self):
+        if self.structure_model.confirmed:
+            self.configure_model.input_structure = self.structure_model.input_structure
+        else:
+            self.configure_model.input_structure = None
+
+    def _update_submission_step(self):
+        if self.configure_model.confirmed:
+            self.submit_model.input_structure = self.structure_model.input_structure
+            self.submit_model.input_parameters = self.configure_model.get_model_state()
+        else:
+            self.submit_model.input_structure = None
+            self.submit_model.input_parameters = {}
+
+    def _update_results_step(self):
+        node = self.submit_model.process_node
+        self.results_model.process_uuid = node.uuid if node is not None else None
+
+    def _update_blockers(self):
+        self.submit_model.external_submission_blockers = [
+            f"Unsaved changes in the <b>{title}</b> step. Please confirm the changes before submitting."
+            for title, step in self.steps[:2]
+            if not step.is_saved()
+        ]
+
+    def _update_from_process(self, pk):
         if pk is None:
             self._wizard_app_widget.reset()
             self._wizard_app_widget.selected_index = 0
         else:
-            process = load_node(pk)
-            with self.structure_step.manager.hold_sync():
-                with self.structure_step.hold_sync():
-                    self._wizard_app_widget.selected_index = 3
-                    self.structure_step.manager.viewer.structure = (
-                        process.inputs.structure.get_ase()
-                    )
-                    self.structure_step.structure = process.inputs.structure
-                    self.structure_step.confirm()
-                    self.submit_step.process = process
+            self._show_process_loading_message()
+            process_node = load_node(pk)
+            self.structure_model.input_structure = process_node.inputs.structure
+            self.structure_model.confirm()
+            parameters = process_node.base.extras.get("ui_parameters", {})
+            if parameters and isinstance(parameters, str):
+                parameters = deserialize_unsafe(parameters)
+            self.configure_model.set_model_state(parameters)
+            self.configure_model.confirm()
+            self.submit_model.process_node = process_node
+            self.submit_model.set_model_state(parameters)
+            self.submit_model.confirm()
+            self._wizard_app_widget.selected_index = 3
+            self._hide_process_loading_message()
 
-            # set ui_parameters
-            # print out error message if yaml format ui_parameters is not reachable
-            ui_parameters = process.base.extras.get("ui_parameters", {})
-            if ui_parameters and isinstance(ui_parameters, str):
-                ui_parameters = deserialize_unsafe(ui_parameters)
-                self.configure_step.set_configuration_parameters(ui_parameters)
-                self.configure_step.confirm()
-                self.submit_step.set_submission_parameters(ui_parameters)
-                self.submit_step.state = self.submit_step.State.SUCCESS
+    def _show_process_loading_message(self):
+        self._process_loading_message.layout.display = "flex"
+
+    def _hide_process_loading_message(self):
+        self._process_loading_message.layout.display = "none"

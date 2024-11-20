@@ -3,6 +3,8 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets
 
+from aiidalab_qe.common.widgets import LoadingWidget
+
 
 def without_triggering(toggle: str):
     """Decorator to prevent the other toggle from triggering its callback."""
@@ -54,30 +56,38 @@ class AppWrapperContoller:
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
         if change["new"]:
+            self._view.info_container.children = [self._view.guide]
+            self._view.info_container.layout.display = "flex"
             self._view.job_history_toggle.value = False
-        self._view.info_container.children = [self._view.guide] if change["new"] else []
-        self._view.info_container.layout.display = "flex" if change["new"] else "none"
+        else:
+            self._view.info_container.children = []
+            self._view.info_container.layout.display = "none"
 
     @without_triggering("guide_toggle")
     def _on_about_toggle(self, change: dict):
         """Toggle the about section."""
         if change["new"]:
+            self._view.info_container.children = [self._view.about]
+            self._view.info_container.layout.display = "flex"
             self._view.job_history_toggle.value = False
-        self._view.info_container.children = [self._view.about] if change["new"] else []
-        self._view.info_container.layout.display = "flex" if change["new"] else "none"
+        else:
+            self._view.info_container.children = []
+            self._view.info_container.layout.display = "none"
 
     def _on_job_history_toggle(self, change: dict):
         """Toggle the job list section."""
         if change["new"]:
             self._view.about_toggle.value = False
             self._view.guide_toggle.value = False
+            self._old_view = self._view.main.children
+            self._view.main.children = [LoadingWidget("Loading job history")]
             self._view.job_history.setup_table()
             self._view.main.children = [
                 self._view.job_history.filters_layout,
                 self._view.job_history.table,
             ]
         else:
-            self._view.main.children = [self._view.app]
+            self._view.main.children = self._old_view
 
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
@@ -110,6 +120,7 @@ class AppWrapperView(ipw.VBox):
         from aiidalab_qe.app.static import templates
         from aiidalab_qe.app.utils.search_jobs import QueryInterface
         from aiidalab_qe.common.infobox import InfoBox
+        from aiidalab_qe.common.widgets import LoadingWidget
         from aiidalab_qe.version import __version__
 
         #################################################
@@ -128,16 +139,17 @@ class AppWrapperView(ipw.VBox):
         subtitle = ipw.HTML("<h3 id='subtitle'>🎉 Happy computing 🎉</h3>")
 
         self.guide_toggle = ipw.ToggleButton(
+            layout=ipw.Layout(width="auto"),
             button_style="",
             icon="book",
             value=False,
             description="Getting Started",
             tooltip="Learn how to use the app",
             disabled=True,
-            layout=ipw.Layout(width="140px"),
         )
 
         self.about_toggle = ipw.ToggleButton(
+            layout=ipw.Layout(width="auto"),
             button_style="",
             icon="info",
             value=False,
@@ -147,13 +159,13 @@ class AppWrapperView(ipw.VBox):
         )
 
         self.job_history_toggle = ipw.ToggleButton(
+            layout=ipw.Layout(width="auto"),
             button_style="",
             icon="list",
             value=False,
             description="Job History",
             tooltip="View all jobs run with this app",
             disabled=True,
-            layout=ipw.Layout(width="140px"),
         )
 
         info_toggles = ipw.HBox(
@@ -172,8 +184,9 @@ class AppWrapperView(ipw.VBox):
         self.guide = ipw.HTML(env.from_string(guide_template).render())
         self.about = ipw.HTML(env.from_string(about_template).render())
 
-        self.info_container = InfoBox()
         self.job_history = QueryInterface()
+
+        self.info_container = InfoBox()
 
         header = ipw.VBox(
             children=[
@@ -185,13 +198,7 @@ class AppWrapperView(ipw.VBox):
         )
         header.add_class("app-header")
 
-        loading = ipw.HTML("""
-            <div id="loading">
-                Loading the app <i class="fa fa-spinner fa-spin"></i>
-            </div>
-        """)
-
-        self.main = ipw.VBox(children=[loading])
+        self.main = ipw.VBox(children=[LoadingWidget("Loading the app")])
 
         current_year = datetime.now().year
         footer = ipw.HTML(f"""

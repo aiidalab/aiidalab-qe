@@ -20,6 +20,13 @@ def test_qe_app_select_silicon_and_confirm(
     driver = selenium_driver("qe.ipynb", wait_time=30.0)
     driver.set_window_size(1920, 1485)
 
+    # Open structure selection step
+    element = WebDriverWait(driver, 60).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "p-Accordion-child"))
+    )
+    element.click()
+
+    # Select the Silicon example
     element = WebDriverWait(driver, 60 * 2).until(
         EC.presence_of_element_located((By.XPATH, "//*[text()='From Examples']"))
     )

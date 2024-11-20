@@ -1,5 +1,6 @@
 import time
 
+import pytest
 from click.testing import CliRunner, Result
 
 import aiida
@@ -8,6 +9,7 @@ import aiidalab_qe.__main__ as cli
 # To learn more about testing click applications, see: https://click.palletsprojects.com/en/8.1.x/testing/
 
 
+@pytest.mark.slow
 def test_download_and_install_pseudos(tmp_path, aiida_profile, monkeypatch):
     """Test download pseudos to a specified directory and install them.
     And test install pseudos without download.
