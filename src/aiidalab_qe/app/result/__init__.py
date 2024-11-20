@@ -94,11 +94,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             (self.process_tree, "value"),
         )
 
-        self.container = ipw.VBox(
-            children=[
-                self.process_tree,
-            ],
-        )
+        self.node_view_container = ipw.VBox()
 
         self.process_monitor = ProcessMonitor(
             timeout=0.2,
@@ -119,7 +115,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 ],
                 layout=ipw.Layout(margin="0 3px"),
             ),
-            self.container,
+            self.process_tree,
+            self.node_view_container,
         ]
 
         self.rendered = True
@@ -184,31 +181,26 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         # check if the viewer is already added
         if node.uuid in self.node_views and not refresh:
             self.node_view = self.node_views[node.uuid]
-        else:
-            self.container.children = [
-                self.process_tree,
-                self.node_view_loading_message,
-            ]
-            if not isinstance(node, orm.WorkChainNode):
-                self.node_view = node_viewer(node)
-                self.node_views[node.uuid] = self.node_view
-            elif node.process_label == "QeAppWorkChain":
-                self._create_workchain_viewer(node)
+        elif not isinstance(node, orm.WorkChainNode):
+            self.node_view_container.children = [self.node_view_loading_message]
+            self.node_view = node_viewer(node)
+            self.node_views[node.uuid] = self.node_view
+        elif node.process_label == "QeAppWorkChain":
+            self.node_view_container.children = [self.node_view_loading_message]
+            self.node_view = self._create_workchain_viewer(node)
+            self.node_views[node.uuid] = self.node_view
 
-        self.container.children = [
-            self.process_tree,
-            self.node_view,
-        ]
+        self.node_view_container.children = [self.node_view]
 
-    def _create_workchain_viewer(self, node):
+    def _create_workchain_viewer(self, node: orm.WorkChainNode):
         model = WorkChainViewerModel()
         ipw.dlink(
             (self._model, "monitor_counter"),
             (model, "monitor_counter"),
         )
-        self.node_view: WorkChainViewer = node_viewer(node, model=model)
-        self.node_view.render()
-        self.node_views[node.uuid] = self.node_view
+        node_view: WorkChainViewer = node_viewer(node, model=model)  # type: ignore
+        node_view.render()
+        return node_view
 
     def _update_kill_button_layout(self):
         if not self.rendered:
