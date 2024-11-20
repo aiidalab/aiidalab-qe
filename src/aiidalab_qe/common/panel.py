@@ -220,8 +220,9 @@ class ResultsModel(Model, HasProcess):
         if exit_message:
             status = f"{status} ({exit_message})"
         label = "Status" if child == "this" else f"{child.capitalize()} status"
+        alert_class = f"alert-{self.CSS_MAP.get(state, 'info')}"
         return f"""
-            <div class="alert alert-{self.CSS_MAP.get(state, "info")}">
+            <div class="alert {alert_class}" style="padding: 5px 10px;">
                 <b>{label}:</b> {status}
             </div>
         """
