@@ -3,6 +3,7 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.engine import ProcessState
+from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import (
     ProcessMonitor,
     ProcessNodesTreeWidget,
@@ -20,10 +21,8 @@ PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def __init__(self, model: ResultsStepModel, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
         super().__init__(
-            children=[LoadingWidget("Loading results panel")],
+            children=[LoadingWidget("Loading results step")],
             **kwargs,
         )
 
@@ -37,34 +36,11 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
 
         self.node_views = {}  # node-view cache
 
+        self.node_view_loading_message = LoadingWidget("Loading node view")
+
     def render(self):
         if self.rendered:
             return
-
-        self.process_tree = ProcessNodesTreeWidget()
-        self.process_tree.observe(
-            self._on_node_selection_change,
-            "selected_nodes",
-        )
-        ipw.dlink(
-            (self._model, "process_uuid"),
-            (self.process_tree, "value"),
-        )
-
-        self.process_status = ipw.VBox(
-            children=[
-                self.process_tree,
-            ],
-        )
-
-        self.process_monitor = ProcessMonitor(
-            timeout=0.2,
-            callbacks=[
-                self.process_tree.update,
-                self._update_status,
-                self._update_state,
-            ],
-        )
 
         self.kill_button = ipw.Button(
             description="Kill workchain",
@@ -108,6 +84,31 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             (self.process_info, "value"),
         )
 
+        self.process_tree = ProcessNodesTreeWidget()
+        self.process_tree.observe(
+            self._on_node_selection_change,
+            "selected_nodes",
+        )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.process_tree, "value"),
+        )
+
+        self.container = ipw.VBox(
+            children=[
+                self.process_tree,
+            ],
+        )
+
+        self.process_monitor = ProcessMonitor(
+            timeout=0.2,
+            callbacks=[
+                self.process_tree.update,
+                self._update_status,
+                self._update_state,
+            ],
+        )
+
         self.children = [
             self.process_info,
             ipw.HBox(
@@ -118,7 +119,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
                 ],
                 layout=ipw.Layout(margin="0 3px"),
             ),
-            self.process_status,
+            self.container,
         ]
 
         self.rendered = True
@@ -126,7 +127,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
-        # This starts the monitor on a separate thread
+        # This triggers the start of the monitor on a separate threadF
         ipw.dlink(
             (self._model, "process_uuid"),
             (self.process_monitor, "value"),
@@ -183,13 +184,18 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         # check if the viewer is already added
         if node.uuid in self.node_views and not refresh:
             self.node_view = self.node_views[node.uuid]
-        elif not isinstance(node, orm.WorkChainNode):
-            self.node_view = node_viewer(node)
-            self.node_views[node.uuid] = self.node_view
-        elif node.process_label == "QeAppWorkChain":
-            self._create_workchain_viewer(node)
+        else:
+            self.container.children = [
+                self.process_tree,
+                self.node_view_loading_message,
+            ]
+            if not isinstance(node, orm.WorkChainNode):
+                self.node_view = node_viewer(node)
+                self.node_views[node.uuid] = self.node_view
+            elif node.process_label == "QeAppWorkChain":
+                self._create_workchain_viewer(node)
 
-        self.process_status.children = [
+        self.container.children = [
             self.process_tree,
             self.node_view,
         ]

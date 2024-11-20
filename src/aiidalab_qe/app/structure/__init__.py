@@ -51,7 +51,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         from aiidalab_qe.common.widgets import LoadingWidget
 
         super().__init__(
-            children=[LoadingWidget("Loading structure selection panel")],
+            children=[LoadingWidget("Loading structure selection step")],
             **kwargs,
         )
 

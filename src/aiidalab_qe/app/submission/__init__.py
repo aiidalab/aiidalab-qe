@@ -32,7 +32,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def __init__(self, model: SubmissionStepModel, qe_auto_setup=True, **kwargs):
         super().__init__(
-            children=[LoadingWidget("Loading workflow submission panel")],
+            children=[LoadingWidget("Loading workflow submission step")],
             **kwargs,
         )
 
