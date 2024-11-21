@@ -1,20 +1,22 @@
 """Panel for Xas plugin."""
 
 import ipywidgets as ipw
-from aiida import orm
-
-from aiidalab_qe.common.panel import SettingsPanel
-from aiidalab_qe.common.panel import SettingsModel
 import traitlets as tl
-from aiidalab_qe.common.code.model import CodeModel
 
-from aiidalab_qe.common.widgets import LoadingWidget, PwCodeResourceSetupWidget, QEAppComputationalResourcesWidget
+from aiida import orm
+from aiidalab_qe.common.code.model import CodeModel
+from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
+from aiidalab_qe.common.widgets import (
+    LoadingWidget,
+    PwCodeResourceSetupWidget,
+    QEAppComputationalResourcesWidget,
+)
+
 
 class XasCodeModel(SettingsModel):
     """Model for the xas structure plugin."""
 
-    dependencies = [
-    ]
+    dependencies = []
 
     codes = {
         "xspectra": CodeModel(
@@ -25,8 +27,8 @@ class XasCodeModel(SettingsModel):
     }
 
     basic_codes = tl.Dict(
-            key_trait=tl.Unicode(),  # code name
-            value_trait=tl.Instance(CodeModel),  # code metadata
+        key_trait=tl.Unicode(),  # code name
+        value_trait=tl.Instance(CodeModel),  # code metadata
     )
     submission_blockers = tl.List(tl.Unicode())
     submission_warning_messages = tl.Unicode("")
@@ -39,7 +41,6 @@ class XasCodeModel(SettingsModel):
         # This is necessary to avoid passing the User object
         # between session in separate threads.
         self._default_user_email = orm.User.collection.get_default().email
-
 
     def refresh_codes(self):
         for _, code_model in self.codes.items():
@@ -71,13 +72,12 @@ class XasCodeSettings(SettingsPanel[XasCodeModel]):
         self.children = [
             self.code_widgets_container,
         ]
-            
+
         self.rendered = True
 
         for code_model in self._model.codes.values():
             self._toggle_code(code_model)
         return self.code_widgets_container
-        
 
     def _toggle_code(self, code_model: CodeModel):
         if not self.rendered:
@@ -97,7 +97,7 @@ class XasCodeSettings(SettingsPanel[XasCodeModel]):
         # code_widget.layout.display = "block" if code_model.is_active else "none"
         if not code_model.is_rendered:
             self._render_code_widget(code_model, code_widget)
-    
+
     def _render_code_widget(
         self,
         code_model: CodeModel,

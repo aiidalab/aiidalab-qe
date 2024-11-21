@@ -1,11 +1,11 @@
 # from aiidalab_qe.bands.result import Result
 from aiidalab_qe.common.panel import SettingsOutline
 
+from .code import BandsCodeModel, BandsCodeSettings
 from .model import BandsModel
 from .result import BandsResults, BandsResultsModel
 from .setting import BandsSettings
 from .workchain import workchain_and_builder
-from .code import BandsCodeModel, BandsCodeSettings
 
 
 class BandsOutline(SettingsOutline):

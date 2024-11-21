@@ -1,14 +1,17 @@
 """Panel for Bands plugin."""
 
 import ipywidgets as ipw
-from aiida import orm
-
-from aiidalab_qe.common.panel import SettingsPanel
-from aiidalab_qe.common.panel import SettingsModel
 import traitlets as tl
-from aiidalab_qe.common.code.model import CodeModel
 
-from aiidalab_qe.common.widgets import LoadingWidget, PwCodeResourceSetupWidget, QEAppComputationalResourcesWidget
+from aiida import orm
+from aiidalab_qe.common.code.model import CodeModel
+from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
+from aiidalab_qe.common.widgets import (
+    LoadingWidget,
+    PwCodeResourceSetupWidget,
+    QEAppComputationalResourcesWidget,
+)
+
 
 class BandsCodeModel(SettingsModel):
     """Model for the band structure plugin."""
@@ -31,8 +34,8 @@ class BandsCodeModel(SettingsModel):
     }
 
     basic_codes = tl.Dict(
-            key_trait=tl.Unicode(),  # code name
-            value_trait=tl.Instance(CodeModel),  # code metadata
+        key_trait=tl.Unicode(),  # code name
+        value_trait=tl.Instance(CodeModel),  # code metadata
     )
     submission_blockers = tl.List(tl.Unicode())
     submission_warning_messages = tl.Unicode("")
@@ -47,11 +50,10 @@ class BandsCodeModel(SettingsModel):
         # between session in separate threads.
         self._default_user_email = orm.User.collection.get_default().email
 
-
     def refresh_codes(self):
         for _, code_model in self.codes.items():
             code_model.update(self._default_user_email)  # type: ignore
-    
+
     def update_code_from_basic(self):
         # skip the sync if the user has overridden the settings
         print("override: ", self.override)
@@ -64,9 +66,10 @@ class BandsCodeModel(SettingsModel):
                 code_model.set_model_state(code_data)
 
     def get_model_state(self):
-        return {"codes": self.codes,
-                "override": self.override,
-                }
+        return {
+            "codes": self.codes,
+            "override": self.override,
+        }
 
     def set_model_state(self, code_data: dict):
         for name, code_model in self.codes.items():
@@ -82,7 +85,6 @@ class BandsCodeModel(SettingsModel):
 class BandsCodeSettings(SettingsPanel[BandsCodeModel]):
     title = "Bands Structure"
     identifier = "bands"
-
 
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs)
@@ -118,7 +120,7 @@ class BandsCodeSettings(SettingsPanel[BandsCodeModel]):
             ipw.HBox([self.override, self.override_help]),
             self.code_widgets_container,
         ]
-            
+
         self.rendered = True
 
         for code_model in self._model.codes.values():
@@ -127,7 +129,7 @@ class BandsCodeSettings(SettingsPanel[BandsCodeModel]):
 
     def _on_basic_codes_change(self, _):
         self._model.update_code_from_basic()
-    
+
     def _on_override_change(self, change):
         if change["new"]:
             for code_widget in self.code_widgets.values():
@@ -158,7 +160,7 @@ class BandsCodeSettings(SettingsPanel[BandsCodeModel]):
         # code_widget.layout.display = "block" if code_model.is_active else "none"
         if not code_model.is_rendered:
             self._render_code_widget(code_model, code_widget)
-    
+
     def _render_code_widget(
         self,
         code_model: CodeModel,
@@ -214,8 +216,10 @@ class BandsCodeSettings(SettingsPanel[BandsCodeModel]):
         # disable the code widget if the override is not set
         code_widget.num_nodes.disabled = not self.override.value
         code_widget.num_cpus.disabled = not self.override.value
-        code_widget.code_selection.code_select_dropdown.disabled = not self.override.value
-        
+        code_widget.code_selection.code_select_dropdown.disabled = (
+            not self.override.value
+        )
+
         code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
 
         self.code_widgets_container.children = [*code_widgets, code_widget]

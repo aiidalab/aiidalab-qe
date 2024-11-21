@@ -1,10 +1,10 @@
 from aiidalab_qe.common.panel import SettingsOutline
 
+from .code import PdosCodeModel, PdosCodeSettings
 from .model import PdosModel
 from .result import PdosResults, PdosResultsModel
 from .setting import PdosSettings
 from .workchain import workchain_and_builder
-from .code import PdosCodeModel, PdosCodeSettings
 
 
 class PdosOutline(SettingsOutline):

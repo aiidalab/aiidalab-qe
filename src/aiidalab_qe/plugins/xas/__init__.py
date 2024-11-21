@@ -5,11 +5,11 @@ import yaml
 from aiidalab_qe.common.panel import SettingsOutline
 from aiidalab_qe.plugins import xas as xas_folder
 
+from .code import XasCodeModel, XasCodeSettings
 from .model import XasModel
 from .result import XasResults, XasResultsModel
 from .setting import XasSettings
 from .workchain import workchain_and_builder
-from .code import XasCodeModel, XasCodeSettings
 
 PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
 

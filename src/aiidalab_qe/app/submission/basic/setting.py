@@ -6,19 +6,17 @@ Authors: AiiDAlab team
 from __future__ import annotations
 
 import ipywidgets as ipw
-import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.setup_codes import QESetupWidget
-from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
+from aiidalab_qe.common.code import CodeModel, PluginCodes, PwCodeModel
+from aiidalab_qe.common.panel import SettingsPanel
 from aiidalab_qe.common.widgets import (
     LoadingWidget,
     PwCodeResourceSetupWidget,
     QEAppComputationalResourcesWidget,
 )
-from aiidalab_qe.common.code import CodeModel, PluginCodes, PwCodeModel
-from aiidalab_qe.common.panel import SettingsPanel
+
 from .model import BasicCodeModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -27,7 +25,6 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 class BasicCodeSettings(SettingsPanel[BasicCodeModel]):
     title = "Basic"
     identifier = "basic"
-
 
     def __init__(self, model: BasicCodeModel, **kwargs):
         super().__init__(model, **kwargs)
@@ -71,7 +68,7 @@ class BasicCodeSettings(SettingsPanel[BasicCodeModel]):
 
     def _on_input_parameters_change(self, _):
         self._model.update_active_codes()
-    
+
     def _on_input_structure_change(self, _):
         self._model.check_resources()
 
@@ -80,7 +77,7 @@ class BasicCodeSettings(SettingsPanel[BasicCodeModel]):
 
     def _on_code_selection_change(self, _):
         """"""
-        #TODO: update the selected code in the input parameters
+        # TODO: update the selected code in the input parameters
         # self._model.update_submission_blockers()
 
     def _on_pw_code_resource_change(self, _):
@@ -93,7 +90,6 @@ class BasicCodeSettings(SettingsPanel[BasicCodeModel]):
         self._model.basic_codes = self._model.get_model_state()["codes"]
 
     def _set_up_codes(self):
-        
         codes: PluginCodes = {
             "dft": {
                 "pw": PwCodeModel(
@@ -193,11 +189,23 @@ class BasicCodeSettings(SettingsPanel[BasicCodeModel]):
             )
             code_model.observe(
                 self._on_pw_code_resource_change,
-                ["num_cpus", "num_nodes", "ntasks_per_node", "cpus_per_task", "max_wallclock_seconds"],
+                [
+                    "num_cpus",
+                    "num_nodes",
+                    "ntasks_per_node",
+                    "cpus_per_task",
+                    "max_wallclock_seconds",
+                ],
             )
         code_model.observe(
             self._on_code_resource_change,
-            ["num_cpus", "num_nodes", "ntasks_per_node", "cpus_per_task", "max_wallclock_seconds"],
+            [
+                "num_cpus",
+                "num_nodes",
+                "ntasks_per_node",
+                "cpus_per_task",
+                "max_wallclock_seconds",
+            ],
         )
         code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
         self.code_widgets_container.children = [*code_widgets, code_widget]

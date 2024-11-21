@@ -10,6 +10,7 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.code import CodeModel, PluginCodes, PwCodeModel
 from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
@@ -19,9 +20,8 @@ from aiidalab_qe.common.widgets import (
 )
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from aiidalab_qe.common.code import CodeModel, PluginCodes, PwCodeModel
-from .model import SubmissionStepModel
 from .basic import BasicCodeModel, BasicCodeSettings
+from .model import SubmissionStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -99,14 +99,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
         self._fetch_plugin_settings()
 
-
         self._install_sssp(qe_auto_setup)
         self._set_up_qe(qe_auto_setup)
 
     def render(self):
         if self.rendered:
             return
-
 
         self.process_label = ipw.Text(
             description="Label:",
@@ -210,7 +208,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @tl.observe("previous_step_state")
     def _on_previous_step_state_change(self, _):
         self._update_state()
-    
+
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
@@ -226,10 +224,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._update_tabs()
         self._model.update_process_label()
         self._model.update_submission_blockers()
-    
+
     def _on_plugin_submission_blockers_change(self, _):
         self._model.update_submission_blockers()
-    
+
     def _on_plugin_submission_warning_messages_change(self, _):
         print("plugin submission warning messages change")
         self._model.update_submission_warnings()

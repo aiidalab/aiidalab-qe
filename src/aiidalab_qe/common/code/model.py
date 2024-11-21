@@ -4,7 +4,10 @@ import traitlets as tl
 from aiida import orm
 from aiida.common import NotExistent
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget, PwCodeResourceSetupWidget
+from aiidalab_qe.common.widgets import (
+    PwCodeResourceSetupWidget,
+    QEAppComputationalResourcesWidget,
+)
 
 
 class CodeModel(Model):
@@ -121,7 +124,6 @@ class CodeModel(Model):
 class PwCodeModel(CodeModel):
     override = tl.Bool(False)
     npool = tl.Int(1)
-
 
     def __init__(
         self,

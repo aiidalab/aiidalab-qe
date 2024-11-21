@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import typing as t
 from copy import deepcopy
 
 import ipywidgets as ipw
@@ -14,10 +12,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasModels
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.panel import SettingsModel
-from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 from aiidalab_qe.workflows import QeAppWorkChain
-
-from aiidalab_qe.common.code import CodeModel, CodesDict
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -77,11 +72,10 @@ class SubmissionStepModel(
         # Once submitted, nothing should unconfirm the model!
         self.unobserve_all("confirmed")
 
-
     def refresh_codes(self):
         for _, model in self.get_models():
             model.refresh_codes()
-    
+
     def update_active_models(self):
         for identifier, model in self.get_models():
             if identifier in ["basic"]:
@@ -124,7 +118,7 @@ class SubmissionStepModel(
             if hasattr(model, "submission_blockers"):
                 submission_blockers += model.submission_blockers
         self.internal_submission_blockers = submission_blockers
-    
+
     def update_submission_warnings(self):
         submission_warning_messages = self._check_submission_warnings()
         for _, model in self.get_models():
@@ -176,13 +170,12 @@ class SubmissionStepModel(
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
                     model.loaded_from_process = True
-        
+
         if self.process_node:
             self.process_label = self.process_node.label
             self.process_description = self.process_node.description
             self.loaded_from_process = True
 
-    
     def get_selected_codes(self) -> dict[str, dict]:
         return {
             name: code_model.get_model_state()
@@ -269,8 +262,7 @@ class SubmissionStepModel(
         # SSSP library not installed
         if not self.sssp_installed:
             yield "The SSSP library is not installed."
-    
+
     def _check_submission_warnings(self):
         """Check for any warnings that should be displayed to the user."""
         return ""
-

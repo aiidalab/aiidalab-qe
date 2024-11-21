@@ -1,23 +1,25 @@
 from __future__ import annotations
 
+import os
 
 import traitlets as tl
-import os
 
 from aiida import orm
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.panel import SettingsModel
-from aiidalab_qe.common.code import CodeModel, PluginCodes, PwCodeModel
+from aiidalab_qe.common.code import CodeModel, PwCodeModel
 from aiidalab_qe.common.mixins import HasInputStructure
+from aiidalab_qe.common.panel import SettingsModel
 from aiidalab_qe.common.widgets import (
     QEAppComputationalResourcesWidget,
 )
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
-class BasicCodeModel(SettingsModel,
+
+class BasicCodeModel(
+    SettingsModel,
     HasInputStructure,
-    ):
+):
     """Model for the basic code setting."""
 
     dependencies = [
@@ -28,14 +30,14 @@ class BasicCodeModel(SettingsModel,
     input_parameters = tl.Dict()
 
     codes = tl.Dict(
-            key_trait=tl.Unicode(),  # code name
-            value_trait=tl.Instance(CodeModel),  # code metadata
-        )
+        key_trait=tl.Unicode(),  # code name
+        value_trait=tl.Instance(CodeModel),  # code metadata
+    )
     # this is a copy of the codes trait, which is used to trigger the update of the plugin
     basic_codes = tl.Dict(
-            key_trait=tl.Unicode(),  # code name
-            value_trait=tl.Instance(CodeModel),  # code metadata
-        )
+        key_trait=tl.Unicode(),  # code name
+        value_trait=tl.Instance(CodeModel),  # code metadata
+    )
 
     plugin_mapping = tl.Dict(
         key_trait=tl.Unicode(),  # plugin identifier
@@ -94,15 +96,17 @@ class BasicCodeModel(SettingsModel,
         name = default_calc_job_plugin.split(".")[-1]
         if default_calc_job_plugin not in self.codes:
             if default_calc_job_plugin == "quantumespresso.pw":
-                code_model = PwCodeModel(name=name,
-                                         description=name, 
-                                         default_calc_job_plugin=default_calc_job_plugin,
-                                      )
+                code_model = PwCodeModel(
+                    name=name,
+                    description=name,
+                    default_calc_job_plugin=default_calc_job_plugin,
+                )
             else:
-                code_model = CodeModel(name=name,
-                                   description=name, 
-                                   default_calc_job_plugin=default_calc_job_plugin,
-                                )
+                code_model = CodeModel(
+                    name=name,
+                    description=name,
+                    default_calc_job_plugin=default_calc_job_plugin,
+                )
             self.codes[default_calc_job_plugin] = code_model
             return code_model
         # update the plugin mapping to keep track of which codes are associated with which plugins
@@ -110,7 +114,7 @@ class BasicCodeModel(SettingsModel,
             self.plugin_mapping[identifier] = [default_calc_job_plugin]
         else:
             self.plugin_mapping[identifier].append(default_calc_job_plugin)
-            
+
     def get_code(self, name) -> CodeModel | None:
         if name in self.codes:  # type: ignore
             return self.codes[name]  # type: ignore
@@ -140,7 +144,6 @@ class BasicCodeModel(SettingsModel,
         self.submission_blockers = list(self._check_submission_blockers())
 
     def _check_submission_blockers(self):
-
         # No pw code selected (this is ignored while the setup process is running).
         pw_code = self._model.get_code("quantumespresso.pw")
         if pw_code and not pw_code.selected and not self.installing_qe:
@@ -166,7 +169,6 @@ class BasicCodeModel(SettingsModel,
                 yield (
                     f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {name}."
                 )
-        
 
     def check_resources(self):
         pw_code = self.get_code("quantumespresso.pw")
@@ -250,7 +252,6 @@ class BasicCodeModel(SettingsModel,
                 message=alert_message,
             )
         )
-    
 
     def _estimate_min_cpus(
         self,
