@@ -1,11 +1,11 @@
 # from aiidalab_qe.bands.result import Result
-from aiidalab_qe.app.submission.code.model import CodeModel
 from aiidalab_qe.common.panel import SettingsOutline
 
 from .model import BandsModel
 from .result import BandsResults, BandsResultsModel
 from .setting import BandsSettings
 from .workchain import workchain_and_builder
+from .code import BandsCodeModel, BandsCodeSettings
 
 
 class BandsOutline(SettingsOutline):
@@ -15,10 +15,8 @@ class BandsOutline(SettingsOutline):
 bands = {
     "outline": BandsOutline,
     "code": {
-        "projwfc_bands": CodeModel(
-            description="projwfc.x",
-            default_calc_job_plugin="quantumespresso.projwfc",
-        ),
+        "panel": BandsCodeSettings,
+        "model": BandsCodeModel,
     },
     "setting": {
         "panel": BandsSettings,
