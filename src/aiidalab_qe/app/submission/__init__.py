@@ -274,7 +274,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 "pw": PwCodeModel(
                     description="pw.x",
                     default_calc_job_plugin="quantumespresso.pw",
-                    code_widget_class=PwCodeResourceSetupWidget,
                 ),
             },
             **get_entry_items("aiidalab_qe.properties", "code"),
