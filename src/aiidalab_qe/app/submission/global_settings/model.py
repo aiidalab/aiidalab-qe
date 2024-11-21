@@ -16,11 +16,11 @@ from aiidalab_qe.common.widgets import (
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class BasicCodeModel(
+class GlobalCodeModel(
     SettingsModel,
     HasInputStructure,
 ):
-    """Model for the basic code setting."""
+    """Model for the global code setting."""
 
     dependencies = [
         "input_parameters",
@@ -34,9 +34,9 @@ class BasicCodeModel(
         value_trait=tl.Instance(CodeModel),  # code metadata
     )
     # this is a copy of the codes trait, which is used to trigger the update of the plugin
-    basic_codes = tl.Dict(
+    global_codes = tl.Dict(
         key_trait=tl.Unicode(),  # code name
-        value_trait=tl.Instance(CodeModel),  # code metadata
+        value_trait=tl.Dict(),  # code metadata
     )
 
     plugin_mapping = tl.Dict(
@@ -83,15 +83,18 @@ class BasicCodeModel(
                     self.codes[code_name].activate()
 
     def get_model_state(self):
-        return {"codes": self.codes}
+        codes = {name: model.get_model_state() for name, model in self.codes.items()}
+
+        return {"codes": codes}
 
     def set_model_state(self, code_data: dict):
         for name, code_model in self.codes.items():
-            if name in code_data:
+            if name in code_data and code_model.is_active:
                 code_model.set_model_state(code_data[name])
 
     def add_code(self, identifier: str, code: CodeModel) -> CodeModel | None:
         """Add a code to the codes trait."""
+        code_model = None
         default_calc_job_plugin = code.default_calc_job_plugin
         name = default_calc_job_plugin.split(".")[-1]
         if default_calc_job_plugin not in self.codes:
@@ -108,12 +111,13 @@ class BasicCodeModel(
                     default_calc_job_plugin=default_calc_job_plugin,
                 )
             self.codes[default_calc_job_plugin] = code_model
-            return code_model
         # update the plugin mapping to keep track of which codes are associated with which plugins
         if identifier not in self.plugin_mapping:
             self.plugin_mapping[identifier] = [default_calc_job_plugin]
         else:
             self.plugin_mapping[identifier].append(default_calc_job_plugin)
+
+        return code_model
 
     def get_code(self, name) -> CodeModel | None:
         if name in self.codes:  # type: ignore
@@ -127,10 +131,9 @@ class BasicCodeModel(
         }
 
     def set_selected_codes(self, code_data=DEFAULT["codes"]):
-        with self.hold_trait_notifications():
-            for name, code_model in self.codes.items():
-                if name in code_data:
-                    code_model.set_model_state(code_data[name])
+        for name, code_model in self.codes.items():
+            if name in code_data and code_model.is_active:
+                code_model.set_model_state(code_data[name])
 
     def reset(self):
         """Reset the model to its default state."""
@@ -145,21 +148,22 @@ class BasicCodeModel(
 
     def _check_submission_blockers(self):
         # No pw code selected (this is ignored while the setup process is running).
-        pw_code = self._model.get_code("quantumespresso.pw")
+        pw_code = self.get_code("quantumespresso.pw")
         if pw_code and not pw_code.selected and not self.installing_qe:
             yield ("No pw code selected")
 
         # code related to the selected property is not installed
         properties = self._get_properties()
         message = "Calculating the {property} property requires code {code} to be set."
-        for identifier, codes in self.get_model("basic").codes.items():
+        for identifier, code_names in self.plugin_mapping.items():
             if identifier in properties:
-                for code in codes.values():
+                for name in code_names:
+                    code = self.get_code(name)
                     if not code.is_ready:
                         yield message.format(property=identifier, code=code.description)
 
         # check if the QEAppComputationalResourcesWidget is used
-        for name, code in self.get_model("basic").codes.items():
+        for name, code in self.codes.items():
             # skip if the code is not displayed, convenient for the plugin developer
             if not code.is_ready:
                 continue
@@ -241,7 +245,6 @@ class BasicCodeModel(
                 + suggestions["go_remote"]
                 + "</ul>"
             )
-        print("alert_message: ", alert_message)
 
         self.submission_warning_messages = (
             ""

@@ -44,7 +44,7 @@ class SubmissionStepModel(
         super().__init__(*args, **kwargs)
 
         self._default_models = {
-            "basic",
+            "global",
         }
 
         self._ALERT_MESSAGE = """
@@ -78,7 +78,7 @@ class SubmissionStepModel(
 
     def update_active_models(self):
         for identifier, model in self.get_models():
-            if identifier in ["basic"]:
+            if identifier in ["global"]:
                 continue
             if identifier not in self._get_properties():
                 model.include = False
@@ -164,11 +164,12 @@ class SubmissionStepModel(
             }
         workchain_parameters: dict = parameters.get("workchain", {})
         properties = set(workchain_parameters.get("properties", []))
+        print("codes: ", parameters["codes"])
         with self.hold_trait_notifications():
             for identifier, model in self._models.items():
                 model.include = identifier in self._default_models | properties
-                if parameters.get(identifier):
-                    model.set_model_state(parameters[identifier])
+                if parameters["codes"].get(identifier):
+                    model.set_model_state(parameters["codes"][identifier]["codes"])
                     model.loaded_from_process = True
 
         if self.process_node:
@@ -179,7 +180,7 @@ class SubmissionStepModel(
     def get_selected_codes(self) -> dict[str, dict]:
         return {
             name: code_model.get_model_state()
-            for name, code_model in self.get_model("basic").codes.items()
+            for name, code_model in self.get_model("global").codes.items()
             if code_model.is_ready
         }
 
@@ -240,16 +241,18 @@ class SubmissionStepModel(
             parameters=deepcopy(parameters),  # TODO why deepcopy again?
         )
 
-        codes = parameters["codes"]
+        codes = parameters["codes"]["global"]["codes"]
 
         builder.relax.base.pw.metadata.options.resources = {
-            "num_machines": codes.get("pw")["nodes"],
-            "num_mpiprocs_per_machine": codes.get("pw")["ntasks_per_node"],
-            "num_cores_per_mpiproc": codes.get("pw")["cpus_per_task"],
+            "num_machines": codes.get("quantumespresso.pw")["nodes"],
+            "num_mpiprocs_per_machine": codes.get("quantumespresso.pw")[
+                "ntasks_per_node"
+            ],
+            "num_cores_per_mpiproc": codes.get("quantumespresso.pw")["cpus_per_task"],
         }
-        mws = codes.get("pw")["max_wallclock_seconds"]
+        mws = codes.get("quantumespresso.pw")["max_wallclock_seconds"]
         builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = mws
-        parallelization = codes["pw"]["parallelization"]
+        parallelization = codes["quantumespresso.pw"]["parallelization"]
         builder.relax.base.pw.parallelization = orm.Dict(dict=parallelization)
 
         return builder

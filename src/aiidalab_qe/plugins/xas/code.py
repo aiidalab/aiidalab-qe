@@ -4,7 +4,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiidalab_qe.common.code.model import CodeModel
+from aiidalab_qe.common.code.model import CodeModel, PwCodeModel
 from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
 from aiidalab_qe.common.widgets import (
     LoadingWidget,
@@ -19,17 +19,27 @@ class XasCodeModel(SettingsModel):
     dependencies = []
 
     codes = {
+        "pw": PwCodeModel(
+            name="pw.x",
+            description="pw.x",
+            default_calc_job_plugin="quantumespresso.pw",
+        ),
         "xspectra": CodeModel(
             name="xspectra.x",
             description="xspectra.x",
             default_calc_job_plugin="quantumespresso.xspectra",
-        )
+        ),
     }
 
-    basic_codes = tl.Dict(
+    global_codes = tl.Dict(
         key_trait=tl.Unicode(),  # code name
         value_trait=tl.Instance(CodeModel),  # code metadata
     )
+    global_codes = tl.Dict(
+        key_trait=tl.Unicode(),  # code name
+        value_trait=tl.Dict(),  # code metadata
+    )
+
     submission_blockers = tl.List(tl.Unicode())
     submission_warning_messages = tl.Unicode("")
     override = tl.Bool(False)
@@ -46,8 +56,22 @@ class XasCodeModel(SettingsModel):
         for _, code_model in self.codes.items():
             code_model.update(self._default_user_email)  # type: ignore
 
+    def update_code_from_global(self):
+        # skip the sync if the user has overridden the settings
+        if self.override:
+            return
+        for _, code_model in self.codes.items():
+            default_calc_job_plugin = code_model.default_calc_job_plugin
+            if default_calc_job_plugin in self.global_codes:
+                code_data = self.global_codes[default_calc_job_plugin]
+                code_model.set_model_state(code_data)
+
     def get_model_state(self):
-        return {"codes": self.codes}
+        codes = {name: model.get_model_state() for name, model in self.codes.items()}
+        return {
+            "codes": codes,
+            "override": self.override,
+        }
 
     def set_model_state(self, code_data: dict):
         for name, code_model in self.codes.items():

@@ -10,17 +10,12 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.code import CodeModel, PluginCodes, PwCodeModel
 from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import (
-    PwCodeResourceSetupWidget,
-    QEAppComputationalResourcesWidget,
-)
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from .basic import BasicCodeModel, BasicCodeSettings
+from .global_settings import GlobalCodeModel, GlobalCodeSettings
 from .model import SubmissionStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -82,20 +77,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = False
 
-        basic_code_model = BasicCodeModel()
-        self.basic_code_settings = BasicCodeSettings(model=basic_code_model)
-        self._model.add_model("basic", basic_code_model)
-        basic_code_model.observe(
+        global_code_model = GlobalCodeModel()
+        self.global_code_settings = GlobalCodeSettings(model=global_code_model)
+        self._model.add_model("global", global_code_model)
+        global_code_model.observe(
             self._on_plugin_submission_blockers_change,
             ["submission_blockers"],
         )
-        basic_code_model.observe(
+        global_code_model.observe(
             self._on_plugin_submission_warning_messages_change,
             ["submission_warning_messages"],
         )
 
         self.settings = {
-            "basic": self.basic_code_settings,
+            "global": self.global_code_settings,
         }
         self._fetch_plugin_settings()
 
@@ -350,7 +345,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             )
             self._model.add_model(identifier, model)
 
-            def toggle_plugin(change, identifier=identifier, model=model):
+            def toggle_plugin(_, model=model):
                 model.update()
                 self._update_tabs()
 

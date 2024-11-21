@@ -175,8 +175,9 @@ class QeAppWorkChain(WorkChain):
             "base_final_scf": parameters["advanced"],
         }
         protocol = parameters["workchain"]["protocol"]
+        print("codes: ", codes["global"]["codes"].get("quantumespresso.pw"))
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
-            code=codes["basic"]["codes"].get("quantumespresso.pw")["code"],
+            code=codes["global"]["codes"].get("quantumespresso.pw")["code"],
             structure=structure,
             protocol=protocol,
             relax_type=RelaxType(parameters["workchain"]["relax_type"]),
@@ -202,7 +203,10 @@ class QeAppWorkChain(WorkChain):
         for name, entry_point in plugin_entries.items():
             if name in properties:
                 plugin_builder = entry_point["get_builder"](
-                    codes, builder.structure, copy.deepcopy(parameters), **kwargs
+                    codes[name]["codes"],
+                    builder.structure,
+                    copy.deepcopy(parameters),
+                    **kwargs,
                 )
                 plugin_workchain = entry_point["workchain"]
                 if plugin_workchain.spec().has_input("clean_workdir"):

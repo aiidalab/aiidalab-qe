@@ -4,7 +4,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiidalab_qe.common.code.model import CodeModel
+from aiidalab_qe.common.code.model import CodeModel, PwCodeModel
 from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
 from aiidalab_qe.common.widgets import (
     LoadingWidget,
@@ -17,11 +17,11 @@ class BandsCodeModel(SettingsModel):
     """Model for the band structure plugin."""
 
     dependencies = [
-        "basic.basic_codes",
+        "global.global_codes",
     ]
 
     codes = {
-        "pw": CodeModel(
+        "pw": PwCodeModel(
             name="pw.x",
             description="pw.x",
             default_calc_job_plugin="quantumespresso.pw",
@@ -33,9 +33,9 @@ class BandsCodeModel(SettingsModel):
         ),
     }
 
-    basic_codes = tl.Dict(
+    global_codes = tl.Dict(
         key_trait=tl.Unicode(),  # code name
-        value_trait=tl.Instance(CodeModel),  # code metadata
+        value_trait=tl.Dict(),  # code metadata
     )
     submission_blockers = tl.List(tl.Unicode())
     submission_warning_messages = tl.Unicode("")
@@ -54,20 +54,20 @@ class BandsCodeModel(SettingsModel):
         for _, code_model in self.codes.items():
             code_model.update(self._default_user_email)  # type: ignore
 
-    def update_code_from_basic(self):
+    def update_code_from_global(self):
         # skip the sync if the user has overridden the settings
-        print("override: ", self.override)
         if self.override:
             return
-        for name, code_model in self.codes.items():
+        for _, code_model in self.codes.items():
             default_calc_job_plugin = code_model.default_calc_job_plugin
-            if default_calc_job_plugin in self.basic_codes:
-                code_data = self.basic_codes[default_calc_job_plugin].get_model_state()
+            if default_calc_job_plugin in self.global_codes:
+                code_data = self.global_codes[default_calc_job_plugin]
                 code_model.set_model_state(code_data)
 
     def get_model_state(self):
+        codes = {name: model.get_model_state() for name, model in self.codes.items()}
         return {
-            "codes": self.codes,
+            "codes": codes,
             "override": self.override,
         }
 
@@ -90,8 +90,8 @@ class BandsCodeSettings(SettingsPanel[BandsCodeModel]):
         super().__init__(model, **kwargs)
 
         self._model.observe(
-            self._on_basic_codes_change,
-            "basic_codes",
+            self._on_global_codes_change,
+            "global_codes",
         )
         self._model.observe(
             self._on_override_change,
@@ -127,8 +127,8 @@ class BandsCodeSettings(SettingsPanel[BandsCodeModel]):
             self._toggle_code(code_model)
         return self.code_widgets_container
 
-    def _on_basic_codes_change(self, _):
-        self._model.update_code_from_basic()
+    def _on_global_codes_change(self, _):
+        self._model.update_code_from_global()
 
     def _on_override_change(self, change):
         if change["new"]:
