@@ -7,10 +7,7 @@ from pymatgen.core.periodic_table import Element
 from aiida.orm import ProjectionData
 
 
-def get_bands_projections_data(
-    outputs, group_tag, plot_tag, selected_atoms, bands_width, fermi_energy=None
-):
-    """Extract the bandstructure and possibly the projections along the bands."""
+def get_bands_data(outputs, fermi_energy=None):
     if "band_structure" not in outputs:
         return None
 
@@ -23,52 +20,68 @@ def get_bands_projections_data(
         bands_data["fermi_energy_down"] = outputs.band_parameters["fermi_energy_down"]
     else:
         bands_data["fermi_energy"] = (
-            outputs.band_parameters["fermi_energy"] or fermi_energy
+            fermi_energy
+            if fermi_energy is not None
+            else outputs.band_parameters.get("fermi_energy")
         )
 
     bands_data["pathlabels"] = _get_bands_labeling(bands_data)
 
-    if "projwfc" in outputs:
-        projections = []
+    return bands_data
 
-        if "projections" in outputs.projwfc:
+
+def get_bands_projections_data(
+    outputs,
+    bands_data,
+    group_tag,
+    plot_tag,
+    selected_atoms,
+    bands_width,
+):
+    if "projwfc" not in outputs:
+        return None
+
+    projections = []
+    bands_projection = {}
+
+    if "projections" in outputs.projwfc:
+        projections.append(
+            _projections_curated_options(
+                outputs.projwfc.projections,
+                spin_type="none",
+                group_tag=group_tag,
+                plot_tag=plot_tag,
+                selected_atoms=selected_atoms,
+                projections_pdos="projections",
+            )
+        )
+    else:
+        for spin_proj, spin_type in zip(
+            [
+                outputs.projwfc.projections_up,
+                outputs.projwfc.projections_down,
+            ],
+            ["up", "down"],
+        ):
             projections.append(
                 _projections_curated_options(
-                    outputs.projwfc.projections,
-                    spin_type="none",
+                    spin_proj,
+                    spin_type=spin_type,
                     group_tag=group_tag,
                     plot_tag=plot_tag,
                     selected_atoms=selected_atoms,
                     projections_pdos="projections",
                 )
             )
-        else:
-            for spin_proj, spin_type in zip(
-                [
-                    outputs.projwfc.projections_up,
-                    outputs.projwfc.projections_down,
-                ],
-                ["up", "down"],
-            ):
-                projections.append(
-                    _projections_curated_options(
-                        spin_proj,
-                        spin_type=spin_type,
-                        group_tag=group_tag,
-                        plot_tag=plot_tag,
-                        selected_atoms=selected_atoms,
-                        projections_pdos="projections",
-                    )
-                )
 
-        bands_data["projected_bands"] = _prepare_projections_to_plot(
-            bands_data, projections, bands_width
+    bands_projection["projected_bands"] = _prepare_projections_to_plot(
+        bands_data, projections, bands_width
+    )
+    if plot_tag != "total":
+        bands_projection["projected_bands"] = _update_pdos_labels(
+            bands_projection["projected_bands"]
         )
-        if plot_tag != "total":
-            bands_data["projected_bands"] = _update_pdos_labels(
-                bands_data["projected_bands"]
-            )
-    return bands_data
+    return bands_projection["projected_bands"]
 
 
 def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):

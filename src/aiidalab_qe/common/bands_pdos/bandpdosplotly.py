@@ -9,7 +9,7 @@ from aiidalab_qe.common.bands_pdos.utils import (
 )
 
 
-class BandPdosPlotly:
+class BandsPdosPlotly:
     SETTINGS = {
         "axis_linecolor": "#111111",
         "bands_linecolor": "#111111",
@@ -28,18 +28,21 @@ class BandPdosPlotly:
         "horizontal_range_pdos": [-10, 10],
     }
 
-    def __init__(self, bands_data=None, pdos_data=None, project_bands=False):
+    def __init__(self, bands_data=None, pdos_data=None, bands_projections_data=None):
         self.bands_data = bands_data
         self.pdos_data = pdos_data
-        self.fermi_energy = self._get_fermi_energy()
-        self.project_bands = project_bands and "projected_bands" in self.bands_data
+        self.project_bands = bands_projections_data
 
-        # Plotly Axis
-        # Plotly settings
+        self.fermi_energy = self._get_fermi_energy()
+
+        # Plotly axis objects
         self._bands_xaxis = self._band_xaxis()
         self._bands_yaxis = self._band_yaxis()
         self._pdos_xaxis = self._pdos_xaxis()
         self._pdos_yaxis = self._pdos_yaxis()
+
+        # Plotly figure object
+        self.figure_object = self._get_bandspdos_plot()
 
     @property
     def plot_type(self):
@@ -53,7 +56,7 @@ class BandPdosPlotly:
 
     @property
     def bandspdosfigure(self):
-        return self._get_bandspdos_plot()
+        return self.figure_object
 
     def _get_fermi_energy(self):
         """Function to return the Fermi energy information depending on the data available."""
@@ -176,6 +179,19 @@ class BandPdosPlotly:
         """Function to return the bands plot widget."""
 
         fig = self._create_fig()
+
+        self.adding_bands_traces(fig)
+        self.adding_pdos_traces(fig)
+        self.adding_projected_bands(fig)
+
+        if self.plot_type == "combined":
+            self._customize_combined_layout(fig)
+        else:
+            self._customize_single_layout(fig)
+
+        return go.FigureWidget(fig)
+
+    def adding_bands_traces(self, fig):
         if self.bands_data:
             self._add_band_traces(fig)
 
@@ -186,9 +202,7 @@ class BandPdosPlotly:
                     line={"color": self.SETTINGS["vertical_linecolor"], "width": 1},
                 )
 
-            if self.project_bands:
-                self._add_projection_traces(fig)
-
+    def adding_pdos_traces(self, fig):
         if self.pdos_data:
             self._add_pdos_traces(fig)
             if self.plot_type == "pdos":
@@ -201,12 +215,9 @@ class BandPdosPlotly:
                     },
                 )
 
-        if self.plot_type == "combined":
-            self._customize_combined_layout(fig)
-        else:
-            self._customize_single_layout(fig)
-
-        return go.FigureWidget(fig)
+    def adding_projected_bands(self, fig):
+        if self.project_bands:
+            self._add_projection_traces(fig)
 
     def _create_fig(self):
         """Create a plotly figure.
@@ -329,7 +340,7 @@ class BandPdosPlotly:
 
     def _add_projection_traces(self, fig):
         """Function to add the projected bands traces to the bands plot."""
-        projected_bands = self.bands_data["projected_bands"]
+        projected_bands = self.project_bands
         # dictionary with keys (bool(spin polarized), bool(spin up))
         fermi_energy_spin_mapping = {
             (False, True): self.fermi_energy.get("fermi_energy_up", None),

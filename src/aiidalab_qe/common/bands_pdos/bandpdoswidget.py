@@ -4,7 +4,7 @@ from IPython.display import clear_output, display
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 
-from .bandpdosplotly import BandPdosPlotly
+from .bandpdosplotly import BandsPdosPlotly
 from .model import BandsPdosModel
 
 
@@ -216,7 +216,7 @@ class BandsPdosWidget(ipw.VBox):
         self._initial_view()
         self._toggle_projection_controls()
         self._toggle_pdos_options()
-        self._update_plot()
+        # self._update_plot()
 
     def _on_needs_bands_projections_change(self, _):
         self._toggle_projection_controls()
@@ -226,6 +226,46 @@ class BandsPdosWidget(ipw.VBox):
 
     def _initial_view(self):
         with self.bands_widget:
+            clear_output(wait=True)
+            display(LoadingWidget("Plotting results"))
+            _, syntax_ok = string_range_to_list(self._model.selected_atoms, shift=-1)
+            if not syntax_ok:
+                self._wrong_syntax.message = """
+                    <div class='alert alert-danger'>
+                        ERROR: Invalid syntax for selected atoms
+                    </div>
+                """
+                clear_output(wait=True)
+            else:
+                self._model.fetch_data()
+
+                if hasattr(self, "plot"):
+                    # Get current axis range
+                    xaxis_range = list(self.plot.layout["xaxis"]["range"])  # type: ignore
+                    yaxis_range = list(self.plot.layout["yaxis"]["range"])  # type: ignore
+                else:
+                    xaxis_range = []
+                    yaxis_range = []
+
+                self.plot = BandsPdosPlotly(
+                    bands_data=self._model.bands_data,
+                    pdos_data=self._model.pdos_data,
+                    bands_projections_data=None,
+                ).bandspdosfigure
+
+                self._clear_output_and_display()
+
+                # Restore Old axis range. I do it after the plot is displayed to the Reset button always return to the Default SETTINGs
+                if self._model.bands_data:
+                    if yaxis_range:
+                        self.plot.plotly_relayout({"yaxis.range": yaxis_range})
+                elif self._model.pdos_data and xaxis_range:
+                    self.plot.plotly_relayout({"xaxis.range": xaxis_range})
+
+                self.proj_bands_width_slider.layout.visibility = (
+                    "visible" if self._model.project_bands_box else "hidden"
+                )
+
             self._clear_output_and_display()
             self.download_button.layout.visibility = "visible"
             self.project_bands_box.layout.visibility = "visible"
@@ -274,10 +314,10 @@ class BandsPdosWidget(ipw.VBox):
                     xaxis_range = []
                     yaxis_range = []
 
-                self.plot = BandPdosPlotly(
+                self.plot = BandsPdosPlotly(
                     bands_data=self._model.bands_data,
                     pdos_data=self._model.pdos_data,
-                    project_bands=self._model.project_bands_box,
+                    bands_projections_data=self._model.bands_projections_data,
                 ).bandspdosfigure
 
                 self._clear_output_and_display()

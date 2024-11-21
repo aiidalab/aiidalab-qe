@@ -8,6 +8,7 @@ from IPython.display import display
 
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.bands_pdos.utils import (
+    get_bands_data,
     get_bands_projections_data,
     get_pdos_data,
 )
@@ -45,6 +46,7 @@ class BandsPdosModel(Model):
 
     pdos_data = {}
     bands_data = {}
+    bands_projections_data = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -69,6 +71,7 @@ class BandsPdosModel(Model):
         """Fetch the data from the nodes."""
         if self.bands:
             self.bands_data = self._get_bands_data()
+            self.bands_projections_data = self._get_bands_projections_data()
         if self.pdos:
             self.pdos_data = self._get_pdos_data()
 
@@ -103,17 +106,26 @@ class BandsPdosModel(Model):
         if not self.bands:
             return None
 
+        bands_data = get_bands_data(self.bands)
+        return bands_data
+
+    def _get_bands_projections_data(self):
+        if not self.bands:
+            return None
+
         expanded_selection, syntax_ok = string_range_to_list(
             self.selected_atoms, shift=-1
         )
         if syntax_ok:
-            return get_bands_projections_data(
+            bands_projections = get_bands_projections_data(
                 self.bands,
+                bands_data=self.bands_data,
                 group_tag=self.dos_atoms_group,
                 plot_tag=self.dos_plot_group,
                 selected_atoms=expanded_selection,
                 bands_width=self.proj_bands_width,
             )
+            return bands_projections
         return None
 
     def download_data(self, _=None):
