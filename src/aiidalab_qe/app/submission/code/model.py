@@ -127,8 +127,8 @@ class PwCodeModel(CodeModel):
         self,
         *,
         name="",
-        description = "pw.x",
-        default_calc_job_plugin = "quantumespresso.pw",
+        description="pw.x",
+        default_calc_job_plugin="quantumespresso.pw",
         code_widget_class=PwCodeResourceSetupWidget,
     ):
         super().__init__(
