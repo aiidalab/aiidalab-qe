@@ -224,7 +224,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.update_submission_blockers()
 
     def _on_plugin_submission_warning_messages_change(self, _):
-        print("plugin submission warning messages change")
         self._model.update_submission_warnings()
 
     def _on_process_change(self, _):

@@ -164,7 +164,6 @@ class SubmissionStepModel(
             }
         workchain_parameters: dict = parameters.get("workchain", {})
         properties = set(workchain_parameters.get("properties", []))
-        print("codes: ", parameters["codes"])
         with self.hold_trait_notifications():
             for identifier, model in self._models.items():
                 model.include = identifier in self._default_models | properties
@@ -195,7 +194,6 @@ class SubmissionStepModel(
 
     def _submit(self):
         parameters = self.get_model_state()
-        print(parameters)
         builder = self._create_builder(parameters)
 
         with self.hold_trait_notifications():
