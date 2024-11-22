@@ -65,7 +65,7 @@ def get_bands_projections_data(
             bands_data, projections, bands_width
         )
         if plot_tag != "total":
-            if not outputs.bands_parameters.get("spin_orbit_calculation"):
+            if not outputs.band_parameters.get("spin_orbit_calculation"):
                 bands_data["projected_bands"] = _update_pdos_labels(
                     bands_data["projected_bands"]
                 )
