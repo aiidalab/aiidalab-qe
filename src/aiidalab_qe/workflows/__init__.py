@@ -120,9 +120,10 @@ class QeAppWorkChain(WorkChain):
         properties = parameters["workchain"].pop("properties", [])
         codes = parameters.pop("codes", {})
         # load codes from uuid
-        for _, value in codes.items():
-            if value["code"] is not None:
-                value["code"] = orm.load_node(value["code"])
+        for _, plugin_codes in codes.items():
+            for _, value in plugin_codes["codes"].items():
+                if value["code"] is not None:
+                    value["code"] = orm.load_node(value["code"])
         # update pseudos
         for kind, uuid in parameters["advanced"]["pw"]["pseudos"].items():
             parameters["advanced"]["pw"]["pseudos"][kind] = orm.load_node(uuid)
@@ -174,8 +175,9 @@ class QeAppWorkChain(WorkChain):
             "base_final_scf": parameters["advanced"],
         }
         protocol = parameters["workchain"]["protocol"]
+        print("codes: ", codes["global"]["codes"].get("quantumespresso.pw"))
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
-            code=codes.get("pw")["code"],
+            code=codes["global"]["codes"].get("quantumespresso.pw")["code"],
             structure=structure,
             protocol=protocol,
             relax_type=RelaxType(parameters["workchain"]["relax_type"]),
@@ -201,7 +203,10 @@ class QeAppWorkChain(WorkChain):
         for name, entry_point in plugin_entries.items():
             if name in properties:
                 plugin_builder = entry_point["get_builder"](
-                    codes, builder.structure, copy.deepcopy(parameters), **kwargs
+                    codes[name]["codes"],
+                    builder.structure,
+                    copy.deepcopy(parameters),
+                    **kwargs,
                 )
                 plugin_workchain = entry_point["workchain"]
                 if plugin_workchain.spec().has_input("clean_workdir"):

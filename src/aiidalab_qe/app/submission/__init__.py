@@ -10,16 +10,12 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import (
-    LoadingWidget,
-    PwCodeResourceSetupWidget,
-    QEAppComputationalResourcesWidget,
-)
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from .code import CodeModel, PluginCodes, PwCodeModel
+from .global_settings import GlobalCodeModel, GlobalCodeSettings
 from .model import SubmissionStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -31,6 +27,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
     def __init__(self, model: SubmissionStepModel, qe_auto_setup=True, **kwargs):
+        from aiidalab_qe.common.widgets import LoadingWidget
+
         super().__init__(
             children=[LoadingWidget("Loading workflow submission step")],
             **kwargs,
@@ -79,17 +77,29 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = False
 
-        self.code_widgets: dict[str, QEAppComputationalResourcesWidget] = {}
+        global_code_model = GlobalCodeModel()
+        self.global_code_settings = GlobalCodeSettings(model=global_code_model)
+        self._model.add_model("global", global_code_model)
+        global_code_model.observe(
+            self._on_plugin_submission_blockers_change,
+            ["submission_blockers"],
+        )
+        global_code_model.observe(
+            self._on_plugin_submission_warning_messages_change,
+            ["submission_warning_messages"],
+        )
+
+        self.settings = {
+            "global": self.global_code_settings,
+        }
+        self._fetch_plugin_settings()
 
         self._install_sssp(qe_auto_setup)
         self._set_up_qe(qe_auto_setup)
-        self._set_up_codes()
 
     def render(self):
         if self.rendered:
             return
-
-        self.code_widgets_container = ipw.VBox()
 
         self.process_label = ipw.Text(
             description="Label:",
@@ -135,6 +145,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             (self.submission_warning_messages, "value"),
         )
 
+        self.tabs = ipw.Tab(
+            layout=ipw.Layout(min_height="250px"),
+            selected_index=None,
+        )
+        self.tabs.observe(
+            self._on_tab_change,
+            "selected_index",
+        )
+
         self.children = [
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
@@ -149,7 +168,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     on "Setup new code".
                 </div>
             """),
-            self.code_widgets_container,
+            self.tabs,
             self.sssp_installation,
             self.qe_setup,
             self.submission_blocker_messages,
@@ -171,12 +190,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ]
 
         self.rendered = True
-
-        # Render any active codes
-        self._model.get_code("dft", "pw").activate()
-        for _, code in self._model.get_code_models(flat=True):
-            if code.is_active:
-                self._toggle_code(code)
+        self._update_tabs()
 
     def submit(self, _=None):
         self._model.confirm()
@@ -190,13 +204,27 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_previous_step_state_change(self, _):
         self._update_state()
 
+    def _on_tab_change(self, change):
+        if (tab_index := change["new"]) is None:
+            return
+        tab: SettingsPanel = self.tabs.children[tab_index]  # type: ignore
+        tab.render()
+        tab.update()
+
     def _on_input_structure_change(self, _):
-        self._model.check_resources()
+        """"""
 
     def _on_input_parameters_change(self, _):
-        self._model.update_active_codes()
+        self._model.update_active_models()
+        self._update_tabs()
         self._model.update_process_label()
         self._model.update_submission_blockers()
+
+    def _on_plugin_submission_blockers_change(self, _):
+        self._model.update_submission_blockers()
+
+    def _on_plugin_submission_warning_messages_change(self, _):
+        self._model.update_submission_warnings()
 
     def _on_process_change(self, _):
         with self.hold_trait_notifications():
@@ -209,6 +237,9 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.update_submission_blocker_message()
         self._update_state()
 
+    def _on_submission_warning_change(self, _):
+        self._model.update_submission_warning_message()
+
     def _on_installation_change(self, _):
         self._model.update_submission_blockers()
 
@@ -219,15 +250,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _on_sssp_installed(self, _):
         self._toggle_sssp_installation_widget()
-
-    def _on_code_activation_change(self, change):
-        self._toggle_code(change["owner"])
-
-    def _on_code_selection_change(self, _):
-        self._model.update_submission_blockers()
-
-    def _on_pw_code_resource_change(self, _):
-        self._model.check_resources()
 
     def _on_submission(self, _):
         self._update_state()
@@ -268,29 +290,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if qe_auto_setup:
             self.qe_setup.refresh()
 
-    def _set_up_codes(self):
-        codes: PluginCodes = {
-            "dft": {
-                "pw": PwCodeModel(
-                    description="pw.x",
-                    default_calc_job_plugin="quantumespresso.pw",
-                    code_widget_class=PwCodeResourceSetupWidget,
-                ),
-            },
-            **get_entry_items("aiidalab_qe.properties", "code"),
-        }
-        for identifier, code_models in codes.items():
-            for name, code_model in code_models.items():
-                self._model.add_code(identifier, name, code_model)
-                code_model.observe(
-                    self._on_code_activation_change,
-                    "is_active",
-                )
-                code_model.observe(
-                    self._on_code_selection_change,
-                    "selected",
-                )
-
     def _toggle_sssp_installation_widget(self):
         sssp_installation_display = "none" if self._model.sssp_installed else "block"
         self.sssp_installation.layout.display = sssp_installation_display
@@ -299,78 +298,20 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         qe_installation_display = "none" if self._model.qe_installed else "block"
         self.qe_setup.layout.display = qe_installation_display
 
-    def _toggle_code(self, code_model: CodeModel):
-        if not self.rendered:
-            return
-        if not code_model.is_rendered:
-            loading_message = LoadingWidget(f"Loading {code_model.name} code")
-            self.code_widgets_container.children += (loading_message,)
-        if code_model.name not in self.code_widgets:
-            code_widget = code_model.code_widget_class(
-                description=code_model.description,
-                default_calc_job_plugin=code_model.default_calc_job_plugin,
-            )
-            self.code_widgets[code_model.name] = code_widget
-        else:
-            code_widget = self.code_widgets[code_model.name]
-        code_widget.layout.display = "block" if code_model.is_active else "none"
-        if not code_model.is_rendered:
-            self._render_code_widget(code_model, code_widget)
-
-    def _render_code_widget(
-        self,
-        code_model: CodeModel,
-        code_widget: QEAppComputationalResourcesWidget,
-    ):
-        ipw.dlink(
-            (code_model, "options"),
-            (code_widget.code_selection.code_select_dropdown, "options"),
-        )
-        ipw.link(
-            (code_model, "selected"),
-            (code_widget.code_selection.code_select_dropdown, "value"),
-        )
-        ipw.dlink(
-            (code_model, "selected"),
-            (code_widget.code_selection.code_select_dropdown, "disabled"),
-            lambda selected: not selected,
-        )
-        ipw.link(
-            (code_model, "num_cpus"),
-            (code_widget.num_cpus, "value"),
-        )
-        ipw.link(
-            (code_model, "num_nodes"),
-            (code_widget.num_nodes, "value"),
-        )
-        ipw.link(
-            (code_model, "ntasks_per_node"),
-            (code_widget.resource_detail.ntasks_per_node, "value"),
-        )
-        ipw.link(
-            (code_model, "cpus_per_task"),
-            (code_widget.resource_detail.cpus_per_task, "value"),
-        )
-        ipw.link(
-            (code_model, "max_wallclock_seconds"),
-            (code_widget.resource_detail.max_wallclock_seconds, "value"),
-        )
-        if isinstance(code_widget, PwCodeResourceSetupWidget):
-            ipw.link(
-                (code_model, "override"),
-                (code_widget.parallelization.override, "value"),
-            )
-            ipw.link(
-                (code_model, "npool"),
-                (code_widget.parallelization.npool, "value"),
-            )
-            code_model.observe(
-                self._on_pw_code_resource_change,
-                ["num_cpus", "num_nodes"],
-            )
-        code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
-        self.code_widgets_container.children = [*code_widgets, code_widget]
-        code_model.is_rendered = True
+    def _update_tabs(self):
+        children = []
+        titles = []
+        for identifier, model in self._model.get_models():
+            if model.include:
+                settings = self.settings[identifier]
+                titles.append(settings.title)
+                children.append(settings)
+        if self.rendered:
+            self.tabs.selected_index = None
+            self.tabs.children = children
+            for i, title in enumerate(titles):
+                self.tabs.set_title(i, title)
+            self.tabs.selected_index = 0
 
     def _update_state(self, _=None):
         if self.previous_step_state is self.State.FAIL:
@@ -383,3 +324,36 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.READY
         else:
             self.state = self.state.CONFIGURED
+
+    def _fetch_plugin_settings(self):
+        # Load codes from plugins
+        eps = get_entry_items("aiidalab_qe.properties", "code")
+        for identifier, data in eps.items():
+            for key in ("panel", "model"):
+                if key not in data:
+                    raise ValueError(f"Entry {identifier} is missing the '{key}' key")
+            panel = data["panel"]
+            model: SettingsModel = data["model"]()
+            model.observe(
+                self._on_plugin_submission_blockers_change,
+                ["submission_blockers"],
+            )
+            model.observe(
+                self._on_plugin_submission_warning_messages_change,
+                ["submission_warning_messages"],
+            )
+            self._model.add_model(identifier, model)
+
+            def toggle_plugin(_, model=model):
+                model.update()
+                self._update_tabs()
+
+            model.observe(
+                toggle_plugin,
+                "include",
+            )
+
+            self.settings[identifier] = panel(
+                identifier=identifier,
+                model=model,
+            )
