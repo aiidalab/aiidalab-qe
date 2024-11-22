@@ -1,10 +1,8 @@
 import ipywidgets as ipw
-from IPython.display import clear_output, display
 
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 
-from .bandpdosplotly import BandsPdosPlotly
 from .model import BandsPdosModel
 
 
@@ -71,7 +69,7 @@ class BandsPdosWidget(ipw.VBox):
             (self.dos_atoms_group, "value"),
         )
         self.dos_atoms_group.observe(
-            self._update_plot,
+            self._update_pdos_plot,
             "value",
         )
 
@@ -88,7 +86,7 @@ class BandsPdosWidget(ipw.VBox):
             (self.dos_plot_group, "value"),
         )
         self.dos_plot_group.observe(
-            self._update_plot,
+            self._update_pdos_plot,
             "value",
         )
 
@@ -109,7 +107,7 @@ class BandsPdosWidget(ipw.VBox):
             icon="pencil",
             button_style="primary",
         )
-        self.update_plot_button.on_click(self._update_plot)
+        self.update_plot_button.on_click(self._update_pdos_plot)
 
         self.download_button = ipw.Button(
             description="Download Data",
@@ -128,7 +126,7 @@ class BandsPdosWidget(ipw.VBox):
             (self.project_bands_box, "value"),
         )
         self.project_bands_box.observe(
-            self._update_plot,
+            self._update_bands_projections,
             "value",
         )
 
@@ -149,7 +147,7 @@ class BandsPdosWidget(ipw.VBox):
             (self.proj_bands_width_slider, "value"),
         )
         self.proj_bands_width_slider.observe(
-            self._update_plot,
+            self._update_bands_projections,
             "value",
         )
 
@@ -192,9 +190,6 @@ class BandsPdosWidget(ipw.VBox):
             layout=ipw.Layout(display="none"),
         )
 
-        # Output widget to display the bandsplot widget
-        self.bands_widget = ipw.Output()
-
         self.children = [
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px; max-width: 600px;">
@@ -208,15 +203,13 @@ class BandsPdosWidget(ipw.VBox):
             self.pdos_options,
             self.download_button,
             self.legend_interaction_description,
-            self.bands_widget,
         ]
 
         self.rendered = True
 
-        self._initial_view()
+        self._initial_plot()
         self._toggle_projection_controls()
         self._toggle_pdos_options()
-        # self._update_plot()
 
     def _on_needs_bands_projections_change(self, _):
         self._toggle_projection_controls()
@@ -224,51 +217,45 @@ class BandsPdosWidget(ipw.VBox):
     def _on_needs_pdos_options_change(self, _):
         self._toggle_pdos_options()
 
-    def _initial_view(self):
-        with self.bands_widget:
-            clear_output(wait=True)
-            display(LoadingWidget("Plotting results"))
-            _, syntax_ok = string_range_to_list(self._model.selected_atoms, shift=-1)
-            if not syntax_ok:
-                self._wrong_syntax.message = """
-                    <div class='alert alert-danger'>
-                        ERROR: Invalid syntax for selected atoms
-                    </div>
-                """
-                clear_output(wait=True)
-            else:
-                self._model.fetch_data()
+    def _initial_plot(self):
+        """Create the initial plot."""
+        self._model.fetch_data()
+        self._model.create_plot()
+        self.plot = self._model.plot
+        self.proj_bands_width_slider.layout.visibility = (
+            "visible" if self._model.project_bands_box else "hidden"
+        )
+        self.download_button.layout.visibility = "visible"
+        self.project_bands_box.layout.visibility = "visible"
+        self.children = (*self.children, self.plot)
 
-                if hasattr(self, "plot"):
-                    # Get current axis range
-                    xaxis_range = list(self.plot.layout["xaxis"]["range"])  # type: ignore
-                    yaxis_range = list(self.plot.layout["yaxis"]["range"])  # type: ignore
-                else:
-                    xaxis_range = []
-                    yaxis_range = []
+    def _update_bands_projections(self, _):
+        """Update the plot with the selected projection."""
+        self.proj_bands_width_slider.layout.visibility = (
+            "visible" if self._model.project_bands_box else "hidden"
+        )
 
-                self.plot = BandsPdosPlotly(
-                    bands_data=self._model.bands_data,
-                    pdos_data=self._model.pdos_data,
-                    bands_projections_data=None,
-                ).bandspdosfigure
+        _, syntax_ok = string_range_to_list(self._model.selected_atoms, shift=-1)
+        if not syntax_ok:
+            self._wrong_syntax.message = """
+                <div class='alert alert-danger'>
+                    ERROR: Invalid syntax for selected atoms
+                </div>
+            """
+        else:
+            self._model.update_bands_projections()
 
-                self._clear_output_and_display()
-
-                # Restore Old axis range. I do it after the plot is displayed to the Reset button always return to the Default SETTINGs
-                if self._model.bands_data:
-                    if yaxis_range:
-                        self.plot.plotly_relayout({"yaxis.range": yaxis_range})
-                elif self._model.pdos_data and xaxis_range:
-                    self.plot.plotly_relayout({"xaxis.range": xaxis_range})
-
-                self.proj_bands_width_slider.layout.visibility = (
-                    "visible" if self._model.project_bands_box else "hidden"
-                )
-
-            self._clear_output_and_display()
-            self.download_button.layout.visibility = "visible"
-            self.project_bands_box.layout.visibility = "visible"
+    def _update_pdos_plot(self, _):
+        """Update the plot with the selected PDOS options."""
+        _, syntax_ok = string_range_to_list(self._model.selected_atoms, shift=-1)
+        if not syntax_ok:
+            self._wrong_syntax.message = """
+                <div class='alert alert-danger'>
+                    ERROR: Invalid syntax for selected atoms
+                </div>
+            """
+        else:
+            self._model.update_pdos_plot()
 
     def _toggle_projection_controls(self):
         """If projections are available in the bands data,
@@ -290,50 +277,3 @@ class BandsPdosWidget(ipw.VBox):
         else:
             self.pdos_options.layout.display = "none"
             self.legend_interaction_description.layout.display = "none"
-
-    def _update_plot(self, _=None):
-        with self.bands_widget:
-            clear_output(wait=True)
-            display(LoadingWidget("Plotting results"))
-            _, syntax_ok = string_range_to_list(self._model.selected_atoms, shift=-1)
-            if not syntax_ok:
-                self._wrong_syntax.message = """
-                    <div class='alert alert-danger'>
-                        ERROR: Invalid syntax for selected atoms
-                    </div>
-                """
-                clear_output(wait=True)
-            else:
-                self._model.fetch_data()
-
-                if hasattr(self, "plot"):
-                    # Get current axis range
-                    xaxis_range = list(self.plot.layout["xaxis"]["range"])  # type: ignore
-                    yaxis_range = list(self.plot.layout["yaxis"]["range"])  # type: ignore
-                else:
-                    xaxis_range = []
-                    yaxis_range = []
-
-                self.plot = BandsPdosPlotly(
-                    bands_data=self._model.bands_data,
-                    pdos_data=self._model.pdos_data,
-                    bands_projections_data=self._model.bands_projections_data,
-                ).bandspdosfigure
-
-                self._clear_output_and_display()
-
-                # Restore Old axis range. I do it after the plot is displayed to the Reset button always return to the Default SETTINGs
-                if self._model.bands_data:
-                    if yaxis_range:
-                        self.plot.plotly_relayout({"yaxis.range": yaxis_range})
-                elif self._model.pdos_data and xaxis_range:
-                    self.plot.plotly_relayout({"xaxis.range": xaxis_range})
-
-                self.proj_bands_width_slider.layout.visibility = (
-                    "visible" if self._model.project_bands_box else "hidden"
-                )
-
-    def _clear_output_and_display(self):
-        clear_output(wait=True)
-        if hasattr(self, "plot"):
-            display(self.plot)

@@ -15,6 +15,8 @@ from aiidalab_qe.common.bands_pdos.utils import (
 from aiidalab_qe.common.mvc import Model
 from aiidalab_widgets_base.utils import string_range_to_list
 
+from .bandpdosplotly import BandsPdosPlotly
+
 
 class BandsPdosModel(Model):
     bands = tl.Instance(AttributeDict, allow_none=True)
@@ -70,10 +72,59 @@ class BandsPdosModel(Model):
     def fetch_data(self):
         """Fetch the data from the nodes."""
         if self.bands:
-            self.bands_data = self._get_bands_data()
-            self.bands_projections_data = self._get_bands_projections_data()
+            if not self.bands_data:
+                self.bands_data = self._get_bands_data()
+
         if self.pdos:
             self.pdos_data = self._get_pdos_data()
+
+    def create_plot(self):
+        """Create the plot."""
+        self.helper = BandsPdosPlotly(
+            bands_data=self.bands_data,
+            bands_projections_data=None,
+            pdos_data=self.pdos_data,
+        )
+        self.plot = self.helper.bandspdosfigure
+
+    def update_bands_projections(self):
+        """Update the bands projections."""
+        if self.project_bands_box:
+            if self.bands_projections_data:
+                self._remove_bands_traces()
+            self.bands_projections_data = self._get_bands_projections_data()
+            self.helper.project_bands = self.bands_projections_data
+            self.helper.adding_projected_bands(self.plot)
+        else:
+            self._remove_bands_traces()
+
+    def _remove_bands_traces(self):
+        """Remove the bands traces."""
+        self.plot.data = tuple(
+            trace
+            for trace in self.plot.data
+            if trace.xaxis == "x2" or trace.legendgroup == ""
+        )
+        self.bands_projections_data = {}
+        self.helper.project_bands = {}
+
+    def _remove_pdos_traces(self):
+        """Remove the PDOS traces."""
+        if self.helper.plot_type == "pdos":
+            self.plot.data = ()
+        elif self.helper.plot_type == "combined":
+            self.plot.data = tuple(
+                trace for trace in self.plot.data if trace.xaxis != "x2"
+            )
+
+    def update_pdos_plot(self):
+        """Update the PDOS plot."""
+        self.fetch_data()
+        if self.project_bands_box:
+            self.update_bands_projections()
+        self.helper.pdos_data = self.pdos_data
+        self._remove_pdos_traces()
+        self.helper.adding_pdos_traces(self.plot)
 
     @property
     def _has_bands(self):
