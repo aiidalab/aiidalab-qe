@@ -2,10 +2,10 @@ from importlib import resources
 
 import yaml
 
-from aiidalab_qe.app.submission.code import CodeModel
 from aiidalab_qe.common.panel import SettingsOutline
 from aiidalab_qe.plugins import xas as xas_folder
 
+from .code import XasCodeModel, XasCodeSettings
 from .model import XasModel
 from .result import XasResults, XasResultsModel
 from .setting import XasSettings
@@ -21,10 +21,8 @@ class XasOutline(SettingsOutline):
 xas = {
     "outline": XasOutline,
     "code": {
-        "xspectra": CodeModel(
-            description="xspectra.x",
-            default_calc_job_plugin="quantumespresso.xspectra",
-        )
+        "panel": XasCodeSettings,
+        "model": XasCodeModel,
     },
     "setting": {
         "panel": XasSettings,
