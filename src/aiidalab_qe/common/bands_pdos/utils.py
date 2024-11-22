@@ -22,7 +22,7 @@ def get_bands_data(outputs, fermi_energy=None):
         bands_data["fermi_energy"] = (
             fermi_energy
             if fermi_energy is not None
-            else outputs.band_parameters.get("fermi_energy")
+            else outputs.band_parameters["fermi_energy"]
         )
 
     bands_data["pathlabels"] = _get_bands_labeling(bands_data)
