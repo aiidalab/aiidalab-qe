@@ -465,13 +465,12 @@ class AddingTagsEditor(ipw.VBox):
         )
         self.periodicity = ipw.RadioButtons(
             options=[
-                ("3D", "xyz"),
-                ("2D", "xy"),
-                ("1D", "x"),
-                ("Non-periodic (Molecule)", "molecule"),
+                ("3D (bulk systems)", "xyz"),
+                ("2D (surfaces and slabs)", "xy"),
+                ("1D (wires)", "x"),
+                ("0D (molecules)", "molecule"),
             ],
             value="xyz",
-            description="Periodicty: ",
             layout={"width": "initial"},
         )
         self.select_periodicity = ipw.Button(
@@ -507,6 +506,13 @@ class AddingTagsEditor(ipw.VBox):
                 ipw.HTML(
                     "<b>Define periodicity</b>",
                 ),
+                ipw.HTML("""
+                <p>Select the periodicity of your system:</p>
+                <ul>
+                    <li><b>2D (surfaces and slabs):</b> The non-periodic direction must be the third lattice vector and along the z-axis.</li>
+                    <li><b>1D (wires):</b> The periodic direction must be the first lattice vector and along the x-axis.</li>
+                </ul>
+                """),
                 self.periodicity,
                 self.select_periodicity,
             ],
