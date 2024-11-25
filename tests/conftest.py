@@ -424,22 +424,23 @@ def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
     app.submit_model.qe_installed = True
 
     # set up codes
-    pw_code_model = app.submit_model.get_code("dft", "pw")
-    dos_code_model = app.submit_model.get_code("pdos", "dos")
-    projwfc_code_model = app.submit_model.get_code("pdos", "projwfc")
-    projwfc_bands_code_model = app.submit_model.get_code("bands", "projwfc_bands")
+    pw_code_model = app.submit_model.get_model("global").get_code("quantumespresso.pw")
+    dos_code_model = app.submit_model.get_model("global").get_code(
+        "quantumespresso.dos"
+    )
+    projwfc_code_model = app.submit_model.get_model("global").get_code(
+        "quantumespresso.projwfc"
+    )
 
     pw_code_model.activate()
     dos_code_model.activate()
     projwfc_code_model.activate()
-    projwfc_bands_code_model.activate()
 
-    app.submit_model.set_selected_codes(
+    app.submit_model.get_model("global").set_selected_codes(
         {
             "pw": {"code": pw_code.label},
             "dos": {"code": dos_code.label},
             "projwfc": {"code": projwfc_code.label},
-            "projwfc_bands": {"code": projwfc_bands_code.label},
         }
     )
 
@@ -503,7 +504,7 @@ def submit_app_generator(
         app.configure_model.confirm()
 
         app.submit_model.input_structure = generate_structure_data()
-        app.submit_model.get_code("dft", "pw").num_cpus = 2
+        app.submit_model.get_model("global").get_code("quantumespresso.pw").num_cpus = 2
 
         return app
 
@@ -812,7 +813,7 @@ def generate_qeapp_workchain(
         app.configure_model.confirm()
 
         # step 3 setup code and resources
-        app.submit_model.get_code("dft", "pw").num_cpus = 4
+        app.submit_model.get_model("global").get_code("quantumespresso.pw").num_cpus = 4
         parameters = app.submit_model.get_model_state()
         builder = app.submit_model._create_builder(parameters)
 
