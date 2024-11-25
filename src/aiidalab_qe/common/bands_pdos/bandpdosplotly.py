@@ -14,7 +14,7 @@ class BandsPdosPlotly:
         "axis_linecolor": "#111111",
         "bands_linecolor": "#111111",
         "bands_up_linecolor": "rgba(205, 0, 0, 0.4)",  # Red Opacitiy 40%
-        "bands_down_linecolor": "rgba(72,118,255, 0.4)",  # Blue Opacitiy 40%
+        "bands_down_linecolor": "rgba(72, 118, 255, 0.4)",  # Blue Opacitiy 40%
         "combined_plot_height": 600,
         "combined_plot_width": 900,
         "combined_column_widths": [0.7, 0.3],
@@ -257,6 +257,12 @@ class BandsPdosPlotly:
             (False, 1): self.fermi_energy.get("fermi_energy_down", None),
         }
 
+        trace_name_mapping = {
+            (False, 0): "Bands",  # Base case: non-spin-polarized
+            (True, 0): "Bands (↑)",  # Spin-up case
+            (True, 1): "Bands (↓)",  # Spin-down case
+        }
+
         bands_data = self.bands_data
         # Convert paths to a list of Scatter objects
         scatter_objects = []
@@ -289,7 +295,8 @@ class BandsPdosPlotly:
                         "color": colors[(spin_polarized, spin)],
                         "shape": "linear",
                     },
-                    showlegend=False,
+                    showlegend=spin_polarized,
+                    name=trace_name_mapping[(spin_polarized, spin)],
                 )
             )
 

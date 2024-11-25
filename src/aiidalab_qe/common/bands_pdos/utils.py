@@ -710,3 +710,53 @@ def _update_pdos_labels(pdos_data):
         label_data_list[idx]["label"] = label
 
     return pdos_data
+
+
+def hex_to_rgba(hex_code, alpha=1):
+    # Remove the '#' if it's included
+    hex_code = hex_code.lstrip("#")
+
+    # Convert hex to RGB values
+    r = int(hex_code[0:2], 16)
+    g = int(hex_code[2:4], 16)
+    b = int(hex_code[4:6], 16)
+
+    # Return the rgba color
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
+def rgba_to_hex(color_str):
+    """
+    Converts an RGBA color string to a HEX color string.
+
+    Parameters:
+        color_str (str): A color string in the format 'rgba(r, g, b, a)'.
+
+    Returns:
+        str: The HEX color string in the format '#RRGGBB' (ignoring alpha) or '#RRGGBBAA' (if needed).
+    """
+    if color_str.startswith("rgba"):
+        # Extract RGBA values from the string
+        rgba_values = color_str[5:-1].split(",")
+        rgba_values = [
+            float(value.strip()) for value in rgba_values
+        ]  # Convert to floats
+
+        # Map RGBA values to integers (alpha scaled to 255)
+        r, g, b = map(int, rgba_values[:3])
+        # a = int(rgba_values[3] * 255)  # Scale alpha to 0-255
+
+        # Convert to HEX including alpha (optional)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    elif color_str.startswith("rgb"):
+        # Handle RGB format without alpha
+        rgb_values = color_str[4:-1].split(",")
+        rgb_values = [int(value.strip()) for value in rgb_values]  # Convert to integers
+
+        # Map RGB values and ignore alpha
+        r, g, b = rgb_values[:3]
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    # Return unchanged if already in hex or invalid format
+    return color_str

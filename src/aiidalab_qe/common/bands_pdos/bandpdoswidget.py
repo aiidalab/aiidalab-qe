@@ -180,6 +180,42 @@ class BandsPdosWidget(ipw.VBox):
             layout=ipw.Layout(display="none"),
         )
 
+        self.color_picker = ipw.ColorPicker(description="Pick a color")
+        self.trace_selector = ipw.Dropdown(description="Select a trace")
+
+        self.color_selector = ipw.VBox(
+            children=[
+                ipw.HTML("""
+                    <div style="line-height: 140%; padding: 10px 0; max-width: 600px;">
+                        <strong>How to customize the plot:</strong><br>
+                        Select a trace from the dropdown menu, adjust its color using the color picker, and see the plot update instantly.
+                    </div>
+                    """),
+                ipw.HBox(
+                    children=[
+                        self.trace_selector,
+                        self.color_picker,
+                    ]
+                ),
+            ],
+        )
+        ipw.dlink(
+            (self._model, "trace_selector_options"),
+            (self.trace_selector, "options"),
+        )
+        ipw.link(
+            (self._model, "color_picker"),
+            (self.color_picker, "value"),
+        )
+        self.trace_selector.observe(
+            self._trace_selector_change,
+            "value",
+        )
+        self.color_picker.observe(
+            self._update_trace_color,
+            "value",
+        )
+
         self.legend_interaction_description = ipw.HTML(
             """
                 <div style="line-height: 140%; padding-top: 10px; padding-bottom: 5px; max-width: 600px;">
@@ -227,7 +263,7 @@ class BandsPdosWidget(ipw.VBox):
         )
         self.download_button.layout.visibility = "visible"
         self.project_bands_box.layout.visibility = "visible"
-        self.children = (*self.children, self.plot)
+        self.children = (*self.children, self.plot, self.color_selector)
 
     def _update_bands_projections(self, _):
         """Update the plot with the selected projection."""
@@ -244,6 +280,7 @@ class BandsPdosWidget(ipw.VBox):
             """
         else:
             self._model.update_bands_projections()
+            self._trace_selector_change({"new": 0})
 
     def _update_pdos_plot(self, _):
         """Update the plot with the selected PDOS options."""
@@ -256,6 +293,7 @@ class BandsPdosWidget(ipw.VBox):
             """
         else:
             self._model.update_pdos_plot()
+            self._trace_selector_change({"new": 0})
 
     def _toggle_projection_controls(self):
         """If projections are available in the bands data,
@@ -277,3 +315,9 @@ class BandsPdosWidget(ipw.VBox):
         else:
             self.pdos_options.layout.display = "none"
             self.legend_interaction_description.layout.display = "none"
+
+    def _trace_selector_change(self, change):
+        self._model.update_color_picker(change["new"])
+
+    def _update_trace_color(self, change):
+        self._model.update_trace_color(change["new"])
