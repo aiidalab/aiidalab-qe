@@ -507,11 +507,11 @@ class AddingTagsEditor(ipw.VBox):
                     "<b>Define periodicity</b>",
                 ),
                 ipw.HTML("""
-                <p>Select the periodicity of your system:</p>
-                <ul>
-                    <li><b>2D (surfaces, slabs, ...):</b> The non-periodic direction must be the third lattice vector and along the z-axis.</li>
-                    <li><b>1D (wires):</b> The periodic direction must be the first lattice vector and along the x-axis.</li>
-                </ul>
+                    <p>Select the periodicity of your system:</p>
+                    <ul>
+                        <li><b>NOTE:</b> For <b>2D</b> systems (e.g., surfaces, slabs, ...), the non-periodic direction must be the third lattice vector (z-axis).</li>
+                        <li><b>NOTE:</b> For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
+                    </ul>
                 """),
                 self.periodicity,
                 self.select_periodicity,
