@@ -1,6 +1,6 @@
-from aiidalab_qe.app.submission.code import CodeModel
 from aiidalab_qe.common.panel import SettingsOutline
 
+from .code import PdosCodeModel, PdosCodeSettings
 from .model import PdosModel
 from .result import PdosResults, PdosResultsModel
 from .setting import PdosSettings
@@ -14,14 +14,8 @@ class PdosOutline(SettingsOutline):
 pdos = {
     "outline": PdosOutline,
     "code": {
-        "dos": CodeModel(
-            description="dos.x",
-            default_calc_job_plugin="quantumespresso.dos",
-        ),
-        "projwfc": CodeModel(
-            description="projwfc.x",
-            default_calc_job_plugin="quantumespresso.projwfc",
-        ),
+        "panel": PdosCodeSettings,
+        "model": PdosCodeModel,
     },
     "setting": {
         "panel": PdosSettings,

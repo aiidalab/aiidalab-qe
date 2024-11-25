@@ -145,15 +145,15 @@ def test_warning_messages(
     app: App = submit_app_generator(properties=["bands", "pdos"])
     submit_model = app.submit_model
 
-    pw_code = submit_model.get_code("dft", "pw")
+    pw_code = submit_model.get_model("global").get_code("quantumespresso.pw")
     pw_code.num_cpus = 1
-    submit_model.check_resources()
+    submit_model.get_model("global").check_resources()
     # no warning:
     assert submit_model.submission_warning_messages == ""
 
     # now we increase the resources, so we should have the Warning-3
     pw_code.num_cpus = len(os.sched_getaffinity(0))
-    submit_model.check_resources()
+    submit_model.get_model("global").check_resources()
     for suggestion in ["avoid_overloading", "go_remote"]:
         assert suggestions[suggestion] in submit_model.submission_warning_messages
 
@@ -161,10 +161,12 @@ def test_warning_messages(
     structure = generate_structure_data("H2O-larger")
     submit_model.input_structure = structure
     pw_code.num_cpus = 1
-    submit_model.check_resources()
+    submit_model.get_model("global").check_resources()
     num_sites = len(structure.sites)
     volume = structure.get_cell_volume()
-    estimated_CPUs = submit_model._estimate_min_cpus(num_sites, volume)
+    estimated_CPUs = submit_model.get_model("global")._estimate_min_cpus(
+        num_sites, volume
+    )
     assert estimated_CPUs == 2
     for suggestion in ["more_resources", "change_configuration"]:
         assert suggestions[suggestion] in submit_model.submission_warning_messages

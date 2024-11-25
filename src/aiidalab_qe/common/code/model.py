@@ -4,7 +4,10 @@ import traitlets as tl
 from aiida import orm
 from aiida.common import NotExistent
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
+from aiidalab_qe.common.widgets import (
+    PwCodeResourceSetupWidget,
+    QEAppComputationalResourcesWidget,
+)
 
 
 class CodeModel(Model):
@@ -51,7 +54,7 @@ class CodeModel(Model):
     def deactivate(self):
         self.is_active = False
 
-    def update(self, user_email):
+    def update(self, user_email: str):
         if not self.options:
             self.options = self._get_codes(user_email)
             self.selected = self.options[0][1] if self.options else None
@@ -85,7 +88,9 @@ class CodeModel(Model):
             self.selected = uuid if uuid in [opt[1] for opt in self.options] else None
         return self.selected
 
-    def _get_codes(self, user_email):
+    def _get_codes(self, user_email: str):
+        # set default user_email if not provided
+        user_email = user_email or orm.User.collection.get_default().email
         user = orm.User.collection.get(email=user_email)
 
         filters = (
@@ -119,6 +124,21 @@ class CodeModel(Model):
 class PwCodeModel(CodeModel):
     override = tl.Bool(False)
     npool = tl.Int(1)
+
+    def __init__(
+        self,
+        *,
+        name="",
+        description="pw.x",
+        default_calc_job_plugin="quantumespresso.pw",
+        code_widget_class=PwCodeResourceSetupWidget,
+    ):
+        super().__init__(
+            name=name,
+            description=description,
+            default_calc_job_plugin=default_calc_job_plugin,
+            code_widget_class=code_widget_class,
+        )
 
     def get_model_state(self) -> dict:
         parameters = super().get_model_state()
