@@ -77,12 +77,10 @@ We acknowledge support from:
 * [DOME 4.0 project](https://dome40.eu/) funded by the EU Horizon 2020 Research and Innovation Programme (Grant No. 953163)
 
 
-<div style="text-align:left">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; gap: 50px; text-align: center;">
  <img src="miscellaneous/logos/MARVEL.png" alt="MARVEL" height="75px">
  <img src="miscellaneous/logos/MaX.png" alt="MaX" height="75px">
  <img src="miscellaneous/logos/MarketPlace.png" alt="MarketPlace" height="75px">
-</div>
-<div style="text-align:left">
  <img src="miscellaneous/logos/bigmap_logo.png" alt="BIG-MAP" height="75px">
  <img src="miscellaneous/logos/EU_flag.png" alt="EU" height="75px">
  <img src="miscellaneous/logos/DOME_4.0.png" alt="DOME 4.0" height="75px">

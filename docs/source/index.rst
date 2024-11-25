@@ -165,16 +165,14 @@ We also acknowledge support from:
 - `MARVEL National Centre for Competency in Research <http://nccr-marvel.ch>`_ funded by the `Swiss National Science Foundation <http://www.snf.ch/en>`_.
 - `MARKETPLACE project <https://www.the-marketplace-project.eu/>`_ funded by Horizon 2020 under the H2020-NMBP-25-2017 call (Grant No. 760173).
 - `MaX European Centre of Excellence <http://www.max-centre.eu/>`_ funded by the Horizon 2020 EINFRA-5 program (Grant No. 676598).
-* `DOME 4.0 project <https://dome40.eu/>`_ funded by the EU Horizon 2020 Research and Innovation Programme (Grant No. 953163).
+- `DOME 4.0 project <https://dome40.eu/>`_ funded by the EU Horizon 2020 Research and Innovation Programme (Grant No. 953163).
 
 .. raw:: html
 
-   <div style="text-align:left">
+   <div style="display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; gap: 50px; text-align: center;">
     <img src="../_static/logos/MARVEL.png" alt="MARVEL" height="75px">
     <img src="../_static/logos/MaX.png" alt="MaX" height="75px">
     <img src="../_static/logos/MarketPlace.png" alt="MarketPlace" height="75px">
-   </div>
-   <div style="text-align:left">
     <img src="../_static/logos/bigmap_logo.png" alt="BIG-MAP" height="75px">
     <img src="../_static/logos/EU_flag.png" alt="EU" height="75px">
     <img src="../_static/logos/DOME_4.0.png" alt="DOME 4.0" height="75px">
