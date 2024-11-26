@@ -4,10 +4,10 @@ import traitlets as tl
 
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 
-from ..subsettings import AdvancedSubModel
+from ..subsettings import AdvancedCalculationSubSettingsModel
 
 
-class SmearingModel(AdvancedSubModel):
+class SmearingConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
     dependencies = [
         "protocol",
     ]

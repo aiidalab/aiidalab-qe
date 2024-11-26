@@ -1,13 +1,15 @@
 import ipywidgets as ipw
 
-from ..subsettings import AdvancedSubSettings
-from .model import SmearingModel
+from ..subsettings import AdvancedConfigurationSubSettingsPanel
+from .model import SmearingConfigurationSettingsModel
 
 
-class SmearingSettings(AdvancedSubSettings[SmearingModel]):
+class SmearingConfigurationSettingsPanel(
+    AdvancedConfigurationSubSettingsPanel[SmearingConfigurationSettingsModel],
+):
     identifier = "smearing"
 
-    def __init__(self, model: SmearingModel, **kwargs):
+    def __init__(self, model: SmearingConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(

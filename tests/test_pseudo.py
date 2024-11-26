@@ -144,12 +144,12 @@ def test_download_and_install_pseudo_from_file(tmp_path):
 
 def test_pseudos_settings(generate_structure_data, generate_upf_data):
     from aiidalab_qe.app.configuration.advanced.pseudos import (
-        PseudoSettings,
-        PseudosModel,
+        PseudosConfigurationSettingsModel,
+        PseudosConfigurationSettingsPanel,
     )
 
-    model = PseudosModel()
-    pseudos = PseudoSettings(model=model)
+    model = PseudosConfigurationSettingsModel()
+    pseudos = PseudosConfigurationSettingsPanel(model=model)
 
     assert model.override is False
 

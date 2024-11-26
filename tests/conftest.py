@@ -7,7 +7,6 @@ import tempfile
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.configuration.model import ConfigurationStepModel
 from aiidalab_qe.app.main import App
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
@@ -386,11 +385,14 @@ def projwfc_bands_code(aiida_local_code_factory):
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.configuration.basic.workflow import BasicSettings
+    from aiidalab_qe.app.configuration.basic.workflow import (
+        BasicConfigurationSettingsModel,
+        BasicConfigurationSettingsPanel,
+    )
 
     def _workchain_settings_generator(**kwargs):
-        model = ConfigurationStepModel()
-        workchain_settings = BasicSettings(config_model=model)
+        model = BasicConfigurationSettingsModel()
+        workchain_settings = BasicConfigurationSettingsPanel(model=model)
         workchain_settings._update_settings(**kwargs)
         return workchain_settings
 
@@ -400,11 +402,14 @@ def workchain_settings_generator():
 @pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
-    from aiidalab_qe.app.configuration.advanced.smearing import SmearingSettings
+    from aiidalab_qe.app.configuration.advanced.smearing import (
+        SmearingConfigurationSettingsModel,
+        SmearingConfigurationSettingsPanel,
+    )
 
     def _smearing_settings_generator(**kwargs):
-        model = ConfigurationStepModel()
-        smearing_settings = SmearingSettings(model=model)
+        model = SmearingConfigurationSettingsModel()
+        smearing_settings = SmearingConfigurationSettingsPanel(model=model)
         smearing_settings.update_settings(**kwargs)
         return smearing_settings
 

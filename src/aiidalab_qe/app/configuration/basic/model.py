@@ -2,12 +2,12 @@ import traitlets as tl
 
 from aiida import orm
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.panel import SettingsModel
+from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class WorkChainModel(SettingsModel):
+class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
     dependencies = [
         "input_structure",
     ]

@@ -13,7 +13,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 
-from ..subsettings import AdvancedSubModel
+from ..subsettings import AdvancedCalculationSubSettingsModel
 
 SsspFamily = GroupFactory("pseudo.family.sssp")
 PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
@@ -22,7 +22,10 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class PseudosModel(AdvancedSubModel, HasInputStructure):
+class PseudosConfigurationSettingsModel(
+    AdvancedCalculationSubSettingsModel,
+    HasInputStructure,
+):
     dependencies = [
         "input_structure",
         "protocol",

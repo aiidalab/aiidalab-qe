@@ -1,7 +1,7 @@
-from .magnetization import MagnetizationSettings
-from .model import MagnetizationModel
+from .magnetization import MagnetizationConfigurationSettingsPanel
+from .model import MagnetizationConfigurationSettingsModel
 
 __all__ = [
-    "MagnetizationModel",
-    "MagnetizationSettings",
+    "MagnetizationConfigurationSettingsModel",
+    "MagnetizationConfigurationSettingsPanel",
 ]

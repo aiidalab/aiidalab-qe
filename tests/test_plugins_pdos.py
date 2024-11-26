@@ -2,12 +2,12 @@ def test_result(generate_qeapp_workchain):
     import plotly.graph_objects as go
 
     from aiidalab_qe.common.bands_pdos import BandsPdosWidget
-    from aiidalab_qe.plugins.pdos.result import PdosResults, PdosResultsModel
+    from aiidalab_qe.plugins.pdos.result import PdosResultsModel, PdosResultsPanel
 
     workchain = generate_qeapp_workchain()
     model = PdosResultsModel()
     model.process_uuid = workchain.node.uuid
-    result = PdosResults(model=model)
+    result = PdosResultsPanel(model=model)
     result.render()
 
     widget = result.children[0]

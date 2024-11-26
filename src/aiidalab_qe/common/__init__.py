@@ -4,9 +4,9 @@ from .process import QeAppWorkChainSelector, WorkChainSelector
 from .widgets import AddingTagsEditor, LazyLoadedOptimade, LazyLoadedStructureBrowser
 
 __all__ = [
-    "WorkChainSelector",
-    "QeAppWorkChainSelector",
     "AddingTagsEditor",
     "LazyLoadedOptimade",
     "LazyLoadedStructureBrowser",
+    "QeAppWorkChainSelector",
+    "WorkChainSelector",
 ]

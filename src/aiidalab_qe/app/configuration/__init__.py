@@ -10,11 +10,17 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
+from aiidalab_qe.common.panel import (
+    ConfigurationSettingsModel,
+    ConfigurationSettingsPanel,
+)
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from .advanced import AdvancedModel, AdvancedSettings
-from .basic import WorkChainModel, WorkChainSettings
+from .advanced import (
+    AdvancedConfigurationSettingsModel,
+    AdvancedConfigurationSettingsPanel,
+)
+from .basic import BasicConfigurationSettingsModel, BasicConfigurationSettingsPanel
 from .model import ConfigurationStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -56,12 +62,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             """,
         )
 
-        workchain_model = WorkChainModel()
-        self.workchain_settings = WorkChainSettings(model=workchain_model)
+        workchain_model = BasicConfigurationSettingsModel()
+        self.workchain_settings = BasicConfigurationSettingsPanel(model=workchain_model)
         self._model.add_model("workchain", workchain_model)
 
-        advanced_model = AdvancedModel()
-        self.advanced_settings = AdvancedSettings(model=advanced_model)
+        advanced_model = AdvancedConfigurationSettingsModel()
+        self.advanced_settings = AdvancedConfigurationSettingsPanel(
+            model=advanced_model
+        )
         self._model.add_model("advanced", advanced_model)
 
         self.settings = {
@@ -71,7 +79,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.property_children = []
 
-        self._fetch_plugin_settings()
+        self._fetch_plugin_calculation_settings()
 
     def render(self):
         if self.rendered:
@@ -178,7 +186,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
-        tab: SettingsPanel = self.tabs.children[tab_index]  # type: ignore
+        tab: ConfigurationSettingsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
         tab.update()
 
@@ -214,15 +222,16 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             self.state = self.State.INIT
 
-    def _fetch_plugin_settings(self):
+    def _fetch_plugin_calculation_settings(self):
         outlines = get_entry_items("aiidalab_qe.properties", "outline")
-        entries = get_entry_items("aiidalab_qe.properties", "setting")
-        for identifier, entry in entries.items():
+        entries = get_entry_items("aiidalab_qe.properties", "configuration")
+        for identifier, configuration in entries.items():
             for key in ("panel", "model"):
-                if key not in entry:
+                if key not in configuration:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
-            panel = entry["panel"]
-            model: SettingsModel = entry["model"]()
+
+            panel = configuration["panel"]
+            model: ConfigurationSettingsModel = configuration["model"]()
             self._model.add_model(identifier, model)
 
             outline = outlines[identifier]()

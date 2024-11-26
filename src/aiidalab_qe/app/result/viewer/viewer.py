@@ -3,13 +3,13 @@ from __future__ import annotations
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiidalab_qe.app.result.summary.model import WorkChainSummaryModel
+from aiidalab_qe.app.result.summary.model import WorkChainSummaryResultsModel
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.panel import ResultsPanel
 from aiidalab_widgets_base import register_viewer_widget
 
 from ..structure import StructureResults, StructureResultsModel
-from ..summary import WorkChainSummary
+from ..summary import WorkChainSummaryResultsPanel
 from .model import WorkChainViewerModel
 from .outputs import WorkChainOutputs
 
@@ -31,9 +31,9 @@ class WorkChainViewer(ipw.VBox):
 
         self.rendered = False
 
-        summary_model = WorkChainSummaryModel()
+        summary_model = WorkChainSummaryResultsModel()
         summary_model.process_uuid = node.uuid
-        self.summary = WorkChainSummary(model=summary_model)
+        self.summary = WorkChainSummaryResultsPanel(model=summary_model)
         self._model.add_model("summary", summary_model)
 
         self.results: dict[str, ResultsPanel] = {

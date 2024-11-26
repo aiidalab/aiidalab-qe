@@ -10,8 +10,8 @@ from aiida.plugins import DataFactory, GroupFactory
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML
 
-from ..subsettings import AdvancedSubSettings
-from .model import PseudosModel
+from ..subsettings import AdvancedConfigurationSubSettingsPanel
+from .model import PseudosConfigurationSettingsModel
 
 UpfData = DataFactory("pseudo.upf")
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -19,10 +19,12 @@ PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
 CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 
 
-class PseudoSettings(AdvancedSubSettings[PseudosModel]):
+class PseudosConfigurationSettingsPanel(
+    AdvancedConfigurationSubSettingsPanel[PseudosConfigurationSettingsModel],
+):
     identifier = "pseudos"
 
-    def __init__(self, model: PseudosModel, **kwargs):
+    def __init__(self, model: PseudosConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
@@ -243,7 +245,7 @@ class PseudoSettings(AdvancedSubSettings[PseudosModel]):
         if self.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process or specific and specific != "widgets":
+        if not self._model.loaded_from_process or (specific and specific != "widgets"):
             self._model.update(specific)
         self._build_setter_widgets()
         self._model.update_library_options()

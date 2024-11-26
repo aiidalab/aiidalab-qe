@@ -8,7 +8,7 @@ from aiidalab_qe.common.panel import ResultsPanel
 from .model import ElectronicStructureResultsModel
 
 
-class ElectronicStructureResults(ResultsPanel[ElectronicStructureResultsModel]):
+class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsModel]):
     title = "Electronic Structure"
     identifier = "electronic_structure"
     workchain_labels = ["bands", "pdos"]

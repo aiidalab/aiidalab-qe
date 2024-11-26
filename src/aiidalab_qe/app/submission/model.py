@@ -11,7 +11,7 @@ from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasModels
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.panel import SettingsModel
+from aiidalab_qe.common.panel import ResourceSettingsModel
 from aiidalab_qe.workflows import QeAppWorkChain
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -19,7 +19,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 class SubmissionStepModel(
     Model,
-    HasModels[SettingsModel],
+    HasModels[ResourceSettingsModel],
     HasInputStructure,
     Confirmable,
 ):
@@ -212,11 +212,7 @@ class SubmissionStepModel(
             )
             self.process_node = process_node
 
-    def _link_model(self, model: SettingsModel):
-        ipw.link(
-            (self, "confirmed"),
-            (model, "confirmed"),
-        )
+    def _link_model(self, model: ResourceSettingsModel):
         for dependency in model.dependencies:
             dependency_parts = dependency.split(".")
             if len(dependency_parts) == 1:  # from parent, e.g. input_structure

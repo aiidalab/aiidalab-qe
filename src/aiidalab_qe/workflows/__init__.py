@@ -175,7 +175,6 @@ class QeAppWorkChain(WorkChain):
             "base_final_scf": parameters["advanced"],
         }
         protocol = parameters["workchain"]["protocol"]
-        print("codes: ", codes["global"]["codes"].get("quantumespresso.pw"))
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
             code=codes["global"]["codes"].get("quantumespresso.pw")["code"],
             structure=structure,

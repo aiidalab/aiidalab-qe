@@ -11,14 +11,14 @@ from aiidalab_qe.common.mixins import (
     HasModels,
 )
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.panel import SettingsModel
+from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class ConfigurationStepModel(
     Model,
-    HasModels[SettingsModel],
+    HasModels[ConfigurationSettingsModel],
     HasInputStructure,
     Confirmable,
 ):
@@ -115,7 +115,7 @@ class ConfigurationStepModel(
             if identifier not in self._default_models:
                 model.include = False
 
-    def _link_model(self, model: SettingsModel):
+    def _link_model(self, model: ConfigurationSettingsModel):
         ipw.link(
             (self, "confirmed"),
             (model, "confirmed"),
