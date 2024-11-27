@@ -6,6 +6,34 @@ from pymatgen.core.periodic_table import Element
 
 from aiida.orm import ProjectionData
 
+# Constants for HTML tags
+HTML_TAGS = {
+    "s": "s",
+    "pz": "p<sub>z</sub>",
+    "px": "p<sub>x</sub>",
+    "py": "p<sub>y</sub>",
+    "dz2": "d<sub>z<sup>2</sup></sub>",
+    "dxy": "d<sub>xy</sub>",
+    "dxz": "d<sub>xz</sub>",
+    "dyz": "d<sub>yz</sub>",
+    "dx2-y2": "d<sub>x<sup>2</sup>-y<sup>2</sup></sub>",
+    "fz3": "f<sub>z<sup>3</sup></sub>",
+    "fxz2": "f<sub>xz<sup>2</sup></sub>",
+    "fyz2": "f<sub>yz<sup>2</sup></sub>",
+    "fxyz": "f<sub>xzy</sub>",
+    "fx(x2-3y2)": "f<sub>x(x<sup>2</sup>-3y<sup>2</sup>)</sub>",
+    "fy(3x2-y2)": "f<sub>y(3x<sup>2</sup>-y<sup>2</sup>)</sub>",
+    "fy(x2-z2)": "f<sub>y(x<sup>2</sup>-z<sup>2</sup>)</sub>",
+    0.5: "<sup>+1</sup>/<sub>2</sub>",
+    -0.5: "<sup>-1</sup>/<sub>2</sub>",
+    1.5: "<sup>+3</sup>/<sub>2</sub>",
+    -1.5: "<sup>-3</sup>/<sub>2</sub>",
+    2.5: "<sup>+5</sup>/<sub>2</sub>",
+    -2.5: "<sup>-5</sup>/<sub>2</sub>",
+    "@": "<br>",
+    "@[": "-[",
+}
+
 
 def get_bands_data(outputs, fermi_energy=None):
     if "band_structure" not in outputs:
@@ -271,32 +299,6 @@ def _get_grouping_key(
 
 def _curate_orbitals(orbital):
     """Curate and transform the orbital data into the desired format."""
-    # Constants for HTML tags
-    HTML_TAGS = {
-        "s": "s",
-        "pz": "p<sub>z</sub>",
-        "px": "p<sub>x</sub>",
-        "py": "p<sub>y</sub>",
-        "dz2": "d<sub>z<sup>2</sup></sub>",
-        "dxy": "d<sub>xy</sub>",
-        "dxz": "d<sub>xz</sub>",
-        "dyz": "d<sub>yz</sub>",
-        "dx2-y2": "d<sub>x<sup>2</sup>-y<sup>2</sup></sub>",
-        "fz3": "f<sub>z<sup>3</sup></sub>",
-        "fxz2": "f<sub>xz<sup>2</sup></sub>",
-        "fyz2": "f<sub>yz<sup>2</sup></sub>",
-        "fxyz": "f<sub>xzy</sub>",
-        "fx(x2-3y2)": "f<sub>x(x<sup>2</sup>-3y<sup>2</sup>)</sub>",
-        "fy(3x2-y2)": "f<sub>y(3x<sup>2</sup>-y<sup>2</sup>)</sub>",
-        "fy(x2-z2)": "f<sub>y(x<sup>2</sup>-z<sup>2</sup>)</sub>",
-        0.5: "<sup>+1</sup>/<sub>2</sub>",
-        -0.5: "<sup>-1</sup>/<sub>2</sub>",
-        1.5: "<sup>+3</sup>/<sub>2</sub>",
-        -1.5: "<sup>-3</sup>/<sub>2</sub>",
-        2.5: "<sup>+5</sup>/<sub>2</sub>",
-        -2.5: "<sup>-5</sup>/<sub>2</sub>",
-    }
-
     orbital_data = orbital.get_orbital_dict()
     kind_name = orbital_data["kind_name"]
     atom_position = [round(i, 2) for i in orbital_data["position"]]
@@ -706,8 +708,9 @@ def _update_pdos_labels(pdos_data):
     updated_labels = _get_new_pdos_labels(original_labels, orbital_assignment)
 
     label_data_list = pdos_data["dos"] if "dos" in pdos_data else pdos_data
-    for idx, label in enumerate(updated_labels):
-        label_data_list[idx]["label"] = label
+    # Update labels directly using zip
+    for label_data, label in zip(label_data_list, updated_labels):
+        label_data["label"] = label
 
     return pdos_data
 
@@ -760,3 +763,19 @@ def rgba_to_hex(color_str):
 
     # Return unchanged if already in hex or invalid format
     return color_str
+
+
+def replace_html_tags(input_string, html_tags):
+    """
+    Replaces HTML parts in the input string with their corresponding keys from the HTML_TAGS dictionary.
+
+    Args:
+        input_string (str): The string potentially containing HTML tags.
+        html_tags (dict): Dictionary mapping keys to HTML tag replacements.
+
+    Returns:
+        str: The input string with HTML tags replaced by their keys.
+    """
+    for key, value in html_tags.items():
+        input_string = input_string.replace(value, str(key))  # Ensure key is a string
+    return input_string

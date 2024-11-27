@@ -8,10 +8,12 @@ from IPython.display import display
 
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.bands_pdos.utils import (
+    HTML_TAGS,
     get_bands_data,
     get_bands_projections_data,
     get_pdos_data,
     hex_to_rgba,
+    replace_html_tags,
     rgba_to_hex,
 )
 from aiidalab_qe.common.mvc import Model
@@ -195,7 +197,7 @@ class BandsPdosModel(Model):
         seen_names = set()
 
         self.trace_selector_options = [
-            (trace.name, i)
+            (replace_html_tags(trace.name, HTML_TAGS), i)
             for i, trace in enumerate(self.plot.data)
             if trace.name not in seen_names and not seen_names.add(trace.name)
         ]
