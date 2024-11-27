@@ -81,17 +81,12 @@ class BandsPdosPlotly:
         if not self.bands_data:
             return None
         paths = self.bands_data.get("paths")
-        slider_bands = go.layout.xaxis.Rangeslider(
-            thickness=0.08,
-            range=[0, paths[-1]["x"][-1]],
-        )
         bandxaxis = go.layout.XAxis(
             title="k-points",
             range=[0, paths[-1]["x"][-1]],
             showgrid=True,
             showline=True,
             tickmode="array",
-            rangeslider=slider_bands,
             fixedrange=False,
             tickvals=self.bands_data["pathlabels"][1],  # ,self.band_labels[1],
             ticktext=self.bands_data["pathlabels"][0],  # self.band_labels[0],
