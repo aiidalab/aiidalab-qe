@@ -112,7 +112,6 @@ def get_bands_projections_data(
             )
     return bands_projection["projected_bands"]
 
-
 def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
     dos = []
 
