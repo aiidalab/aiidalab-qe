@@ -32,6 +32,8 @@ HTML_TAGS = {
     -2.5: "<sup>-5</sup>/<sub>2</sub>",
     " @ ": "<br>",
     " @ [": "-[",
+    "l": "<i>l</i>",
+    "m_j": "m<sub>j</sub>",
 }
 
 
@@ -320,7 +322,7 @@ def _curate_orbitals(orbital):
         qn_m_j = orbital_data["magnetic_number"]
         orbital_name = f"j {qn_j} l {qn_l} m_j{qn_m_j}"
         orbital_name_plotly = f"j={HTML_TAGS.get(qn_j, qn_j)} <i>l</i>={qn_l} m<sub>j</sub>={HTML_TAGS.get(qn_m_j, qn_m_j)}"
-        orbital_angular_momentum = f"l {qn_l} "
+        orbital_angular_momentum = f"<i>l</i>={qn_l} "
 
     return orbital_name_plotly, orbital_angular_momentum, kind_name, atom_position
 
