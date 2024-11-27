@@ -9,12 +9,12 @@ from aiidalab_qe.common.bands_pdos.utils import (
 )
 
 
-class BandPdosPlotly:
+class BandsPdosPlotly:
     SETTINGS = {
         "axis_linecolor": "#111111",
         "bands_linecolor": "#111111",
         "bands_up_linecolor": "rgba(205, 0, 0, 0.4)",  # Red Opacitiy 40%
-        "bands_down_linecolor": "rgba(72,118,255, 0.4)",  # Blue Opacitiy 40%
+        "bands_down_linecolor": "rgba(72, 118, 255, 0.4)",  # Blue Opacitiy 40%
         "combined_plot_height": 600,
         "combined_plot_width": 900,
         "combined_column_widths": [0.7, 0.3],
@@ -28,18 +28,21 @@ class BandPdosPlotly:
         "horizontal_range_pdos": [-10, 10],
     }
 
-    def __init__(self, bands_data=None, pdos_data=None, project_bands=False):
+    def __init__(self, bands_data=None, pdos_data=None, bands_projections_data=None):
         self.bands_data = bands_data
         self.pdos_data = pdos_data
-        self.fermi_energy = self._get_fermi_energy()
-        self.project_bands = project_bands and "projected_bands" in self.bands_data
+        self.project_bands = bands_projections_data
 
-        # Plotly Axis
-        # Plotly settings
+        self.fermi_energy = self._get_fermi_energy()
+
+        # Plotly axis objects
         self._bands_xaxis = self._band_xaxis()
         self._bands_yaxis = self._band_yaxis()
         self._pdos_xaxis = self._pdos_xaxis()
         self._pdos_yaxis = self._pdos_yaxis()
+
+        # Plotly figure object
+        self.figure_object = self._get_bandspdos_plot()
 
     @property
     def plot_type(self):
@@ -53,7 +56,7 @@ class BandPdosPlotly:
 
     @property
     def bandspdosfigure(self):
-        return self._get_bandspdos_plot()
+        return self.figure_object
 
     def _get_fermi_energy(self):
         """Function to return the Fermi energy information depending on the data available."""
@@ -78,17 +81,12 @@ class BandPdosPlotly:
         if not self.bands_data:
             return None
         paths = self.bands_data.get("paths")
-        slider_bands = go.layout.xaxis.Rangeslider(
-            thickness=0.08,
-            range=[0, paths[-1]["x"][-1]],
-        )
         bandxaxis = go.layout.XAxis(
             title="k-points",
             range=[0, paths[-1]["x"][-1]],
             showgrid=True,
             showline=True,
             tickmode="array",
-            rangeslider=slider_bands,
             fixedrange=False,
             tickvals=self.bands_data["pathlabels"][1],  # ,self.band_labels[1],
             ticktext=self.bands_data["pathlabels"][0],  # self.band_labels[0],
@@ -176,6 +174,19 @@ class BandPdosPlotly:
         """Function to return the bands plot widget."""
 
         fig = self._create_fig()
+
+        self.adding_bands_traces(fig)
+        self.adding_pdos_traces(fig)
+        self.adding_projected_bands(fig)
+
+        if self.plot_type == "combined":
+            self._customize_combined_layout(fig)
+        else:
+            self._customize_single_layout(fig)
+
+        return go.FigureWidget(fig)
+
+    def adding_bands_traces(self, fig):
         if self.bands_data:
             self._add_band_traces(fig)
 
@@ -186,9 +197,7 @@ class BandPdosPlotly:
                     line={"color": self.SETTINGS["vertical_linecolor"], "width": 1},
                 )
 
-            if self.project_bands:
-                self._add_projection_traces(fig)
-
+    def adding_pdos_traces(self, fig):
         if self.pdos_data:
             self._add_pdos_traces(fig)
             if self.plot_type == "pdos":
@@ -201,12 +210,9 @@ class BandPdosPlotly:
                     },
                 )
 
-        if self.plot_type == "combined":
-            self._customize_combined_layout(fig)
-        else:
-            self._customize_single_layout(fig)
-
-        return go.FigureWidget(fig)
+    def adding_projected_bands(self, fig):
+        if self.project_bands:
+            self._add_projection_traces(fig)
 
     def _create_fig(self):
         """Create a plotly figure.
@@ -246,6 +252,12 @@ class BandPdosPlotly:
             (False, 1): self.fermi_energy.get("fermi_energy_down", None),
         }
 
+        trace_name_mapping = {
+            (False, 0): "Bands",  # Base case: non-spin-polarized
+            (True, 0): "Bands (↑)",  # Spin-up case
+            (True, 1): "Bands (↓)",  # Spin-down case
+        }
+
         bands_data = self.bands_data
         # Convert paths to a list of Scatter objects
         scatter_objects = []
@@ -278,7 +290,8 @@ class BandPdosPlotly:
                         "color": colors[(spin_polarized, spin)],
                         "shape": "linear",
                     },
-                    showlegend=False,
+                    showlegend=spin_polarized,
+                    name=trace_name_mapping[(spin_polarized, spin)],
                 )
             )
 
@@ -327,39 +340,72 @@ class BandPdosPlotly:
 
         self._add_traces_to_fig(fig, scatter_objects, 2)
 
-    def _add_projection_traces(self, fig):
-        """Function to add the projected bands traces to the bands plot."""
-        projected_bands = self.bands_data["projected_bands"]
-        # dictionary with keys (bool(spin polarized), bool(spin up))
-        fermi_energy_spin_mapping = {
+    def _prepare_bands_projection_traces_data(self, projected_bands):
+        """
+        Prepares data for adding or updating projected band traces.
+
+        Args:
+            projected_bands (list[dict]): List of projected bands data.
+
+        Returns:
+            list[dict]: List of dictionaries containing x, y (with Fermi offset), color, and label.
+        """
+        spin_mapping = {
             (False, True): self.fermi_energy.get("fermi_energy_up", None),
             (False, False): self.fermi_energy.get("fermi_energy_down", None),
         }
 
-        scatter_objects = []
+        prepared_data = []
         for proj_bands in projected_bands:
-            fermi_energy = fermi_energy_spin_mapping.get(
+            fermi_energy = spin_mapping.get(
                 (
                     "fermi_energy" in self.fermi_energy,
                     proj_bands["label"].endswith("(↑)"),
                 ),
                 self.fermi_energy.get("fermi_energy"),
             )
-            scatter_objects.append(
-                go.Scattergl(
-                    x=proj_bands["x"],
-                    y=np.array(proj_bands["y"]) - fermi_energy,
-                    fill="toself",
-                    legendgroup=proj_bands["label"],
-                    mode="lines",
-                    line={"width": 0, "color": proj_bands["color"]},
-                    name=proj_bands["label"],
-                    # If PDOS is present, use those legend entries
-                    showlegend=True if self.plot_type == "bands" else False,
-                )
+            prepared_data.append(
+                {
+                    "x": proj_bands["x"],
+                    "y": np.array(proj_bands["y"]) - fermi_energy,
+                    "color": proj_bands["color"],
+                    "label": proj_bands["label"],
+                }
             )
+        return prepared_data
+
+    def _add_projection_traces(self, fig):
+        """Function to add the projected bands traces to the bands plot."""
+        prepared_data = self._prepare_bands_projection_traces_data(self.project_bands)
+
+        scatter_objects = [
+            go.Scattergl(
+                x=data["x"],
+                y=data["y"],
+                fill="toself",
+                legendgroup=data["label"],
+                mode="lines",
+                line={"width": 0, "color": data["color"]},
+                name=data["label"],
+                # If PDOS is present, use those legend entries
+                showlegend=True if self.plot_type == "bands" else False,
+            )
+            for data in prepared_data
+        ]
 
         self._add_traces_to_fig(fig, scatter_objects, 1)
+
+    def update_projected_bands_thickness(self, fig):
+        """Update the projected bands thickness."""
+        prepared_data = self._prepare_bands_projection_traces_data(self.project_bands)
+
+        # Create a mapping from labels to y-data for efficient updates
+        y_data_by_label = {data["label"]: data["y"] for data in prepared_data}
+
+        with fig.batch_update():
+            for trace in fig.data:
+                if trace.xaxis == "x" and trace.legendgroup in y_data_by_label:
+                    trace.y = y_data_by_label[trace.legendgroup]
 
     def _customize_combined_layout(self, fig):
         self._customize_layout(fig, self._bands_xaxis, self._bands_yaxis)

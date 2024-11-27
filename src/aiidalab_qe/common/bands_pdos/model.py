@@ -8,11 +8,18 @@ from IPython.display import display
 
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.bands_pdos.utils import (
+    HTML_TAGS,
+    get_bands_data,
     get_bands_projections_data,
     get_pdos_data,
+    hex_to_rgba,
+    replace_html_tags,
+    rgba_to_hex,
 )
 from aiidalab_qe.common.mvc import Model
 from aiidalab_widgets_base.utils import string_range_to_list
+
+from .bandpdosplotly import BandsPdosPlotly
 
 
 class BandsPdosModel(Model):
@@ -43,8 +50,15 @@ class BandsPdosModel(Model):
     needs_pdos_options = tl.Bool(False)
     needs_projections_controls = tl.Bool(False)
 
+    trace = tl.Int()
+    trace_selector_options = tl.List(
+        trait=tl.Tuple((tl.Unicode(), tl.Int())),
+    )
+    color_picker = tl.Unicode("#1f77b4")
+
     pdos_data = {}
     bands_data = {}
+    bands_projections_data = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -68,9 +82,69 @@ class BandsPdosModel(Model):
     def fetch_data(self):
         """Fetch the data from the nodes."""
         if self.bands:
-            self.bands_data = self._get_bands_data()
+            if not self.bands_data:
+                self.bands_data = self._get_bands_data()
+
         if self.pdos:
             self.pdos_data = self._get_pdos_data()
+
+    def create_plot(self):
+        """Create the plot."""
+        self.helper = BandsPdosPlotly(
+            bands_data=self.bands_data,
+            bands_projections_data=None,
+            pdos_data=self.pdos_data,
+        )
+        self.plot = self.helper.bandspdosfigure
+        self._get_traces_selector_options()
+
+    def update_bands_projections(self):
+        """Update the bands projections."""
+        if self.project_bands_box:
+            if self.bands_projections_data:
+                self._remove_bands_traces()
+            self.bands_projections_data = self._get_bands_projections_data()
+            self.helper.project_bands = self.bands_projections_data
+            self.helper.adding_projected_bands(self.plot)
+        else:
+            self._remove_bands_traces()
+        self._get_traces_selector_options()
+
+    def update_bands_projections_thickness(self):
+        """Update the bands projections thickness."""
+        if self.project_bands_box:
+            self.bands_projections_data = self._get_bands_projections_data()
+            self.helper.project_bands = self.bands_projections_data
+            self.helper.update_projected_bands_thickness(self.plot)
+
+    def _remove_bands_traces(self):
+        """Remove the bands traces."""
+        self.plot.data = tuple(
+            trace
+            for trace in self.plot.data
+            if trace.xaxis == "x2" or trace.legendgroup == ""
+        )
+        self.bands_projections_data = {}
+        self.helper.project_bands = {}
+
+    def _remove_pdos_traces(self):
+        """Remove the PDOS traces."""
+        if self.helper.plot_type == "pdos":
+            self.plot.data = ()
+        elif self.helper.plot_type == "combined":
+            self.plot.data = tuple(
+                trace for trace in self.plot.data if trace.xaxis != "x2"
+            )
+
+    def update_pdos_plot(self):
+        """Update the PDOS plot."""
+        self.fetch_data()
+        if self.project_bands_box:
+            self.update_bands_projections()
+        self.helper.pdos_data = self.pdos_data
+        self._remove_pdos_traces()
+        self.helper.adding_pdos_traces(self.plot)
+        self._get_traces_selector_options()
 
     @property
     def _has_bands(self):
@@ -103,18 +177,64 @@ class BandsPdosModel(Model):
         if not self.bands:
             return None
 
+        bands_data = get_bands_data(self.bands)
+        return bands_data
+
+    def _get_bands_projections_data(self):
+        if not self.bands:
+            return None
+
         expanded_selection, syntax_ok = string_range_to_list(
             self.selected_atoms, shift=-1
         )
         if syntax_ok:
-            return get_bands_projections_data(
+            bands_projections = get_bands_projections_data(
                 self.bands,
+                bands_data=self.bands_data,
                 group_tag=self.dos_atoms_group,
                 plot_tag=self.dos_plot_group,
                 selected_atoms=expanded_selection,
                 bands_width=self.proj_bands_width,
             )
+            return bands_projections
         return None
+
+    def _get_traces_selector_options(self):
+        """Generate a list of unique (trace name, index) options with specific conditions."""
+        seen_names = set()
+
+        self.trace_selector_options = [
+            (replace_html_tags(trace.name, HTML_TAGS), i)
+            for i, trace in enumerate(self.plot.data)
+            if trace.name not in seen_names and not seen_names.add(trace.name)
+        ]
+
+    def update_color_picker(self, trace):
+        """Update the color picker."""
+        self.trace = trace
+        self.color_picker = rgba_to_hex(self.plot.data[trace].line.color)
+
+    def update_trace_color(self, color):
+        """Update the trace color."""
+        trace_name = self.plot.data[self.trace].name
+
+        with self.plot.batch_update():
+            if trace_name == "Bands (↑)":
+                rgba_color = hex_to_rgba(color, alpha=0.4)
+                # Update the specific trace by index
+                self.plot.data[self.trace].update(line={"color": rgba_color})
+            elif trace_name == "Bands (↓)":
+                rgba_color = hex_to_rgba(color, alpha=0.4)
+                # Update the specific trace by index
+                self.plot.data[self.trace].update(line={"color": rgba_color})
+            else:
+                # Update all traces with the same name
+                for trace in self.plot.data:
+                    if trace.name == trace_name:
+                        trace.update(line={"color": color})
+
+        # Update the color picker to match the updated trace
+        self.color_picker = rgba_to_hex(self.plot.data[self.trace].line.color)
 
     def download_data(self, _=None):
         """Function to download the data."""

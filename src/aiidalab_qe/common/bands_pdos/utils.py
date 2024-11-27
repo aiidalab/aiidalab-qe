@@ -6,11 +6,38 @@ from pymatgen.core.periodic_table import Element
 
 from aiida.orm import ProjectionData
 
+# Constants for HTML tags
+HTML_TAGS = {
+    "s": "s",
+    "pz": "p<sub>z</sub>",
+    "px": "p<sub>x</sub>",
+    "py": "p<sub>y</sub>",
+    "dz2": "d<sub>z<sup>2</sup></sub>",
+    "dxy": "d<sub>xy</sub>",
+    "dxz": "d<sub>xz</sub>",
+    "dyz": "d<sub>yz</sub>",
+    "dx2-y2": "d<sub>x<sup>2</sup>-y<sup>2</sup></sub>",
+    "fz3": "f<sub>z<sup>3</sup></sub>",
+    "fxz2": "f<sub>xz<sup>2</sup></sub>",
+    "fyz2": "f<sub>yz<sup>2</sup></sub>",
+    "fxyz": "f<sub>xzy</sub>",
+    "fx(x2-3y2)": "f<sub>x(x<sup>2</sup>-3y<sup>2</sup>)</sub>",
+    "fy(3x2-y2)": "f<sub>y(3x<sup>2</sup>-y<sup>2</sup>)</sub>",
+    "fy(x2-z2)": "f<sub>y(x<sup>2</sup>-z<sup>2</sup>)</sub>",
+    0.5: "<sup>+1</sup>/<sub>2</sub>",
+    -0.5: "<sup>-1</sup>/<sub>2</sub>",
+    1.5: "<sup>+3</sup>/<sub>2</sub>",
+    -1.5: "<sup>-3</sup>/<sub>2</sub>",
+    2.5: "<sup>+5</sup>/<sub>2</sub>",
+    -2.5: "<sup>-5</sup>/<sub>2</sub>",
+    " @ ": "<br>",
+    " @ [": "-[",
+    "l": "<i>l</i>",
+    "m_j": "m<sub>j</sub>",
+}
 
-def get_bands_projections_data(
-    outputs, group_tag, plot_tag, selected_atoms, bands_width, fermi_energy=None
-):
-    """Extract the bandstructure and possibly the projections along the bands."""
+
+def get_bands_data(outputs, fermi_energy=None):
     if "band_structure" not in outputs:
         return None
 
@@ -23,53 +50,69 @@ def get_bands_projections_data(
         bands_data["fermi_energy_down"] = outputs.band_parameters["fermi_energy_down"]
     else:
         bands_data["fermi_energy"] = (
-            outputs.band_parameters["fermi_energy"] or fermi_energy
+            fermi_energy
+            if fermi_energy is not None
+            else outputs.band_parameters["fermi_energy"]
         )
 
     bands_data["pathlabels"] = _get_bands_labeling(bands_data)
 
-    if "projwfc" in outputs:
-        projections = []
+    return bands_data
 
-        if "projections" in outputs.projwfc:
+
+def get_bands_projections_data(
+    outputs,
+    bands_data,
+    group_tag,
+    plot_tag,
+    selected_atoms,
+    bands_width,
+):
+    if "projwfc" not in outputs:
+        return None
+
+    projections = []
+    bands_projection = {}
+
+    if "projections" in outputs.projwfc:
+        projections.append(
+            _projections_curated_options(
+                outputs.projwfc.projections,
+                spin_type="none",
+                group_tag=group_tag,
+                plot_tag=plot_tag,
+                selected_atoms=selected_atoms,
+                projections_pdos="projections",
+            )
+        )
+    else:
+        for spin_proj, spin_type in zip(
+            [
+                outputs.projwfc.projections_up,
+                outputs.projwfc.projections_down,
+            ],
+            ["up", "down"],
+        ):
             projections.append(
                 _projections_curated_options(
-                    outputs.projwfc.projections,
-                    spin_type="none",
+                    spin_proj,
+                    spin_type=spin_type,
                     group_tag=group_tag,
                     plot_tag=plot_tag,
                     selected_atoms=selected_atoms,
                     projections_pdos="projections",
                 )
             )
-        else:
-            for spin_proj, spin_type in zip(
-                [
-                    outputs.projwfc.projections_up,
-                    outputs.projwfc.projections_down,
-                ],
-                ["up", "down"],
-            ):
-                projections.append(
-                    _projections_curated_options(
-                        spin_proj,
-                        spin_type=spin_type,
-                        group_tag=group_tag,
-                        plot_tag=plot_tag,
-                        selected_atoms=selected_atoms,
-                        projections_pdos="projections",
-                    )
-                )
 
-        bands_data["projected_bands"] = _prepare_projections_to_plot(
-            bands_data, projections, bands_width
-        )
-        if plot_tag != "total":
-            if not outputs.band_parameters.get("spin_orbit_calculation"):
-                bands_data["projected_bands"] = _update_pdos_labels(
-                    bands_data["projected_bands"]
-                )
-    return bands_data
+    bands_projection["projected_bands"] = _prepare_projections_to_plot(
+        bands_data, projections, bands_width
+    )
+    if plot_tag != "total":
+        if not outputs.band_parameters.get("spin_orbit_calculation"):
+            bands_projection["projected_bands"] = _update_pdos_labels(
+                bands_projection["projected_bands"]
+            )
+    return bands_projection["projected_bands"]
 
 
 def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
@@ -150,11 +193,10 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
     else:
         data_dict["fermi_energy"] = pdos.nscf.output_parameters["fermi_energy"]
 
-    # Updata labels if plot_tag is different than total
+    # Updata labels if plot_tag is different than total and SOC is false
     if plot_tag != "total":
         if not pdos.nscf.output_parameters.get("spin_orbit_calculation"):
             data_dict = _update_pdos_labels(data_dict)
-    #    data_dict = deepcopy(new_dict)
 
     return json.loads(json.dumps(data_dict))
 
@@ -259,32 +301,6 @@ def _get_grouping_key(
 
 def _curate_orbitals(orbital):
     """Curate and transform the orbital data into the desired format."""
-    # Constants for HTML tags
-    HTML_TAGS = {
-        "s": "s",
-        "pz": "p<sub>z</sub>",
-        "px": "p<sub>x</sub>",
-        "py": "p<sub>y</sub>",
-        "dz2": "d<sub>z<sup>2</sup></sub>",
-        "dxy": "d<sub>xy</sub>",
-        "dxz": "d<sub>xz</sub>",
-        "dyz": "d<sub>yz</sub>",
-        "dx2-y2": "d<sub>x<sup>2</sup>-y<sup>2</sup></sub>",
-        "fz3": "f<sub>z<sup>3</sup></sub>",
-        "fxz2": "f<sub>xz<sup>2</sup></sub>",
-        "fyz2": "f<sub>yz<sup>2</sup></sub>",
-        "fxyz": "f<sub>xzy</sub>",
-        "fx(x2-3y2)": "f<sub>x(x<sup>2</sup>-3y<sup>2</sup>)</sub>",
-        "fy(3x2-y2)": "f<sub>y(3x<sup>2</sup>-y<sup>2</sup>)</sub>",
-        "fy(x2-z2)": "f<sub>y(x<sup>2</sup>-z<sup>2</sup>)</sub>",
-        0.5: "<sup>+1</sup>/<sub>2</sub>",
-        -0.5: "<sup>-1</sup>/<sub>2</sub>",
-        1.5: "<sup>+3</sup>/<sub>2</sub>",
-        -1.5: "<sup>-3</sup>/<sub>2</sub>",
-        2.5: "<sup>+5</sup>/<sub>2</sub>",
-        -2.5: "<sup>-5</sup>/<sub>2</sub>",
-    }
-
     orbital_data = orbital.get_orbital_dict()
     kind_name = orbital_data["kind_name"]
     atom_position = [round(i, 2) for i in orbital_data["position"]]
@@ -306,7 +322,7 @@ def _curate_orbitals(orbital):
         qn_m_j = orbital_data["magnetic_number"]
         orbital_name = f"j {qn_j} l {qn_l} m_j{qn_m_j}"
         orbital_name_plotly = f"j={HTML_TAGS.get(qn_j, qn_j)} <i>l</i>={qn_l} m<sub>j</sub>={HTML_TAGS.get(qn_m_j, qn_m_j)}"
-        orbital_angular_momentum = f"l {qn_l} "
+        orbital_angular_momentum = f"<i>l</i>={qn_l} "
 
     return orbital_name_plotly, orbital_angular_momentum, kind_name, atom_position
 
@@ -694,7 +710,74 @@ def _update_pdos_labels(pdos_data):
     updated_labels = _get_new_pdos_labels(original_labels, orbital_assignment)
 
     label_data_list = pdos_data["dos"] if "dos" in pdos_data else pdos_data
-    for idx, label in enumerate(updated_labels):
-        label_data_list[idx]["label"] = label
+    # Update labels directly using zip
+    for label_data, label in zip(label_data_list, updated_labels):
+        label_data["label"] = label
 
     return pdos_data
+
+
+def hex_to_rgba(hex_code, alpha=1):
+    # Remove the '#' if it's included
+    hex_code = hex_code.lstrip("#")
+
+    # Convert hex to RGB values
+    r = int(hex_code[0:2], 16)
+    g = int(hex_code[2:4], 16)
+    b = int(hex_code[4:6], 16)
+
+    # Return the rgba color
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
+def rgba_to_hex(color_str):
+    """
+    Converts an RGBA color string to a HEX color string.
+
+    Parameters:
+        color_str (str): A color string in the format 'rgba(r, g, b, a)'.
+
+    Returns:
+        str: The HEX color string in the format '#RRGGBB' (ignoring alpha) or '#RRGGBBAA' (if needed).
+    """
+    if color_str.startswith("rgba"):
+        # Extract RGBA values from the string
+        rgba_values = color_str[5:-1].split(",")
+        rgba_values = [
+            float(value.strip()) for value in rgba_values
+        ]  # Convert to floats
+
+        # Map RGBA values to integers (alpha scaled to 255)
+        r, g, b = map(int, rgba_values[:3])
+        # a = int(rgba_values[3] * 255)  # Scale alpha to 0-255
+
+        # Convert to HEX including alpha (optional)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    elif color_str.startswith("rgb"):
+        # Handle RGB format without alpha
+        rgb_values = color_str[4:-1].split(",")
+        rgb_values = [int(value.strip()) for value in rgb_values]  # Convert to integers
+
+        # Map RGB values and ignore alpha
+        r, g, b = rgb_values[:3]
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    # Return unchanged if already in hex or invalid format
+    return color_str
+
+
+def replace_html_tags(input_string, html_tags):
+    """
+    Replaces HTML parts in the input string with their corresponding keys from the HTML_TAGS dictionary.
+
+    Args:
+        input_string (str): The string potentially containing HTML tags.
+        html_tags (dict): Dictionary mapping keys to HTML tag replacements.
+
+    Returns:
+        str: The input string with HTML tags replaced by their keys.
+    """
+    for key, value in html_tags.items():
+        input_string = input_string.replace(value, str(key))  # Ensure key is a string
+    return input_string
