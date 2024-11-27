@@ -110,6 +110,13 @@ class BandsPdosModel(Model):
             self._remove_bands_traces()
         self._get_traces_selector_options()
 
+    def update_bands_projections_thickness(self):
+        """Update the bands projections thickness."""
+        if self.project_bands_box:
+            self.bands_projections_data = self._get_bands_projections_data()
+            self.helper.project_bands = self.bands_projections_data
+            self.helper.update_projected_bands_thickness(self.plot)
+
     def _remove_bands_traces(self):
         """Remove the bands traces."""
         self.plot.data = tuple(

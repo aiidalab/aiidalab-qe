@@ -345,39 +345,72 @@ class BandsPdosPlotly:
 
         self._add_traces_to_fig(fig, scatter_objects, 2)
 
-    def _add_projection_traces(self, fig):
-        """Function to add the projected bands traces to the bands plot."""
-        projected_bands = self.project_bands
-        # dictionary with keys (bool(spin polarized), bool(spin up))
-        fermi_energy_spin_mapping = {
+    def _prepare_bands_projection_traces_data(self, projected_bands):
+        """
+        Prepares data for adding or updating projected band traces.
+
+        Args:
+            projected_bands (list[dict]): List of projected bands data.
+
+        Returns:
+            list[dict]: List of dictionaries containing x, y (with Fermi offset), color, and label.
+        """
+        spin_mapping = {
             (False, True): self.fermi_energy.get("fermi_energy_up", None),
             (False, False): self.fermi_energy.get("fermi_energy_down", None),
         }
 
-        scatter_objects = []
+        prepared_data = []
         for proj_bands in projected_bands:
-            fermi_energy = fermi_energy_spin_mapping.get(
+            fermi_energy = spin_mapping.get(
                 (
                     "fermi_energy" in self.fermi_energy,
                     proj_bands["label"].endswith("(↑)"),
                 ),
                 self.fermi_energy.get("fermi_energy"),
             )
-            scatter_objects.append(
-                go.Scattergl(
-                    x=proj_bands["x"],
-                    y=np.array(proj_bands["y"]) - fermi_energy,
-                    fill="toself",
-                    legendgroup=proj_bands["label"],
-                    mode="lines",
-                    line={"width": 0, "color": proj_bands["color"]},
-                    name=proj_bands["label"],
-                    # If PDOS is present, use those legend entries
-                    showlegend=True if self.plot_type == "bands" else False,
-                )
+            prepared_data.append(
+                {
+                    "x": proj_bands["x"],
+                    "y": np.array(proj_bands["y"]) - fermi_energy,
+                    "color": proj_bands["color"],
+                    "label": proj_bands["label"],
+                }
             )
+        return prepared_data
+
+    def _add_projection_traces(self, fig):
+        """Function to add the projected bands traces to the bands plot."""
+        prepared_data = self._prepare_bands_projection_traces_data(self.project_bands)
+
+        scatter_objects = [
+            go.Scattergl(
+                x=data["x"],
+                y=data["y"],
+                fill="toself",
+                legendgroup=data["label"],
+                mode="lines",
+                line={"width": 0, "color": data["color"]},
+                name=data["label"],
+                # If PDOS is present, use those legend entries
+                showlegend=True if self.plot_type == "bands" else False,
+            )
+            for data in prepared_data
+        ]
 
         self._add_traces_to_fig(fig, scatter_objects, 1)
+
+    def update_projected_bands_thickness(self, fig):
+        """Update the projected bands thickness."""
+        prepared_data = self._prepare_bands_projection_traces_data(self.project_bands)
+
+        # Create a mapping from labels to y-data for efficient updates
+        y_data_by_label = {data["label"]: data["y"] for data in prepared_data}
+
+        with fig.batch_update():
+            for trace in fig.data:
+                if trace.xaxis == "x" and trace.legendgroup in y_data_by_label:
+                    trace.y = y_data_by_label[trace.legendgroup]
 
     def _customize_combined_layout(self, fig):
         self._customize_layout(fig, self._bands_xaxis, self._bands_yaxis)

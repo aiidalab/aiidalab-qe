@@ -147,7 +147,7 @@ class BandsPdosWidget(ipw.VBox):
             (self.proj_bands_width_slider, "value"),
         )
         self.proj_bands_width_slider.observe(
-            self._update_bands_projections,
+            self._update_bands_projections_thickness,
             "value",
         )
 
@@ -281,6 +281,10 @@ class BandsPdosWidget(ipw.VBox):
         else:
             self._model.update_bands_projections()
             self._trace_selector_change({"new": 0})
+
+    def _update_bands_projections_thickness(self, _):
+        """Update the plot with the selected projection thickness."""
+        self._model.update_bands_projections_thickness()
 
     def _update_pdos_plot(self, _):
         """Update the plot with the selected PDOS options."""
