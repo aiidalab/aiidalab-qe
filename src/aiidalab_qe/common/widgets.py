@@ -507,8 +507,12 @@ class AddingTagsEditor(ipw.VBox):
                     These are used to distinguish atoms of the same chemical element. <br>
                     For example, they can be used to assign different initial magnetization values for antiferromagnetic systems.
                     </p>
-                    <p style="font-weight: bold; color: #1f77b4;">
-                    Note: Atom indices are 1-based (first atom has index 1, second atom has index 2, ...).
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>Atom indices start from 1, not 0. This means that the first atom in the list is numbered 1, the second atom is numbered 2, and so on.</li>
+                    </ul>
+
+                    Note:
                     </p>
                     """
                 ),
