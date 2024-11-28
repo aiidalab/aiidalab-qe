@@ -122,9 +122,8 @@ class SubmissionStepModel(
             protocol_and_magnetic_info,
             soc_info,
         ]
-        label = (
-            f"{structure_label} [{', '.join(label_details)}] {properties_info}".strip()
-        )
+        filtered_label_details = [detail for detail in label_details if detail]
+        label = f"{structure_label} [{', '.join(filtered_label_details)}] {properties_info}".strip()
 
         self.process_label = label
 
