@@ -103,7 +103,7 @@ class SubmissionStepModel(
             "SYSTEM"
         ].get("lspinorb", False)
 
-        soc_info = ", spin-orbit coupling" if soc_parameters else ""
+        soc_info = "spin-orbit coupling" if soc_parameters else ""
 
         properties = [p for p in workchain_data["properties"] if p != "relax"]
         relax_type = workchain_data.get("relax_type", "none")
