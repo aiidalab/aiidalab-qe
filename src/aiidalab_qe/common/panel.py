@@ -15,8 +15,9 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code.model import CodeModel
-from aiidalab_qe.common.mixins import Confirmable, HasProcess
+from aiidalab_qe.common.mixins import Confirmable, HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
     LoadingWidget,
@@ -24,7 +25,7 @@ from aiidalab_qe.common.widgets import (
     QEAppComputationalResourcesWidget,
 )
 
-DEFAULT_PARAMETERS = {}
+DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class Panel(ipw.VBox):
@@ -90,18 +91,12 @@ class SettingsModel(Model):
 
     _defaults = {}
 
-    def update(self, specific=""):
-        """Updates the model.
-
-        Parameters
-        ----------
-        `specific` : `str`, optional
-            If provided, specifies the level of update.
-        """
+    def update(self):
+        """Updates the model."""
         pass
 
     def get_model_state(self) -> dict:
-        """Retrieves the model current state as a dictionary."""
+        """Retrieves the current state of the model as a dictionary."""
         raise NotImplementedError()
 
     def set_model_state(self, parameters: dict):
@@ -118,7 +113,7 @@ SM = t.TypeVar("SM", bound=SettingsModel)
 
 class SettingsPanel(Panel, t.Generic[SM]):
     title = "Settings"
-    description = ""
+    identifier = ""
 
     def __init__(self, model: SM, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
@@ -209,11 +204,12 @@ class ConfigurationSettingsPanel(SettingsPanel[CSM], t.Generic[CSM]):
         self._model.reset()
 
 
-class ResourceSettingsModel(SettingsModel):
+class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
     """Base model for plugin code setting models."""
 
-    dependencies = ["global.global_codes"]
-    codes = {}  # To be defined by subclasses
+    dependencies = [
+        "global.global_codes",
+    ]
 
     global_codes = tl.Dict(
         key_trait=tl.Unicode(),
@@ -228,38 +224,66 @@ class ResourceSettingsModel(SettingsModel):
         super().__init__(*args, **kwargs)
 
         # Used by the code-setup thread to fetch code options
-        self._default_user_email = orm.User.collection.get_default().email
+        self.DEFAULT_USER_EMAIL = orm.User.collection.get_default().email
 
-    def refresh_codes(self):
-        for _, code_model in self.codes.items():
-            code_model.update(self._default_user_email)
+    def update(self):
+        """Updates the code models from the global resources.
 
-    def update_code_from_global(self):
-        # Skip the sync if the user has overridden the settings
+        Skips synchronization with global resources if the user has chosen to override
+        the resources for the plugin codes.
+        """
         if self.override:
             return
-        for _, code_model in self.codes.items():
+        for _, code_model in self.get_models():
+            code_model.update(self.DEFAULT_USER_EMAIL)
             default_calc_job_plugin = code_model.default_calc_job_plugin
             if default_calc_job_plugin in self.global_codes:
-                code_data = self.global_codes[default_calc_job_plugin]
-                code_model.set_model_state(code_data)
+                code_resources: dict = self.global_codes[default_calc_job_plugin]  # type: ignore
+                options = code_resources.get("options", [])
+                if options != code_model.options:
+                    code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
+                code_model.set_model_state(code_resources)
+
+    def update_submission_blockers(self):
+        self.submission_blockers = list(self._check_submission_blockers())
 
     def get_model_state(self):
-        codes = {name: model.get_model_state() for name, model in self.codes.items()}
         return {
-            "codes": codes,
-            "override": self.override,
+            "codes": {
+                identifier: code_model.get_model_state()
+                for identifier, code_model in self.get_models()
+            },
         }
 
-    def set_model_state(self, code_data: dict):
-        for name, code_model in self.codes.items():
-            if name in code_data:
-                code_model.set_model_state(code_data[name])
+    def set_model_state(self, parameters: dict):
+        for name, code_model in self.get_models():
+            if name in parameters and code_model.is_active:
+                code_model.set_model_state(parameters[name])
+
+    def get_selected_codes(self) -> dict[str, dict]:
+        return {
+            identifier: code_model.get_model_state()
+            for identifier, code_model in self.get_models()
+            if code_model.is_ready
+        }
+
+    def set_selected_codes(self, code_data=DEFAULT["codes"]):
+        for identifier, code_model in self.get_models():
+            if identifier in code_data and code_model.is_active:
+                code_model.set_model_state(code_data[identifier])
 
     def reset(self):
-        """Reset the model to its default state."""
-        for code_model in self.codes.values():
-            code_model.reset()
+        """If not overridden, updates the model w.r.t the global resources."""
+        self.update()
+
+    def _check_submission_blockers(self):
+        return []
+
+    def _link_model(self, model: CodeModel):
+        tl.link(
+            (self, "override"),
+            (model, "override"),
+        )
 
 
 RSM = t.TypeVar("RSM", bound=ResourceSettingsModel)
@@ -270,8 +294,7 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
 
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs)
-        self.code_widgets = {}
-        self.rendered = False
+
         self._model.observe(
             self._on_global_codes_change,
             "global_codes",
@@ -281,9 +304,12 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
             "override",
         )
 
+        self.code_widgets = {}
+
     def render(self):
         if self.rendered:
             return
+
         self.override_help = ipw.HTML(
             "Click to override the resource settings for this plugin."
         )
@@ -297,35 +323,33 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
             (self.override, "value"),
         )
         self.code_widgets_container = ipw.VBox()
-        self.code_widgets = {}
+
         self.children = [
-            ipw.HBox([self.override, self.override_help]),
+            ipw.HBox(
+                children=[
+                    self.override,
+                    self.override_help,
+                ]
+            ),
             self.code_widgets_container,
         ]
 
         self.rendered = True
 
-        for code_model in self._model.codes.values():
+        # Render any active codes
+        for _, code_model in self._model.get_models():
             self._toggle_code(code_model)
+
         return self.code_widgets_container
 
     def _on_global_codes_change(self, _):
-        self._model.update_code_from_global()
+        self._model.update()
 
     def _on_code_resource_change(self, _):
-        """Update the submission blockers and warning messages."""
+        pass
 
-    def _on_override_change(self, change):
-        if change["new"]:
-            for code_widget in self.code_widgets.values():
-                code_widget.num_nodes.disabled = False
-                code_widget.num_cpus.disabled = False
-                code_widget.code_selection.code_select_dropdown.disabled = False
-        else:
-            for code_widget in self.code_widgets.values():
-                code_widget.num_nodes.disabled = True
-                code_widget.num_cpus.disabled = True
-                code_widget.code_selection.code_select_dropdown.disabled = True
+    def _on_override_change(self, _):
+        self._model.reset()
 
     def _toggle_code(self, code_model: CodeModel):
         if not self.rendered:
@@ -349,7 +373,6 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
         code_model: CodeModel,
         code_widget: QEAppComputationalResourcesWidget,
     ):
-        code_model.update(None)
         ipw.dlink(
             (code_model, "options"),
             (code_widget.code_selection.code_select_dropdown, "options"),
@@ -359,17 +382,27 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
             (code_widget.code_selection.code_select_dropdown, "value"),
         )
         ipw.dlink(
-            (code_model, "selected"),
+            (code_model, "override"),
             (code_widget.code_selection.code_select_dropdown, "disabled"),
-            lambda selected: not selected,
+            lambda override: not override,
         )
         ipw.link(
             (code_model, "num_cpus"),
             (code_widget.num_cpus, "value"),
         )
+        ipw.dlink(
+            (code_model, "override"),
+            (code_widget.num_cpus, "disabled"),
+            lambda override: not override,
+        )
         ipw.link(
             (code_model, "num_nodes"),
             (code_widget.num_nodes, "value"),
+        )
+        ipw.dlink(
+            (code_model, "override"),
+            (code_widget.num_nodes, "disabled"),
+            lambda override: not override,
         )
         ipw.link(
             (code_model, "ntasks_per_node"),
@@ -383,18 +416,47 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
             (code_model, "max_wallclock_seconds"),
             (code_widget.resource_detail.max_wallclock_seconds, "value"),
         )
+        ipw.dlink(
+            (code_model, "override"),
+            (code_widget.code_selection.btn_setup_new_code, "disabled"),
+            lambda override: not override,
+        )
+        ipw.dlink(
+            (code_model, "override"),
+            (code_widget.btn_setup_resource_detail, "disabled"),
+            lambda override: not override,
+        )
         if isinstance(code_widget, PwCodeResourceSetupWidget):
             ipw.link(
-                (code_model, "override"),
+                (code_model, "parallelization_override"),
                 (code_widget.parallelization.override, "value"),
+            )
+            ipw.dlink(
+                (code_model, "override"),
+                (code_widget.parallelization.override, "disabled"),
+                lambda override: not override,
             )
             ipw.link(
                 (code_model, "npool"),
                 (code_widget.parallelization.npool, "value"),
             )
+            ipw.dlink(
+                (code_model, "override"),
+                (code_widget.parallelization.npool, "disabled"),
+                lambda override: not override,
+            )
+            code_model.observe(
+                self._on_code_resource_change,
+                [
+                    "parallelization_override",
+                    "npool",
+                ],
+            )
         code_model.observe(
             self._on_code_resource_change,
             [
+                "options",
+                "selected",
                 "num_cpus",
                 "num_nodes",
                 "ntasks_per_node",
@@ -402,15 +464,7 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
                 "max_wallclock_seconds",
             ],
         )
-        # disable the code widget if the override is not set
-        code_widget.num_nodes.disabled = not self.override.value
-        code_widget.num_cpus.disabled = not self.override.value
-        code_widget.code_selection.code_select_dropdown.disabled = (
-            not self.override.value
-        )
-
         code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
-
         self.code_widgets_container.children = [*code_widgets, code_widget]
         code_model.is_rendered = True
 

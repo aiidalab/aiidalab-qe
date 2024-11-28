@@ -17,7 +17,7 @@ pdos = {
         "panel": PdosConfigurationSettingPanel,
         "model": PdosConfigurationSettingsModel,
     },
-    "code": {
+    "resources": {
         "panel": PdosResourceSettingsPanel,
         "model": PdosResourceSettingsModel,
     },
