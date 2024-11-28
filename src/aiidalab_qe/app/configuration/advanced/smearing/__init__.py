@@ -1,7 +1,7 @@
-from .model import SmearingModel
-from .smearing import SmearingSettings
+from .model import SmearingConfigurationSettingsModel
+from .smearing import SmearingConfigurationSettingsPanel
 
 __all__ = [
-    "SmearingModel",
-    "SmearingSettings",
+    "SmearingConfigurationSettingsModel",
+    "SmearingConfigurationSettingsPanel",
 ]

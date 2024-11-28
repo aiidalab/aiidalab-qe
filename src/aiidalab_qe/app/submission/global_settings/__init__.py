@@ -1,7 +1,7 @@
-from .model import GlobalCodeModel
-from .setting import GlobalCodeSettings
+from .model import GlobalResourceSettingsModel
+from .setting import GlobalResourceSettingsPanel
 
 __all__ = [
-    "GlobalCodeModel",
-    "GlobalCodeSettings",
+    "GlobalResourceSettingsModel",
+    "GlobalResourceSettingsPanel",
 ]

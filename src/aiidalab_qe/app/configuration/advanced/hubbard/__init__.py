@@ -1,7 +1,7 @@
-from .hubbard import HubbardSettings
-from .model import HubbardModel
+from .hubbard import HubbardConfigurationSettingsPanel
+from .model import HubbardConfigurationSettingsModel
 
 __all__ = [
-    "HubbardSettings",
-    "HubbardModel",
+    "HubbardConfigurationSettingsModel",
+    "HubbardConfigurationSettingsPanel",
 ]

@@ -1,13 +1,15 @@
 import ipywidgets as ipw
 
-from ..subsettings import AdvancedSubSettings
-from .model import HubbardModel
+from ..subsettings import AdvancedConfigurationSubSettingsPanel
+from .model import HubbardConfigurationSettingsModel
 
 
-class HubbardSettings(AdvancedSubSettings[HubbardModel]):
+class HubbardConfigurationSettingsPanel(
+    AdvancedConfigurationSubSettingsPanel[HubbardConfigurationSettingsModel],
+):
     identifier = "hubbard"
 
-    def __init__(self, model: HubbardModel, **kwargs):
+    def __init__(self, model: HubbardConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
@@ -100,7 +102,7 @@ class HubbardSettings(AdvancedSubSettings[HubbardModel]):
         if self.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process or specific and specific != "widgets":
+        if not self._model.loaded_from_process or (specific and specific != "widgets"):
             self._model.update(specific)
         self._build_hubbard_widget()
         self._toggle_hubbard_widget()

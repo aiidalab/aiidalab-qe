@@ -8,7 +8,7 @@ from aiidalab_qe.common.panel import ResultsPanel
 from .model import XpsResultsModel
 
 
-class XpsResults(ResultsPanel[XpsResultsModel]):
+class XpsResultsPanel(ResultsPanel[XpsResultsModel]):
     title = "XPS"
     identifier = "xps"
     workchain_labels = ["xps"]

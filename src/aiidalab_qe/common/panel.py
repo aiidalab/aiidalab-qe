@@ -57,7 +57,7 @@ class Panel(ipw.VBox):
         )
 
 
-class SettingsOutline(ipw.HBox):
+class PluginOutline(ipw.HBox):
     title = "Outline"
     description = ""
 
@@ -81,7 +81,7 @@ class SettingsOutline(ipw.HBox):
         )
 
 
-class SettingsModel(Model, Confirmable):
+class SettingsModel(Model):
     title = "Model"
     dependencies: list[str] = []
 
@@ -140,6 +140,27 @@ class SettingsPanel(Panel, t.Generic[SM]):
     def render(self):
         raise NotImplementedError()
 
+
+class ConfigurationSettingsModel(SettingsModel, Confirmable):
+    """Base model for configuration settings models."""
+
+    def update(self, specific=""):
+        """Updates the model.
+
+        Parameters
+        ----------
+        `specific` : `str`, optional
+            If provided, specifies the level of update.
+        """
+        pass
+
+
+CSM = t.TypeVar("CSM", bound=ConfigurationSettingsModel)
+
+
+class ConfigurationSettingsPanel(SettingsPanel[CSM], t.Generic[CSM]):
+    """Base class for configuration settings panels."""
+
     def refresh(self, specific=""):
         """Refreshes the settings panel.
 
@@ -188,7 +209,7 @@ class SettingsPanel(Panel, t.Generic[SM]):
         self._model.reset()
 
 
-class CodeSettingsModel(SettingsModel):
+class ResourceSettingsModel(SettingsModel):
     """Base model for plugin code setting models."""
 
     dependencies = ["global.global_codes"]
@@ -241,9 +262,11 @@ class CodeSettingsModel(SettingsModel):
             code_model.reset()
 
 
-class CodeSettingsPanel(SettingsPanel[CodeSettingsModel], t.Generic[SM]):
-    title = "Plugin Name"  # To be overridden by subclasses
-    identifier = "plugin_identifier"  # To be overridden by subclasses
+RSM = t.TypeVar("RSM", bound=ResourceSettingsModel)
+
+
+class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
+    """Base class for plugin code setting panels."""
 
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs)
