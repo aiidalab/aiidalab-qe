@@ -4,10 +4,13 @@ import traitlets as tl
 
 from aiidalab_qe.common.mixins import HasInputStructure
 
-from ..subsettings import AdvancedSubModel
+from ..subsettings import AdvancedCalculationSubSettingsModel
 
 
-class MagnetizationModel(AdvancedSubModel, HasInputStructure):
+class MagnetizationConfigurationSettingsModel(
+    AdvancedCalculationSubSettingsModel,
+    HasInputStructure,
+):
     dependencies = [
         "input_structure",
         "electronic_type",

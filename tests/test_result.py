@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.main import App
-from aiidalab_qe.app.result.summary import WorkChainSummaryModel
+from aiidalab_qe.app.result.summary import WorkChainSummaryResultsModel
 from aiidalab_qe.app.result.viewer import WorkChainViewer, WorkChainViewerModel
 
 
@@ -42,7 +42,7 @@ def test_workchainview(generate_qeapp_workchain):
 def test_summary_report(data_regression, generate_qeapp_workchain):
     """Test the summary report can be properly generated."""
     workchain = generate_qeapp_workchain()
-    model = WorkChainSummaryModel()
+    model = WorkChainSummaryResultsModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     data_regression.check(report_parameters)
@@ -53,7 +53,7 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
     workchain = generate_qeapp_workchain(
         spin_type="collinear", electronic_type="metal", initial_magnetic_moments=0.1
     )
-    model = WorkChainSummaryModel()
+    model = WorkChainSummaryResultsModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     assert report_parameters["initial_magnetic_moments"]["Si"] == 0.1
@@ -62,7 +62,7 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
 def test_summary_view(generate_qeapp_workchain):
     """Test the report html can be properly generated."""
     workchain = generate_qeapp_workchain()
-    model = WorkChainSummaryModel()
+    model = WorkChainSummaryResultsModel()
     model.process_uuid = workchain.node.uuid
     report_html = model.generate_report_html()
     parsed = BeautifulSoup(report_html, "html.parser")

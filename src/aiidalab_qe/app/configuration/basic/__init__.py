@@ -1,7 +1,7 @@
-from .model import WorkChainModel
-from .workflow import WorkChainSettings
+from .model import BasicConfigurationSettingsModel
+from .workflow import BasicConfigurationSettingsPanel
 
 __all__ = [
-    "WorkChainModel",
-    "WorkChainSettings",
+    "BasicConfigurationSettingsModel",
+    "BasicConfigurationSettingsPanel",
 ]

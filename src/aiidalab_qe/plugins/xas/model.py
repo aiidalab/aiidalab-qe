@@ -9,11 +9,11 @@ import yaml
 
 from aiida import orm
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.common.panel import SettingsModel
+from aiidalab_qe.common.panel import ConfigurationSettingsModel
 from aiidalab_qe.plugins import xas as xas_folder
 
 
-class XasModel(SettingsModel, HasInputStructure):
+class XasConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructure):
     dependencies = [
         "input_structure",
     ]

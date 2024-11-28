@@ -8,16 +8,14 @@ from aiida import orm
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code import CodeModel, PwCodeModel
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.common.panel import SettingsModel
-from aiidalab_qe.common.widgets import (
-    QEAppComputationalResourcesWidget,
-)
+from aiidalab_qe.common.panel import ResourceSettingsModel
+from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class GlobalCodeModel(
-    SettingsModel,
+class GlobalResourceSettingsModel(
+    ResourceSettingsModel,
     HasInputStructure,
 ):
     """Model for the global code setting."""

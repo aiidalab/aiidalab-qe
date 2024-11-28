@@ -2,16 +2,18 @@
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import SettingsPanel
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
-from .model import BASE_URL, XpsModel
+from .model import BASE_URL, XpsConfigurationSettingsModel
 
 
-class XpsSettings(SettingsPanel[XpsModel]):
+class XpsConfigurationSettingsPanel(
+    ConfigurationSettingsPanel[XpsConfigurationSettingsModel],
+):
     title = "XPS"
     identifier = "xps"
 
-    def __init__(self, model: XpsModel, **kwargs):
+    def __init__(self, model: XpsConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
@@ -130,7 +132,7 @@ class XpsSettings(SettingsPanel[XpsModel]):
         if self.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process or specific and specific != "widgets":
+        if not self._model.loaded_from_process or (specific and specific != "widgets"):
             self._model.update(specific)
         self._build_core_levels_widget()
         self.updated = True

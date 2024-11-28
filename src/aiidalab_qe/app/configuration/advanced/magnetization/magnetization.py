@@ -1,10 +1,12 @@
 import ipywidgets as ipw
 
-from ..subsettings import AdvancedSubSettings
-from .model import MagnetizationModel
+from ..subsettings import AdvancedConfigurationSubSettingsPanel
+from .model import MagnetizationConfigurationSettingsModel
 
 
-class MagnetizationSettings(AdvancedSubSettings[MagnetizationModel]):
+class MagnetizationConfigurationSettingsPanel(
+    AdvancedConfigurationSubSettingsPanel[MagnetizationConfigurationSettingsModel],
+):
     """Widget to set the type of magnetization used in the calculation:
     1) Tot_magnetization: Total majority spin charge - minority spin charge.
     2) Starting magnetization: Starting spin polarization on atomic type 'i' in a spin polarized (LSDA or noncollinear/spin-orbit) calculation.
@@ -20,7 +22,7 @@ class MagnetizationSettings(AdvancedSubSettings[MagnetizationModel]):
 
     identifier = "magnetization"
 
-    def __init__(self, model: MagnetizationModel, **kwargs):
+    def __init__(self, model: MagnetizationConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
@@ -111,7 +113,7 @@ class MagnetizationSettings(AdvancedSubSettings[MagnetizationModel]):
         if self.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process or specific and specific != "widgets":
+        if not self._model.loaded_from_process or (specific and specific != "widgets"):
             self._model.update(specific)
         self._build_kinds_widget()
         self._switch_widgets()
