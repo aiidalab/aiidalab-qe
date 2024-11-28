@@ -98,6 +98,16 @@ class SubmissionStepModel(
             "workchain",
             {"properties": []},
         )
+
+        soc_parameters = self.input_parameters["advanced"]["pw"]["parameters"][
+            "SYSTEM"
+        ].get("lspinorb", False)
+
+        if soc_parameters:
+            soc_info = ", spin-orbit coupling"
+        else:
+            soc_info = ""
+
         properties = [p for p in workchain_data["properties"] if p != "relax"]
         relax_type = workchain_data.get("relax_type", "none")
         relax_info = "unrelaxed"
@@ -109,7 +119,7 @@ class SubmissionStepModel(
         if workchain_data["spin_type"] != "none":
             protocol_and_magnetic_info += ", magnetic"
         properties_info = f"→ {', '.join(properties)}" if properties else ""
-        label = f"{structure_label} [{relax_info}, {protocol_and_magnetic_info}] {properties_info}".strip()
+        label = f"{structure_label} [{relax_info}, {protocol_and_magnetic_info}{soc_info}] {properties_info}".strip()
         self.process_label = label
 
     def update_submission_blockers(self):
