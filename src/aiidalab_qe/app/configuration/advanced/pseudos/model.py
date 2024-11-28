@@ -212,9 +212,9 @@ class PseudosModel(AdvancedSubModel, HasInputStructure):
             return
         if self.spin_orbit == "soc":
             if self.protocol in ["fast", "moderate"]:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/standard/upf"
+                pseudo_family_string = "PseudoDojo/0.4/PBEsol/FR/standard/upf"
             else:
-                pseudo_family_string = "PseudoDojo/0.4/PBE/FR/stringent/upf"
+                pseudo_family_string = "PseudoDojo/0.4/PBEsol/FR/stringent/upf"
         else:
             pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(self.protocol)[
                 "pseudo_family"
