@@ -465,13 +465,12 @@ class AddingTagsEditor(ipw.VBox):
         )
         self.periodicity = ipw.RadioButtons(
             options=[
-                "xyz",
-                "xy",
-                "x",
-                "molecule",
+                ("3D (bulk systems)", "xyz"),
+                ("2D (surfaces, slabs, ...)", "xy"),
+                ("1D (wires)", "x"),
+                ("0D (molecules)", "molecule"),
             ],
             value="xyz",
-            description="Periodicty: ",
             layout={"width": "initial"},
         )
         self.select_periodicity = ipw.Button(
@@ -507,6 +506,16 @@ class AddingTagsEditor(ipw.VBox):
                 ipw.HTML(
                     "<b>Define periodicity</b>",
                 ),
+                ipw.HTML("""
+                    <p>Select the periodicity of your system.</p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
+                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
+
+                    </ul>
+                """),
                 self.periodicity,
                 self.select_periodicity,
             ],
@@ -612,10 +621,10 @@ class AddingTagsEditor(ipw.VBox):
     def _select_periodicity(self, _=None):
         """Select periodicity."""
         periodicity_options = {
-            "xyz": (True, True, True),
-            "xy": (True, True, False),
-            "x": (True, False, False),
-            "molecule": (False, False, False),
+            "3D": (True, True, True),
+            "2D": (True, True, False),
+            "1D": (True, False, False),
+            "Molecule": (False, False, False),
         }
         new_structure = deepcopy(self.structure)
         new_structure.set_pbc(periodicity_options[self.periodicity.value])
