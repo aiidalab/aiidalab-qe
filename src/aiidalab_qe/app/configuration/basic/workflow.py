@@ -6,6 +6,7 @@ Authors: AiiDAlab team
 import ipywidgets as ipw
 
 from aiidalab_qe.app.configuration.basic.model import WorkChainModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import SettingsPanel
 
 
@@ -23,6 +24,21 @@ class WorkChainSettings(SettingsPanel[WorkChainModel]):
     def render(self):
         if self.rendered:
             return
+
+        self.generic_guide = InAppGuide(
+            guide_class="basic",
+            children=[
+                ipw.HTML("""
+                    <div>
+                        In the basic settings panel, you can define the type of material
+                        (metal or insulator), and specify if spin polarization is to be
+                        considered. You can also select the protocol to be used in the
+                        calculation, which will modify a set of parameters controlling
+                        the accuracy/speed trade-off.
+                    </div>
+                """)
+            ],
+        )
 
         # SpinType: magnetic properties of material
         self.spin_type = ipw.ToggleButtons(style={"description_width": "initial"})
@@ -58,6 +74,7 @@ class WorkChainSettings(SettingsPanel[WorkChainModel]):
         )
 
         self.children = [
+            self.generic_guide,
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
                     Below you can indicate both if the material should be treated as an

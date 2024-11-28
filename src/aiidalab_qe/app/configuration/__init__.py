@@ -10,6 +10,7 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
 from aiidalab_widgets_base import WizardAppWidgetStep
 
@@ -77,6 +78,23 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         if self.rendered:
             return
 
+        self.generic_guide = InAppGuide(
+            children=[
+                ipw.HTML("""
+                    <div>
+                        In this step, you can define the workflow tasks, such as the
+                        level of structure optimization and/or the desired properties
+                        to compute (in step 2.1). You can also customize the calculation
+                        parameters (in step 2.2).
+                        When you are ready, click "Confirm" to proceed to the next step.
+                        <br>
+                        <strong>Note:</strong> Changes after confirmation will unconfirm
+                        the step and reset the following steps.
+                    </div>
+                """)
+            ],
+        )
+
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
         ipw.dlink(
@@ -133,6 +151,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.confirm_button.on_click(self.confirm)
 
         self.children = [
+            self.generic_guide,
             self.structure_set_message,
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">

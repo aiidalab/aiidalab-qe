@@ -17,6 +17,7 @@ from aiidalab_qe.app.structure import StructureSelectionStep
 from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.app.submission.model import SubmissionStepModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import WizardAppWidget
 
@@ -107,8 +108,21 @@ class App(ipw.VBox):
             layout=ipw.Layout(display="none"),
         )
 
+        self.generic_guide = InAppGuide(
+            children=[
+                ipw.HTML("""
+                    <div>
+                        You have activated an in-app guide. In the following sections,
+                        you will see a step-by-step guide dedicated to running a Quantum
+                        ESPRESSO calculation specific to the chosen guide.
+                    </div>
+                """)
+            ],
+        )
+
         super().__init__(
             children=[
+                self.generic_guide,
                 self.new_workchain_button,
                 self._process_loading_message,
                 self._wizard_app_widget,
