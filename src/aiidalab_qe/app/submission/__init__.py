@@ -40,10 +40,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "confirmed",
         )
         self._model.observe(
-            self._on_input_structure_change,
-            "input_structure",
-        )
-        self._model.observe(
             self._on_input_parameters_change,
             "input_parameters",
         )
@@ -77,22 +73,28 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = False
 
-        global_code_model = GlobalResourceSettingsModel()
-        self.global_code_settings = GlobalResourceSettingsPanel(model=global_code_model)
-        self._model.add_model("global", global_code_model)
-        global_code_model.observe(
+        global_resources_model = GlobalResourceSettingsModel()
+        self.global_resources = GlobalResourceSettingsPanel(
+            model=global_resources_model
+        )
+        self._model.add_model("global", global_resources_model)
+        ipw.dlink(
+            (self._model, "plugin_overrides"),
+            (global_resources_model, "plugin_overrides"),
+        )
+        global_resources_model.observe(
             self._on_plugin_submission_blockers_change,
             ["submission_blockers"],
         )
-        global_code_model.observe(
+        global_resources_model.observe(
             self._on_plugin_submission_warning_messages_change,
             ["submission_warning_messages"],
         )
 
         self.settings = {
-            "global": self.global_code_settings,
+            "global": self.global_resources,
         }
-        self._fetch_plugin_settings()
+        self._fetch_plugin_resource_settings()
 
         self._install_sssp(qe_auto_setup)
         self._set_up_qe(qe_auto_setup)
@@ -211,14 +213,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         tab: ResourceSettingsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
 
-    def _on_input_structure_change(self, _):
-        """"""
-
     def _on_input_parameters_change(self, _):
-        self._model.update_active_models()
-        self._update_tabs()
         self._model.update_process_label()
+        self._model.update_plugin_inclusion()
+        self._model.update_plugin_overrides()
         self._model.update_submission_blockers()
+        self._update_tabs()
+
+    def _on_plugin_overrides_change(self, _):
+        self._model.update_plugin_overrides()
 
     def _on_plugin_submission_blockers_change(self, _):
         self._model.update_submission_blockers()
@@ -237,16 +240,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.update_submission_blocker_message()
         self._update_state()
 
-    def _on_submission_warning_change(self, _):
-        self._model.update_submission_warning_message()
-
     def _on_installation_change(self, _):
         self._model.update_submission_blockers()
 
     def _on_qe_installed(self, _):
         self._toggle_qe_installation_widget()
         if self._model.qe_installed:
-            self._model.refresh_codes()
+            self._model.update()
 
     def _on_sssp_installed(self, _):
         self._toggle_sssp_installation_widget()
@@ -325,14 +325,19 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             self.state = self.state.CONFIGURED
 
-    def _fetch_plugin_settings(self):
-        eps = get_entry_items("aiidalab_qe.properties", "code")
-        for identifier, data in eps.items():
+    def _fetch_plugin_resource_settings(self):
+        entries = get_entry_items("aiidalab_qe.properties", "resources")
+        for identifier, resources in entries.items():
             for key in ("panel", "model"):
-                if key not in data:
+                if key not in resources:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
-            panel = data["panel"]
-            model: ResourceSettingsModel = data["model"]()
+
+            panel = resources["panel"]
+            model: ResourceSettingsModel = resources["model"]()
+            model.observe(
+                self._on_plugin_overrides_change,
+                "override",
+            )
             model.observe(
                 self._on_plugin_submission_blockers_change,
                 ["submission_blockers"],
@@ -342,15 +347,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 ["submission_warning_messages"],
             )
             self._model.add_model(identifier, model)
-
-            def toggle_plugin(_, model=model):
-                model.update()
-                self._update_tabs()
-
-            model.observe(
-                toggle_plugin,
-                "include",
-            )
 
             self.settings[identifier] = panel(
                 identifier=identifier,

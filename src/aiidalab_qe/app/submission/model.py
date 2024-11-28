@@ -40,6 +40,8 @@ class SubmissionStepModel(
     internal_submission_blockers = tl.List(tl.Unicode())
     external_submission_blockers = tl.List(tl.Unicode())
 
+    plugin_overrides = tl.List(tl.Unicode())
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -72,18 +74,9 @@ class SubmissionStepModel(
         # Once submitted, nothing should unconfirm the model!
         self.unobserve_all("confirmed")
 
-    def refresh_codes(self):
+    def update(self):
         for _, model in self.get_models():
-            model.refresh_codes()
-
-    def update_active_models(self):
-        for identifier, model in self.get_models():
-            if identifier in ["global"]:
-                continue
-            if identifier not in self._get_properties():
-                model.include = False
-            else:
-                model.include = True
+            model.update()
 
     def update_process_label(self):
         if not self.input_structure:
@@ -127,29 +120,41 @@ class SubmissionStepModel(
 
         self.process_label = label
 
+    def update_plugin_inclusion(self):
+        properties = self._get_properties()
+        for identifier, model in self.get_models():
+            if identifier in self._default_models:
+                continue
+            model.include = identifier in properties
+
+    def update_plugin_overrides(self):
+        self.plugin_overrides = [
+            identifier
+            for identifier, model in self.get_models()
+            if identifier != "global" and model.include and model.override
+        ]
+
     def update_submission_blockers(self):
         submission_blockers = list(self._check_submission_blockers())
         for _, model in self.get_models():
-            if hasattr(model, "submission_blockers"):
-                submission_blockers += model.submission_blockers
+            submission_blockers += model.submission_blockers
         self.internal_submission_blockers = submission_blockers
 
     def update_submission_warnings(self):
         submission_warning_messages = self._check_submission_warnings()
         for _, model in self.get_models():
-            if hasattr(model, "submission_warning_messages"):
-                submission_warning_messages += model.submission_warning_messages
+            submission_warning_messages += model.submission_warning_messages
         self.submission_warning_messages = submission_warning_messages
 
     def update_submission_blocker_message(self):
         blockers = self.internal_submission_blockers + self.external_submission_blockers
         if any(blockers):
-            fmt_list = "\n".join(f"<li>{item}</li>" for item in sorted(blockers))
+            formatted = "\n".join(f"<li>{item}</li>" for item in blockers)
             self.submission_blocker_messages = f"""
-                <div class="alert alert-info">
+                <div class="alert alert-danger">
                     <b>The submission is blocked due to the following reason(s):</b>
                     <ul>
-                        {fmt_list}
+                        {formatted}
                     </ul>
                 </div>
             """
@@ -193,8 +198,8 @@ class SubmissionStepModel(
 
     def get_selected_codes(self) -> dict[str, dict]:
         return {
-            name: code_model.get_model_state()
-            for name, code_model in self.get_model("global").codes.items()
+            identifier: code_model.get_model_state()
+            for identifier, code_model in self.get_model("global").get_models()
             if code_model.is_ready
         }
 
@@ -267,11 +272,9 @@ class SubmissionStepModel(
         return builder
 
     def _check_submission_blockers(self):
-        # Do not submit while any of the background setup processes are running.
         if self.installing_qe or self.installing_sssp:
             yield "Background setup processes must finish."
 
-        # SSSP library not installed
         if not self.sssp_installed:
             yield "The SSSP library is not installed."
 

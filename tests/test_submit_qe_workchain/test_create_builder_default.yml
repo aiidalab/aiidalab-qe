@@ -37,7 +37,6 @@ codes:
         nodes: 1
         ntasks_per_node: 1
         parallelization: {}
-    override: false
   global:
     codes:
       quantumespresso.dos:
@@ -87,7 +86,6 @@ codes:
         nodes: 1
         ntasks_per_node: 1
         parallelization: {}
-    override: false
 pdos:
   energy_grid_step: 0.01
   nscf_kpoints_distance: 0.1

@@ -5,13 +5,10 @@ import os
 import traitlets as tl
 
 from aiida import orm
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code import CodeModel, PwCodeModel
 from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import ResourceSettingsModel
 from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
-
-DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class GlobalResourceSettingsModel(
@@ -20,6 +17,8 @@ class GlobalResourceSettingsModel(
 ):
     """Model for the global code setting."""
 
+    identifier = "global"
+
     dependencies = [
         "input_parameters",
         "input_structure",
@@ -27,33 +26,14 @@ class GlobalResourceSettingsModel(
 
     input_parameters = tl.Dict()
 
-    codes = tl.Dict(
-        key_trait=tl.Unicode(),  # code name
-        value_trait=tl.Instance(CodeModel),  # code metadata
-    )
-    # this is a copy of the codes trait, which is used to trigger the update of the plugin
-    global_codes = tl.Dict(
-        key_trait=tl.Unicode(),  # code name
-        value_trait=tl.Dict(),  # code metadata
-    )
-
-    plugin_mapping = tl.Dict(
-        key_trait=tl.Unicode(),  # plugin identifier
-        value_trait=tl.List(tl.Unicode()),  # list of code names
-    )
-
-    submission_blockers = tl.List(tl.Unicode())
-    submission_warning_messages = tl.Unicode("")
+    plugin_overrides = tl.List(tl.Unicode())
+    plugin_overrides_notification = tl.Unicode("")
 
     include = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Used by the code-setup thread to fetch code options
-        # This is necessary to avoid passing the User object
-        # between session in separate threads.
-        self._default_user_email = orm.User.collection.get_default().email
         self._RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
         self._RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD = 1000  # \AA^3
 
@@ -66,120 +46,85 @@ class GlobalResourceSettingsModel(
             </div>
         """
 
-    def refresh_codes(self):
-        for _, code_model in self.codes.items():
-            code_model.update(self._default_user_email)  # type: ignore
+        self.plugin_mapping: dict[str, list[str]] = {}
+
+        self.override = True
+
+    def update(self):
+        for _, code_model in self.get_models():
+            code_model.update(self.DEFAULT_USER_EMAIL)
+
+    def update_global_codes(self):
+        self.global_codes = self.get_model_state()["codes"]
 
     def update_active_codes(self):
-        for name, code_model in self.codes.items():
-            if name != "quantumespresso.pw":
+        for identifier, code_model in self.get_models():
+            if identifier != "quantumespresso.pw":
                 code_model.deactivate()
         properties = self._get_properties()
         for identifier, code_names in self.plugin_mapping.items():
             if identifier in properties:
                 for code_name in code_names:
-                    self.codes[code_name].activate()
+                    self.get_model(code_name).activate()
 
-    def get_model_state(self):
-        codes = {name: model.get_model_state() for name, model in self.codes.items()}
+    def update_plugin_overrides_notification(self):
+        if self.plugin_overrides:
+            formatted = "\n".join(
+                f"<li>{plugin}</li>" for plugin in self.plugin_overrides
+            )
+            self.plugin_overrides_notification = f"""
+                <div class="alert alert-info" style="margin-top: 5px; margin-bottom: 0">
+                    <strong>Currently overriding computational resources for:</strong>
+                    <ul>
+                        {formatted}
+                    </ul>
+                </div>
+            """
+        else:
+            self.plugin_overrides_notification = ""
 
-        return {"codes": codes}
-
-    def set_model_state(self, code_data: dict):
-        for name, code_model in self.codes.items():
-            if name in code_data and code_model.is_active:
-                code_model.set_model_state(code_data[name])
-
-    def add_code(self, identifier: str, code: CodeModel) -> CodeModel | None:
-        """Add a code to the codes trait."""
-        code_model = None
-        default_calc_job_plugin = code.default_calc_job_plugin
+    def add_global_model(
+        self,
+        identifier: str,
+        code_model: CodeModel,
+    ) -> CodeModel | None:
+        """Registers a code with this model."""
+        base_code_model = None
+        default_calc_job_plugin = code_model.default_calc_job_plugin
         name = default_calc_job_plugin.split(".")[-1]
-        if default_calc_job_plugin not in self.codes:
+
+        if not self.has_model(default_calc_job_plugin):
             if default_calc_job_plugin == "quantumespresso.pw":
-                code_model = PwCodeModel(
+                base_code_model = PwCodeModel(
                     name=name,
                     description=name,
                     default_calc_job_plugin=default_calc_job_plugin,
                 )
             else:
-                code_model = CodeModel(
+                base_code_model = CodeModel(
                     name=name,
                     description=name,
                     default_calc_job_plugin=default_calc_job_plugin,
                 )
-            self.codes[default_calc_job_plugin] = code_model
-        # update the plugin mapping to keep track of which codes are associated with which plugins
+            self.add_model(default_calc_job_plugin, base_code_model)
+
         if identifier not in self.plugin_mapping:
             self.plugin_mapping[identifier] = [default_calc_job_plugin]
         else:
             self.plugin_mapping[identifier].append(default_calc_job_plugin)
 
-        return code_model
-
-    def get_code(self, name) -> CodeModel | None:
-        if name in self.codes:  # type: ignore
-            return self.codes[name]  # type: ignore
-
-    def get_selected_codes(self) -> dict[str, dict]:
-        return {
-            name: code_model.get_model_state()
-            for name, code_model in self.codes.items()
-            if code_model.is_ready
-        }
-
-    def set_selected_codes(self, code_data=DEFAULT["codes"]):
-        for name, code_model in self.codes.items():
-            if name in code_data and code_model.is_active:
-                code_model.set_model_state(code_data[name])
-
-    def reset(self):
-        """Reset the model to its default state."""
-        for code_model in self.codes.values():
-            code_model.reset()
-
-    def _get_properties(self) -> list[str]:
-        return self.input_parameters.get("workchain", {}).get("properties", [])
-
-    def update_submission_blockers(self):
-        self.submission_blockers = list(self._check_submission_blockers())
-
-    def _check_submission_blockers(self):
-        # No pw code selected (this is ignored while the setup process is running).
-        pw_code = self.get_code("quantumespresso.pw")
-        if pw_code and not pw_code.selected and not self.installing_qe:
-            yield ("No pw code selected")
-
-        # code related to the selected property is not installed
-        properties = self._get_properties()
-        message = "Calculating the {property} property requires code {code} to be set."
-        for identifier, code_names in self.plugin_mapping.items():
-            if identifier in properties:
-                for name in code_names:
-                    code = self.get_code(name)
-                    if not code.is_ready:
-                        yield message.format(property=identifier, code=code.description)
-
-        # check if the QEAppComputationalResourcesWidget is used
-        for name, code in self.codes.items():
-            # skip if the code is not displayed, convenient for the plugin developer
-            if not code.is_ready:
-                continue
-            if not issubclass(
-                code.code_widget_class, QEAppComputationalResourcesWidget
-            ):
-                yield (
-                    f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {name}."
-                )
+        return base_code_model
 
     def check_resources(self):
-        pw_code = self.get_code("quantumespresso.pw")
+        pw_code_model = self.get_model("quantumespresso.pw")
 
-        if not self.input_structure or not pw_code.selected:
+        if not self.input_structure or not pw_code_model.selected:
             return  # No code selected or no structure, so nothing to do
 
-        num_cpus = pw_code.num_cpus * pw_code.num_nodes
-        on_localhost = orm.load_node(pw_code.selected).computer.hostname == "localhost"
+        num_cpus = pw_code_model.num_cpus * pw_code_model.num_nodes
+        on_localhost = (
+            orm.load_node(pw_code_model.selected).computer.hostname == "localhost"
+        )
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
 
@@ -253,6 +198,40 @@ class GlobalResourceSettingsModel(
                 message=alert_message,
             )
         )
+
+    def _get_properties(self) -> list[str]:
+        return self.input_parameters.get("workchain", {}).get("properties", [])
+
+    def _check_submission_blockers(self):
+        # No pw code selected
+        pw_code_model = self.get_model("quantumespresso.pw")
+        if pw_code_model and not pw_code_model.selected:
+            yield ("No pw code selected")
+
+        # Code related to the selected property is not installed
+        properties = self._get_properties()
+        message = "Calculating the {property} property requires code {code} to be set."
+        for identifier, code_names in self.plugin_mapping.items():
+            if identifier in properties:
+                for name in code_names:
+                    code_model = self.get_model(name)
+                    if not code_model.is_ready:
+                        yield message.format(
+                            property=name,
+                            code=code_model.description,
+                        )
+
+        # Check if the QEAppComputationalResourcesWidget is used
+        for identifier, code_model in self.get_models():
+            # Skip if the code is not displayed, convenient for the plugin developer
+            if not code_model.is_ready:
+                continue
+            if not issubclass(
+                code_model.code_widget_class, QEAppComputationalResourcesWidget
+            ):
+                yield (
+                    f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {identifier}."
+                )
 
     def _estimate_min_cpus(
         self,

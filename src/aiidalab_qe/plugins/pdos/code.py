@@ -7,23 +7,27 @@ from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPane
 class PdosResourceSettingsModel(ResourceSettingsModel):
     """Model for the pdos code setting plugin."""
 
-    codes = {
-        "pw": PwCodeModel(
-            name="pw.x",
-            description="pw.x",
-            default_calc_job_plugin="quantumespresso.pw",
-        ),
-        "dos": CodeModel(
-            name="dos.x",
-            description="dos.x",
-            default_calc_job_plugin="quantumespresso.dos",
-        ),
-        "projwfc": CodeModel(
-            name="projwfc.x",
-            description="projwfc.x",
-            default_calc_job_plugin="quantumespresso.projwfc",
-        ),
-    }
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.add_models(
+            {
+                "pw": PwCodeModel(
+                    name="pw.x",
+                    description="pw.x",
+                    default_calc_job_plugin="quantumespresso.pw",
+                ),
+                "dos": CodeModel(
+                    name="dos.x",
+                    description="dos.x",
+                    default_calc_job_plugin="quantumespresso.dos",
+                ),
+                "projwfc": CodeModel(
+                    name="projwfc.x",
+                    description="projwfc.x",
+                    default_calc_job_plugin="quantumespresso.projwfc",
+                ),
+            }
+        )
 
 
 class PdosResourceSettingsPanel(ResourceSettingsPanel[PdosResourceSettingsModel]):

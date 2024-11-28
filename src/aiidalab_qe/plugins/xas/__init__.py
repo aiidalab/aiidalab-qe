@@ -24,7 +24,7 @@ xas = {
         "panel": XasConfigurationSettingsPanel,
         "model": XasConfigurationSettingsModel,
     },
-    "code": {
+    "resources": {
         "panel": XasResourceSettingsPanel,
         "model": XasResourceSettingsModel,
     },

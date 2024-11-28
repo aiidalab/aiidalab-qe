@@ -18,7 +18,7 @@ bands = {
         "panel": BandsConfigurationSettingsPanel,
         "model": BandsConfigurationSettingsModel,
     },
-    "code": {
+    "resources": {
         "panel": BandsResourceSettingsPanel,
         "model": BandsResourceSettingsModel,
     },
