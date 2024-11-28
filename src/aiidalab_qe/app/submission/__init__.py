@@ -10,12 +10,12 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.panel import SettingsModel, SettingsPanel
+from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_widgets_base import WizardAppWidgetStep
 
-from .global_settings import GlobalCodeModel, GlobalCodeSettings
+from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -77,8 +77,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = False
 
-        global_code_model = GlobalCodeModel()
-        self.global_code_settings = GlobalCodeSettings(model=global_code_model)
+        global_code_model = GlobalResourceSettingsModel()
+        self.global_code_settings = GlobalResourceSettingsPanel(model=global_code_model)
         self._model.add_model("global", global_code_model)
         global_code_model.observe(
             self._on_plugin_submission_blockers_change,
@@ -190,6 +190,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         ]
 
         self.rendered = True
+
         self._update_tabs()
 
     def submit(self, _=None):
@@ -207,9 +208,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
-        tab: SettingsPanel = self.tabs.children[tab_index]  # type: ignore
+        tab: ResourceSettingsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
-        tab.update()
 
     def _on_input_structure_change(self, _):
         """"""
@@ -326,14 +326,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.state.CONFIGURED
 
     def _fetch_plugin_settings(self):
-        # Load codes from plugins
         eps = get_entry_items("aiidalab_qe.properties", "code")
         for identifier, data in eps.items():
             for key in ("panel", "model"):
                 if key not in data:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
             panel = data["panel"]
-            model: SettingsModel = data["model"]()
+            model: ResourceSettingsModel = data["model"]()
             model.observe(
                 self._on_plugin_submission_blockers_change,
                 ["submission_blockers"],

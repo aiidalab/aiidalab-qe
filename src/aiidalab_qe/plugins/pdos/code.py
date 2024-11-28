@@ -1,10 +1,10 @@
 """Panel for PDOS plugin."""
 
 from aiidalab_qe.common.code.model import CodeModel, PwCodeModel
-from aiidalab_qe.common.panel import CodeSettingsModel, CodeSettingsPanel
+from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
 
 
-class PdosCodeModel(CodeSettingsModel):
+class PdosResourceSettingsModel(ResourceSettingsModel):
     """Model for the pdos code setting plugin."""
 
     codes = {
@@ -26,6 +26,6 @@ class PdosCodeModel(CodeSettingsModel):
     }
 
 
-class PdosCodeSettings(CodeSettingsPanel[PdosCodeModel]):
+class PdosResourceSettingsPanel(ResourceSettingsPanel[PdosResourceSettingsModel]):
     title = "PDOS"
     identifier = "pdos"

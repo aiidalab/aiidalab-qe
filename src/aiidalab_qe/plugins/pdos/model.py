@@ -6,10 +6,10 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
 )
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.common.panel import SettingsModel
+from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 
-class PdosModel(SettingsModel, HasInputStructure):
+class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructure):
     dependencies = [
         "input_structure",
         "workchain.protocol",

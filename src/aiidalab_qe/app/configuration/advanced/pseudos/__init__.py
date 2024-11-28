@@ -1,8 +1,8 @@
-from .model import PseudosModel
-from .pseudos import PseudoSettings, PseudoUploadWidget
+from .model import PseudosConfigurationSettingsModel
+from .pseudos import PseudosConfigurationSettingsPanel, PseudoUploadWidget
 
 __all__ = [
-    "PseudosModel",
-    "PseudoSettings",
     "PseudoUploadWidget",
+    "PseudosConfigurationSettingsModel",
+    "PseudosConfigurationSettingsPanel",
 ]

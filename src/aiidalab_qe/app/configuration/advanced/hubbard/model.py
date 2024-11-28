@@ -9,10 +9,13 @@ from pymatgen.core.periodic_table import Element
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.common.mixins import HasInputStructure
 
-from ..subsettings import AdvancedSubModel
+from ..subsettings import AdvancedCalculationSubSettingsModel
 
 
-class HubbardModel(AdvancedSubModel, HasInputStructure):
+class HubbardConfigurationSettingsModel(
+    AdvancedCalculationSubSettingsModel,
+    HasInputStructure,
+):
     dependencies = [
         "input_structure",
     ]

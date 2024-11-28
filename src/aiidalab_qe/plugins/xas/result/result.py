@@ -10,7 +10,7 @@ from .spectrum_button import SpectrumDownloadButton
 from .utils import write_csv
 
 
-class XasResults(ResultsPanel[XasResultsModel]):
+class XasResultsPanel(ResultsPanel[XasResultsModel]):
     title = "XAS"
     identifier = "xas"
     workchain_labels = ["xas"]

@@ -1,7 +1,7 @@
 from .model import ElectronicStructureResultsModel
-from .result import ElectronicStructureResults
+from .result import ElectronicStructureResultsPanel
 
 __all__ = [
     "ElectronicStructureResultsModel",
-    "ElectronicStructureResults",
+    "ElectronicStructureResultsPanel",
 ]

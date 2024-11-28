@@ -1,28 +1,28 @@
-from aiidalab_qe.common.panel import SettingsOutline
+from aiidalab_qe.common.panel import PluginOutline
 
-from .code import PdosCodeModel, PdosCodeSettings
-from .model import PdosModel
-from .result import PdosResults, PdosResultsModel
-from .setting import PdosSettings
+from .code import PdosResourceSettingsModel, PdosResourceSettingsPanel
+from .model import PdosConfigurationSettingsModel
+from .result import PdosResultsModel, PdosResultsPanel
+from .setting import PdosConfigurationSettingPanel
 from .workchain import workchain_and_builder
 
 
-class PdosOutline(SettingsOutline):
+class PdosPluginOutline(PluginOutline):
     title = "Projected Density of States (PDOS)"
 
 
 pdos = {
-    "outline": PdosOutline,
-    "code": {
-        "panel": PdosCodeSettings,
-        "model": PdosCodeModel,
+    "outline": PdosPluginOutline,
+    "configuration": {
+        "panel": PdosConfigurationSettingPanel,
+        "model": PdosConfigurationSettingsModel,
     },
-    "setting": {
-        "panel": PdosSettings,
-        "model": PdosModel,
+    "code": {
+        "panel": PdosResourceSettingsPanel,
+        "model": PdosResourceSettingsModel,
     },
     "result": {
-        "panel": PdosResults,
+        "panel": PdosResultsPanel,
         "model": PdosResultsModel,
     },
     "workchain": workchain_and_builder,

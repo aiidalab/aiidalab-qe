@@ -2,18 +2,20 @@
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import SettingsPanel
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
-from .model import XasModel
+from .model import XasConfigurationSettingsModel
 
 
-class XasSettings(SettingsPanel[XasModel]):
+class XasConfigurationSettingsPanel(
+    ConfigurationSettingsPanel[XasConfigurationSettingsModel],
+):
     title = "XAS"
     identifier = "xas"
 
     # TODO: The element selection should lock the "Confirm" button if no elements have been selected for XAS calculation.
 
-    def __init__(self, model: XasModel, **kwargs):
+    def __init__(self, model: XasConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
@@ -133,7 +135,7 @@ class XasSettings(SettingsPanel[XasModel]):
         if self.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process or specific and specific != "widgets":
+        if not self._model.loaded_from_process or (specific and specific != "widgets"):
             self._model.update(specific)
         self._build_core_hole_treatments_widget()
         self.updated = True

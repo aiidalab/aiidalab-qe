@@ -1,7 +1,7 @@
 from .model import BandsResultsModel
-from .result import BandsResults
+from .result import BandsResultsPanel
 
 __all__ = [
     "BandsResultsModel",
-    "BandsResults",
+    "BandsResultsPanel",
 ]
