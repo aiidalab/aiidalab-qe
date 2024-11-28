@@ -57,8 +57,9 @@ class BandsPdosWidget(ipw.VBox):
             return
 
         self.dos_atoms_group = ipw.Dropdown(
-            description="Group by:",
+            description="Atom grouping:",
             style={"description_width": "initial"},
+            layout=ipw.Layout(width="350px"),
         )
         ipw.dlink(
             (self._model, "dos_atoms_group_options"),
@@ -74,8 +75,9 @@ class BandsPdosWidget(ipw.VBox):
         )
 
         self.dos_plot_group = ipw.Dropdown(
-            description="Plot contributions:",
+            description="Orbital grouping:",
             style={"description_width": "initial"},
+            layout=ipw.Layout(width="350px"),
         )
         ipw.dlink(
             (self._model, "dos_plot_group_options"),
@@ -94,6 +96,7 @@ class BandsPdosWidget(ipw.VBox):
             placeholder="e.g. 1..5 8 10",
             description="Select atoms:",
             style={"description_width": "initial"},
+            layout=ipw.Layout(width="350px"),
         )
         ipw.link(
             (self._model, "selected_atoms"),
