@@ -173,7 +173,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     # Test spin-orbit-dependent family change
     model.spin_orbit = "soc"
     model.protocol = "moderate"
-    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/FR/standard/upf"
+    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/standard/upf"
 
     # Reset the external dependencies of the model
     model.spin_orbit = "wo_soc"
