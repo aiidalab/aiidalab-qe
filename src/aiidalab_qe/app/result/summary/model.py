@@ -35,7 +35,7 @@ VDW_CORRECTION_VERSION = {
 }
 
 
-class WorkChainSummaryModel(ResultsModel):
+class WorkChainSummaryResultsModel(ResultsModel):
     identifier = "summary"
 
     @property

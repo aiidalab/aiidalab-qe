@@ -8,7 +8,7 @@ from aiidalab_qe.common.panel import ResultsPanel
 from .model import BandsResultsModel
 
 
-class BandsResults(ResultsPanel[BandsResultsModel]):
+class BandsResultsPanel(ResultsPanel[BandsResultsModel]):
     title = "Bands"
     identifier = "bands"
     workchain_labels = ["bands"]

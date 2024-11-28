@@ -2,18 +2,20 @@
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import SettingsPanel
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
-from .model import PdosModel
+from .model import PdosConfigurationSettingsModel
 
 RYDBERG_TO_EV = 13.605703976
 
 
-class PdosSettings(SettingsPanel[PdosModel]):
+class PdosConfigurationSettingPanel(
+    ConfigurationSettingsPanel[PdosConfigurationSettingsModel],
+):
     title = "PDOS"
     identifier = "pdos"
 
-    def __init__(self, model: PdosModel, **kwargs):
+    def __init__(self, model: PdosConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(

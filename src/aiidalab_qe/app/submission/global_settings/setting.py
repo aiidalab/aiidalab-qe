@@ -10,23 +10,22 @@ import ipywidgets as ipw
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import CodeModel, PluginCodes, PwCodeModel
-from aiidalab_qe.common.panel import SettingsPanel
+from aiidalab_qe.common.panel import ResourceSettingsPanel
 from aiidalab_qe.common.widgets import (
     LoadingWidget,
     PwCodeResourceSetupWidget,
     QEAppComputationalResourcesWidget,
 )
 
-from .model import GlobalCodeModel
+from .model import GlobalResourceSettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class GlobalCodeSettings(SettingsPanel[GlobalCodeModel]):
-    title = "Global settings"
+class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsModel]):
     identifier = "global"
 
-    def __init__(self, model: GlobalCodeModel, **kwargs):
+    def __init__(self, model: GlobalResourceSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
         self._set_up_codes()
         self._model.observe(

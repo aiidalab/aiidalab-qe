@@ -1,23 +1,23 @@
-from aiidalab_qe.common.panel import SettingsOutline
+from aiidalab_qe.common.panel import PluginOutline
 
-from .model import XpsModel
-from .result import XpsResults, XpsResultsModel
-from .setting import XpsSettings
+from .model import XpsConfigurationSettingsModel
+from .result import XpsResultsModel, XpsResultsPanel
+from .setting import XpsConfigurationSettingsPanel
 from .workchain import workchain_and_builder
 
 
-class XpsOutline(SettingsOutline):
+class XpsPluginOutline(PluginOutline):
     title = "X-ray photoelectron spectroscopy (XPS)"
 
 
 xps = {
-    "outline": XpsOutline,
-    "setting": {
-        "panel": XpsSettings,
-        "model": XpsModel,
+    "outline": XpsPluginOutline,
+    "configuration": {
+        "panel": XpsConfigurationSettingsPanel,
+        "model": XpsConfigurationSettingsModel,
     },
     "result": {
-        "panel": XpsResults,
+        "panel": XpsResultsPanel,
         "model": XpsResultsModel,
     },
     "workchain": workchain_and_builder,

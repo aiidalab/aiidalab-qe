@@ -1,29 +1,29 @@
 # from aiidalab_qe.bands.result import Result
-from aiidalab_qe.common.panel import SettingsOutline
+from aiidalab_qe.common.panel import PluginOutline
 
-from .code import BandsCodeModel, BandsCodeSettings
-from .model import BandsModel
-from .result import BandsResults, BandsResultsModel
-from .setting import BandsSettings
+from .code import BandsResourceSettingsModel, BandsResourceSettingsPanel
+from .model import BandsConfigurationSettingsModel
+from .result import BandsResultsModel, BandsResultsPanel
+from .setting import BandsConfigurationSettingsPanel
 from .workchain import workchain_and_builder
 
 
-class BandsOutline(SettingsOutline):
+class BandsPluginOutline(PluginOutline):
     title = "Electronic band structure"
 
 
 bands = {
-    "outline": BandsOutline,
-    "code": {
-        "panel": BandsCodeSettings,
-        "model": BandsCodeModel,
+    "outline": BandsPluginOutline,
+    "configuration": {
+        "panel": BandsConfigurationSettingsPanel,
+        "model": BandsConfigurationSettingsModel,
     },
-    "setting": {
-        "panel": BandsSettings,
-        "model": BandsModel,
+    "code": {
+        "panel": BandsResourceSettingsPanel,
+        "model": BandsResourceSettingsModel,
     },
     "result": {
-        "panel": BandsResults,
+        "panel": BandsResultsPanel,
         "model": BandsResultsModel,
     },
     "workchain": workchain_and_builder,

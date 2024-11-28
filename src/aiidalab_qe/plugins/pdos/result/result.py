@@ -8,7 +8,7 @@ from aiidalab_qe.common.panel import ResultsPanel
 from .model import PdosResultsModel
 
 
-class PdosResults(ResultsPanel[PdosResultsModel]):
+class PdosResultsPanel(ResultsPanel[PdosResultsModel]):
     title = "PDOS"
     identifier = "pdos"
     workchain_labels = ["pdos"]

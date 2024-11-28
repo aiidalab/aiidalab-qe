@@ -1,10 +1,10 @@
 """Panel for Bands plugin."""
 
 from aiidalab_qe.common.code.model import CodeModel, PwCodeModel
-from aiidalab_qe.common.panel import CodeSettingsModel, CodeSettingsPanel
+from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
 
 
-class BandsCodeModel(CodeSettingsModel):
+class BandsResourceSettingsModel(ResourceSettingsModel):
     """Model for the band structure plugin."""
 
     codes = {
@@ -21,6 +21,6 @@ class BandsCodeModel(CodeSettingsModel):
     }
 
 
-class BandsCodeSettings(CodeSettingsPanel[BandsCodeModel]):
+class BandsResourceSettingsPanel(ResourceSettingsPanel[BandsResourceSettingsModel]):
     title = "Band Structure"
     identifier = "bands"

@@ -13,23 +13,23 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
-from aiidalab_qe.common.panel import SettingsModel
+from aiidalab_qe.common.panel import ConfigurationSettingsModel
 from aiidalab_qe.setup.pseudos import PseudoFamily
 
-from .subsettings import AdvancedSubModel
+from .subsettings import AdvancedCalculationSubSettingsModel
 
 if t.TYPE_CHECKING:
-    from .hubbard.hubbard import HubbardModel
-    from .magnetization import MagnetizationModel
-    from .pseudos.pseudos import PseudosModel
-    from .smearing import SmearingModel
+    from .hubbard.hubbard import HubbardConfigurationSettingsModel
+    from .magnetization import MagnetizationConfigurationSettingsModel
+    from .pseudos.pseudos import PseudosConfigurationSettingsModel
+    from .smearing import SmearingConfigurationSettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class AdvancedModel(
-    SettingsModel,
-    HasModels[AdvancedSubModel],
+class AdvancedConfigurationSettingsModel(
+    ConfigurationSettingsModel,
+    HasModels[AdvancedCalculationSubSettingsModel],
     HasInputStructure,
 ):
     dependencies = [
@@ -115,7 +115,7 @@ class AdvancedModel(
             "kpoints_distance": self.kpoints_distance,
         }
 
-        hubbard: HubbardModel = self.get_model("hubbard")  # type: ignore
+        hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
         if hubbard.is_active:
             parameters["hubbard_parameters"] = {"hubbard_u": hubbard.parameters}
             if hubbard.has_eigenvalues:
@@ -123,7 +123,7 @@ class AdvancedModel(
                     "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()
                 }
 
-        pseudos: PseudosModel = self.get_model("pseudos")  # type: ignore
+        pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
         parameters["pseudo_family"] = pseudos.family
         if pseudos.dictionary:
             parameters["pw"]["pseudos"] = pseudos.dictionary
@@ -138,14 +138,16 @@ class AdvancedModel(
                 self.dftd3_version[self.van_der_waals]
             )
 
-        smearing: SmearingModel = self.get_model("smearing")  # type: ignore
+        smearing: SmearingConfigurationSettingsModel = self.get_model("smearing")  # type: ignore
         if self.electronic_type == "metal":
             # smearing type setting
             parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = smearing.type
             # smearing degauss setting
             parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = smearing.degauss
 
-        magnetization: MagnetizationModel = self.get_model("magnetization")  # type: ignore
+        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
+            "magnetization"
+        )  # type: ignore
         if self.spin_type == "collinear":
             parameters["initial_magnetic_moments"] = magnetization.moments
 
@@ -175,7 +177,7 @@ class AdvancedModel(
         return parameters
 
     def set_model_state(self, parameters):
-        pseudos: PseudosModel = self.get_model("pseudos")  # type: ignore
+        pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
         if "pseudo_family" in parameters:
             pseudo_family = PseudoFamily.from_string(parameters["pseudo_family"])
             library = pseudo_family.library
@@ -194,7 +196,9 @@ class AdvancedModel(
         if (pw_parameters := parameters.get("pw", {}).get("parameters")) is not None:
             self._set_pw_parameters(pw_parameters)
 
-        magnetization: MagnetizationModel = self.get_model("magnetization")  # type: ignore
+        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
+            "magnetization"
+        )  # type: ignore
         if magnetic_moments := parameters.get("initial_magnetic_moments"):
             if isinstance(magnetic_moments, (int, float)):
                 magnetic_moments = [magnetic_moments]
@@ -207,7 +211,7 @@ class AdvancedModel(
                 )
             magnetization.moments = magnetic_moments
 
-        hubbard: HubbardModel = self.get_model("hubbard")  # type: ignore
+        hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
         if parameters.get("hubbard_parameters"):
             hubbard.is_active = True
             hubbard.parameters = parameters["hubbard_parameters"]["hubbard_u"]
@@ -238,7 +242,7 @@ class AdvancedModel(
     def _get_default(self, trait):
         return self._defaults.get(trait, self.traits()[trait].default_value)
 
-    def _link_model(self, model: AdvancedSubModel):
+    def _link_model(self, model: AdvancedCalculationSubSettingsModel):
         ipw.dlink(
             (self, "loaded_from_process"),
             (model, "loaded_from_process"),
@@ -322,13 +326,15 @@ class AdvancedModel(
             system_params.get("vdw_corr", "none"),
         )
 
-        smearing: SmearingModel = self.get_model("smearing")  # type: ignore
+        smearing: SmearingConfigurationSettingsModel = self.get_model("smearing")  # type: ignore
         if "degauss" in system_params:
             smearing.degauss = system_params["degauss"]
 
         if "smearing" in system_params:
             smearing.type = system_params["smearing"]
 
-        magnetization: MagnetizationModel = self.get_model("magnetization")  # type: ignore
+        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
+            "magnetization"
+        )  # type: ignore
         if "tot_magnetization" in system_params:
             magnetization.type = "tot_magnetization"
