@@ -7,7 +7,7 @@ import traitlets as tl
 from aiidalab_qe.common.mvc import Model
 
 
-class AdvancedSubModel(Model):
+class AdvancedCalculationSubSettingsModel(Model):
     dependencies = []
 
     loaded_from_process = tl.Bool(False)
@@ -29,10 +29,10 @@ class AdvancedSubModel(Model):
         raise NotImplementedError()
 
 
-M = t.TypeVar("M", bound=AdvancedSubModel)
+M = t.TypeVar("M", bound=AdvancedCalculationSubSettingsModel)
 
 
-class AdvancedSubSettings(ipw.VBox, t.Generic[M]):
+class AdvancedConfigurationSubSettingsPanel(ipw.VBox, t.Generic[M]):
     identifier = "sub"
 
     def __init__(self, model: M, **kwargs):

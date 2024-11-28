@@ -1,10 +1,13 @@
-from aiidalab_qe.app.configuration.advanced import AdvancedModel, AdvancedSettings
+from aiidalab_qe.app.configuration.advanced import (
+    AdvancedConfigurationSettingsModel,
+    AdvancedConfigurationSettingsPanel,
+)
 
 
 def test_advanced_default():
     """Test default behavior of advanced setting."""
-    model = AdvancedModel()
-    _ = AdvancedSettings(model=model)
+    model = AdvancedConfigurationSettingsModel()
+    _ = AdvancedConfigurationSettingsPanel(model=model)
     smearing_model = model.get_model("smearing")
 
     # Test override functionality in advanced settings
@@ -25,8 +28,8 @@ def test_advanced_default():
 def test_advanced_smearing_settings():
     """Test Smearing Settings."""
 
-    model = AdvancedModel()
-    advanced = AdvancedSettings(model=model)
+    model = AdvancedConfigurationSettingsModel()
+    advanced = AdvancedConfigurationSettingsPanel(model=model)
     advanced.render()
     smearing_model = model.get_model("smearing")
 
@@ -59,8 +62,8 @@ def test_advanced_smearing_settings():
 
 def test_advanced_kpoints_settings():
     """Test kpoints setting of advanced setting widget."""
-    model = AdvancedModel()
-    advanced = AdvancedSettings(model=model)
+    model = AdvancedConfigurationSettingsModel()
+    advanced = AdvancedConfigurationSettingsPanel(model=model)
     advanced.render()
 
     # Check the disable of is bind to override switch
@@ -84,8 +87,8 @@ def test_advanced_kpoints_settings():
 
 def test_advanced_molecule_settings(generate_structure_data):
     """Test kpoints setting of advanced setting widget."""
-    model = AdvancedModel()
-    advanced = AdvancedSettings(model=model)
+    model = AdvancedConfigurationSettingsModel()
+    advanced = AdvancedConfigurationSettingsPanel(model=model)
     advanced.render()
 
     model.override = True
@@ -114,8 +117,8 @@ def test_advanced_molecule_settings(generate_structure_data):
 
 def test_advanced_tot_charge_settings():
     """Test TotCharge widget."""
-    model = AdvancedModel()
-    advanced = AdvancedSettings(model=model)
+    model = AdvancedConfigurationSettingsModel()
+    advanced = AdvancedConfigurationSettingsPanel(model=model)
     advanced.render()
 
     # Check the disable of is bind to override switch
@@ -135,8 +138,8 @@ def test_advanced_tot_charge_settings():
 
 def test_advanced_kpoints_mesh(generate_structure_data):
     """Test Mesh Grid HTML widget."""
-    model = AdvancedModel()
-    _ = AdvancedSettings(model=model)
+    model = AdvancedConfigurationSettingsModel()
+    _ = AdvancedConfigurationSettingsPanel(model=model)
 
     structure = generate_structure_data(name="silicon")
     model.input_structure = structure
@@ -152,12 +155,12 @@ def test_advanced_kpoints_mesh(generate_structure_data):
 def test_advanced_hubbard_settings(generate_structure_data):
     """Test Hubbard widget."""
     from aiidalab_qe.app.configuration.advanced.hubbard import (
-        HubbardModel,
-        HubbardSettings,
+        HubbardConfigurationSettingsModel,
+        HubbardConfigurationSettingsPanel,
     )
 
-    model = HubbardModel()
-    hubbard = HubbardSettings(model=model)
+    model = HubbardConfigurationSettingsModel()
+    hubbard = HubbardConfigurationSettingsPanel(model=model)
     hubbard.render()
 
     structure = generate_structure_data(name="LiCoO2")

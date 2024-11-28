@@ -1,7 +1,7 @@
-from .advanced import AdvancedSettings
-from .model import AdvancedModel
+from .advanced import AdvancedConfigurationSettingsPanel
+from .model import AdvancedConfigurationSettingsModel
 
 __all__ = [
-    "AdvancedModel",
-    "AdvancedSettings",
+    "AdvancedConfigurationSettingsModel",
+    "AdvancedConfigurationSettingsPanel",
 ]

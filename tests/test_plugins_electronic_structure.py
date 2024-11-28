@@ -3,14 +3,14 @@ def test_electronic_structure(generate_qeapp_workchain):
 
     from aiidalab_qe.common.bands_pdos import BandsPdosWidget
     from aiidalab_qe.plugins.electronic_structure.result import (
-        ElectronicStructureResults,
         ElectronicStructureResultsModel,
+        ElectronicStructureResultsPanel,
     )
 
     workchain = generate_qeapp_workchain()
     model = ElectronicStructureResultsModel()
     model.process_uuid = workchain.node.uuid
-    result = ElectronicStructureResults(model=model)
+    result = ElectronicStructureResultsPanel(model=model)
     result.render()
 
     widget = result.children[0]

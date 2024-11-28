@@ -3,12 +3,12 @@ import traitlets as tl
 from aiida.common import NotExistent
 from aiida.orm import Group, QueryBuilder, load_group
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.common.panel import SettingsModel
+from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
 
 
-class XpsModel(SettingsModel, HasInputStructure):
+class XpsConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructure):
     dependencies = [
         "input_structure",
     ]

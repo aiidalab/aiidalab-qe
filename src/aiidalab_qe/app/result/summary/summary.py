@@ -2,10 +2,10 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import ResultsPanel
 
-from .model import WorkChainSummaryModel
+from .model import WorkChainSummaryResultsModel
 
 
-class WorkChainSummary(ResultsPanel[WorkChainSummaryModel]):
+class WorkChainSummaryResultsPanel(ResultsPanel[WorkChainSummaryResultsModel]):
     title = "Workflow Summary"
     identifier = "summary"
 

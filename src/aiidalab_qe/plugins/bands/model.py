@@ -1,9 +1,9 @@
 import traitlets as tl
 
-from aiidalab_qe.common.panel import SettingsModel
+from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 
-class BandsModel(SettingsModel):
+class BandsConfigurationSettingsModel(ConfigurationSettingsModel):
     """Model for the band structure plugin."""
 
     projwfc_bands = tl.Bool(False)

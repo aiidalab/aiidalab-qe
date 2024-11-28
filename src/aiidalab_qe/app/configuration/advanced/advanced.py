@@ -5,20 +5,34 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.panel import SettingsPanel
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
-from .hubbard import HubbardModel, HubbardSettings
-from .magnetization import MagnetizationModel, MagnetizationSettings
-from .model import AdvancedModel
-from .pseudos import PseudoSettings, PseudosModel
-from .smearing import SmearingModel, SmearingSettings
+from .hubbard import (
+    HubbardConfigurationSettingsModel,
+    HubbardConfigurationSettingsPanel,
+)
+from .magnetization import (
+    MagnetizationConfigurationSettingsModel,
+    MagnetizationConfigurationSettingsPanel,
+)
+from .model import AdvancedConfigurationSettingsModel
+from .pseudos import (
+    PseudosConfigurationSettingsModel,
+    PseudosConfigurationSettingsPanel,
+)
+from .smearing import (
+    SmearingConfigurationSettingsModel,
+    SmearingConfigurationSettingsPanel,
+)
 
 
-class AdvancedSettings(SettingsPanel[AdvancedModel]):
+class AdvancedConfigurationSettingsPanel(
+    ConfigurationSettingsPanel[AdvancedConfigurationSettingsModel],
+):
     title = "Advanced Settings"
     identifier = "advanced"
 
-    def __init__(self, model: AdvancedModel, **kwargs):
+    def __init__(self, model: AdvancedConfigurationSettingsModel, **kwargs):
         super().__init__(
             model=model,
             layout={"justify_content": "space-between", **kwargs.get("layout", {})},
@@ -42,20 +56,22 @@ class AdvancedSettings(SettingsPanel[AdvancedModel]):
             "kpoints_distance",
         )
 
-        smearing_model = SmearingModel()
-        self.smearing = SmearingSettings(model=smearing_model)
+        smearing_model = SmearingConfigurationSettingsModel()
+        self.smearing = SmearingConfigurationSettingsPanel(model=smearing_model)
         model.add_model("smearing", smearing_model)
 
-        magnetization_model = MagnetizationModel()
-        self.magnetization = MagnetizationSettings(model=magnetization_model)
+        magnetization_model = MagnetizationConfigurationSettingsModel()
+        self.magnetization = MagnetizationConfigurationSettingsPanel(
+            model=magnetization_model,
+        )
         model.add_model("magnetization", magnetization_model)
 
-        hubbard_model = HubbardModel()
-        self.hubbard = HubbardSettings(model=hubbard_model)
+        hubbard_model = HubbardConfigurationSettingsModel()
+        self.hubbard = HubbardConfigurationSettingsPanel(model=hubbard_model)
         model.add_model("hubbard", hubbard_model)
 
-        pseudos_model = PseudosModel()
-        self.pseudos = PseudoSettings(model=pseudos_model)
+        pseudos_model = PseudosConfigurationSettingsModel()
+        self.pseudos = PseudosConfigurationSettingsPanel(model=pseudos_model)
         model.add_model("pseudos", pseudos_model)
 
     def render(self):
