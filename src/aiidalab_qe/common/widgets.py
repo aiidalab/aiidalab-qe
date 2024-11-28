@@ -440,11 +440,7 @@ class AddingTagsEditor(ipw.VBox):
 
         self._status_message = StatusHTML()
         self.atom_selection = ipw.Text(
-            placeholder="e.g. 1..5 8 10",
-            description="Index of atoms",
-            value="",
-            style={"description_width": "100px"},
-            layout={"width": "initial"},
+            description="Index of atoms", value="", layout={"width": "initial"}
         )
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
@@ -482,10 +478,6 @@ class AddingTagsEditor(ipw.VBox):
             button_style="primary",
             layout={"width": "100px"},
         )
-        self.scroll_note = ipw.HTML(
-            value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
-            layout={"visibility": "hidden"},
-        )
         self.tag_display = ipw.Output()
         self.add_tags.on_click(self._add_tags)
         self.reset_tags.on_click(self._reset_tags)
@@ -499,22 +491,7 @@ class AddingTagsEditor(ipw.VBox):
         super().__init__(
             children=[
                 ipw.HTML(
-                    "<b>Set custom tags for atoms</b>",
-                ),
-                ipw.HTML(
-                    """
-                    <p>
-                    These are used to distinguish atoms of the same chemical element. <br>
-                    For example, they can be used to assign different initial magnetization values for antiferromagnetic systems.
-                    </p>
-                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
-                    <ul style="padding-left: 2em; list-style-type: disc;">
-                        <li>Atom indices start from 1, not 0. This means that the first atom in the list is numbered 1, the second atom is numbered 2, and so on.</li>
-                    </ul>
-
-                    Note:
-                    </p>
-                    """
+                    "<b>Adding a tag to atoms</b>",
                 ),
                 ipw.HBox(
                     [
@@ -524,11 +501,10 @@ class AddingTagsEditor(ipw.VBox):
                     ]
                 ),
                 self.tag_display,
-                self.scroll_note,
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
                 ipw.HTML(
-                    '<div style="margin-top: 20px;"><b>Set structure periodicity</b></div>'
+                    "<b>Define periodicity</b>",
                 ),
                 ipw.HTML("""
                     <p>Select the periodicity of your system.</p>
@@ -554,18 +530,14 @@ class AddingTagsEditor(ipw.VBox):
         current_tags = self.structure.get_tags()
         chemichal_symbols = self.structure.get_chemical_symbols()
 
-        if (
-            selection
-            and (min(selection) >= 0)
-            and (max(selection) <= (len(self.structure) - 1))
-        ):
+        if selection and (max(selection) <= (len(self.structure) - 1)):
             table_data = []
             for index in selection:
                 tag = current_tags[index]
                 symbol = chemichal_symbols[index]
                 if tag == 0:
                     tag = ""
-                table_data.append([f"{index+ 1}", f"{symbol}", f"{tag}"])
+                table_data.append([f"{index}", f"{symbol}", f"{tag}"])
 
             # Create an HTML table
             table_html = "<table>"
@@ -586,12 +558,10 @@ class AddingTagsEditor(ipw.VBox):
             with self.tag_display:
                 clear_output()
                 display(HTML(table_html))
-            self.scroll_note.layout = {"visibility": "visible"}
         else:
             self.tag_display.layout = {}
             with self.tag_display:
                 clear_output()
-            self.scroll_note.layout = {"visibility": "hidden"}
 
     def _from_selection(self, _=None):
         """Set the atom selection from the current selection."""
