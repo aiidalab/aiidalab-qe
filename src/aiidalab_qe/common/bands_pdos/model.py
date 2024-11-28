@@ -29,17 +29,17 @@ class BandsPdosModel(Model):
     dos_atoms_group_options = tl.List(
         trait=tl.List(tl.Unicode()),
         default_value=[
-            ("Kinds", "kinds"),
-            ("Atomic position", "atoms"),
+            ("Group by element (atomic species)", "kinds"),
+            ("No grouping (each site separately)", "atoms"),
         ],
     )
     dos_atoms_group = tl.Unicode("kinds")
     dos_plot_group_options = tl.List(
         trait=tl.List(tl.Unicode()),
         default_value=[
-            ("Total", "total"),
-            ("Orbital", "orbital"),
-            ("Angular momentum", "angular_momentum"),
+            ("Group all orbitals per atom", "total"),
+            ("Group by angular momentum ", "angular_momentum"),
+            ("No grouping (each orbital separately)", "orbital"),
         ],
     )
     dos_plot_group = tl.Unicode("total")
