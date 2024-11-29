@@ -649,10 +649,10 @@ class AddingTagsEditor(ipw.VBox):
     def _select_periodicity(self, _=None):
         """Select periodicity."""
         periodicity_options = {
-            "3D": (True, True, True),
-            "2D": (True, True, False),
-            "1D": (True, False, False),
-            "Molecule": (False, False, False),
+            "xyz": (True, True, True),
+            "xy": (True, True, False),
+            "x": (True, False, False),
+            "molecule": (False, False, False),
         }
         new_structure = deepcopy(self.structure)
         new_structure.set_pbc(periodicity_options[self.periodicity.value])
