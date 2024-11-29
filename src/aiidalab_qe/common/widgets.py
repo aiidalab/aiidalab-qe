@@ -511,8 +511,6 @@ class AddingTagsEditor(ipw.VBox):
                     <ul style="padding-left: 2em; list-style-type: disc;">
                         <li>Atom indices start from 1, not 0. This means that the first atom in the list is numbered 1, the second atom is numbered 2, and so on.</li>
                     </ul>
-
-                    Note:
                     </p>
                     """
                 ),
