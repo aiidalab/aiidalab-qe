@@ -22,31 +22,72 @@ advanced:
 bands:
   projwfc_bands: false
 codes:
-  dos:
-    cpus: 1
-    cpus_per_task: 1
-    max_wallclock_seconds: 43200
-    nodes: 1
-    ntasks_per_node: 1
-  projwfc:
-    cpus: 1
-    cpus_per_task: 1
-    max_wallclock_seconds: 43200
-    nodes: 1
-    ntasks_per_node: 1
-  projwfc_bands:
-    cpus: 1
-    cpus_per_task: 1
-    max_wallclock_seconds: 43200
-    nodes: 1
-    ntasks_per_node: 1
-  pw:
-    cpus: 2
-    cpus_per_task: 1
-    max_wallclock_seconds: 43200
-    nodes: 1
-    ntasks_per_node: 2
-    parallelization: {}
+  bands:
+    codes:
+      projwfc_bands:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      pw:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+        parallelization: {}
+    override: false
+  global:
+    codes:
+      quantumespresso.dos:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      quantumespresso.projwfc:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      quantumespresso.pw:
+        cpus: 2
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 2
+        parallelization: {}
+      quantumespresso.xspectra:
+        code: null
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+  pdos:
+    codes:
+      dos:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      projwfc:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      pw:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+        parallelization: {}
+    override: false
 pdos:
   nscf_kpoints_distance: 0.1
   pdos_degauss: 0.005

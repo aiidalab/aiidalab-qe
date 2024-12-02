@@ -146,7 +146,13 @@ class DownloadDataWidget(ipw.VBox):
                 from aiida.tools.archive.create import create_archive
 
                 path = pathlib.Path(dirpath) / "archive.aiida"
-                create_archive(entities=[reloaded_node], filename=path)
+                create_archive(
+                    entities=[reloaded_node],
+                    filename=path,
+                    call_calc_backward=False,
+                    call_work_backward=False,
+                    create_backward=False,
+                )
                 with open(path, "rb") as f:
                     zip_data = f.read()
 

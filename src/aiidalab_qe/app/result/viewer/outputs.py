@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import shutil
-import typing as t
 from importlib.resources import files
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -13,144 +14,9 @@ from jinja2 import Environment
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
-from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app.static import styles, templates
-from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_widgets_base import register_viewer_widget
-from aiidalab_widgets_base.viewers import StructureDataViewer
 
-from .summary_viewer import SummaryView
-from .utils.download_data import DownloadDataWidget
-
-
-@register_viewer_widget("process.workflow.workchain.WorkChainNode.")
-class WorkChainViewer(ipw.VBox):
-    _results_shown = tl.Set()
-    process_uuid = tl.Unicode(allow_none=True)
-
-    def __init__(self, node, **kwargs):
-        if node.process_label != "QeAppWorkChain":
-            super().__init__()
-            return
-
-        self.process_uuid = node.uuid
-        # In the new version of the plugin, the ui_parameters are stored as a yaml string
-        # which is then converted to a dictionary
-        ui_parameters = node.base.extras.get("ui_parameters", {})
-        if isinstance(ui_parameters, str):
-            ui_parameters = deserialize_unsafe(ui_parameters)
-
-        self.title = ipw.HTML(
-            f"""
-            <hr style="height:2px;background-color:#2097F3;">
-            <h4>QE App Workflow (pk: {node.pk}) &mdash;
-                {node.inputs.structure.get_formula()}
-            </h4>
-            """
-        )
-        self.workflows_summary = SummaryView(node)
-
-        self.summary_tab = ipw.VBox(children=[self.workflows_summary])
-        # Only the summary tab is shown by default
-        self.result_tabs = ipw.Tab(children=[self.summary_tab])
-
-        self.result_tabs.set_title(0, "Workflow Summary")
-
-        # get plugin result panels
-        # and save them the results dictionary
-        self.results = {}
-        entries = get_entry_items("aiidalab_qe.properties", "result")
-        for identifier, entry_point in entries.items():
-            result = entry_point(node)
-            self.results[identifier] = result
-            self.results[identifier].identifier = identifier
-
-        # An ugly fix to the structure appearance problem
-        # https://github.com/aiidalab/aiidalab-qe/issues/69
-        def on_selected_index_change(change):
-            index = change["new"]
-            # Accessing the viewer only if the corresponding tab is present.
-            if self.result_tabs._titles[str(index)] == "Final Geometry":
-                self.structure_tab._viewer.handle_resize()
-
-                def toggle_camera():
-                    """Toggle camera between perspective and orthographic."""
-                    self.structure_tab._viewer.camera = (
-                        "perspective"
-                        if self.structure_tab._viewer.camera == "orthographic"
-                        else "orthographic"
-                    )
-
-                toggle_camera()
-                toggle_camera()
-
-        self.result_tabs.observe(on_selected_index_change, "selected_index")
-        self._update_view()
-
-        super().__init__(
-            children=[self.title, self.result_tabs],
-            **kwargs,
-        )
-        # self.process_monitor = ProcessMonitor(
-        #     timeout=1.0,
-        #     on_sealed=[
-        #         self._update_view,
-        #     ],
-        # )
-        # ipw.dlink((self, "process_uuid"), (self.process_monitor, "value"))
-
-    @property
-    def node(self):
-        """Load the workchain node using the process_uuid.
-        Because the workchain node is used in another thread inside the process monitor,
-        we need to load the node from the database, instead of passing the node object.
-        Otherwise, we will get a "Instance is not persistent" error.
-        """
-        return orm.load_node(self.process_uuid)
-
-    def _update_view(self):
-        with self.hold_trait_notifications():
-            node = self.node
-            if node.is_finished:
-                self._show_workflow_output()
-            # if the structure is present in the workchain,
-            # the structure tab will be added.
-            if "structure" not in self._results_shown and "structure" in node.outputs:
-                self._show_structure()
-                self.result_tabs.children += (self.structure_tab,)
-                # index of the last tab
-                index = len(self.result_tabs.children) - 1
-                self.result_tabs.set_title(index, "Final Geometry")
-                self._results_shown.add("structure")
-
-            # update the plugin specific results
-            for result in self.results.values():
-                # check if the result is already shown
-                if result.identifier not in self._results_shown:
-                    # check if the all required results are in the outputs
-                    results_ready = [
-                        label in node.outputs for label in result.workchain_labels
-                    ]
-                    if all(results_ready):
-                        result._update_view()
-                        self._results_shown.add(result.identifier)
-                        # add this plugin result panel
-                        self.result_tabs.children += (result,)
-                        # index of the last tab
-                        index = len(self.result_tabs.children) - 1
-                        self.result_tabs.set_title(index, result.title)
-
-    def _show_structure(self):
-        """Show the structure of the workchain."""
-        self.structure_tab = StructureDataViewer(structure=self.node.outputs.structure)
-
-    def _show_workflow_output(self):
-        self.workflows_output = WorkChainOutputs(self.node)
-
-        self.result_tabs.children[0].children = [
-            self.workflows_summary,
-            self.workflows_output,
-        ]
+from ..utils.download_data import DownloadDataWidget
 
 
 class WorkChainOutputs(ipw.VBox):
@@ -300,7 +166,7 @@ class WorkChainOutputs(ipw.VBox):
                     counter += 1
 
     @staticmethod
-    def _get_final_calcjob(node: orm.WorkChainNode) -> t.Union[None, orm.CalcJobNode]:
+    def _get_final_calcjob(node: orm.WorkChainNode) -> orm.CalcJobNode | None:
         """Get the final calculation job node called by a work chain node.
 
         :param node: Work chain node.
