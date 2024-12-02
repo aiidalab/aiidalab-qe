@@ -21,6 +21,7 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
     mesh_grid = tl.Unicode("")
     use_pdos_degauss = tl.Bool(False)
     pdos_degauss = tl.Float(0.005)
+    energy_grid_step = tl.Float(0.01)
 
     def update(self, specific=""):
         with self.hold_trait_notifications():
@@ -35,6 +36,7 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
             "nscf_kpoints_distance": self.kpoints_distance,
             "use_pdos_degauss": self.use_pdos_degauss,
             "pdos_degauss": self.pdos_degauss,
+            "energy_grid_step": self.energy_grid_step,
         }
 
     def set_model_state(self, parameters: dict):
@@ -44,12 +46,14 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
         )
         self.use_pdos_degauss = parameters.get("use_pdos_degauss", False)
         self.pdos_degauss = parameters.get("pdos_degauss", 0.005)
+        self.energy_grid_step = parameters.get("energy_grid_step", 0.01)
 
     def reset(self):
         with self.hold_trait_notifications():
             self.kpoints_distance = self._get_default("kpoints_distance")
             self.use_pdos_degauss = self._get_default("use_pdos_degauss")
             self.pdos_degauss = self._get_default("pdos_degauss")
+            self.energy_grid_step = self._get_default("energy_grid_step")
 
     def _get_default(self, trait):
         return self._defaults.get(trait, self.traits()[trait].default_value)

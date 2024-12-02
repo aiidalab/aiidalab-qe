@@ -95,6 +95,17 @@ class PdosConfigurationSettingPanel(
             lambda degauss: f"({degauss * RYDBERG_TO_EV:.4f} eV)",
         )
 
+        self.energy_grid_step = ipw.BoundedFloatText(
+            min=0.001,
+            step=0.001,
+            description="Energy grid step (eV):",
+            style={"description_width": "initial"},
+        )
+        ipw.link(
+            (self._model, "energy_grid_step"),
+            (self.energy_grid_step, "value"),
+        )
+
         self.children = [
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
@@ -103,12 +114,14 @@ class PdosConfigurationSettingPanel(
             """),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-                    By default, the tetrahedron method is used for PDOS calculation.
-                    If required you can apply Gaussian broadening with a custom degauss
-                    value.
+                    By default, the <b>tetrahedron method</b> is used for partial density of states (PDOS) calculation.
+                    However, if you need more control over the broadening, you can apply <b>Gaussian broadening</b>
+                    by specifying a custom <b>degauss</b> value.
                     <br>
-                    For molecules and systems with localized orbitals, it is
-                    recommended to use a custom degauss value.
+                    <b>Recommendation for Molecules and Localized Orbitals:</b><br>
+                    For systems involving molecules or localized orbitals, it is recommended to use a
+                    <b>custom degauss value</b>. This will provide a more accurate representation of the PDOS,
+                    especially when the electronic states are localized.
                 </div>
             """),
             ipw.HBox(
@@ -117,6 +130,7 @@ class PdosConfigurationSettingPanel(
                     self.mesh_grid,
                 ]
             ),
+            self.energy_grid_step,
             self.use_pdos_degauss,
             ipw.HBox(
                 children=[

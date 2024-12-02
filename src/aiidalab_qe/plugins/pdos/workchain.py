@@ -53,8 +53,20 @@ def get_builder(codes, structure, parameters, **kwargs):
     nscf_overrides = deepcopy(parameters["advanced"])
 
     # Dos Projwfc overrides
-    dos_overrides = {"parameters": {"DOS": {}}}
-    projwfc_overrides = {"parameters": {"PROJWFC": {}}}
+    dos_overrides = {
+        "parameters": {
+            "DOS": {
+                "DeltaE": parameters["pdos"]["energy_grid_step"],
+            }
+        }
+    }
+    projwfc_overrides = {
+        "parameters": {
+            "PROJWFC": {
+                "DeltaE": parameters["pdos"]["energy_grid_step"],
+            }
+        }
+    }
 
     if parameters["pdos"]["use_pdos_degauss"]:
         dos_overrides["parameters"]["DOS"] = {
