@@ -1,3 +1,4 @@
+from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
@@ -86,6 +87,8 @@ def get_builder(codes, structure, parameters, **kwargs):
             overrides=overrides,
             **kwargs,
         )
+        # include nbands_factor (Same as in BandsWorkChain)
+        pdos["nbands_factor"] = orm.Float(3.0)
         # pop the inputs that are exclueded from the expose_inputs
         pdos.pop("structure", None)
         pdos.pop("clean_workdir", None)
