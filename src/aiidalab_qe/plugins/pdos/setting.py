@@ -118,7 +118,8 @@ class PdosConfigurationSettingPanel(
                     However, if you need more control over the broadening, you can apply <b>Gaussian broadening</b>
                     by specifying a custom <b>degauss</b> value.
                     <br>
-                    <b>Recommendation for Molecules and Localized Orbitals:</b><br>
+                    <b>Recommendation for Molecules and Localized Orbitals:</b>
+                    <br>
                     For systems involving molecules or localized orbitals, it is recommended to use a
                     <b>custom degauss value</b>. This will provide a more accurate representation of the PDOS,
                     especially when the electronic states are localized.
