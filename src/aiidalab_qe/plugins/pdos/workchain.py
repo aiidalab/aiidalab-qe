@@ -4,6 +4,7 @@ from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins.utils import set_component_resources
 
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
+PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 
 
 def check_codes(pw_code, dos_code, projwfc_code):
@@ -88,7 +89,9 @@ def get_builder(codes, structure, parameters, **kwargs):
             **kwargs,
         )
         # include nbands_factor (Same as in BandsWorkChain)
-        pdos["nbands_factor"] = orm.Float(3.0)
+        pdos["nbands_factor"] = orm.Float(
+            PwBandsWorkChain.get_protocol_inputs()["nbands_factor"]
+        )
         # pop the inputs that are exclueded from the expose_inputs
         pdos.pop("structure", None)
         pdos.pop("clean_workdir", None)
