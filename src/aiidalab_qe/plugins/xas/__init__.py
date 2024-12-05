@@ -1,17 +1,22 @@
-from importlib import resources
+from importlib import resources as importlib_resources
 
 import yaml
 
 from aiidalab_qe.common.panel import PluginOutline
 from aiidalab_qe.plugins import xas as xas_folder
 
-from .code import XasResourceSettingsModel, XasResourceSettingsPanel
 from .model import XasConfigurationSettingsModel
+from .resources import XasResourceSettingsModel, XasResourceSettingsPanel
 from .result import XasResultsModel, XasResultsPanel
 from .setting import XasConfigurationSettingsPanel
 from .workchain import workchain_and_builder
 
-PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
+PSEUDO_TOC = yaml.safe_load(
+    importlib_resources.read_text(
+        xas_folder,
+        "pseudo_toc.yaml",
+    )
+)
 
 
 class XasPluginOutline(PluginOutline):
