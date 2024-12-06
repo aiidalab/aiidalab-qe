@@ -249,6 +249,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
 
     def get_model_state(self):
         return {
+            "override": self.override,
             "codes": {
                 identifier: code_model.get_model_state()
                 for identifier, code_model in self.get_models()
@@ -256,6 +257,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         }
 
     def set_model_state(self, parameters: dict):
+        self.override = parameters.get("override", False)
         for name, code_model in self.get_models():
             if name in parameters and code_model.is_active:
                 code_model.set_model_state(parameters[name])
