@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 
-from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.code import CodeModel, PluginCodes, PwCodeModel
-from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
+from aiidalab_qe.common.code import CodeModel, PluginCodes
+from aiidalab_qe.common.panel import ResourceSettingsPanel
 from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
 from .model import GlobalResourceSettingsModel
@@ -34,8 +33,6 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
             self._on_plugin_overrides_change,
             "plugin_overrides",
         )
-
-        self._fetch_plugin_codes()
 
     def render(self):
         if self.rendered:
@@ -66,6 +63,20 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
         for _, code_model in self._model.get_models():
             if code_model.is_active:
                 self._toggle_code(code_model)
+
+    def set_up_codes(self, codes: PluginCodes):
+        for identifier, code_models in codes.items():
+            for _, code_model in code_models.items():
+                base_code_model = self._model.add_global_model(identifier, code_model)
+                if base_code_model is not None:
+                    base_code_model.observe(
+                        self._on_code_activation_change,
+                        "is_active",
+                    )
+                    base_code_model.observe(
+                        self._on_code_selection_change,
+                        "selected",
+                    )
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -129,26 +140,3 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
         )
 
         toggle_widget()
-
-    def _fetch_plugin_codes(self):
-        codes: PluginCodes = {
-            "dft": {
-                "pw": PwCodeModel(),
-            },
-        }
-        entries = get_entry_items("aiidalab_qe.properties", "resources")
-        for identifier, resources in entries.items():
-            resource_model: ResourceSettingsModel = resources["model"]()
-            codes[identifier] = dict(resource_model.get_models())
-        for identifier, code_models in codes.items():
-            for _, code_model in code_models.items():
-                base_code_model = self._model.add_global_model(identifier, code_model)
-                if base_code_model is not None:
-                    base_code_model.observe(
-                        self._on_code_activation_change,
-                        "is_active",
-                    )
-                    base_code_model.observe(
-                        self._on_code_selection_change,
-                        "selected",
-                    )

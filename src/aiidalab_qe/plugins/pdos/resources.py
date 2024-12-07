@@ -7,6 +7,8 @@ from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPane
 class PdosResourceSettingsModel(ResourceSettingsModel):
     """Model for the pdos code setting plugin."""
 
+    identifier = "pdos"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.add_models(
@@ -32,4 +34,3 @@ class PdosResourceSettingsModel(ResourceSettingsModel):
 
 class PdosResourceSettingsPanel(ResourceSettingsPanel[PdosResourceSettingsModel]):
     title = "PDOS"
-    identifier = "pdos"

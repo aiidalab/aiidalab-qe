@@ -20,8 +20,8 @@ class GlobalResourceSettingsModel(
     identifier = "global"
 
     dependencies = [
-        "input_parameters",
         "input_structure",
+        "input_parameters",
     ]
 
     input_parameters = tl.Dict()
@@ -49,10 +49,6 @@ class GlobalResourceSettingsModel(
         self.plugin_mapping: dict[str, list[str]] = {}
 
         self.override = True
-
-    def update(self):
-        for _, code_model in self.get_models():
-            code_model.update(self.DEFAULT_USER_EMAIL)
 
     def update_global_codes(self):
         self.global_codes = self.get_model_state()["codes"]
@@ -116,6 +112,9 @@ class GlobalResourceSettingsModel(
         return base_code_model
 
     def check_resources(self):
+        if not self.has_model("quantumespresso.pw"):
+            return
+
         pw_code_model = self.get_model("quantumespresso.pw")
 
         if not self.input_structure or not pw_code_model.selected:

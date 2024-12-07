@@ -34,7 +34,7 @@ class HasModels(t.Generic[T]):
     def has_model(self, identifier):
         return identifier in self._models
 
-    def add_model(self, identifier, model):
+    def add_model(self, identifier, model: T):
         self._models[identifier] = model
         self._link_model(model)
 

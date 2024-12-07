@@ -10,6 +10,7 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.code import PluginCodes, PwCodeModel
 from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
@@ -199,9 +200,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.confirm()
 
     def reset(self):
-        with self.hold_trait_notifications():
-            self._model.reset()
-            self._model.set_selected_codes()
+        self._model.reset()
 
     @tl.observe("previous_step_state")
     def _on_previous_step_state_change(self, _):
@@ -327,6 +326,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def _fetch_plugin_resource_settings(self):
         entries = get_entry_items("aiidalab_qe.properties", "resources")
+        codes: PluginCodes = {
+            "dft": {
+                "pw": PwCodeModel(),
+            },
+        }
         for identifier, resources in entries.items():
             for key in ("panel", "model"):
                 if key not in resources:
@@ -352,3 +356,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 identifier=identifier,
                 model=model,
             )
+
+            codes[identifier] = dict(model.get_models())
+
+        self.global_resources.set_up_codes(codes)
