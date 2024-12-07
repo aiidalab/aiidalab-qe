@@ -165,31 +165,29 @@ class SubmissionStepModel(
         parameters: dict = deepcopy(self.input_parameters)  # type: ignore
         parameters["codes"] = {
             identifier: model.get_model_state()
-            for identifier, model in self._models.items()
+            for identifier, model in self.get_models()
             if model.include
         }
         return parameters
 
     def set_model_state(self, parameters):
+        codes: dict = parameters.get("codes", {})
+
         if "resources" in parameters:
-            parameters["codes"] = {
-                key: {"code": value} for key, value in parameters["codes"].items()
-            }
-            parameters["codes"]["pw"]["nodes"] = parameters["resources"]["num_machines"]
-            parameters["codes"]["pw"]["cpus"] = parameters["resources"][
-                "num_mpiprocs_per_machine"
-            ]
-            parameters["codes"]["pw"]["parallelization"] = {
-                "npool": parameters["resources"]["npools"]
-            }
+            resources = parameters["resources"]
+            codes |= {key: {"code": value} for key, value in codes.items()}
+            codes["pw"]["nodes"] = resources["num_machines"]
+            codes["pw"]["cpus"] = resources["num_mpiprocs_per_machine"]
+            codes["pw"]["parallelization"] = {"npool": resources["npools"]}
+
         workchain_parameters: dict = parameters.get("workchain", {})
         properties = set(workchain_parameters.get("properties", []))
-        with self.hold_trait_notifications():
-            for identifier, model in self._models.items():
-                model.include = identifier in self._default_models | properties
-                if parameters["codes"].get(identifier):
-                    model.set_model_state(parameters["codes"][identifier]["codes"])
-                    model.loaded_from_process = True
+        included = self._default_models | properties
+        for identifier, model in self.get_models():
+            model.include = identifier in included
+            if codes.get(identifier):
+                model.set_model_state(codes[identifier])
+                model.loaded_from_process = True
 
         if self.process_node:
             self.process_label = self.process_node.label
@@ -208,7 +206,7 @@ class SubmissionStepModel(
             self.input_structure = None
             self.input_parameters = {}
             self.process_node = None
-            for identifier, model in self._models.items():
+            for identifier, model in self.get_models():
                 if identifier not in self._default_models:
                     model.include = False
 

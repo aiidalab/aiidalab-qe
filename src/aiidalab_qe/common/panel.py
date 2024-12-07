@@ -84,6 +84,7 @@ class PluginOutline(ipw.HBox):
 
 class SettingsModel(Model):
     title = "Model"
+    identifier = ""
     dependencies: list[str] = []
 
     include = tl.Bool(False)
@@ -113,12 +114,11 @@ SM = t.TypeVar("SM", bound=SettingsModel)
 
 class SettingsPanel(Panel, t.Generic[SM]):
     title = "Settings"
-    identifier = ""
 
     def __init__(self, model: SM, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
-        self.loading_message = LoadingWidget(f"Loading {self.identifier} settings")
+        self.loading_message = LoadingWidget(f"Loading {model.identifier} settings")
 
         super().__init__(
             children=[self.loading_message],
@@ -226,6 +226,10 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         # Used by the code-setup thread to fetch code options
         self.DEFAULT_USER_EMAIL = orm.User.collection.get_default().email
 
+    def add_model(self, identifier, model):
+        super().add_model(identifier, model)
+        model.update(self.DEFAULT_USER_EMAIL)
+
     def update(self):
         """Updates the code models from the global resources.
 
@@ -235,7 +239,6 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         if self.override:
             return
         for _, code_model in self.get_models():
-            code_model.update(self.DEFAULT_USER_EMAIL)
             default_calc_job_plugin = code_model.default_calc_job_plugin
             if default_calc_job_plugin in self.global_codes:
                 code_resources: dict = self.global_codes[default_calc_job_plugin]  # type: ignore
@@ -257,10 +260,8 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         }
 
     def set_model_state(self, parameters: dict):
-        self.override = parameters.get("override", False)
-        for name, code_model in self.get_models():
-            if name in parameters and code_model.is_active:
-                code_model.set_model_state(parameters[name])
+        self.override = parameters.get("override", self.identifier == "global")
+        self.set_selected_codes(parameters.get("codes", {}))
 
     def get_selected_codes(self) -> dict[str, dict]:
         return {
@@ -271,7 +272,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
 
     def set_selected_codes(self, code_data=DEFAULT["codes"]):
         for identifier, code_model in self.get_models():
-            if identifier in code_data and code_model.is_active:
+            if identifier in code_data:
                 code_model.set_model_state(code_data[identifier])
 
     def reset(self):
