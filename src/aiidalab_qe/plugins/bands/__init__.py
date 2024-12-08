@@ -1,8 +1,8 @@
 # from aiidalab_qe.bands.result import Result
 from aiidalab_qe.common.panel import PluginOutline
 
-from .code import BandsResourceSettingsModel, BandsResourceSettingsPanel
 from .model import BandsConfigurationSettingsModel
+from .resources import BandsResourceSettingsModel, BandsResourceSettingsPanel
 from .result import BandsResultsModel, BandsResultsPanel
 from .setting import BandsConfigurationSettingsPanel
 from .workchain import workchain_and_builder
@@ -18,7 +18,7 @@ bands = {
         "panel": BandsConfigurationSettingsPanel,
         "model": BandsConfigurationSettingsModel,
     },
-    "code": {
+    "resources": {
         "panel": BandsResourceSettingsPanel,
         "model": BandsResourceSettingsModel,
     },

@@ -56,7 +56,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             lambda structure: ""
             if structure
             else """
-                <div class="alert alert-info">
+                <div class="alert alert-danger">
                     <b>Please set the input structure first.</b>
                 </div>
             """,

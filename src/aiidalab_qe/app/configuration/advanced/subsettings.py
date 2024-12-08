@@ -8,6 +8,7 @@ from aiidalab_qe.common.mvc import Model
 
 
 class AdvancedCalculationSubSettingsModel(Model):
+    identifier = "sub"
     dependencies = []
 
     loaded_from_process = tl.Bool(False)
@@ -33,12 +34,10 @@ M = t.TypeVar("M", bound=AdvancedCalculationSubSettingsModel)
 
 
 class AdvancedConfigurationSubSettingsPanel(ipw.VBox, t.Generic[M]):
-    identifier = "sub"
-
     def __init__(self, model: M, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
-        self.loading_message = LoadingWidget(f"Loading {self.identifier} settings")
+        self.loading_message = LoadingWidget(f"Loading {model.identifier} settings")
 
         super().__init__(
             layout={"justify_content": "space-between", **kwargs.get("layout", {})},

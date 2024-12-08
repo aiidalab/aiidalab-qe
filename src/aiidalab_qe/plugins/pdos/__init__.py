@@ -1,7 +1,7 @@
 from aiidalab_qe.common.panel import PluginOutline
 
-from .code import PdosResourceSettingsModel, PdosResourceSettingsPanel
 from .model import PdosConfigurationSettingsModel
+from .resources import PdosResourceSettingsModel, PdosResourceSettingsPanel
 from .result import PdosResultsModel, PdosResultsPanel
 from .setting import PdosConfigurationSettingPanel
 from .workchain import workchain_and_builder
@@ -17,7 +17,7 @@ pdos = {
         "panel": PdosConfigurationSettingPanel,
         "model": PdosConfigurationSettingsModel,
     },
-    "code": {
+    "resources": {
         "panel": PdosResourceSettingsPanel,
         "model": PdosResourceSettingsModel,
     },

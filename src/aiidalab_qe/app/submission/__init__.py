@@ -10,7 +10,8 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
+from aiidalab_qe.common.code import PluginCodes, PwCodeModel
+from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_widgets_base import WizardAppWidgetStep
@@ -38,10 +39,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.observe(
             self._on_submission,
             "confirmed",
-        )
-        self._model.observe(
-            self._on_input_structure_change,
-            "input_structure",
         )
         self._model.observe(
             self._on_input_parameters_change,
@@ -77,22 +74,28 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.rendered = False
 
-        global_code_model = GlobalResourceSettingsModel()
-        self.global_code_settings = GlobalResourceSettingsPanel(model=global_code_model)
-        self._model.add_model("global", global_code_model)
-        global_code_model.observe(
+        global_resources_model = GlobalResourceSettingsModel()
+        self.global_resources = GlobalResourceSettingsPanel(
+            model=global_resources_model
+        )
+        self._model.add_model("global", global_resources_model)
+        ipw.dlink(
+            (self._model, "plugin_overrides"),
+            (global_resources_model, "plugin_overrides"),
+        )
+        global_resources_model.observe(
             self._on_plugin_submission_blockers_change,
             ["submission_blockers"],
         )
-        global_code_model.observe(
+        global_resources_model.observe(
             self._on_plugin_submission_warning_messages_change,
             ["submission_warning_messages"],
         )
 
         self.settings = {
-            "global": self.global_code_settings,
+            "global": self.global_resources,
         }
-        self._fetch_plugin_settings()
+        self._fetch_plugin_resource_settings()
 
         self._install_sssp(qe_auto_setup)
         self._set_up_qe(qe_auto_setup)
@@ -197,9 +200,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.confirm()
 
     def reset(self):
-        with self.hold_trait_notifications():
-            self._model.reset()
-            self._model.set_selected_codes()
+        self._model.reset()
 
     @tl.observe("previous_step_state")
     def _on_previous_step_state_change(self, _):
@@ -211,14 +212,15 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         tab: ResourceSettingsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
 
-    def _on_input_structure_change(self, _):
-        """"""
-
     def _on_input_parameters_change(self, _):
-        self._model.update_active_models()
-        self._update_tabs()
         self._model.update_process_label()
+        self._model.update_plugin_inclusion()
+        self._model.update_plugin_overrides()
         self._model.update_submission_blockers()
+        self._update_tabs()
+
+    def _on_plugin_overrides_change(self, _):
+        self._model.update_plugin_overrides()
 
     def _on_plugin_submission_blockers_change(self, _):
         self._model.update_submission_blockers()
@@ -237,16 +239,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self._model.update_submission_blocker_message()
         self._update_state()
 
-    def _on_submission_warning_change(self, _):
-        self._model.update_submission_warning_message()
-
     def _on_installation_change(self, _):
         self._model.update_submission_blockers()
 
     def _on_qe_installed(self, _):
         self._toggle_qe_installation_widget()
         if self._model.qe_installed:
-            self._model.refresh_codes()
+            self._model.update()
 
     def _on_sssp_installed(self, _):
         self._toggle_sssp_installation_widget()
@@ -325,14 +324,24 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         else:
             self.state = self.state.CONFIGURED
 
-    def _fetch_plugin_settings(self):
-        eps = get_entry_items("aiidalab_qe.properties", "code")
-        for identifier, data in eps.items():
+    def _fetch_plugin_resource_settings(self):
+        entries = get_entry_items("aiidalab_qe.properties", "resources")
+        codes: PluginCodes = {
+            "dft": {
+                "pw": PwCodeModel(),
+            },
+        }
+        for identifier, resources in entries.items():
             for key in ("panel", "model"):
-                if key not in data:
+                if key not in resources:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
-            panel = data["panel"]
-            model: ResourceSettingsModel = data["model"]()
+
+            panel = resources["panel"]
+            model: PluginResourceSettingsModel = resources["model"]()
+            model.observe(
+                self._on_plugin_overrides_change,
+                "override",
+            )
             model.observe(
                 self._on_plugin_submission_blockers_change,
                 ["submission_blockers"],
@@ -343,16 +352,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             )
             self._model.add_model(identifier, model)
 
-            def toggle_plugin(_, model=model):
-                model.update()
-                self._update_tabs()
-
-            model.observe(
-                toggle_plugin,
-                "include",
-            )
-
             self.settings[identifier] = panel(
                 identifier=identifier,
                 model=model,
             )
+
+            codes[identifier] = dict(model.get_models())
+
+        self.global_resources.set_up_codes(codes)

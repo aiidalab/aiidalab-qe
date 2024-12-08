@@ -702,8 +702,7 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         )
         traitlets.link((self.code_selection, "value"), (self, "value"))
 
-    @traitlets.observe("value")
-    def _update_resources(self, change):
+    def update_resources(self, change):
         if change["new"]:
             self.set_resource_defaults(load_code(change["new"]).computer)
 
