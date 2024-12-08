@@ -11,7 +11,7 @@ from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasModels
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.panel import ResourceSettingsModel
+from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
 from aiidalab_qe.workflows import QeAppWorkChain
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -131,7 +131,9 @@ class SubmissionStepModel(
         self.plugin_overrides = [
             identifier
             for identifier, model in self.get_models()
-            if identifier != "global" and model.include and model.override
+            if isinstance(model, PluginResourceSettingsModel)
+            and model.include
+            and model.override
         ]
 
     def update_submission_blockers(self):

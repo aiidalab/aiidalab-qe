@@ -11,7 +11,7 @@ import traitlets as tl
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import PluginCodes, PwCodeModel
-from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
+from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_widgets_base import WizardAppWidgetStep
@@ -337,7 +337,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
 
             panel = resources["panel"]
-            model: ResourceSettingsModel = resources["model"]()
+            model: PluginResourceSettingsModel = resources["model"]()
             model.observe(
                 self._on_plugin_overrides_change,
                 "override",

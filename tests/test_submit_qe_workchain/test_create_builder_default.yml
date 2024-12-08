@@ -66,7 +66,6 @@ codes:
         max_wallclock_seconds: 43200
         nodes: 1
         ntasks_per_node: 1
-    override: true
   pdos:
     codes:
       dos:
