@@ -287,6 +287,10 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
             code_widget = self.code_widgets[code_model.name]
         if not code_model.is_rendered:
             self._render_code_widget(code_model, code_widget)
+            code_widget.observe(
+                code_widget.update_resources,
+                "value",
+            )
 
     def _render_code_widget(
         self,
@@ -299,7 +303,7 @@ class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
         )
         ipw.link(
             (code_model, "selected"),
-            (code_widget.code_selection.code_select_dropdown, "value"),
+            (code_widget, "value"),
         )
         ipw.link(
             (code_model, "num_cpus"),
