@@ -1,10 +1,13 @@
 """Panel for XAS plugin."""
 
 from aiidalab_qe.common.code.model import CodeModel, PwCodeModel
-from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
+from aiidalab_qe.common.panel import (
+    PluginResourceSettingsModel,
+    PluginResourceSettingsPanel,
+)
 
 
-class XasResourceSettingsModel(ResourceSettingsModel):
+class XasResourceSettingsModel(PluginResourceSettingsModel):
     """Model for the XAS plugin."""
 
     identifier = "xas"
@@ -27,5 +30,7 @@ class XasResourceSettingsModel(ResourceSettingsModel):
         )
 
 
-class XasResourceSettingsPanel(ResourceSettingsPanel[XasResourceSettingsModel]):
+class XasResourceSettingsPanel(
+    PluginResourceSettingsPanel[XasResourceSettingsModel],
+):
     title = "XAS Structure"

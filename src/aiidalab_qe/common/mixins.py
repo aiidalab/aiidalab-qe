@@ -51,7 +51,7 @@ class HasModels(t.Generic[T]):
         return self._models.items()
 
     def _link_model(self, model: T):
-        raise NotImplementedError()
+        pass
 
 
 class HasProcess(tl.HasTraits):

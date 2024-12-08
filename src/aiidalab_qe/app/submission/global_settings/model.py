@@ -48,8 +48,6 @@ class GlobalResourceSettingsModel(
 
         self.plugin_mapping: dict[str, list[str]] = {}
 
-        self.override = True
-
     def update_global_codes(self):
         self.global_codes = self.get_model_state()["codes"]
 
