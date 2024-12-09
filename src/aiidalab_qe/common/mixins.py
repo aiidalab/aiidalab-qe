@@ -31,12 +31,19 @@ class HasModels(t.Generic[T]):
     def __init__(self):
         self._models: dict[str, T] = {}
 
-    def add_model(self, identifier, model):
+    def has_model(self, identifier):
+        return identifier in self._models
+
+    def add_model(self, identifier, model: T):
         self._models[identifier] = model
         self._link_model(model)
 
+    def add_models(self, models: dict[str, T]):
+        for identifier, model in models.items():
+            self.add_model(identifier, model)
+
     def get_model(self, identifier) -> T:
-        if identifier in self._models:
+        if self.has_model(identifier):
             return self._models[identifier]
         raise ValueError(f"Model with identifier '{identifier}' not found.")
 
@@ -44,7 +51,7 @@ class HasModels(t.Generic[T]):
         return self._models.items()
 
     def _link_model(self, model: T):
-        raise NotImplementedError()
+        pass
 
 
 class HasProcess(tl.HasTraits):

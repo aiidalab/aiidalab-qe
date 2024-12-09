@@ -24,6 +24,7 @@ class CodeModel(Model):
     max_wallclock_seconds = tl.Int(3600 * 12)
     allow_hidden_codes = tl.Bool(False)
     allow_disabled_computers = tl.Bool(False)
+    override = tl.Bool(False)
 
     def __init__(
         self,
@@ -48,19 +49,24 @@ class CodeModel(Model):
     def is_ready(self):
         return self.is_active and bool(self.selected)
 
+    @property
+    def first_option(self):
+        return self.options[0][1] if self.options else None  # type: ignore
+
     def activate(self):
         self.is_active = True
 
     def deactivate(self):
         self.is_active = False
 
-    def update(self, user_email: str):
-        if not self.options:
+    def update(self, user_email="", refresh=False):
+        if not self.options or refresh:
             self.options = self._get_codes(user_email)
-            self.selected = self.options[0][1] if self.options else None
+            self.selected = self.first_option
 
     def get_model_state(self) -> dict:
         return {
+            "options": self.options,
             "code": self.selected,
             "nodes": self.num_nodes,
             "cpus": self.num_cpus,
@@ -69,8 +75,12 @@ class CodeModel(Model):
             "max_wallclock_seconds": self.max_wallclock_seconds,
         }
 
-    def set_model_state(self, parameters):
-        self.selected = self._get_uuid(parameters["code"])
+    def set_model_state(self, parameters: dict):
+        self.selected = (
+            self._get_uuid(identifier)
+            if (identifier := parameters.get("code"))
+            else self.first_option
+        )
         self.num_nodes = parameters.get("nodes", 1)
         self.num_cpus = parameters.get("cpus", 1)
         self.ntasks_per_node = parameters.get("ntasks_per_node", 1)
@@ -78,19 +88,15 @@ class CodeModel(Model):
         self.max_wallclock_seconds = parameters.get("max_wallclock_seconds", 3600 * 12)
 
     def _get_uuid(self, identifier):
-        if not self.selected:
-            try:
-                uuid = orm.load_code(identifier).uuid
-            except NotExistent:
-                uuid = None
-            # If the code was imported from another user, it is not usable
-            # in the app and thus will not be considered as an option!
-            self.selected = uuid if uuid in [opt[1] for opt in self.options] else None
-        return self.selected
+        try:
+            uuid = orm.load_code(identifier).uuid
+        except NotExistent:
+            uuid = None
+        # If the code was imported from another user, it is not usable
+        # in the app and thus will not be considered as an option!
+        return uuid if uuid in [opt[1] for opt in self.options] else None
 
-    def _get_codes(self, user_email: str):
-        # set default user_email if not provided
-        user_email = user_email or orm.User.collection.get_default().email
+    def _get_codes(self, user_email: str = ""):
         user = orm.User.collection.get(email=user_email)
 
         filters = (
@@ -122,7 +128,7 @@ class CodeModel(Model):
 
 
 class PwCodeModel(CodeModel):
-    override = tl.Bool(False)
+    parallelization_override = tl.Bool(False)
     npool = tl.Int(1)
 
     def __init__(
@@ -142,14 +148,22 @@ class PwCodeModel(CodeModel):
 
     def get_model_state(self) -> dict:
         parameters = super().get_model_state()
-        parameters["parallelization"] = {"npool": self.npool} if self.override else {}
+        parameters["parallelization"] = (
+            {
+                "npool": self.npool,
+            }
+            if self.parallelization_override
+            else {}
+        )
         return parameters
 
     def set_model_state(self, parameters):
         super().set_model_state(parameters)
         if "parallelization" in parameters and "npool" in parameters["parallelization"]:
-            self.override = True
+            self.parallelization_override = True
             self.npool = parameters["parallelization"].get("npool", 1)
+        else:
+            self.parallelization_override = False
 
 
 CodesDict = dict[str, CodeModel]

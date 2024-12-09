@@ -86,7 +86,7 @@ class ConfigurationStepModel(
     def get_model_state(self):
         parameters = {
             identifier: model.get_model_state()
-            for identifier, model in self._models.items()
+            for identifier, model in self.get_models()
             if model.include
         }
         parameters["workchain"] |= {
@@ -100,7 +100,7 @@ class ConfigurationStepModel(
             workchain_parameters: dict = parameters.get("workchain", {})
             self.relax_type = workchain_parameters.get("relax_type")
             properties = set(workchain_parameters.get("properties", []))
-            for identifier, model in self._models.items():
+            for identifier, model in self.get_models():
                 model.include = identifier in self._default_models | properties
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
@@ -111,7 +111,7 @@ class ConfigurationStepModel(
         self.relax_type_help = self._get_default_relax_type_help()
         self.relax_type_options = self._get_default_relax_type_options()
         self.relax_type = self._get_default_relax_type()
-        for identifier, model in self._models.items():
+        for identifier, model in self.get_models():
             if identifier not in self._default_models:
                 model.include = False
 
@@ -135,7 +135,7 @@ class ConfigurationStepModel(
 
     def _get_properties(self):
         properties = []
-        for identifier, model in self._models.items():
+        for identifier, model in self.get_models():
             if identifier in self._default_models:
                 continue
             if model.include:
