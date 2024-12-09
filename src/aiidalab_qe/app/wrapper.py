@@ -4,6 +4,7 @@ import ipywidgets as ipw
 import traitlets as tl
 from IPython.display import display
 
+from aiidalab_qe.common.guide_manager import guide_manager
 from aiidalab_qe.common.widgets import LoadingWidget
 
 
@@ -95,9 +96,11 @@ class AppWrapperContoller:
 
     def _on_guide_select(self, change: dict):
         """Sets the current active guide."""
-        from aiidalab_qe.common.infobox import guide_manager
-
         guide_manager.active_guide = change["new"]
+
+    def _set_guide_options(self, _):
+        """Fetch the available guides."""
+        self._view.guide_selection.options = ["none", *guide_manager.get_guides()]
 
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
@@ -105,6 +108,7 @@ class AppWrapperContoller:
         self._view.about_toggle.observe(self._on_about_toggle, "value")
         self._view.job_history_toggle.observe(self._on_job_history_toggle, "value")
         self._view.guide_selection.observe(self._on_guide_select, "value")
+        self._view.on_displayed(self._set_guide_options)
 
 
 class AppWrapperModel(tl.HasTraits):
@@ -196,7 +200,7 @@ class AppWrapperView(ipw.VBox):
         self.about = ipw.HTML(env.from_string(about_template).render())
 
         self.guide_selection = ipw.RadioButtons(
-            options=["none", "basic"],
+            options=["none"],
             description="Guides:",
             value="none",
         )

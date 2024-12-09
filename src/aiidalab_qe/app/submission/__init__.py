@@ -159,25 +159,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.children = [
-            InAppGuide(
-                children=[
-                    ipw.HTML("""
-                    <div>
-                        In this step, we define the resources to be used in the
-                        calculation. The global resources are used to define resources
-                        across all workflow calculations. Optionally, you can override
-                        the resource settings for specific calculations.
-                        <div class="alert alert-success">
-                            <h4>Tasks</h4>
-                            <ol>
-                                <li>Select resources</li>
-                                <li>Click <b>Submit</b> to proceed</li>
-                            </ol>
-                        </div>
-                    </div>
-                """)
-                ],
-            ),
+            InAppGuide(identifier="submission-step"),
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
                     <h4>Codes</h4>
