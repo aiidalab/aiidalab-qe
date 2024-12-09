@@ -14,6 +14,7 @@ from aiidalab_qe.common import (
     LazyLoadedOptimade,
     LazyLoadedStructureBrowser,
 )
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
@@ -151,6 +152,57 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.children = [
+            InAppGuide(
+                children=[
+                    ipw.HTML("""
+                    <div>
+                        In this step, you can select a structure as follows:
+                        <ul>
+                            <li>
+                                <b>Upload file</b>:
+                                upload a structure file from your computer.
+                            </li>
+                            <li>
+                                <b>OPTIMADE</b>:
+                                search for structures in the OPTIMADE database.
+                            </li>
+                            <li>
+                                <b>AiiDA database</b>:
+                                search for structures in your AiiDA database.
+                            </li>
+                            <li>
+                                <b>From Examples</b>:
+                                select a structure from a list of example structures.
+                            </li>
+                        </ul>
+                        Once selected, you may inspect the structure. You can also edit
+                        the structure using the available structure editors. When done,
+                        you can choose to modify the structure label and/or provide a
+                        description. These will be attached to the input structure node
+                        in your AiiDA database. When you are ready, click "Confirm" to
+                        proceed to the next step.
+                        <br>
+                        <div class="alert alert-success">
+                            <h4>Tasks</h4>
+                            <ol>
+                                <li>Click on the <b>From examples</b> tab</li>
+                                <li>Select <b>Gold</b> from the dropdown list</li>
+                                <li>Click the <b>Confirm</b> button to proceed.</li>
+                            </ol>
+                        </div>
+                        <div class="alert alert-warning">
+                            <b>Warning:</b> If the confirmed structure is not yet stored
+                            in the AiiDA database, it will be stored automatically when
+                            you proceed to the next step.
+                        </div>
+                        <div class="alert alert-warning">
+                            <b>Warning:</b> Changes after confirmation will unconfirm
+                            this step and reset the following steps.
+                        </div>
+                    </div>
+                """),
+                ],
+            ),
             ipw.HTML("""
                 <p>
                     Select a structure from one of the following sources and then

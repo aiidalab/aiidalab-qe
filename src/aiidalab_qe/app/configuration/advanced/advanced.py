@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
 from .hubbard import (
@@ -274,11 +275,19 @@ class AdvancedConfigurationSettingsPanel(
         self.pseudos.render()
 
         self.children = [
-            ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 10px">
-                    <h4>Advanced Settings</h4>
-                </div>
-            """),
+            InAppGuide(
+                children=[
+                    ipw.HTML("""
+                        <div>
+                            The Advanced settings allow you to finely tune the calculation.
+                            <div class="alert alert-warning">
+                                In this walkthrough, we will not modify advanced settings
+                                and proceed with the defaults.
+                            </div>
+                        </div>
+                    """)
+                ],
+            ),
             ipw.HBox(
                 children=[
                     self.clean_workdir,

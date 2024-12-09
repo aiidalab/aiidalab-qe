@@ -11,6 +11,7 @@ import traitlets as tl
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import PluginCodes, PwCodeModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
@@ -158,6 +159,25 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.children = [
+            InAppGuide(
+                children=[
+                    ipw.HTML("""
+                    <div>
+                        In this step, we define the resources to be used in the
+                        calculation. The global resources are used to define resources
+                        across all workflow calculations. Optionally, you can override
+                        the resource settings for specific calculations.
+                        <div class="alert alert-success">
+                            <h4>Tasks</h4>
+                            <ol>
+                                <li>Select resources</li>
+                                <li>Click <b>Submit</b> to proceed</li>
+                            </ol>
+                        </div>
+                    </div>
+                """)
+                ],
+            ),
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
                     <h4>Codes</h4>

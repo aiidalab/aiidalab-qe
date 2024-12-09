@@ -2,14 +2,39 @@
   display: none;
   margin: 2px;
   padding: 1em;
-  border: 3px solid orangered;
-  background-color: #ffedcc;
-  border-radius: 1em;
-  -webkit-border-radius: 1em;
-  -moz-border-radius: 1em;
-  -ms-border-radius: 1em;
-  -o-border-radius: 1em;
+  border-left: 3px solid #add8e6;
+  background-color: #d9edf7;
 }
 .info-box p {
   line-height: 24px;
+}
+.info-box.in-app-guide.show {
+  display: flex !important;
+}
+.guide ol {
+  list-style: none;
+}
+.guide p:not(:last-of-type) {
+  margin-bottom: 0.5em;
+}
+.guide-warning {
+  background-color: #fcf8e3;
+  border-color: #ffe4c4;
+  margin-bottom: 1em;
+}
+.in-app-guide .alert {
+  color: black;
+  margin: 10px 0;
+  padding: 10px 14px;
+  border-width: 0;
+  border-left-width: 3px;
+}
+.in-app-guide .alert.alert-warning {
+  border-color: #ffe4c4;
+}
+.in-app-guide .alert.alert-success {
+  border-color: #8fbc8f;
+}
+.in-app-guide h4 {
+  font-weight: bold;
 }

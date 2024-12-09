@@ -18,7 +18,7 @@ class TestWrapper:
         self.controller._on_guide_toggle({"new": True})
         self._assert_guide_is_on()
         self.controller._on_guide_toggle({"new": False})
-        self._assert_no_guide_info()
+        self._assert_no_info()
 
     def test_about_toggle(self):
         """Test about_toggle method."""
@@ -27,13 +27,13 @@ class TestWrapper:
         self.controller._on_about_toggle({"new": True})
         self._assert_about_is_on()
         self.controller._on_about_toggle({"new": False})
-        self._assert_no_guide_info()
+        self._assert_no_info()
 
     def test_toggle_switch(self):
         """Test toggle_switch method."""
         self._instansiate_mvc_components()
         self.controller.enable_toggles()
-        self._assert_no_guide_info()
+        self._assert_no_info()
         self.controller._on_guide_toggle({"new": True})
         self._assert_guide_is_on()
         self.controller._on_about_toggle({"new": True})
@@ -41,11 +41,11 @@ class TestWrapper:
         self.controller._on_guide_toggle({"new": True})
         self._assert_guide_is_on()
         self.controller._on_guide_toggle({"new": False})
-        self._assert_no_guide_info()
+        self._assert_no_info()
 
     def _assert_guide_is_on(self):
         """Assert guide is on."""
-        assert len(self.view.info_container.children) == 1
+        assert len(self.view.info_container.children) == 2
         assert self.view.guide in self.view.info_container.children
 
     def _assert_about_is_on(self):
@@ -53,7 +53,7 @@ class TestWrapper:
         assert len(self.view.info_container.children) == 1
         assert self.view.about in self.view.info_container.children
 
-    def _assert_no_guide_info(self):
+    def _assert_no_info(self):
         """Assert no info is shown."""
         assert len(self.view.info_container.children) == 0
 
