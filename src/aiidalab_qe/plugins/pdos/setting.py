@@ -2,6 +2,7 @@
 
 import ipywidgets as ipw
 
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
 from .model import PdosConfigurationSettingsModel
@@ -107,6 +108,19 @@ class PdosConfigurationSettingPanel(
         )
 
         self.children = [
+            InAppGuide(
+                children=[
+                    ipw.HTML("""
+                        <div>
+                           Here we configure the settings for computing the projected
+                           density of states, or PDOS.
+                            <div class="alert alert-success">
+                                ???
+                            </div>
+                        </div>
+                    """)
+                ],
+            ),
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
                     <h4>Settings</h4>

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import ipywidgets as ipw
-import traitlets
+import traitlets as tl
+from IPython.display import display
 
 from aiidalab_qe.common.widgets import LoadingWidget
 
@@ -56,7 +57,10 @@ class AppWrapperContoller:
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
         if change["new"]:
-            self._view.info_container.children = [self._view.guide]
+            self._view.info_container.children = [
+                self._view.guide,
+                self._view.guide_selection,
+            ]
             self._view.info_container.layout.display = "flex"
             self._view.job_history_toggle.value = False
         else:
@@ -89,14 +93,21 @@ class AppWrapperContoller:
         else:
             self._view.main.children = self._old_view
 
+    def _on_guide_select(self, change: dict):
+        """Sets the current active guide."""
+        from aiidalab_qe.common.infobox import guide_manager
+
+        guide_manager.active_guide = change["new"]
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._view.guide_toggle.observe(self._on_guide_toggle, "value")
         self._view.about_toggle.observe(self._on_about_toggle, "value")
         self._view.job_history_toggle.observe(self._on_job_history_toggle, "value")
+        self._view.guide_selection.observe(self._on_guide_select, "value")
 
 
-class AppWrapperModel(traitlets.HasTraits):
+class AppWrapperModel(tl.HasTraits):
     """An MVC model for `AppWrapper`."""
 
     def __init__(self):
@@ -114,7 +125,7 @@ class AppWrapperView(ipw.VBox):
         from datetime import datetime
 
         from importlib_resources import files
-        from IPython.display import Image, display
+        from IPython.display import Image
         from jinja2 import Environment
 
         from aiidalab_qe.app.static import templates
@@ -183,6 +194,12 @@ class AppWrapperView(ipw.VBox):
 
         self.guide = ipw.HTML(env.from_string(guide_template).render())
         self.about = ipw.HTML(env.from_string(about_template).render())
+
+        self.guide_selection = ipw.RadioButtons(
+            options=["none", "basic"],
+            description="Guides:",
+            value="none",
+        )
 
         self.job_history = QueryInterface()
 
