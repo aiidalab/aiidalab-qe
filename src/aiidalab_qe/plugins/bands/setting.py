@@ -27,19 +27,7 @@ class BandsConfigurationSettingsPanel(
         )
 
         self.children = [
-            InAppGuide(
-                children=[
-                    ipw.HTML("""
-                        <div>
-                           Here we configure the settings for computing the band
-                           structure.
-                            <div class="alert alert-success">
-                                Check <b>Fat bands calculation</b>
-                            </div>
-                        </div>
-                    """)
-                ],
-            ),
+            InAppGuide(identifier="bands-settings"),
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
                     <h4>Settings</h4>

@@ -61,27 +61,7 @@ class BasicConfigurationSettingsPanel(
         )
 
         self.children = [
-            InAppGuide(
-                children=[
-                    ipw.HTML("""
-                        <div>
-                            The basic settings panel provides top-level calculation
-                            settings including the electronic and magnetic properties of
-                            the material. It also provides a choice of three protocols
-                            that pre-configure many calculation settings, balancing
-                            speed with accuracy.
-                            <div class="alert alert-success">
-                                Select the <b>fast</b> protocol
-                            </div>
-                            <div class="alert alert-warning">
-                                Note: Due to the limited resources provided for the
-                                demo server, we select the <b>fast</b> protocol to
-                                reduce the cost of the calculation.
-                            </div>
-                        </div>
-                    """)
-                ],
-            ),
+            InAppGuide(identifier="basic-settings"),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
                     Below you can indicate both if the material should be treated as an

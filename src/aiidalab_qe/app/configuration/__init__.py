@@ -115,36 +115,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             children=[
                 ipw.VBox(
                     children=[
-                        InAppGuide(
-                            children=[
-                                ipw.HTML("""
-                                    <div>
-                                        Here we select the properties to calculate.
-                                        <div class="alert alert-success">
-                                            Select <b>Electronic band structure</b> and
-                                            <b>Projected density of states (PDOS)</b>
-                                        </div>
-                                    </div>
-                                """)
-                            ],
-                        ),
+                        InAppGuide(identifier="properties-selection"),
                         *self.property_children,
                     ]
                 ),
                 ipw.VBox(
                     children=[
-                        InAppGuide(
-                            children=[
-                                ipw.HTML("""
-                                    <div>
-                                        Here we can customize the calculation parameters.
-                                        <div class="alert alert-success">
-                                            Click on each tab to customize its settings.
-                                        </div>
-                                    </div>
-                                """)
-                            ],
-                        ),
+                        InAppGuide(identifier="calculation-settings"),
                         self.tabs,
                     ],
                 ),
@@ -171,30 +148,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.confirm_button.on_click(self.confirm)
 
         self.children = [
-            InAppGuide(
-                children=[
-                    ipw.HTML("""
-                    <div>
-                        In this step, we define the workflow tasks, including structure
-                        relaxation and which properties to compute, and select the
-                        parameters of the calculations.
-                        <div class="alert alert-success">
-                            <h4>Tasks</h4>
-                            <ol>
-                                <li>Select <b>Full geometry</b> relaxation</li>
-                                <li>Open <b>Step 2.1</b> to select properties</li>
-                                <li>Open <b>Step 2.2</b> to customize parameters</li>
-                                <li>Click <b>Confirm</b> to proceed</li>
-                            </ol>
-                        </div>
-                        <div class="alert alert-warning">
-                            <b>Note:</b> Changes after confirmation will unconfirm this
-                            step and reset the following steps.
-                        </div>
-                    </div>
-                """)
-                ],
-            ),
+            InAppGuide(identifier="configuration-step"),
             self.structure_set_message,
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">

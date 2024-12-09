@@ -110,17 +110,7 @@ class App(ipw.VBox):
 
         super().__init__(
             children=[
-                InAppGuide(
-                    children=[
-                        ipw.HTML("""
-                            <div>
-                                You've activated an in-app guide. Follow along below to learn
-                                how to use the Quantum ESPRESSO app.
-                            </div>
-                        """)
-                    ],
-                    classes=["guide-warning"],
-                ),
+                InAppGuide(identifier="guide-warning", classes=["guide-warning"]),
                 self.new_workchain_button,
                 self._process_loading_message,
                 self._wizard_app_widget,

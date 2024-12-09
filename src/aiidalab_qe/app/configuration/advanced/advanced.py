@@ -275,19 +275,7 @@ class AdvancedConfigurationSettingsPanel(
         self.pseudos.render()
 
         self.children = [
-            InAppGuide(
-                children=[
-                    ipw.HTML("""
-                        <div>
-                            The Advanced settings allow you to finely tune the calculation.
-                            <div class="alert alert-warning">
-                                In this walkthrough, we will not modify advanced settings
-                                and proceed with the defaults.
-                            </div>
-                        </div>
-                    """)
-                ],
-            ),
+            InAppGuide(identifier="advanced-settings"),
             ipw.HBox(
                 children=[
                     self.clean_workdir,

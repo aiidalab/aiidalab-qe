@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ipywidgets as ipw
-import traitlets as tl
 
 
 class InfoBox(ipw.VBox):
@@ -23,19 +22,13 @@ class InfoBox(ipw.VBox):
                     self.add_class(custom_class)
 
 
-class GuideManager(tl.HasTraits):
-    active_guide = tl.Unicode("none")
-
-
-guide_manager = GuideManager()
-
-
 class InAppGuide(InfoBox):
-    """The `InfoAppGuide` is used to set up in-app guides that may be toggle in unison."""
+    """The `InfoAppGuide` is used to set up toggleable in-app guides."""
 
     def __init__(
         self,
-        guide_class: str = "qe-app",
+        children: list | None = None,
+        identifier: str = "",
         classes: list[str] | None = None,
         **kwargs,
     ):
@@ -43,14 +36,16 @@ class InAppGuide(InfoBox):
 
         Parameters
         ----------
-        `guide_class` : `str`, optional
-            The identifier used to toggle the guide.
-            The default `qe-app` identifies built-in guide sections.
+        children : `list`, optional
+            The children of the guide.
+        `identifier` : `str`
+            The identifier used to load the guide file.
         `classes` : `list[str]`, optional
             One or more CSS classes.
         """
+        from aiidalab_qe.common.guide_manager import guide_manager
 
-        self.guide_class = guide_class
+        self.manager = guide_manager
 
         super().__init__(
             classes=[
@@ -60,7 +55,15 @@ class InAppGuide(InfoBox):
             **kwargs,
         )
 
-        guide_manager.observe(
+        if children:
+            self.children = children
+        elif identifier:
+            self.children = []
+            self.identifier = identifier
+        else:
+            raise ValueError("No content or path identifier provided")
+
+        self.manager.observe(
             self._on_active_guide_change,
             "active_guide",
         )
@@ -74,9 +77,7 @@ class InAppGuide(InfoBox):
         self._toggle_guide()
 
     def _toggle_guide(self):
-        active_guide = guide_manager.active_guide
-        not_generic = self.guide_class != "qe-app"
-        if active_guide == "none" or (not_generic and active_guide != self.guide_class):
-            self.layout.display = "none"
-        else:
-            self.layout.display = "flex"
+        if hasattr(self, "identifier"):
+            html = self.manager.get_guide_section_by_id(self.identifier)
+            self.children = [ipw.HTML(str(html))] if html else []
+        self.layout.display = "flex" if self.manager.has_guide else "none"
