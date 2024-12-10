@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
 from .hubbard import (
@@ -274,11 +275,7 @@ class AdvancedConfigurationSettingsPanel(
         self.pseudos.render()
 
         self.children = [
-            ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 10px">
-                    <h4>Advanced Settings</h4>
-                </div>
-            """),
+            InAppGuide(identifier="advanced-settings"),
             ipw.HBox(
                 children=[
                     self.clean_workdir,

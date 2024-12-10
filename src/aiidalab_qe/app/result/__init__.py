@@ -189,6 +189,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             self.node_view_container.children = [self.node_view_loading_message]
             self.node_view = self._create_workchain_viewer(node)
             self.node_views[node.uuid] = self.node_view
+        else:
+            return
 
         self.node_view_container.children = [self.node_view]
 

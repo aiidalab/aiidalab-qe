@@ -11,6 +11,7 @@ import traitlets as tl
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import PluginCodes, PwCodeModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
@@ -158,6 +159,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.children = [
+            InAppGuide(identifier="submission-step"),
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
                     <h4>Codes</h4>
