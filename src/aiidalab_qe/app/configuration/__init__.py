@@ -10,6 +10,7 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import (
     ConfigurationSettingsModel,
     ConfigurationSettingsPanel,
@@ -114,10 +115,16 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             children=[
                 ipw.VBox(
                     children=[
+                        InAppGuide(identifier="properties-selection"),
                         *self.property_children,
                     ]
                 ),
-                self.tabs,
+                ipw.VBox(
+                    children=[
+                        InAppGuide(identifier="calculation-settings"),
+                        self.tabs,
+                    ],
+                ),
             ],
             layout=ipw.Layout(margin="10px 2px"),
             selected_index=None,
@@ -141,6 +148,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.confirm_button.on_click(self.confirm)
 
         self.children = [
+            InAppGuide(identifier="configuration-step"),
             self.structure_set_message,
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
