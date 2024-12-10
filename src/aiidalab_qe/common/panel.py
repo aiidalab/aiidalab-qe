@@ -556,7 +556,11 @@ class ResultsModel(Model, HasProcess):
         """
 
     def _get_child_state_and_exit_message(self, child="this"):
-        if not (node := self._fetch_child_process_node(child)):
+        if not (
+            (node := self._fetch_child_process_node(child))
+            and hasattr(node, "process_state")
+            and node.process_state
+        ):
             return "queued", None
         if node.is_failed:
             return "failed", node.exit_message
