@@ -19,7 +19,13 @@ class GuideManager(tl.HasTraits):
 
         super().__init__(*args, **kwargs)
         guides = Path(aiidalab_qe.__file__).parent.joinpath("guides").glob("*")
-        self._guides = {guide.stem: guide.absolute() for guide in guides}
+        self._guides = {
+            "general": {
+                guide.stem.split("_", maxsplit=1)[1]: guide.absolute()
+                for guide in sorted(guides, key=lambda x: x.stem.split("_")[0])
+            }
+        }
+
         self._fetch_plugin_guides()
 
         self.content = BeautifulSoup()
@@ -33,7 +39,7 @@ class GuideManager(tl.HasTraits):
     def has_guide(self) -> bool:
         return self.active_guide != "none"
 
-    def get_guides(self) -> list[str]:
+    def get_guide_categories(self) -> list[str]:
         """Return a list of available guides.
 
         Returns
@@ -42,6 +48,16 @@ class GuideManager(tl.HasTraits):
             A list of the names of available guides.
         """
         return [*self._guides.keys()]
+
+    def get_guides(self, identifier: str) -> list[str]:
+        """Return a list of available sub-guides.
+
+        Returns
+        -------
+        `list[str]`
+            A list of the names of available sub-guides.
+        """
+        return [*self._guides[identifier].keys()] if identifier != "none" else []
 
     def get_guide_section_by_id(self, content_id: str) -> PageElement | None:
         """Return a guide section by its HTML `id` attribute.
@@ -60,16 +76,23 @@ class GuideManager(tl.HasTraits):
 
     def _on_active_guide_change(self, _):
         """Load the contents of the active guide."""
-        guide_path = self._guides.get(self.active_guide)
+        if self.active_guide == "none":
+            self.content = BeautifulSoup()
+            return
+        category, guide = self.active_guide.split("/")
+        guide_path = self._guides[category][guide]
         html = Path(guide_path).read_text() if guide_path else ""
         self.content = BeautifulSoup(html, "html.parser")
 
     def _fetch_plugin_guides(self):
         """Fetch guides from plugins."""
         entries: dict[str, Path] = get_entry_items("aiidalab_qe.properties", "guides")
-        for guides in entries.values():
-            for guide in guides.glob("*"):
-                self._guides[guide.stem] = guide.absolute()
+        for identifier, guides in entries.items():
+            if identifier not in self._guides:
+                self._guides[identifier] = {}
+            for guide in sorted(guides.glob("*"), key=lambda x: x.stem.split("_")[0]):
+                stem = guide.stem.split("_", maxsplit=1)[1]
+                self._guides[identifier][stem] = guide.absolute()
 
 
 guide_manager = GuideManager()

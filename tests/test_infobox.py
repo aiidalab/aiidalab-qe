@@ -32,6 +32,6 @@ def test_in_app_guide():
     )
     assert in_app_guide.children[0].value == "Hello, World!"
 
-    guide_manager.active_guide = "basic"
+    guide_manager.active_guide = "general/basic"
     in_app_guide = InAppGuide(identifier="guide-warning")
-    assert "You've activated an in-app guide" in in_app_guide.children[0].value
+    assert "You've activated the basic in-app guide" in in_app_guide.children[0].value

@@ -60,7 +60,13 @@ class AppWrapperContoller:
         if change["new"]:
             self._view.info_container.children = [
                 self._view.guide,
-                self._view.guide_selection,
+                ipw.HBox(
+                    children=[
+                        self._view.guide_category_selection,
+                        self._view.guide_selection,
+                    ],
+                    layout=ipw.Layout(align_items="baseline"),
+                ),
             ]
             self._view.info_container.layout.display = "flex"
             self._view.job_history_toggle.value = False
@@ -94,21 +100,50 @@ class AppWrapperContoller:
         else:
             self._view.main.children = self._old_view
 
-    def _on_guide_select(self, change: dict):
-        """Sets the current active guide."""
-        guide_manager.active_guide = change["new"]
+    def _on_guide_category_select(self, change: dict):
+        self._view.guide_selection.options = guide_manager.get_guides(change["new"])
+        self._update_active_guide()
 
-    def _set_guide_options(self, _):
+    def _on_guide_select(self, _):
+        self._update_active_guide()
+
+    def _update_active_guide(self):
+        """Sets the current active guide."""
+        category = self._view.guide_category_selection.value
+        guide = self._view.guide_selection.value
+        active_guide = f"{category}/{guide}" if category != "none" else category
+        guide_manager.active_guide = active_guide
+
+    def _set_guide_category_options(self, _):
         """Fetch the available guides."""
-        self._view.guide_selection.options = ["none", *guide_manager.get_guides()]
+        self._view.guide_category_selection.options = [
+            "none",
+            *guide_manager.get_guide_categories(),
+        ]
 
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
-        self._view.guide_toggle.observe(self._on_guide_toggle, "value")
-        self._view.about_toggle.observe(self._on_about_toggle, "value")
-        self._view.job_history_toggle.observe(self._on_job_history_toggle, "value")
-        self._view.guide_selection.observe(self._on_guide_select, "value")
-        self._view.on_displayed(self._set_guide_options)
+        self._view.guide_toggle.observe(
+            self._on_guide_toggle,
+            "value",
+        )
+        self._view.about_toggle.observe(
+            self._on_about_toggle,
+            "value",
+        )
+        self._view.job_history_toggle.observe(
+            self._on_job_history_toggle,
+            "value",
+        )
+        self._view.guide_category_selection.observe(
+            self._on_guide_category_select,
+            "value",
+        )
+        self._view.guide_selection.observe(
+            self._on_guide_select,
+            "value",
+        )
+        self._view.on_displayed(self._set_guide_category_options)
 
 
 class AppWrapperModel(tl.HasTraits):
@@ -199,11 +234,13 @@ class AppWrapperView(ipw.VBox):
         self.guide = ipw.HTML(env.from_string(guide_template).render())
         self.about = ipw.HTML(env.from_string(about_template).render())
 
-        self.guide_selection = ipw.RadioButtons(
+        self.guide_category_selection = ipw.RadioButtons(
             options=["none"],
             description="Guides:",
             value="none",
+            layout=ipw.Layout(width="max-content"),
         )
+        self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(margin="2px 20px"))
 
         self.job_history = QueryInterface()
 
