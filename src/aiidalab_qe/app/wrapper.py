@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import display
+from IPython.display import Javascript, display
 
 from aiidalab_qe.common.guide_manager import guide_manager
 from aiidalab_qe.common.widgets import LoadingWidget
@@ -48,10 +48,10 @@ class AppWrapperContoller:
         self._view = view
         self._set_event_handlers()
 
-    def enable_toggles(self) -> None:
-        """Enable the toggle buttons."""
-        self._view.guide_toggle.disabled = False
-        self._view.about_toggle.disabled = False
+    def enable_controls(self) -> None:
+        """Enable the control buttons at the top of the app."""
+        for control in self._view.controls.children:
+            control.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -89,6 +89,12 @@ class AppWrapperContoller:
     def _on_guide_select(self, _):
         self._update_active_guide()
 
+    def _on_calculation_history_click(self, _):
+        self._open_external_notebook("./calculation_history.ipynb")
+
+    def _on_setup_resources_click(self, _):
+        self._open_external_notebook("../home/code_setup.ipynb")
+
     def _update_active_guide(self):
         """Sets the current active guide."""
         category = self._view.guide_category_selection.value
@@ -102,6 +108,10 @@ class AppWrapperContoller:
             "none",
             *guide_manager.get_guide_categories(),
         ]
+
+    def _open_external_notebook(self, url):
+        """Open an external notebook in a new tab."""
+        display(Javascript(f"window.open('{url}', '_blank')"))
 
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
@@ -122,6 +132,8 @@ class AppWrapperContoller:
             "value",
         )
         self._view.on_displayed(self._set_guide_category_options)
+        self._view.calculation_history_link.on_click(self._on_calculation_history_click)
+        self._view.setup_resources_link.on_click(self._on_setup_resources_click)
 
 
 class AppWrapperModel(tl.HasTraits):
@@ -184,24 +196,34 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.calculation_history_button = ipw.Button(
+        self.calculation_history_link = ipw.Button(
             layout=ipw.Layout(width="auto"),
             button_style="",
             icon="list",
             description="Calculation history",
             tooltip="View all calculations run with this app",
+            disabled=True,
         )
 
-        self.calculation_history_button.on_click(self._open_calculation_history)
+        self.setup_resources_link = ipw.Button(
+            layout=ipw.Layout(width="auto"),
+            button_style="",
+            icon="database",
+            value=False,
+            description="Setup resources",
+            tooltip="View/create new codes",
+            disabled=True,
+        )
 
-        info_toggles = ipw.HBox(
+        self.controls = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
-                self.calculation_history_button,
-            ]
+                self.calculation_history_link,
+                self.setup_resources_link,
+            ],
         )
-        info_toggles.add_class("info-toggles")
+        self.controls.add_class("info-toggles")
 
         env = Environment()
         guide_template = files(templates).joinpath("guide.jinja").read_text()
@@ -224,7 +246,7 @@ class AppWrapperView(ipw.VBox):
             children=[
                 logo,
                 subtitle,
-                info_toggles,
+                self.controls,
                 self.info_container,
             ],
         )
@@ -249,9 +271,3 @@ class AppWrapperView(ipw.VBox):
                 footer,
             ],
         )
-
-    def _open_calculation_history(self, _):
-        from IPython.display import Javascript
-
-        url = "./calculation_history.ipynb"
-        display(Javascript(f"window.open('{url}', '_blank')"))
