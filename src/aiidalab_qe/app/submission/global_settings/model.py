@@ -114,6 +114,8 @@ class GlobalResourceSettingsModel(
             return
 
         pw_code_model = self.get_model("quantumespresso.pw")
+        parameters = self._get_properties()
+        protocol = self.input_parameters.get("workchain", {}).get("protocol", "fast")
 
         if not self.input_structure or not pw_code_model.selected:
             return  # No code selected or no structure, so nothing to do
@@ -149,6 +151,13 @@ class GlobalResourceSettingsModel(
         }
 
         alert_message = ""
+        if on_localhost and protocol == "precise" and localhost_cpus < 4: # This means that we are in a small deployment.
+            alert_message += (
+                f"Warning: The selected protocol is {protocol}, which is computationally demanding to run on localhost. "
+                f"Consider the following: <ul>"
+                + suggestions["change_configuration"]
+                + "</ul>"
+            )
         if large_system and estimated_CPUs > num_cpus:
             # This part is in common between Warnings 1 (2):
             # (not) on localhost, big system and few cpus
