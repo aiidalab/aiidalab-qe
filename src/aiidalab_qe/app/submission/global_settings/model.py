@@ -257,12 +257,22 @@ class GlobalResourceSettingsModel(
         `num_cpus0` : `int`, optional
             Reference number of CPUs. Default is 4.
         `t0` : `float`, optional
-            Reference time. Default is 129.6.
+            Reference time of a single scf_cycle. Default is 129.6.
         `tmax` : `float`, optional
             Maximum time limit. Default is 12 hours.
         `scf_cycles` : `int`, optional
             Reference number of SCF cycles in a relaxation. Default is 5.
-
+            
+        The default values n0, v0, num_cpus0, t0 and scf_cycles are taken from the simulation of SiO2 bulk 
+        example structure present in the app, following a moderate protocol. We then used the formula
+        
+        num_cpus = num_cpus0 * (n/n0)^3 * (v/v0)^(3/2) * (scf_cycles * t0)/tmax
+        
+        assuming that the number of CPUs scales with the number of atoms as power of 3, the volume of the system as power of 3/2, 
+        the number of SCF cycles and the time of a single SCF cycle. The power dependence was then adjusted to match the
+        other reference calculations done on bulk SiO2, Silicon and Gold, using different number of cpus.
+        NOTE: this is a very rough estimate and should be used as a guideline only.
+        
         Returns
         -------
         `int`
@@ -272,6 +282,6 @@ class GlobalResourceSettingsModel(
 
         return int(
             np.ceil(
-                scf_cycles * num_cpus0 * (n / n0) ** 3 * (v / v0) ** 1.5 * t0 / tmax
+                num_cpus0 * (n / n0) ** 3 * (v / v0) ** (3/2) * (scf_cycles * t0) / tmax
             )
         )
