@@ -707,8 +707,6 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             self.set_resource_defaults(load_code(change["new"]).computer)
 
     def set_resource_defaults(self, computer=None):
-        import os
-
         if computer is None:
             self.num_nodes.disabled = True
             self.num_nodes.value = 1
@@ -719,7 +717,9 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             default_mpiprocs = computer.get_default_mpiprocs_per_machine()
             self.num_nodes.disabled = False
             self.num_cpus.max = default_mpiprocs
-            self.num_cpus.value = 1 if computer.hostname == "localhost" else default_mpiprocs
+            self.num_cpus.value = (
+                1 if computer.hostname == "localhost" else default_mpiprocs
+            )
             self.num_cpus.description = "CPUs"
 
     @property
