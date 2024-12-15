@@ -151,7 +151,9 @@ class GlobalResourceSettingsModel(
         }
 
         alert_message = ""
-        if on_localhost and protocol == "precise" and localhost_cpus < 4: # This means that we are in a small deployment.
+        if (
+            on_localhost and protocol == "precise" and localhost_cpus < 4
+        ):  # This means that we are in a small deployment.
             alert_message += (
                 f"Warning: The selected protocol is {protocol}, which is computationally demanding to run on localhost. "
                 f"Consider the following: <ul>"
