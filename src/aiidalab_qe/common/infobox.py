@@ -43,6 +43,7 @@ class InAppGuide(InfoBox):
     def __init__(
         self,
         children: list | None = None,
+        guide_id: str = "",
         identifier: str = "",
         classes: list[str] | None = None,
         **kwargs,
@@ -51,8 +52,12 @@ class InAppGuide(InfoBox):
 
         Parameters
         ----------
-        children : `list`, optional
+        `children` : `list`, optional
             The content children of this guide section.
+        `guide_id` : `str`, optional
+            The associated guide id to be used in conjunction with content children.
+            If none provided, the widget-based guide section will be shown for all
+            guides.
         `identifier` : `str`, optional
             If content `children` are not provided directly, the `identifier`
             is used to fetch the corresponding guide section from the guide
@@ -73,12 +78,15 @@ class InAppGuide(InfoBox):
         )
 
         if children:
+            self.guide_id = guide_id
             self.children = children
+            self.identifier = None
         elif identifier:
+            self.guide_id = None
             self.children = []
             self.identifier = identifier
         else:
-            raise ValueError("No content or path identifier provided")
+            raise ValueError("No widgets or path identifier provided")
 
         self.manager.observe(
             self._on_active_guide_change,
@@ -96,10 +104,23 @@ class InAppGuide(InfoBox):
 
     def _update_contents(self):
         """Update the contents of the guide section."""
-        if hasattr(self, "identifier"):
-            html = self.manager.get_guide_section_by_id(self.identifier)
-            self.children = [ipw.HTML(str(html))] if html else []
+        if not self.identifier:
+            return
+        html = self.manager.get_guide_section_by_id(self.identifier)
+        self.children = [ipw.HTML(str(html))] if html else []
 
     def _toggle_guide(self):
         """Toggle the visibility of the guide section."""
-        self.layout.display = "flex" if self.manager.has_guide else "none"
+        self.layout.display = (
+            "flex"
+            if self.children
+            and (
+                # file-based guide section
+                (self.identifier and self.manager.has_guide)
+                # widget-based guide section shown for all guides
+                or (not self.guide_id and self.manager.has_guide)
+                # widget-based guide section shown for a specific guide
+                or self.guide_id == self.manager.active_guide
+            )
+            else "none"
+        )

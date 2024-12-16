@@ -115,8 +115,50 @@
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Select resources</li>
+      <li>Select computational resources</li>
+      <li>Add a description of the calculation</li>
       <li>Click <b>Submit</b> to proceed</li>
+    </ol>
+  </div>
+</div>
+
+<div id="results-step">
+  In this step, we can monitor the calculation and view its results. A summary
+  of calculation parameters is also provided. Raw input and output files may be
+  downloaded, as well as an AiiDA archive containing the full calculation
+  provenance.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>
+        In the process tree, click on the root <code>QeAppWorkChain</code> node
+      </li>
+      <li><b>(optional)</b> review the calculation parameters</li>
+      <li>Click on the <b>Final Geometry</b> tab</li>
+      <li>
+        When the structure relaxation is finished, click on
+        <b>Load results</b> to view the final structure geometry
+      </li>
+      <li>
+        Repeat the last two steps for the <b>Bands</b> and <b>PDOS</b> tabs
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div id="post-guide">
+  This concludes the basic Quantum ESPRESSO in-app guide.
+  <div class="alert alert-success">
+    <h4>Exercises</h4>
+    <ol>
+      <li>
+        <b>Download</b> the raw input and output files for further analysis
+      </li>
+      <li>
+        <b>Download</b> the AiiDA archive to store the full calculation
+        provenance
+      </li>
+      <li><b>Explore</b> the AiiDA database to view the calculation history</li>
     </ol>
   </div>
 </div>
