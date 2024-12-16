@@ -1,19 +1,16 @@
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida import orm
 from aiida.engine import ProcessState
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.widgets import LoadingWidget
-from aiidalab_widgets_base import (
-    ProcessMonitor,
-    ProcessNodesTreeWidget,
-    WizardAppWidgetStep,
-)
-from aiidalab_widgets_base.viewers import viewer as node_viewer
+from aiidalab_widgets_base import ProcessMonitor, WizardAppWidgetStep
 
+from .components import ResultsComponent
+from .components.status import WorkChainStatusModel, WorkChainStatusPanel
+from .components.summary import WorkChainSummary, WorkChainSummaryModel
+from .components.viewer import WorkChainResultsViewer, WorkChainResultsViewerModel
 from .model import ResultsStepModel
-from .viewer import WorkChainViewer, WorkChainViewerModel
 
 PROCESS_COMPLETED = "<h4>Workflow completed successfully!</h4>"
 PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
@@ -21,6 +18,8 @@ PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
+    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
+
     def __init__(self, model: ResultsStepModel, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading results step")],
@@ -28,16 +27,16 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self._model = model
+        self.observe(
+            self._on_previous_step_state_change,
+            "previous_step_state",
+        )
         self._model.observe(
             self._on_process_change,
             "process_uuid",
         )
 
         self.rendered = False
-
-        self.node_views = {}  # node-view cache
-
-        self.node_view_loading_message = LoadingWidget("Loading node view")
 
     def render(self):
         if self.rendered:
@@ -56,15 +55,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             lambda state: state is not self.State.ACTIVE,
         )
         self.kill_button.on_click(self._on_kill_button_click)
-
-        self.update_results_button = ipw.Button(
-            description="Update results",
-            tooltip="Trigger the update of the results.",
-            button_style="success",
-            icon="refresh",
-            layout=ipw.Layout(width="auto", display="block"),
-        )
-        self.update_results_button.on_click(self._on_update_results_button_click)
 
         self.clean_scratch_button = ipw.Button(
             description="Clean remote data",
@@ -85,48 +75,75 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
             (self.process_info, "value"),
         )
 
-        self.process_tree = ProcessNodesTreeWidget()
-        self.process_tree.observe(
-            self._on_node_selection_change,
-            "selected_nodes",
+        summary_model = WorkChainSummaryModel()
+        self.summary_panel = WorkChainSummary(model=summary_model)
+        self._model.add_model("summary", summary_model)
+
+        results_model = WorkChainResultsViewerModel()
+        self.results_panel = WorkChainResultsViewer(model=results_model)
+        self._model.add_model("results", results_model)
+
+        status_model = WorkChainStatusModel()
+        self.status_panel = WorkChainStatusPanel(model=status_model)
+        self._model.add_model("status", status_model)
+
+        self.panels = {
+            "Summary": self.summary_panel,
+            "Results": self.results_panel,
+            "Status": self.status_panel,
+        }
+
+        self.toggle_controls = ipw.ToggleButtons(
+            options=[*self.panels.keys()],
+            tooltips=[
+                "A summary of calculation parameters",
+                "The calculation results",
+                "A detailed progress status of the workflow",
+            ],
+            icons=[
+                "file-text-o",
+                "bar-chart",
+                "tasks",
+            ],
+            value=None,
         )
-        ipw.dlink(
-            (self._model, "process_uuid"),
-            (self.process_tree, "value"),
+        self.toggle_controls.add_class("results-step-toggles")
+        self.toggle_controls.observe(
+            self._on_toggle_change,
+            "value",
         )
 
-        self.node_view_container = ipw.VBox()
-
-        self.process_monitor = ProcessMonitor(
-            timeout=0.2,
-            callbacks=[
-                self.process_tree.update,
-                self._update_status,
-                self._update_state,
+        self.container = ipw.VBox(
+            children=[
+                self.status_panel,
             ],
         )
 
-        self.children = [
-            InAppGuide(identifier="results-step"),
-            self.process_info,
-            ipw.HBox(
-                children=[
-                    self.kill_button,
-                    self.update_results_button,
-                    self.clean_scratch_button,
-                ],
-                layout=ipw.Layout(margin="0 3px"),
-            ),
-            self.process_tree,
-            self.node_view_container,
-        ]
+        if self._model.has_process:
+            self._update_children()
+        elif self.previous_step_state is not WizardAppWidgetStep.State.SUCCESS:
+            self.children = [
+                ipw.HTML("""
+                    <div class="alert alert-danger" style="text-align: center;">
+                        No process detected. Please submit a calculation.
+                    </div>
+                """),
+            ]
 
         self.rendered = True
 
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
-        # This triggers the start of the monitor on a separate threadF
+        self.toggle_controls.value = "Summary"
+
+        self.process_monitor = ProcessMonitor(
+            timeout=0.2,
+            callbacks=[
+                self._update_status,
+                self._update_state,
+            ],
+        )
         ipw.dlink(
             (self._model, "process_uuid"),
             (self.process_monitor, "value"),
@@ -143,68 +160,54 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     def _on_state_change(self, _):
         self._update_kill_button_layout()
 
+    def _on_previous_step_state_change(self, _):
+        if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
+            process_node = self._model.fetch_process_node()
+            message = (
+                "Loading results"
+                if process_node and process_node.is_finished
+                else "Submitting calculation"
+            )
+            self.children = [LoadingWidget(message)]
+
+    def _on_toggle_change(self, change):
+        panel = self.panels[change["new"]]
+        self._toggle_view(panel)
+
     def _on_process_change(self, _):
+        if self.rendered:
+            self._update_children()
         self._model.update()
         self._update_state()
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
-    def _on_node_selection_change(self, change):
-        self._update_node_view(change["new"])
-
     def _on_kill_button_click(self, _):
         self._model.kill_process()
         self._update_kill_button_layout()
-
-    def _on_update_results_button_click(self, _):
-        self._update_node_view(self.process_tree.selected_nodes, refresh=True)
 
     def _on_clean_scratch_button_click(self, _):
         self._model.clean_remote_data()
         self._update_clean_scratch_button_layout()
 
-    def _update_node_view(self, nodes, refresh=False):
-        """Update the node view based on the selected nodes.
+    def _update_children(self):
+        self.children = [
+            InAppGuide(identifier="results-step"),
+            self.process_info,
+            ipw.HBox(
+                children=[
+                    self.kill_button,
+                    self.clean_scratch_button,
+                ],
+                layout=ipw.Layout(margin="0 3px"),
+            ),
+            self.toggle_controls,
+            self.container,
+        ]
 
-        parameters
-        ----------
-        `nodes`: `list`
-            List of selected nodes.
-        `refresh`: `bool`, optional
-            If True, the viewer will be refreshed.
-            Occurs when user presses the "Update results" button.
-        """
-
-        if not nodes:
-            return
-        # only show the first selected node
-        node = nodes[0]
-
-        # check if the viewer is already added
-        if node.uuid in self.node_views and not refresh:
-            self.node_view = self.node_views[node.uuid]
-        elif not isinstance(node, orm.WorkChainNode):
-            self.node_view_container.children = [self.node_view_loading_message]
-            self.node_view = node_viewer(node)
-            self.node_views[node.uuid] = self.node_view
-        elif node.process_label == "QeAppWorkChain":
-            self.node_view_container.children = [self.node_view_loading_message]
-            self.node_view = self._create_workchain_viewer(node)
-            self.node_views[node.uuid] = self.node_view
-        else:
-            self.node_view = ipw.HTML("No viewer available for this node.")
-
-        self.node_view_container.children = [self.node_view]
-
-    def _create_workchain_viewer(self, node: orm.WorkChainNode):
-        model = WorkChainViewerModel()
-        ipw.dlink(
-            (self._model, "monitor_counter"),
-            (model, "monitor_counter"),
-        )
-        node_view: WorkChainViewer = node_viewer(node, model=model)  # type: ignore
-        node_view.render()
-        return node_view
+    def _toggle_view(self, panel: ResultsComponent):
+        panel.render()
+        self.container.children = [panel]
 
     def _update_kill_button_layout(self):
         if not self.rendered:
