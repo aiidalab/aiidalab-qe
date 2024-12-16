@@ -68,11 +68,10 @@ class SubmissionStepModel(
         )
 
     def confirm(self):
+        super().confirm()
+        self.unobserve_all("confirmed")  # should no longer be unconfirmed
         if not self.process_node:
             self._submit()
-        super().confirm()
-        # Once submitted, nothing should unconfirm the model!
-        self.unobserve_all("confirmed")
 
     def update(self):
         for _, model in self.get_models():

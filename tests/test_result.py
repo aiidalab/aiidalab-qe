@@ -1,8 +1,11 @@
 from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.main import App
-from aiidalab_qe.app.result.summary import WorkChainSummaryResultsModel
-from aiidalab_qe.app.result.viewer import WorkChainViewer, WorkChainViewerModel
+from aiidalab_qe.app.result.components.summary import WorkChainSummaryModel
+from aiidalab_qe.app.result.components.viewer import (
+    WorkChainResultsViewer,
+    WorkChainResultsViewerModel,
+)
 
 
 def test_result_step(app_to_submit, generate_qeapp_workchain):
@@ -27,22 +30,20 @@ def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
 
 def test_workchainview(generate_qeapp_workchain):
     """Test the result tabs are properly updated"""
-
     workchain = generate_qeapp_workchain()
     workchain.node.seal()
-    model = WorkChainViewerModel()
+    model = WorkChainResultsViewerModel()
+    viewer = WorkChainResultsViewer(model=model)
     model.process_uuid = workchain.node.uuid
-    viewer = WorkChainViewer(workchain.node, model=model)
     viewer.render()
-    assert len(viewer.tabs.children) == 5
-    assert viewer.tabs._titles["0"] == "Workflow Summary"  # type: ignore
-    assert viewer.tabs._titles["1"] == "Final Geometry"  # type: ignore
+    assert len(viewer.tabs.children) == 4
+    assert viewer.tabs._titles["0"] == "Final Geometry"  # type: ignore
 
 
 def test_summary_report(data_regression, generate_qeapp_workchain):
     """Test the summary report can be properly generated."""
     workchain = generate_qeapp_workchain()
-    model = WorkChainSummaryResultsModel()
+    model = WorkChainSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     data_regression.check(report_parameters)
@@ -53,7 +54,7 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
     workchain = generate_qeapp_workchain(
         spin_type="collinear", electronic_type="metal", initial_magnetic_moments=0.1
     )
-    model = WorkChainSummaryResultsModel()
+    model = WorkChainSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     assert report_parameters["initial_magnetic_moments"]["Si"] == 0.1
@@ -62,7 +63,7 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
 def test_summary_view(generate_qeapp_workchain):
     """Test the report html can be properly generated."""
     workchain = generate_qeapp_workchain()
-    model = WorkChainSummaryResultsModel()
+    model = WorkChainSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_html = model.generate_report_html()
     parsed = BeautifulSoup(report_html, "html.parser")

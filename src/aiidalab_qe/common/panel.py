@@ -531,10 +531,6 @@ class ResultsModel(Model, HasProcess):
     }
 
     @property
-    def include(self):
-        return self.identifier in self.properties
-
-    @property
     def has_results(self):
         node = self._fetch_child_process_node()
         return node and node.is_finished_ok
@@ -622,11 +618,14 @@ class ResultsPanel(Panel, t.Generic[RM]):
         self.loading_message = LoadingWidget(f"Loading {self.title.lower()} results")
 
         self._model = model
-        if self.identifier != "summary":
-            self._model.observe(
-                self._on_monitor_counter_change,
-                "monitor_counter",
-            )
+        self._model.observe(
+            self._on_process_change,
+            "process_uuid",
+        )
+        self._model.observe(
+            self._on_monitor_counter_change,
+            "monitor_counter",
+        )
 
         self.rendered = False
 
@@ -671,9 +670,12 @@ class ResultsPanel(Panel, t.Generic[RM]):
     def render(self):
         raise NotImplementedError()
 
-    def _on_load_results_click(self, _):
-        self.children = [self.loading_message]
-        self.render()
+    def _on_process_change(self, _):
+        pass
 
     def _on_monitor_counter_change(self, _):
         self._model.update_process_status_notification()
+
+    def _on_load_results_click(self, _):
+        self.children = [self.loading_message]
+        self.render()

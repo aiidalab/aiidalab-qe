@@ -16,7 +16,7 @@ from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
 from aiidalab_qe.app.static import styles, templates
 
-from ..utils.download_data import DownloadDataWidget
+from .download_data import DownloadDataWidget
 
 
 class WorkChainOutputs(ipw.VBox):
