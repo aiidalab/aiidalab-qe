@@ -715,7 +715,9 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             self.num_cpus.description = "CPUs"
         else:
             default_mpiprocs = computer.get_default_mpiprocs_per_machine()
-            self.num_nodes.disabled = True if computer.hostname == "localhost" else False
+            self.num_nodes.disabled = (
+                True if computer.hostname == "localhost" else False
+            )
             self.num_cpus.max = default_mpiprocs
             self.num_cpus.value = (
                 1 if computer.hostname == "localhost" else default_mpiprocs
