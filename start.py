@@ -4,7 +4,12 @@ import ipywidgets as ipw
 def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
     return ipw.HTML(f"""
         <div class="app-container">
-            <img src="https://gitlab.com/QEF/q-e/raw/develop/logo.jpg" height="180px" width=323px">
+            <a href="https://www.quantum-espresso.org/" target="_blank">
+                <img
+                    src="https://gitlab.com/QEF/q-e/raw/develop/logo.jpg"
+                    height="180px"
+                    width=323px">
+            </a>
             <div class="features">
                 <a
                     class="feature"
