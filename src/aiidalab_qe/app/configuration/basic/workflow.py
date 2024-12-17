@@ -88,6 +88,10 @@ class BasicConfigurationSettingsPanel(
                         <li>
                             If the material should be studied with spin-orbit coupling
                         </li>
+                        <li>
+                            The protocol to use for the calculation, which sets default
+                            values balancing the accuracy and speed of the calculation
+                        </li>
                     </ol>
                 </div>
             """),
@@ -118,13 +122,15 @@ class BasicConfigurationSettingsPanel(
                     self.spin_orbit,
                 ]
             ),
-            ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Protocol</h4>
-                </div>
-            """),
-            ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-            self.protocol,
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Protocol:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.protocol,
+                ]
+            ),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
                     The "moderate" protocol represents a trade-off between accuracy and
