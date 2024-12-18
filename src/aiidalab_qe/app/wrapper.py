@@ -52,7 +52,7 @@ class AppWrapperContoller:
         """Enable the toggle buttons."""
         self._view.guide_toggle.disabled = False
         self._view.about_toggle.disabled = False
-        self._view.job_history_toggle.disabled = False
+        self._view.calculation_history_toggle.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -69,7 +69,7 @@ class AppWrapperContoller:
                 ),
             ]
             self._view.info_container.layout.display = "flex"
-            self._view.job_history_toggle.value = False
+            self._view.calculation_history_toggle.value = False
         else:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
@@ -80,22 +80,22 @@ class AppWrapperContoller:
         if change["new"]:
             self._view.info_container.children = [self._view.about]
             self._view.info_container.layout.display = "flex"
-            self._view.job_history_toggle.value = False
+            self._view.calculation_history_toggle.value = False
         else:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
 
-    def _on_job_history_toggle(self, change: dict):
+    def _on_calculation_history_toggle(self, change: dict):
         """Toggle the job list section."""
         if change["new"]:
             self._view.about_toggle.value = False
             self._view.guide_toggle.value = False
             self._old_view = self._view.main.children
-            self._view.main.children = [LoadingWidget("Loading job history")]
-            self._view.job_history.setup_table()
+            self._view.main.children = [LoadingWidget("Loading calculation history")]
+            self._view.calculation_history.setup_table()
             self._view.main.children = [
-                self._view.job_history.filters_layout,
-                self._view.job_history.table,
+                self._view.calculation_history.filters_layout,
+                self._view.calculation_history.table,
             ]
         else:
             self._view.main.children = self._old_view
@@ -131,8 +131,8 @@ class AppWrapperContoller:
             self._on_about_toggle,
             "value",
         )
-        self._view.job_history_toggle.observe(
-            self._on_job_history_toggle,
+        self._view.calculation_history_toggle.observe(
+            self._on_calculation_history_toggle,
             "value",
         )
         self._view.guide_category_selection.observe(
@@ -208,12 +208,12 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.job_history_toggle = ipw.ToggleButton(
+        self.calculation_history_toggle = ipw.ToggleButton(
             layout=ipw.Layout(width="auto"),
             button_style="",
             icon="list",
             value=False,
-            description="Job History",
+            description="Calculation history",
             tooltip="View all jobs run with this app",
             disabled=True,
         )
@@ -222,7 +222,7 @@ class AppWrapperView(ipw.VBox):
             children=[
                 self.guide_toggle,
                 self.about_toggle,
-                self.job_history_toggle,
+                self.calculation_history_toggle,
             ]
         )
         info_toggles.add_class("info-toggles")
@@ -242,7 +242,7 @@ class AppWrapperView(ipw.VBox):
         )
         self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(margin="2px 20px"))
 
-        self.job_history = QueryInterface()
+        self.calculation_history = QueryInterface()
 
         self.info_container = InfoBox()
 
