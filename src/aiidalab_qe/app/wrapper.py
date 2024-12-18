@@ -52,7 +52,6 @@ class AppWrapperContoller:
         """Enable the toggle buttons."""
         self._view.guide_toggle.disabled = False
         self._view.about_toggle.disabled = False
-        self._view.calculation_history_toggle.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -69,7 +68,6 @@ class AppWrapperContoller:
                 ),
             ]
             self._view.info_container.layout.display = "flex"
-            self._view.calculation_history_toggle.value = False
         else:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
@@ -80,25 +78,9 @@ class AppWrapperContoller:
         if change["new"]:
             self._view.info_container.children = [self._view.about]
             self._view.info_container.layout.display = "flex"
-            self._view.calculation_history_toggle.value = False
         else:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
-
-    def _on_calculation_history_toggle(self, change: dict):
-        """Toggle the job list section."""
-        if change["new"]:
-            self._view.about_toggle.value = False
-            self._view.guide_toggle.value = False
-            self._old_view = self._view.main.children
-            self._view.main.children = [LoadingWidget("Loading calculation history")]
-            self._view.calculation_history.setup_table()
-            self._view.main.children = [
-                self._view.calculation_history.filters_layout,
-                self._view.calculation_history.table,
-            ]
-        else:
-            self._view.main.children = self._old_view
 
     def _on_guide_category_select(self, change: dict):
         self._view.guide_selection.options = guide_manager.get_guides(change["new"])
@@ -129,10 +111,6 @@ class AppWrapperContoller:
         )
         self._view.about_toggle.observe(
             self._on_about_toggle,
-            "value",
-        )
-        self._view.calculation_history_toggle.observe(
-            self._on_calculation_history_toggle,
             "value",
         )
         self._view.guide_category_selection.observe(
@@ -168,9 +146,7 @@ class AppWrapperView(ipw.VBox):
         from jinja2 import Environment
 
         from aiidalab_qe.app.static import templates
-        from aiidalab_qe.app.utils.search_jobs import QueryInterface
         from aiidalab_qe.common.infobox import InfoBox
-        from aiidalab_qe.common.widgets import LoadingWidget
         from aiidalab_qe.version import __version__
 
         #################################################
@@ -208,21 +184,21 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.calculation_history_toggle = ipw.ToggleButton(
+        self.calculation_history_button = ipw.Button(
             layout=ipw.Layout(width="auto"),
             button_style="",
             icon="list",
-            value=False,
             description="Calculation history",
-            tooltip="View all jobs run with this app",
-            disabled=True,
+            tooltip="View all calculations run with this app",
         )
+
+        self.calculation_history_button.on_click(self._open_calculation_history)
 
         info_toggles = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
-                self.calculation_history_toggle,
+                self.calculation_history_button,
             ]
         )
         info_toggles.add_class("info-toggles")
@@ -241,8 +217,6 @@ class AppWrapperView(ipw.VBox):
             layout=ipw.Layout(width="max-content"),
         )
         self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(margin="2px 20px"))
-
-        self.calculation_history = QueryInterface()
 
         self.info_container = InfoBox()
 
@@ -275,3 +249,9 @@ class AppWrapperView(ipw.VBox):
                 footer,
             ],
         )
+
+    def _open_calculation_history(self, _):
+        from IPython.display import Javascript
+
+        url = "./calculation_history.ipynb"
+        display(Javascript(f"window.open('{url}', '_blank')"))
