@@ -49,6 +49,17 @@ class BasicConfigurationSettingsPanel(
             (self.electronic_type, "value"),
         )
 
+        # Spin-Orbit calculation
+        self.spin_orbit = ipw.ToggleButtons(style={"description_width": "initial"})
+        ipw.dlink(
+            (self._model, "spin_orbit_options"),
+            (self.spin_orbit, "options"),
+        )
+        ipw.link(
+            (self._model, "spin_orbit"),
+            (self.spin_orbit, "value"),
+        )
+
         # Work chain protocol
         self.protocol = ipw.ToggleButtons()
         ipw.dlink(
@@ -64,10 +75,24 @@ class BasicConfigurationSettingsPanel(
             InAppGuide(identifier="basic-settings"),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-                    Below you can indicate both if the material should be treated as an
-                    insulator or a metal (if in doubt, choose "Metal"), and if it
-                    should be studied with magnetization/spin polarization, switch
-                    magnetism On or Off (On is at least twice more costly).
+                    Below you can indicate the following:
+                    <ol>
+                        <li>
+                            If the material should be treated as an insulator or a metal
+                            (if in doubt, choose "Metal")
+                        </li>
+                        <li>
+                            If the material should be studied with magnetization/spin
+                            polarization (at least twice as costly if activated)
+                        </li>
+                        <li>
+                            If the material should be studied with spin-orbit coupling
+                        </li>
+                        <li>
+                            The protocol to use for the calculation, which sets default
+                            values balancing the accuracy and speed of the calculation
+                        </li>
+                    </ol>
                 </div>
             """),
             ipw.HBox(
@@ -88,13 +113,24 @@ class BasicConfigurationSettingsPanel(
                     self.spin_type,
                 ]
             ),
-            ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Protocol</h4>
-                </div>
-            """),
-            ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-            self.protocol,
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Spin-orbit coupling:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.spin_orbit,
+                ]
+            ),
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Protocol:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.protocol,
+                ]
+            ),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
                     The "moderate" protocol represents a trade-off between accuracy and

@@ -115,7 +115,6 @@ class App(ipw.VBox):
                 self._process_loading_message,
                 self._wizard_app_widget,
                 InAppGuide(identifier="post-guide", classes=["post-guide"]),
-                InAppGuide(children=[ipw.HTML("hello")], guide_id="general/basic"),
             ]
         )
 

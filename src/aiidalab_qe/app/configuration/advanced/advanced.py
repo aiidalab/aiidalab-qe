@@ -253,25 +253,6 @@ class AdvancedConfigurationSettingsPanel(
             lambda override: not override,
         )
 
-        # Spin-Orbit calculation
-        self.spin_orbit = ipw.ToggleButtons(
-            description="Spin-Orbit:",
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self._model, "spin_orbit_options"),
-            (self.spin_orbit, "options"),
-        )
-        ipw.link(
-            (self._model, "spin_orbit"),
-            (self.spin_orbit, "value"),
-        )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.spin_orbit, "disabled"),
-            lambda override: not override,
-        )
-
         self.pseudos.render()
 
         self.children = [
@@ -335,7 +316,6 @@ class AdvancedConfigurationSettingsPanel(
                 ]
             ),
             self.hubbard,
-            self.spin_orbit,
             self.pseudos,
         ]
 
