@@ -50,14 +50,14 @@ class QueryInterface:
             df["Delete"] = df["PK"].apply(
                 lambda pk: f'<a href="./delete.ipynb?pk={pk}" target="_blank">Delete</a>'
             )
-            df["Inspect"] = df["PK"].apply(
-                lambda pk: f'<a href="./qe.ipynb?pk={pk}" target="_blank">Inspect</a>'
+            # add a link to the pk so that the user can inspect the calculation
+            df["PK"] = df["PK"].apply(
+                lambda pk: f'<a href="./qe.ipynb?pk={pk}" target="_blank">{pk}</a>'
             )
         else:
             # Initialize empty columns for an empty DataFrame
             df["Creation time"] = pd.Series(dtype="str")
             df["Delete"] = pd.Series(dtype="str")
-            df["Inspect"] = pd.Series(dtype="str")
         return df[
             [
                 "PK",
@@ -67,7 +67,6 @@ class QueryInterface:
                 "Label",
                 "Relax_type",
                 "Delete",
-                "Inspect",
                 "Properties",
                 "ctime",
             ]
