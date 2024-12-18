@@ -6,6 +6,7 @@ Authors: AiiDAlab team
 import ipywidgets as ipw
 
 from aiidalab_qe.app.configuration.basic.model import BasicConfigurationSettingsModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
 
@@ -60,6 +61,7 @@ class BasicConfigurationSettingsPanel(
         )
 
         self.children = [
+            InAppGuide(identifier="basic-settings"),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
                     Below you can indicate both if the material should be treated as an

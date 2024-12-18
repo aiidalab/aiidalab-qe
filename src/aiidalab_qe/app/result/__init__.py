@@ -3,6 +3,7 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.engine import ProcessState
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import (
     ProcessMonitor,
@@ -106,6 +107,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.children = [
+            InAppGuide(identifier="results-step"),
             self.process_info,
             ipw.HBox(
                 children=[
