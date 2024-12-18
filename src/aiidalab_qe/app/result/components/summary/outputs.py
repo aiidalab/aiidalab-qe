@@ -38,11 +38,6 @@ class WorkChainOutputs(ipw.VBox):
                     Creating archive...
             </button>"""
         )
-        self._download_archive_button = ipw.Button(
-            description="Download output",
-            icon="download",
-        )
-        self._download_archive_button.on_click(self._download_archive)
         self._download_button_widget = DownloadDataWidget(workchain_node=self.node)
 
         if node.exit_status != 0:
@@ -78,14 +73,6 @@ class WorkChainOutputs(ipw.VBox):
     @tl.default("_busy")
     def _default_busy(self):
         return False
-
-    @tl.observe("_busy")
-    def _observe_busy(self, change):
-        self._download_button_container.children = [
-            self._create_archive_indicator
-            if change["new"]
-            else self._download_archive_button
-        ]
 
     def _download_archive(self, _):
         fn_archive = self.export_dir.joinpath(str(self.node.uuid)).with_suffix(".zip")
