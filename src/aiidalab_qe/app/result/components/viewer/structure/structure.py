@@ -8,9 +8,6 @@ class StructureResults(ResultsPanel[StructureResultsModel]):
     title = "Final Geometry"
     identifier = "structure"
 
-    def render(self):
-        if self.rendered:
-            return
+    def _render(self):
         widget = StructureDataViewer(structure=self._model.outputs.structure)
         self.children = [widget]
-        self.rendered = True

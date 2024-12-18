@@ -9,6 +9,8 @@ class WorkChainResultsViewerModel(
     ResultsComponentModel,
     HasModels[ResultsModel],
 ):
+    identifier = "workflow results"
+
     def _link_model(self, model: ResultsModel):
         ipw.dlink(
             (self, "process_uuid"),

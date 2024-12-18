@@ -116,8 +116,6 @@ class SettingsPanel(Panel, t.Generic[SM]):
     title = "Settings"
 
     def __init__(self, model: SM, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
         self.loading_message = LoadingWidget(f"Loading {model.identifier} settings")
 
         super().__init__(
@@ -613,9 +611,9 @@ class ResultsPanel(Panel, t.Generic[RM]):
     workchain_labels = []
 
     def __init__(self, model: RM, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
         self.loading_message = LoadingWidget(f"Loading {self.title.lower()} results")
+
+        super().__init__(**kwargs)
 
         self._model = model
         self._model.observe(
@@ -628,9 +626,35 @@ class ResultsPanel(Panel, t.Generic[RM]):
         )
 
         self.rendered = False
+        self.has_controls = False
 
         self.links = []
 
+    def render(self):
+        if self.rendered or self.has_controls or not self._model.has_process:
+            return
+        if not self._model.has_results:
+            self._render_controls()
+        else:
+            self._load_results()
+
+    def _on_process_change(self, _):
+        pass
+
+    def _on_monitor_counter_change(self, _):
+        self._model.update_process_status_notification()
+
+    def _on_load_results_click(self, _):
+        self._load_results()
+
+    def _load_results(self):
+        self.children = [self.loading_message]
+        self._render()
+        self.rendered = True
+        self._post_render()
+        self.has_controls = False
+
+    def _render_controls(self):
         self.process_status_notification = ipw.HTML()
         ipw.dlink(
             (self._model, "process_status_notification"),
@@ -650,32 +674,24 @@ class ResultsPanel(Panel, t.Generic[RM]):
         )
         self.load_results_button.on_click(self._on_load_results_click)
 
-        super().__init__(
-            children=[
-                self.process_status_notification,
-                ipw.HBox(
-                    children=[
-                        self.load_results_button,
-                        ipw.HTML("""
+        self.children = [
+            self.process_status_notification,
+            ipw.HBox(
+                children=[
+                    self.load_results_button,
+                    ipw.HTML("""
                         <div style="margin-left: 10px">
                             <b>Note:</b> Load time may vary depending on the size of the calculation
                         </div>
                     """),
-                    ]
-                ),
-            ],
-            **kwargs,
-        )
+                ]
+            ),
+        ]
 
-    def render(self):
+        self.has_controls = True
+
+    def _render(self):
         raise NotImplementedError()
 
-    def _on_process_change(self, _):
+    def _post_render(self):
         pass
-
-    def _on_monitor_counter_change(self, _):
-        self._model.update_process_status_notification()
-
-    def _on_load_results_click(self, _):
-        self.children = [self.loading_message]
-        self.render()

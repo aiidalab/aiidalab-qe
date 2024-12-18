@@ -206,8 +206,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
         ]
 
     def _toggle_view(self, panel: ResultsComponent):
-        panel.render()
         self.container.children = [panel]
+        panel.render()
 
     def _update_kill_button_layout(self):
         if not self.rendered:

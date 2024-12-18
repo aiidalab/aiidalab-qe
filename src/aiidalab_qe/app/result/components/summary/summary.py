@@ -12,9 +12,6 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
         self.has_report = False
         self.has_output = False
 
-    def _render(self):
-        self._render_summary()
-
     def _on_process_change(self, _):
         if not self.has_report:
             self._render_summary()
@@ -22,6 +19,9 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
     def _on_monitor_counter_change(self, _):
         if not self.has_output:
             self._render_output()
+
+    def _render(self):
+        self._render_summary()
 
     def _render_summary(self):
         if not self._model.has_process:

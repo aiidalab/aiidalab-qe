@@ -13,9 +13,7 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
     identifier = "electronic_structure"
     workchain_labels = ["bands", "pdos"]
 
-    def render(self):
-        if self.rendered:
-            return
+    def _render(self):
         bands_node = self._model.get_bands_node()
         pdos_node = self._model.get_pdos_node()
         model = BandsPdosModel()
@@ -23,4 +21,3 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
         widget.layout = ipw.Layout(width="1000px")
         widget.render()
         self.children = [widget]
-        self.rendered = True

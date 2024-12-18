@@ -15,10 +15,10 @@ class XpsResultsPanel(ResultsPanel[XpsResultsModel]):
 
     experimental_data = None  # Placeholder for experimental data
 
-    def render(self):
-        if self.rendered:
-            return
+    def _on_file_upload(self, change):
+        self._model.upload_experimental_data(change["new"])
 
+    def _render(self):
         spectra_type = ipw.ToggleButtons()
         ipw.dlink(
             (self._model, "spectra_type_options"),
@@ -174,12 +174,8 @@ class XpsResultsPanel(ResultsPanel[XpsResultsModel]):
             upload_container,
         ]
 
-        self.rendered = True
-
+    def _post_render(self):
         self._model.update_spectrum_options()
-
-    def _on_file_upload(self, change):
-        self._model.upload_experimental_data(change["new"])
 
     def _update_plot(self, _):
         if not self.rendered:
