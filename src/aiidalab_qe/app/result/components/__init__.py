@@ -4,10 +4,11 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
+from aiidalab_qe.common.widgets import LoadingWidget
 
 
 class ResultsComponentModel(Model, HasProcess):
-    pass
+    identifier = "results"
 
 
 RCM = t.TypeVar("RCM", bound=ResultsComponentModel)
@@ -15,7 +16,12 @@ RCM = t.TypeVar("RCM", bound=ResultsComponentModel)
 
 class ResultsComponent(ipw.VBox, t.Generic[RCM]):
     def __init__(self, model: RCM, **kwargs):
-        super().__init__(**kwargs)
+        self.loading_message = LoadingWidget(f"Loading {model.identifier}")
+
+        super().__init__(
+            children=[self.loading_message],
+            **kwargs,
+        )
 
         self._model = model
         self._model.observe(

@@ -36,6 +36,8 @@ VDW_CORRECTION_VERSION = {
 
 
 class WorkChainSummaryModel(ResultsComponentModel):
+    identifier = "workflow summary"
+
     @property
     def include(self):
         return True

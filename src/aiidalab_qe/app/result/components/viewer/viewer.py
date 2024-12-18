@@ -4,7 +4,7 @@ import ipywidgets as ipw
 
 from aiidalab_qe.app.result.components import ResultsComponent
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.panel import ResultsModel, ResultsPanel
+from aiidalab_qe.common.panel import ResultsPanel
 
 from .model import WorkChainResultsViewerModel
 from .structure import StructureResults, StructureResultsModel
@@ -15,6 +15,17 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
         super().__init__(model=model, **kwargs)
         self.panels: dict[str, ResultsPanel] = {}
         self._fetch_plugin_results()
+
+    def _on_process_change(self, _):
+        self._update_panels()
+        if self.rendered:
+            self._set_tabs()
+
+    def _on_tab_change(self, change):
+        if (tab_index := change["new"]) is None:
+            return
+        tab: ResultsPanel = self.tabs.children[tab_index]  # type: ignore
+        tab.render()
 
     def _render(self):
         if node := self._model.fetch_process_node():
@@ -42,20 +53,6 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
 
     def _post_render(self):
         self._set_tabs()
-
-    def _on_process_change(self, _):
-        self._update_panels()
-        if self.rendered:
-            self._set_tabs()
-
-    def _on_tab_change(self, change):
-        if (tab_index := change["new"]) is None:
-            return
-        tab: ResultsPanel = self.tabs.children[tab_index]  # type: ignore
-        model: ResultsModel = self._model.get_model(tab.identifier)
-        if model.has_results:
-            return
-            # tab.render()
 
     def _update_panels(self):
         properties = self._model.properties

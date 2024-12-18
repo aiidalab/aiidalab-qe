@@ -15,6 +15,12 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         self.node_views = {}  # node-view cache
         self.node_view_loading_message = LoadingWidget("Loading node view")
 
+    def _on_monitor_counter_change(self, _):
+        self._update_process_tree()
+
+    def _on_node_selection_change(self, change):
+        self._update_node_view(change["new"])
+
     def _render(self):
         self.simplified_status_view = ipw.HTML("Coming soon")
 
@@ -50,12 +56,6 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
             self.accordion.set_title(i, title)
 
         self.children = [self.accordion]
-
-    def _on_monitor_counter_change(self, _):
-        self._update_process_tree()
-
-    def _on_node_selection_change(self, change):
-        self._update_node_view(change["new"])
 
     def _update_process_tree(self):
         if self.rendered:
