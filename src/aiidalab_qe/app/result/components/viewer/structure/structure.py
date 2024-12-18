@@ -9,5 +9,5 @@ class StructureResults(ResultsPanel[StructureResultsModel]):
     identifier = "structure"
 
     def _render(self):
-        widget = StructureDataViewer(structure=self._model.outputs.structure)
-        self.children = [widget]
+        self.widget = StructureDataViewer(structure=self._model.outputs.structure)
+        self.children = [self.widget]
