@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import ipywidgets as ipw
 import traitlets as tl
+from IPython.display import Javascript, display
 
 from aiida import orm
 from aiida.engine import ProcessBuilderNamespace, submit
@@ -91,9 +92,13 @@ class SubmissionStepModel(
             {"properties": []},
         )
 
-        soc_parameters = self.input_parameters["advanced"]["pw"]["parameters"][
-            "SYSTEM"
-        ].get("lspinorb", False)
+        soc_parameters = (
+            self.input_parameters.get("advanced", {})
+            .get("pw", {})
+            .get("parameters", {})
+            .get("SYSTEM", {})
+            .get("lspinorb", False)
+        )
 
         soc_info = "spin-orbit coupling" if soc_parameters else ""
 
@@ -230,6 +235,12 @@ class SubmissionStepModel(
                 self.input_structure.get_formula(),
             )
             self.process_node = process_node
+
+            self._update_url()
+
+    def _update_url(self):
+        pk = self.process_node.pk
+        display(Javascript(f"window.history.pushState(null, '', '?pk={pk}');"))
 
     def _link_model(self, model: ResourceSettingsModel):
         for dependency in model.dependencies:
