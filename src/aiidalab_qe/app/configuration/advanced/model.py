@@ -37,11 +37,13 @@ class AdvancedConfigurationSettingsModel(
         "workchain.protocol",
         "workchain.spin_type",
         "workchain.electronic_type",
+        "workchain.spin_orbit",
     ]
 
     protocol = tl.Unicode()
     spin_type = tl.Unicode()
     electronic_type = tl.Unicode()
+    spin_orbit = tl.Unicode()
 
     clean_workdir = tl.Bool(False)
     override = tl.Bool(False)
@@ -58,14 +60,6 @@ class AdvancedConfigurationSettingsModel(
         ],
     )
     van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
-    spin_orbit_options = tl.List(
-        trait=tl.List(tl.Unicode()),
-        default_value=[
-            ["Off", "wo_soc"],
-            ["On", "soc"],
-        ],
-    )
-    spin_orbit = tl.Unicode("wo_soc")
     forc_conv_thr = tl.Float(0.0)
     forc_conv_thr_step = tl.Float(1e-4)
     etot_conv_thr = tl.Float(0.0)

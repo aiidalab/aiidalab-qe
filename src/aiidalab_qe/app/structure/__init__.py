@@ -14,6 +14,7 @@ from aiidalab_qe.common import (
     LazyLoadedOptimade,
     LazyLoadedStructureBrowser,
 )
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
@@ -151,6 +152,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         )
 
         self.children = [
+            InAppGuide(identifier="structure-step"),
             ipw.HTML("""
                 <p>
                     Select a structure from one of the following sources and then
