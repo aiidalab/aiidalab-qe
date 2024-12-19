@@ -82,32 +82,19 @@ class AppWrapperContoller:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
 
-    def _on_guide_category_select(self, change: dict):
-        self._view.guide_selection.options = guide_manager.get_guides(change["new"])
-        self._update_active_guide()
-
-    def _on_guide_select(self, _):
-        self._update_active_guide()
-
     def _on_calculation_history_click(self, _):
         self._open_external_notebook("./calculation_history.ipynb")
 
     def _on_setup_resources_click(self, _):
         self._open_external_notebook("../home/code_setup.ipynb")
 
-    def _update_active_guide(self):
-        """Sets the current active guide."""
+    def _on_guide_category_selection_change(self, change):
+        self._model.guide_options = guide_manager.get_guides(change["new"])
+
+    def _on_guide_selection_change(self, _):
         category = self._view.guide_category_selection.value
         guide = self._view.guide_selection.value
-        active_guide = f"{category}/{guide}" if category != "none" else category
-        guide_manager.active_guide = active_guide
-
-    def _set_guide_category_options(self, _):
-        """Fetch the available guides."""
-        self._view.guide_category_selection.options = [
-            "none",
-            *guide_manager.get_guide_categories(),
-        ]
+        self._model.update_active_guide(category, guide)
 
     def _open_external_notebook(self, url):
         """Open an external notebook in a new tab."""
@@ -115,6 +102,18 @@ class AppWrapperContoller:
 
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
+        self._model.observe(
+            self._on_guide_category_selection_change,
+            "selected_guide_category",
+        )
+        self._model.observe(
+            self._on_guide_selection_change,
+            [
+                "selected_guide_category",
+                "selected_guide",
+            ],
+        )
+
         self._view.guide_toggle.observe(
             self._on_guide_toggle,
             "value",
@@ -123,24 +122,39 @@ class AppWrapperContoller:
             self._on_about_toggle,
             "value",
         )
-        self._view.guide_category_selection.observe(
-            self._on_guide_category_select,
-            "value",
-        )
-        self._view.guide_selection.observe(
-            self._on_guide_select,
-            "value",
-        )
-        self._view.on_displayed(self._set_guide_category_options)
         self._view.calculation_history_link.on_click(self._on_calculation_history_click)
         self._view.setup_resources_link.on_click(self._on_setup_resources_click)
+
+        ipw.dlink(
+            (self._model, "guide_category_options"),
+            (self._view.guide_category_selection, "options"),
+        )
+        ipw.link(
+            (self._model, "selected_guide_category"),
+            (self._view.guide_category_selection, "value"),
+        )
+        ipw.dlink(
+            (self._model, "guide_options"),
+            (self._view.guide_selection, "options"),
+        )
+        ipw.link(
+            (self._model, "selected_guide"),
+            (self._view.guide_selection, "value"),
+        )
 
 
 class AppWrapperModel(tl.HasTraits):
     """An MVC model for `AppWrapper`."""
 
-    def __init__(self):
-        """`AppWrapperModel` constructor."""
+    guide_category_options = tl.List(["none", *guide_manager.get_guide_categories()])
+    selected_guide_category = tl.Unicode("none")
+    guide_options = tl.List(tl.Unicode())
+    selected_guide = tl.Unicode(None, allow_none=True)
+
+    def update_active_guide(self, category, guide):
+        """Sets the current active guide."""
+        active_guide = f"{category}/{guide}" if category != "none" else category
+        guide_manager.active_guide = active_guide
 
 
 class AppWrapperView(ipw.VBox):
@@ -233,9 +247,7 @@ class AppWrapperView(ipw.VBox):
         self.about = ipw.HTML(env.from_string(about_template).render())
 
         self.guide_category_selection = ipw.RadioButtons(
-            options=["none"],
             description="Guides:",
-            value="none",
             layout=ipw.Layout(width="max-content"),
         )
         self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(margin="2px 20px"))
