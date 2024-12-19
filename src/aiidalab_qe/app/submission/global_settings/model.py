@@ -123,9 +123,7 @@ class GlobalResourceSettingsModel(
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
 
-        code = orm.load_node(
-            pw_code_model.selected
-        )
+        code = orm.load_node(pw_code_model.selected)
         machine_cpus = code.computer.get_default_mpiprocs_per_machine()
 
         large_system = (
