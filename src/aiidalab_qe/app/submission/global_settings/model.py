@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import traitlets as tl
 
 from aiida import orm
@@ -114,6 +112,7 @@ class GlobalResourceSettingsModel(
             return
 
         pw_code_model = self.get_model("quantumespresso.pw")
+        protocol = self.input_parameters.get("workchain", {}).get("protocol", "fast")
 
         if not self.input_structure or not pw_code_model.selected:
             return  # No code selected or no structure, so nothing to do
@@ -125,12 +124,8 @@ class GlobalResourceSettingsModel(
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
 
-        try:
-            localhost_cpus = len(os.sched_getaffinity(0))
-        except Exception:
-            # Fallback, in some OS os.sched_getaffinity(0) is not supported
-            # However, not so reliable in containers
-            localhost_cpus = os.cpu_count()
+        code = orm.load_node(pw_code_model.selected)
+        machine_cpus = code.computer.get_default_mpiprocs_per_machine()
 
         large_system = (
             num_sites > self._RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
@@ -149,6 +144,15 @@ class GlobalResourceSettingsModel(
         }
 
         alert_message = ""
+        if (
+            on_localhost and protocol == "precise" and localhost_cpus < 4
+        ):  # This means that we are in a small deployment.
+            alert_message += (
+                f"Warning: The selected protocol is {protocol}, which is computationally demanding to run on localhost. "
+                f"Consider the following: <ul>"
+                + suggestions["change_configuration"]
+                + "</ul>"
+            )
         if large_system and estimated_CPUs > num_cpus:
             # This part is in common between Warnings 1 (2):
             # (not) on localhost, big system and few cpus
@@ -173,11 +177,11 @@ class GlobalResourceSettingsModel(
                 + suggestions["change_configuration"]
                 + "</ul>"
             )
-        if on_localhost and num_cpus / localhost_cpus > 0.8:
+        if on_localhost and num_cpus / machine_cpus > 0.8:
             # Warning-3: on localhost, more than half of the available cpus
             alert_message += (
                 "<span>&#9888;</span> Warning: the selected pw.x code will run locally, but "
-                f"the number of requested CPUs ({num_cpus}) is larger than the 80% of the available resources ({localhost_cpus}). "
+                f"the number of requested CPUs ({num_cpus}) is larger than the 80% of the available resources ({machine_cpus}). "
                 "Please be sure that your local "
                 "environment has enough free CPUs for the calculation. Consider the following: "
                 "<ul>"
@@ -188,7 +192,7 @@ class GlobalResourceSettingsModel(
 
         self.submission_warning_messages = (
             ""
-            if (on_localhost and num_cpus / localhost_cpus) <= 0.8
+            if (on_localhost and num_cpus / machine_cpus) <= 0.8
             and (not large_system or estimated_CPUs <= num_cpus)
             else self._ALERT_MESSAGE.format(
                 alert_class="warning",
