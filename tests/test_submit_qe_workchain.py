@@ -151,7 +151,8 @@ def test_warning_messages(
     pw_code.num_cpus = 1
     global_model.check_resources()
     # no warning:
-    assert submit_model.submission_warning_messages == ""
+    for suggestion in ["go_remote", "avoid_overloading"]:
+        assert suggestions[suggestion] in submit_model.submission_warning_messages
 
     # now we increase the resources, so we should have the Warning-3
     pw_code.num_cpus = len(os.sched_getaffinity(0))
