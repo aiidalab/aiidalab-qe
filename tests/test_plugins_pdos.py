@@ -8,7 +8,7 @@ def test_result(generate_qeapp_workchain):
     model = PdosResultsModel()
     model.process_uuid = workchain.node.uuid
     result = PdosResultsPanel(model=model)
-    result.render()
+    result._render()
 
     widget = result.children[0]
     model = widget._model
