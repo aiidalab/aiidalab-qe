@@ -23,6 +23,7 @@ class QueryInterface:
             "ctime",
             "attributes.process_state",
             "label",
+            "description",
             "extras.workchain.relax_type",
             "extras.workchain.properties",
         ]
@@ -32,6 +33,7 @@ class QueryInterface:
             "ctime",
             "State",
             "Label",
+            "Description",
             "Relax_type",
             "Properties",
         ]
@@ -72,6 +74,7 @@ class QueryInterface:
                 "Structure",
                 "State",
                 "Label",
+                "Description",
                 "Relax_type",
                 "Delete",
                 "Download",
@@ -126,11 +129,23 @@ class QueryInterface:
         )
         self.label_search_field = ipw.Text(
             value="",
-            placeholder="Enter label to search",
-            description="Search Label:",
+            placeholder="Enter a keyword",
+            description="",
             disabled=False,
             style={"description_width": "initial"},
         )
+        self.label_search_description = ipw.HTML(
+            "<p><b>Search Label:</b> Enter a keyword to search in both the <i>Label</i> and <i>Description</i> fields. Matches will include any calculations where the keyword is found in either field.</p>"
+        )
+        self.toggle_description_checkbox = ipw.Checkbox(
+            value=True,  # Show the Description column by default
+            description="Show Description",
+            indent=False,
+        )
+        self.toggle_description_checkbox.observe(
+            self.update_table_visibility, names="value"
+        )
+
         self.time_start = ipw.DatePicker(description="Start Time:")
         self.time_end = ipw.DatePicker(description="End Time:")
         self.time_box = ipw.HBox([self.time_start, self.time_end])
@@ -148,15 +163,22 @@ class QueryInterface:
                 ipw.HTML("<h2>Search results:</h2>"),
                 ipw.VBox(
                     [
-                        self.label_search_field,
                         self.job_state_dropdown,
                         self.time_box,
-                        #   self.apply_filters_btn,
+                        ipw.HBox(
+                            [
+                                self.label_search_description,
+                                self.label_search_field,
+                            ]
+                        ),
                         ipw.VBox(
                             [self.properties_filter_description, self.properties_box]
                         ),
+                        #   self.apply_filters_btn,
                     ]
                 ),
+                ipw.HTML("<h2>Table: </h2>"),
+                self.toggle_description_checkbox,
             ]
         )
         self.get_table_value(self.df)
@@ -165,6 +187,10 @@ class QueryInterface:
         if display_df.empty:
             self.table.value = "<h2>No results found</h2>"
             return
+        # Conditionally drop the Description column based on the checkbox state
+        if not self.toggle_description_checkbox.value:
+            display_df = display_df.drop(columns=["Description"])
+
         display_df = display_df.drop(columns=["Properties", "ctime"])
         self.table.value = self.css_style + display_df.to_html(
             classes="df", escape=False, index=False
@@ -181,6 +207,9 @@ class QueryInterface:
         if self.label_search_field.value:
             filtered_df = filtered_df[
                 filtered_df["Label"].str.contains(
+                    self.label_search_field.value, case=False, na=False
+                )
+                | filtered_df["Description"].str.contains(
                     self.label_search_field.value, case=False, na=False
                 )
             ]
@@ -202,6 +231,10 @@ class QueryInterface:
                 & (filtered_df["ctime"] <= end_time)
             ]
         self.get_table_value(filtered_df)
+
+    def update_table_visibility(self, _):
+        # Reapply filters to refresh the table visibility when the checkbox changes
+        self.apply_filters(None)
 
     def display(self):
         display(self.filters_layout)
