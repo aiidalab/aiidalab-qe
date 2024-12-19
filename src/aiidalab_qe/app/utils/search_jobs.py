@@ -50,9 +50,16 @@ class QueryInterface:
             df["Delete"] = df["PK"].apply(
                 lambda pk: f'<a href="./delete.ipynb?pk={pk}" target="_blank">Delete</a>'
             )
+            df["Download"] = df["PK"].apply(
+                lambda pk: f'<a href="./download.ipynb?pk={pk}" target="_blank">Download</a>'
+            )
             # add a link to the pk so that the user can inspect the calculation
             df["PK"] = df["PK"].apply(
                 lambda pk: f'<a href="./qe.ipynb?pk={pk}" target="_blank">{pk}</a>'
+            )
+            # replace all "waiting" states with "running"
+            df["State"] = df["State"].apply(
+                lambda x: "running" if x == "waiting" else x
             )
         else:
             # Initialize empty columns for an empty DataFrame
@@ -67,6 +74,7 @@ class QueryInterface:
                 "Label",
                 "Relax_type",
                 "Delete",
+                "Download",
                 "Properties",
                 "ctime",
             ]
@@ -98,6 +106,9 @@ class QueryInterface:
         self.properties_box = ipw.HBox(
             children=property_checkboxes, description="Properties:"
         )
+        self.properties_filter_description = ipw.HTML(
+            "<p><b>Properties Filter:</b> Select one or more properties to narrow the results. Only calculations that include all the selected properties will be displayed. Leave all checkboxes unselected to include calculations regardless of their properties.</p>"
+        )
         # Replace 'None' in 'Properties' with an empty list
         self.df["Properties"] = self.df["Properties"].apply(
             lambda x: [] if x is None else x
@@ -106,7 +117,7 @@ class QueryInterface:
             options={
                 "Any": "",
                 "Finished": "finished",
-                "Waiting": "waiting",
+                "Running": "running",
                 "Excepted": "except",
                 "Killed": "killed",
             },
@@ -137,13 +148,13 @@ class QueryInterface:
                 ipw.HTML("<h2>Search results:</h2>"),
                 ipw.VBox(
                     [
-                        ipw.HBox(
-                            [ipw.HTML("<h>Properties: </h>"), self.properties_box]
-                        ),
                         self.label_search_field,
                         self.job_state_dropdown,
                         self.time_box,
                         #   self.apply_filters_btn,
+                        ipw.VBox(
+                            [self.properties_filter_description, self.properties_box]
+                        ),
                     ]
                 ),
             ]
