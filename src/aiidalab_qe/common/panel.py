@@ -631,7 +631,11 @@ class ResultsPanel(Panel, t.Generic[RM]):
         self.links = []
 
     def render(self):
-        if self.rendered or self.has_controls or not self._model.has_process:
+        if self.rendered:
+            if self.identifier == "structure":
+                self._render()
+            return
+        if self.has_controls or not self._model.has_process:
             return
         if not self._model.has_results:
             self._render_controls()
@@ -650,10 +654,7 @@ class ResultsPanel(Panel, t.Generic[RM]):
     def _load_results(self):
         self.children = [self.loading_message]
         self._render()
-        # HACK if this is the structure results panel, we want to
-        # always rerender to refresh the NGL viewer, which does not
-        # handle resize correctly.
-        self.rendered = self._model.identifier != "structure"
+        self.rendered = True
         self._post_render()
         self.has_controls = False
 
