@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 
 from .hubbard import (
@@ -252,33 +253,10 @@ class AdvancedConfigurationSettingsPanel(
             lambda override: not override,
         )
 
-        # Spin-Orbit calculation
-        self.spin_orbit = ipw.ToggleButtons(
-            description="Spin-Orbit:",
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self._model, "spin_orbit_options"),
-            (self.spin_orbit, "options"),
-        )
-        ipw.link(
-            (self._model, "spin_orbit"),
-            (self.spin_orbit, "value"),
-        )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.spin_orbit, "disabled"),
-            lambda override: not override,
-        )
-
         self.pseudos.render()
 
         self.children = [
-            ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 10px">
-                    <h4>Advanced Settings</h4>
-                </div>
-            """),
+            InAppGuide(identifier="advanced-settings"),
             ipw.HBox(
                 children=[
                     self.clean_workdir,
@@ -338,7 +316,6 @@ class AdvancedConfigurationSettingsPanel(
                 ]
             ),
             self.hubbard,
-            self.spin_orbit,
             self.pseudos,
         ]
 
