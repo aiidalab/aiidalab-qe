@@ -4,6 +4,13 @@ from IPython.display import display
 
 from aiida.orm import QueryBuilder
 
+state_icons = {
+    "running": "⏳",
+    "finished": "✅",
+    "excepted": "⚠️",
+    "killed": "❌",
+}
+
 
 class QueryInterface:
     def __init__(self):
@@ -146,7 +153,7 @@ class QueryInterface:
             "<p><b>Search Label:</b> Enter a keyword to search in both the <i>Label</i> and <i>Description</i> fields. Matches will include any calculations where the keyword is found in either field.</p>"
         )
         self.toggle_description_checkbox = ipw.Checkbox(
-            value=True,  # Show the Description column by default
+            value=False,  # Show the Description column by default
             description="Show Description",
             indent=False,
         )
@@ -237,6 +244,18 @@ class QueryInterface:
                 columns=["PK_with_link"]
             )
 
+        #
+        display_df["State"] = display_df["State"].apply(
+            lambda x: f"{x.capitalize()}{state_icons.get(x.lower())}"
+        )
+        display_df.rename(
+            columns={
+                "State": "State 🟢",
+                "Creation time": "Creation Time ⏰",
+                "ID": "ID 🔗",
+            },
+            inplace=True,
+        )
         display_df = display_df.drop(columns=["Properties", "ctime"])
         self.table.value = self.css_style + display_df.to_html(
             classes="df", escape=False, index=False
