@@ -13,13 +13,10 @@ class PdosResultsPanel(ResultsPanel[PdosResultsModel]):
     identifier = "pdos"
     workchain_labels = ["pdos"]
 
-    def render(self):
-        if self.rendered:
-            return
+    def _render(self):
         pdos_node = self._model.get_pdos_node()
         model = BandsPdosModel()
         widget = BandsPdosWidget(model=model, pdos=pdos_node)
         widget.layout = ipw.Layout(width="1000px")
         widget.render()
         self.children = [widget]
-        self.rendered = True

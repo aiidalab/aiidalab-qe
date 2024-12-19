@@ -1,5 +1,5 @@
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
-from aiidalab_qe.common.panel import ResultsModel
+from aiidalab_qe.app.result.components import ResultsComponentModel
 
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
@@ -35,15 +35,15 @@ VDW_CORRECTION_VERSION = {
 }
 
 
-class WorkChainSummaryResultsModel(ResultsModel):
-    identifier = "summary"
+class WorkChainSummaryModel(ResultsComponentModel):
+    identifier = "workflow summary"
 
     @property
     def include(self):
         return True
 
     def generate_report_html(self):
-        """Read from the bulider parameters and generate a html for reporting
+        """Read from the builder parameters and generate a html for reporting
         the inputs for the `QeAppWorkChain`.
         """
         from importlib.resources import files
@@ -125,8 +125,7 @@ class WorkChainSummaryResultsModel(ResultsModel):
         """
         from aiida.orm.utils.serialize import deserialize_unsafe
 
-        if not (qeapp_wc := self.fetch_process_node()):
-            return {"error": "WorkChain not found."}
+        qeapp_wc = self.fetch_process_node()
 
         ui_parameters = qeapp_wc.base.extras.get("ui_parameters", {})
         if isinstance(ui_parameters, str):

@@ -55,8 +55,12 @@ class HasModels(t.Generic[T]):
 
 
 class HasProcess(tl.HasTraits):
-    process_uuid = tl.Unicode(allow_none=True)
+    process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
+
+    @property
+    def has_process(self):
+        return self.fetch_process_node() is not None
 
     @property
     def inputs(self):

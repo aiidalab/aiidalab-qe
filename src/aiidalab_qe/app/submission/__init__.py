@@ -319,7 +319,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.state = self.State.FAIL
         elif self.previous_step_state is not self.State.SUCCESS:
             self.state = self.State.INIT
-        elif self._model.process_node is not None:
+        elif self._model.confirmed:
             self.state = self.State.SUCCESS
         elif self._model.is_blocked:
             self.state = self.State.READY

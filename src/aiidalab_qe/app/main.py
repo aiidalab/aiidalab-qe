@@ -70,9 +70,14 @@ class App(ipw.VBox):
             self._on_configuration_confirmation_change,
             "confirmed",
         )
-        self.submit_model.observe(
-            self._on_submission,
-            "confirmed",
+        ipw.dlink(
+            (self.submit_step, "state"),
+            (self.results_step, "previous_step_state"),
+        )
+        ipw.dlink(
+            (self.submit_model, "process_node"),
+            (self.results_model, "process_uuid"),
+            lambda node: node.uuid if node is not None else None,
         )
 
         # Add the application steps to the application
@@ -145,9 +150,6 @@ class App(ipw.VBox):
         self._update_submission_step()
         self._update_blockers()
 
-    def _on_submission(self, _):
-        self._update_results_step()
-
     def _render_step(self, step_index):
         step = self.steps[step_index][1]
         step.render()
@@ -165,10 +167,6 @@ class App(ipw.VBox):
         else:
             self.submit_model.input_structure = None
             self.submit_model.input_parameters = {}
-
-    def _update_results_step(self):
-        node = self.submit_model.process_node
-        self.results_model.process_uuid = node.uuid if node is not None else None
 
     def _update_blockers(self):
         self.submit_model.external_submission_blockers = [

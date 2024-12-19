@@ -116,8 +116,6 @@ class SettingsPanel(Panel, t.Generic[SM]):
     title = "Settings"
 
     def __init__(self, model: SM, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
         self.loading_message = LoadingWidget(f"Loading {model.identifier} settings")
 
         super().__init__(
@@ -531,10 +529,6 @@ class ResultsModel(Model, HasProcess):
     }
 
     @property
-    def include(self):
-        return self.identifier in self.properties
-
-    @property
     def has_results(self):
         node = self._fetch_child_process_node()
         return node and node.is_finished_ok
@@ -617,21 +611,54 @@ class ResultsPanel(Panel, t.Generic[RM]):
     workchain_labels = []
 
     def __init__(self, model: RM, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
         self.loading_message = LoadingWidget(f"Loading {self.title.lower()} results")
 
+        super().__init__(**kwargs)
+
         self._model = model
-        if self.identifier != "summary":
-            self._model.observe(
-                self._on_monitor_counter_change,
-                "monitor_counter",
-            )
+        self._model.observe(
+            self._on_process_change,
+            "process_uuid",
+        )
+        self._model.observe(
+            self._on_monitor_counter_change,
+            "monitor_counter",
+        )
 
         self.rendered = False
+        self.has_controls = False
 
         self.links = []
 
+    def render(self):
+        if self.rendered:
+            if self.identifier == "structure":
+                self._render()
+            return
+        if self.has_controls or not self._model.has_process:
+            return
+        if not self._model.has_results:
+            self._render_controls()
+        else:
+            self._load_results()
+
+    def _on_process_change(self, _):
+        pass
+
+    def _on_monitor_counter_change(self, _):
+        self._model.update_process_status_notification()
+
+    def _on_load_results_click(self, _):
+        self._load_results()
+
+    def _load_results(self):
+        self.children = [self.loading_message]
+        self._render()
+        self.rendered = True
+        self._post_render()
+        self.has_controls = False
+
+    def _render_controls(self):
         self.process_status_notification = ipw.HTML()
         ipw.dlink(
             (self._model, "process_status_notification"),
@@ -651,29 +678,24 @@ class ResultsPanel(Panel, t.Generic[RM]):
         )
         self.load_results_button.on_click(self._on_load_results_click)
 
-        super().__init__(
-            children=[
-                self.process_status_notification,
-                ipw.HBox(
-                    children=[
-                        self.load_results_button,
-                        ipw.HTML("""
+        self.children = [
+            self.process_status_notification,
+            ipw.HBox(
+                children=[
+                    self.load_results_button,
+                    ipw.HTML("""
                         <div style="margin-left: 10px">
                             <b>Note:</b> Load time may vary depending on the size of the calculation
                         </div>
                     """),
-                    ]
-                ),
-            ],
-            **kwargs,
-        )
+                ]
+            ),
+        ]
 
-    def render(self):
+        self.has_controls = True
+
+    def _render(self):
         raise NotImplementedError()
 
-    def _on_load_results_click(self, _):
-        self.children = [self.loading_message]
-        self.render()
-
-    def _on_monitor_counter_change(self, _):
-        self._model.update_process_status_notification()
+    def _post_render(self):
+        pass

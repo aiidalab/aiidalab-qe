@@ -81,7 +81,7 @@ class DownloadDataWidget(ipw.VBox):
         Args:
             button_instance (ipywidgets.Button): The button instance that was clicked.
         """
-
+        button_instance.disabled = True
         if "archive" in button_instance.description:
             what = "archive"
             filename = f"export_qeapp_calculation_pk_{self.node.pk}.aiida"
@@ -97,6 +97,7 @@ class DownloadDataWidget(ipw.VBox):
         self._download(payload=data, filename=filename)
         del data
         box.children = box.children[:1]
+        button_instance.disabled = False
 
     @staticmethod
     def _download(payload, filename):

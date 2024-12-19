@@ -15,10 +15,7 @@ class XasResultsPanel(ResultsPanel[XasResultsModel]):
     identifier = "xas"
     workchain_labels = ["xas"]
 
-    def render(self):
-        if self.rendered:
-            return
-
+    def _render(self):
         variable_broad_select = ipw.Checkbox(
             description="Use variable energy broadening.",
             style={"description_width": "initial", "opacity": 0.5},
@@ -181,8 +178,7 @@ class XasResultsPanel(ResultsPanel[XasResultsModel]):
             self.plot,
         ]
 
-        self.rendered = True
-
+    def _post_render(self):
         self._model.update_spectrum_options()
 
     def _update_plot(self, _):
