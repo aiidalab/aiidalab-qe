@@ -39,6 +39,14 @@ class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
         ],
     )
     electronic_type = tl.Unicode(DEFAULT["workchain"]["electronic_type"])
+    spin_orbit_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["Off", "wo_soc"],
+            ["On", "soc"],
+        ],
+    )
+    spin_orbit = tl.Unicode("wo_soc")
 
     include = True
 

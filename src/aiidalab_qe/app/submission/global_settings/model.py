@@ -123,9 +123,8 @@ class GlobalResourceSettingsModel(
         num_sites = len(self.input_structure.sites)
         volume = self.input_structure.get_cell_volume()
 
-        machine_cpus = orm.load_node(
-            pw_code_model.selected
-        ).computer.get_default_mpiprocs_per_machine()
+        code = orm.load_node(pw_code_model.selected)
+        machine_cpus = code.computer.get_default_mpiprocs_per_machine()
 
         large_system = (
             num_sites > self._RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD

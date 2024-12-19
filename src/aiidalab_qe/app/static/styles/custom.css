@@ -31,13 +31,6 @@
   outline: none !important;
 }
 
-.guide ol {
-  list-style: none;
-}
-.guide p:not(:last-of-type) {
-  margin-bottom: 0.5em;
-}
-
 .loading {
   margin: 0 auto;
   padding: 5px;
