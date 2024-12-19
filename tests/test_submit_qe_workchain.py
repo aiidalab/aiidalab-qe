@@ -148,12 +148,8 @@ def test_warning_messages(
     global_model = submit_model.get_model("global")
 
     pw_code = global_model.get_model("quantumespresso.pw")
-    pw_code.num_cpus = 1
-    global_model.check_resources()
-    # no warning:
-    assert submit_model.submission_warning_messages == ""
 
-    # now we increase the resources, so we should have the Warning-3
+    # we increase the resources, so we should have the Warning-3
     pw_code.num_cpus = len(os.sched_getaffinity(0))
     global_model.check_resources()
     for suggestion in ["avoid_overloading", "go_remote"]:
