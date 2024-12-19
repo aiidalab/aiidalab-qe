@@ -17,6 +17,7 @@ from aiidalab_qe.app.structure import StructureSelectionStep
 from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.app.submission.model import SubmissionStepModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import WizardAppWidget
 
@@ -109,9 +110,11 @@ class App(ipw.VBox):
 
         super().__init__(
             children=[
+                InAppGuide(identifier="guide-warning", classes=["guide-warning"]),
                 self.new_workchain_button,
                 self._process_loading_message,
                 self._wizard_app_widget,
+                InAppGuide(identifier="post-guide", classes=["post-guide"]),
             ]
         )
 

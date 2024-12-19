@@ -2,6 +2,7 @@
 
 import ipywidgets as ipw
 
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.plugins.bands.model import BandsConfigurationSettingsModel
 
@@ -26,6 +27,7 @@ class BandsConfigurationSettingsPanel(
         )
 
         self.children = [
+            InAppGuide(identifier="bands-settings"),
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
                     <h4>Settings</h4>
