@@ -125,7 +125,7 @@ class GlobalResourceSettingsModel(
         volume = self.input_structure.get_cell_volume()
 
         code = orm.load_node(pw_code_model.selected)
-        machine_cpus = code.computer.get_default_mpiprocs_per_machine()
+        machine_cpus = code.computer.get_default_mpiprocs_per_machine() or 1
 
         large_system = (
             num_sites > self._RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD
@@ -145,7 +145,7 @@ class GlobalResourceSettingsModel(
 
         alert_message = ""
         if (
-            on_localhost and protocol == "precise" and localhost_cpus < 4
+            on_localhost and protocol == "precise" and machine_cpus < 4
         ):  # This means that we are in a small deployment.
             alert_message += (
                 f"Warning: The selected protocol is {protocol}, which is computationally demanding to run on localhost. "
