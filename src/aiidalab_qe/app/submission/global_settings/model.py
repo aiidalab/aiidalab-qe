@@ -114,7 +114,6 @@ class GlobalResourceSettingsModel(
             return
 
         pw_code_model = self.get_model("quantumespresso.pw")
-        parameters = self._get_properties()
         protocol = self.input_parameters.get("workchain", {}).get("protocol", "fast")
 
         if not self.input_structure or not pw_code_model.selected:
