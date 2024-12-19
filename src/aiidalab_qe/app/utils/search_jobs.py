@@ -19,6 +19,7 @@ class QueryInterface:
 
         projections = [
             "id",
+            "uuid",
             "extras.structure",
             "ctime",
             "attributes.process_state",
@@ -29,6 +30,7 @@ class QueryInterface:
         ]
         headers = [
             "PK",
+            "UUID",
             "Structure",
             "ctime",
             "State",
@@ -56,8 +58,13 @@ class QueryInterface:
                 lambda pk: f'<a href="./download.ipynb?pk={pk}" target="_blank">Download</a>'
             )
             # add a link to the pk so that the user can inspect the calculation
-            df["PK"] = df["PK"].apply(
+            df["PK_with_link"] = df["PK"].apply(
                 lambda pk: f'<a href="./qe.ipynb?pk={pk}" target="_blank">{pk}</a>'
+            )
+            # Store initial part of the UUID
+            df["UUID_with_link"] = df.apply(
+                lambda row: f'<a href="./qe.ipynb?pk={row["PK"]}" target="_blank">{row["UUID"][:8]}</a>',
+                axis=1,
             )
             # replace all "waiting" states with "running"
             df["State"] = df["State"].apply(
@@ -69,7 +76,8 @@ class QueryInterface:
             df["Delete"] = pd.Series(dtype="str")
         return df[
             [
-                "PK",
+                "PK_with_link",
+                "UUID_with_link",
                 "Creation time",
                 "Structure",
                 "State",
@@ -145,6 +153,18 @@ class QueryInterface:
         self.toggle_description_checkbox.observe(
             self.update_table_visibility, names="value"
         )
+        self.toggle_time_format = ipw.ToggleButtons(
+            options=["Absolute", "Relative"],
+            value="Absolute",  # Default to Absolute time
+            description="Time Format:",
+        )
+        self.toggle_time_format.observe(self.update_table_visibility, names="value")
+        self.toggle_id_format = ipw.ToggleButtons(
+            options=["PK", "UUID"],
+            value="PK",  # Default to PK
+            description="ID Format:",
+        )
+        self.toggle_id_format.observe(self.update_table_visibility, names="value")
 
         self.time_start = ipw.DatePicker(description="Start Time:")
         self.time_end = ipw.DatePicker(description="End Time:")
@@ -160,7 +180,7 @@ class QueryInterface:
 
         self.filters_layout = ipw.VBox(
             [
-                ipw.HTML("<h2>Search results:</h2>"),
+                ipw.HTML("<h3>Search & Filter Calculations:</h3>"),
                 ipw.VBox(
                     [
                         self.job_state_dropdown,
@@ -177,8 +197,14 @@ class QueryInterface:
                         #   self.apply_filters_btn,
                     ]
                 ),
-                ipw.HTML("<h2>Table: </h2>"),
-                self.toggle_description_checkbox,
+                ipw.HTML("<h3>Display Options:</h3>"),
+                ipw.VBox(
+                    [
+                        self.toggle_description_checkbox,
+                        self.toggle_time_format,
+                        self.toggle_id_format,
+                    ]
+                ),
             ]
         )
         self.get_table_value(self.df)
@@ -187,9 +213,29 @@ class QueryInterface:
         if display_df.empty:
             self.table.value = "<h2>No results found</h2>"
             return
+        # Adjust the Creation time column based on the toggle state
+        if self.toggle_time_format.value == "Relative":
+            now = pd.Timestamp.now(tz="UTC")
+            display_df["Creation time"] = display_df["ctime"].apply(
+                lambda x: f"{(now - x).days}D ago" if pd.notnull(x) else "N/A"
+            )
+        else:
+            display_df["Creation time"] = display_df["ctime"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notnull(x) else "N/A"
+            )
         # Conditionally drop the Description column based on the checkbox state
         if not self.toggle_description_checkbox.value:
             display_df = display_df.drop(columns=["Description"])
+
+        # Adjust the ID column based on the toggle state
+        if self.toggle_id_format.value == "PK":
+            display_df = display_df.rename(columns={"PK_with_link": "ID"}).drop(
+                columns=["UUID_with_link"]
+            )
+        else:
+            display_df = display_df.rename(columns={"UUID_with_link": "ID"}).drop(
+                columns=["PK_with_link"]
+            )
 
         display_df = display_df.drop(columns=["Properties", "ctime"])
         self.table.value = self.css_style + display_df.to_html(
