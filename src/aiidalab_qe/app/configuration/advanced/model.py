@@ -14,6 +14,7 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
+from aiidalab_qe.config.environment import on_demo_server
 from aiidalab_qe.setup.pseudos import PseudoFamily
 
 from .subsettings import AdvancedCalculationSubSettingsModel
@@ -45,7 +46,7 @@ class AdvancedConfigurationSettingsModel(
     electronic_type = tl.Unicode()
     spin_orbit = tl.Unicode()
 
-    clean_workdir = tl.Bool(False)
+    clean_workdir = tl.Bool(on_demo_server())
     override = tl.Bool(False)
     total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
     van_der_waals_options = tl.List(
