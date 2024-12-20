@@ -36,7 +36,6 @@ class PseudosConfigurationSettingsModel(
 
     protocol = tl.Unicode()
     spin_orbit = tl.Unicode()
-    override = tl.Bool()
 
     dictionary = tl.Dict(
         key_trait=tl.Unicode(),  # kind name

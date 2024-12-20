@@ -92,11 +92,6 @@ class PseudosConfigurationSettingsPanel(
             (self._model, "functional"),
             (self.functional, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.functional, "disabled"),
-            lambda override: not override,
-        )
 
         self.library = ipw.ToggleButtons(layout=ipw.Layout(max_width="80%"))
         ipw.dlink(
@@ -106,11 +101,6 @@ class PseudosConfigurationSettingsPanel(
         ipw.link(
             (self._model, "library"),
             (self.library, "value"),
-        )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.library, "disabled"),
-            lambda override: not override,
         )
 
         self.setter_widget_helper = ipw.HTML("""
@@ -145,11 +135,6 @@ class PseudosConfigurationSettingsPanel(
             (self._model, "ecutwfc"),
             (self.ecutwfc, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.ecutwfc, "disabled"),
-            lambda override: not override,
-        )
         self.ecutrho = ipw.FloatText(
             description="Charge density cutoff (Ry)",
             style={"description_width": "initial"},
@@ -157,11 +142,6 @@ class PseudosConfigurationSettingsPanel(
         ipw.link(
             (self._model, "ecutrho"),
             (self.ecutrho, "value"),
-        )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.ecutrho, "disabled"),
-            lambda override: not override,
         )
 
         self.children = [
@@ -299,10 +279,6 @@ class PseudosConfigurationSettingsPanel(
                     },
                 ],
             )
-            pseudo_override_link = ipw.dlink(
-                (self._model, "override"),
-                (upload_widget, "override"),
-            )
             cutoffs_link = ipw.dlink(
                 (self._model, "cutoffs"),
                 (upload_widget, "cutoffs"),
@@ -315,7 +291,6 @@ class PseudosConfigurationSettingsPanel(
             self.links.extend(
                 [
                     pseudo_link,
-                    pseudo_override_link,
                     cutoffs_link,
                     *upload_widget.links,
                 ]
@@ -329,8 +304,6 @@ class PseudosConfigurationSettingsPanel(
 # TODO implement/improve MVC in this widget
 class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
-
-    override = tl.Bool(False)
 
     pseudo = tl.Instance(UpfData, allow_none=True)
     cutoffs = tl.List(tl.Float(), [])
@@ -356,19 +329,9 @@ class PseudoUploadWidget(ipw.HBox):
             (self.pseudo_text, "value"),
             lambda pseudo: pseudo.filename if pseudo else "",
         )
-        pseudo_override_link = ipw.dlink(
-            (self, "override"),
-            (self.pseudo_text, "disabled"),
-            lambda override: not override,
-        )
         self.file_upload = ipw.FileUpload(
             description="Upload",
             multiple=False,
-        )
-        upload_link = ipw.dlink(
-            (self, "override"),
-            (self.file_upload, "disabled"),
-            lambda override: not override,
         )
         self.file_upload.observe(self._on_file_upload, "value")
 
@@ -390,8 +353,6 @@ class PseudoUploadWidget(ipw.HBox):
 
         self.links = [
             pseudo_link,
-            pseudo_override_link,
-            upload_link,
             cutoff_link,
         ]
 
