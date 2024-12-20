@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import display
+from IPython.display import Javascript, display
 
 from aiidalab_qe.common.guide_manager import guide_manager
 from aiidalab_qe.common.widgets import LoadingWidget
@@ -48,10 +48,10 @@ class AppWrapperContoller:
         self._view = view
         self._set_event_handlers()
 
-    def enable_toggles(self) -> None:
-        """Enable the toggle buttons."""
-        self._view.guide_toggle.disabled = False
-        self._view.about_toggle.disabled = False
+    def enable_controls(self) -> None:
+        """Enable the control buttons at the top of the app."""
+        for control in self._view.controls.children:
+            control.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -82,29 +82,35 @@ class AppWrapperContoller:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
 
-    def _on_guide_category_select(self, change: dict):
-        self._view.guide_selection.options = guide_manager.get_guides(change["new"])
-        self._update_active_guide()
+    def _on_calculation_history_click(self, _):
+        self._open_external_notebook("./calculation_history.ipynb")
 
-    def _on_guide_select(self, _):
-        self._update_active_guide()
+    def _on_guide_category_selection_change(self, change):
+        self._model.guide_options = guide_manager.get_guides(change["new"])
 
-    def _update_active_guide(self):
-        """Sets the current active guide."""
+    def _on_guide_selection_change(self, _):
         category = self._view.guide_category_selection.value
         guide = self._view.guide_selection.value
-        active_guide = f"{category}/{guide}" if category != "none" else category
-        guide_manager.active_guide = active_guide
+        self._model.update_active_guide(category, guide)
 
-    def _set_guide_category_options(self, _):
-        """Fetch the available guides."""
-        self._view.guide_category_selection.options = [
-            "none",
-            *guide_manager.get_guide_categories(),
-        ]
+    def _open_external_notebook(self, url):
+        """Open an external notebook in a new tab."""
+        display(Javascript(f"window.open('{url}', '_blank')"))
 
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
+        self._model.observe(
+            self._on_guide_category_selection_change,
+            "selected_guide_category",
+        )
+        self._model.observe(
+            self._on_guide_selection_change,
+            [
+                "selected_guide_category",
+                "selected_guide",
+            ],
+        )
+
         self._view.guide_toggle.observe(
             self._on_guide_toggle,
             "value",
@@ -113,22 +119,38 @@ class AppWrapperContoller:
             self._on_about_toggle,
             "value",
         )
-        self._view.guide_category_selection.observe(
-            self._on_guide_category_select,
-            "value",
+        self._view.calculation_history_link.on_click(self._on_calculation_history_click)
+
+        ipw.dlink(
+            (self._model, "guide_category_options"),
+            (self._view.guide_category_selection, "options"),
         )
-        self._view.guide_selection.observe(
-            self._on_guide_select,
-            "value",
+        ipw.link(
+            (self._model, "selected_guide_category"),
+            (self._view.guide_category_selection, "value"),
         )
-        self._view.on_displayed(self._set_guide_category_options)
+        ipw.dlink(
+            (self._model, "guide_options"),
+            (self._view.guide_selection, "options"),
+        )
+        ipw.link(
+            (self._model, "selected_guide"),
+            (self._view.guide_selection, "value"),
+        )
 
 
 class AppWrapperModel(tl.HasTraits):
     """An MVC model for `AppWrapper`."""
 
-    def __init__(self):
-        """`AppWrapperModel` constructor."""
+    guide_category_options = tl.List(["none", *guide_manager.get_guide_categories()])
+    selected_guide_category = tl.Unicode("none")
+    guide_options = tl.List(tl.Unicode())
+    selected_guide = tl.Unicode(None, allow_none=True)
+
+    def update_active_guide(self, category, guide):
+        """Sets the current active guide."""
+        active_guide = f"{category}/{guide}" if category != "none" else category
+        guide_manager.active_guide = active_guide
 
 
 class AppWrapperView(ipw.VBox):
@@ -184,24 +206,23 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.calculation_history_button = ipw.Button(
+        self.calculation_history_link = ipw.Button(
             layout=ipw.Layout(width="auto"),
             button_style="",
             icon="list",
             description="Calculation history",
             tooltip="View all calculations run with this app",
+            disabled=True,
         )
 
-        self.calculation_history_button.on_click(self._open_calculation_history)
-
-        info_toggles = ipw.HBox(
+        self.controls = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
-                self.calculation_history_button,
+                self.calculation_history_link,
             ]
         )
-        info_toggles.add_class("info-toggles")
+        self.controls.add_class("info-toggles")
 
         env = Environment()
         guide_template = files(templates).joinpath("guide.jinja").read_text()
@@ -211,9 +232,7 @@ class AppWrapperView(ipw.VBox):
         self.about = ipw.HTML(env.from_string(about_template).render())
 
         self.guide_category_selection = ipw.RadioButtons(
-            options=["none"],
             description="Guides:",
-            value="none",
             layout=ipw.Layout(width="max-content"),
         )
         self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(margin="2px 20px"))
@@ -224,7 +243,7 @@ class AppWrapperView(ipw.VBox):
             children=[
                 logo,
                 subtitle,
-                info_toggles,
+                self.controls,
                 self.info_container,
             ],
         )
@@ -249,9 +268,3 @@ class AppWrapperView(ipw.VBox):
                 footer,
             ],
         )
-
-    def _open_calculation_history(self, _):
-        from IPython.display import Javascript
-
-        url = "./calculation_history.ipynb"
-        display(Javascript(f"window.open('{url}', '_blank')"))
