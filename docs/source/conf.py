@@ -82,6 +82,20 @@ html_theme_options = {
         "image_light": "logo.png",
         "image_dark": "logo_dark.png",
     },
+    "icon_links": [
+        {
+            "name": "AiiDAlab",
+            "url": "http://aiidalab.net",
+            "icon": "fa-solid fa-globe",
+            "type": "fontawesome",
+        },
+        {
+            "name": "GitHub",
+            "url": "https://www.github.com/aiidalab/aiidalab-qe",
+            "icon": "fa-brands fa-square-github",
+            "type": "fontawesome",
+        },
+    ],
 }
 
 # If true, links to the reST sources are added to the pages.
