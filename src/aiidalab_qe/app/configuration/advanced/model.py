@@ -46,7 +46,6 @@ class AdvancedConfigurationSettingsModel(
     spin_orbit = tl.Unicode()
 
     clean_workdir = tl.Bool(False)
-    override = tl.Bool(False)
     total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
     van_der_waals_options = tl.List(
         trait=tl.List(tl.Unicode()),
@@ -148,8 +147,8 @@ class AdvancedConfigurationSettingsModel(
         # Set tot_magnetization for collinear simulations.
         if self.spin_type == "collinear":
             # Conditions for metallic systems.
-            # Select the magnetization type and set the value if override is True
-            if self.electronic_type == "metal" and self.override:
+            # Select the magnetization type and set the value
+            if self.electronic_type == "metal":
                 if magnetization.type == "tot_magnetization":
                     parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
                         magnetization.total
@@ -231,7 +230,6 @@ class AdvancedConfigurationSettingsModel(
             self.electron_maxstep = self._get_default("electron_maxstep")
             self.spin_orbit = self._get_default("spin_orbit")
             self.kpoints_distance = self._get_default("kpoints_distance")
-            self.override = self._get_default("override")
 
     def _get_default(self, trait):
         return self._defaults.get(trait, self.traits()[trait].default_value)
@@ -240,10 +238,6 @@ class AdvancedConfigurationSettingsModel(
         ipw.dlink(
             (self, "loaded_from_process"),
             (model, "loaded_from_process"),
-        )
-        ipw.dlink(
-            (self, "override"),
-            (model, "override"),
         )
         model.observe(
             self._on_any_change,
