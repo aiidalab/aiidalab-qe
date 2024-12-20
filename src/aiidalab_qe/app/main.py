@@ -97,17 +97,6 @@ class App(ipw.VBox):
         # Hide the header
         self._wizard_app_widget.children[0].layout.display = "none"  # type: ignore
 
-        # Add a button to start a new calculation
-        self.new_workchain_button = ipw.Button(
-            layout=ipw.Layout(width="auto"),
-            button_style="success",
-            icon="plus-circle",
-            description="Start New Calculation",
-            tooltip="Open a new page to start a separate calculation",
-        )
-
-        self.new_workchain_button.on_click(self._on_new_workchain_button_click)
-
         self._process_loading_message = LoadingWidget(
             message="Loading process",
             layout=ipw.Layout(display="none"),
@@ -116,7 +105,6 @@ class App(ipw.VBox):
         super().__init__(
             children=[
                 InAppGuide(identifier="guide-warning", classes=["guide-warning"]),
-                self.new_workchain_button,
                 self._process_loading_message,
                 self._wizard_app_widget,
                 InAppGuide(identifier="post-guide", classes=["post-guide"]),
