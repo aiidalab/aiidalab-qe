@@ -212,13 +212,21 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
+        self.setup_resources_link = LinkButton(
+            description="Setup resources",
+            link="../home/code_setup.ipynb",
+            icon="database",
+            disabled=True,
+        )
+
         self.controls = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
                 self.calculation_history_link,
+                self.setup_resources_link,
                 self.new_workchain_link,
-            ]
+            ],
         )
         self.controls.add_class("app-controls")
 
