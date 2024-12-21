@@ -56,7 +56,6 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
         self.rendered = True
 
         # Render any active codes
-        self._model.get_model("quantumespresso.pw").activate()
         for _, code_model in self._model.get_models():
             if code_model.is_active:
                 self._toggle_code(code_model)

@@ -93,6 +93,7 @@ class GlobalResourceSettingsModel(
                     description=name,
                     default_calc_job_plugin=default_calc_job_plugin,
                 )
+                base_code_model.activate()
             else:
                 base_code_model = CodeModel(
                     name=name,

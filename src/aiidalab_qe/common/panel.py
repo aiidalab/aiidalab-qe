@@ -227,6 +227,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
             "codes": {
                 identifier: code_model.get_model_state()
                 for identifier, code_model in self.get_models()
+                if code_model.is_ready
             },
         }
 
@@ -358,6 +359,10 @@ class PluginResourceSettingsModel(ResourceSettingsModel):
 
     override = tl.Bool(False)
 
+    def add_model(self, identifier, model: CodeModel):
+        super().add_model(identifier, model)
+        model.activate()
+
     def update(self):
         """Updates the code models from the global resources.
 
@@ -442,7 +447,8 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
 
         # Render any active codes
         for _, code_model in self._model.get_models():
-            self._toggle_code(code_model)
+            if code_model.is_active:
+                self._toggle_code(code_model)
 
         return self.code_widgets_container
 
