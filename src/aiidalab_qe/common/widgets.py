@@ -669,7 +669,11 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         """Widget to setup the compute resources, which include the code,
         the number of nodes and the number of cpus.
         """
-        self.code_selection = ComputationalResourcesWidget(**kwargs)
+        self.code_selection = ComputationalResourcesWidget(
+            include_setup_widget=False,
+            fetch_codes=True,  # TODO resolve testing issues when set to `False`
+            **kwargs,
+        )
         self.code_selection.layout.width = "80%"
 
         self.num_nodes = ipw.BoundedIntText(
@@ -1065,3 +1069,46 @@ class LazyLoadedStructureBrowser(LazyLoadedStructureImporter):
                 HubbardStructureData,
             ),
         )
+
+
+class LinkButton(ipw.HTML):
+    disabled = traitlets.Bool(False)
+
+    def __init__(
+        self,
+        description=None,
+        link="",
+        in_place=False,
+        classes="",
+        icon="",
+        disabled=False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        html = f"""
+            <a
+                role="button"
+                href="{link}"
+                target="{"_self" if in_place else "_blank"}"
+                class="{classes}"
+            >
+        """
+        if icon:
+            html += f"<i class='fa fa-{icon}'></i>"
+
+        html += f"{description}</a>"
+
+        self.value = html
+
+        self.add_class("jupyter-button")
+        self.add_class("link-button")
+
+        self.disabled = disabled
+
+    @traitlets.observe("disabled")
+    def _on_disabled(self, change):
+        if change["new"]:
+            self.add_class("disabled")
+        else:
+            self.remove_class("disabled")
