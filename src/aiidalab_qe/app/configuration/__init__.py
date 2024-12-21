@@ -11,6 +11,7 @@ import traitlets as tl
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.mixins import DependentStep
 from aiidalab_qe.common.panel import (
     ConfigurationSettingsModel,
     ConfigurationSettingsPanel,
@@ -27,7 +28,13 @@ from .model import ConfigurationStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
+class ConfigureQeAppWorkChainStep(
+    ipw.VBox,
+    WizardAppWidgetStep,
+    DependentStep,
+):
+    missing_information_warning = "Missing input structure. Please set it first."
+
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 
     def __init__(self, model: ConfigurationStepModel, **kwargs):
