@@ -219,6 +219,10 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         super().add_model(identifier, model)
         model.update(self.DEFAULT_USER_EMAIL)
 
+    def refresh_codes(self):
+        for _, code_model in self.get_models():
+            code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
+
     def update_submission_blockers(self):
         self.submission_blockers = list(self._check_submission_blockers())
 
@@ -336,7 +340,6 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
         code_model.observe(
             self._on_code_resource_change,
             [
-                "options",
                 "selected",
                 "num_cpus",
                 "num_nodes",
@@ -375,9 +378,6 @@ class PluginResourceSettingsModel(ResourceSettingsModel):
             default_calc_job_plugin = code_model.default_calc_job_plugin
             if default_calc_job_plugin in self.global_codes:
                 code_resources: dict = self.global_codes[default_calc_job_plugin]  # type: ignore
-                options = code_resources.get("options", [])
-                if options != code_model.options:
-                    code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
                 code_model.set_model_state(code_resources)
 
     def get_model_state(self):
@@ -482,11 +482,6 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
         ipw.dlink(
             (code_model, "override"),
             (code_widget.num_nodes, "disabled"),
-            lambda override: not override,
-        )
-        ipw.dlink(
-            (code_model, "override"),
-            (code_widget.code_selection.btn_setup_new_code, "disabled"),
             lambda override: not override,
         )
         ipw.dlink(

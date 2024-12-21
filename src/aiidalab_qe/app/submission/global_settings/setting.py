@@ -117,14 +117,6 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
                 ],
             )
 
-        def update_options(_, model=code_model):
-            model.update(self._model.DEFAULT_USER_EMAIL, refresh=True)
-
-        code_widget.code_selection.code_select_dropdown.observe(
-            update_options,
-            "options",
-        )
-
         def toggle_widget(_=None, model=code_model, widget=code_widget):
             widget = self.code_widgets[model.name]
             widget.layout.display = "block" if model.is_active else "none"
