@@ -9,8 +9,6 @@ from .model import BandsResultsModel
 
 
 class BandsResultsPanel(ResultsPanel[BandsResultsModel]):
-    workchain_labels = ["bands"]
-
     def _render(self):
         bands_node = self._model.get_bands_node()
         model = BandsPdosModel()

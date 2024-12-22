@@ -9,8 +9,6 @@ from .model import ElectronicStructureResultsModel
 
 
 class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsModel]):
-    workchain_labels = ["bands", "pdos"]
-
     def _render(self):
         bands_node = self._model.get_bands_node()
         pdos_node = self._model.get_pdos_node()

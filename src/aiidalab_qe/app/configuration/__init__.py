@@ -245,7 +245,6 @@ class ConfigureQeAppWorkChainStep(
                 if key not in configuration:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
 
-            panel = configuration["panel"]
             model: ConfigurationSettingsModel = configuration["model"]()
             self._model.add_model(identifier, model)
 
@@ -287,7 +286,5 @@ class ConfigureQeAppWorkChainStep(
                 )
             )
 
-            self.settings[identifier] = panel(
-                identifier=identifier,
-                model=model,
-            )
+            panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
+            self.settings[identifier] = panel

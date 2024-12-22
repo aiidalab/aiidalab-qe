@@ -11,8 +11,6 @@ from .utils import write_csv
 
 
 class XasResultsPanel(ResultsPanel[XasResultsModel]):
-    workchain_labels = ["xas"]
-
     def _render(self):
         variable_broad_select = ipw.Checkbox(
             description="Use variable energy broadening.",

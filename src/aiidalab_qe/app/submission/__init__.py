@@ -13,7 +13,11 @@ from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import PluginCodes, PwCodeModel
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.mixins import DependentStep
-from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsPanel
+from aiidalab_qe.common.panel import (
+    PluginResourceSettingsModel,
+    PluginResourceSettingsPanel,
+    ResourceSettingsPanel,
+)
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_widgets_base import WizardAppWidgetStep
@@ -343,7 +347,6 @@ class SubmitQeAppWorkChainStep(
                 if key not in resources:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
 
-            panel = resources["panel"]
             model: PluginResourceSettingsModel = resources["model"]()
             model.observe(
                 self._on_plugin_overrides_change,
@@ -359,10 +362,8 @@ class SubmitQeAppWorkChainStep(
             )
             self._model.add_model(identifier, model)
 
-            self.settings[identifier] = panel(
-                identifier=identifier,
-                model=model,
-            )
+            panel: PluginResourceSettingsPanel = resources["panel"](model=model)
+            self.settings[identifier] = panel
 
             codes[identifier] = dict(model.get_models())
 
