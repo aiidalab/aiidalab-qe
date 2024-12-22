@@ -135,7 +135,7 @@ class BandsPdosWidget(ipw.VBox):
 
         self.proj_bands_width_slider = ipw.FloatSlider(
             min=0.01,
-            max=2.0,
+            max=5.0,
             step=0.01,
             description="`Fat bands` max width (eV):",
             orientation="horizontal",
