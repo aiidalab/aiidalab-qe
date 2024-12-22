@@ -17,6 +17,6 @@ class BandsResultsPanel(ResultsPanel[BandsResultsModel]):
         bands_node = self._model.get_bands_node()
         model = BandsPdosModel()
         widget = BandsPdosWidget(model=model, bands=bands_node)
-        widget.layout = ipw.Layout(width="1000px")
+        widget.layout = ipw.Layout(width="fit-content", margin="0 auto")
         widget.render()
         self.children = [widget]
