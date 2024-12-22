@@ -11,7 +11,7 @@ def test_electronic_structure(generate_qeapp_workchain):
     model = ElectronicStructureResultsModel()
     model.process_uuid = workchain.node.uuid
     result = ElectronicStructureResultsPanel(model=model)
-    result.render()
+    result._render()
 
     widget = result.children[0]
     model = widget._model

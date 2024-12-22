@@ -506,6 +506,8 @@ class ResultsModel(PanelModel, HasProcess):
     _this_process_label = ""
     _this_process_uuid = None
 
+    auto_render = False
+
     CSS_MAP = {
         "finished": "success",
         "failed": "danger",
@@ -521,6 +523,10 @@ class ResultsModel(PanelModel, HasProcess):
     def has_results(self):
         node = self._fetch_child_process_node()
         return node and node.is_finished_ok
+
+    def update(self):
+        if self.has_results:
+            self.auto_render = True
 
     def update_process_status_notification(self):
         self.process_status_notification = self._get_child_process_status()
@@ -616,13 +622,13 @@ class ResultsPanel(Panel[RM]):
             return
         if self.has_controls or not self._model.has_process:
             return
-        if not self._model.has_results:
-            self._render_controls()
-        else:
+        if self._model.auto_render:
             self._load_results()
+        else:
+            self._render_controls()
 
     def _on_process_change(self, _):
-        pass
+        self._model.update()
 
     def _on_monitor_counter_change(self, _):
         self._model.update_process_status_notification()

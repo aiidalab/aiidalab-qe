@@ -6,6 +6,10 @@ from aiidalab_qe.app.result.components.viewer import (
     WorkChainResultsViewer,
     WorkChainResultsViewerModel,
 )
+from aiidalab_qe.app.result.components.viewer.structure import StructureResultsModel
+from aiidalab_qe.app.result.components.viewer.structure.structure import (
+    StructureResultsPanel,
+)
 
 
 def test_result_step(app_to_submit, generate_qeapp_workchain):
@@ -37,7 +41,7 @@ def test_workchainview(generate_qeapp_workchain):
     model.process_uuid = workchain.node.uuid
     viewer.render()
     assert len(viewer.tabs.children) == 4
-    assert viewer.tabs._titles["0"] == "Final Geometry"  # type: ignore
+    assert viewer.tabs._titles["0"] == "Relaxed structure"  # type: ignore
 
 
 def test_summary_report(data_regression, generate_qeapp_workchain):
@@ -76,3 +80,19 @@ def test_summary_view(generate_qeapp_workchain):
     for key, value in parameters.items():
         td = parsed.find("td", text=key).find_next_sibling("td")
         assert td.text == value
+
+
+def test_structure_results_panel(generate_qeapp_workchain):
+    """Test the structure results panel can be properly generated."""
+    model = StructureResultsModel()
+    _ = StructureResultsPanel(model=model)
+
+    wc = generate_qeapp_workchain(relax_type="none")
+    model.process_uuid = wc.node.uuid
+    assert model.title == "Initial structure"
+    assert "properties" in model.source  # source should be inputs
+
+    wc = generate_qeapp_workchain(relax_type="positions_cell")
+    model.process_uuid = wc.node.uuid
+    assert model.title == "Relaxed structure"
+    assert "properties" not in model.source  # source should be outputs
