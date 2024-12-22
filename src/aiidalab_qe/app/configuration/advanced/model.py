@@ -32,6 +32,9 @@ class AdvancedConfigurationSettingsModel(
     HasModels[AdvancedCalculationSubSettingsModel],
     HasInputStructure,
 ):
+    title = "Advanced Settings"
+    identifier = "advanced"
+
     dependencies = [
         "input_structure",
         "workchain.protocol",

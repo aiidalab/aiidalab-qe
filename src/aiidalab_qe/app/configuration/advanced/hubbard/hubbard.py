@@ -7,8 +7,6 @@ from .model import HubbardConfigurationSettingsModel
 class HubbardConfigurationSettingsPanel(
     AdvancedConfigurationSubSettingsPanel[HubbardConfigurationSettingsModel],
 ):
-    identifier = "hubbard"
-
     def __init__(self, model: HubbardConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 

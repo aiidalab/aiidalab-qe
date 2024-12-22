@@ -9,6 +9,9 @@ BASE_URL = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
 
 
 class XpsConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructure):
+    title = "XPS"
+    identifier = "xps"
+
     dependencies = [
         "input_structure",
     ]

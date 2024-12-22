@@ -13,9 +13,6 @@ RYDBERG_TO_EV = 13.605703976
 class PdosConfigurationSettingPanel(
     ConfigurationSettingsPanel[PdosConfigurationSettingsModel],
 ):
-    title = "PDOS"
-    identifier = "pdos"
-
     def __init__(self, model: PdosConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 

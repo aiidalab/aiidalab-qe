@@ -16,6 +16,8 @@ class HubbardConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
+    identifier = "hubbard"
+
     dependencies = [
         "input_structure",
     ]

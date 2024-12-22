@@ -8,6 +8,8 @@ from ..subsettings import AdvancedCalculationSubSettingsModel
 
 
 class SmearingConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
+    identifier = "smearing"
+
     dependencies = [
         "protocol",
     ]

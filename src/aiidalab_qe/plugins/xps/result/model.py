@@ -6,6 +6,7 @@ from .utils import export_xps_data, xps_spectra_broadening
 
 
 class XpsResultsModel(ResultsModel):
+    title = "XPS"
     identifier = "xps"
 
     spectra_type_options = tl.List(

@@ -7,8 +7,6 @@ from .model import SmearingConfigurationSettingsModel
 class SmearingConfigurationSettingsPanel(
     AdvancedConfigurationSubSettingsPanel[SmearingConfigurationSettingsModel],
 ):
-    identifier = "smearing"
-
     def __init__(self, model: SmearingConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 

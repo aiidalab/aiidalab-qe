@@ -310,7 +310,7 @@ class SubmitQeAppWorkChainStep(
         for identifier, model in self._model.get_models():
             if model.include:
                 settings = self.settings[identifier]
-                titles.append(settings.title)
+                titles.append(model.title)
                 children.append(settings)
         if self.rendered:
             self.tabs.selected_index = None

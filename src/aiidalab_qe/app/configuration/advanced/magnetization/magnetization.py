@@ -20,8 +20,6 @@ class MagnetizationConfigurationSettingsPanel(
         input_structure(StructureData): trait that contains the input_structure (confirmed structure from previous step)
     """
 
-    identifier = "magnetization"
-
     def __init__(self, model: MagnetizationConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 

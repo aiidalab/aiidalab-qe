@@ -9,8 +9,6 @@ from .model import BandsResultsModel
 
 
 class BandsResultsPanel(ResultsPanel[BandsResultsModel]):
-    title = "Bands"
-    identifier = "bands"
     workchain_labels = ["bands"]
 
     def _render(self):

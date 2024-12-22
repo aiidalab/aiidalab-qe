@@ -8,6 +8,7 @@ from .utils import broaden_xas, export_xas_data, get_aligned_spectra
 
 
 class XasResultsModel(ResultsModel):
+    title = "XAS"
     identifier = "xas"
 
     spectrum_options = tl.List(

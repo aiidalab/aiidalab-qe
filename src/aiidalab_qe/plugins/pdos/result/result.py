@@ -9,8 +9,6 @@ from .model import PdosResultsModel
 
 
 class PdosResultsPanel(ResultsPanel[PdosResultsModel]):
-    title = "PDOS"
-    identifier = "pdos"
     workchain_labels = ["pdos"]
 
     def _render(self):

@@ -14,6 +14,9 @@ from aiidalab_qe.plugins import xas as xas_folder
 
 
 class XasConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructure):
+    title = "XAS"
+    identifier = "xas"
+
     dependencies = [
         "input_structure",
     ]

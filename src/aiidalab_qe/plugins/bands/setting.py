@@ -10,9 +10,6 @@ from aiidalab_qe.plugins.bands.model import BandsConfigurationSettingsModel
 class BandsConfigurationSettingsPanel(
     ConfigurationSettingsPanel[BandsConfigurationSettingsModel],
 ):
-    title = "Bands Structure"
-    identifier = "bands"
-
     def render(self):
         if self.rendered:
             return

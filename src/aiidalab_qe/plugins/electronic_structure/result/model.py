@@ -6,7 +6,9 @@ from aiidalab_qe.common.panel import ResultsModel
 # TODO if combined, this model should extend `HasModels`, and effectively
 # TODO reduce to a container of Bands and PDOS, similar to its results panel
 class ElectronicStructureResultsModel(ResultsModel):
+    title = "Electronic Structure"
     identifier = "electronic_structure"
+
     identifiers = ("bands", "pdos")
 
     _bands_process_label = "BandsWorkChain"

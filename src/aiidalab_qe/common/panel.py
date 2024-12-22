@@ -83,7 +83,7 @@ class PluginOutline(ipw.HBox):
 
 
 class SettingsModel(Model):
-    title = "Model"
+    title = ""
     identifier = ""
     dependencies: list[str] = []
 
@@ -113,8 +113,6 @@ SM = t.TypeVar("SM", bound=SettingsModel)
 
 
 class SettingsPanel(Panel, t.Generic[SM]):
-    title = "Settings"
-
     def __init__(self, model: SM, **kwargs):
         self.loading_message = LoadingWidget(f"Loading {model.identifier} settings")
 
@@ -603,15 +601,12 @@ class ResultsPanel(Panel, t.Generic[RM]):
     It has a update method to update the result in the panel.
     """
 
-    title = "Results"
-    identifier = "results"
-
     # To specify which plugins (outputs) are needed
     # for this result panel.
     workchain_labels = []
 
     def __init__(self, model: RM, **kwargs):
-        self.loading_message = LoadingWidget(f"Loading {self.title.lower()} results")
+        self.loading_message = LoadingWidget(f"Loading {model.title.lower()} results")
 
         super().__init__(**kwargs)
 
@@ -632,7 +627,7 @@ class ResultsPanel(Panel, t.Generic[RM]):
 
     def render(self):
         if self.rendered:
-            if self.identifier == "structure":
+            if self._model.identifier == "structure":
                 self._render()
             return
         if self.has_controls or not self._model.has_process:

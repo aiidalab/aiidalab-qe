@@ -10,9 +10,6 @@ from .model import BASE_URL, XpsConfigurationSettingsModel
 class XpsConfigurationSettingsPanel(
     ConfigurationSettingsPanel[XpsConfigurationSettingsModel],
 ):
-    title = "XPS"
-    identifier = "xps"
-
     def __init__(self, model: XpsConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 

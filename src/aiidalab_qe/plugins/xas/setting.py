@@ -10,9 +10,6 @@ from .model import XasConfigurationSettingsModel
 class XasConfigurationSettingsPanel(
     ConfigurationSettingsPanel[XasConfigurationSettingsModel],
 ):
-    title = "XAS"
-    identifier = "xas"
-
     # TODO: The element selection should lock the "Confirm" button if no elements have been selected for XAS calculation.
 
     def __init__(self, model: XasConfigurationSettingsModel, **kwargs):

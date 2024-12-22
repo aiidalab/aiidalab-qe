@@ -9,8 +9,6 @@ from .model import XpsResultsModel
 
 
 class XpsResultsPanel(ResultsPanel[XpsResultsModel]):
-    title = "XPS"
-    identifier = "xps"
     workchain_labels = ["xps"]
 
     experimental_data = None  # Placeholder for experimental data

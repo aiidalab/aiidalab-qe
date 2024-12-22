@@ -9,8 +9,6 @@ from .model import ElectronicStructureResultsModel
 
 
 class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsModel]):
-    title = "Electronic Structure"
-    identifier = "electronic_structure"
     workchain_labels = ["bands", "pdos"]
 
     def _render(self):
