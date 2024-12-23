@@ -24,3 +24,9 @@ def set_component_resources(component, code_info):
         ]
         if "parallelization" in code_info:
             component.parallelization = orm.Dict(dict=code_info["parallelization"])
+
+
+def enable_pencil_decomposition(component):
+    """Enable the pencil decomposition for the given component."""
+
+    component.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})

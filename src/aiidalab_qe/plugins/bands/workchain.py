@@ -1,7 +1,9 @@
-from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
-from aiidalab_qe.plugins.utils import set_component_resources
+from aiidalab_qe.utils import (
+    enable_pencil_decomposition,
+    set_component_resources,
+)
 
 BandsWorkChain = WorkflowFactory("aiidalab_qe.bands_workchain")
 # from .bands_workchain import BandsWorkChain
@@ -34,18 +36,16 @@ def update_resources(builder, codes):
     if "bands" in builder:
         set_component_resources(builder.bands.scf.pw, codes.get("pw"))
         set_component_resources(builder.bands.bands.pw, codes.get("pw"))
-        builder.bands.scf.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
-        builder.bands.bands.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
+        enable_pencil_decomposition(builder.bands.scf.pw)
+        enable_pencil_decomposition(builder.bands.bands.pw)
     elif "bands_projwfc" in builder:
         set_component_resources(builder.bands_projwfc.scf.pw, codes.get("pw"))
         set_component_resources(builder.bands_projwfc.bands.pw, codes.get("pw"))
         set_component_resources(
             builder.bands_projwfc.projwfc.projwfc, codes.get("projwfc_bands")
         )
-        builder.bands_projwfc.scf.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
-        builder.bands_projwfc.bands.pw.settings = orm.Dict(
-            {"CMDLINE": ["-pd", ".true."]}
-        )
+        enable_pencil_decomposition(builder.bands_projwfc.scf.pw)
+        enable_pencil_decomposition(builder.bands_projwfc.bands.pw)
 
 
 def get_builder(codes, structure, parameters, **kwargs):

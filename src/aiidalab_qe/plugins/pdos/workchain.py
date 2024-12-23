@@ -1,7 +1,10 @@
 from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
-from aiidalab_qe.plugins.utils import set_component_resources
+from aiidalab_qe.utils import (
+    enable_pencil_decomposition,
+    set_component_resources,
+)
 
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
@@ -37,8 +40,8 @@ def update_resources(builder, codes):
     set_component_resources(builder.nscf.pw, codes.get("pw"))
     set_component_resources(builder.dos, codes.get("dos"))
     set_component_resources(builder.projwfc, codes.get("projwfc"))
-    builder.scf.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
-    builder.nscf.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
+    enable_pencil_decomposition(builder.scf.pw)
+    enable_pencil_decomposition(builder.nscf.pw)
 
     # disable the parallelization setting for projwfc
     # npool = codes["pw"]["parallelization"]["npool"]
