@@ -58,6 +58,12 @@ RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/d
     tar xf hq.tar.gz -C /opt/conda/
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
+# temporary solution to install aiida-pseudos from repo to avoid downloading issues
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
+     "aiida-pseudo@git+https://github.com/aiidateam/aiida-pseudo"
+
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
