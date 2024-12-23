@@ -170,6 +170,7 @@ class HubbardConfigurationSettingsModel(
             or element.is_chalcogen
             or element.symbol in ["C", "N", "P"]: "p",
             element.is_alkaline or element.is_alkali or element.is_noble_gas: "s",
+            element.symbol in ["H", "He"]: "s",
         }
 
         condition = next(
