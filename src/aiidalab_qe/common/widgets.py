@@ -19,7 +19,7 @@ from IPython.display import HTML, Javascript, clear_output, display
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiidalab_widgets_base import ComputationalResourcesWidget
+from aiidalab_widgets_base import ComputationalResourcesWidget, StructureExamplesWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -1065,3 +1065,29 @@ class LazyLoadedStructureBrowser(LazyLoadedStructureImporter):
                 HubbardStructureData,
             ),
         )
+
+
+class CategorizedStructureExamplesWidget(StructureExamplesWidget):
+    """Extended widget to provide categorized example structures."""
+
+    def __init__(self, examples_by_category, title="", **kwargs):
+        self.examples_by_category = examples_by_category
+        self._category_buttons = ipw.ToggleButtons(
+            options=list(examples_by_category.keys()),
+            description="Category:",
+        )
+        self._category_buttons.observe(self._on_category_change, names="value")
+
+        # Initialize with the first category
+        initial_category = next(iter(examples_by_category.keys()))
+        super().__init__(
+            examples=examples_by_category[initial_category], title=title, **kwargs
+        )
+
+        self.children = [self._category_buttons, *list(self.children)]
+
+    def _on_category_change(self, change):
+        """Update the dropdown when the category changes."""
+        new_category = change["new"]
+        new_examples = self.examples_by_category.get(new_category, [])
+        self._select_structure.options = self.get_example_structures(new_examples)

@@ -15,10 +15,10 @@ from aiidalab_qe.common import (
     LazyLoadedStructureBrowser,
 )
 from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
-    StructureExamplesWidget,
     StructureManagerWidget,
     StructureUploadWidget,
     WizardAppWidgetStep,
@@ -34,9 +34,6 @@ Examples = [
     ("Gallium arsenide (primitive cell)", file_path / "examples" / "GaAs.cif"),
     ("Gold (conventional cell)", file_path / "examples" / "Au.cif"),
     ("Cobalt (primitive cell)", file_path / "examples" / "Co.cif"),
-    ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
-    ("Phenylacetylene molecule", file_path / "examples" / "Phenylacetylene.xyz"),
-    ("ETFA molecule", file_path / "examples" / "ETFA.xyz"),
     ("LiCoO2", file_path / "examples" / "LiCoO2.cif"),
 ]
 
@@ -73,11 +70,22 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         if self.rendered:
             return
 
+        examples_by_category = {"Simple crystals": Examples}
+        plugin_structure_examples = {
+            item["title"]: item["structures"]
+            for item in get_entry_items(
+                "aiidalab_qe.properties", "structure_examples"
+            ).values()
+        }
+        examples_by_category.update(plugin_structure_examples)
+
         importers = [
             StructureUploadWidget(title="Upload file"),
             LazyLoadedOptimade(title="OPTIMADE"),
             LazyLoadedStructureBrowser(title="AiiDA database"),
-            StructureExamplesWidget(title="From Examples", examples=Examples),
+            CategorizedStructureExamplesWidget(
+                title="From Examples", examples_by_category=examples_by_category
+            ),
         ]
 
         plugin_importers = get_entry_items("aiidalab_qe.properties", "importer")
