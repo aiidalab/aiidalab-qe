@@ -9,6 +9,7 @@ from .model import XasConfigurationSettingsModel
 from .resources import XasResourceSettingsModel, XasResourceSettingsPanel
 from .result import XasResultsModel, XasResultsPanel
 from .setting import XasConfigurationSettingsPanel
+from .structure_examples import structure_examples
 from .workchain import workchain_and_builder
 
 PSEUDO_TOC = yaml.safe_load(
@@ -25,6 +26,7 @@ class XasPluginOutline(PluginOutline):
 
 xas = {
     "outline": XasPluginOutline,
+    "structure_examples": structure_examples,
     "configuration": {
         "panel": XasConfigurationSettingsPanel,
         "model": XasConfigurationSettingsModel,
