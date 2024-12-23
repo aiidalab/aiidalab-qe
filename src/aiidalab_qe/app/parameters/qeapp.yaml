@@ -15,6 +15,7 @@ workchain:
 
 ## Advanced pw settings
 advanced:
+    clean_workdir: false
     pseudo_family:
         library: SSSP
         version: 1.3

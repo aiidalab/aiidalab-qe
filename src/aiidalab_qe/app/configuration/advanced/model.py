@@ -45,7 +45,7 @@ class AdvancedConfigurationSettingsModel(
     electronic_type = tl.Unicode()
     spin_orbit = tl.Unicode()
 
-    clean_workdir = tl.Bool(False)
+    clean_workdir = tl.Bool(DEFAULT["advanced"]["clean_workdir"])
     override = tl.Bool(False)
     total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
     van_der_waals_options = tl.List(
