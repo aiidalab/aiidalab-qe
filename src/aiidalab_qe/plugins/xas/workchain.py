@@ -18,6 +18,7 @@ def update_resources(builder, codes):
     """Update the resources for the builder."""
     set_component_resources(builder.core.scf.pw, codes.get("pw"))
     set_component_resources(builder.core.xs_prod.xspectra, codes.get("xspectra"))
+    builder.core.scf.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
 
 
 def get_builder(codes, structure, parameters, **kwargs):

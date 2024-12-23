@@ -16,6 +16,7 @@ supercell_min_parameter_map = {
 def update_resources(builder, codes):
     """Update the resources for the builder."""
     set_component_resources(builder.ch_scf.pw, codes.get("pw"))
+    builder.ch_scf.pw.settings = Dict({"CMDLINE": ["-pd", ".true."]})
 
 
 def get_builder(codes, structure, parameters, **kwargs):

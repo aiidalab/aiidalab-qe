@@ -37,6 +37,9 @@ def update_resources(builder, codes):
     set_component_resources(builder.nscf.pw, codes.get("pw"))
     set_component_resources(builder.dos, codes.get("dos"))
     set_component_resources(builder.projwfc, codes.get("projwfc"))
+    builder.scf.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
+    builder.nscf.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
+
     # disable the parallelization setting for projwfc
     # npool = codes["pw"]["parallelization"]["npool"]
     # builder.projwfc.settings = orm.Dict(dict={"cmdline": ["-nk", str(npool)]})

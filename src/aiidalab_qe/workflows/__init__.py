@@ -187,6 +187,7 @@ class QeAppWorkChain(WorkChain):
             overrides=relax_overrides,
             **kwargs,
         )
+        relax_builder.base.pw.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
         # pop the inputs that are excluded from the expose_inputs
         relax_builder.pop("structure", None)
         relax_builder.pop("clean_workdir", None)
