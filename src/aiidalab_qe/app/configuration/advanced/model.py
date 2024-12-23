@@ -45,7 +45,7 @@ class AdvancedConfigurationSettingsModel(
     electronic_type = tl.Unicode()
     spin_orbit = tl.Unicode()
 
-    clean_workdir = tl.Bool(False)
+    clean_workdir = tl.Bool(DEFAULT["advanced"]["clean_workdir"])
     override = tl.Bool(False)
     total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
     van_der_waals_options = tl.List(
@@ -111,7 +111,11 @@ class AdvancedConfigurationSettingsModel(
 
         hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
         if hubbard.is_active:
-            parameters["hubbard_parameters"] = {"hubbard_u": hubbard.parameters}
+            parameters["hubbard_parameters"] = {
+                "hubbard_u": {
+                    label: value for label, value in hubbard.parameters.items() if value
+                }
+            }
             if hubbard.has_eigenvalues:
                 parameters["pw"]["parameters"]["SYSTEM"] |= {
                     "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()

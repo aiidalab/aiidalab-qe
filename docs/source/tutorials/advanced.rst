@@ -5,14 +5,14 @@ Advanced Tutorial
 Overview
 --------
 
-Calculations probing more intricate properties often require additional computational resources. In this tutorial, we will again compute a band structure, but this time, we will do it for a magnetic system, namely bulk cobalt. As such, will set up our environment to submit to a remote machine capable of handling the calculation.
+Calculations probing more intricate properties often require additional computational resources. In this tutorial, we will again compute a band structure, but this time, we will do it for a magnetic system, namely bulk nickel. As such, will set up our environment to submit to a remote machine capable of handling the calculation.
 
 Start
 -----
 
 .. admonition:: Goal
 
-   To submit a band structure calculation for magnetic cobalt on a remote machine.
+   To submit a band structure calculation for magnetic nickel on a remote machine.
 
 To start, go ahead and :doc:`launch </installation/launch>` the app, then follow the steps below.
 
@@ -23,12 +23,12 @@ To start, go ahead and :doc:`launch </installation/launch>` the app, then follow
 Step 1: Select a structure
 **************************
 
-Select `Cobalt (hcp)` from the `From examples` tab and click `Confirm`.
+Select `Nickel (hcp)` from the `From examples` tab and click `Confirm`.
 
 Step 2: Configure the workflow
 ******************************
 
-Select `Full geometry` to relax the structure. As we are looking at magnetic cobalt, we also want to turn on `Magnetism`. Go ahead and do so now.
+Select `Full geometry` to relax the structure. As we are looking at magnetic nickel, we also want to turn on `Magnetism`. Go ahead and do so now.
 
 Select both `Band structure` and `Projected density of states` as the properties of interest.
 

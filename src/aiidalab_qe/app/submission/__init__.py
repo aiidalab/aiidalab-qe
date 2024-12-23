@@ -12,6 +12,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import PluginCodes, PwCodeModel
 from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.mixins import DependentStep
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsPanel
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
@@ -23,8 +24,12 @@ from .model import SubmissionStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
-    """Step for submission of a bands workchain."""
+class SubmitQeAppWorkChainStep(
+    ipw.VBox,
+    WizardAppWidgetStep,
+    DependentStep,
+):
+    missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
 
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
 

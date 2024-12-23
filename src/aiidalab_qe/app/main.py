@@ -18,6 +18,7 @@ from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.app.submission.model import SubmissionStepModel
 from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.mixins import DependentStep
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import WizardAppWidget
 
@@ -97,17 +98,6 @@ class App(ipw.VBox):
         # Hide the header
         self._wizard_app_widget.children[0].layout.display = "none"  # type: ignore
 
-        # Add a button to start a new calculation
-        self.new_workchain_button = ipw.Button(
-            layout=ipw.Layout(width="auto"),
-            button_style="success",
-            icon="plus-circle",
-            description="Start New Calculation",
-            tooltip="Open a new page to start a separate calculation",
-        )
-
-        self.new_workchain_button.on_click(self._on_new_workchain_button_click)
-
         self._process_loading_message = LoadingWidget(
             message="Loading process",
             layout=ipw.Layout(display="none"),
@@ -116,7 +106,6 @@ class App(ipw.VBox):
         super().__init__(
             children=[
                 InAppGuide(identifier="guide-warning", classes=["guide-warning"]),
-                self.new_workchain_button,
                 self._process_loading_message,
                 self._wizard_app_widget,
                 InAppGuide(identifier="post-guide", classes=["post-guide"]),
@@ -152,7 +141,18 @@ class App(ipw.VBox):
 
     def _render_step(self, step_index):
         step = self.steps[step_index][1]
-        step.render()
+        if step is self.configure_step and not self.structure_model.confirmed:
+            step.show_missing_information_warning()
+        elif step is self.submit_step and not self.configure_model.confirmed:
+            step.show_missing_information_warning()
+        elif step is self.results_step and not self.submit_model.confirmed:
+            step.show_missing_information_warning()
+        elif isinstance(step, DependentStep):
+            step.hide_missing_information_warning()
+            step.render()
+            step.previous_children = step.children
+        else:
+            step.render()
 
     def _update_configuration_step(self):
         if self.structure_model.confirmed:

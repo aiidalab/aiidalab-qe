@@ -85,6 +85,9 @@ class AppWrapperContoller:
     def _on_calculation_history_click(self, _):
         self._open_external_notebook("./calculation_history.ipynb")
 
+    def _on_new_workchain_click(self, _):
+        self._open_external_notebook("./qe.ipynb")
+
     def _on_guide_category_selection_change(self, change):
         self._model.guide_options = guide_manager.get_guides(change["new"])
 
@@ -120,6 +123,7 @@ class AppWrapperContoller:
             "value",
         )
         self._view.calculation_history_link.on_click(self._on_calculation_history_click)
+        self._view.new_workchain_link.on_click(self._on_new_workchain_click)
 
         ipw.dlink(
             (self._model, "guide_category_options"),
@@ -191,7 +195,7 @@ class AppWrapperView(ipw.VBox):
             button_style="",
             icon="book",
             value=False,
-            description="Getting Started",
+            description="Getting started",
             tooltip="Learn how to use the app",
             disabled=True,
         )
@@ -215,11 +219,21 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
+        self.new_workchain_link = ipw.Button(
+            layout=ipw.Layout(width="auto"),
+            button_style="",
+            icon="plus-circle",
+            description="New calculation",
+            tooltip="Open a new page to start a separate calculation",
+            disabled=True,
+        )
+
         self.controls = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
                 self.calculation_history_link,
+                self.new_workchain_link,
             ]
         )
         self.controls.add_class("info-toggles")
