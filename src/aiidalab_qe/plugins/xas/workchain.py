@@ -6,7 +6,10 @@ from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiidalab_qe.plugins import xas as xas_folder
-from aiidalab_qe.plugins.utils import set_component_resources
+from aiidalab_qe.utils import (
+    enable_pencil_decomposition,
+    set_component_resources,
+)
 
 XspectraCrystalWorkChain = WorkflowFactory("quantumespresso.xspectra.crystal")
 PSEUDO_TOC = yaml.safe_load(resources.read_text(xas_folder, "pseudo_toc.yaml"))
@@ -18,6 +21,7 @@ def update_resources(builder, codes):
     """Update the resources for the builder."""
     set_component_resources(builder.core.scf.pw, codes.get("pw"))
     set_component_resources(builder.core.xs_prod.xspectra, codes.get("xspectra"))
+    enable_pencil_decomposition(builder.core.scf.pw)
 
 
 def get_builder(codes, structure, parameters, **kwargs):
