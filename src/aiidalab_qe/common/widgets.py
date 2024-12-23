@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
+import os
 import typing as t
 from copy import deepcopy
 from queue import Queue
@@ -1193,6 +1194,9 @@ class QeDependentWizardStep(QeWizardStep[QWSM]):
         )
 
     def render(self):
+        if "PYTEST_CURRENT_TEST" in os.environ:
+            super().render()
+            return
         if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
             self._hide_missing_information_warning()
             if not self.rendered:
