@@ -3,6 +3,7 @@ from aiidalab_qe.common.panel import PluginOutline
 from .model import XpsConfigurationSettingsModel
 from .result import XpsResultsModel, XpsResultsPanel
 from .setting import XpsConfigurationSettingsPanel
+from .structure_examples import structure_examples
 from .workchain import workchain_and_builder
 
 
@@ -12,6 +13,7 @@ class XpsPluginOutline(PluginOutline):
 
 xps = {
     "outline": XpsPluginOutline,
+    "structure_examples": structure_examples,
     "configuration": {
         "panel": XpsConfigurationSettingsPanel,
         "model": XpsConfigurationSettingsModel,
