@@ -28,13 +28,13 @@ from aiidalab_widgets_base import (
 # StructureExamplesWidget.
 file_path = pathlib.Path(__file__).parent
 Examples = [
-    ("Bulk silicon (primitive cell)", file_path / "examples" / "Si.cif"),
-    ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
-    ("Diamond (primitive cell)", file_path / "examples" / "Diamond.cif"),
-    ("Gallium arsenide (primitive cell)", file_path / "examples" / "GaAs.cif"),
-    ("Gold (conventional cell)", file_path / "examples" / "Au.cif"),
-    ("Cobalt (primitive cell)", file_path / "examples" / "Co.cif"),
+    ("Bulk silicon", file_path / "examples" / "Si.cif"),
+    ("Diamond", file_path / "examples" / "Diamond.cif"),
+    ("Gallium arsenide", file_path / "examples" / "GaAs.cif"),
+    ("Gold", file_path / "examples" / "Au.cif"),
+    ("Nickel", file_path / "examples" / "Ni.cif"),
     ("LiCoO2", file_path / "examples" / "LiCoO2.cif"),
+    ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
 ]
 
 
