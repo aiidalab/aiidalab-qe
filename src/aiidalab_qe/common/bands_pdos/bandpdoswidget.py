@@ -310,6 +310,7 @@ class BandsPdosWidget(ipw.VBox):
         self.proj_controls.layout.display = (
             "flex" if self._model.needs_projections_controls else "none"
         )
+        self._model.project_bands_box = True
 
     def _toggle_pdos_options(self):
         """Plot the options only if the pdos is provided or in case the bands data
