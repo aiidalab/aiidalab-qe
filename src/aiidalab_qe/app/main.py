@@ -74,6 +74,10 @@ class App(ipw.VBox):
             (self.submit_step, "state"),
             (self.results_step, "previous_step_state"),
         )
+        self.submit_model.observe(
+            self._on_submission,
+            "confirmed",
+        )
         ipw.dlink(
             (self.submit_model, "process_node"),
             (self.results_model, "process_uuid"),
@@ -138,6 +142,9 @@ class App(ipw.VBox):
         self._update_submission_step()
         self._update_blockers()
 
+    def _on_submission(self, _):
+        self._lock_app()
+
     def _render_step(self, step_index):
         step: QeWizardStep = self.steps[step_index][1]
         step.render()
@@ -155,6 +162,14 @@ class App(ipw.VBox):
         else:
             self.submit_model.input_structure = None
             self.submit_model.input_parameters = {}
+
+    def _lock_app(self):
+        for model in (
+            self.structure_model,
+            self.configure_model,
+            self.submit_model,
+        ):
+            model.unobserve_all("confirmed")
 
     def _update_blockers(self):
         self.submit_model.external_submission_blockers = [
