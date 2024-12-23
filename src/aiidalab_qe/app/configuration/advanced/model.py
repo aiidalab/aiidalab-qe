@@ -111,7 +111,11 @@ class AdvancedConfigurationSettingsModel(
 
         hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
         if hubbard.is_active:
-            parameters["hubbard_parameters"] = {"hubbard_u": hubbard.parameters}
+            parameters["hubbard_parameters"] = {
+                "hubbard_u": {
+                    label: value for label, value in hubbard.parameters.items() if value
+                }
+            }
             if hubbard.has_eigenvalues:
                 parameters["pw"]["parameters"]["SYSTEM"] |= {
                     "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()
