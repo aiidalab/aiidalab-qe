@@ -12,7 +12,6 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import PluginCodes, PwCodeModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import DependentStep
 from aiidalab_qe.common.panel import (
     PluginResourceSettingsModel,
     PluginResourceSettingsPanel,
@@ -20,7 +19,7 @@ from aiidalab_qe.common.panel import (
 )
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_widgets_base import WizardAppWidgetStep
+from aiidalab_qe.common.widgets import QeDependentWizardStep
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -28,24 +27,11 @@ from .model import SubmissionStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmitQeAppWorkChainStep(
-    ipw.VBox,
-    WizardAppWidgetStep,
-    DependentStep,
-):
+class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
     missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
 
-    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-
     def __init__(self, model: SubmissionStepModel, qe_auto_setup=True, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
-        super().__init__(
-            children=[LoadingWidget("Loading workflow submission step")],
-            **kwargs,
-        )
-
-        self._model = model
+        super().__init__(model=model, **kwargs)
         self._model.observe(
             self._on_submission,
             "confirmed",
@@ -82,8 +68,6 @@ class SubmitQeAppWorkChainStep(
             "qe_installed",
         )
 
-        self.rendered = False
-
         global_resources_model = GlobalResourceSettingsModel()
         self.global_resources = GlobalResourceSettingsPanel(
             model=global_resources_model
@@ -110,10 +94,7 @@ class SubmitQeAppWorkChainStep(
         self._install_sssp(qe_auto_setup)
         self._set_up_qe(qe_auto_setup)
 
-    def render(self):
-        if self.rendered:
-            return
-
+    def _render(self):
         self.process_label = ipw.Text(
             description="Label:",
             layout=ipw.Layout(width="auto", indent="0px"),
@@ -203,8 +184,7 @@ class SubmitQeAppWorkChainStep(
             self.submit_button,
         ]
 
-        self.rendered = True
-
+    def _post_render(self):
         self._update_tabs()
 
     def submit(self, _=None):

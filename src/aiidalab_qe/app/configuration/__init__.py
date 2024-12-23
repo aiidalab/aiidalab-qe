@@ -11,12 +11,11 @@ import traitlets as tl
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import DependentStep
 from aiidalab_qe.common.panel import (
     ConfigurationSettingsModel,
     ConfigurationSettingsPanel,
 )
-from aiidalab_widgets_base import WizardAppWidgetStep
+from aiidalab_qe.common.widgets import QeDependentWizardStep
 
 from .advanced import (
     AdvancedConfigurationSettingsModel,
@@ -28,24 +27,11 @@ from .model import ConfigurationStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class ConfigureQeAppWorkChainStep(
-    ipw.VBox,
-    WizardAppWidgetStep,
-    DependentStep,
-):
+class ConfigureQeAppWorkChainStep(QeDependentWizardStep[ConfigurationStepModel]):
     missing_information_warning = "Missing input structure. Please set it first."
 
-    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-
     def __init__(self, model: ConfigurationStepModel, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
-        super().__init__(
-            children=[LoadingWidget("Loading workflow configuration step")],
-            **kwargs,
-        )
-
-        self._model = model
+        super().__init__(model=model, **kwargs)
         self._model.observe(
             self._on_confirmation_change,
             "confirmed",
@@ -53,21 +39,6 @@ class ConfigureQeAppWorkChainStep(
         self._model.observe(
             self._on_input_structure_change,
             "input_structure",
-        )
-
-        self.rendered = False
-
-        self.structure_set_message = ipw.HTML()
-        ipw.dlink(
-            (self._model, "input_structure"),
-            (self.structure_set_message, "value"),
-            lambda structure: ""
-            if structure
-            else """
-                <div class="alert alert-danger">
-                    <b>Please set the input structure first.</b>
-                </div>
-            """,
         )
 
         workchain_model = BasicConfigurationSettingsModel()
@@ -89,10 +60,7 @@ class ConfigureQeAppWorkChainStep(
 
         self._fetch_plugin_calculation_settings()
 
-    def render(self):
-        if self.rendered:
-            return
-
+    def _render(self):
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
         ipw.dlink(
@@ -156,7 +124,6 @@ class ConfigureQeAppWorkChainStep(
 
         self.children = [
             InAppGuide(identifier="configuration-step"),
-            self.structure_set_message,
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
                     <h4>Structure relaxation</h4>
@@ -168,8 +135,7 @@ class ConfigureQeAppWorkChainStep(
             self.confirm_button,
         ]
 
-        self.rendered = True
-
+    def _post_render(self):
         self._update_tabs()
 
         if self._model.confirmed:  # loaded from a process

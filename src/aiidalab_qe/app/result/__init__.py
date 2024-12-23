@@ -3,8 +3,7 @@ import traitlets as tl
 
 from aiida.engine import ProcessState
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import DependentStep
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_qe.common.widgets import LoadingWidget, QeDependentWizardStep
 from aiidalab_widgets_base import ProcessMonitor, WizardAppWidgetStep
 
 from .components import ResultsComponent
@@ -18,24 +17,13 @@ PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
 PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 
 
-class ViewQeAppWorkChainStatusAndResultsStep(
-    ipw.VBox,
-    WizardAppWidgetStep,
-    DependentStep,
-):
-    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-
+class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepModel]):
     missing_information_warning = (
         "No available results. Did you submit or load a calculation?"
     )
 
     def __init__(self, model: ResultsStepModel, **kwargs):
-        super().__init__(
-            children=[LoadingWidget("Loading results step")],
-            **kwargs,
-        )
-
-        self._model = model
+        super().__init__(model=model, **kwargs)
         self.observe(
             self._on_previous_step_state_change,
             "previous_step_state",
@@ -45,12 +33,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(
             "process_uuid",
         )
 
-        self.rendered = False
-
-    def render(self):
-        if self.rendered:
-            return
-
+    def _render(self):
         self.kill_button = ipw.Button(
             description="Kill workchain",
             tooltip="Kill the below workchain.",
@@ -130,17 +113,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(
 
         if self._model.has_process:
             self._update_children()
-        elif self.previous_step_state is not WizardAppWidgetStep.State.SUCCESS:
-            self.children = [
-                ipw.HTML("""
-                    <div class="alert alert-danger" style="text-align: center;">
-                        No process detected. Please submit a calculation.
-                    </div>
-                """),
-            ]
 
-        self.rendered = True
-
+    def _post_render(self):
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
@@ -213,6 +187,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(
             self.toggle_controls,
             self.container,
         ]
+        self.previous_children = list(self.children)
 
     def _toggle_view(self, panel: ResultsComponent):
         self.container.children = [panel]

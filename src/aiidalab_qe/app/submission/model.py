@@ -11,19 +11,21 @@ from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasModels
-from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
+from aiidalab_qe.common.widgets import QeWizardStepModel
 from aiidalab_qe.workflows import QeAppWorkChain
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStepModel(
-    Model,
+    QeWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
     Confirmable,
 ):
+    identifier = "submission"
+
     input_parameters = tl.Dict()
 
     process_node = tl.Instance(orm.WorkChainNode, allow_none=True)
