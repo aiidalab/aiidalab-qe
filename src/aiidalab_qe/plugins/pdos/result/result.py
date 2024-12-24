@@ -13,6 +13,6 @@ class PdosResultsPanel(ResultsPanel[PdosResultsModel]):
         pdos_node = self._model.get_pdos_node()
         model = BandsPdosModel()
         widget = BandsPdosWidget(model=model, pdos=pdos_node)
-        widget.layout = ipw.Layout(width="fit-content", margin="0 auto")
+        widget.layout = ipw.Layout(width="1000px")
         widget.render()
         self.children = [widget]
