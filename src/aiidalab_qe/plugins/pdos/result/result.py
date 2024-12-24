@@ -9,10 +9,6 @@ from .model import PdosResultsModel
 
 
 class PdosResultsPanel(ResultsPanel[PdosResultsModel]):
-    title = "PDOS"
-    identifier = "pdos"
-    workchain_labels = ["pdos"]
-
     def _render(self):
         pdos_node = self._model.get_pdos_node()
         model = BandsPdosModel()

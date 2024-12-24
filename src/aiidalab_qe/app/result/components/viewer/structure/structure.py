@@ -5,9 +5,6 @@ from .model import StructureResultsModel
 
 
 class StructureResults(ResultsPanel[StructureResultsModel]):
-    title = "Final Geometry"
-    identifier = "structure"
-
     def _render(self):
         if not hasattr(self, "widget"):
             self.widget = StructureDataViewer(structure=self._model.outputs.structure)

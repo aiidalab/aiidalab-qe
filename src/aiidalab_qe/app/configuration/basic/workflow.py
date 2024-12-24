@@ -13,9 +13,6 @@ from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 class BasicConfigurationSettingsPanel(
     ConfigurationSettingsPanel[BasicConfigurationSettingsModel],
 ):
-    title = "Basic Settings"
-    identifier = "workchain"
-
     def __init__(self, model: BasicConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
         self._model.observe(

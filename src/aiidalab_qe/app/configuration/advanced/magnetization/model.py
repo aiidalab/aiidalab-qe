@@ -11,6 +11,8 @@ class MagnetizationConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
+    identifier = "magnetization"
+
     dependencies = [
         "input_structure",
         "electronic_type",

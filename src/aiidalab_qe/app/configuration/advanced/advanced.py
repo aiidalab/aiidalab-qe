@@ -30,9 +30,6 @@ from .smearing import (
 class AdvancedConfigurationSettingsPanel(
     ConfigurationSettingsPanel[AdvancedConfigurationSettingsModel],
 ):
-    title = "Advanced Settings"
-    identifier = "advanced"
-
     def __init__(self, model: AdvancedConfigurationSettingsModel, **kwargs):
         super().__init__(
             model=model,

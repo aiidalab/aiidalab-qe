@@ -26,6 +26,8 @@ class PseudosConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
+    identifier = "pseudos"
+
     dependencies = [
         "input_structure",
         "protocol",

@@ -15,6 +15,7 @@ class GlobalResourceSettingsModel(
 ):
     """Model for the global code setting."""
 
+    title = "Global resources"
     identifier = "global"
 
     dependencies = [

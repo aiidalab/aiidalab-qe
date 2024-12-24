@@ -67,8 +67,11 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
     def _set_tabs(self):
         children = []
         titles = []
-        for results in self.panels.values():
-            titles.append(results.title)
+        for identifier, model in self._model.get_models():
+            if identifier not in self.panels:
+                continue
+            results = self.panels[identifier]
+            titles.append(model.title)
             children.append(results)
         self.tabs.children = children
         for i, title in enumerate(titles):
@@ -80,7 +83,7 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
         structure_model = StructureResultsModel()
         structure_model.process_uuid = self._model.process_uuid
         self.structure_results = StructureResults(model=structure_model)
-        identifier = self.structure_results.identifier
+        identifier = structure_model.identifier
         self._model.add_model(identifier, structure_model)
         self.panels = {
             identifier: self.structure_results,

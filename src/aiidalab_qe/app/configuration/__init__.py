@@ -218,7 +218,7 @@ class ConfigureQeAppWorkChainStep(
         for identifier, model in self._model.get_models():
             if model.include:
                 settings = self.settings[identifier]
-                titles.append(settings.title)
+                titles.append(model.title)
                 children.append(settings)
         if self.rendered:
             self.tabs.selected_index = None
@@ -245,7 +245,6 @@ class ConfigureQeAppWorkChainStep(
                 if key not in configuration:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
 
-            panel = configuration["panel"]
             model: ConfigurationSettingsModel = configuration["model"]()
             self._model.add_model(identifier, model)
 
@@ -287,7 +286,5 @@ class ConfigureQeAppWorkChainStep(
                 )
             )
 
-            self.settings[identifier] = panel(
-                identifier=identifier,
-                model=model,
-            )
+            panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
+            self.settings[identifier] = panel

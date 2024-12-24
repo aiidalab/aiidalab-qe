@@ -22,8 +22,6 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 class PseudosConfigurationSettingsPanel(
     AdvancedConfigurationSubSettingsPanel[PseudosConfigurationSettingsModel],
 ):
-    identifier = "pseudos"
-
     def __init__(self, model: PseudosConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
