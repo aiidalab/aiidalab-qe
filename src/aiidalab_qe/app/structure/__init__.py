@@ -15,13 +15,12 @@ from aiidalab_qe.common import (
     LazyLoadedStructureBrowser,
 )
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget
+from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget, QeWizardStep
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
     StructureManagerWidget,
     StructureUploadWidget,
-    WizardAppWidgetStep,
 )
 
 # The Examples list of (name, file) tuple curretly passed to
@@ -38,7 +37,7 @@ Examples = [
 ]
 
 
-class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
+class StructureSelectionStep(QeWizardStep[StructureStepModel]):
     """Integrated widget for the selection and edition of structure.
     The widget includes a structure manager that allows to select a structure
     from different sources. It also includes the structure editor. Both the
@@ -46,14 +45,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     """
 
     def __init__(self, model: StructureStepModel, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
-        super().__init__(
-            children=[LoadingWidget("Loading structure selection step")],
-            **kwargs,
-        )
-
-        self._model = model
+        super().__init__(model=model, **kwargs)
         self._model.observe(
             self._on_confirmation_change,
             "confirmed",
@@ -63,13 +55,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             "input_structure",
         )
 
-        self.rendered = False
-
-    def render(self):
-        """docstring"""
-        if self.rendered:
-            return
-
+    def _render(self):
         examples_by_category = {"Simple crystals": Examples}
         plugin_structure_examples = {
             item["title"]: item["structures"]
@@ -172,8 +158,6 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.message_area,
             self.confirm_button,
         ]
-
-        self.rendered = True
 
     def is_saved(self):
         return self._model.confirmed

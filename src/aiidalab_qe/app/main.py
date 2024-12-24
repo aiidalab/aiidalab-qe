@@ -18,8 +18,7 @@ from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.app.submission.model import SubmissionStepModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import DependentStep
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_qe.common.widgets import LoadingWidget, QeWizardStep
 from aiidalab_widgets_base import WizardAppWidget
 
 
@@ -75,10 +74,9 @@ class App(ipw.VBox):
             (self.submit_step, "state"),
             (self.results_step, "previous_step_state"),
         )
-        ipw.dlink(
-            (self.submit_model, "process_node"),
-            (self.results_model, "process_uuid"),
-            lambda node: node.uuid if node is not None else None,
+        self.submit_model.observe(
+            self._on_submission,
+            "confirmed",
         )
 
         # Add the application steps to the application
@@ -139,20 +137,13 @@ class App(ipw.VBox):
         self._update_submission_step()
         self._update_blockers()
 
+    def _on_submission(self, _):
+        self._update_results_step()
+        self._lock_app()
+
     def _render_step(self, step_index):
-        step = self.steps[step_index][1]
-        if step is self.configure_step and not self.structure_model.confirmed:
-            step.show_missing_information_warning()
-        elif step is self.submit_step and not self.configure_model.confirmed:
-            step.show_missing_information_warning()
-        elif step is self.results_step and not self.submit_model.confirmed:
-            step.show_missing_information_warning()
-        elif isinstance(step, DependentStep):
-            step.hide_missing_information_warning()
-            step.render()
-            step.previous_children = step.children
-        else:
-            step.render()
+        step: QeWizardStep = self.steps[step_index][1]
+        step.render()
 
     def _update_configuration_step(self):
         if self.structure_model.confirmed:
@@ -167,6 +158,21 @@ class App(ipw.VBox):
         else:
             self.submit_model.input_structure = None
             self.submit_model.input_parameters = {}
+
+    def _update_results_step(self):
+        ipw.dlink(
+            (self.submit_model, "process_node"),
+            (self.results_model, "process_uuid"),
+            lambda node: node.uuid if node is not None else None,
+        )
+
+    def _lock_app(self):
+        for model in (
+            self.structure_model,
+            self.configure_model,
+            self.submit_model,
+        ):
+            model.unobserve_all("confirmed")
 
     def _update_blockers(self):
         self.submit_model.external_submission_blockers = [

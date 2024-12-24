@@ -10,8 +10,8 @@ from aiidalab_qe.common.mixins import (
     HasInputStructure,
     HasModels,
 )
-from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
+from aiidalab_qe.common.widgets import QeWizardStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -19,11 +19,13 @@ NO_RELAXATION_OPTION = ("Structure as is", "none")
 
 
 class ConfigurationStepModel(
-    Model,
+    QeWizardStepModel,
     HasModels[ConfigurationSettingsModel],
     HasInputStructure,
     Confirmable,
 ):
+    identifier = "configuration"
+
     relax_type_help = tl.Unicode()
     relax_type_options = tl.List([NO_RELAXATION_OPTION])
     relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
