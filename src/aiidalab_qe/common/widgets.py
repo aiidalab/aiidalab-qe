@@ -1091,3 +1091,46 @@ class CategorizedStructureExamplesWidget(StructureExamplesWidget):
         new_category = change["new"]
         new_examples = self.examples_by_category.get(new_category, [])
         self._select_structure.options = self.get_example_structures(new_examples)
+
+
+class LinkButton(ipw.HTML):
+    disabled = traitlets.Bool(False)
+
+    def __init__(
+        self,
+        description=None,
+        link="",
+        in_place=False,
+        classes="",
+        icon="",
+        disabled=False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        html = f"""
+            <a
+                role="button"
+                href="{link}"
+                target="{"_self" if in_place else "_blank"}"
+                class="{classes}"
+            >
+        """
+        if icon:
+            html += f"<i class='fa fa-{icon}'></i>"
+
+        html += f"{description}</a>"
+
+        self.value = html
+
+        self.add_class("jupyter-button")
+        self.add_class("link-button")
+
+        self.disabled = disabled
+
+    @traitlets.observe("disabled")
+    def _on_disabled(self, change):
+        if change["new"]:
+            self.add_class("disabled")
+        else:
+            self.remove_class("disabled")
