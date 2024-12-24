@@ -8,7 +8,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
-    title = "Basic Settings"
+    title = "Basic settings"
     identifier = "workchain"
 
     dependencies = [

@@ -166,7 +166,7 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             self.submission_warning_messages,
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Labeling Your Job</h4>
+                    <h4>Labeling your job</h4>
                     <p style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
                         Label your job and provide a brief description. These details
                         help identify the job later and make the search process easier.

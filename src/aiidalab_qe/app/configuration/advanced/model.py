@@ -32,7 +32,7 @@ class AdvancedConfigurationSettingsModel(
     HasModels[AdvancedCalculationSubSettingsModel],
     HasInputStructure,
 ):
-    title = "Advanced Settings"
+    title = "Advanced settings"
     identifier = "advanced"
 
     dependencies = [

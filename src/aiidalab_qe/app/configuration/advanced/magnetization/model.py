@@ -25,8 +25,8 @@ class MagnetizationConfigurationSettingsModel(
     type_options = tl.List(
         trait=tl.List(tl.Unicode()),
         default_value=[
-            ["Starting Magnetization", "starting_magnetization"],
-            ["Tot. Magnetization", "tot_magnetization"],
+            ["Starting magnetization", "starting_magnetization"],
+            ["Total magnetization", "tot_magnetization"],
         ],
     )
     type = tl.Unicode("starting_magnetization")
