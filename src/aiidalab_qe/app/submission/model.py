@@ -32,6 +32,8 @@ class SubmissionStepModel(
     process_label = tl.Unicode("")
     process_description = tl.Unicode("")
 
+    internal_submission_blockers = tl.List(tl.Unicode())
+    external_submission_blockers = tl.List(tl.Unicode())
     submission_blocker_messages = tl.Unicode("")
     submission_warning_messages = tl.Unicode("")
 
@@ -40,10 +42,19 @@ class SubmissionStepModel(
     qe_installed = tl.Bool(allow_none=True)
     sssp_installed = tl.Bool(allow_none=True)
 
-    internal_submission_blockers = tl.List(tl.Unicode())
-    external_submission_blockers = tl.List(tl.Unicode())
-
     plugin_overrides = tl.List(tl.Unicode())
+
+    confirmation_exceptions = [
+        "confirmed",
+        "internal_submission_blockers",
+        "external_submission_blockers",
+        "submission_blocker_messages",
+        "submission_warning_messages",
+        "installing_qe",
+        "installing_sssp",
+        "qe_installed",
+        "sssp_installed",
+    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
