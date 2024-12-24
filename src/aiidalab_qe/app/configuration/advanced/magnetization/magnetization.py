@@ -47,7 +47,10 @@ class MagnetizationConfigurationSettingsPanel(
         self.description = ipw.HTML("<b>Magnetization:</b>")
 
         self.magnetization_type = ipw.ToggleButtons(
-            style={"description_width": "initial"},
+            style={
+                "description_width": "initial",
+                "button_width": "initial",
+            },
         )
         ipw.dlink(
             (self._model, "type_options"),

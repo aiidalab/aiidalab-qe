@@ -217,7 +217,7 @@ class AdvancedConfigurationSettingsPanel(
             self.total_charge,
             self.van_der_waals,
             self.magnetization,
-            ipw.HTML("<b>Convergence Thresholds:</b>"),
+            ipw.HTML("<b>Convergence thresholds:</b>"),
             ipw.HBox(
                 children=[
                     self.forc_conv_thr,

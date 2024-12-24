@@ -85,7 +85,7 @@ class App(ipw.VBox):
                 ("Select structure", self.structure_step),
                 ("Configure workflow", self.configure_step),
                 ("Choose computational resources", self.submit_step),
-                ("Status & Results", self.results_step),
+                ("Status & results", self.results_step),
             ]
         )
         self._wizard_app_widget.observe(

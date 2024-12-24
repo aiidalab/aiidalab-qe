@@ -10,7 +10,7 @@ from aiidalab_qe.common.panel import (
 class BandsResourceSettingsModel(PluginResourceSettingsModel):
     """Model for the band structure plugin."""
 
-    title = "Band Structure"
+    title = "Band structure"
     identifier = "bands"
 
     def __init__(self, **kwargs):
