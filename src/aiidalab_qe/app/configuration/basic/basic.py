@@ -24,6 +24,17 @@ class BasicConfigurationSettingsPanel(
         if self.rendered:
             return
 
+        # ElectronicType: electronic properties of material
+        self.electronic_type = ipw.ToggleButtons(style={"description_width": "initial"})
+        ipw.dlink(
+            (self._model, "electronic_type_options"),
+            (self.electronic_type, "options"),
+        )
+        ipw.link(
+            (self._model, "electronic_type"),
+            (self.electronic_type, "value"),
+        )
+
         # SpinType: magnetic properties of material
         self.spin_type = ipw.ToggleButtons(style={"description_width": "initial"})
         ipw.dlink(
@@ -34,16 +45,17 @@ class BasicConfigurationSettingsPanel(
             (self._model, "spin_type"),
             (self.spin_type, "value"),
         )
-
-        # ElectronicType: electronic properties of material
-        self.electronic_type = ipw.ToggleButtons(style={"description_width": "initial"})
-        ipw.dlink(
-            (self._model, "electronic_type_options"),
-            (self.electronic_type, "options"),
+        self.magnetization_info = ipw.HTML(
+            value="""
+                <div style="margin-left: 10px;">
+                    Set the desired magnetic configuration in <b>advanced</b> settings
+                </div>
+            """,
+            layout=ipw.Layout(visibility="hidden"),
         )
-        ipw.link(
-            (self._model, "electronic_type"),
-            (self.electronic_type, "value"),
+        self.spin_type.observe(
+            self._on_spin_type_change,
+            "value",
         )
 
         # Spin-Orbit calculation
@@ -99,7 +111,8 @@ class BasicConfigurationSettingsPanel(
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.electronic_type,
-                ]
+                ],
+                layout=ipw.Layout(align_items="baseline"),
             ),
             ipw.HBox(
                 children=[
@@ -108,7 +121,9 @@ class BasicConfigurationSettingsPanel(
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.spin_type,
-                ]
+                    self.magnetization_info,
+                ],
+                layout=ipw.Layout(align_items="baseline"),
             ),
             ipw.HBox(
                 children=[
@@ -117,7 +132,8 @@ class BasicConfigurationSettingsPanel(
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.spin_orbit,
-                ]
+                ],
+                layout=ipw.Layout(align_items="baseline"),
             ),
             ipw.HBox(
                 children=[
@@ -126,7 +142,8 @@ class BasicConfigurationSettingsPanel(
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.protocol,
-                ]
+                ],
+                layout=ipw.Layout(align_items="baseline"),
             ),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
@@ -142,3 +159,9 @@ class BasicConfigurationSettingsPanel(
 
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
+
+    def _on_spin_type_change(self, _):
+        if self.spin_type.value == "none":
+            self.magnetization_info.layout.visibility = "hidden"
+        else:
+            self.magnetization_info.layout.visibility = "visible"
