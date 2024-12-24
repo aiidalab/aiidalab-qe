@@ -47,7 +47,10 @@ class MagnetizationConfigurationSettingsPanel(
         self.description = ipw.HTML("<b>Magnetization:</b>")
 
         self.magnetization_type = ipw.ToggleButtons(
-            style={"description_width": "initial"},
+            style={
+                "description_width": "initial",
+                "button_width": "initial",
+            },
         )
         ipw.dlink(
             (self._model, "type_options"),
@@ -57,28 +60,17 @@ class MagnetizationConfigurationSettingsPanel(
             (self._model, "type"),
             (self.magnetization_type, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.magnetization_type, "disabled"),
-            lambda override: not override,
-        )
 
         self.tot_magnetization = ipw.BoundedIntText(
             min=0,
             max=100,
             step=1,
-            disabled=True,
             description="Total magnetization:",
             style={"description_width": "initial"},
         )
         ipw.link(
             (self._model, "total"),
             (self.tot_magnetization, "value"),
-        )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.tot_magnetization, "disabled"),
-            lambda override: not override,
         )
 
         self.kind_moment_widgets = ipw.VBox()
@@ -140,7 +132,6 @@ class MagnetizationConfigurationSettingsPanel(
                 min=-4,
                 max=4,
                 step=0.1,
-                disabled=True,
             )
             link = ipw.link(
                 (self._model, "moments"),
@@ -154,11 +145,6 @@ class MagnetizationConfigurationSettingsPanel(
                 ],
             )
             self.links.append(link)
-            ipw.dlink(
-                (self._model, "override"),
-                (kind_moment_widget, "disabled"),
-                lambda override: not override,
-            )
             children.append(kind_moment_widget)
 
         self.kind_moment_widgets.children = children

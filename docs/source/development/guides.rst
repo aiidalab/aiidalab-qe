@@ -49,3 +49,23 @@ Developers have two options when using the ``InAppGuide`` widget:
 A decent amount of ``InAppGuide(identifier=<identifier>)`` instances have been placed strategically throughout the app.
 Developers may suggest additional core guide sections via GitHub pull requests.
 For plugin developers, additional instances of either flavor are recommended to be added in any component of the plugin in conjunction with dedicated plugin-specific guides.
+
+Plugin guides
+-------------
+
+Plugin developers may introduce additional guides to the app. To do so, add the following key/value entry in your plugin's ``__init__.py`` file:
+
+.. code:: python
+
+    my_plugin = {
+        ...
+        "guides": <path-to-guide>,
+    }
+
+where ``path-to-guide`` is the path (``Path`` object or absolute string path) to the directory containing the guide HTML files.
+On app start, the guide manager will scan the plugin entry points for the ``guides`` key and load the guides accordingly.
+
+Guide order
+-----------
+
+When naming your guide HTML documents, prefix the file name with ``#_``. The number ``#`` will determine the order in which the guides are displayed in the list.

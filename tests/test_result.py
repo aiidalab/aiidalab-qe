@@ -74,8 +74,8 @@ def test_summary_view(generate_qeapp_workchain):
     # find the td with the text "Initial Magnetic Moments"
     parameters = {
         "Energy cutoff (wave functions)": "30.0 Ry",
-        "Total Charge": "0.0",
-        "Initial Magnetic Moments": "",
+        "Total charge": "0.0",
+        "Initial magnetic moments": "",
     }
     for key, value in parameters.items():
         td = parsed.find("td", text=key).find_next_sibling("td")

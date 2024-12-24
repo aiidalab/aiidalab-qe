@@ -67,7 +67,7 @@ class XasConfigurationSettingsPanel(
             # ),
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Element and Core-Hole Treatment Setting.</h4>
+                    <h4>Element and core-hole treatment setting.</h4>
                 </div>
             """),
             ipw.HTML("""

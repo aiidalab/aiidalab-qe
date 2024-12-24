@@ -1,6 +1,3 @@
-# from aiidalab_qe.bands.result import Result
-from pathlib import Path
-
 from aiidalab_qe.common.panel import PluginOutline
 
 from .model import BandsConfigurationSettingsModel
@@ -29,5 +26,4 @@ bands = {
         "model": BandsResultsModel,
     },
     "workchain": workchain_and_builder,
-    "guides": Path(__file__).parent / "guides",
 }

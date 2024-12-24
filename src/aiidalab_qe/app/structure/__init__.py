@@ -70,7 +70,7 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
             LazyLoadedOptimade(title="OPTIMADE"),
             LazyLoadedStructureBrowser(title="AiiDA database"),
             CategorizedStructureExamplesWidget(
-                title="From Examples", examples_by_category=examples_by_category
+                title="From examples", examples_by_category=examples_by_category
             ),
         ]
 
@@ -149,8 +149,10 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
             InAppGuide(identifier="structure-step"),
             ipw.HTML("""
                 <p>
-                    Select a structure from one of the following sources and then
-                    click "Confirm" to go to the next step.
+                    Select a structure from one of the following sources, then
+                    click <span style="color: #4caf50;">
+                        <i class="fa fa-check-circle"></i> <b>Confirm</b>
+                    </span> to go to the next step
                 </p>
             """),
             self.manager,
