@@ -8,7 +8,7 @@ from .workchain import workchain_and_builder
 
 
 class PdosPluginOutline(PluginOutline):
-    title = "Projected Density of States (PDOS)"
+    title = "Electronic projected density of states (PDOS)"
 
 
 pdos = {
