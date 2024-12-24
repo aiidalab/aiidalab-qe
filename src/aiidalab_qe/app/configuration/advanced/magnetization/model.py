@@ -21,7 +21,6 @@ class MagnetizationConfigurationSettingsModel(
 
     electronic_type = tl.Unicode()
     spin_type = tl.Unicode()
-    override = tl.Bool()
 
     type_options = tl.List(
         trait=tl.List(tl.Unicode()),

@@ -22,8 +22,6 @@ class HubbardConfigurationSettingsModel(
         "input_structure",
     ]
 
-    override = tl.Bool()
-
     is_active = tl.Bool(False)
     has_eigenvalues = tl.Bool(False)
     parameters = tl.Dict(

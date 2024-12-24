@@ -385,7 +385,7 @@ def projwfc_bands_code(aiida_local_code_factory):
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.configuration.basic.workflow import (
+    from aiidalab_qe.app.configuration.basic import (
         BasicConfigurationSettingsModel,
         BasicConfigurationSettingsPanel,
     )
@@ -482,7 +482,6 @@ def submit_app_generator(
         # Advanced settings
         advanced_model = app.configure_model.get_model("advanced")
 
-        advanced_model.override = True
         advanced_model.total_charge = tot_charge
         advanced_model.van_der_waals = vdw_corr
         advanced_model.kpoints_distance = kpoints_distance
@@ -794,7 +793,6 @@ def generate_qeapp_workchain(
         workchain_model.electronic_type = electronic_type
 
         if spin_type == "collinear":
-            advanced_model.override = True
             magnetization_model = advanced_model.get_model("magnetization")
             if electronic_type == "insulator":
                 magnetization_model.total = tot_magnetization
