@@ -1144,8 +1144,6 @@ class LinkButton(ipw.HTML):
 
 
 class QeWizardStepModel(Model):
-    """A wrapper that may be used to lazy-load a wizard step model."""
-
     identifier = "QE wizard"
 
 
@@ -1153,8 +1151,6 @@ QWSM = t.TypeVar("QWSM", bound=QeWizardStepModel)
 
 
 class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[QWSM]):
-    """A wrapper that may be used to lazy-load a wizard step widget."""
-
     def __init__(self, model: QWSM, **kwargs):
         self.loading_message = LoadingWidget(f"Loading {model.identifier} step")
         super().__init__(children=[self.loading_message], **kwargs)
@@ -1176,8 +1172,6 @@ class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[QWSM]):
 
 
 class QeDependentWizardStep(QeWizardStep[QWSM]):
-    """A `QeWizardStep` that is dependent on previous steps."""
-
     missing_information_warning = "Missing information"
 
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
