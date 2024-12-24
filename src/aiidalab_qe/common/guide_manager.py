@@ -86,11 +86,12 @@ class GuideManager(tl.HasTraits):
 
     def _fetch_plugin_guides(self):
         """Fetch guides from plugins."""
-        entries: dict[str, Path] = get_entry_items("aiidalab_qe.properties", "guides")
+        entries: dict = get_entry_items("aiidalab_qe.properties", "guides")
         for identifier, guides in entries.items():
+            path = Path(guides)
             if identifier not in self._guides:
                 self._guides[identifier] = {}
-            for guide in sorted(guides.glob("*"), key=lambda x: x.stem.split("_")[0]):
+            for guide in sorted(path.glob("*"), key=lambda x: x.stem.split("_")[0]):
                 stem = guide.stem.split("_", maxsplit=1)[1]
                 self._guides[identifier][stem] = guide.absolute()
 
