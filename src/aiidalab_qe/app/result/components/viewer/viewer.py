@@ -7,13 +7,14 @@ from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.panel import ResultsPanel
 
 from .model import WorkChainResultsViewerModel
-from .structure import StructureResults, StructureResultsModel
+from .structure import StructureResultsModel, StructureResultsPanel
 
 
 class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
     def __init__(self, model: WorkChainResultsViewerModel, **kwargs):
         super().__init__(model=model, **kwargs)
         self.panels: dict[str, ResultsPanel] = {}
+        self._add_structure_panel()  # TODO consider refactoring structure panel as a plugin
         self._fetch_plugin_results()
 
     def _on_process_change(self, _):
@@ -42,10 +43,6 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
             "selected_index",
         )
 
-        # TODO consider refactoring structure relaxation panel as a plugin
-        if "relax" in self._model.properties:
-            self._add_structure_panel()
-
         self.children = [
             self.title,
             self.tabs,
@@ -60,7 +57,8 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
         self.panels = {
             identifier: panel
             for identifier, panel in self.panels.items()
-            if identifier in properties
+            if identifier == "structure"
+            or identifier in properties
             or (identifier == "electronic_structure" and need_electronic_structure)
         }
 
@@ -82,7 +80,7 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
     def _add_structure_panel(self):
         structure_model = StructureResultsModel()
         structure_model.process_uuid = self._model.process_uuid
-        self.structure_results = StructureResults(model=structure_model)
+        self.structure_results = StructureResultsPanel(model=structure_model)
         identifier = structure_model.identifier
         self._model.add_model(identifier, structure_model)
         self.panels = {

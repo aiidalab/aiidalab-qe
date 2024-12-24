@@ -4,10 +4,11 @@ from aiidalab_widgets_base.viewers import StructureDataViewer
 from .model import StructureResultsModel
 
 
-class StructureResults(ResultsPanel[StructureResultsModel]):
+class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
     def _render(self):
         if not hasattr(self, "widget"):
-            self.widget = StructureDataViewer(structure=self._model.outputs.structure)
+            structure = self._model.get_structure()
+            self.widget = StructureDataViewer(structure=structure)
             self.children = [self.widget]
 
         # HACK to resize the NGL viewer in cases where it auto-rendered when its
