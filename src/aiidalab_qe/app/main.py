@@ -78,11 +78,6 @@ class App(ipw.VBox):
             self._on_submission,
             "confirmed",
         )
-        ipw.dlink(
-            (self.submit_model, "process_node"),
-            (self.results_model, "process_uuid"),
-            lambda node: node.uuid if node is not None else None,
-        )
 
         # Add the application steps to the application
         self._wizard_app_widget = WizardAppWidget(
@@ -143,6 +138,7 @@ class App(ipw.VBox):
         self._update_blockers()
 
     def _on_submission(self, _):
+        self._update_results_step()
         self._lock_app()
 
     def _render_step(self, step_index):
@@ -162,6 +158,13 @@ class App(ipw.VBox):
         else:
             self.submit_model.input_structure = None
             self.submit_model.input_parameters = {}
+
+    def _update_results_step(self):
+        ipw.dlink(
+            (self.submit_model, "process_node"),
+            (self.results_model, "process_uuid"),
+            lambda node: node.uuid if node is not None else None,
+        )
 
     def _lock_app(self):
         for model in (
