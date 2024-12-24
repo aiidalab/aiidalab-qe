@@ -138,16 +138,6 @@ class ConfigureQeAppWorkChainStep(QeDependentWizardStep[ConfigurationStepModel])
     def _post_render(self):
         self._update_tabs()
 
-        if self._model.confirmed:  # loaded from a process
-            return
-
-        # NOTE technically not necessary, as an update is triggered
-        # by a structure change. However, this ensures that if a user
-        # decides to visit this step prior to setting the structure,
-        # the step will be updated on render to show reasonable defaults.
-        # TODO remove if we decide to "disable" steps past unconfirmed steps!
-        self._model.update()
-
     def is_saved(self):
         return self._model.confirmed
 
