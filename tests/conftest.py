@@ -385,7 +385,7 @@ def projwfc_bands_code(aiida_local_code_factory):
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.configuration.basic.workflow import (
+    from aiidalab_qe.app.configuration.basic import (
         BasicConfigurationSettingsModel,
         BasicConfigurationSettingsPanel,
     )
