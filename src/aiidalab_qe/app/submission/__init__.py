@@ -41,10 +41,6 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             "input_parameters",
         )
         self._model.observe(
-            self._on_process_change,
-            "process",
-        )
-        self._model.observe(
             self._on_submission_blockers_change,
             [
                 "internal_submission_blockers",
@@ -218,13 +214,6 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
 
     def _on_plugin_submission_warning_messages_change(self, _):
         self._model.update_submission_warnings()
-
-    def _on_process_change(self, _):
-        with self.hold_trait_notifications():
-            # TODO why here? Do we not populate traits earlier that would cover this?
-            if self._model.process_node is not None:
-                self._model.input_structure = self._model.process_node.inputs.structure
-            self._update_state()
 
     def _on_submission_blockers_change(self, _):
         self._model.update_submission_blocker_message()
