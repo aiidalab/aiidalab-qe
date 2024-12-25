@@ -74,7 +74,7 @@ class AdvancedConfigurationSettingsPanel(
 
         # clean-up workchain settings
         self.clean_workdir = ipw.Checkbox(
-            description="Tick to clean-up the work directory after the calculation is finished",
+            description="Tick to delete the work directory after the calculation is finished",
             indent=False,
             layout=ipw.Layout(width="fit-content"),
         )
