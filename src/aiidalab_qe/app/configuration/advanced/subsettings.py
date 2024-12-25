@@ -13,7 +13,9 @@ class AdvancedCalculationSubSettingsModel(Model):
 
     loaded_from_process = tl.Bool(False)
 
-    _defaults = {}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._defaults = {}
 
     def update(self, specific=""):
         """Updates the model.
