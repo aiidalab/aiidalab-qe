@@ -266,7 +266,14 @@ class BandsPdosWidget(ipw.VBox):
         )
         self.download_button.layout.visibility = "visible"
         self.project_bands_box.layout.visibility = "visible"
-        self.children = (*self.children, self.plot, self.color_selector)
+        self.children = [
+            *self.children,
+            ipw.Box(
+                children=[self.plot],
+                layout=ipw.Layout(margin="0 auto"),
+            ),
+            self.color_selector,
+        ]
 
     def _update_bands_projections(self, _):
         """Update the plot with the selected projection."""
