@@ -263,6 +263,8 @@ class PseudosConfigurationSettingsModel(
         with self.hold_trait_notifications():
             self.dictionary = self._get_default("dictionary")
             self.cutoffs = self._get_default("cutoffs")
+            self.ecutwfc = max(self.cutoffs[0])
+            self.ecutrho = max(self.cutoffs[1])
             self.library_options = self._get_default("library_options")
             self.library = self._get_default("library")
             self.functional = self._get_default("functional")
