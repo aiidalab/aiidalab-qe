@@ -261,17 +261,19 @@ class BandsPdosWidget(ipw.VBox):
         self._model.fetch_data()
         self._model.create_plot()
         self.plot = self._model.plot
-
-        center_layout = ipw.Layout(
-            display="flex", justify_content="center", align_items="center"
-        )
-        centered_plot = ipw.Box([self.plot], layout=center_layout)
         self.proj_bands_width_slider.layout.visibility = (
             "visible" if self._model.project_bands_box else "hidden"
         )
         self.download_button.layout.visibility = "visible"
         self.project_bands_box.layout.visibility = "visible"
-        self.children = (*self.children, centered_plot, self.color_selector)
+        self.children = [
+            *self.children,
+            ipw.Box(
+                children=[self.plot],
+                layout=ipw.Layout(margin="0 auto"),
+            ),
+            self.color_selector,
+        ]
 
     def _update_bands_projections(self, _):
         """Update the plot with the selected projection."""
