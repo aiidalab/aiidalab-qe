@@ -15,7 +15,6 @@ class SmearingConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
     ]
 
     protocol = tl.Unicode()
-    override = tl.Bool()
 
     type_options = tl.List(
         trait=tl.Unicode(),

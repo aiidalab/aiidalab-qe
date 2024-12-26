@@ -46,10 +46,6 @@ class AdvancedConfigurationSettingsPanel(
             "protocol",
         )
         self._model.observe(
-            self._on_override_change,
-            "override",
-        )
-        self._model.observe(
             self._on_kpoints_distance_change,
             "kpoints_distance",
         )
@@ -78,29 +74,21 @@ class AdvancedConfigurationSettingsPanel(
 
         # clean-up workchain settings
         self.clean_workdir = ipw.Checkbox(
-            description="",
+            description="Tick to delete the work directory after the calculation is finished",
             indent=False,
-            layout=ipw.Layout(max_width="20px"),
+            layout=ipw.Layout(width="fit-content"),
         )
         ipw.link(
             (self._model, "clean_workdir"),
             (self.clean_workdir, "value"),
         )
-        # Override setting widget
-        self.override = ipw.Checkbox(
-            description="",
-            indent=False,
-            layout=ipw.Layout(max_width="10%"),
+        self.reset_to_defaults_button = ipw.Button(
+            description="Reset to defaults",
+            button_style="warning",
+            icon="undo",
+            layout=ipw.Layout(width="fit-content"),
         )
-        ipw.link(
-            (self._model, "override"),
-            (self.override, "value"),
-        )
-        ipw.dlink(
-            (self._model, "input_structure"),
-            (self.override, "disabled"),
-            lambda structure: structure is None,
-        )
+        self.reset_to_defaults_button.on_click(self._on_reset_to_defaults_button_click)
 
         # Smearing setting widget
         self.smearing.render()
@@ -117,14 +105,9 @@ class AdvancedConfigurationSettingsPanel(
             (self.kpoints_distance, "value"),
         )
         ipw.dlink(
-            (self.override, "value"),
-            (self.kpoints_distance, "disabled"),
-            lambda override: not (override and self._model.has_pbc),
-        )
-        ipw.dlink(
             (self._model, "input_structure"),
             (self.kpoints_distance, "disabled"),
-            lambda _: not (self._model.override and self._model.has_pbc),
+            lambda _: not self._model.has_pbc,
         )
         self.mesh_grid = ipw.HTML()
         ipw.dlink(
@@ -147,11 +130,6 @@ class AdvancedConfigurationSettingsPanel(
             (self._model, "total_charge"),
             (self.total_charge, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.total_charge, "disabled"),
-            lambda override: not override,
-        )
 
         # Van der Waals setting widget
         self.van_der_waals = ipw.Dropdown(
@@ -165,11 +143,6 @@ class AdvancedConfigurationSettingsPanel(
         ipw.link(
             (self._model, "van_der_waals"),
             (self.van_der_waals, "value"),
-        )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.van_der_waals, "disabled"),
-            lambda override: not override,
         )
 
         # Magnetization settings
@@ -190,11 +163,6 @@ class AdvancedConfigurationSettingsPanel(
             (self._model, "scf_conv_thr_step"),
             (self.scf_conv_thr, "step"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.scf_conv_thr, "disabled"),
-            lambda override: not override,
-        )
         self.forc_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
@@ -208,11 +176,6 @@ class AdvancedConfigurationSettingsPanel(
         ipw.dlink(
             (self._model, "forc_conv_thr_step"),
             (self.forc_conv_thr, "step"),
-        )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.forc_conv_thr, "disabled"),
-            lambda override: not override,
         )
         self.etot_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
@@ -228,11 +191,6 @@ class AdvancedConfigurationSettingsPanel(
             (self._model, "etot_conv_thr_step"),
             (self.etot_conv_thr, "step"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.etot_conv_thr, "disabled"),
-            lambda override: not override,
-        )
         self.electron_maxstep = ipw.BoundedIntText(
             min=20,
             max=1000,
@@ -244,11 +202,6 @@ class AdvancedConfigurationSettingsPanel(
             (self._model, "electron_maxstep"),
             (self.electron_maxstep, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.electron_maxstep, "disabled"),
-            lambda override: not override,
-        )
 
         self.pseudos.render()
 
@@ -257,31 +210,9 @@ class AdvancedConfigurationSettingsPanel(
             ipw.HBox(
                 children=[
                     self.clean_workdir,
-                    ipw.HTML("""
-                        <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-                            Tick to clean-up the work directory after the calculation is finished.
-                        </div>
-                    """),
+                    self.reset_to_defaults_button,
                 ],
-                layout=ipw.Layout(height="50px", justify_content="flex-start"),
-            ),
-            ipw.HBox(
-                children=[
-                    ipw.HTML("""
-                        Select the advanced settings for the <b>pw.x</b> code.
-                    """),
-                    ipw.HBox(
-                        children=[
-                            ipw.HTML(
-                                value="<b>Override</b>",
-                                layout=ipw.Layout(margin="0 5px 0 0"),
-                            ),
-                            self.override,
-                        ],
-                        layout=ipw.Layout(max_width="20%"),
-                    ),
-                ],
-                layout=ipw.Layout(height="50px", justify_content="space-between"),
+                layout=ipw.Layout(justify_content="space-between"),
             ),
             self.total_charge,
             self.van_der_waals,
@@ -293,7 +224,7 @@ class AdvancedConfigurationSettingsPanel(
                     self.etot_conv_thr,
                     self.scf_conv_thr,
                 ],
-                layout=ipw.Layout(height="50px", justify_content="flex-start"),
+                layout=ipw.Layout(justify_content="space-between"),
             ),
             self.electron_maxstep,
             self.smearing,
@@ -301,9 +232,8 @@ class AdvancedConfigurationSettingsPanel(
                 <div>
                     The k-points mesh density of the SCF calculation is set by the
                     <b>protocol</b>. The value below represents the maximum distance
-                    between the k-points in each direction of reciprocal space. Tick
-                    the box to override the default, smaller is more accurate and
-                    costly.
+                    between the k-points in each direction of reciprocal space. Smaller
+                    is more accurate and costly.
                 </div>
             """),
             ipw.HBox(
@@ -329,6 +259,10 @@ class AdvancedConfigurationSettingsPanel(
     def _on_kpoints_distance_change(self, _):
         self.refresh(specific="mesh")
 
-    def _on_override_change(self, change):
-        if not change["new"]:
-            self._model.reset()
+    def _on_reset_to_defaults_button_click(self, _):
+        self._reset()
+
+    def _reset(self):
+        self._model.reset()
+        for _, model in self._model.get_models():
+            model.reset()

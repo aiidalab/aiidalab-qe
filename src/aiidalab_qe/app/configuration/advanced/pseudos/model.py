@@ -36,7 +36,6 @@ class PseudosConfigurationSettingsModel(
 
     protocol = tl.Unicode()
     spin_orbit = tl.Unicode()
-    override = tl.Bool()
 
     dictionary = tl.Dict(
         key_trait=tl.Unicode(),  # kind name
@@ -109,6 +108,8 @@ class PseudosConfigurationSettingsModel(
     """
 
     family_help_message = tl.Unicode(PSEUDO_HELP_WO_SOC)
+
+    pseudo_filename_reset_trigger = tl.Int(0)
 
     def update(self, specific=""):  # noqa: ARG002
         with self.hold_trait_notifications():
@@ -264,6 +265,8 @@ class PseudosConfigurationSettingsModel(
         with self.hold_trait_notifications():
             self.dictionary = self._get_default("dictionary")
             self.cutoffs = self._get_default("cutoffs")
+            self.ecutwfc = max(self.cutoffs[0])
+            self.ecutrho = max(self.cutoffs[1])
             self.library_options = self._get_default("library_options")
             self.library = self._get_default("library")
             self.functional = self._get_default("functional")
@@ -271,6 +274,7 @@ class PseudosConfigurationSettingsModel(
             self.family = self._get_default("family")
             self.family_help_message = self._get_default("family_help_message")
             self.status_message = self._get_default("status_message")
+            self.pseudo_filename_reset_trigger += 1
 
     def _get_default(self, trait):
         if trait == "dictionary":
