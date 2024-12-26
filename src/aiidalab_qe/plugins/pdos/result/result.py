@@ -8,8 +8,8 @@ from .model import PdosResultsModel
 
 class PdosResultsPanel(ResultsPanel[PdosResultsModel]):
     def _render(self):
-        pdos_node = self._model.get_pdos_node()
-        model = BandsPdosModel()
-        widget = BandsPdosWidget(model=model, pdos=pdos_node)
+        pdos_node = self._model.fetch_child_process_node()
+        model = BandsPdosModel.from_nodes(pdos_node=pdos_node)
+        widget = BandsPdosWidget(model=model)
         widget.render()
         self.children = [widget]

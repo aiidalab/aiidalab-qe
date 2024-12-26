@@ -17,20 +17,6 @@ class ElectronicStructureResultsModel(ResultsModel):
     _pdos_process_label = "PdosWorkChain"
     _pdos_process_uuid = None
 
-    def get_pdos_node(self):
-        return self._get_child_outputs("pdos")
-
-    def get_bands_node(self):
-        outputs = self._get_child_outputs("bands")
-        if "bands" in outputs:
-            return outputs.bands
-        elif "bands_projwfc" in outputs:
-            return outputs.bands_projwfc
-        else:
-            # If neither 'bands' nor 'bands_projwfc' exist, use 'bands_output' itself
-            # This is the case for compatibility with older versions of the plugin
-            return outputs
-
     @property
     def include(self):
         return all(identifier in self.properties for identifier in self.identifiers)

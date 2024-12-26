@@ -7,31 +7,9 @@ from .model import BandsPdosModel
 
 
 class BandsPdosWidget(ipw.VBox):
-    """
-    A widget for plotting band structure and projected density of states (PDOS) data.
+    """A widget for plotting band structure and projected density of states (PDOS)."""
 
-    Parameters
-    ----------
-    - bands (optional): A node containing band structure data.
-    - pdos (optional): A node containing PDOS data.
-
-    Attributes
-    ----------
-    - description: HTML description of the widget.
-    - dos_atoms_group: Dropdown widget to select the grouping of atoms for PDOS plotting.
-    - dos_plot_group: Dropdown widget to select the type of PDOS contributions to plot.
-    - selected_atoms: Text widget to select specific atoms for PDOS plotting.
-    - update_plot_button: Button widget to update the plot.
-    - download_button: Button widget to download the data.
-    - project_bands_box: Checkbox widget to choose whether projected bands should be plotted.
-    - plot_widget: Plotly widget for band structure and PDOS plot.
-    - bands_widget: Output widget to display the bandsplot widget.
-    """
-
-    def __init__(self, model: BandsPdosModel, bands=None, pdos=None, **kwargs):
-        if bands is None and pdos is None:
-            raise ValueError("Either bands or pdos must be provided")
-
+    def __init__(self, model: BandsPdosModel, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading widgets")],
             **kwargs,
@@ -48,9 +26,6 @@ class BandsPdosWidget(ipw.VBox):
         )
 
         self.rendered = False
-
-        self._model.bands = bands
-        self._model.pdos = pdos
 
     def render(self):
         if self.rendered:
