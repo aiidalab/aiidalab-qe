@@ -1048,7 +1048,9 @@ class LazyLoadedStructureImporter(ipw.VBox):
 
 
 class LazyLoadedOptimade(LazyLoadedStructureImporter):
-    warning_message = "OPTIMADE may take some time to load"
+    warning_message = (
+        "OPTIMADE may take some time to load depending on your internet connection"
+    )
 
     def _get_widget(self):
         from aiidalab_widgets_base.databases import OptimadeQueryWidget
@@ -1057,7 +1059,9 @@ class LazyLoadedOptimade(LazyLoadedStructureImporter):
 
 
 class LazyLoadedStructureBrowser(LazyLoadedStructureImporter):
-    warning_message = "The browser may take some time to load, depending on the size of your database."
+    warning_message = (
+        "The browser may take some time to load depending on the size of your database"
+    )
 
     def _get_widget(self):
         from aiida import orm
