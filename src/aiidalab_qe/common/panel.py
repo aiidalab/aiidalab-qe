@@ -521,7 +521,7 @@ class ResultsModel(PanelModel, HasProcess):
 
     @property
     def has_results(self):
-        node = self._fetch_child_process_node()
+        node = self.fetch_child_process_node()
         return node and node.is_finished_ok
 
     def update(self):
@@ -531,38 +531,7 @@ class ResultsModel(PanelModel, HasProcess):
     def update_process_status_notification(self):
         self.process_status_notification = self._get_child_process_status()
 
-    def _get_child_process_status(self, child="this"):
-        state, exit_message = self._get_child_state_and_exit_message(child)
-        status = state.upper()
-        if exit_message:
-            status = f"{status} ({exit_message})"
-        label = "Status" if child == "this" else f"{child.capitalize()} status"
-        alert_class = f"alert-{self.CSS_MAP.get(state, 'info')}"
-        return f"""
-            <div class="alert {alert_class}" style="padding: 5px 10px;">
-                <b>{label}:</b> {status}
-            </div>
-        """
-
-    def _get_child_state_and_exit_message(self, child="this"):
-        if not (
-            (node := self._fetch_child_process_node(child))
-            and hasattr(node, "process_state")
-            and node.process_state
-        ):
-            return "queued", None
-        if node.is_failed:
-            return "failed", node.exit_message
-        return node.process_state.value, None
-
-    def _get_child_outputs(self, child="this"):
-        if not (node := self._fetch_child_process_node(child)):
-            outputs = super().outputs
-            child = child if child != "this" else self.identifier
-            return getattr(outputs, child) if child in outputs else AttributeDict({})
-        return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
-
-    def _fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
+    def fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
         if not self.process_uuid:
             return
         child = child.lower()
@@ -585,6 +554,37 @@ class ResultsModel(PanelModel, HasProcess):
                 .first(flat=True)
             )
         return orm.load_node(uuid) if uuid else None  # type: ignore
+
+    def _get_child_process_status(self, child="this"):
+        state, exit_message = self._get_child_state_and_exit_message(child)
+        status = state.upper()
+        if exit_message:
+            status = f"{status} ({exit_message})"
+        label = "Status" if child == "this" else f"{child.capitalize()} status"
+        alert_class = f"alert-{self.CSS_MAP.get(state, 'info')}"
+        return f"""
+            <div class="alert {alert_class}" style="padding: 5px 10px;">
+                <b>{label}:</b> {status}
+            </div>
+        """
+
+    def _get_child_state_and_exit_message(self, child="this"):
+        if not (
+            (node := self.fetch_child_process_node(child))
+            and hasattr(node, "process_state")
+            and node.process_state
+        ):
+            return "queued", None
+        if node.is_failed:
+            return "failed", node.exit_message
+        return node.process_state.value, None
+
+    def _get_child_outputs(self, child="this"):
+        if not (node := self.fetch_child_process_node(child)):
+            outputs = super().outputs
+            child = child if child != "this" else self.identifier
+            return getattr(outputs, child) if child in outputs else AttributeDict({})
+        return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
 
 
 RM = t.TypeVar("RM", bound=ResultsModel)
