@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import json
 
@@ -6,6 +8,7 @@ import numpy as np
 import traitlets as tl
 from IPython.display import display
 
+from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.bands_pdos.utils import (
     HTML_TAGS,
@@ -78,6 +81,37 @@ class BandsPdosModel(Model):
             (self, "needs_pdos_options"),
             lambda _: self._has_pdos or self.needs_projections_controls,
         )
+
+    @classmethod
+    def from_nodes(
+        cls,
+        bands_node: orm.WorkChainNode | None = None,
+        pdos_node: orm.WorkChainNode | None = None,
+    ):
+        if not (bands_node or pdos_node):
+            raise ValueError("At least one of the nodes must be provided")
+
+        if bands_node and bands_node.is_finished_ok:
+            bands = (
+                bands_node.outputs.bands
+                if "bands" in bands_node.outputs
+                else bands_node.outputs.bands_projwfc
+                if "bands_projwfc" in bands_node.outputs
+                else None
+            )
+        else:
+            bands = None
+
+        if pdos_node and pdos_node.is_finished_ok:
+            items = {key: getattr(pdos_node.outputs, key) for key in pdos_node.outputs}
+            pdos = AttributeDict(items)
+        else:
+            pdos = None
+
+        if bands or pdos:
+            return cls(bands=bands, pdos=pdos)
+
+        raise ValueError("Failed to parse at least one node")
 
     def fetch_data(self):
         """Fetch the data from the nodes."""
