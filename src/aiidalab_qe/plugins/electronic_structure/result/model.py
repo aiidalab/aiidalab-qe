@@ -20,6 +20,10 @@ class ElectronicStructureResultsModel(ResultsModel):
         "pdos": "PDOS",
     }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._completed_processes = set()
+
     @property
     def include(self):
         return any(identifier in self.properties for identifier in self.identifiers)
@@ -40,8 +44,15 @@ class ElectronicStructureResultsModel(ResultsModel):
         self.title = f"Electronic {' + '.join(parts)}"
 
     def update_process_status_notification(self):
-        statuses = [self._get_child_process_status(child) for child in self.identifiers]
-        self.process_status_notification = "\n".join(statuses)
+        self._status_notifications = []
+        for identifier in self.identifiers:
+            if identifier in self._completed_processes:
+                continue
+            status = self._get_child_process_status(identifier)
+            self._status_notifications.append(status)
+            if "success" in status:
+                self._completed_processes.add(identifier)
+        self.process_status_notification = "\n".join(self._status_notifications)
 
     def has_partial_results(self, identifier):
         if identifier == "bands":

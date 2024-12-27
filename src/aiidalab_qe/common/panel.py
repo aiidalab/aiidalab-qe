@@ -507,6 +507,7 @@ class ResultsModel(PanelModel, HasProcess):
     _this_process_uuid = None
 
     auto_render = False
+    _completed_process = False
 
     CSS_MAP = {
         "finished": "success",
@@ -533,7 +534,13 @@ class ResultsModel(PanelModel, HasProcess):
             self.auto_render = True
 
     def update_process_status_notification(self):
-        self.process_status_notification = self._get_child_process_status()
+        if self._completed_process:
+            self.process_status_notification = ""
+            return
+        status = self._get_child_process_status()
+        self.process_status_notification = status
+        if "success" in status:
+            self._completed_process = True
 
     def fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
         if not self.process_uuid:
@@ -602,12 +609,10 @@ class ResultsPanel(Panel[RM]):
     It has a update method to update the result in the panel.
     """
 
-    has_controls = False
     loading_message = "Loading {identifier} results"
 
     def __init__(self, model: RM, **kwargs):
         super().__init__(model=model, **kwargs)
-
         self._model.observe(
             self._on_process_change,
             "process_uuid",
@@ -617,19 +622,23 @@ class ResultsPanel(Panel[RM]):
             "monitor_counter",
         )
 
-        self.links = []
-
     def render(self):
         if self.rendered:
             if self._model.identifier == "structure":
                 self._render()
             return
-        if self.has_controls or not self._model.has_process:
+
+        if not self._model.has_process:
             return
+
+        self.results_container = ipw.VBox()
+
         if self._model.auto_render:
+            self.children = [self.results_container]
             self._load_results()
         else:
             self._render_controls()
+            self.children += (self.results_container,)
 
     def _on_process_change(self, _):
         self._model.update()
@@ -638,15 +647,14 @@ class ResultsPanel(Panel[RM]):
         self._model.update_process_status_notification()
 
     def _on_load_results_click(self, _):
+        self.load_controls.children = []
         self._load_results()
 
     def _load_results(self):
-        self.load_controls.children = []
         self.results_container.children = [self.loading_message]
         self._render()
         self.rendered = True
         self._post_render()
-        self.has_controls = False
 
     def _render_controls(self):
         self.process_status_notification = ipw.HTML()
@@ -668,8 +676,6 @@ class ResultsPanel(Panel[RM]):
         )
         self.load_results_button.on_click(self._on_load_results_click)
 
-        self.results_container = ipw.VBox()
-
         self.load_controls = ipw.HBox(
             children=[]
             if self._model.auto_render
@@ -687,10 +693,7 @@ class ResultsPanel(Panel[RM]):
         self.children = [
             self.process_status_notification,
             self.load_controls,
-            self.results_container,
         ]
-
-        self.has_controls = True
 
     def _render(self):
         raise NotImplementedError()
