@@ -26,20 +26,29 @@ class ElectronicStructureResultsModel(ResultsModel):
 
     @property
     def has_results(self):
-        return self._has_bands and self._has_pdos
+        return self._has_bands or self._has_pdos
 
     def update(self):
         super().update()
-        electronic_properties = [
-            self._TITLE_MAPPING[identifier]
-            for identifier in self.identifiers
-            if identifier in self.properties
-        ]
-        self.title = f"Electronic {' + '.join(electronic_properties)}"
+        self.identifiers = list(
+            filter(
+                lambda identifier: identifier in self.properties,
+                self.identifiers,
+            ),
+        )
+        parts = [self._TITLE_MAPPING[identifier] for identifier in self.identifiers]
+        self.title = f"Electronic {' + '.join(parts)}"
 
     def update_process_status_notification(self):
         statuses = [self._get_child_process_status(child) for child in self.identifiers]
         self.process_status_notification = "\n".join(statuses)
+
+    def has_partial_results(self, identifier):
+        if identifier == "bands":
+            return self._has_bands
+        elif identifier == "pdos":
+            return self._has_pdos
+        return False
 
     @property
     def _has_bands(self):
