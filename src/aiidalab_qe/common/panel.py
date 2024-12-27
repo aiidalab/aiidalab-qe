@@ -520,6 +520,10 @@ class ResultsModel(PanelModel, HasProcess):
     }
 
     @property
+    def include(self):
+        return self.identifier in self.properties
+
+    @property
     def has_results(self):
         node = self.fetch_child_process_node()
         return node and node.is_finished_ok

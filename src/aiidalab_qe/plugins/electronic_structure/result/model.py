@@ -3,8 +3,6 @@ from __future__ import annotations
 from aiidalab_qe.common.panel import ResultsModel
 
 
-# TODO if combined, this model should extend `HasModels`, and effectively
-# TODO reduce to a container of Bands and PDOS, similar to its results panel
 class ElectronicStructureResultsModel(ResultsModel):
     title = "Electronic Structure"
     identifier = "electronic_structure"
@@ -24,7 +22,7 @@ class ElectronicStructureResultsModel(ResultsModel):
 
     @property
     def include(self):
-        return all(identifier in self.properties for identifier in self.identifiers)
+        return any(identifier in self.properties for identifier in self.identifiers)
 
     @property
     def has_results(self):

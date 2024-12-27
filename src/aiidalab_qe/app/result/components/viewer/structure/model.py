@@ -9,6 +9,10 @@ class StructureResultsModel(ResultsModel):
 
     source = None
 
+    @property
+    def include(self):
+        return True
+
     def update(self):
         super().update()
         is_relaxed = "relax" in self.properties
