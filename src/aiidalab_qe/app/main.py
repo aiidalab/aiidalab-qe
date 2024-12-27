@@ -112,6 +112,8 @@ class App(ipw.VBox):
 
         self._wizard_app_widget.selected_index = None
 
+        self.structure_step.state = QeWizardStep.State.READY
+
         self._update_blockers()
 
     @property
