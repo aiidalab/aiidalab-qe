@@ -1160,6 +1160,7 @@ class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[QWSM]):
         super().__init__(children=[self.loading_message], **kwargs)
         self._model = model
         self.rendered = False
+        self._bg_class = ""
 
     def render(self):
         if self.rendered:
@@ -1168,11 +1169,20 @@ class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[QWSM]):
         self.rendered = True
         self._post_render()
 
+    @traitlets.observe("state")
+    def _on_state_change(self, change):
+        self._update_background_color(change["new"])
+
     def _render(self):
         raise NotImplementedError()
 
     def _post_render(self):
         pass
+
+    def _update_background_color(self, state: WizardAppWidgetStep.State):
+        self.remove_class(self._bg_class)
+        self._bg_class = f"qe-app-step-{state.name.lower()}"
+        self.add_class(self._bg_class)
 
 
 class QeDependentWizardStep(QeWizardStep[QWSM]):
