@@ -641,7 +641,8 @@ class ResultsPanel(Panel[RM]):
         self._load_results()
 
     def _load_results(self):
-        self.children = [self.loading_message]
+        self.load_controls.children = []
+        self.results_container.children = [self.loading_message]
         self._render()
         self.rendered = True
         self._post_render()
@@ -667,18 +668,26 @@ class ResultsPanel(Panel[RM]):
         )
         self.load_results_button.on_click(self._on_load_results_click)
 
+        self.results_container = ipw.VBox()
+
+        self.load_controls = ipw.HBox(
+            children=[]
+            if self._model.auto_render
+            else [
+                self.load_results_button,
+                ipw.HTML("""
+                    <div style="margin-left: 10px">
+                        <b>Note:</b> Load time may vary depending on the size of the
+                        calculation
+                    </div>
+                """),
+            ]
+        )
+
         self.children = [
             self.process_status_notification,
-            ipw.HBox(
-                children=[
-                    self.load_results_button,
-                    ipw.HTML("""
-                        <div style="margin-left: 10px">
-                            <b>Note:</b> Load time may vary depending on the size of the calculation
-                        </div>
-                    """),
-                ]
-            ),
+            self.load_controls,
+            self.results_container,
         ]
 
         self.has_controls = True
