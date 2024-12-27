@@ -17,6 +17,11 @@ class ElectronicStructureResultsModel(ResultsModel):
     _pdos_process_label = "PdosWorkChain"
     _pdos_process_uuid = None
 
+    _TITLE_MAPPING = {
+        "bands": "bands",
+        "pdos": "PDOS",
+    }
+
     @property
     def include(self):
         return all(identifier in self.properties for identifier in self.identifiers)
@@ -24,6 +29,15 @@ class ElectronicStructureResultsModel(ResultsModel):
     @property
     def has_results(self):
         return self._has_bands and self._has_pdos
+
+    def update(self):
+        super().update()
+        electronic_properties = [
+            self._TITLE_MAPPING[identifier]
+            for identifier in self.identifiers
+            if identifier in self.properties
+        ]
+        self.title = f"Electronic {' + '.join(electronic_properties)}"
 
     def update_process_status_notification(self):
         statuses = [self._get_child_process_status(child) for child in self.identifiers]

@@ -41,13 +41,15 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
 
     def _update_panels(self):
         properties = self._model.properties
-        need_electronic_structure = "bands" in properties and "pdos" in properties
         self.panels = {
             identifier: panel
             for identifier, panel in self.panels.items()
-            if identifier == "structure"
-            or identifier in properties
-            or (identifier == "electronic_structure" and need_electronic_structure)
+            if identifier in properties
+            or identifier == "structure"
+            or (
+                identifier == "electronic_structure"
+                and any(identifier in properties for identifier in ("bands", "pdos"))
+            )
         }
 
     def _set_tabs(self):
