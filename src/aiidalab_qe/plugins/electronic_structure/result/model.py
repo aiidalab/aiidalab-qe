@@ -32,6 +32,10 @@ class ElectronicStructureResultsModel(ResultsModel):
     def has_results(self):
         return self._has_bands or self._has_pdos
 
+    @property
+    def needs_property_selector(self):
+        return len(self.identifiers) > 1
+
     def update(self):
         super().update()
         self.identifiers = list(

@@ -10,7 +10,21 @@ from .model import ElectronicStructureResultsModel
 
 
 class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsModel]):
+    has_property_selector = False
+
     def _render(self):
+        self.sub_results_container = ipw.VBox()
+        children = []
+        if self._model.needs_property_selector:
+            children.append(self._render_property_selector())
+            self.has_property_selector = True
+        children.append(self.sub_results_container)
+        self.results_container.children = children
+
+    def _post_render(self):
+        self._render_property_results()
+
+    def _render_property_selector(self):
         apply_button = ipw.Button(
             description="Apply selection",
             button_style="primary",
@@ -18,10 +32,7 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
         )
         apply_button.on_click(self._render_property_results)
 
-        property_selector = ipw.HBox(
-            children=[apply_button],
-            layout=ipw.Layout(grid_gap="10px"),
-        )
+        property_selector = ipw.HBox(layout=ipw.Layout(grid_gap="10px"))
 
         self.checkboxes: dict[str, ipw.Checkbox] = {}
         for identifier in self._model.identifiers:
@@ -44,23 +55,37 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
             self.checkboxes[identifier] = checkbox
             property_selector.children += (checkbox,)
 
-        self.sub_results_container = ipw.VBox()
+        property_selector.children += (apply_button,)
 
-        self.results_container.children = [
-            ipw.HTML("Select one or more properties to plot:"),
-            property_selector,
-            self.sub_results_container,
-        ]
-
-    def _post_render(self):
-        self._render_property_results()
+        return ipw.VBox(
+            children=[
+                ipw.HTML("""
+                    <div>
+                        <b>Select one or more properties to plot:</b>
+                        <p>
+                            You can choose to plot only bands, only PDOS, or both
+                            combined in one plot. After making your selection, click
+                            <span style="color: #2196f3;">
+                                <i class="fa fa-pencil"></i> Apply selection
+                            </span>
+                            to proceed.
+                        </p>
+                    </div>
+                """),
+                property_selector,
+            ]
+        )
 
     def _render_property_results(self, _=None):
-        node_identifiers = [
-            identifier
-            for identifier, checkbox in self.checkboxes.items()
-            if checkbox.value
-        ]
+        node_identifiers = (
+            [
+                identifier
+                for identifier, checkbox in self.checkboxes.items()
+                if checkbox.value
+            ]
+            if self.has_property_selector
+            else self._model.identifiers
+        )
         self._render_bands_pdos_widget(node_identifiers)
 
     def _render_bands_pdos_widget(self, node_identifiers):
