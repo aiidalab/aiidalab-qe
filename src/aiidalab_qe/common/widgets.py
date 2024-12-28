@@ -485,7 +485,7 @@ class AddingTagsEditor(ipw.VBox):
             layout={"width": "initial"},
         )
         self.select_periodicity = ipw.Button(
-            description="Select",
+            description="Apply",
             button_style="primary",
             layout={"width": "100px"},
         )
