@@ -2,7 +2,10 @@ from copy import deepcopy
 
 import traitlets as tl
 
+from aiida.common.exceptions import NotExistent
+from aiida_quantumespresso.workflows.protocols.utils import get_starting_magnetization
 from aiidalab_qe.common.mixins import HasInputStructure
+from aiidalab_qe.utils import fetch_pseudo_family_by_label
 
 from ..subsettings import AdvancedCalculationSubSettingsModel
 
@@ -17,10 +20,12 @@ class MagnetizationConfigurationSettingsModel(
         "input_structure",
         "electronic_type",
         "spin_type",
+        "pseudos.family",
     ]
 
     electronic_type = tl.Unicode()
     spin_type = tl.Unicode()
+    family = tl.Unicode()
 
     type_options = tl.List(
         trait=tl.List(tl.Unicode()),
@@ -41,9 +46,16 @@ class MagnetizationConfigurationSettingsModel(
         if self.spin_type == "none" or not self.has_structure:
             self._defaults["moments"] = {}
         else:
-            self._defaults["moments"] = {
-                kind_name: 0.0 for kind_name in self.input_structure.get_kind_names()
-            }
+            try:
+                self._defaults["moments"] = get_starting_magnetization(
+                    self.input_structure,
+                    fetch_pseudo_family_by_label(self.family),
+                )
+            except NotExistent:
+                self._defaults["moments"] = {
+                    kind_name: 0.0
+                    for kind_name in self.input_structure.get_kind_names()
+                }
         with self.hold_trait_notifications():
             self.moments = self._get_default_moments()
 
