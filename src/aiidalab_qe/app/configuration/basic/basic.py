@@ -45,6 +45,11 @@ class BasicConfigurationSettingsPanel(
             (self._model, "spin_type"),
             (self.spin_type, "value"),
         )
+        self.spin_type.observe(
+            self._on_spin_type_change,
+            "value",
+        )
+
         self.magnetization_info = ipw.HTML(
             value="""
                 <div style="margin-left: 10px;">
@@ -52,10 +57,6 @@ class BasicConfigurationSettingsPanel(
                 </div>
             """,
             layout=ipw.Layout(visibility="hidden"),
-        )
-        self.spin_type.observe(
-            self._on_spin_type_change,
-            "value",
         )
 
         # Spin-Orbit calculation
@@ -78,6 +79,29 @@ class BasicConfigurationSettingsPanel(
         ipw.link(
             (self._model, "protocol"),
             (self.protocol, "value"),
+        )
+
+        self.warning = ipw.HTML(
+            value="""
+                <div
+                    class="alert alert-warning"
+                    style="line-height: 140%; margin: 10px 0 0"
+                >
+                    <p>
+                        <b>Warning:</b> detected multiples atoms with different tags.
+                        You may be interested in an antiferromagnetic system. Note that
+                        default starting magnetic moments do not distinguish tagged
+                        atoms and are set to the same value.
+                    </p>
+                    <p>
+                        Please go to <b>Advanced settings</b> and override the default
+                        values, specifying appropriate starting magnetization for each
+                        species (e.g. with different signs for an antiferromagnetic
+                        configuration).
+                    </p>
+                </div>
+            """,
+            layout=ipw.Layout(display="none"),
         )
 
         self.children = [
@@ -153,6 +177,7 @@ class BasicConfigurationSettingsPanel(
                     (at the price of longer/costlier calculations).
                 </div>
             """),
+            self.warning,
         ]
 
         self.rendered = True
@@ -161,7 +186,9 @@ class BasicConfigurationSettingsPanel(
         self.refresh(specific="structure")
 
     def _on_spin_type_change(self, _):
-        if self.spin_type.value == "none":
+        if self._model.spin_type == "collinear" and self._model.has_tags:
+            self.warning.layout.display = "flex"
             self.magnetization_info.layout.visibility = "hidden"
         else:
+            self.warning.layout.display = "none"
             self.magnetization_info.layout.visibility = "visible"

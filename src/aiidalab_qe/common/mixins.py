@@ -26,6 +26,13 @@ class HasInputStructure(tl.HasTraits):
     def has_pbc(self):
         return not self.has_structure or any(self.input_structure.pbc)
 
+    @property
+    def has_tags(self):
+        return any(
+            not kind_name.isalpha()
+            for kind_name in self.input_structure.get_kind_names()
+        )
+
 
 class HasModels(t.Generic[T]):
     def __init__(self):
