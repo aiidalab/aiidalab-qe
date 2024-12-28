@@ -41,9 +41,6 @@ class WorkChainOutputs(ipw.VBox):
         self._download_button_widget = DownloadDataWidget(workchain_node=self.node)
 
         if node.exit_status != 0:
-            title = ipw.HTML(
-                f"<h4>Workflow failed with exit status [{ node.exit_status }]</h4>"
-            )
             final_calcjob = self._get_final_calcjob(node)
             env = Environment()
             template = files(templates).joinpath("workflow_failure.jinja").read_text()
@@ -56,14 +53,13 @@ class WorkChainOutputs(ipw.VBox):
                 )
             )
         else:
-            title = ipw.HTML("<h4>Workflow completed successfully!</h4>")
             output = ipw.HTML()
 
         super().__init__(
             children=[
                 ipw.VBox(
-                    children=[self._download_button_widget, title],
-                    layout=ipw.Layout(justify_content="space-between", margin="10px"),
+                    children=[self._download_button_widget],
+                    layout=ipw.Layout(justify_content="space-between"),
                 ),
                 output,
             ],
