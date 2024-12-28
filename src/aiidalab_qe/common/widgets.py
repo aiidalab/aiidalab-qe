@@ -484,8 +484,8 @@ class AddingTagsEditor(ipw.VBox):
             value="xyz",
             layout={"width": "initial"},
         )
-        self.select_periodicity = ipw.Button(
-            description="Select",
+        self.apply_periodicity = ipw.Button(
+            description="Apply",
             button_style="primary",
             layout={"width": "100px"},
         )
@@ -501,7 +501,7 @@ class AddingTagsEditor(ipw.VBox):
         self.add_tags.on_click(self._display_table)
         self.reset_tags.on_click(self._display_table)
         self.reset_all_tags.on_click(self._display_table)
-        self.select_periodicity.on_click(self._select_periodicity)
+        self.apply_periodicity.on_click(self._select_periodicity)
 
         super().__init__(
             children=[
@@ -546,7 +546,7 @@ class AddingTagsEditor(ipw.VBox):
                     </ul>
                 """),
                 self.periodicity,
-                self.select_periodicity,
+                self.apply_periodicity,
             ],
             **kwargs,
         )
