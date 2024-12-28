@@ -125,7 +125,7 @@ class QueryInterface:
             children=property_checkboxes, description="Properties:"
         )
         self.properties_filter_description = ipw.HTML(
-            "<p><b>Properties Filter:</b> Select one or more properties to narrow the results. Only calculations that include all the selected properties will be displayed. Leave all checkboxes unselected to include calculations regardless of their properties.</p>"
+            "<p><b>Properties filter:</b> Select one or more properties to narrow the results. Only calculations that include all the selected properties will be displayed. Leave all checkboxes unselected to include calculations regardless of their properties.</p>"
         )
         # Replace 'None' in 'Properties' with an empty list
         self.df["Properties"] = self.df["Properties"].apply(
@@ -140,7 +140,7 @@ class QueryInterface:
                 "Killed": "killed",
             },
             value="",  # Default value corresponding to "Any"
-            description="Job State:",
+            description="Job state:",
         )
         self.label_search_field = ipw.Text(
             value="",
@@ -150,11 +150,11 @@ class QueryInterface:
             style={"description_width": "initial"},
         )
         self.label_search_description = ipw.HTML(
-            "<p><b>Search Label:</b> Enter a keyword to search in both the <i>Label</i> and <i>Description</i> fields. Matches will include any calculations where the keyword is found in either field.</p>"
+            "<p><b>Search label:</b> Enter a keyword to search in both the <i>Label</i> and <i>Description</i> fields. Matches will include any calculations where the keyword is found in either field.</p>"
         )
         self.toggle_description_checkbox = ipw.Checkbox(
             value=False,  # Show the Description column by default
-            description="Show Description",
+            description="Show description",
             indent=False,
         )
         self.toggle_description_checkbox.observe(
@@ -163,18 +163,18 @@ class QueryInterface:
         self.toggle_time_format = ipw.ToggleButtons(
             options=["Absolute", "Relative"],
             value="Absolute",  # Default to Absolute time
-            description="Time Format:",
+            description="Time format:",
         )
         self.toggle_time_format.observe(self.update_table_visibility, names="value")
         self.toggle_id_format = ipw.ToggleButtons(
             options=["PK", "UUID"],
             value="PK",  # Default to PK
-            description="ID Format:",
+            description="ID format:",
         )
         self.toggle_id_format.observe(self.update_table_visibility, names="value")
 
-        self.time_start = ipw.DatePicker(description="Start Time:")
-        self.time_end = ipw.DatePicker(description="End Time:")
+        self.time_start = ipw.DatePicker(description="Start time:")
+        self.time_end = ipw.DatePicker(description="End time:")
         self.time_box = ipw.HBox([self.time_start, self.time_end])
         # self.apply_filters_btn = ipw.Button(description='Apply Filters')
         # self.apply_filters_btn.on_click(self.apply_filters)
@@ -187,7 +187,7 @@ class QueryInterface:
 
         self.filters_layout = ipw.VBox(
             [
-                ipw.HTML("<h3>Search & Filter Calculations:</h3>"),
+                ipw.HTML("<h3>Search & filter calculations:</h3>"),
                 ipw.VBox(
                     [
                         self.job_state_dropdown,
@@ -204,7 +204,7 @@ class QueryInterface:
                         #   self.apply_filters_btn,
                     ]
                 ),
-                ipw.HTML("<h3>Display Options:</h3>"),
+                ipw.HTML("<h3>Display options:</h3>"),
                 ipw.VBox(
                     [
                         self.toggle_description_checkbox,
@@ -251,8 +251,9 @@ class QueryInterface:
         display_df.rename(
             columns={
                 "State": "State 🟢",
-                "Creation time": "Creation Time ⏰",
+                "Creation time": "Creation time ⏰",
                 "ID": "ID 🔗",
+                "Relax_type": "Relax type",
             },
             inplace=True,
         )

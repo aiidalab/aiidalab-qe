@@ -107,7 +107,7 @@ class BasicConfigurationSettingsPanel(
             ipw.HBox(
                 children=[
                     ipw.Label(
-                        "Electronic Type:",
+                        "Electronic type:",
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.electronic_type,
