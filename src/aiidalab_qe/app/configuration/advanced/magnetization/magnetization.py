@@ -44,7 +44,15 @@ class MagnetizationConfigurationSettingsPanel(
         if self.rendered:
             return
 
-        self.description = ipw.HTML("<b>Magnetization:</b>")
+        self.description = ipw.HTML("""
+            <div>
+                <b>Magnetization:</b>
+                <br>
+                The default starting magnetization is computed as the theoretical
+                magnetic moment scaled by the valence charge defined in the selected
+                pseudopotential family.
+            </div>
+        """)
 
         self.magnetization_type = ipw.ToggleButtons(
             style={
