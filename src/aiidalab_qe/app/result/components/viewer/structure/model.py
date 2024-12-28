@@ -14,11 +14,10 @@ class StructureResultsModel(ResultsModel):
         return True
 
     def update(self):
-        super().update()
         is_relaxed = "relax" in self.properties
         self.title = "Relaxed structure" if is_relaxed else "Initial structure"
         self.source = self.outputs if is_relaxed else self.inputs
-        self.auto_render = not is_relaxed  # auto-render initial structure
+        self.auto_render = not is_relaxed or self.has_results
 
     def get_structure(self):
         try:
