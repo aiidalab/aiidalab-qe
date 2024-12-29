@@ -33,11 +33,11 @@ class DownloadDataWidget(ipw.VBox):
             from aiida.tools.dumping.processes import ProcessDumper  # noqa: F401
 
             self.download_raw_button.on_click(self._download_data_thread)
-            dumper_is_available = True
+            self.dumper_is_available = True
         except Exception:
-            dumper_is_available = False
+            self.dumper_is_available = False
 
-        self.download_raw_button.disabled = not dumper_is_available
+        self.download_raw_button.disabled = not self.dumper_is_available
 
         self.node = workchain_node
 
@@ -45,7 +45,7 @@ class DownloadDataWidget(ipw.VBox):
 
         children = []
 
-        if not dumper_is_available:
+        if not self.dumper_is_available:
             children.append(
                 ipw.HTML("""
                     <p style="color:red; line-height: 140%;">
@@ -109,7 +109,8 @@ class DownloadDataWidget(ipw.VBox):
         self.download_archive_button.disabled = True
 
     def _enable_buttons(self):
-        self.download_raw_button.disabled = False
+        if self.dumper_is_available:
+            self.download_raw_button.disabled = False
         self.download_archive_button.disabled = False
 
     @staticmethod
