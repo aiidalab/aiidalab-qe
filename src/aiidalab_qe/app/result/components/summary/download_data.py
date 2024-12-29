@@ -48,8 +48,10 @@ class DownloadDataWidget(ipw.VBox):
         if not dumper_is_available:
             children.append(
                 ipw.HTML("""
-                    <p style='color:red;'>The raw data download is not available because
-                    the AiiDA version is too old.</p>
+                    <p style="color:red; line-height: 140%;">
+                        The raw data download is not available because the AiiDA
+                        version is too old.
+                    </p>
                 """),
             )
 
