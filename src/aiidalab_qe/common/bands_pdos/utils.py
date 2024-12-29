@@ -39,6 +39,8 @@ HTML_TAGS = {
     "m_j": "m<sub>j</sub>",
 }
 
+from aiida.common.extendeddicts import AttributeDict
+
 
 def extract_pdos_output(node: WorkChainNode) -> AttributeDict | None:
     """Extract the PDOS output node from the given node.

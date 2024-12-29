@@ -13,12 +13,12 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
     has_property_selector = False
 
     def _render(self):
-        self.sub_results_container = ipw.VBox()
+        self.bands_pdos_container = ipw.VBox()
         children = []
         if self._model.needs_property_selector:
             children.append(self._render_property_selector())
             self.has_property_selector = True
-        children.append(self.sub_results_container)
+        children.append(self.bands_pdos_container)
         self.results_container.children = children
 
     def _post_render(self):
@@ -90,12 +90,15 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
 
     def _render_bands_pdos_widget(self, node_identifiers):
         message = f"Loading {' + '.join(node_identifiers)} results"
-        self.sub_results_container.children = [LoadingWidget(message)]
+        self.bands_pdos_container.children = [LoadingWidget(message)]
         nodes = {
-            identifier: self._model.fetch_child_process_node(identifier)
-            for identifier in node_identifiers
+            **{
+                identifier: self._model.fetch_child_process_node(identifier)
+                for identifier in node_identifiers
+            },
+            "root": self._model.fetch_process_node(),
         }
         model = BandsPdosModel.from_nodes(**nodes)
         widget = BandsPdosWidget(model=model)
         widget.render()
-        self.sub_results_container.children = [widget]
+        self.bands_pdos_container.children = [widget]
