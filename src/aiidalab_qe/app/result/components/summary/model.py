@@ -132,6 +132,8 @@ class WorkChainSummaryModel(ResultsComponentModel):
         """Generate a html for reporting the failure of the `QeAppWorkChain`."""
         if not (process_node := self.fetch_process_node()):
             return
+        if process_node.exit_status == 0:
+            return
         final_calcjob = self._get_final_calcjob(process_node)
         env = Environment()
         template = files(templates).joinpath("workflow_failure.jinja").read_text()
