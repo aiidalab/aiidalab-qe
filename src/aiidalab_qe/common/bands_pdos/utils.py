@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import json
 import re
 
 import numpy as np
 from pymatgen.core.periodic_table import Element
 
-from aiida.orm import ProjectionData
+from aiida.common.extendeddicts import AttributeDict
+from aiida.orm import ProjectionData, WorkChainNode
 
 # Constants for HTML tags
 HTML_TAGS = {
@@ -35,6 +38,28 @@ HTML_TAGS = {
     "l": "<i>l</i>",
     "m_j": "m<sub>j</sub>",
 }
+
+
+def extract_pdos_output(node: WorkChainNode) -> AttributeDict | None:
+    if node.process_label == "QeAppWorkChain" and "pdos" in node.outputs:
+        return node.outputs.pdos
+    if "dos" in node.outputs and "projwfc" in node.outputs:
+        items = {key: getattr(node.outputs, key) for key in node.outputs}
+        return AttributeDict(items)
+
+
+def extract_bands_output(node: WorkChainNode) -> AttributeDict | None:
+    if node.process_label == "QeAppWorkChain" and "bands" in node.outputs:
+        outputs = node.outputs.bands
+    else:
+        outputs = node.outputs
+    return (
+        outputs.bands
+        if "bands" in outputs
+        else outputs.bands_projwfc
+        if "bands_projwfc" in outputs
+        else None
+    )
 
 
 def get_bands_data(outputs, fermi_energy=None):

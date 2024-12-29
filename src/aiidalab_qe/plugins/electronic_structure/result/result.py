@@ -10,7 +10,7 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
     def _render(self):
         bands_node = self._model.fetch_child_process_node("bands")
         pdos_node = self._model.fetch_child_process_node("pdos")
-        model = BandsPdosModel.from_nodes(bands_node=bands_node, pdos_node=pdos_node)
+        model = BandsPdosModel.from_nodes(bands=bands_node, pdos=pdos_node)
         widget = BandsPdosWidget(model=model)
         widget.render()
         self.children = [widget]

@@ -12,6 +12,8 @@ from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.bands_pdos.utils import (
     HTML_TAGS,
+    extract_bands_output,
+    extract_pdos_output,
     get_bands_data,
     get_bands_projections_data,
     get_pdos_data,
@@ -85,32 +87,20 @@ class BandsPdosModel(Model):
     @classmethod
     def from_nodes(
         cls,
-        bands_node: orm.WorkChainNode | None = None,
-        pdos_node: orm.WorkChainNode | None = None,
+        bands: orm.WorkChainNode | None = None,
+        pdos: orm.WorkChainNode | None = None,
+        root: orm.WorkChainNode | None = None,
     ):
-        if not (bands_node or pdos_node):
-            raise ValueError("At least one of the nodes must be provided")
-
-        if bands_node and bands_node.is_finished_ok:
-            bands = (
-                bands_node.outputs.bands
-                if "bands" in bands_node.outputs
-                else bands_node.outputs.bands_projwfc
-                if "bands_projwfc" in bands_node.outputs
-                else None
-            )
-        else:
-            bands = None
-
-        if pdos_node and pdos_node.is_finished_ok:
-            items = {key: getattr(pdos_node.outputs, key) for key in pdos_node.outputs}
-            pdos = AttributeDict(items)
-        else:
-            pdos = None
-
         if bands or pdos:
-            return cls(bands=bands, pdos=pdos)
-
+            bands_output = extract_bands_output(bands)
+            pdos_output = extract_pdos_output(pdos)
+        elif root:
+            bands_output = extract_bands_output(root)
+            pdos_output = extract_pdos_output(root)
+        else:
+            raise ValueError("At least one of the nodes must be provided")
+        if bands_output or pdos_output:
+            return cls(bands=bands_output, pdos=pdos_output)
         raise ValueError("Failed to parse at least one node")
 
     def fetch_data(self):
