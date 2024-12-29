@@ -45,7 +45,7 @@ class MagnetizationConfigurationSettingsPanel(
             return
 
         self.description = ipw.HTML("""
-            <div>
+            <div style="margin-bottom: 5px;">
                 <b>Magnetization:</b>
                 <br>
                 The default starting magnetization is computed as the theoretical
@@ -59,6 +59,7 @@ class MagnetizationConfigurationSettingsPanel(
                 "description_width": "initial",
                 "button_width": "initial",
             },
+            layout=ipw.Layout(margin="0 0 10px 0"),
         )
         ipw.dlink(
             (self._model, "type_options"),
