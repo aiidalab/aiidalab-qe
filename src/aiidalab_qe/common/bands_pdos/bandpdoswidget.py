@@ -7,7 +7,32 @@ from .model import BandsPdosModel
 
 
 class BandsPdosWidget(ipw.VBox):
-    """A widget for plotting band structure and projected density of states (PDOS)."""
+    """A widget for plotting band structure and projected density of states (PDOS).
+
+    Parameters
+    ----------
+    `model`: `BandsPdosModel`
+        The MVC model containing the data and logic for the widget.
+
+    Attributes
+    ----------
+    `description`: `ipywidgets.HTML`
+         HTML description of the widget.
+    `dos_atoms_group`: `ipywidgets.Dropdown`
+         Dropdown widget to select the grouping of atoms for PDOS plotting.
+    `dos_plot_group`: `ipywidgets.Dropdown`
+         Dropdown widget to select the type of PDOS contributions to plot.
+    `selected_atoms`: `ipywidgets.Text`
+         Text widget to select specific atoms for PDOS plotting.
+    `update_plot_button`: `ipywidgets.Button`
+         Button widget to update the plot.
+    `download_button`: `ipywidgets.Button`
+         Button widget to download the data.
+    `project_bands_box`: `ipywidgets.Checkbox`
+         Checkbox widget to choose whether projected bands should be plotted.
+    `plot`: `plotly.graph_objects.FigureWidget`
+         Plotly widget for band structure and PDOS plot.
+    """
 
     def __init__(self, model: BandsPdosModel, **kwargs):
         super().__init__(

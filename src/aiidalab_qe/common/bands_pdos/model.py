@@ -91,6 +91,30 @@ class BandsPdosModel(Model):
         pdos: orm.WorkChainNode | None = None,
         root: orm.WorkChainNode | None = None,
     ):
+        """Create a `BandsPdosModel` instance from the provided nodes.
+
+        The method attempts to extract the output attribute dictionaries from the
+        nodes and creates from them an instance of the model.
+
+        Parameters
+        ----------
+        `bands` : `orm.WorkChainNode`, optional
+            The bands workchain node.
+        `pdos` : `orm.WorkChainNode`, optional
+            The PDOS workchain node.
+        `root`: `orm.WorkChainNode`, optional
+            The root QE app workchain node.
+
+        Returns
+        -------
+        `BandsPdosModel`
+            The model instance.
+
+        Raises
+        ------
+        `ValueError`
+            If neither of the nodes is provided or if the parsing of the nodes fails.
+        """
         if bands or pdos:
             bands_output = extract_bands_output(bands)
             pdos_output = extract_pdos_output(pdos)

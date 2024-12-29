@@ -41,6 +41,18 @@ HTML_TAGS = {
 
 
 def extract_pdos_output(node: WorkChainNode) -> AttributeDict | None:
+    """Extract the PDOS output node from the given node.
+
+    Parameters
+    ----------
+    `node`: `WorkChainNode`
+        The node to extract the PDOS output from.
+
+    Returns
+    -------
+    `AttributeDict | None`
+        The PDOS output node, if available.
+    """
     if node.process_label == "QeAppWorkChain" and "pdos" in node.outputs:
         return node.outputs.pdos
     if "dos" in node.outputs and "projwfc" in node.outputs:
@@ -49,6 +61,18 @@ def extract_pdos_output(node: WorkChainNode) -> AttributeDict | None:
 
 
 def extract_bands_output(node: WorkChainNode) -> AttributeDict | None:
+    """Extract the bands output node from the given node.
+
+    Parameters
+    ----------
+    `node`: `WorkChainNode`
+        The node to extract the bands output from.
+
+    Returns
+    -------
+    `AttributeDict | None`
+        The bands output node, if available.
+    """
     if node.process_label == "QeAppWorkChain" and "bands" in node.outputs:
         outputs = node.outputs.bands
     else:
