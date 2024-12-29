@@ -116,10 +116,10 @@ class PdosConfigurationSettingPanel(
                         by specifying a custom <b>degauss</b> value.
                     </p>
                     <p>
-                        For systems involving molecules or localized orbitals, it is
-                        recommended to use a <b>custom degauss value</b>. This will
-                        provide a more accurate representation of the PDOS, especially
-                        when the electronic states are localized.
+                        For systems involving <b>molecules</b> or <b>localized orbitals</b>,
+                        it is recommended to use a <b>custom degauss value</b>. This
+                        will provide a more accurate representation of the PDOS,
+                        especially when the electronic states are localized.
                     </p>
                 </div>
             """),
