@@ -2,30 +2,38 @@ def test_result(generate_qeapp_workchain):
     import plotly.graph_objects as go
 
     from aiidalab_qe.common.bands_pdos import BandsPdosWidget
-    from aiidalab_qe.plugins.bands.result import BandsResultsModel, BandsResultsPanel
+    from aiidalab_qe.plugins.electronic_structure.result import (
+        ElectronicStructureResultsModel,
+        ElectronicStructureResultsPanel,
+    )
 
-    workchain = generate_qeapp_workchain()
-    model = BandsResultsModel()
+    workchain = generate_qeapp_workchain(run_pdos=False)
+    model = ElectronicStructureResultsModel()
+    panel = ElectronicStructureResultsPanel(model=model)
+
     model.process_uuid = workchain.node.uuid
-    result = BandsResultsPanel(model=model)
-    result._render()
 
-    widget = result.children[0]
+    assert model.title == "Electronic bands"
+    assert model.identifiers == ["bands"]
+
+    panel.render()
+
+    assert len(panel.results_container.children) == 1  # only bands, so no controls
+
+    widget = panel.bands_pdos_container.children[0]  # type: ignore
     model = widget._model
 
     assert isinstance(widget, BandsPdosWidget)
     assert isinstance(widget.plot, go.FigureWidget)
 
-    # Check if data is correct
     assert not model.pdos_data
     assert model.bands_data
-    assert model.bands_data["pathlabels"]  # type: ignore
+    assert model.bands_data["pathlabels"]
 
-    # Check Bands axis
     assert widget.plot.layout.xaxis.title.text == "k-points"
     assert widget.plot.layout.yaxis.title.text == "Electronic Bands (eV)"
     assert isinstance(widget.plot.layout.xaxis.rangeslider, go.layout.xaxis.Rangeslider)
-    assert model.bands_data["pathlabels"][0] == list(widget.plot.layout.xaxis.ticktext)  # type: ignore
+    assert model.bands_data["pathlabels"][0] == list(widget.plot.layout.xaxis.ticktext)
 
 
 def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
