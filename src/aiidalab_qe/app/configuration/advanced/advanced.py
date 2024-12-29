@@ -212,7 +212,10 @@ class AdvancedConfigurationSettingsPanel(
                     self.clean_workdir,
                     self.reset_to_defaults_button,
                 ],
-                layout=ipw.Layout(justify_content="space-between"),
+                layout=ipw.Layout(
+                    justify_content="space-between",
+                    margin="0 0 10px 0",
+                ),
             ),
             self.total_charge,
             self.van_der_waals,

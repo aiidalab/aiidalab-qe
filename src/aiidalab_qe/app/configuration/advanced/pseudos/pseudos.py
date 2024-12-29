@@ -149,27 +149,15 @@ class PseudosConfigurationSettingsPanel(
         )
 
         self.children = [
+            ipw.HTML("<h4 style='margin-bottom: 0;'>Accuracy and precision</h4>"),
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 10px">
-                    <h4>Accuracy and precision</h4>
+                <div class="pseudo-text">
+                    The exchange-correlation functional and pseudopotential
+                    library is set by the <b>protocol</b> configured in the
+                    "Workflow" tab. Here you can override the defaults if
+                    desired.
                 </div>
             """),
-            ipw.HBox(
-                children=[
-                    ipw.HTML(
-                        """
-                        <div class="pseudo-text">
-                            The exchange-correlation functional and pseudopotential
-                            library is set by the <b>protocol</b> configured in the
-                            "Workflow" tab. Here you can override the defaults if
-                            desired.
-                        </div>
-                        """,
-                        layout=ipw.Layout(max_width="60%"),
-                    ),
-                ],
-                layout=ipw.Layout(height="50px", justify_content="space-between"),
-            ),
             ipw.HBox(
                 [
                     ipw.VBox(

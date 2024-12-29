@@ -56,6 +56,7 @@ class PdosConfigurationSettingPanel(
         )
 
         self.use_pdos_degauss = ipw.Checkbox(
+            indent=False,
             description="Use custom PDOS degauss",
             style={"description_width": "initial"},
         )
@@ -107,21 +108,19 @@ class PdosConfigurationSettingPanel(
         self.children = [
             InAppGuide(identifier="pdos-settings"),
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Settings</h4>
-                </div>
-            """),
-            ipw.HTML("""
-                <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-                    By default, the <b>tetrahedron method</b> is used for partial density of states (PDOS) calculation.
-                    However, if you need more control over the broadening, you can apply <b>Gaussian broadening</b>
-                    by specifying a custom <b>degauss</b> value.
-                    <br>
-                    <b>Recommendation for Molecules and Localized Orbitals:</b>
-                    <br>
-                    For systems involving molecules or localized orbitals, it is recommended to use a
-                    <b>custom degauss value</b>. This will provide a more accurate representation of the PDOS,
-                    especially when the electronic states are localized.
+                <div style="line-height: 140%; margin-bottom: 10px;">
+                    <p style="margin-bottom: 10px;">
+                        By default, the <b>tetrahedron method</b> is used for partial
+                        density of states (PDOS) calculation. However, if you need more
+                        control over the broadening, you can apply <b>Gaussian broadening</b>
+                        by specifying a custom <b>degauss</b> value.
+                    </p>
+                    <p>
+                        For systems involving molecules or localized orbitals, it is
+                        recommended to use a <b>custom degauss value</b>. This will
+                        provide a more accurate representation of the PDOS, especially
+                        when the electronic states are localized.
+                    </p>
                 </div>
             """),
             ipw.HBox(
