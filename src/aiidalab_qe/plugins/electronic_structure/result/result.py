@@ -66,7 +66,7 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
                             You can choose to plot only bands, only PDOS, or both
                             combined in one plot. After making your selection, click
                             <span style="color: #2196f3;">
-                                <i class="fa fa-pencil"></i> Apply selection
+                                <i class="fa fa-pencil"></i> <b>Apply selection</b>
                             </span>
                             to proceed.
                         </p>
