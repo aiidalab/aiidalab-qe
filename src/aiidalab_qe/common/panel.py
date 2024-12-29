@@ -542,36 +542,24 @@ class ResultsModel(PanelModel, HasProcess):
         if "success" in status:
             self._completed_process = True
 
-    def fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
+    def fetch_child_process_node(self, which="this") -> orm.ProcessNode | None:
         if not self.process_uuid:
             return
-        child = child.lower()
-        uuid = getattr(self, f"_{child}_process_uuid")
-        label = getattr(self, f"_{child}_process_label")
+        which = which.lower()
+        uuid = getattr(self, f"_{which}_process_uuid")
+        label = getattr(self, f"_{which}_process_label")
         if not uuid:
-            uuid = (
-                orm.QueryBuilder()
-                .append(
-                    orm.WorkChainNode,
-                    filters={"uuid": self.process_uuid},
-                    tag="root_process",
-                )
-                .append(
-                    orm.WorkChainNode,
-                    filters={"attributes.process_label": label},
-                    project="uuid",
-                    with_incoming="root_process",
-                )
-                .first(flat=True)
-            )
+            root = self.fetch_process_node()
+            child = next((c for c in root.called if c.process_label == label), None)
+            uuid = child.uuid if child else None
         return orm.load_node(uuid) if uuid else None  # type: ignore
 
-    def _get_child_process_status(self, child="this"):
-        state, exit_message = self._get_child_state_and_exit_message(child)
+    def _get_child_process_status(self, which="this"):
+        state, exit_message = self._get_child_state_and_exit_message(which)
         status = state.upper()
         if exit_message:
             status = f"{status} ({exit_message})"
-        label = "Status" if child == "this" else f"{child.capitalize()} status"
+        label = "Status" if which == "this" else f"{which.capitalize()} status"
         alert_class = f"alert-{self.CSS_MAP.get(state, 'info')}"
         return f"""
             <div class="alert {alert_class}" style="padding: 5px 10px;">
@@ -579,9 +567,9 @@ class ResultsModel(PanelModel, HasProcess):
             </div>
         """
 
-    def _get_child_state_and_exit_message(self, child="this"):
+    def _get_child_state_and_exit_message(self, which="this"):
         if not (
-            (node := self.fetch_child_process_node(child))
+            (node := self.fetch_child_process_node(which))
             and hasattr(node, "process_state")
             and node.process_state
         ):
@@ -590,10 +578,10 @@ class ResultsModel(PanelModel, HasProcess):
             return "failed", node.exit_message
         return node.process_state.value, None
 
-    def _get_child_outputs(self, child="this"):
-        if not (node := self.fetch_child_process_node(child)):
+    def _get_child_outputs(self, which="this"):
+        if not (node := self.fetch_child_process_node(which)):
             outputs = super().outputs
-            child = child if child != "this" else self.identifier
+            child = which if which != "this" else self.identifier
             return getattr(outputs, child) if child in outputs else AttributeDict({})
         return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
 
