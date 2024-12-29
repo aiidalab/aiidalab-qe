@@ -820,29 +820,29 @@ def generate_qeapp_workchain(
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
 
-        # Setting up inputs for bands_projwfc
-        inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
-            inputs["bands"]["bands"]["scf"]["pw"]
-        )
-        inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
-            inputs["bands"]["bands"]["bands"]["pw"]
-        )
-        inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
-            "bands"
-        ]["bands"]["pw"]["code"]
-        inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
-            "bands"
-        ]["scf"]["pw"]["code"]
-
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = fixture_code(
-            "quantumespresso.projwfc"
-        )
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
-            {"PROJWFC": {"DeltaE": 0.01}}
-        ).store()
-
         if run_bands:
+            # Setting up inputs for bands_projwfc
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
+                inputs["bands"]["bands"]["scf"]["pw"]
+            )
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
+                inputs["bands"]["bands"]["bands"]["pw"]
+            )
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
+                "bands"
+            ]["bands"]["pw"]["code"]
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
+                "bands"
+            ]["scf"]["pw"]["code"]
+
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = (
+                fixture_code("quantumespresso.projwfc")
+            )
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
+                {"PROJWFC": {"DeltaE": 0.01}}
+            ).store()
             inputs["properties"].append("bands")
+
         if run_pdos:
             inputs["properties"].append("pdos")
 
@@ -852,6 +852,7 @@ def generate_qeapp_workchain(
         # mock output
         if relax_type != "none":
             workchain.out("structure", app.structure_model.input_structure)
+
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
@@ -863,6 +864,7 @@ def generate_qeapp_workchain(
                     namespace="pdos",
                 )
             )
+
         if run_bands:
             from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 
