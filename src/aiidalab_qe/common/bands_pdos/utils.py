@@ -53,6 +53,8 @@ def extract_pdos_output(node: WorkChainNode) -> AttributeDict | None:
     `AttributeDict | None`
         The PDOS output node, if available.
     """
+    if not node:
+        return
     if node.process_label == "QeAppWorkChain" and "pdos" in node.outputs:
         return node.outputs.pdos
     if "dos" in node.outputs and "projwfc" in node.outputs:
@@ -73,6 +75,8 @@ def extract_bands_output(node: WorkChainNode) -> AttributeDict | None:
     `AttributeDict | None`
         The bands output node, if available.
     """
+    if not node:
+        return
     if node.process_label == "QeAppWorkChain" and "bands" in node.outputs:
         outputs = node.outputs.bands
     else:
