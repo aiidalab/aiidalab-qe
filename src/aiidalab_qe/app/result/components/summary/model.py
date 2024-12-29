@@ -7,8 +7,12 @@ from jinja2 import Environment
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponentModel
 from aiidalab_qe.app.static import styles, templates
+
+DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
+
 
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
@@ -69,7 +73,11 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "fmt_yes_no": _fmt_yes_no,
             }
         )
-        template = files(templates).joinpath("workflow_list_summary.jinja").read_text()
+        template = (
+            files(templates)
+            .joinpath(f"workflow_{DEFAULT['summary_format']}_summary.jinja")
+            .read_text()
+        )
         style = files(styles).joinpath("style.css").read_text()
         parameters = self._generate_report_parameters()
         report = {key: value for key, value in parameters.items() if value is not None}
@@ -231,7 +239,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
             qeapp_wc.inputs.structure.pbc, "xyz"
         )
 
-        # Spin-Oribit coupling
+        # Spin-Orbit coupling
         report["spin_orbit"] = pw_parameters["SYSTEM"].get("lspinorb", False)
 
         if hubbard_dict := ui_parameters["advanced"].pop("hubbard_parameters", None):
