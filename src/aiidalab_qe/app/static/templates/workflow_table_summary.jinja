@@ -1,8 +1,7 @@
 <body>
 
-<div class="row">
-  <div class="column">
-    <h3>Standard settings</h3>
+  <div>
+    <h2>Main settings</h2>
     <table>
       <tr>
         <td>Structure geometry optimized</td>
@@ -33,16 +32,16 @@
 
     </table>
   </div>
-  <div class="column">
-    <h3>Advanced settings</h3>
+  <div>
+    <h2>Advanced settings</h2>
     <table>
       <tr>
         <td>Functional</td>
-          <td>
+        <td>
           <a href="{{ functional_link }}" target="_blank">
             {{ functional }}
           </a>
-          </td>
+        </td>
       </tr>
       <tr>
         <td>Pseudopotential library</td>
@@ -99,6 +98,7 @@
         <td>{{ vdw_corr }}</td>
       </tr>
 
+      {% if material_magnetic == "collinear" %}
       {% if tot_magnetization %}
       <tr>
         <td>Total magnetization</td>
@@ -109,6 +109,7 @@
         <td>Initial magnetic moments</td>
         <td>{{ initial_magnetic_moments }}</td>
       </tr>
+      {% endif %}
       {% endif %}
       {% if hubbard_u %}
       <tr>
@@ -125,6 +126,5 @@
 
     </table>
   </div>
-</div>
 
 </body>
