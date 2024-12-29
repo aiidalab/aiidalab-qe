@@ -56,7 +56,7 @@ class BasicConfigurationSettingsPanel(
                     Set the desired magnetic configuration in <b>advanced</b> settings
                 </div>
             """,
-            layout=ipw.Layout(visibility="hidden"),
+            layout=ipw.Layout(display="none"),
         )
 
         # Spin-Orbit calculation
@@ -186,9 +186,10 @@ class BasicConfigurationSettingsPanel(
         self.refresh(specific="structure")
 
     def _on_spin_type_change(self, _):
-        if self._model.spin_type == "collinear" and self._model.has_tags:
-            self.warning.layout.display = "flex"
-            self.magnetization_info.layout.visibility = "hidden"
+        if self._model.spin_type == "collinear":
+            self.magnetization_info.layout.display = "block"
+            if self._model.has_tags:
+                self.warning.layout.display = "flex"
         else:
+            self.magnetization_info.layout.display = "none"
             self.warning.layout.display = "none"
-            self.magnetization_info.layout.visibility = "visible"
