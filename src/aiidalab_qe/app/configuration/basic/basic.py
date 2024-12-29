@@ -95,7 +95,7 @@ class BasicConfigurationSettingsPanel(
                     </p>
                     <p>
                         Please go to <b>Advanced settings</b> and override the default
-                        values, specifying appropriate starting magnetization for each
+                        values, specifying appropriate magnetic moments for each
                         species (e.g. with different signs for an antiferromagnetic
                         configuration).
                     </p>
