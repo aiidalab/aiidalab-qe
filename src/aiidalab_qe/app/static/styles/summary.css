@@ -42,3 +42,37 @@
 .settings-summary a {
   text-decoration: none;
 }
+
+/* Error details */
+
+.error-container {
+  margin: 20px 0 0;
+}
+
+.error-container p {
+  line-height: 1.4;
+}
+
+.error-message {
+  margin-bottom: 10px;
+}
+
+.error-message pre {
+  display: inline;
+}
+
+.error {
+  border: 1px solid #aaa;
+  padding: 0.5em 0.5em 0;
+}
+
+.summary {
+  font-weight: bold;
+  margin: -0.5em -0.5em 0;
+  padding: 0.5em;
+}
+
+.code-holder code {
+  background: inherit;
+  white-space: pre;
+}

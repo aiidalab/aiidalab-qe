@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import shutil
-from importlib.resources import files
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -9,12 +8,9 @@ import ipywidgets as ipw
 import traitlets as tl
 from filelock import FileLock, Timeout
 from IPython.display import HTML, display
-from jinja2 import Environment
 
 from aiida import orm
-from aiida.cmdline.utils.common import get_workchain_report
 from aiida.common import LinkType
-from aiidalab_qe.app.static import styles, templates
 
 from .download_data import DownloadDataWidget
 
@@ -40,29 +36,8 @@ class WorkChainOutputs(ipw.VBox):
         )
         self._download_button_widget = DownloadDataWidget(workchain_node=self.node)
 
-        if node.exit_status != 0:
-            final_calcjob = self._get_final_calcjob(node)
-            env = Environment()
-            template = files(templates).joinpath("workflow_failure.jinja").read_text()
-            style = files(styles).joinpath("style.css").read_text()
-            output = ipw.HTML(
-                env.from_string(template).render(
-                    style=style,
-                    process_report=get_workchain_report(node, "REPORT"),
-                    calcjob_exit_message=final_calcjob.exit_message,
-                )
-            )
-        else:
-            output = ipw.HTML()
-
         super().__init__(
-            children=[
-                ipw.VBox(
-                    children=[self._download_button_widget],
-                    layout=ipw.Layout(justify_content="space-between"),
-                ),
-                output,
-            ],
+            children=[self._download_button_widget],
             **kwargs,
         )
 
@@ -147,23 +122,6 @@ class WorkChainOutputs(ipw.VBox):
                     cls._write_calcjob_io(link3.node, folder_path)
 
                     counter += 1
-
-    @staticmethod
-    def _get_final_calcjob(node: orm.WorkChainNode) -> orm.CalcJobNode | None:
-        """Get the final calculation job node called by a work chain node.
-
-        :param node: Work chain node.
-        """
-        try:
-            final_calcjob = [
-                process
-                for process in node.called_descendants
-                if isinstance(process, orm.CalcJobNode) and process.is_finished
-            ][-1]
-        except IndexError:
-            final_calcjob = None
-
-        return final_calcjob
 
     @staticmethod
     def _write_calcjob_io(calcjob: orm.CalcJobNode, folder: Path) -> None:

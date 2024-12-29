@@ -44,31 +44,3 @@ td:nth-child(even) {
     width: 50%;
     padding: 10px;
 }
-
-/* Error details */
-
-.error-container {
-    margin: 10px 0;
-}
-
-.error {
-    border: 1px solid #aaa;
-    border-radius: 4px;
-    padding: .5em .5em 0;
-    width: 750px;
-}
-
-.summary {
-    font-weight: bold;
-    margin: -.5em -.5em 0;
-    padding: .5em
-}
-
-.code-holder {
-    overflow-x: scroll;
-}
-
-.code-holder code {
-    background: inherit;
-    white-space: pre;
-}

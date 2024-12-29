@@ -1,5 +1,14 @@
+from __future__ import annotations
+
+import traitlets as tl
+from importlib_resources import files
+from jinja2 import Environment
+
+from aiida import orm
+from aiida.cmdline.utils.common import get_workchain_report
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 from aiidalab_qe.app.result.components import ResultsComponentModel
+from aiidalab_qe.app.static import styles, templates
 
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
@@ -38,6 +47,10 @@ VDW_CORRECTION_VERSION = {
 class WorkChainSummaryModel(ResultsComponentModel):
     identifier = "workflow summary"
 
+    failed_calculation_report = tl.Unicode("")
+
+    has_failure_report = False
+
     @property
     def include(self):
         return True
@@ -46,11 +59,6 @@ class WorkChainSummaryModel(ResultsComponentModel):
         """Read from the builder parameters and generate a html for reporting
         the inputs for the `QeAppWorkChain`.
         """
-        from importlib.resources import files
-
-        from jinja2 import Environment
-
-        from aiidalab_qe.app.static import styles, templates
 
         def _fmt_yes_no(truthy):
             return "yes" if truthy else "no"
@@ -111,6 +119,21 @@ class WorkChainSummaryModel(ResultsComponentModel):
         report_string += "."
 
         return report_string
+
+    def generate_failure_report(self):
+        """Generate a html for reporting the failure of the `QeAppWorkChain`."""
+        if not (process_node := self.fetch_process_node()):
+            return
+        final_calcjob = self._get_final_calcjob(process_node)
+        env = Environment()
+        template = files(templates).joinpath("workflow_failure.jinja").read_text()
+        style = files(styles).joinpath("style.css").read_text()
+        self.failed_calculation_report = env.from_string(template).render(
+            style=style,
+            process_report=get_workchain_report(process_node, "REPORT"),
+            calcjob_exit_message=final_calcjob.exit_message,
+        )
+        self.has_failure_report = True
 
     def _generate_report_parameters(self):
         """Generate the report parameters from the ui parameters and workchain's input.
@@ -229,3 +252,27 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 qeapp_wc.inputs.pdos.nscf.kpoints_distance.base.attributes.get("value")
             )
         return report
+
+    @staticmethod
+    def _get_final_calcjob(node: orm.WorkChainNode) -> orm.CalcJobNode | None:
+        """Get the final calculation job node called by a workchain node.
+
+        Parameters
+        ----------
+        `node`: `orm.WorkChainNode`
+            The work chain node to get the final calculation job node from.
+
+        Returns
+        -------
+        `orm.CalcJobNode` | `None`
+            The final calculation job node called by the workchain node if available.
+        """
+        try:
+            final_calcjob = [
+                process
+                for process in node.called_descendants
+                if isinstance(process, orm.CalcJobNode) and process.is_finished
+            ][-1]
+        except IndexError:
+            final_calcjob = None
+        return final_calcjob

@@ -7,18 +7,18 @@ from .outputs import WorkChainOutputs
 
 
 class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
-    def __init__(self, model: WorkChainSummaryModel, **kwargs):
-        super().__init__(model=model, **kwargs)
-        self.has_report = False
-        self.has_output = False
+    has_settings_report = False
+    has_download_widget = False
 
     def _on_process_change(self, _):
-        if not self.has_report:
+        if not self.has_settings_report:
             self._render_summary()
 
     def _on_monitor_counter_change(self, _):
-        if not self.has_output:
-            self._render_output()
+        if not self.has_download_widget:
+            self._render_download_widget()
+        if not self._model.has_failure_report:
+            self._model.generate_failure_report()
 
     def _render(self):
         self._render_summary()
@@ -47,17 +47,27 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
         )
         self.output_download_container.add_class("summary-panel")
 
-        self.container = ipw.HBox(
+        container = ipw.HBox(
             children=[
                 settings_summary,
                 self.output_download_container,
             ],
         )
-        self.container.add_class("workflow-summary-container")
-        self.children = [self.container]
-        self.has_report = True
+        container.add_class("workflow-summary-container")
 
-    def _render_output(self):
+        self.failed_calculation_report = ipw.HTML()
+        ipw.dlink(
+            (self._model, "failed_calculation_report"),
+            (self.failed_calculation_report, "value"),
+        )
+
+        self.children = [
+            container,
+            self.failed_calculation_report,
+        ]
+        self.has_settings_report = True
+
+    def _render_download_widget(self):
         process_node = self._model.fetch_process_node()
         if process_node and process_node.is_terminated:
             output_download_widget = WorkChainOutputs(node=process_node)
@@ -66,4 +76,4 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
                 self.output_download_container.children[0],  # type: ignore
                 output_download_widget,
             ]
-            self.has_output = True
+            self.has_download_widget = True
