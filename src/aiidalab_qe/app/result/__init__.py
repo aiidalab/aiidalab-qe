@@ -121,7 +121,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
         self.toggle_controls.value = "Summary"
 
         self.process_monitor = ProcessMonitor(
-            timeout=0.2,
+            timeout=0.5,
             callbacks=[
                 self._update_status,
                 self._update_state,
