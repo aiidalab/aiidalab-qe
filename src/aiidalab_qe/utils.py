@@ -1,3 +1,5 @@
+from aiida_pseudo.groups.family import PseudoPotentialFamily
+
 from aiida import orm
 
 
@@ -32,6 +34,6 @@ def enable_pencil_decomposition(component):
     component.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
 
 
-def fetch_pseudo_family_by_label(label):
+def fetch_pseudo_family_by_label(label) -> PseudoPotentialFamily:
     """Fetch the pseudo family by label."""
-    return orm.Group.collection.get(label=label)
+    return orm.Group.collection.get(label=label)  # type: ignore

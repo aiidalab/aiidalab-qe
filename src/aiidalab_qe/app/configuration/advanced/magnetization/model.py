@@ -30,7 +30,7 @@ class MagnetizationConfigurationSettingsModel(
     type_options = tl.List(
         trait=tl.List(tl.Unicode()),
         default_value=[
-            ["Starting magnetization", "starting_magnetization"],
+            ["Magnetic moments", "starting_magnetization"],
             ["Total magnetization", "tot_magnetization"],
         ],
     )
@@ -47,10 +47,16 @@ class MagnetizationConfigurationSettingsModel(
             self._defaults["moments"] = {}
         else:
             try:
-                self._defaults["moments"] = get_starting_magnetization(
-                    self.input_structure,
-                    fetch_pseudo_family_by_label(self.family),
-                )
+                family = fetch_pseudo_family_by_label(self.family)
+                initial_guess = get_starting_magnetization(self.input_structure, family)
+                self._defaults["moments"] = {
+                    kind.name: round(
+                        initial_guess[kind.name]
+                        * family.get_pseudo(kind.symbol).z_valence,
+                        3,
+                    )
+                    for kind in self.input_structure.kinds
+                }
             except NotExistent:
                 self._defaults["moments"] = {
                     kind_name: 0.0
