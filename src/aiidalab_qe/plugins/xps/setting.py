@@ -81,38 +81,47 @@ class XpsConfigurationSettingsPanel(
         )
 
         self.children = [
+            ipw.HTML("<h4>Structure</h4>"),
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Structure</h4>
-                </div>
-            """),
-            ipw.HTML("""
-                <div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+                <div style="line-height: 140%; margin-bottom: 10px">
                     Below you can indicate if the material should be treated as a
                     molecule or a crystal.
-                </div>"""),
-            ipw.HBox([self.structure_type]),
+                </div>
+            """),
+            ipw.HBox(
+                children=[
+                    self.structure_type,
+                ]
+            ),
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
+                <div style="margin-top: 15px;">
                     <h4>Core-Hole pseudopotential group</h4>
-                </div>"""),
+                </div>
+            """),
             ipw.HTML(f"""
-                <div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
+                <div style="line-height: 140%; margin-bottom: 10px">
                     Please select a pseudopotential group, which provide the
                     ground-state and excited-state pseudopotentials for the element.
                     The pseudopotentials are downloaded from this <a href="{BASE_URL}">
                     repository</a>.
-                </div>"""),
+                </div>
+            """),
             self.pseudo_group,
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
+                <div style="margin-top: 15px;">
                     <h4>Select core-level</h4>
-                </div>"""),
+                </div>
+            """),
             ipw.HTML("""
-                <div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
+                <div style="line-height: 140%;">
                     The list of core-levels to be considered for analysis.
-                </div>"""),
-            ipw.HBox([self.core_levels_widget]),
+                </div>
+            """),
+            ipw.HBox(
+                children=[
+                    self.core_levels_widget,
+                ]
+            ),
         ]
 
         self.rendered = True

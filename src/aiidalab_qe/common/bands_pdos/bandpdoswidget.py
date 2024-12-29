@@ -113,7 +113,7 @@ class BandsPdosWidget(ipw.VBox):
         self.update_plot_button.on_click(self._update_pdos_plot)
 
         self.download_button = ipw.Button(
-            description="Download Data",
+            description="Download data",
             icon="download",
             button_style="primary",
             layout=ipw.Layout(visibility="hidden"),

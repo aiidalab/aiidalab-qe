@@ -28,7 +28,7 @@ def test_qe_app_select_silicon_and_confirm(
 
     # Select the Silicon example
     element = WebDriverWait(driver, 60 * 2).until(
-        EC.presence_of_element_located((By.XPATH, "//*[text()='From Examples']"))
+        EC.presence_of_element_located((By.XPATH, "//*[text()='From examples']"))
     )
     element.click()
 
