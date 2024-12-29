@@ -53,7 +53,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
         from aiidalab_qe.app.static import styles, templates
 
         def _fmt_yes_no(truthy):
-            return "Yes" if truthy else "No"
+            return "yes" if truthy else "no"
 
         env = Environment()
         env.filters.update(
@@ -61,7 +61,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "fmt_yes_no": _fmt_yes_no,
             }
         )
-        template = files(templates).joinpath("workflow_summary.jinja").read_text()
+        template = files(templates).joinpath("workflow_list_summary.jinja").read_text()
         style = files(styles).joinpath("style.css").read_text()
         parameters = self._generate_report_parameters()
         report = {key: value for key, value in parameters.items() if value is not None}

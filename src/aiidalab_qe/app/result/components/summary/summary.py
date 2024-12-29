@@ -26,12 +26,44 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
     def _render_summary(self):
         if not self._model.has_process:
             return
-        report = self._model.generate_report_html()
-        self.children = [ipw.HTML(report)]
+
+        settings_summary = ipw.HTML(
+            value=self._model.generate_report_html(),
+        )
+        settings_summary.add_class("summary-panel")
+
+        self.output_download_container = ipw.VBox(
+            children=[
+                ipw.HTML("""
+                    <div style="line-height: 140%; margin: 0; margin-bottom: 10px;">
+                        <h2>Download the data</h2>
+                        Once the workflow is finished, you can download raw data
+                        (i.e. input and output files) and/or the AiiDA archive
+                        (ready to be shared or imported into another AiiDA profile).
+                    </div>
+                """),
+                ipw.HTML("Download buttons will appear here when available."),
+            ],
+        )
+        self.output_download_container.add_class("summary-panel")
+
+        self.container = ipw.HBox(
+            children=[
+                settings_summary,
+                self.output_download_container,
+            ],
+        )
+        self.container.add_class("workflow-summary-container")
+        self.children = [self.container]
         self.has_report = True
 
     def _render_output(self):
         process_node = self._model.fetch_process_node()
         if process_node and process_node.is_terminated:
-            self.children += (WorkChainOutputs(node=process_node),)
+            output_download_widget = WorkChainOutputs(node=process_node)
+            output_download_widget.layout.width = "100%"
+            self.output_download_container.children = [
+                self.output_download_container.children[0],  # type: ignore
+                output_download_widget,
+            ]
             self.has_output = True

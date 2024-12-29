@@ -1,0 +1,44 @@
+.workflow-summary-container {
+  width: 75%;
+  margin: 0 auto;
+  gap: 10px;
+}
+
+@media (max-width: 1199px) {
+  .workflow-summary-container {
+    width: 92%;
+  }
+}
+
+@media (max-width: 991px) {
+  .workflow-summary-container {
+    width: 100%;
+  }
+}
+
+.summary-panel {
+  width: 100%;
+  border: 1px solid #9e9e9e;
+  padding: 0 20px 10px;
+  margin: 0;
+}
+
+.settings-summary {
+  margin: 2px;
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+}
+
+.settings-summary ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-summary ul ul {
+  margin-left: 20px;
+}
+
+.settings-summary a {
+  text-decoration: none;
+}

@@ -17,9 +17,8 @@ table {
 }
 
 td, tr {
-    border-left: 2px solid var(--lab-blue);
     text-align: left;
-    padding: 8px;
+    padding: 2px 8px;
 }
 
 tr {
@@ -49,7 +48,7 @@ td:nth-child(even) {
 /* Error details */
 
 .error-container {
-    margin: 10px;
+    margin: 10px 0;
 }
 
 .error {
