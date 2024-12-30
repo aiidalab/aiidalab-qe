@@ -24,11 +24,31 @@
         </li>
       </ul>
     </div>
+    <div class="summary-table" id="structure-properties">
+      <h2>Structure properties</h2>
+      <ul>
+        <li>
+          <strong>Chemical formula:</strong> {{ formula }}
+        </li>
+        <li>
+          <strong>Number of atoms:</strong> {{ num_atoms }}
+        </li>
+        <li>
+          <strong>Space group:</strong> {{ space_group }}
+        </li>
+        <li>
+          <strong>Cell lengths in Å:</strong> {{ cell_lengths }}
+        </li>
+        <li>
+          <strong>Cell angles in °:</strong> {{ cell_angles }}
+        </li>
+      </ul>
+    </div>
     <div class="summary-table" id="basic-settings">
       <h2>Basic settings</h2>
       <ul>
         <li>
-          <strong>Structure geometry optimized:</strong> {{ relaxed | fmt_yes_no }}
+          <strong>Structure geometry optimization:</strong> {{ relaxed | fmt_yes_no }}
         </li>
         {% if relaxed %}
         <li>

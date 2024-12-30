@@ -168,6 +168,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
         # drop support for old ui parameters
         if "workchain" not in ui_parameters:
             return {}
+        initial_structure = qeapp_wc.inputs.structure
         report = {
             "pk": qeapp_wc.pk,
             "uuid": str(qeapp_wc.uuid),
@@ -177,6 +178,17 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "creation_time_relative": relative_time(qeapp_wc.ctime),
             "modification_time": format_time(qeapp_wc.mtime),
             "modification_time_relative": relative_time(qeapp_wc.mtime),
+            "formula": initial_structure.get_formula(),
+            "num_atoms": len(initial_structure.sites),
+            "space_group": "{} ({})".format(
+                *initial_structure.get_pymatgen().get_space_group_info()
+            ),
+            "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(
+                *initial_structure.cell_lengths
+            ),
+            "cell_angles": "{:.0f} {:.0f} {:.0f}".format(
+                *initial_structure.cell_angles
+            ),
             "relaxed": None
             if ui_parameters["workchain"]["relax_type"] == "none"
             else ui_parameters["workchain"]["relax_type"],

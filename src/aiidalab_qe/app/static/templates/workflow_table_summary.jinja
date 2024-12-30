@@ -29,11 +29,36 @@
       </tr>
     </table>
   </div>
+  <div class="summary-table" id="structure-properties">
+    <h2>Structure properties</h2>
+    <table>
+      <tr>
+        <td>Chemical formula</td>
+        <td>{{ formula }}</td>
+      </tr>
+      <tr>
+        <td>Number of atoms</td>
+        <td>{{ num_atoms }}</td>
+      </tr>
+      <tr>
+        <td>Space group</td>
+        <td>{{ space_group }}</td>
+      </tr>
+      <tr>
+        <td>Cell lengths in Å</td>
+        <td>{{ cell_lengths }}</td>
+      </tr>
+      <tr>
+        <td>Cell angles in °</td>
+        <td>{{ cell_angles }}</td>
+      </tr>
+    </table>
+  </div>
   <div class="summary-table" id="basic-settings">
     <h2>Basic settings</h2>
     <table>
       <tr>
-        <td>Structure geometry optimized</td>
+        <td>Structure geometry optimization</td>
         <td>{{ relaxed | fmt_yes_no }}</td>
       </tr>
       {% if relaxed %}
@@ -58,7 +83,6 @@
         <td>Periodicity</td>
         <td>{{ periodicity }}</td>
       </tr>
-
     </table>
   </div>
   <div class="summary-table" id="advanced-settings">
@@ -126,7 +150,6 @@
         <td>Van der Waals correction</td>
         <td>{{ vdw_corr }}</td>
       </tr>
-
       {% if material_magnetic == "collinear" %}
       {% if tot_magnetization %}
       <tr>
@@ -152,7 +175,6 @@
         <td>{{ spin_orbit }}</td>
       </tr>
       {% endif %}
-
     </table>
   </div>
 
