@@ -1,21 +1,22 @@
 import traitlets as tl
 
-from aiida import orm
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
+class BasicConfigurationSettingsModel(
+    ConfigurationSettingsModel,
+    HasInputStructure,
+):
     title = "Basic settings"
     identifier = "workchain"
 
     dependencies = [
         "input_structure",
     ]
-
-    input_structure = tl.Union([tl.Instance(orm.StructureData)], allow_none=True)
 
     protocol_options = tl.List(
         trait=tl.Tuple(tl.Unicode(), tl.Unicode()),

@@ -8,10 +8,10 @@ class MagnetizationConfigurationSettingsPanel(
     AdvancedConfigurationSubSettingsPanel[MagnetizationConfigurationSettingsModel],
 ):
     """Widget to set the type of magnetization used in the calculation:
-    1) Tot_magnetization: Total majority spin charge - minority spin charge.
-    2) Starting magnetization: Starting spin polarization on atomic type 'i' in a spin polarized (LSDA or noncollinear/spin-orbit) calculation.
+    1) Total magnetization: Total majority spin charge - minority spin charge.
+    2) Magnetic moments: Starting spin polarization on atomic type 'i' in a spin polarized (LSDA or noncollinear/spin-orbit) calculation.
 
-    For Starting magnetization you can set each kind names defined in the StructureData (StructureData.get_kind_names())
+    For Magnetic moments you can set each kind names defined in the StructureData (StructureData.get_kind_names())
     Usually these are the names of the elements in the StructureData
     (For example 'C' , 'N' , 'Fe' . However the StructureData can have defined kinds like 'Fe1' and 'Fe2')
     The widget generate a dictionary that can be used to set initial_magnetic_moments in the builder of PwBaseWorkChain
@@ -44,13 +44,20 @@ class MagnetizationConfigurationSettingsPanel(
         if self.rendered:
             return
 
-        self.description = ipw.HTML("<b>Magnetization:</b>")
+        self.description = ipw.HTML("""
+            <div style="margin-bottom: 5px;">
+                <b>Magnetization:</b>
+                <br>
+                Default magnetic moments correspond to theoretical values.
+            </div>
+        """)
 
         self.magnetization_type = ipw.ToggleButtons(
             style={
                 "description_width": "initial",
                 "button_width": "initial",
             },
+            layout=ipw.Layout(margin="0 0 10px 0"),
         )
         ipw.dlink(
             (self._model, "type_options"),

@@ -5,13 +5,13 @@ from copy import deepcopy
 import traitlets as tl
 from aiida_pseudo.common.units import U
 
-from aiida import orm
 from aiida.common import exceptions
 from aiida.plugins import GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
+from aiidalab_qe.utils import fetch_pseudo_family_by_label
 
 from ..subsettings import AdvancedCalculationSubSettingsModel
 
@@ -132,7 +132,7 @@ class PseudosConfigurationSettingsModel(
         self.status_message = ""
 
         try:
-            pseudo_family = self._get_pseudo_family_from_database()
+            pseudo_family = fetch_pseudo_family_by_label(self.family)
             pseudos = pseudo_family.get_pseudos(structure=self.input_structure)
         except ValueError as exception:
             self.status_message = f"""
@@ -156,7 +156,7 @@ class PseudosConfigurationSettingsModel(
         self.status_message = ""
 
         try:
-            pseudo_family = self._get_pseudo_family_from_database()
+            pseudo_family = fetch_pseudo_family_by_label(self.family)
             current_unit = pseudo_family.get_cutoffs_unit()
             cutoff_dict = pseudo_family.get_cutoffs()
         except exceptions.NotExistent:
@@ -300,21 +300,6 @@ class PseudosConfigurationSettingsModel(
                 ],
             )
         return self._defaults.get(trait, self.traits()[trait].default_value)
-
-    def _get_pseudo_family_from_database(self):
-        """Get the pseudo family from the database."""
-        return (
-            orm.QueryBuilder()
-            .append(
-                (
-                    PseudoDojoFamily,
-                    SsspFamily,
-                    CutoffsPseudoPotentialFamily,
-                ),
-                filters={"label": self.family},
-            )
-            .one()[0]
-        )
 
     def _get_default_dictionary(self):
         return deepcopy(self._defaults["dictionary"])
