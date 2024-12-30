@@ -1,100 +1,127 @@
 <body>
 
   <div class="settings-summary">
-    <h2>Basic settings</h2>
-    <ul>
-      <li>
-        <strong>Structure geometry optimized:</strong> {{ relaxed | fmt_yes_no }}
-      </li>
-      {% if relaxed %}
-      <li>
-        <strong>Optimization method:</strong> {{ relax_method }}
-      </li>
-      {% endif %}
-      <li>
-        <strong>Protocol:</strong> {{ protocol }}
-      </li>
-      <li>
-        <strong>Magnetism:</strong> {{ material_magnetic }}
-      </li>
-      <li>
-        <strong>Electronic type:</strong> {{ electronic_type }}
-      </li>
-      <li>
-        <strong>Periodicity:</strong> {{ periodicity }}
-      </li>
-    </ul>
-
-    <h2>Advanced settings</h2>
-    <ul>
-      <li>
-        <strong>Functional:</strong>
-        <a href="{{ functional_link }}" target="_blank">{{ functional }}</a>
-      </li>
-      <li>
-        <strong>Pseudopotential library:</strong>
-        <a href="{{ pseudo_link }}" target="_blank">{{ pseudo_library }} {{ pseudo_protocol }} v{{ pseudo_version }}</a>
-      </li>
-      <li>
-        <strong>Energy cutoff (wave functions):</strong> {{ energy_cutoff_wfc }} Ry
-      </li>
-      <li>
-        <strong>Energy cutoff (charge density):</strong> {{ energy_cutoff_rho }} Ry
-      </li>
-      <li>
-        <strong>Occupation type (SCF):</strong> {{ occupation_type }}
-      </li>
-      {% if occupation_type == "smearing" %}
+    <div class="summary-table" id="workflow-properties">
+      <h2>Workflow properties</h2>
       <ul>
         <li>
-          <strong>Smearing width (degauss):</strong> {{ degauss }} Ry
+          <strong>PK:</strong> {{ pk }}
         </li>
         <li>
-          <strong>Smearing type:</strong> {{ smearing }}
+          <strong>UUID:</strong> {{ uuid }}
+        </li>
+        <li>
+          <strong>Label:</strong> {{ label }}
+        </li>
+        <li>
+          <strong>Description:</strong> {{ description }}
+        </li>
+        <li>
+          <strong>Creation time:</strong> {{ creation_time }} ({{ creation_time_relative }})
+        </li>
+        <li>
+          <strong>Modification time:</strong> {{ modification_time }} ({{ modification_time_relative }})
         </li>
       </ul>
-      {% endif %}
-      <li>
-        <strong>K-point mesh distance (SCF):</strong> {{ scf_kpoints_distance }} &#8491;<sup>-1</sup>
-      </li>
-      {% if bands_computed %}
-      <li>
-        <strong>K-point line distance (Bands):</strong> {{ bands_kpoints_distance }} &#8491;<sup>-1</sup>
-      </li>
-      {% endif %}
-      {% if pdos_computed %}
-      <li>
-        <strong>K-point mesh distance (NSCF):</strong> {{ nscf_kpoints_distance }} &#8491;<sup>-1</sup>
-      </li>
-      {% endif %}
-      <li>
-        <strong>Total charge:</strong> {{ tot_charge }}
-      </li>
-      <li>
-        <strong>Van der Waals correction:</strong> {{ vdw_corr }}
-      </li>
-      {% if material_magnetic == "collinear" %}
-      {% if tot_magnetization %}
-      <li>
-        <strong>Total magnetization:</strong> {{ tot_magnetization }}
-      </li>
-      {% else %}
-      <li>
-        <strong>Initial magnetic moments:</strong> {{ initial_magnetic_moments }}
-      </li>
-      {% endif %}
-      {% endif %}
-      {% if hubbard_u %}
-      <li>
-        <strong>DFT+U:</strong> {{ hubbard_u }}
-      </li>
-      {% endif %}
-      {% if spin_orbit %}
-      <li>
-        <strong>Spin-orbit coupling:</strong> {{ spin_orbit }}
-      </li>
-      {% endif %}
-    </ul>
+    </div>
+    <div class="summary-table" id="basic-settings">
+      <h2>Basic settings</h2>
+      <ul>
+        <li>
+          <strong>Structure geometry optimized:</strong> {{ relaxed | fmt_yes_no }}
+        </li>
+        {% if relaxed %}
+        <li>
+          <strong>Optimization method:</strong> {{ relax_method }}
+        </li>
+        {% endif %}
+        <li>
+          <strong>Protocol:</strong> {{ protocol }}
+        </li>
+        <li>
+          <strong>Magnetism:</strong> {{ material_magnetic }}
+        </li>
+        <li>
+          <strong>Electronic type:</strong> {{ electronic_type }}
+        </li>
+        <li>
+          <strong>Periodicity:</strong> {{ periodicity }}
+        </li>
+      </ul>
+    </div>
+    <div id="summary-table" class="advanced-settings">
+      <h2>Advanced settings</h2>
+      <ul>
+        <li>
+          <strong>Functional:</strong>
+          <a href="{{ functional_link }}" target="_blank">{{ functional }}</a>
+        </li>
+        <li>
+          <strong>Pseudopotential library:</strong>
+          <a href="{{ pseudo_link }}" target="_blank">{{ pseudo_library }} {{ pseudo_protocol }} v{{ pseudo_version
+            }}</a>
+        </li>
+        <li>
+          <strong>Energy cutoff (wave functions):</strong> {{ energy_cutoff_wfc }} Ry
+        </li>
+        <li>
+          <strong>Energy cutoff (charge density):</strong> {{ energy_cutoff_rho }} Ry
+        </li>
+        <li>
+          <strong>Occupation type (SCF):</strong> {{ occupation_type }}
+        </li>
+        {% if occupation_type == "smearing" %}
+        <ul>
+          <li>
+            <strong>Smearing width (degauss):</strong> {{ degauss }} Ry
+          </li>
+          <li>
+            <strong>Smearing type:</strong> {{ smearing }}
+          </li>
+        </ul>
+        {% endif %}
+        <li>
+          <strong>K-point mesh distance (SCF):</strong> {{ scf_kpoints_distance }} &#8491;<sup>-1</sup>
+        </li>
+        {% if bands_computed %}
+        <li>
+          <strong>K-point line distance (Bands):</strong> {{ bands_kpoints_distance }} &#8491;<sup>-1</sup>
+        </li>
+        {% endif %}
+        {% if pdos_computed %}
+        <li>
+          <strong>K-point mesh distance (NSCF):</strong> {{ nscf_kpoints_distance }} &#8491;<sup>-1</sup>
+        </li>
+        {% endif %}
+        <li>
+          <strong>Total charge:</strong> {{ tot_charge }}
+        </li>
+        <li>
+          <strong>Van der Waals correction:</strong> {{ vdw_corr }}
+        </li>
+        {% if material_magnetic == "collinear" %}
+        {% if tot_magnetization %}
+        <li>
+          <strong>Total magnetization:</strong> {{ tot_magnetization }}
+        </li>
+        {% else %}
+        <li>
+          <strong>Initial magnetic moments:</strong> {{ initial_magnetic_moments }}
+        </li>
+        {% endif %}
+        {% endif %}
+        {% if hubbard_u %}
+        <li>
+          <strong>DFT+U:</strong> {{ hubbard_u }}
+        </li>
+        {% endif %}
+        {% if spin_orbit %}
+        <li>
+          <strong>Spin-orbit coupling:</strong> {{ spin_orbit }}
+        </li>
+        {% endif %}
+      </ul>
+    </div>
   </div>
 
 </body>

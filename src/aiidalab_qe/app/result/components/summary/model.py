@@ -10,6 +10,7 @@ from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponentModel
 from aiidalab_qe.app.static import styles, templates
+from aiidalab_qe.common.time import format_time, relative_time
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -168,6 +169,14 @@ class WorkChainSummaryModel(ResultsComponentModel):
         if "workchain" not in ui_parameters:
             return {}
         report = {
+            "pk": qeapp_wc.pk,
+            "uuid": str(qeapp_wc.uuid),
+            "label": qeapp_wc.label,
+            "description": qeapp_wc.description,
+            "creation_time": format_time(qeapp_wc.ctime),
+            "creation_time_relative": relative_time(qeapp_wc.ctime),
+            "modification_time": format_time(qeapp_wc.mtime),
+            "modification_time_relative": relative_time(qeapp_wc.mtime),
             "relaxed": None
             if ui_parameters["workchain"]["relax_type"] == "none"
             else ui_parameters["workchain"]["relax_type"],

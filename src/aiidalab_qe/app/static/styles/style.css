@@ -14,7 +14,7 @@ table {
 td,
 tr {
   text-align: left;
-  padding: 0 8px;
+  padding: 4px 8px;
 }
 
 tr {
@@ -23,10 +23,6 @@ tr {
 
 tr:nth-child(even) {
   background-color: #ffffff;
-}
-
-td:first-child {
-  width: 200px;
 }
 
 td:nth-child(even) {

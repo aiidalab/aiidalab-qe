@@ -1,9 +1,12 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponent
 
 from .model import WorkChainSummaryModel
 from .outputs import WorkChainOutputs
+
+DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
@@ -54,6 +57,7 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
             ],
         )
         container.add_class("workflow-summary-container")
+        container.add_class(DEFAULT["summary_format"])
 
         self.failed_calculation_report = ipw.HTML()
         ipw.dlink(

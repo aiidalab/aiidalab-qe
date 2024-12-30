@@ -1,6 +1,35 @@
 <body>
 
-  <div>
+  <div class="summary-table" id="workflow-properties">
+    <h2>Workflow properties</h2>
+    <table>
+      <tr>
+        <td>PK</td>
+        <td>{{ pk }}</td>
+      </tr>
+      <tr>
+        <td>UUID</td>
+        <td>{{ uuid }}</td>
+      </tr>
+      <tr>
+        <td>Label</td>
+        <td>{{ label }}</td>
+      </tr>
+      <tr>
+        <td>Description</td>
+        <td>{{ description }}</td>
+      </tr>
+      <tr>
+        <td>Creation time</td>
+        <td>{{ creation_time }} ({{ creation_time_relative }})</td>
+      </tr>
+      <tr>
+        <td>Modification time</td>
+        <td>{{ modification_time }} ({{ modification_time_relative }})</td>
+      </tr>
+    </table>
+  </div>
+  <div class="summary-table" id="basic-settings">
     <h2>Basic settings</h2>
     <table>
       <tr>
@@ -32,7 +61,7 @@
 
     </table>
   </div>
-  <div>
+  <div class="summary-table" id="advanced-settings">
     <h2>Advanced settings</h2>
     <table>
       <tr>
