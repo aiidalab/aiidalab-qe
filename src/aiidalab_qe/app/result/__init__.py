@@ -140,7 +140,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
         self._model.reset()
 
     @tl.observe("state")
-    def _on_state_change(self, _):
+    def _on_state_change(self, change):
+        super()._on_state_change(change)
         self._update_kill_button_layout()
 
     def _on_previous_step_state_change(self, _):

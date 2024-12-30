@@ -86,3 +86,25 @@
 footer {
   text-align: right;
 }
+
+.p-Accordion-child:has(.qe-app-step-ready) > .p-Collapse-header {
+  background-color: var(--color-ready);
+}
+
+.p-Accordion-child:has(.qe-app-step-configured) > .p-Collapse-header {
+  background-color: var(--color-ready);
+  filter: brightness(0.95);
+  -webkit-filter: brightness(0.95);
+}
+
+.p-Accordion-child:has(.qe-app-step-active) > .p-Collapse-header {
+  background-color: var(--color-active);
+}
+
+.p-Accordion-child:has(.qe-app-step-success) > .p-Collapse-header {
+  background-color: var(--color-success);
+}
+
+.p-Accordion-child:has(.qe-app-step-fail) > .p-Collapse-header {
+  background-color: var(--color-failed);
+}
