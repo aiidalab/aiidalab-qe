@@ -1,14 +1,20 @@
 bands_computed: true
 bands_kpoints_distance: 0.1
+cell_angles: 60 60 60
+cell_lengths: 3.847 3.847 3.847
 degauss: 0.01
+description: ''
 electronic_type: metal
 energy_cutoff_rho: 240.0
 energy_cutoff_wfc: 30.0
+formula: Si2
 functional: PBEsol
 functional_link: https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.100.136406
 initial_magnetic_moments: null
+label: ''
 material_magnetic: none
 nscf_kpoints_distance: 0.5
+num_atoms: 2
 occupation_type: smearing
 pdos_computed: true
 periodicity: xyz
@@ -26,6 +32,7 @@ relax_method: positions_cell
 relaxed: positions_cell
 scf_kpoints_distance: 0.5
 smearing: cold
+space_group: Fd-3m (227)
 spin_orbit: false
 tot_charge: 0.0
 tot_magnetization: false

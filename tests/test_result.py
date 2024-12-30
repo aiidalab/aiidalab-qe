@@ -50,6 +50,16 @@ def test_summary_report(data_regression, generate_qeapp_workchain):
     model = WorkChainSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
+    # Discard variable parameters
+    for key in (
+        "pk",
+        "uuid",
+        "creation_time",
+        "creation_time_relative",
+        "modification_time",
+        "modification_time_relative",
+    ):
+        report_parameters.pop(key)
     data_regression.check(report_parameters)
 
 
