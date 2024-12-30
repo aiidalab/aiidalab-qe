@@ -50,6 +50,16 @@ def test_summary_report(data_regression, generate_qeapp_workchain):
     model = WorkChainSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
+    # Discard variable parameters
+    for key in (
+        "pk",
+        "uuid",
+        "creation_time",
+        "creation_time_relative",
+        "modification_time",
+        "modification_time_relative",
+    ):
+        report_parameters.pop(key)
     data_regression.check(report_parameters)
 
 
@@ -71,15 +81,13 @@ def test_summary_view(generate_qeapp_workchain):
     model.process_uuid = workchain.node.uuid
     report_html = model.generate_report_html()
     parsed = BeautifulSoup(report_html, "html.parser")
-    # find the td with the text "Initial Magnetic Moments"
     parameters = {
         "Energy cutoff (wave functions)": "30.0 Ry",
         "Total charge": "0.0",
-        "Initial magnetic moments": "",
     }
     for key, value in parameters.items():
-        td = parsed.find("td", text=key).find_next_sibling("td")
-        assert td.text == value
+        li = parsed.find_all(lambda tag, key=key: tag.name == "li" and key in tag.text)
+        assert value in li[0].text
 
 
 def test_structure_results_panel(generate_qeapp_workchain):

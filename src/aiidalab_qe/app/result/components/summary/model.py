@@ -1,5 +1,19 @@
+from __future__ import annotations
+
+import traitlets as tl
+from importlib_resources import files
+from jinja2 import Environment
+
+from aiida import orm
+from aiida.cmdline.utils.common import get_workchain_report
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponentModel
+from aiidalab_qe.app.static import styles, templates
+from aiidalab_qe.common.time import format_time, relative_time
+
+DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
+
 
 FUNCTIONAL_LINK_MAP = {
     "PBE": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.77.3865",
@@ -38,6 +52,10 @@ VDW_CORRECTION_VERSION = {
 class WorkChainSummaryModel(ResultsComponentModel):
     identifier = "workflow summary"
 
+    failed_calculation_report = tl.Unicode("")
+
+    has_failure_report = False
+
     @property
     def include(self):
         return True
@@ -46,14 +64,9 @@ class WorkChainSummaryModel(ResultsComponentModel):
         """Read from the builder parameters and generate a html for reporting
         the inputs for the `QeAppWorkChain`.
         """
-        from importlib.resources import files
-
-        from jinja2 import Environment
-
-        from aiidalab_qe.app.static import styles, templates
 
         def _fmt_yes_no(truthy):
-            return "Yes" if truthy else "No"
+            return "yes" if truthy else "no"
 
         env = Environment()
         env.filters.update(
@@ -61,7 +74,11 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "fmt_yes_no": _fmt_yes_no,
             }
         )
-        template = files(templates).joinpath("workflow_summary.jinja").read_text()
+        template = (
+            files(templates)
+            .joinpath(f"workflow_{DEFAULT['summary_format']}_summary.jinja")
+            .read_text()
+        )
         style = files(styles).joinpath("style.css").read_text()
         parameters = self._generate_report_parameters()
         report = {key: value for key, value in parameters.items() if value is not None}
@@ -112,6 +129,23 @@ class WorkChainSummaryModel(ResultsComponentModel):
 
         return report_string
 
+    def generate_failure_report(self):
+        """Generate a html for reporting the failure of the `QeAppWorkChain`."""
+        if not (process_node := self.fetch_process_node()):
+            return
+        if process_node.exit_status == 0:
+            return
+        final_calcjob = self._get_final_calcjob(process_node)
+        env = Environment()
+        template = files(templates).joinpath("workflow_failure.jinja").read_text()
+        style = files(styles).joinpath("style.css").read_text()
+        self.failed_calculation_report = env.from_string(template).render(
+            style=style,
+            process_report=get_workchain_report(process_node, "REPORT"),
+            calcjob_exit_message=final_calcjob.exit_message,
+        )
+        self.has_failure_report = True
+
     def _generate_report_parameters(self):
         """Generate the report parameters from the ui parameters and workchain's input.
 
@@ -134,7 +168,27 @@ class WorkChainSummaryModel(ResultsComponentModel):
         # drop support for old ui parameters
         if "workchain" not in ui_parameters:
             return {}
+        initial_structure = qeapp_wc.inputs.structure
         report = {
+            "pk": qeapp_wc.pk,
+            "uuid": str(qeapp_wc.uuid),
+            "label": qeapp_wc.label,
+            "description": qeapp_wc.description,
+            "creation_time": format_time(qeapp_wc.ctime),
+            "creation_time_relative": relative_time(qeapp_wc.ctime),
+            "modification_time": format_time(qeapp_wc.mtime),
+            "modification_time_relative": relative_time(qeapp_wc.mtime),
+            "formula": initial_structure.get_formula(),
+            "num_atoms": len(initial_structure.sites),
+            "space_group": "{} ({})".format(
+                *initial_structure.get_pymatgen().get_space_group_info()
+            ),
+            "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(
+                *initial_structure.cell_lengths
+            ),
+            "cell_angles": "{:.0f} {:.0f} {:.0f}".format(
+                *initial_structure.cell_angles
+            ),
             "relaxed": None
             if ui_parameters["workchain"]["relax_type"] == "none"
             else ui_parameters["workchain"]["relax_type"],
@@ -208,7 +262,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
             qeapp_wc.inputs.structure.pbc, "xyz"
         )
 
-        # Spin-Oribit coupling
+        # Spin-Orbit coupling
         report["spin_orbit"] = pw_parameters["SYSTEM"].get("lspinorb", False)
 
         if hubbard_dict := ui_parameters["advanced"].pop("hubbard_parameters", None):
@@ -229,3 +283,27 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 qeapp_wc.inputs.pdos.nscf.kpoints_distance.base.attributes.get("value")
             )
         return report
+
+    @staticmethod
+    def _get_final_calcjob(node: orm.WorkChainNode) -> orm.CalcJobNode | None:
+        """Get the final calculation job node called by a workchain node.
+
+        Parameters
+        ----------
+        `node`: `orm.WorkChainNode`
+            The work chain node to get the final calculation job node from.
+
+        Returns
+        -------
+        `orm.CalcJobNode` | `None`
+            The final calculation job node called by the workchain node if available.
+        """
+        try:
+            final_calcjob = [
+                process
+                for process in node.called_descendants
+                if isinstance(process, orm.CalcJobNode) and process.is_finished
+            ][-1]
+        except IndexError:
+            final_calcjob = None
+        return final_calcjob

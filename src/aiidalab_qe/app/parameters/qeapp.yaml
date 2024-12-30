@@ -40,3 +40,5 @@ codes:
         code: xspectra-7.2@localhost
     hp:
         code: hp-7.2@localhost
+
+summary_format: list

@@ -1,0 +1,93 @@
+.workflow-summary-container {
+  gap: 10px;
+}
+
+.workflow-summary-container.list {
+  width: 70%;
+  margin: 0 auto;
+}
+
+@media (max-width: 1199px) {
+  .workflow-summary-container.list {
+    width: 85%;
+  }
+}
+
+@media (max-width: 991px) {
+  .workflow-summary-container.list {
+    width: 100%;
+  }
+}
+
+.summary-panel {
+  border: 1px solid #9e9e9e;
+  padding: 0 20px 20px;
+  margin: 0;
+}
+
+.summary-panel:first-child {
+  width: 200%;
+}
+
+.summary-panel:first-child tr,
+.summary-panel:first-child td {
+  padding: 0 8px;
+}
+
+.summary-panel:first-child td:first-child {
+  width: 250px;
+}
+
+.settings-summary {
+  margin: 2px;
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+}
+
+.settings-summary ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-summary ul ul {
+  margin-left: 20px;
+}
+
+.settings-summary a {
+  text-decoration: none;
+}
+
+/* Error details */
+
+.error-container {
+  margin: 20px 0 0;
+}
+
+.error-container p {
+  line-height: 1.4;
+}
+
+.error-message {
+  margin-bottom: 10px;
+}
+
+.error-message pre {
+  display: inline;
+}
+
+.error {
+  border: 1px solid #aaa;
+  padding: 0.5em 0.5em 0;
+}
+
+.summary {
+  font-weight: bold;
+  margin: -0.5em -0.5em 0;
+  padding: 0.5em;
+}
+
+.code-holder code {
+  background: inherit;
+  white-space: pre;
+}

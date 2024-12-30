@@ -1,11 +1,64 @@
 <body>
 
-<div class="row">
-  <div class="column">
-    <h3>Standard settings</h3>
+  <div class="summary-table" id="workflow-properties">
+    <h2>Workflow properties</h2>
     <table>
       <tr>
-        <td>Structure geometry optimized</td>
+        <td>PK</td>
+        <td>{{ pk }}</td>
+      </tr>
+      <tr>
+        <td>UUID</td>
+        <td>{{ uuid }}</td>
+      </tr>
+      <tr>
+        <td>Label</td>
+        <td>{{ label }}</td>
+      </tr>
+      <tr>
+        <td>Description</td>
+        <td>{{ description }}</td>
+      </tr>
+      <tr>
+        <td>Creation time</td>
+        <td>{{ creation_time }} ({{ creation_time_relative }})</td>
+      </tr>
+      <tr>
+        <td>Modification time</td>
+        <td>{{ modification_time }} ({{ modification_time_relative }})</td>
+      </tr>
+    </table>
+  </div>
+  <div class="summary-table" id="structure-properties">
+    <h2>Structure properties</h2>
+    <table>
+      <tr>
+        <td>Chemical formula</td>
+        <td>{{ formula }}</td>
+      </tr>
+      <tr>
+        <td>Number of atoms</td>
+        <td>{{ num_atoms }}</td>
+      </tr>
+      <tr>
+        <td>Space group</td>
+        <td>{{ space_group }}</td>
+      </tr>
+      <tr>
+        <td>Cell lengths in Å</td>
+        <td>{{ cell_lengths }}</td>
+      </tr>
+      <tr>
+        <td>Cell angles in °</td>
+        <td>{{ cell_angles }}</td>
+      </tr>
+    </table>
+  </div>
+  <div class="summary-table" id="basic-settings">
+    <h2>Basic settings</h2>
+    <table>
+      <tr>
+        <td>Structure geometry optimization</td>
         <td>{{ relaxed | fmt_yes_no }}</td>
       </tr>
       {% if relaxed %}
@@ -30,19 +83,18 @@
         <td>Periodicity</td>
         <td>{{ periodicity }}</td>
       </tr>
-
     </table>
   </div>
-  <div class="column">
-    <h3>Advanced settings</h3>
+  <div class="summary-table" id="advanced-settings">
+    <h2>Advanced settings</h2>
     <table>
       <tr>
         <td>Functional</td>
-          <td>
+        <td>
           <a href="{{ functional_link }}" target="_blank">
             {{ functional }}
           </a>
-          </td>
+        </td>
       </tr>
       <tr>
         <td>Pseudopotential library</td>
@@ -98,7 +150,7 @@
         <td>Van der Waals correction</td>
         <td>{{ vdw_corr }}</td>
       </tr>
-
+      {% if material_magnetic == "collinear" %}
       {% if tot_magnetization %}
       <tr>
         <td>Total magnetization</td>
@@ -109,6 +161,7 @@
         <td>Initial magnetic moments</td>
         <td>{{ initial_magnetic_moments }}</td>
       </tr>
+      {% endif %}
       {% endif %}
       {% if hubbard_u %}
       <tr>
@@ -122,9 +175,7 @@
         <td>{{ spin_orbit }}</td>
       </tr>
       {% endif %}
-
     </table>
   </div>
-</div>
 
 </body>
