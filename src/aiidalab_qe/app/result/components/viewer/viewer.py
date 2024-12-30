@@ -29,24 +29,12 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
         tab.render()
 
     def _render(self):
-        if node := self._model.fetch_process_node():
-            formula = node.inputs.structure.get_formula()
-            title = f"\n<h4>QE App Workflow (pk: {node.pk}) &mdash; {formula}</h4>"
-        else:
-            title = "\n<h4>QE App Workflow</h4>"
-
-        self.title = ipw.HTML(title)
-
         self.tabs = ipw.Tab(selected_index=None)
         self.tabs.observe(
             self._on_tab_change,
             "selected_index",
         )
-
-        self.children = [
-            self.title,
-            self.tabs,
-        ]
+        self.children = [self.tabs]
 
     def _post_render(self):
         self._set_tabs()
