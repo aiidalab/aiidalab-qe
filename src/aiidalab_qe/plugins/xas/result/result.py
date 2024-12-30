@@ -125,7 +125,7 @@ class XasResultsPanel(ResultsPanel[XasResultsModel]):
         )
         self.plot.layout.xaxis.title = "Relative Photon Energy (eV)"
 
-        self.children = [
+        self.results_container.children = [
             ipw.HBox(
                 [
                     ipw.VBox(

@@ -507,6 +507,7 @@ class ResultsModel(PanelModel, HasProcess):
     _this_process_uuid = None
 
     auto_render = False
+    _completed_process = False
 
     CSS_MAP = {
         "finished": "success",
@@ -520,8 +521,12 @@ class ResultsModel(PanelModel, HasProcess):
     }
 
     @property
+    def include(self):
+        return self.identifier in self.properties
+
+    @property
     def has_results(self):
-        node = self._fetch_child_process_node()
+        node = self.fetch_child_process_node()
         return node and node.is_finished_ok
 
     def update(self):
@@ -529,14 +534,32 @@ class ResultsModel(PanelModel, HasProcess):
             self.auto_render = True
 
     def update_process_status_notification(self):
-        self.process_status_notification = self._get_child_process_status()
+        if self._completed_process:
+            self.process_status_notification = ""
+            return
+        status = self._get_child_process_status()
+        self.process_status_notification = status
+        if "success" in status:
+            self._completed_process = True
 
-    def _get_child_process_status(self, child="this"):
-        state, exit_message = self._get_child_state_and_exit_message(child)
+    def fetch_child_process_node(self, which="this") -> orm.ProcessNode | None:
+        if not self.process_uuid:
+            return
+        which = which.lower()
+        uuid = getattr(self, f"_{which}_process_uuid")
+        label = getattr(self, f"_{which}_process_label")
+        if not uuid:
+            root = self.fetch_process_node()
+            child = next((c for c in root.called if c.process_label == label), None)
+            uuid = child.uuid if child else None
+        return orm.load_node(uuid) if uuid else None  # type: ignore
+
+    def _get_child_process_status(self, which="this"):
+        state, exit_message = self._get_child_state_and_exit_message(which)
         status = state.upper()
         if exit_message:
             status = f"{status} ({exit_message})"
-        label = "Status" if child == "this" else f"{child.capitalize()} status"
+        label = "Status" if which == "this" else f"{which.capitalize()} status"
         alert_class = f"alert-{self.CSS_MAP.get(state, 'info')}"
         return f"""
             <div class="alert {alert_class}" style="padding: 5px 10px;">
@@ -544,9 +567,9 @@ class ResultsModel(PanelModel, HasProcess):
             </div>
         """
 
-    def _get_child_state_and_exit_message(self, child="this"):
+    def _get_child_state_and_exit_message(self, which="this"):
         if not (
-            (node := self._fetch_child_process_node(child))
+            (node := self.fetch_child_process_node(which))
             and hasattr(node, "process_state")
             and node.process_state
         ):
@@ -555,36 +578,12 @@ class ResultsModel(PanelModel, HasProcess):
             return "failed", node.exit_message
         return node.process_state.value, None
 
-    def _get_child_outputs(self, child="this"):
-        if not (node := self._fetch_child_process_node(child)):
+    def _get_child_outputs(self, which="this"):
+        if not (node := self.fetch_child_process_node(which)):
             outputs = super().outputs
-            child = child if child != "this" else self.identifier
+            child = which if which != "this" else self.identifier
             return getattr(outputs, child) if child in outputs else AttributeDict({})
         return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
-
-    def _fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
-        if not self.process_uuid:
-            return
-        child = child.lower()
-        uuid = getattr(self, f"_{child}_process_uuid")
-        label = getattr(self, f"_{child}_process_label")
-        if not uuid:
-            uuid = (
-                orm.QueryBuilder()
-                .append(
-                    orm.WorkChainNode,
-                    filters={"uuid": self.process_uuid},
-                    tag="root_process",
-                )
-                .append(
-                    orm.WorkChainNode,
-                    filters={"attributes.process_label": label},
-                    project="uuid",
-                    with_incoming="root_process",
-                )
-                .first(flat=True)
-            )
-        return orm.load_node(uuid) if uuid else None  # type: ignore
 
 
 RM = t.TypeVar("RM", bound=ResultsModel)
@@ -598,12 +597,10 @@ class ResultsPanel(Panel[RM]):
     It has a update method to update the result in the panel.
     """
 
-    has_controls = False
     loading_message = "Loading {identifier} results"
 
     def __init__(self, model: RM, **kwargs):
         super().__init__(model=model, **kwargs)
-
         self._model.observe(
             self._on_process_change,
             "process_uuid",
@@ -613,19 +610,23 @@ class ResultsPanel(Panel[RM]):
             "monitor_counter",
         )
 
-        self.links = []
-
     def render(self):
         if self.rendered:
             if self._model.identifier == "structure":
                 self._render()
             return
-        if self.has_controls or not self._model.has_process:
+
+        if not self._model.has_process:
             return
+
+        self.results_container = ipw.VBox()
+
         if self._model.auto_render:
+            self.children = [self.results_container]
             self._load_results()
         else:
             self._render_controls()
+            self.children += (self.results_container,)
 
     def _on_process_change(self, _):
         self._model.update()
@@ -634,14 +635,14 @@ class ResultsPanel(Panel[RM]):
         self._model.update_process_status_notification()
 
     def _on_load_results_click(self, _):
+        self.load_controls.children = []
         self._load_results()
 
     def _load_results(self):
-        self.children = [self.loading_message]
+        self.results_container.children = [self.loading_message]
         self._render()
         self.rendered = True
         self._post_render()
-        self.has_controls = False
 
     def _render_controls(self):
         self.process_status_notification = ipw.HTML()
@@ -663,21 +664,24 @@ class ResultsPanel(Panel[RM]):
         )
         self.load_results_button.on_click(self._on_load_results_click)
 
+        self.load_controls = ipw.HBox(
+            children=[]
+            if self._model.auto_render
+            else [
+                self.load_results_button,
+                ipw.HTML("""
+                    <div style="margin-left: 10px">
+                        <b>Note:</b> Load time may vary depending on the size of the
+                        calculation
+                    </div>
+                """),
+            ]
+        )
+
         self.children = [
             self.process_status_notification,
-            ipw.HBox(
-                children=[
-                    self.load_results_button,
-                    ipw.HTML("""
-                        <div style="margin-left: 10px">
-                            <b>Note:</b> Load time may vary depending on the size of the calculation
-                        </div>
-                    """),
-                ]
-            ),
+            self.load_controls,
         ]
-
-        self.has_controls = True
 
     def _render(self):
         raise NotImplementedError()

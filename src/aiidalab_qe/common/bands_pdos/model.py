@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import json
 
@@ -6,9 +8,12 @@ import numpy as np
 import traitlets as tl
 from IPython.display import display
 
+from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.bands_pdos.utils import (
     HTML_TAGS,
+    extract_bands_output,
+    extract_pdos_output,
     get_bands_data,
     get_bands_projections_data,
     get_pdos_data,
@@ -78,6 +83,49 @@ class BandsPdosModel(Model):
             (self, "needs_pdos_options"),
             lambda _: self._has_pdos or self.needs_projections_controls,
         )
+
+    @classmethod
+    def from_nodes(
+        cls,
+        bands: orm.WorkChainNode | None = None,
+        pdos: orm.WorkChainNode | None = None,
+        root: orm.WorkChainNode | None = None,
+    ):
+        """Create a `BandsPdosModel` instance from the provided nodes.
+
+        The method attempts to extract the output attribute dictionaries from the
+        nodes and creates from them an instance of the model.
+
+        Parameters
+        ----------
+        `bands` : `orm.WorkChainNode`, optional
+            The bands workchain node.
+        `pdos` : `orm.WorkChainNode`, optional
+            The PDOS workchain node.
+        `root`: `orm.WorkChainNode`, optional
+            The root QE app workchain node.
+
+        Returns
+        -------
+        `BandsPdosModel`
+            The model instance.
+
+        Raises
+        ------
+        `ValueError`
+            If neither of the nodes is provided or if the parsing of the nodes fails.
+        """
+        if bands or pdos:
+            bands_output = extract_bands_output(bands)
+            pdos_output = extract_pdos_output(pdos)
+        elif root:
+            bands_output = extract_bands_output(root)
+            pdos_output = extract_pdos_output(root)
+        else:
+            raise ValueError("At least one of the nodes must be provided")
+        if bands_output or pdos_output:
+            return cls(bands=bands_output, pdos=pdos_output)
+        raise ValueError("Failed to parse at least one node")
 
     def fetch_data(self):
         """Fetch the data from the nodes."""

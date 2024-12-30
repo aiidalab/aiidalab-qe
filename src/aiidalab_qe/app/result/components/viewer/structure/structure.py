@@ -9,7 +9,7 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         if not hasattr(self, "widget"):
             structure = self._model.get_structure()
             self.widget = StructureDataViewer(structure=structure)
-            self.children = [self.widget]
+            self.results_container.children = [self.widget]
 
         # HACK to resize the NGL viewer in cases where it auto-rendered when its
         # container was not displayed, which leads to a null width. This hack restores

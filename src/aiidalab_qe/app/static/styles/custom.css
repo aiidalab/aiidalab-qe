@@ -108,3 +108,7 @@ footer {
 .p-Accordion-child:has(.qe-app-step-fail) > .p-Collapse-header {
   background-color: var(--color-failed);
 }
+
+.p-TabBar-tab {
+  min-width: fit-content !important;
+}

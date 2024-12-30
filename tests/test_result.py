@@ -40,7 +40,7 @@ def test_workchainview(generate_qeapp_workchain):
     viewer = WorkChainResultsViewer(model=model)
     model.process_uuid = workchain.node.uuid
     viewer.render()
-    assert len(viewer.tabs.children) == 4
+    assert len(viewer.tabs.children) == 2
     assert viewer.tabs._titles["0"] == "Relaxed structure"  # type: ignore
 
 

@@ -12,10 +12,15 @@ from .structure import StructureResultsModel, StructureResultsPanel
 
 class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
     def __init__(self, model: WorkChainResultsViewerModel, **kwargs):
-        super().__init__(model=model, **kwargs)
+        # NOTE: here we want to add the structure and plugin models to the viewer
+        # model BEFORE we define the observation of the process uuid. This ensures
+        # that when the process changes, its reflected in the sub-models prior to
+        # the logic of the process change event handler.
+        # TODO avoid exceptions! Ensure sub-model synchronization in general!
         self.panels: dict[str, ResultsPanel] = {}
-        self._add_structure_panel()  # TODO consider refactoring structure panel as a plugin
-        self._fetch_plugin_results()
+        self._add_structure_panel(model)
+        self._fetch_plugin_results(model)
+        super().__init__(model=model, **kwargs)
 
     def _on_process_change(self, _):
         self._update_panels()
@@ -40,14 +45,10 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
         self._set_tabs()
 
     def _update_panels(self):
-        properties = self._model.properties
-        need_electronic_structure = "bands" in properties and "pdos" in properties
         self.panels = {
-            identifier: panel
-            for identifier, panel in self.panels.items()
-            if identifier == "structure"
-            or identifier in properties
-            or (identifier == "electronic_structure" and need_electronic_structure)
+            identifier: self.panels[identifier]
+            for identifier, model in self._model.get_models()
+            if model.include
         }
 
     def _set_tabs(self):
@@ -65,18 +66,18 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
         if children:
             self.tabs.selected_index = 0
 
-    def _add_structure_panel(self):
+    def _add_structure_panel(self, viewer_model: WorkChainResultsViewerModel):
         structure_model = StructureResultsModel()
-        structure_model.process_uuid = self._model.process_uuid
+        structure_model.process_uuid = viewer_model.process_uuid
         self.structure_results = StructureResultsPanel(model=structure_model)
         identifier = structure_model.identifier
-        self._model.add_model(identifier, structure_model)
+        viewer_model.add_model(identifier, structure_model)
         self.panels = {
             identifier: self.structure_results,
             **self.panels,
         }
 
-    def _fetch_plugin_results(self):
+    def _fetch_plugin_results(self, viewer_model: WorkChainResultsViewerModel):
         entries = get_entry_items("aiidalab_qe.properties", "result")
         for identifier, entry in entries.items():
             for key in ("panel", "model"):
@@ -86,7 +87,7 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
                     )
             panel = entry["panel"]
             model = entry["model"]()
-            self._model.add_model(identifier, model)
+            viewer_model.add_model(identifier, model)
             self.panels[identifier] = panel(
                 identifier=identifier,
                 model=model,

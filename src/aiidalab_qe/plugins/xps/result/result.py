@@ -148,7 +148,7 @@ class XpsResultsPanel(ResultsPanel[XpsResultsModel]):
         self.plot.layout.xaxis.title = "Chemical shift (eV)"
         self.plot.layout.xaxis.autorange = "reversed"
 
-        self.children = [
+        self.results_container.children = [
             spectra_type,
             ipw.HBox(
                 children=[
