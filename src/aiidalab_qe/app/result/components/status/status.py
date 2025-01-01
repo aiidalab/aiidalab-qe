@@ -1,9 +1,10 @@
 import ipywidgets as ipw
-import traitlets as tl
 
 from aiida import orm
 from aiida.engine import ProcessState
 from aiidalab_qe.app.result.components import ResultsComponent
+from aiidalab_qe.common.mixins import HasProcess
+from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import ProcessNodesTreeWidget
 from aiidalab_widgets_base.viewers import viewer as node_viewer
@@ -25,10 +26,11 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         self._update_node_view(change["new"])
 
     def _render(self):
-        self.simplified_process_tree = SimplifiedProcessTreeWidget()
+        model = SimplifiedProcessTreeModel()
+        self.simplified_process_tree = SimplifiedProcessTree(model=model)
         ipw.dlink(
             (self._model, "process_uuid"),
-            (self.simplified_process_tree, "process_uuid"),
+            (model, "process_uuid"),
         )
 
         self.process_tree = ProcessNodesTreeWidget()
@@ -62,7 +64,16 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         for i, title in enumerate(titles):
             self.accordion.set_title(i, title)
 
+        self.accordion.observe(
+            self._on_accordion_change,
+            "selected_index",
+        )
+
         self.children = [self.accordion]
+
+    def _on_accordion_change(self, change):
+        if change["new"] == 0:
+            self.simplified_process_tree.render()
 
     def _update_simplified_view(self):
         if self.rendered:
@@ -102,50 +113,65 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         self.node_view_container.children = [self.node_view]
 
 
-class SimplifiedProcessTreeWidget(ipw.HTML):
-    process_uuid = tl.Unicode(None, allow_none=True)
-
-    def __init__(self, value=None, **kwargs):
-        super().__init__(value, **kwargs)
-        self.observe(
-            self._on_process_change,
-            "process_uuid",
+class TreeNode(ipw.VBox):
+    def __init__(self, node, level=0, **kwargs):
+        self.uuid = node.uuid
+        self.level = level
+        self.label = ipw.HTML(self._humanize_title(node))
+        self.state = ""
+        self.emoji = ipw.HTML()
+        self.status = ipw.HTML()
+        self.inspect = ipw.Button(
+            description="Inspect",
+            button_style="info",
+            layout=ipw.Layout(width="fit-content", margin="0 0 0 5px"),
+        )
+        self.pks = set()
+        self.title = ipw.HBox(
+            children=[
+                ipw.HTML(self._get_indentation(level)),
+                self.emoji,
+                self.label,
+                self.status,
+                self.inspect if isinstance(node, orm.CalcJobNode) else ipw.HTML(),
+            ],
+            layout=ipw.Layout(align_items="center"),
+        )
+        self.branches = ipw.VBox()
+        super().__init__(
+            children=[
+                self.title,
+                self.branches,
+            ],
+            **kwargs,
         )
 
     def update(self):
-        root = orm.load_node(self.process_uuid)
-        simplified_tree = self._build_node(root)
-        self.value = self._format(simplified_tree)
+        node = orm.load_node(self.uuid)
+        self._add_children(node)
+        self.state = self._get_state(node)
+        self.emoji.value = self._get_emoji(self.state)
+        self.status.value = self._get_status(node)
+        for branch in self.branches.children:
+            if isinstance(branch, TreeNode):
+                branch.update()
 
-    def _on_process_change(self, _):
-        self.update()
-
-    def _build_node(self, node):
-        tree_node = {
-            "children": [],
-        }
-
-        for child in list(node.called):
-            child_node = self._build_node(child)
-            if child.process_label == "BandsWorkChain" and child_node["children"]:
-                tree_node["children"].append(child_node["children"][0])
+    def _add_children(self, node):
+        for child in node.called:
+            if child.pk in self.pks:
+                continue
+            if child.process_label == "BandsWorkChain":
+                self._add_children(child)
             else:
-                tree_node["children"].append(child_node)
+                branch = TreeNode(child, level=self.level + 1)
+                self.branches.children += (branch,)
+                self.pks.add(child.pk)
 
-        tree_node["title"] = self._prepare_title(node)
+    def _get_indentation(self, level=0):
+        return "&nbsp;" * 8 * level
 
-        return tree_node
-
-    def _prepare_title(self, node):
-        progress = (
-            self._prepare_progress_string(node)
-            if isinstance(node, orm.WorkflowNode)
-            else ""
-        )
-        title = self._humanize_title(node)
-        state = self._get_state(node)
-        status = f"({f'{progress}; ' if progress else ''}{state})"
-        emoji = {
+    def _get_emoji(self, state):
+        return {
             "created": "🚀",
             "waiting": "💤",
             "running": "⏳",
@@ -153,9 +179,13 @@ class SimplifiedProcessTreeWidget(ipw.HTML):
             "killed": "💀",
             "excepted": "❌",
         }.get(state, "❓")
-        return f"{emoji} {title} {status}"
 
-    def _prepare_progress_string(self, node):
+    def _get_status(self, node):
+        return f"({self._get_tally(node)}{self.state})"
+
+    def _get_tally(self, node):
+        if not isinstance(node, orm.WorkflowNode):
+            return ""
         inputs = node.get_metadata_inputs()
         processes = [key for key in inputs.keys() if key != "metadata"]
         total = len(processes)
@@ -170,7 +200,7 @@ class SimplifiedProcessTreeWidget(ipw.HTML):
                 if child.process_state is ProcessState.FINISHED
             ]
         )
-        return f"{finished}/{total} job{'s' if total > 1 else ''}"
+        return f"{finished}/{total} job{'s' if total > 1 else ''}; "
 
     def _get_state(self, node):
         if not hasattr(node, "process_state"):
@@ -204,9 +234,41 @@ class SimplifiedProcessTreeWidget(ipw.HTML):
         }
         return mappings.get(title, title)
 
-    def _format(self, tree, level=0):
-        indent = "&nbsp;" * 8 * level
-        output = f"{indent}{tree['title']}"
-        for child in tree["children"]:
-            output += f"<br>{self._format(child, level + 1)}"
-        return output
+
+class SimplifiedProcessTreeModel(Model, HasProcess):
+    """"""
+
+
+class SimplifiedProcessTree(ipw.VBox):
+    def __init__(self, model: SimplifiedProcessTreeModel, **kwargs):
+        super().__init__(**kwargs)
+        self.add_class("simplified-process-tree")
+        self._model = model
+        self._model.observe(
+            self._on_process_change,
+            names="process_uuid",
+        )
+        self._model.observe(
+            self._on_monitor_counter_change,
+            "monitor_counter",
+        )
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+        root = self._model.fetch_process_node()
+        self.trunk = TreeNode(root)
+        self.rendered = True
+        self._update()
+        self.children = [self.trunk]
+
+    def _on_process_change(self, _):
+        self._update()
+
+    def _on_monitor_counter_change(self, _):
+        self._update()
+
+    def _update(self):
+        if self.rendered:
+            self.trunk.update()

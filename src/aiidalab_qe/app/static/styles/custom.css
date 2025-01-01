@@ -112,3 +112,12 @@ footer {
 .p-TabBar-tab {
   min-width: fit-content !important;
 }
+
+.simplified-process-tree .widget-html-content {
+  line-height: 1.5;
+}
+
+.simplified-process-tree .widget-button {
+  height: fit-content;
+  line-height: 1.5;
+}
