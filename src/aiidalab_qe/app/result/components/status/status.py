@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+import typing as t
+
 import ipywidgets as ipw
+import traitlets as tl
 
 from aiida import orm
 from aiida.engine import ProcessState
@@ -34,6 +39,10 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         ipw.dlink(
             (self._model, "monitor_counter"),
             (model, "monitor_counter"),
+        )
+        model.observe(
+            self._on_simple_node_selection_change,
+            "clicked",
         )
 
         self.process_tree = ProcessNodesTreeWidget()
@@ -80,6 +89,10 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         if change["new"] == 0:
             self.simplified_process_tree.render()
 
+    def _on_simple_node_selection_change(self, change):
+        self.process_tree.value = change["new"]
+        self.accordion.selected_index = 1
+
     def _update_process_tree(self):
         if self.rendered:
             self.process_tree.update()
@@ -115,32 +128,18 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
 
 
 class TreeNode(ipw.VBox):
-    def __init__(self, node, level=0, **kwargs):
+    def __init__(
+        self,
+        node,
+        level=0,
+        on_inspect: t.Callable[[str], None] | None = None,
+        **kwargs,
+    ):
         self.uuid = node.uuid
-        self.level = level
-        self.label = ipw.HTML(self._humanize_title(node))
-        self.emoji = ipw.HTML()
-        self.state = ipw.HTML()
-        self.indentation = ipw.HTML(self._get_indentation(level))
-        self.title = ipw.HBox(
-            children=[
-                self.emoji,
-                self.label,
-                ipw.HTML(" | "),
-                self.state,
-            ]
-        )
-        self.header = ipw.HBox(
-            children=[
-                self.indentation,
-                self.title,
-            ],
-            layout=ipw.Layout(align_items="center"),
-        )
+        self.on_inspect = on_inspect
+        self._build_header(node, level)
         super().__init__(
-            children=[
-                self.header,
-            ],
+            children=[self.header],
             **kwargs,
         )
 
@@ -148,6 +147,13 @@ class TreeNode(ipw.VBox):
         node = node or orm.load_node(self.uuid)
         self.state.value = self._get_state(node)
         self.emoji.value = self._get_emoji(self.state.value)
+
+    def _build_header(self, node, level):
+        self.level = level
+        self.title = self._humanize_title(node)
+        self.indentation = ipw.HTML(self._get_indentation(self.level))
+        self.emoji = ipw.HTML()
+        self.state = ipw.HTML()
 
     def _get_indentation(self, level=0):
         return "&nbsp;" * 6 * level
@@ -196,19 +202,14 @@ class TreeNode(ipw.VBox):
 
 
 class WorkChainTreeNode(TreeNode):
-    def __init__(self, node, level=0, **kwargs):
-        super().__init__(node, level, **kwargs)
-        self.toggle = ipw.Button(icon="plus")
-        self.toggle.add_class("tree-node-toggle")
-        self.toggle.on_click(self._toggle_branches)
-        self.header.children = [
-            self.indentation,
-            self.toggle,
-            self.title,
-        ]
-        self.tally = ipw.HTML()
-        self.title.children += (ipw.HTML(" | "),)
-        self.title.children += (self.tally,)
+    def __init__(
+        self,
+        node,
+        level=0,
+        on_inspect: t.Callable[[str], None] | None = None,
+        **kwargs,
+    ):
+        super().__init__(node, level, on_inspect, **kwargs)
         self.pks = set()
         self.branches = ipw.VBox()
         self.branches.add_class("tree-node-branches")
@@ -223,13 +224,26 @@ class WorkChainTreeNode(TreeNode):
         for branch in self.branches.children:
             branch.update()
 
-    def _toggle_branches(self, _):
-        if self.toggle.icon == "plus":
-            self.branches.add_class("open")
-            self.toggle.icon = "minus"
-        else:
-            self.branches.remove_class("open")
-            self.toggle.icon = "plus"
+    def _build_header(self, node, level):
+        super()._build_header(node, level)
+        self.toggle = ipw.Button(icon="plus")
+        self.toggle.add_class("tree-node-toggle")
+        self.toggle.on_click(self._toggle_branches)
+        self.label = ipw.HTML(self.title)
+        self.tally = ipw.HTML()
+        self.header = ipw.HBox(
+            children=[
+                self.indentation,
+                self.toggle,
+                self.emoji,
+                self.label,
+                ipw.HTML(" | "),
+                self.state,
+                ipw.HTML(" | "),
+                self.tally,
+            ],
+            layout=ipw.Layout(align_items="center"),
+        )
 
     def _add_children(self, node):
         for child in node.called:
@@ -243,7 +257,11 @@ class WorkChainTreeNode(TreeNode):
                     if isinstance(child, orm.WorkflowNode)
                     else CalculationTreeNode
                 )
-                branch = TreeNodeClass(child, level=self.level + 1)
+                branch = TreeNodeClass(
+                    child,
+                    level=self.level + 1,
+                    on_inspect=self.on_inspect,
+                )
                 self.branches.children += (branch,)
                 self.pks.add(child.pk)
 
@@ -264,20 +282,43 @@ class WorkChainTreeNode(TreeNode):
         )
         return f"{finished}/{total} job{'s' if total > 1 else ''}"
 
+    def _toggle_branches(self, _):
+        if self.toggle.icon == "plus":
+            self.branches.add_class("open")
+            self.toggle.icon = "minus"
+        else:
+            self.branches.remove_class("open")
+            self.toggle.icon = "plus"
+
 
 class CalculationTreeNode(TreeNode):
-    def __init__(self, node, level=0, **kwargs):
-        super().__init__(node, level, **kwargs)
-        self.inspect = ipw.Button(
-            description="Inspect",
-            button_style="info",
-            layout=ipw.Layout(width="fit-content", margin="0 0 0 5px"),
+    def _build_header(self, node, level):
+        super()._build_header(node, level)
+        self.label = ipw.Button(
+            description=self.title,
+            tooltip="click to view calculation",
         )
-        self.header.children += (self.inspect,)
+        self.label.add_class("calculation-link")
+        self.label.on_click(self._on_label_click)
+        self.header = ipw.HBox(
+            children=[
+                self.indentation,
+                self.emoji,
+                self.label,
+                ipw.HTML(" | "),
+                self.state,
+            ],
+            layout=ipw.Layout(align_items="center"),
+        )
+
+    def _on_label_click(self, _):
+        if self.on_inspect is None:
+            return
+        self.on_inspect(self.uuid)
 
 
 class SimplifiedProcessTreeModel(Model, HasProcess):
-    """"""
+    clicked = tl.Unicode("")
 
 
 class SimplifiedProcessTree(ipw.VBox):
@@ -303,7 +344,7 @@ class SimplifiedProcessTree(ipw.VBox):
         if self.rendered:
             return
         root = self._model.fetch_process_node()
-        self.trunk = WorkChainTreeNode(root, level=1)
+        self.trunk = WorkChainTreeNode(root, level=1, on_inspect=self._on_selection)
         self.rendered = True
         self._update()
         self.children = [self.trunk]
@@ -313,6 +354,9 @@ class SimplifiedProcessTree(ipw.VBox):
 
     def _on_monitor_counter_change(self, _):
         self._update()
+
+    def _on_selection(self, uuid):
+        self._model.clicked = uuid
 
     def _update(self):
         if self.rendered:

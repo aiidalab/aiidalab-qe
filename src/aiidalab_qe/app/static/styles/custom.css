@@ -122,17 +122,14 @@ footer {
   line-height: 1.5;
 }
 
-.tree-node-toggle {
-  width: fit-content;
-  padding: 0;
-  margin: 0 6px 0 -15px;
-  background-color: white;
-}
-
-.tree-node-toggle:focus:enabled,
-.tree-node-toggle:hover:enabled,
-.tree-node-toggle:active:enabled {
-  color: inherit;
+.simplified-process-tree .tree-node-toggle:focus:enabled,
+.simplified-process-tree .tree-node-toggle:hover:enabled,
+.simplified-process-tree .tree-node-toggle:active:enabled,
+.simplified-process-tree .calculation-link:focus:enabled,
+.simplified-process-tree .calculation-link:hover:enabled,
+.simplified-process-tree .calculation-link:active:enabled {
+  cursor: pointer;
+  color: var(--color-info);
   outline: none;
   box-shadow: none;
   background-color: white;
@@ -143,21 +140,48 @@ footer {
   -o-transition: color 0.15s ease-in-out;
 }
 
-.tree-node-toggle:hover:enabled {
-  color: var(--color-info);
+.simplified-process-tree .tree-node-toggle {
+  width: fit-content;
+  padding: 0;
+  margin: 0 6px 0 -15px;
+  background-color: white;
 }
 
-.tree-node-toggle:active:enabled {
+.simplified-process-tree .tree-node-toggle:hover:enabled,
+.simplified-process-tree .tree-node-toggle:active:enabled,
+.simplified-process-tree .tree-node-toggle:focus:hover:enabled {
   color: var(--color-info-dark);
 }
 
-.tree-node-branches {
+.simplified-process-tree .tree-node-toggle:focus:enabled {
+  color: inherit;
+}
+
+.simplified-process-tree .calculation-link {
+  text-align: left;
+  padding: 0;
+  width: fit-content;
+  background: white;
+  color: var(--color-info);
+}
+
+.simplified-process-tree .calculation-link:hover:enabled,
+.simplified-process-tree .calculation-link:active:enabled,
+.simplified-process-tree .calculation-link:focus:hover:enabled {
+  color: var(--color-info-dark);
+}
+
+.simplified-process-tree .calculation-link:active:enabled {
+  background-color: var(--color-init);
+}
+
+.simplified-process-tree .tree-node-branches {
   height: 0;
   overflow: hidden;
   visibility: hidden;
 }
 
-.tree-node-branches.open {
+.simplified-process-tree .tree-node-branches.open {
   height: auto;
   visibility: visible;
 }
