@@ -121,3 +121,37 @@ footer {
   height: fit-content;
   line-height: 1.5;
 }
+
+.tree-node-toggle {
+  width: fit-content;
+  padding: 0;
+  margin: 0 5px 0 -15px;
+  background-color: white;
+}
+
+.tree-node-toggle:focus:enabled,
+.tree-node-toggle:hover:enabled,
+.tree-node-toggle:active:enabled {
+  color: inherit;
+  outline: none;
+  box-shadow: none;
+  background-color: white;
+  transition: color 0.15s ease-in-out;
+  -webkit-transition: color 0.15s ease-in-out;
+  -moz-transition: color 0.15s ease-in-out;
+  -ms-transition: color 0.15s ease-in-out;
+  -o-transition: color 0.15s ease-in-out;
+}
+
+.tree-node-toggle:hover:enabled {
+  color: var(--color-info);
+}
+
+.tree-node-toggle:active:enabled {
+  color: var(--color-info-dark);
+}
+
+.tree-node-branches {
+  height: 0;
+  overflow: hidden;
+}

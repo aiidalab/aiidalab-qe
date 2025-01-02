@@ -19,7 +19,6 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         self.node_view_loading_message = LoadingWidget("Loading node view")
 
     def _on_monitor_counter_change(self, _):
-        self._update_simplified_view()
         self._update_process_tree()
 
     def _on_node_selection_change(self, change):
@@ -31,6 +30,10 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         ipw.dlink(
             (self._model, "process_uuid"),
             (model, "process_uuid"),
+        )
+        ipw.dlink(
+            (self._model, "monitor_counter"),
+            (model, "monitor_counter"),
         )
 
         self.process_tree = ProcessNodesTreeWidget()
@@ -55,7 +58,7 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
                     ],
                 ),
             ],
-            selected_index=1,
+            selected_index=None,
         )
         titles = [
             "Status overview",
@@ -69,15 +72,13 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
             "selected_index",
         )
 
+        self.accordion.selected_index = 0
+
         self.children = [self.accordion]
 
     def _on_accordion_change(self, change):
         if change["new"] == 0:
             self.simplified_process_tree.render()
-
-    def _update_simplified_view(self):
-        if self.rendered:
-            self.simplified_process_tree.update()
 
     def _update_process_tree(self):
         if self.rendered:
@@ -120,19 +121,25 @@ class TreeNode(ipw.VBox):
         self.label = ipw.HTML(self._humanize_title(node))
         self.emoji = ipw.HTML()
         self.state = ipw.HTML()
+        self.indentation = ipw.HTML(self._get_indentation(level))
         self.title = ipw.HBox(
             children=[
-                ipw.HTML(self._get_indentation(level)),
                 self.emoji,
                 self.label,
                 ipw.HTML(" | "),
                 self.state,
+            ]
+        )
+        self.header = ipw.HBox(
+            children=[
+                self.indentation,
+                self.title,
             ],
             layout=ipw.Layout(align_items="center"),
         )
         super().__init__(
             children=[
-                self.title,
+                self.header,
             ],
             **kwargs,
         )
@@ -189,13 +196,22 @@ class TreeNode(ipw.VBox):
 
 
 class WorkChainTreeNode(TreeNode):
-    def __init__(self, node, **kwargs):
-        super().__init__(node, **kwargs)
+    def __init__(self, node, level=0, **kwargs):
+        super().__init__(node, level, **kwargs)
+        self.toggle = ipw.Button(icon="plus")
+        self.toggle.add_class("tree-node-toggle")
+        self.toggle.on_click(self._toggle_branches)
+        self.header.children = [
+            self.indentation,
+            self.toggle,
+            self.title,
+        ]
         self.tally = ipw.HTML()
         self.title.children += (ipw.HTML(" | "),)
         self.title.children += (self.tally,)
         self.pks = set()
         self.branches = ipw.VBox()
+        self.branches.add_class("tree-node-branches")
         self.children += (self.branches,)
 
     def update(self, node=None):
@@ -206,6 +222,11 @@ class WorkChainTreeNode(TreeNode):
         branch: TreeNode
         for branch in self.branches.children:
             branch.update()
+
+    def _toggle_branches(self, _):
+        collapsed = self.toggle.icon == "plus"
+        self.branches.layout.height = "auto" if collapsed else "0"
+        self.toggle.icon = "minus" if collapsed else "plus"
 
     def _add_children(self, node):
         for child in node.called:
@@ -242,14 +263,14 @@ class WorkChainTreeNode(TreeNode):
 
 
 class CalculationTreeNode(TreeNode):
-    def __init__(self, node, **kwargs):
-        super().__init__(node, **kwargs)
+    def __init__(self, node, level=0, **kwargs):
+        super().__init__(node, level, **kwargs)
         self.inspect = ipw.Button(
             description="Inspect",
             button_style="info",
             layout=ipw.Layout(width="fit-content", margin="0 0 0 5px"),
         )
-        self.title.children += (self.inspect,)
+        self.header.children += (self.inspect,)
 
 
 class SimplifiedProcessTreeModel(Model, HasProcess):
@@ -279,7 +300,7 @@ class SimplifiedProcessTree(ipw.VBox):
         if self.rendered:
             return
         root = self._model.fetch_process_node()
-        self.trunk = WorkChainTreeNode(root)
+        self.trunk = WorkChainTreeNode(root, level=1)
         self.rendered = True
         self._update()
         self.children = [self.trunk]
