@@ -125,7 +125,7 @@ footer {
 .tree-node-toggle {
   width: fit-content;
   padding: 0;
-  margin: 0 5px 0 -15px;
+  margin: 0 6px 0 -15px;
   background-color: white;
 }
 
@@ -154,4 +154,10 @@ footer {
 .tree-node-branches {
   height: 0;
   overflow: hidden;
+  visibility: hidden;
+}
+
+.tree-node-branches.open {
+  height: auto;
+  visibility: visible;
 }

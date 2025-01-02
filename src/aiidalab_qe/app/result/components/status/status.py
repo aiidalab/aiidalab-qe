@@ -150,7 +150,7 @@ class TreeNode(ipw.VBox):
         self.emoji.value = self._get_emoji(self.state.value)
 
     def _get_indentation(self, level=0):
-        return "&nbsp;" * 8 * level
+        return "&nbsp;" * 6 * level
 
     def _get_emoji(self, state):
         return {
@@ -224,9 +224,12 @@ class WorkChainTreeNode(TreeNode):
             branch.update()
 
     def _toggle_branches(self, _):
-        collapsed = self.toggle.icon == "plus"
-        self.branches.layout.height = "auto" if collapsed else "0"
-        self.toggle.icon = "minus" if collapsed else "plus"
+        if self.toggle.icon == "plus":
+            self.branches.add_class("open")
+            self.toggle.icon = "minus"
+        else:
+            self.branches.remove_class("open")
+            self.toggle.icon = "plus"
 
     def _add_children(self, node):
         for child in node.called:
