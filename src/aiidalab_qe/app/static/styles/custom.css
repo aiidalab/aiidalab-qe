@@ -113,6 +113,11 @@ footer {
   min-width: fit-content !important;
 }
 
+.simplified-process-tree .tree-node-header {
+  align-items: center;
+  padding-left: 12px;
+}
+
 .simplified-process-tree .widget-html-content {
   line-height: 1.5;
 }
@@ -148,7 +153,7 @@ footer {
 }
 
 .simplified-process-tree .tree-node-toggle {
-  margin-right: 6px;
+  margin: 0 6px 0 -16px;
 }
 
 .simplified-process-tree .tree-node-toggle:hover:enabled,
@@ -162,7 +167,7 @@ footer {
 }
 
 .simplified-process-tree .calculation-link {
-  color: var(--color-info);
+  color: var(--color-link);
 }
 
 .simplified-process-tree .calculation-link:hover:enabled,
