@@ -23,12 +23,6 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         self.node_views = {}  # node-view cache
         self.node_view_loading_message = LoadingWidget("Loading node view")
 
-    def _on_monitor_counter_change(self, _):
-        self._update_process_tree()
-
-    def _on_node_selection_change(self, change):
-        self._update_node_view(change["new"])
-
     def _render(self):
         model = SimplifiedProcessTreeModel()
         self.simplified_process_tree = SimplifiedProcessTree(model=model)
@@ -41,7 +35,7 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
             (model, "monitor_counter"),
         )
         model.observe(
-            self._on_simple_node_selection_change,
+            self._on_calculation_link_click,
             "clicked",
         )
 
@@ -55,6 +49,15 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
             (self.process_tree, "value"),
         )
 
+        self.reset_button = ipw.Button(
+            description="Reset to root",
+            button_style="warning",
+            icon="refresh",
+            tooltip="Reseed the process tree with the root node",
+            layout=ipw.Layout(width="fit-content"),
+        )
+        self.reset_button.on_click(self._reset_process_tree)
+
         self.node_view_container = ipw.VBox()
 
         self.accordion = ipw.Accordion(
@@ -62,6 +65,7 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
                 self.simplified_process_tree,
                 ipw.VBox(
                     children=[
+                        self.reset_button,
                         self.process_tree,
                         self.node_view_container,
                     ],
@@ -85,13 +89,20 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
 
         self.children = [self.accordion]
 
+    def _on_monitor_counter_change(self, _):
+        self._update_process_tree()
+
     def _on_accordion_change(self, change):
         if change["new"] == 0:
             self.simplified_process_tree.render()
 
-    def _on_simple_node_selection_change(self, change):
-        self.process_tree.value = change["new"]
-        self.accordion.selected_index = 1
+    def _on_calculation_link_click(self, change):
+        if selected_node_uuid := change["new"]:
+            self.process_tree.value = selected_node_uuid
+            self.accordion.selected_index = 1
+
+    def _on_node_selection_change(self, change):
+        self._update_node_view(change["new"])
 
     def _update_process_tree(self):
         if self.rendered:
@@ -125,6 +136,11 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
             self.node_view = ipw.HTML("No viewer available for this node.")
 
         self.node_view_container.children = [self.node_view]
+
+    def _reset_process_tree(self, _):
+        if not self.rendered:
+            return
+        self.process_tree.value = self._model.process_uuid
 
 
 class TreeNode(ipw.VBox):
@@ -318,7 +334,7 @@ class CalculationTreeNode(TreeNode):
 
 
 class SimplifiedProcessTreeModel(Model, HasProcess):
-    clicked = tl.Unicode("")
+    clicked = tl.Unicode(None, allow_none=True)
 
 
 class SimplifiedProcessTree(ipw.VBox):
@@ -344,7 +360,7 @@ class SimplifiedProcessTree(ipw.VBox):
         if self.rendered:
             return
         root = self._model.fetch_process_node()
-        self.trunk = WorkChainTreeNode(root, level=1, on_inspect=self._on_selection)
+        self.trunk = WorkChainTreeNode(node=root, level=1, on_inspect=self._on_inspect)
         self.rendered = True
         self._update()
         self.children = [self.trunk]
@@ -355,7 +371,8 @@ class SimplifiedProcessTree(ipw.VBox):
     def _on_monitor_counter_change(self, _):
         self._update()
 
-    def _on_selection(self, uuid):
+    def _on_inspect(self, uuid):
+        self._model.clicked = None  # ensure event is triggered
         self._model.clicked = uuid
 
     def _update(self):
