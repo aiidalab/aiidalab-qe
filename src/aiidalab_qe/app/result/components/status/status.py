@@ -360,7 +360,7 @@ class SimplifiedProcessTree(ipw.VBox):
         if self.rendered:
             return
         root = self._model.fetch_process_node()
-        self.trunk = WorkChainTreeNode(node=root, level=1, on_inspect=self._on_inspect)
+        self.trunk = WorkChainTreeNode(node=root, on_inspect=self._on_inspect)
         self.rendered = True
         self._update()
         self.children = [self.trunk]
