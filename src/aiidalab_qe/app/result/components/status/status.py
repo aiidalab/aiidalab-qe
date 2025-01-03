@@ -167,12 +167,14 @@ class TreeNode(ipw.VBox):
     def _build_header(self, node, level):
         self.level = level
         self.title = self._humanize_title(node)
-        self.indentation = ipw.HTML(self._get_indentation(self.level))
+        self.indentation = self._get_indentation(level)
         self.emoji = ipw.HTML()
         self.state = ipw.HTML()
+        self.header = ipw.HBox()
+        self.header.add_class("tree-node-header")
 
     def _get_indentation(self, level=0):
-        return "&nbsp;" * 6 * level
+        return ipw.HTML(layout=ipw.Layout(width=f"{22 * level}px"))
 
     def _get_emoji(self, state):
         return {
@@ -258,19 +260,16 @@ class WorkChainTreeNode(TreeNode):
         self.toggle.on_click(self._toggle_branches)
         self.label = ipw.HTML(self.title)
         self.tally = ipw.HTML()
-        self.header = ipw.HBox(
-            children=[
-                self.indentation,
-                self.toggle,
-                self.emoji,
-                self.label,
-                ipw.HTML(" | "),
-                self.state,
-                ipw.HTML(" | "),
-                self.tally,
-            ],
-            layout=ipw.Layout(align_items="center"),
-        )
+        self.header.children = [
+            self.indentation,
+            self.toggle,
+            self.emoji,
+            self.label,
+            ipw.HTML(" | "),
+            self.state,
+            ipw.HTML(" | "),
+            self.tally,
+        ]
 
     def _add_children(self, node):
         for child in node.called:
@@ -327,16 +326,13 @@ class CalculationTreeNode(TreeNode):
         )
         self.label.add_class("calculation-link")
         self.label.on_click(self._on_label_click)
-        self.header = ipw.HBox(
-            children=[
-                self.indentation,
-                self.emoji,
-                self.label,
-                ipw.HTML(" | "),
-                self.state,
-            ],
-            layout=ipw.Layout(align_items="center"),
-        )
+        self.header.children = [
+            self.indentation,
+            self.emoji,
+            self.label,
+            ipw.HTML(" | "),
+            self.state,
+        ]
 
     def _on_label_click(self, _):
         if self.on_inspect is None:
