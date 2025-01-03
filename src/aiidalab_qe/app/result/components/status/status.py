@@ -231,6 +231,10 @@ class WorkChainTreeNode(TreeNode):
         self.branches.add_class("tree-node-branches")
         self.children += (self.branches,)
 
+    @property
+    def collapsed(self):
+        return self.toggle.icon == "plus"
+
     def update(self, node=None):
         node = node or orm.load_node(self.uuid)
         super().update(node)
@@ -239,6 +243,13 @@ class WorkChainTreeNode(TreeNode):
         branch: TreeNode
         for branch in self.branches.children:
             branch.update()
+
+    def collapse(self):
+        if not self.collapsed:
+            self.toggle.click()
+        for branch in self.branches.children:
+            if isinstance(branch, WorkChainTreeNode):
+                branch.collapse()
 
     def _build_header(self, node, level):
         super()._build_header(node, level)
@@ -299,7 +310,7 @@ class WorkChainTreeNode(TreeNode):
         return f"{finished}/{total} job{'s' if total > 1 else ''}"
 
     def _toggle_branches(self, _):
-        if self.toggle.icon == "plus":
+        if self.collapsed:
             self.branches.add_class("open")
             self.toggle.icon = "minus"
         else:
@@ -359,11 +370,25 @@ class SimplifiedProcessTree(ipw.VBox):
     def render(self):
         if self.rendered:
             return
+        self.collapse_button = ipw.Button(
+            description="Collapse all",
+            button_style="warning",
+            icon="minus",
+            tooltip="Collapse all branches",
+            layout=ipw.Layout(
+                width="fit-content",
+                margin="0 0 10px 0",
+            ),
+        )
+        self.collapse_button.on_click(self._collapse_all)
         root = self._model.fetch_process_node()
         self.trunk = WorkChainTreeNode(node=root, on_inspect=self._on_inspect)
         self.rendered = True
         self._update()
-        self.children = [self.trunk]
+        self.children = [
+            self.collapse_button,
+            self.trunk,
+        ]
 
     def _on_process_change(self, _):
         self._update()
@@ -378,3 +403,6 @@ class SimplifiedProcessTree(ipw.VBox):
     def _update(self):
         if self.rendered:
             self.trunk.update()
+
+    def _collapse_all(self, _):
+        self.trunk.collapse()
