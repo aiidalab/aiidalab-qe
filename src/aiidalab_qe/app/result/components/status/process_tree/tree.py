@@ -46,6 +46,7 @@ class SimplifiedProcessTree(ipw.VBox):
         self.collapse_button.on_click(self._collapse_all)
         root = self._model.fetch_process_node()
         self.trunk = WorkChainTreeNode(node=root, on_inspect=self._on_inspect)
+        self.trunk.expand()
         self.rendered = True
         self._update()
         self.children = [
@@ -68,7 +69,7 @@ class SimplifiedProcessTree(ipw.VBox):
             self.trunk.update()
 
     def _collapse_all(self, _):
-        self.trunk.collapse()
+        self.trunk.collapse(recursive=True)
 
 
 class TreeNode(ipw.VBox):
@@ -175,12 +176,21 @@ class WorkChainTreeNode(TreeNode):
         for branch in self.branches.children:
             branch.update()
 
-    def collapse(self):
+    def expand(self, recursive=False):
+        if self.collapsed:
+            self.toggle.click()
+        if recursive:
+            for branch in self.branches.children:
+                if isinstance(branch, WorkChainTreeNode):
+                    branch.expand(recursive=True)
+
+    def collapse(self, recursive=False):
         if not self.collapsed:
             self.toggle.click()
-        for branch in self.branches.children:
-            if isinstance(branch, WorkChainTreeNode):
-                branch.collapse()
+        if recursive:
+            for branch in self.branches.children:
+                if isinstance(branch, WorkChainTreeNode):
+                    branch.collapse(recursive=True)
 
     def _build_header(self, node, level):
         super()._build_header(node, level)
