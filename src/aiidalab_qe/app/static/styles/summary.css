@@ -29,13 +29,8 @@
   width: 200%;
 }
 
-.summary-panel:first-child tr,
-.summary-panel:first-child td {
-  padding: 0 8px;
-}
-
-.summary-panel:first-child td:first-child {
-  width: 250px;
+.workflow-summary .link {
+  text-decoration: none;
 }
 
 .settings-summary {
@@ -52,10 +47,6 @@
 
 .settings-summary ul ul {
   margin-left: 20px;
-}
-
-.settings-summary a {
-  text-decoration: none;
 }
 
 /* Error details */
