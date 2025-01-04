@@ -178,6 +178,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "modification_time": format_time(qeapp_wc.mtime),
             "modification_time_relative": relative_time(qeapp_wc.mtime),
             "structure_pk": initial_structure.pk,
+            "structure_uuid": initial_structure.uuid,
             "formula": initial_structure.get_formula(),
             "num_atoms": len(initial_structure.sites),
             "space_group": "{} ({})".format(
