@@ -120,6 +120,20 @@ class BandsPdosWidget(ipw.VBox):
         )
         self.download_button.on_click(self._model.download_data)
 
+        self.download_image = ipw.Button(
+            description="Download Image", button_style="primary"
+        )
+        self.download_image.on_click(self._model.download_image)
+        self.image_format = ipw.Dropdown(
+            description="Format:",
+            disabled=False,
+        )
+        ipw.dlink((self._model, "image_format_options"), (self.image_format, "options"))
+        ipw.link((self._model, "image_format"), (self.image_format, "value"))
+
+        self.download_buttons = ipw.HBox(
+            children=[self.download_button, self.download_image, self.image_format]
+        )
         self.project_bands_box = ipw.Checkbox(
             description="Add `fat bands` projections",
             style={"description_width": "initial"},
@@ -240,7 +254,7 @@ class BandsPdosWidget(ipw.VBox):
                 </div>
             """),
             self.pdos_options,
-            self.download_button,
+            self.download_buttons,
             self.legend_interaction_description,
         ]
 
