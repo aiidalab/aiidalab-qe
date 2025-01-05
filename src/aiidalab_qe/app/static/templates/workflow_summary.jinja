@@ -6,7 +6,10 @@
       <table>
         {% for key, value in report[section].items() %}
         <tr class="entry">
-          <td class="key">{{ schema[key].title }}</td>
+          {% set indent = (schema[key].indent | default(0)) * 16 %}
+          <td class="key" style="margin-left: {{ indent }}px">
+            {{ schema[key].title }}
+          </td>
           <td class="value">
             {% if schema[key].type == "link" %}
             <a class="link" href="{{ value.url }}" target="_blank">

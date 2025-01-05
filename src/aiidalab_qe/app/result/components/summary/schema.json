@@ -122,11 +122,13 @@
   "degauss": {
     "title": "Smearing width (degauss)",
     "type": "text",
+    "indent": 1,
     "description": "The smearing width used for the calculation"
   },
   "smearing": {
     "title": "Smearing type",
     "type": "text",
+    "indent": 1,
     "description": "The smearing type used for the calculation"
   },
   "scf_kpoints_distance": {
