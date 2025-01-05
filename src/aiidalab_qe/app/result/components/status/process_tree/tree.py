@@ -175,7 +175,8 @@ class WorkChainTreeNode(TreeNode):
         node = node or self.process_node
         super().update(node)
         self.tally.value = self._get_tally(node)
-        self._add_branches(node)
+        if not self.collapsed:
+            self._add_branches(node)
         branch: TreeNode
         for branch in self.branches.children:
             branch.update()
@@ -214,7 +215,8 @@ class WorkChainTreeNode(TreeNode):
             self.tally,
         ]
 
-    def _add_branches(self, node):
+    def _add_branches(self, node=None):
+        node = node or self.process_node
         for child in node.called:
             if child.pk in self.pks:
                 continue
@@ -231,6 +233,7 @@ class WorkChainTreeNode(TreeNode):
                     level=self.level + 1,
                     on_inspect=self.on_inspect,
                 )
+                branch.update()
                 self.branches.children += (branch,)
                 self.pks.add(child.pk)
 
@@ -255,6 +258,7 @@ class WorkChainTreeNode(TreeNode):
         if self.collapsed:
             self.branches.add_class("open")
             self.toggle.icon = "minus"
+            self._add_branches()
         else:
             self.branches.remove_class("open")
             self.toggle.icon = "plus"
