@@ -55,13 +55,14 @@ def test_summary_report(data_regression, generate_qeapp_workchain):
         "pk",
         "uuid",
         "creation_time",
-        "creation_time_relative",
         "modification_time",
-        "modification_time_relative",
+    ):
+        report_parameters["workflow_properties"].pop(key)
+    for key in (
         "structure_pk",
         "structure_uuid",
     ):
-        report_parameters.pop(key)
+        report_parameters["initial_structure_properties"].pop(key)
     data_regression.check(report_parameters)
 
 
@@ -73,7 +74,8 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
     model = WorkChainSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
-    assert report_parameters["initial_magnetic_moments"]["Si"] == 0.1
+    moments = report_parameters["advanced_settings"]["initial_magnetic_moments"]
+    assert moments["Si"] == 0.1
 
 
 def test_summary_view(generate_qeapp_workchain):
@@ -88,8 +90,9 @@ def test_summary_view(generate_qeapp_workchain):
         "Total charge": "0.0",
     }
     for key, value in parameters.items():
-        li = parsed.find_all(lambda tag, key=key: tag.name == "li" and key in tag.text)
-        assert value in li[0].text
+        key_td = parsed.find("td", string=lambda tag, key=key: tag and key in tag.text)
+        value_td = key_td.find_next_sibling("td")
+        assert value in value_td.text
 
 
 def test_structure_results_panel(generate_qeapp_workchain):
