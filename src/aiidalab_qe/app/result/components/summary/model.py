@@ -69,16 +69,13 @@ class WorkChainSummaryModel(ResultsComponentModel):
         """
         env = Environment()
         template = files(templates).joinpath("workflow_summary.jinja").read_text()
-        summary_format = DEFAULT["summary_format"]
-        style = files(styles).joinpath(f"summary/{summary_format}.css").read_text()
         parameters = self._generate_report_parameters()
         report = {key: value for key, value in parameters.items() if value is not None}
         schema = json.load(Path(__file__).parent.joinpath("schema.json").open())
         return env.from_string(template).render(
-            style=style,
             report=report,
             schema=schema,
-            format=summary_format,
+            format=DEFAULT["summary_format"],
         )
 
     def generate_report_text(self, report_dict):
