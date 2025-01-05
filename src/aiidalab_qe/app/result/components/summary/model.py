@@ -132,7 +132,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
     def generate_failure_report(self):
         """Generate a html for reporting the failure of the `QeAppWorkChain`."""
         process_node = self.fetch_process_node()
-        if not process_node and process_node.exit_status:
+        if not (process_node and process_node.exit_status):
             return
         final_calcjob = self._get_final_calcjob(process_node)
         env = Environment()
@@ -177,6 +177,8 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "creation_time_relative": relative_time(qeapp_wc.ctime),
             "modification_time": format_time(qeapp_wc.mtime),
             "modification_time_relative": relative_time(qeapp_wc.mtime),
+            "structure_pk": initial_structure.pk,
+            "structure_uuid": initial_structure.uuid,
             "formula": initial_structure.get_formula(),
             "num_atoms": len(initial_structure.sites),
             "space_group": "{} ({})".format(

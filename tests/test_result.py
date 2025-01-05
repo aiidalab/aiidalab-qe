@@ -58,6 +58,8 @@ def test_summary_report(data_regression, generate_qeapp_workchain):
         "creation_time_relative",
         "modification_time",
         "modification_time_relative",
+        "structure_pk",
+        "structure_uuid",
     ):
         report_parameters.pop(key)
     data_regression.check(report_parameters)
