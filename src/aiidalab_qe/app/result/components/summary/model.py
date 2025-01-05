@@ -148,7 +148,10 @@ class WorkChainSummaryModel(ResultsComponentModel):
 
         Return a dictionary of the parameters.
         """
+        import spglib
+
         from aiida.orm.utils.serialize import deserialize_unsafe
+        from aiidalab_widgets_base.utils import ase2spglib
 
         qeapp_wc = self.fetch_process_node()
 
@@ -161,7 +164,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
             return {}
 
         inputs = qeapp_wc.inputs
-        initial_structure = inputs.structure
+        structure = inputs.structure
         basic = ui_parameters["workchain"]
         advanced = ui_parameters["advanced"]
         ctime = qeapp_wc.ctime
@@ -176,21 +179,34 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "creation_time": f"{format_time(ctime)} ({relative_time(ctime)})",
                 "modification_time": f"{format_time(mtime)} ({relative_time(mtime)})",
             },
+        }
+
+        report |= {
             "initial_structure_properties": {
-                "structure_pk": initial_structure.pk,
-                "structure_uuid": initial_structure.uuid,
-                "formula": initial_structure.get_formula(),
-                "num_atoms": len(initial_structure.sites),
-                "space_group": "{} ({})".format(
-                    *initial_structure.get_pymatgen().get_space_group_info()
-                ),
-                "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(
-                    *initial_structure.cell_lengths
-                ),
-                "cell_angles": "{:.0f} {:.0f} {:.0f}".format(
-                    *initial_structure.cell_angles
-                ),
-            },
+                "structure_pk": structure.pk,
+                "structure_uuid": structure.uuid,
+                "formula": structure.get_formula(),
+                "num_atoms": len(structure.sites),
+            }
+        }
+
+        symmetry = spglib.get_symmetry_dataset(
+            ase2spglib(structure.get_ase()),
+            symprec=1e-5,
+            angle_tolerance=1.0,
+        )
+        if any(structure.pbc):
+            report["initial_structure_properties"] |= {
+                "space_group": f"{symmetry['international']} ({symmetry['number']})",
+                "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
+                "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
+            }
+        else:
+            report["initial_structure_properties"] |= {
+                "point_group": symmetry["pointgroup"],
+            }
+
+        report |= {
             "basic_settings": {
                 "relaxed": "off"
                 if basic["relax_type"] == "none"
@@ -198,7 +214,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "protocol": basic["protocol"],
                 "spin_type": "off" if basic["spin_type"] == "none" else "on",
                 "electronic_type": basic["electronic_type"],
-                "periodicity": PERIODICITY_MAPPING.get(initial_structure.pbc, "xyz"),
+                "periodicity": PERIODICITY_MAPPING.get(structure.pbc, "xyz"),
             },
             "advanced_settings": {},
         }
