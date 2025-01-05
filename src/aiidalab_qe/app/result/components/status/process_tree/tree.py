@@ -103,8 +103,12 @@ class TreeNode(ipw.VBox):
             **kwargs,
         )
 
+    @property
+    def process_node(self):
+        return orm.load_node(self.uuid)
+
     def update(self, node=None):
-        node = node or orm.load_node(self.uuid)
+        node = node or self.process_node
         self.state.value = self._get_state(node)
         self.emoji.value = self._get_emoji(self.state.value)
 
@@ -168,10 +172,10 @@ class WorkChainTreeNode(TreeNode):
         return self.toggle.icon == "plus"
 
     def update(self, node=None):
-        node = node or orm.load_node(self.uuid)
+        node = node or self.process_node
         super().update(node)
         self.tally.value = self._get_tally(node)
-        self._add_children(node)
+        self._add_branches(node)
         branch: TreeNode
         for branch in self.branches.children:
             branch.update()
@@ -210,12 +214,12 @@ class WorkChainTreeNode(TreeNode):
             self.tally,
         ]
 
-    def _add_children(self, node):
+    def _add_branches(self, node):
         for child in node.called:
             if child.pk in self.pks:
                 continue
             if child.process_label == "BandsWorkChain":
-                self._add_children(child)
+                self._add_branches(child)
             else:
                 TreeNodeClass = (
                     WorkChainTreeNode
