@@ -121,7 +121,7 @@ class BandsPdosWidget(ipw.VBox):
         self.download_button.on_click(self._model.download_data)
 
         self.download_image = ipw.Button(
-            description="Download Image",
+            description="Download image",
             button_style="primary",
             icon="fa-image",
         )
