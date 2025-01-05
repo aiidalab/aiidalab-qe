@@ -132,7 +132,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
     def generate_failure_report(self):
         """Generate a html for reporting the failure of the `QeAppWorkChain`."""
         process_node = self.fetch_process_node()
-        if not process_node and process_node.exit_status:
+        if not (process_node and process_node.exit_status):
             return
         final_calcjob = self._get_final_calcjob(process_node)
         env = Environment()
