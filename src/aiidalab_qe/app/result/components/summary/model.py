@@ -160,7 +160,8 @@ class WorkChainSummaryModel(ResultsComponentModel):
         if "workchain" not in ui_parameters:
             return {}
 
-        initial_structure = qeapp_wc.inputs.structure
+        inputs = qeapp_wc.inputs
+        initial_structure = inputs.structure
         basic = ui_parameters["workchain"]
         advanced = ui_parameters["advanced"]
         ctime = qeapp_wc.ctime
@@ -197,9 +198,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "protocol": basic["protocol"],
                 "spin_type": "off" if basic["spin_type"] == "none" else "on",
                 "electronic_type": basic["electronic_type"],
-                "periodicity": PERIODICITY_MAPPING.get(
-                    qeapp_wc.inputs.structure.pbc, "xyz"
-                ),
+                "periodicity": PERIODICITY_MAPPING.get(initial_structure.pbc, "xyz"),
             },
             "advanced_settings": {},
         }
@@ -231,33 +230,31 @@ class WorkChainSummaryModel(ResultsComponentModel):
         # It is safe then to extract these parameters from the first pw calculation, since the
         # builder is anyway set with subworkchain inputs even it is not run which controlled by
         # the properties inputs.
-        relax = qeapp_wc.inputs.relax.base
+        relax = inputs.relax.base
         pw_parameters = relax.pw.parameters.get_dict()
         system = pw_parameters["SYSTEM"]
         occupation = system["occupations"]
         report["advanced_settings"] |= {
-            "energy_cutoff_wfc": system["ecutwfc"],
-            "energy_cutoff_rho": system["ecutrho"],
+            "energy_cutoff_wfc": f"{system['ecutwfc']} Ry",
+            "energy_cutoff_rho": f"{system['ecutrho']} Ry",
             "occupation_type": occupation,
         }
         if occupation == "smearing":
             report["advanced_settings"] |= {
                 "smearing": system["smearing"],
-                "degauss": system["degauss"],
+                "degauss": f"{system['degauss']} Ry",
             }
-        report["advanced_settings"]["scf_kpoints_distance"] = (
-            relax.kpoints_distance.base.attributes.get("value")
-        )
-        if "bands" in qeapp_wc.inputs:
-            report["advanced_settings"]["bands_kpoints_distance"] = (
-                PwBandsWorkChain.get_protocol_inputs(
-                    basic["protocol"]
-                )["bands_kpoints_distance"]
-            )
-        if "pdos" in qeapp_wc.inputs:
-            report["advanced_settings"]["nscf_kpoints_distance"] = (
-                qeapp_wc.inputs.pdos.nscf.kpoints_distance.base.attributes.get("value")
-            )
+        inv_ang = "Å<sup>-1</sup>"
+        kpoints = relax.kpoints_distance.base.attributes.get("value")
+        report["advanced_settings"]["scf_kpoints_distance"] = f"{kpoints} {inv_ang}"
+        if "bands" in inputs:
+            key = "bands_kpoints_distance"
+            kpoints = PwBandsWorkChain.get_protocol_inputs(basic["protocol"])[key]
+            report["advanced_settings"][key] = f"{kpoints} {inv_ang}"
+        if "pdos" in inputs:
+            key = "nscf_kpoints_distance"
+            kpoints = inputs.pdos.nscf.kpoints_distance.base.attributes.get("value")
+            report["advanced_settings"][key] = f"{kpoints} {inv_ang}"
 
         vdw_corr = VDW_CORRECTION_VERSION.get(
             system.get("dftd3_version"),
