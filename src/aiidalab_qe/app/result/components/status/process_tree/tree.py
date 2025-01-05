@@ -74,18 +74,35 @@ class SimplifiedProcessTree(ipw.VBox):
 
 class TreeNode(ipw.VBox):
     _MAPPING = {
-        "QeAppWorkChain": "Quantum ESPRESSO workflow",
+        "QeAppWorkChain": "Quantum ESPRESSO app workflow",
         "BandsWorkChain": "Electronic band structure workflow",
         "PwBandsWorkChain": "Electronic band structure workflow",
         "PwRelaxWorkChain": "Structural relaxation workflow",
-        "PwBaseWorkChain": "SCF workflow",
         "PhononWorkChain": "Phonons workflow",
         "PdosWorkChain": "Projected density of states workflow",
-        "PwCalculation": "Run SCF cycle",
         "DosCalculation": "Compute density of states",
         "ProjwfcCalculation": "Compute projections",
-        "create_kpoints_from_distance": "Generate K-points",
-        "seekpath_structure_analysis": "Compute high-symmetry K-points",
+        "create_kpoints_from_distance": "Generate k-points",
+        "seekpath_structure_analysis": "Compute high-symmetry k-points",
+    }
+
+    _PW_MAPPING = {
+        "scf": {
+            "PwBaseWorkChain": "SCF workflow",
+            "PwCalculation": "Run SCF cycle",
+        },
+        "nscf": {
+            "PwBaseWorkChain": "NSCF workflow",
+            "PwCalculation": "Run NSCF cycle",
+        },
+        "bands": {
+            "PwBaseWorkChain": "Bands workflow",
+            "PwCalculation": "Compute bands",
+        },
+        "relax": {
+            "PwBaseWorkChain": "Relaxation workflow",
+            "PwCalculation": "Optimize structure geometry",
+        },
     }
 
     def __init__(
@@ -114,7 +131,7 @@ class TreeNode(ipw.VBox):
 
     def _build_header(self, node, level):
         self.level = level
-        self.title = self._humanize_title(node)
+        self.title = self._get_human_readable_title(node)
         self.indentation = self._get_indentation(level)
         self.emoji = ipw.HTML()
         self.state = ipw.HTML()
@@ -146,11 +163,17 @@ class TreeNode(ipw.VBox):
             else "created"
         )
 
-    def _humanize_title(self, node):
+    def _get_human_readable_title(self, node):
         if not hasattr(node, "process_label"):
             return "Unknown"
-        title = node.process_label
-        return self._MAPPING.get(title, title)
+        label = node.process_label
+        if label in ("PwBaseWorkChain", "PwCalculation"):
+            inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
+            calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
+            mapping = self._PW_MAPPING[calculation]
+        else:
+            mapping = self._MAPPING
+        return mapping.get(label, label)
 
 
 class WorkChainTreeNode(TreeNode):
