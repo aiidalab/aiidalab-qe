@@ -32,37 +32,36 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         chemical_symbols = structure.get_chemical_symbols()
         tags = structure.get_tags()
 
-        html_content = """
-        <table style="border: 1px solid black; border-collapse: collapse; text-align: center; width: auto; margin: 10px;">
-        <tr>
-            <th style="border: 1px solid black; padding: 4px; text-align: center;">Atom<br>index</th>
-            <th style="border: 1px solid black; padding: 4px; text-align: center;">Chemical<br>symbol</th>
-            <th style="border: 1px solid black; padding: 4px; text-align: center;">Tag</th>
-            <th style="border: 1px solid black; padding: 4px; text-align: center;">x</th>
-            <th style="border: 1px solid black; padding: 4px; text-align: center;">y</th>
-            <th style="border: 1px solid black; padding: 4px; text-align: center;">z</th>
-        </tr>
-        """
+        # Define styles for table and cells
+        table_style = "border: 1px solid black; border-collapse: collapse; text-align: center; width: auto; margin: 10px;"
+        cell_style = "border: 1px solid black; padding: 4px; text-align: center;"
 
-        # populate the table rows
+        # Start table HTML with headers
+        headers = ["Atom<br>index", "Chemical<br>symbol", "Tag", "x", "y", "z"]
+        html_content = f"<table style='{table_style}'><tr>"
+        html_content += "".join(
+            [f"<th style='{cell_style}'>{header}</th>" for header in headers]
+        )
+        html_content += "</tr>"
+
+        # Populate the table rows
         for index, (symbol, tag, position) in enumerate(
-            zip(chemical_symbols, tags, positions)
+            zip(chemical_symbols, tags, positions), start=1
         ):
             html_content += f"""
             <tr>
-            <td style="border: 1px solid black; padding: 4px;">{index+1}</td>
-            <td style="border: 1px solid black; padding: 4px;">{symbol}</td>
-            <td style="border: 1px solid black; padding: 4px;">{tag}</td>
-            <td style="border: 1px solid black; padding: 4px;">{position[0]:.3f}</td>
-            <td style="border: 1px solid black; padding: 4px;">{position[1]:.3f}</td>
-            <td style="border: 1px solid black; padding: 4px;">{position[2]:.3f}</td>
+                <td style="{cell_style}">{index}</td>
+                <td style="{cell_style}">{symbol}</td>
+                <td style="{cell_style}">{tag}</td>
+                <td style="{cell_style}">{position[0]:.3f}</td>
+                <td style="{cell_style}">{position[1]:.3f}</td>
+                <td style="{cell_style}">{position[2]:.3f}</td>
             </tr>
             """
 
-        # finish the table
+        # Finish the table
         html_content += "</table>"
 
         # Create an HTML widget
         html_widget = ipw.HTML(value=html_content)
-
         return html_widget
