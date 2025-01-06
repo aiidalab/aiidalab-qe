@@ -65,6 +65,12 @@ class BandsPdosModel(Model):
     bands_data = {}
     bands_projections_data = {}
 
+    # Image format options
+    image_format_options = tl.List(
+        trait=tl.Unicode(), default_value=["png", "jpeg", "svg", "pdf"]
+    )
+    image_format = tl.Unicode("png")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -283,6 +289,41 @@ class BandsPdosModel(Model):
 
         # Update the color picker to match the updated trace
         self.color_picker = rgba_to_hex(self.plot.data[self.trace].line.color)
+
+    def download_image(self, _=None):
+        """
+        Downloads the current plot as an image in the format specified by self.image_format.
+        """
+        # Define the filename
+        if self.bands and self.pdos:
+            filename = f"bands_pdos.{self.image_format}"
+        else:
+            filename = f"{'bands' if self.bands else 'pdos'}.{self.image_format}"
+
+        # Generate the image in the specified format
+        image_payload = self.plot.to_image(format=self.image_format)
+        image_payload_base64 = base64.b64encode(image_payload).decode("utf-8")
+
+        self._download_image(payload=image_payload_base64, filename=filename)
+
+    @staticmethod
+    def _download_image(payload, filename):
+        from IPython.display import Javascript
+
+        # Safely format the JavaScript code
+        javas = Javascript(
+            """
+            var link = document.createElement('a');
+            link.href = 'data:image/{format};base64,{payload}';
+            link.download = "{filename}";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            """.format(
+                payload=payload, filename=filename, format=filename.split(".")[-1]
+            )
+        )
+        display(javas)
 
     def download_data(self, _=None):
         """Function to download the data."""
