@@ -164,7 +164,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
             return {}
 
         inputs = qeapp_wc.inputs
-        structure = inputs.structure
+        structure: orm.StructureData = inputs.structure
         basic = ui_parameters["workchain"]
         advanced = ui_parameters["advanced"]
         ctime = qeapp_wc.ctime
@@ -190,21 +190,8 @@ class WorkChainSummaryModel(ResultsComponentModel):
             }
         }
 
-        symmetry = spglib.get_symmetry_dataset(
-            ase2spglib(structure.get_ase()),
-            symprec=1e-5,
-            angle_tolerance=1.0,
-        )
-        if any(structure.pbc):
-            report["initial_structure_properties"] |= {
-                "space_group": f"{symmetry['international']} ({symmetry['number']})",
-                "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
-                "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
-            }
-        else:
-            report["initial_structure_properties"] |= {
-                "point_group": symmetry["pointgroup"],
-            }
+        symmetry_group_info = self._get_symmetry_group_info(structure)
+        report["initial_structure_properties"] |= symmetry_group_info
 
         report |= {
             "basic_settings": {
@@ -297,6 +284,25 @@ class WorkChainSummaryModel(ResultsComponentModel):
         report["advanced_settings"]["spin_orbit"] = "on" if spin_orbit else "off"
 
         return report
+
+    def _get_symmetry_group_info(self, structure):
+        from pymatgen.symmetry.analyzer import PointGroupAnalyzer, SpacegroupAnalyzer
+
+        pymatgen_structure = structure.get_pymatgen()
+        if any(structure.pbc):
+            analyzer = SpacegroupAnalyzer(structure=pymatgen_structure)
+            symbol = analyzer.get_space_group_symbol()
+            number = analyzer.get_space_group_number()
+            return {
+                "space_group": f"{symbol} ({number})",
+                "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
+                "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
+            }
+        else:
+            from pymatgen.symmetry.analyzer import PointGroupAnalyzer
+
+            analyzer = PointGroupAnalyzer(mol=pymatgen_structure)
+            return {"point_group": analyzer.get_pointgroup()}
 
     @staticmethod
     def _get_final_calcjob(node: orm.WorkChainNode) -> orm.CalcJobNode | None:
