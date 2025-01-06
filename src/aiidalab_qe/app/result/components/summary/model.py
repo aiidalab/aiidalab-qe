@@ -285,12 +285,11 @@ class WorkChainSummaryModel(ResultsComponentModel):
 
         return report
 
-    def _get_symmetry_group_info(self, structure):
+    def _get_symmetry_group_info(self, structure: orm.StructureData) -> dict:
         from pymatgen.symmetry.analyzer import PointGroupAnalyzer, SpacegroupAnalyzer
 
-        pymatgen_structure = structure.get_pymatgen()
         if any(structure.pbc):
-            analyzer = SpacegroupAnalyzer(structure=pymatgen_structure)
+            analyzer = SpacegroupAnalyzer(structure=structure.get_pymatgen_structure())
             symbol = analyzer.get_space_group_symbol()
             number = analyzer.get_space_group_number()
             return {
@@ -301,7 +300,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
         else:
             from pymatgen.symmetry.analyzer import PointGroupAnalyzer
 
-            analyzer = PointGroupAnalyzer(mol=pymatgen_structure)
+            analyzer = PointGroupAnalyzer(mol=structure.get_pymatgen_molecule())
             return {"point_group": analyzer.get_pointgroup()}
 
     @staticmethod
