@@ -9,7 +9,7 @@ from aiidalab_widgets_base import ProcessNodesTreeWidget
 from aiidalab_widgets_base.viewers import viewer as node_viewer
 
 from .model import WorkChainStatusModel
-from .process_tree import SimplifiedProcessTree, SimplifiedProcessTreeModel
+from .tree import SimplifiedProcessTree, SimplifiedProcessTreeModel
 
 
 class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):

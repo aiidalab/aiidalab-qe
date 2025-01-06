@@ -3,12 +3,17 @@ from __future__ import annotations
 import typing as t
 
 import ipywidgets as ipw
+import traitlets as tl
 
 from aiida import orm
 from aiida.engine import ProcessState
+from aiidalab_qe.common.mixins import HasProcess
+from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import LoadingWidget
 
-from .model import SimplifiedProcessTreeModel
+
+class SimplifiedProcessTreeModel(Model, HasProcess):
+    clicked = tl.Unicode(None, allow_none=True)
 
 
 class SimplifiedProcessTree(ipw.VBox):
