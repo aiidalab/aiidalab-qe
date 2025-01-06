@@ -187,8 +187,11 @@ class WorkChainSummaryModel(ResultsComponentModel):
             }
         }
 
-        symmetry_group_info = self._get_symmetry_group_info(structure)
-        report["initial_structure_properties"] |= symmetry_group_info
+        report["initial_structure_properties"] |= {
+            **self._get_symmetry_group_info(structure),
+            "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
+            "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
+        }
 
         report |= {
             "basic_settings": {
@@ -302,11 +305,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
         analyzer = SpacegroupAnalyzer(structure=clone.get_pymatgen_structure())
         symbol = analyzer.get_space_group_symbol()
         number = analyzer.get_space_group_number()
-        return {
-            "space_group": f"{symbol} ({number})",
-            "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
-            "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
-        }
+        return {"space_group": f"{symbol} ({number})"}
 
     @staticmethod
     def _get_pymatgen_molecule(structure: orm.StructureData) -> dict:
