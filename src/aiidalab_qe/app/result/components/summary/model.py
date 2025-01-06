@@ -283,26 +283,37 @@ class WorkChainSummaryModel(ResultsComponentModel):
         return report
 
     def _get_symmetry_group_info(self, structure: orm.StructureData) -> dict:
-        from pymatgen.symmetry.analyzer import PointGroupAnalyzer, SpacegroupAnalyzer
-
-        # HACK once AiiDAlab is updated to use AiiDA 2.6 throughout, we can use the
-        # `get_pymatgen` method directly on the `StructureData` object to obtain the
-        # correct pymatgen object (`Molecule` for 0D systems, `Structure` otherwise).
-
+        # HACK the use of the clone for non-molecular systems is due to a rigid
+        # condition in AiiDA < 2.6 that only considers 3D systems as pymatgen
+        # `Structure` objects (`Molecule` otherwise). Once AiiDAlab is updated with
+        # AiiDA 2.6 throughout, we can fall back to using `StructureData.get_pymatgen`
+        # (which this method mimics) to obtain the correct pymatgen object
+        # (`Molecule` for 0D systems | `Structure` otherwise)
         if any(structure.pbc):
-            analyzer = SpacegroupAnalyzer(structure=structure.get_pymatgen_structure())
-            symbol = analyzer.get_space_group_symbol()
-            number = analyzer.get_space_group_number()
-            return {
-                "space_group": f"{symbol} ({number})",
-                "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
-                "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
-            }
-        else:
-            from pymatgen.symmetry.analyzer import PointGroupAnalyzer
+            return self._get_pymatgen_structure(structure)
+        return self._get_pymatgen_molecule(structure)
 
-            analyzer = PointGroupAnalyzer(mol=structure.get_pymatgen_molecule())
-            return {"point_group": analyzer.get_pointgroup()}
+    @staticmethod
+    def _get_pymatgen_structure(structure: orm.StructureData) -> dict:
+        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+        clone = structure.clone()
+        clone.pbc = (True, True, True)
+        analyzer = SpacegroupAnalyzer(structure=clone.get_pymatgen_structure())
+        symbol = analyzer.get_space_group_symbol()
+        number = analyzer.get_space_group_number()
+        return {
+            "space_group": f"{symbol} ({number})",
+            "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
+            "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
+        }
+
+    @staticmethod
+    def _get_pymatgen_molecule(structure: orm.StructureData) -> dict:
+        from pymatgen.symmetry.analyzer import PointGroupAnalyzer
+
+        analyzer = PointGroupAnalyzer(mol=structure.get_pymatgen_molecule())
+        return {"point_group": analyzer.get_pointgroup()}
 
     @staticmethod
     def _get_final_calcjob(node: orm.WorkChainNode) -> orm.CalcJobNode | None:
