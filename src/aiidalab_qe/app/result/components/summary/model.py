@@ -148,10 +148,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
 
         Return a dictionary of the parameters.
         """
-        import spglib
-
         from aiida.orm.utils.serialize import deserialize_unsafe
-        from aiidalab_widgets_base.utils import ase2spglib
 
         qeapp_wc = self.fetch_process_node()
 
@@ -287,6 +284,10 @@ class WorkChainSummaryModel(ResultsComponentModel):
 
     def _get_symmetry_group_info(self, structure: orm.StructureData) -> dict:
         from pymatgen.symmetry.analyzer import PointGroupAnalyzer, SpacegroupAnalyzer
+
+        # HACK once AiiDAlab is updated to use AiiDA 2.6 throughout, we can use the
+        # `get_pymatgen` method directly on the `StructureData` object to obtain the
+        # correct pymatgen object (`Molecule` for 0D systems, `Structure` otherwise).
 
         if any(structure.pbc):
             analyzer = SpacegroupAnalyzer(structure=structure.get_pymatgen_structure())
