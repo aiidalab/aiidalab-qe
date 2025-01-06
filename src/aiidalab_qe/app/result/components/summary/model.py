@@ -161,7 +161,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
             return {}
 
         inputs = qeapp_wc.inputs
-        initial_structure = inputs.structure
+        structure: orm.StructureData = inputs.structure
         basic = ui_parameters["workchain"]
         advanced = ui_parameters["advanced"]
         ctime = qeapp_wc.ctime
@@ -176,21 +176,24 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "creation_time": f"{format_time(ctime)} ({relative_time(ctime)})",
                 "modification_time": f"{format_time(mtime)} ({relative_time(mtime)})",
             },
+        }
+
+        report |= {
             "initial_structure_properties": {
-                "structure_pk": initial_structure.pk,
-                "structure_uuid": initial_structure.uuid,
-                "formula": initial_structure.get_formula(),
-                "num_atoms": len(initial_structure.sites),
-                "space_group": "{} ({})".format(
-                    *initial_structure.get_pymatgen().get_space_group_info()
-                ),
-                "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(
-                    *initial_structure.cell_lengths
-                ),
-                "cell_angles": "{:.0f} {:.0f} {:.0f}".format(
-                    *initial_structure.cell_angles
-                ),
-            },
+                "structure_pk": structure.pk,
+                "structure_uuid": structure.uuid,
+                "formula": structure.get_formula(),
+                "num_atoms": len(structure.sites),
+            }
+        }
+
+        report["initial_structure_properties"] |= {
+            **self._get_symmetry_group_info(structure),
+            "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
+            "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
+        }
+
+        report |= {
             "basic_settings": {
                 "relaxed": "off"
                 if basic["relax_type"] == "none"
@@ -198,7 +201,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "protocol": basic["protocol"],
                 "spin_type": "off" if basic["spin_type"] == "none" else "on",
                 "electronic_type": basic["electronic_type"],
-                "periodicity": PERIODICITY_MAPPING.get(initial_structure.pbc, "xyz"),
+                "periodicity": PERIODICITY_MAPPING.get(structure.pbc, "xyz"),
             },
             "advanced_settings": {},
         }
@@ -281,6 +284,35 @@ class WorkChainSummaryModel(ResultsComponentModel):
         report["advanced_settings"]["spin_orbit"] = "on" if spin_orbit else "off"
 
         return report
+
+    def _get_symmetry_group_info(self, structure: orm.StructureData) -> dict:
+        # HACK the use of the clone for non-molecular systems is due to a rigid
+        # condition in AiiDA < 2.6 that only considers 3D systems as pymatgen
+        # `Structure` objects (`Molecule` otherwise). Once AiiDAlab is updated with
+        # AiiDA 2.6 throughout, we can fall back to using `StructureData.get_pymatgen`
+        # (which this method mimics) to obtain the correct pymatgen object
+        # (`Molecule` for 0D systems | `Structure` otherwise)
+        if any(structure.pbc):
+            return self._get_pymatgen_structure(structure)
+        return self._get_pymatgen_molecule(structure)
+
+    @staticmethod
+    def _get_pymatgen_structure(structure: orm.StructureData) -> dict:
+        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+        clone = structure.clone()
+        clone.pbc = (True, True, True)
+        analyzer = SpacegroupAnalyzer(structure=clone.get_pymatgen_structure())
+        symbol = analyzer.get_space_group_symbol()
+        number = analyzer.get_space_group_number()
+        return {"space_group": f"{symbol} ({number})"}
+
+    @staticmethod
+    def _get_pymatgen_molecule(structure: orm.StructureData) -> dict:
+        from pymatgen.symmetry.analyzer import PointGroupAnalyzer
+
+        analyzer = PointGroupAnalyzer(mol=structure.get_pymatgen_molecule())
+        return {"point_group": analyzer.get_pointgroup()}
 
     @staticmethod
     def _get_final_calcjob(node: orm.WorkChainNode) -> orm.CalcJobNode | None:

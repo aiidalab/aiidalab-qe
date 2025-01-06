@@ -1,3 +1,4 @@
+import pytest
 from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.main import App
@@ -76,6 +77,35 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
     report_parameters = model._generate_report_parameters()
     moments = report_parameters["advanced_settings"]["initial_magnetic_moments"]
     assert moments["Si"] == 0.1
+
+
+@pytest.mark.parametrize(
+    ("pbc", "symmetry_key"),
+    [
+        [(False, False, False), "point_group"],  # 0D
+        [(True, False, False), "space_group"],  # 1D
+        [(True, True, False), "space_group"],  # 2D
+        [(True, True, True), "space_group"],  # 3D
+    ],
+)
+def test_summary_report_symmetry_group(
+    generate_qeapp_workchain,
+    generate_structure_data,
+    pbc,
+    symmetry_key,
+):
+    """Test summary report includes correct symmetry group for all system dimension."""
+
+    system = generate_structure_data("silicon", pbc=pbc)
+    workchain = generate_qeapp_workchain(
+        structure=system,
+        run_bands=False,
+        relax_type="none",
+    )
+    model = WorkChainSummaryModel()
+    model.process_uuid = workchain.node.uuid
+    report_parameters = model._generate_report_parameters()
+    assert symmetry_key in report_parameters["initial_structure_properties"]
 
 
 def test_summary_view(generate_qeapp_workchain):

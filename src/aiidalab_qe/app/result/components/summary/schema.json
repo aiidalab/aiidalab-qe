@@ -54,6 +54,11 @@
     "type": "text",
     "description": "The space group of the structure"
   },
+  "point_group": {
+    "title": "Point group",
+    "type": "text",
+    "description": "The point group of the molecule"
+  },
   "cell_lengths": {
     "title": "Cell lengths in Å",
     "type": "text",
