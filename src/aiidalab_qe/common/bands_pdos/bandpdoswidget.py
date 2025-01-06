@@ -128,7 +128,7 @@ class BandsPdosWidget(ipw.VBox):
         self.download_image.on_click(self._model.download_image)
         self.image_format = ipw.Dropdown(
             description="Format:",
-            disabled=False,
+            layout=ipw.Layout(width="auto"),
         )
         ipw.dlink((self._model, "image_format_options"), (self.image_format, "options"))
         ipw.link((self._model, "image_format"), (self.image_format, "value"))
