@@ -6,7 +6,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiida.engine import ProcessState
+from aiida.engine import BaseRestartWorkChain, ProcessState
 from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import LoadingWidget
@@ -266,13 +266,7 @@ class WorkChainTreeNode(TreeNode):
                 self.pks.add(child.pk)
 
     def _get_tally(self, node):
-        inputs = node.get_metadata_inputs()
-        processes = [key for key in inputs.keys() if key != "metadata"]
-        total = len(processes)
-        if node.process_label == "PwBaseWorkChain" and "kpoints" not in node.inputs:
-            total += 1  # k-point grid generation
-        if node.process_label == "PwBandsWorkChain":
-            total += 1  # high-symmetry k-point generation
+        total = self._get_total(node)
         finished = len(
             [
                 child.process_state
@@ -280,7 +274,23 @@ class WorkChainTreeNode(TreeNode):
                 if child.process_state is ProcessState.FINISHED
             ]
         )
-        return f"{finished}/{total} job{'s' if total > 1 else ''}"
+        tally = f"{finished}/{total}"
+        tally += "*" if isinstance(node, BaseRestartWorkChain) else ""
+        tally += " job" if total == 1 else " jobs"
+        return tally
+
+    def _get_total(self, node):
+        if isinstance(node, BaseRestartWorkChain):
+            total = len(node.called)
+        else:
+            inputs = node.get_metadata_inputs()
+            processes = [key for key in inputs.keys() if key != "metadata"]
+            total = len(processes)
+        if node.process_label == "PwBaseWorkChain" and "kpoints" not in node.inputs:
+            total += 1  # k-point grid generation
+        if node.process_label == "PwBandsWorkChain":
+            total += 1  # high-symmetry k-point generation
+        return total
 
     def _toggle_branches(self, _):
         if self.collapsed:
