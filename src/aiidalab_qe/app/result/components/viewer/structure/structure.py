@@ -32,6 +32,8 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
                 self.atom_coordinates_table,
             ]
             self.atom_coordinates_table.observe(self._change_selection, "selected_rows")
+            # Listen for changes in self.widget.displayed_selection and update the table
+            self.widget.observe(self._update_table_selection, "displayed_selection")
 
         # HACK to resize the NGL viewer in cases where it auto-rendered when its
         # container was not displayed, which leads to a null width. This hack restores
@@ -66,3 +68,7 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
     def _change_selection(self, _):
         selected_indices = self.atom_coordinates_table.selected_rows
         self.widget.displayed_selection = selected_indices
+
+    def _update_table_selection(self, change):
+        selected_indices = change.new
+        self.atom_coordinates_table.selected_rows = selected_indices
