@@ -475,21 +475,6 @@ class AddingTagsEditor(ipw.VBox):
             button_style="warning",
             layout={"width": "initial"},
         )
-        self.periodicity = ipw.RadioButtons(
-            options=[
-                ("3D (bulk systems)", "xyz"),
-                ("2D (surfaces, slabs, ...)", "xy"),
-                ("1D (wires)", "x"),
-                ("0D (molecules)", "molecule"),
-            ],
-            value="xyz",
-            layout={"width": "initial"},
-        )
-        self.apply_periodicity = ipw.Button(
-            description="Apply",
-            button_style="primary",
-            layout={"width": "100px"},
-        )
         self.scroll_note = ipw.HTML(
             value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
             layout={"visibility": "hidden"},
@@ -502,13 +487,9 @@ class AddingTagsEditor(ipw.VBox):
         self.add_tags.on_click(self._display_table)
         self.reset_tags.on_click(self._display_table)
         self.reset_all_tags.on_click(self._display_table)
-        self.apply_periodicity.on_click(self._select_periodicity)
 
         super().__init__(
             children=[
-                ipw.HTML(
-                    "<b>Set custom tags for atoms</b>",
-                ),
                 ipw.HTML(
                     """
                     <p>
@@ -533,21 +514,6 @@ class AddingTagsEditor(ipw.VBox):
                 self.scroll_note,
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
-                ipw.HTML(
-                    '<div style="margin-top: 20px;"><b>Set structure periodicity</b></div>'
-                ),
-                ipw.HTML("""
-                    <p>Select the periodicity of your system.</p>
-                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
-
-                    <ul style="padding-left: 2em; list-style-type: disc;">
-                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
-                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
-
-                    </ul>
-                """),
-                self.periodicity,
-                self.apply_periodicity,
             ],
             **kwargs,
         )
@@ -653,6 +619,50 @@ class AddingTagsEditor(ipw.VBox):
         self.structure = deepcopy(new_structure)
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
+
+
+class PeriodicityEditor(ipw.VBox):
+    """Editor for changing periodicity of structures."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+
+    def __init__(self, title="", **kwargs):
+        self.title = title
+
+        self.periodicity = ipw.RadioButtons(
+            options=[
+                ("3D (bulk systems)", "xyz"),
+                ("2D (surfaces, slabs, ...)", "xy"),
+                ("1D (wires)", "x"),
+                ("0D (molecules)", "molecule"),
+            ],
+            value="xyz",
+            layout={"width": "initial"},
+        )
+        self.apply_periodicity = ipw.Button(
+            description="Apply",
+            button_style="primary",
+            layout={"width": "100px"},
+        )
+        self.apply_periodicity.on_click(self._select_periodicity)
+
+        super().__init__(
+            children=[
+                ipw.HTML("""
+                    <p>Select the periodicity of your system.</p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
+                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
+
+                    </ul>
+                """),
+                self.periodicity,
+                self.apply_periodicity,
+            ],
+            **kwargs,
+        )
 
     def _select_periodicity(self, _=None):
         """Select periodicity."""

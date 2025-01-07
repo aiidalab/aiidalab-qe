@@ -13,6 +13,7 @@ from aiidalab_qe.common import (
     AddingTagsEditor,
     LazyLoadedOptimade,
     LazyLoadedStructureBrowser,
+    PeriodicityEditor,
 )
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget, QeWizardStep
@@ -80,7 +81,8 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
         editors = [
             BasicCellEditor(title="Edit cell"),
             BasicStructureEditor(title="Edit structure"),
-            AddingTagsEditor(title="Edit StructureData"),
+            AddingTagsEditor(title="Edit atom tags"),
+            PeriodicityEditor(title="Edit periodicity"),
         ]
 
         plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
