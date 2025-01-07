@@ -490,9 +490,6 @@ class AddingTagsEditor(ipw.VBox):
         super().__init__(
             children=[
                 ipw.HTML(
-                    "<b>Set custom tags for atoms</b>",
-                ),
-                ipw.HTML(
                     """
                     <p>
                     These are used to distinguish atoms of the same chemical element. <br>
@@ -650,9 +647,6 @@ class PeriodicityEditor(ipw.VBox):
 
         super().__init__(
             children=[
-                ipw.HTML(
-                    '<div style="margin-top: 20px;"><b>Set structure periodicity</b></div>'
-                ),
                 ipw.HTML("""
                     <p>Select the periodicity of your system.</p>
                     <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>

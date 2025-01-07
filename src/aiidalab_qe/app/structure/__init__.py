@@ -81,8 +81,8 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
         editors = [
             BasicCellEditor(title="Edit cell"),
             BasicStructureEditor(title="Edit structure"),
-            AddingTagsEditor(title="Set atom tags"),
-            PeriodicityEditor(title="Set periodicity"),
+            AddingTagsEditor(title="Edit atom tags"),
+            PeriodicityEditor(title="Edit periodicity"),
         ]
 
         plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
