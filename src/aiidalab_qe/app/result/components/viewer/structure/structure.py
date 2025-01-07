@@ -28,6 +28,8 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             self.atom_coordinates_table = TableWidget()
             self._generate_table(structure.get_ase())
             self.atom_coordinates_table.observe(self._change_selection, "selected_rows")
+            # Listen for changes in self.widget.displayed_selection and update the table
+            self.widget.observe(self._update_table_selection, "displayed_selection")
 
             # Basic widgets
             children = [
