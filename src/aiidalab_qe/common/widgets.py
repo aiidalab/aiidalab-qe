@@ -1282,6 +1282,20 @@ class TableWidget(anywidget.AnyWidget):
 
       drawTable();
       model.on("change:data", drawTable);
+      model.on("change:selected_rows", (e) => {
+          const newSelection = model.get("selected_rows");
+          // Update row selection based on selected_rows
+          const rows = domElement.querySelectorAll('tr');
+          rows.forEach((row, index) => {
+              if (index > 0) {
+                  if (newSelection.includes(index - 1)) {
+                      row.classList.add('selected-row');
+                  } else {
+                      row.classList.remove('selected-row');
+                  }
+              }
+          });
+      });
       el.appendChild(domElement);
     }
     export default { render };

@@ -93,3 +93,7 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
     def _change_selection(self, _):
         selected_indices = self.atom_coordinates_table.selected_rows
         self.widget.displayed_selection = selected_indices
+
+    def _update_table_selection(self, change):
+        selected_indices = change.new
+        self.atom_coordinates_table.selected_rows = selected_indices
