@@ -27,7 +27,7 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             """)
             self.atom_coordinates_table = TableWidget()
             self._generate_table(structure.get_ase())
-            
+
             # Basic widgets
             children = [
                 self.widget,
