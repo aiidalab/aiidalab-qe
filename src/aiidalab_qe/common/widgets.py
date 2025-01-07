@@ -1297,7 +1297,7 @@ class TableWidget(anywidget.AnyWidget):
     }
     /* Selected row effect with light green background */
     .custom-table tr.selected-row {
-        background-color: #90EE90;
+        background-color: #DFF0D8;
     }
     """
     data = traitlets.List().tag(sync=True)
