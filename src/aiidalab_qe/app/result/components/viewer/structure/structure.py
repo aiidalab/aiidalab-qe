@@ -12,17 +12,18 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         if not hasattr(self, "widget"):
             structure = self._model.get_structure()
             self.widget = StructureDataViewer(structure=structure)
-            self.widget.configuration_box.selected_index = (
-                2  # Select the Cel tab by default
-            )
-            self.table_description = ipw.HTML(
-                value="""
-                <h4 style='margin: 10px 0;'>Structure table information: Atom coordinates in Ångströms</h4>
+            # Select the Cell tab by default
+            self.widget.configuration_box.selected_index = 2
+            self.table_description = ipw.HTML("""
+                <h4 style='margin: 10px 0;'>
+                    Structure table information: Atom coordinates in Å
+                </h4>
                 <p style='margin: 5px 0; color: #555;'>
-                    You can click on a row to select an atom. Multiple atoms can be selected by clicking on additional rows. To unselect an atom, click on the selected row again.
+                    You can click on a row to select an atom. Multiple atoms
+                    can be selected by clicking on additional rows. To unselect
+                    an atom, click on the selected row again.
                 </p>
-                """
-            )
+            """)
             self.atom_coordinates_table = TableWidget()
             self._generate_table(structure.get_ase())
             self.results_container.children = [
