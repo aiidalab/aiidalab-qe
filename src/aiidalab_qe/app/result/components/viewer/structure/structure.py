@@ -17,7 +17,7 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             )
             self.table_description = ipw.HTML(
                 value="""
-                <h4 style='margin: 10px 0;'>Structure Table Information: Atom Coordinates in Ångströms</h4>
+                <h4 style='margin: 10px 0;'>Structure table information: Atom coordinates in Ångströms</h4>
                 <p style='margin: 5px 0; color: #555;'>
                     You can click on a row to select an atom. Multiple atoms can be selected by clicking on additional rows. To unselect an atom, click on the selected row again.
                 </p>
