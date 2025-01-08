@@ -56,7 +56,6 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
     def _initialize_structure_info(self, structure):
         self.structure_info = ipw.HTML(
             f"""
-            <h3 style='margin-bottom: 8px;'>Structure properties</h3>
             <div style='line-height: 1.4;'>
                 <strong>PK:</strong> {structure.pk}<br>
                 <strong>Label:</strong> {structure.label}<br>
