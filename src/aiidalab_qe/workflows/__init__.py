@@ -175,6 +175,14 @@ class QeAppWorkChain(WorkChain):
             "base": parameters["advanced"],
             "base_final_scf": parameters["advanced"],
         }
+        # nsteps only for relaxation workflow
+        relax_overrides["base"]["pw"]["parameters"]["CONTROL"]["nstep"] = parameters[
+            "advanced"
+        ]["optimization_maxsteps"]
+        relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
+            parameters["advanced"]["optimization_maxsteps"]
+        )
+
         protocol = parameters["workchain"]["protocol"]
 
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
