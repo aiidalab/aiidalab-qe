@@ -203,6 +203,17 @@ class AdvancedConfigurationSettingsPanel(
             (self.electron_maxstep, "value"),
         )
 
+        self.optimization_maxsteps = ipw.BoundedIntText(
+            min=50,
+            max=1000,
+            step=1,
+            description="Max. optimization steps:",
+            style={"description_width": "initial"},
+        )
+        ipw.link(
+            (self._model, "optimization_maxsteps"),
+            (self.optimization_maxsteps, "value"),
+        )
         self.pseudos.render()
 
         self.children = [
@@ -229,7 +240,12 @@ class AdvancedConfigurationSettingsPanel(
                 ],
                 layout=ipw.Layout(justify_content="space-between"),
             ),
-            self.electron_maxstep,
+            ipw.HBox(
+                children=[
+                    self.electron_maxstep,
+                    self.optimization_maxsteps,
+                ],
+            ),
             self.smearing,
             ipw.HTML("""
                 <div>
