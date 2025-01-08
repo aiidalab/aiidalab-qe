@@ -1,6 +1,7 @@
 import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import ResultsPanel
+from aiidalab_qe.common.time import format_time, relative_time
 from aiidalab_qe.common.widgets import TableWidget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 
@@ -26,11 +27,22 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             """)
             self.atom_coordinates_table = TableWidget()
             self._generate_table(structure.get_ase())
-            self.results_container.children = [
+
+            # Basic widgets
+            children = [
                 self.widget,
                 self.table_description,
                 self.atom_coordinates_table,
             ]
+
+            # Add structure info if it is a relaxed structure
+            if "relax" in self._model.properties:
+                self._initialize_structure_info(structure)
+                children.insert(0, self.structure_info)
+
+            # Add the children to the container
+            self.results_container.children = tuple(children)
+
             self.atom_coordinates_table.observe(self._change_selection, "selected_rows")
             # Listen for changes in self.widget.displayed_selection and update the table
             self.widget.observe(self._update_table_selection, "displayed_selection")
@@ -41,6 +53,20 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         ngl = self.widget._viewer
         ngl._set_size("100%", "300px")
         ngl.control.zoom(0.0)
+
+    def _initialize_structure_info(self, structure):
+        self.structure_info = ipw.HTML(
+            f"""
+            <h3 style='margin-bottom: 8px;'>Structure properties</h3>
+            <div style='line-height: 1.4;'>
+                <strong>PK:</strong> {structure.pk}<br>
+                <strong>Label:</strong> {structure.label}<br>
+                <strong>Description:</strong> {structure.description}<br>
+                <strong>Number of atoms:</strong> {len(structure.sites)}<br>
+                <strong>Creation time:</strong> {format_time(structure.ctime)} ({relative_time(structure.ctime)})<br>
+            </div>
+            """
+        )
 
     def _generate_table(self, structure):
         data = [
