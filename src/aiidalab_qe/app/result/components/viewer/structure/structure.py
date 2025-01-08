@@ -28,20 +28,16 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             self.atom_coordinates_table = TableWidget()
             self._generate_table(structure.get_ase())
 
-            # Basic widgets
-            children = [
+            # Get information from the structure
+            structure_info = self._get_structure_info(structure)
+
+            # Add the children to the container
+            self.results_container.children = [
+                structure_info,
                 self.widget,
                 self.table_description,
                 self.atom_coordinates_table,
             ]
-
-            # Add structure info if it is a relaxed structure
-            if "relax" in self._model.properties:
-                self._initialize_structure_info(structure)
-                children.insert(0, self.structure_info)
-
-            # Add the children to the container
-            self.results_container.children = tuple(children)
 
             self.atom_coordinates_table.observe(self._change_selection, "selected_rows")
             # Listen for changes in self.widget.displayed_selection and update the table
@@ -54,8 +50,8 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         ngl._set_size("100%", "300px")
         ngl.control.zoom(0.0)
 
-    def _initialize_structure_info(self, structure):
-        self.structure_info = ipw.HTML(
+    def _get_structure_info(self, structure):
+        return ipw.HTML(
             f"""
             <div style='line-height: 1.4;'>
                 <strong>PK:</strong> {structure.pk}<br>
