@@ -38,6 +38,24 @@ class SimplifiedProcessTree(ipw.VBox):
     def render(self):
         if self.rendered:
             return
+        if self._model.has_process:
+            self._render()
+        else:
+            self.children = [ipw.HTML("Process node not yet available")]
+
+    def _on_process_change(self, _):
+        if not self.rendered:
+            self._render()
+        self._update()
+
+    def _on_monitor_counter_change(self, _):
+        self._update()
+
+    def _on_inspect(self, uuid):
+        self._model.clicked = None  # ensure event is triggered when label is reclicked
+        self._model.clicked = uuid
+
+    def _render(self):
         self.collapse_button = ipw.Button(
             description="Collapse all",
             button_style="warning",
@@ -58,16 +76,6 @@ class SimplifiedProcessTree(ipw.VBox):
             self.collapse_button,
             self.trunk,
         ]
-
-    def _on_process_change(self, _):
-        self._update()
-
-    def _on_monitor_counter_change(self, _):
-        self._update()
-
-    def _on_inspect(self, uuid):
-        self._model.clicked = None  # ensure event is triggered
-        self._model.clicked = uuid
 
     def _update(self):
         if self.rendered:
@@ -112,11 +120,13 @@ class TreeNode(ipw.VBox):
 
     def __init__(
         self,
-        node,
-        level=0,
+        node: orm.ProcessNode,
+        level: int = 0,
         on_inspect: t.Callable[[str], None] | None = None,
         **kwargs,
     ):
+        if not (node and isinstance(node, orm.ProcessNode)):
+            raise ValueError("Process node required")
         self.uuid = node.uuid
         self.on_inspect = on_inspect
         self._build_header(node, level)
@@ -126,15 +136,15 @@ class TreeNode(ipw.VBox):
         )
 
     @property
-    def process_node(self):
-        return orm.load_node(self.uuid)
+    def process_node(self) -> orm.ProcessNode:
+        return orm.load_node(self.uuid)  # type: ignore
 
-    def update(self, node=None):
+    def update(self, node: orm.ProcessNode = None):
         node = node or self.process_node
         self.state.value = self._get_state(node)
         self.emoji.value = self._get_emoji(self.state.value)
 
-    def _build_header(self, node, level):
+    def _build_header(self, node: orm.ProcessNode, level: int):
         self.level = level
         self.title = self._get_human_readable_title(node)
         self.indentation = self._get_indentation(level)
