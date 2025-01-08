@@ -28,10 +28,8 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             self.atom_coordinates_table = TableWidget()
             self._generate_table(structure.get_ase())
 
-            # Get information from the structure
             structure_info = self._get_structure_info(structure)
 
-            # Add the children to the container
             self.results_container.children = [
                 structure_info,
                 self.widget,
