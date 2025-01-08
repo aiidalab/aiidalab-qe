@@ -85,7 +85,7 @@ class SimplifiedProcessTree(ipw.VBox):
         self.trunk.collapse(recursive=True)
 
 
-class TreeNode(ipw.VBox):
+class ProcessTreeNode(ipw.VBox):
     _MAPPING = {
         "QeAppWorkChain": "Quantum ESPRESSO app workflow",
         "BandsWorkChain": "Electronic band structure workflow",
@@ -191,7 +191,24 @@ class TreeNode(ipw.VBox):
         return mapping.get(label, label)
 
 
-class WorkChainTreeNode(TreeNode):
+class ProcessTreeBranches(ipw.VBox):
+    def __len__(self):
+        return len(self.children)
+
+    def __getitem__(self, index: int) -> ProcessTreeNode:
+        return self.children[index]  # type: ignore
+
+    def __iter__(self) -> t.Iterator[ProcessTreeNode]:
+        return iter(self.children)  # type: ignore
+
+    def __iadd__(self, other: ProcessTreeNode):
+        if not isinstance(other, ProcessTreeNode):
+            raise TypeError("Right operand must be a TreeNode")
+        self.children += (other,)
+        return self
+
+
+class WorkChainTreeNode(ProcessTreeNode):
     def __init__(
         self,
         node,
@@ -201,7 +218,7 @@ class WorkChainTreeNode(TreeNode):
     ):
         super().__init__(node, level, on_inspect, **kwargs)
         self.pks = set()
-        self.branches = ipw.VBox()
+        self.branches = ProcessTreeBranches()
         self.branches.add_class("tree-node-branches")
         self.children += (self.branches,)
 
@@ -215,15 +232,14 @@ class WorkChainTreeNode(TreeNode):
         self.tally.value = self._get_tally(node)
         if not self.collapsed:
             self._add_branches(node)
-        branch: TreeNode
-        for branch in self.branches.children:
+        for branch in self.branches:
             branch.update()
 
     def expand(self, recursive=False):
         if self.collapsed:
             self.toggle.click()
         if recursive:
-            for branch in self.branches.children:
+            for branch in self.branches:
                 if isinstance(branch, WorkChainTreeNode):
                     branch.expand(recursive=True)
 
@@ -231,7 +247,7 @@ class WorkChainTreeNode(TreeNode):
         if not self.collapsed:
             self.toggle.click()
         if recursive:
-            for branch in self.branches.children:
+            for branch in self.branches:
                 if isinstance(branch, WorkChainTreeNode):
                     branch.collapse(recursive=True)
 
@@ -272,7 +288,7 @@ class WorkChainTreeNode(TreeNode):
                     on_inspect=self.on_inspect,
                 )
                 branch.update()
-                self.branches.children += (branch,)
+                self.branches += branch
                 self.pks.add(child.pk)
 
     def _get_tally(self, node):
@@ -312,7 +328,7 @@ class WorkChainTreeNode(TreeNode):
             self.toggle.icon = "plus"
 
 
-class CalculationTreeNode(TreeNode):
+class CalculationTreeNode(ProcessTreeNode):
     def _build_header(self, node, level):
         super()._build_header(node, level)
         self.label = ipw.Button(
