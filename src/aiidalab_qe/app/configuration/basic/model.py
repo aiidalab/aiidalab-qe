@@ -8,6 +8,9 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
+    title = "Basic settings"
+    identifier = "workchain"
+
     dependencies = [
         "input_structure",
     ]
@@ -15,11 +18,11 @@ class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
     input_structure = tl.Union([tl.Instance(orm.StructureData)], allow_none=True)
 
     protocol_options = tl.List(
-        trait=tl.Unicode(),
+        trait=tl.Tuple(tl.Unicode(), tl.Unicode()),
         default_value=[
-            "fast",
-            "moderate",
-            "precise",
+            ("Fast", "fast"),
+            ("Moderate", "moderate"),
+            ("Precise", "precise"),
         ],
     )
     protocol = tl.Unicode(DEFAULT["workchain"]["protocol"])

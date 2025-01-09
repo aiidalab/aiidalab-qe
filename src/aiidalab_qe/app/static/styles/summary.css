@@ -1,0 +1,135 @@
+.workflow-summary-container {
+  gap: 10px;
+}
+
+.workflow-summary-container.list {
+  width: 70%;
+  margin: 0 auto;
+}
+
+@media (max-width: 1199px) {
+  .workflow-summary-container.list {
+    width: 85%;
+  }
+}
+
+@media (max-width: 991px) {
+  .workflow-summary-container.list {
+    width: 100%;
+  }
+}
+
+.summary-panel {
+  border: 1px solid #9e9e9e;
+  padding: 0 20px 20px;
+  margin: 0;
+}
+
+.summary-panel:first-child {
+  width: 200%;
+}
+
+.workflow-summary .link {
+  text-decoration: none;
+}
+
+/* Table format */
+
+.summary-table table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  border: 1px solid #bbbbbb;
+  width: 100%;
+}
+
+.summary-table .section .entry {
+  text-align: left;
+  background-color: var(--color-init);
+}
+
+.summary-table .section .entry:nth-child(even) {
+  background-color: #fff;
+}
+
+.summary-table .section .entry .key,
+.summary-table .section .entry .value {
+  padding: 0 8px;
+}
+
+.summary-table .section .entry .key {
+  width: 250px;
+}
+
+@media (max-width: 1199px) {
+  .summary-table .section .entry .key {
+    width: 170px;
+  }
+}
+
+@media (max-width: 991px) {
+  .summary-table .section .entry .key {
+    width: 125px;
+  }
+}
+
+/* List format */
+
+.summary-list table {
+  width: 100%;
+  border: none;
+}
+
+.summary-list .section .entry {
+  background-color: #fff;
+  line-height: 1.5;
+}
+
+.summary-list .section .entry .key {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.summary-list .section .entry .key::after {
+  content: ":";
+}
+
+.summary-list .section .entry .key,
+.summary-list .section .entry .value {
+  padding: 0;
+  display: inline-block;
+  width: fit-content;
+}
+
+/* Error details */
+
+.error-container {
+  margin: 20px 0 0;
+}
+
+.error-container p {
+  line-height: 1.4;
+}
+
+.error-message {
+  margin-bottom: 10px;
+}
+
+.error-message pre {
+  display: inline;
+}
+
+.error {
+  border: 1px solid #aaa;
+  padding: 0.5em 0.5em 0;
+}
+
+.summary {
+  font-weight: bold;
+  margin: -0.5em -0.5em 0;
+  padding: 0.5em;
+}
+
+.code-holder code {
+  background: inherit;
+  white-space: pre;
+}

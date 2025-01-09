@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import json
 
@@ -6,9 +8,12 @@ import numpy as np
 import traitlets as tl
 from IPython.display import display
 
+from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.bands_pdos.utils import (
     HTML_TAGS,
+    extract_bands_output,
+    extract_pdos_output,
     get_bands_data,
     get_bands_projections_data,
     get_pdos_data,
@@ -60,6 +65,12 @@ class BandsPdosModel(Model):
     bands_data = {}
     bands_projections_data = {}
 
+    # Image format options
+    image_format_options = tl.List(
+        trait=tl.Unicode(), default_value=["png", "jpeg", "svg", "pdf"]
+    )
+    image_format = tl.Unicode("png")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -78,6 +89,49 @@ class BandsPdosModel(Model):
             (self, "needs_pdos_options"),
             lambda _: self._has_pdos or self.needs_projections_controls,
         )
+
+    @classmethod
+    def from_nodes(
+        cls,
+        bands: orm.WorkChainNode | None = None,
+        pdos: orm.WorkChainNode | None = None,
+        root: orm.WorkChainNode | None = None,
+    ):
+        """Create a `BandsPdosModel` instance from the provided nodes.
+
+        The method attempts to extract the output attribute dictionaries from the
+        nodes and creates from them an instance of the model.
+
+        Parameters
+        ----------
+        `bands` : `orm.WorkChainNode`, optional
+            The bands workchain node.
+        `pdos` : `orm.WorkChainNode`, optional
+            The PDOS workchain node.
+        `root`: `orm.WorkChainNode`, optional
+            The root QE app workchain node.
+
+        Returns
+        -------
+        `BandsPdosModel`
+            The model instance.
+
+        Raises
+        ------
+        `ValueError`
+            If neither of the nodes is provided or if the parsing of the nodes fails.
+        """
+        if bands or pdos:
+            bands_output = extract_bands_output(bands)
+            pdos_output = extract_pdos_output(pdos)
+        elif root:
+            bands_output = extract_bands_output(root)
+            pdos_output = extract_pdos_output(root)
+        else:
+            raise ValueError("At least one of the nodes must be provided")
+        if bands_output or pdos_output:
+            return cls(bands=bands_output, pdos=pdos_output)
+        raise ValueError("Failed to parse at least one node")
 
     def fetch_data(self):
         """Fetch the data from the nodes."""
@@ -235,6 +289,41 @@ class BandsPdosModel(Model):
 
         # Update the color picker to match the updated trace
         self.color_picker = rgba_to_hex(self.plot.data[self.trace].line.color)
+
+    def download_image(self, _=None):
+        """
+        Downloads the current plot as an image in the format specified by self.image_format.
+        """
+        # Define the filename
+        if self.bands and self.pdos:
+            filename = f"bands_pdos.{self.image_format}"
+        else:
+            filename = f"{'bands' if self.bands else 'pdos'}.{self.image_format}"
+
+        # Generate the image in the specified format
+        image_payload = self.plot.to_image(format=self.image_format)
+        image_payload_base64 = base64.b64encode(image_payload).decode("utf-8")
+
+        self._download_image(payload=image_payload_base64, filename=filename)
+
+    @staticmethod
+    def _download_image(payload, filename):
+        from IPython.display import Javascript
+
+        # Safely format the JavaScript code
+        javas = Javascript(
+            """
+            var link = document.createElement('a');
+            link.href = 'data:image/{format};base64,{payload}';
+            link.download = "{filename}";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            """.format(
+                payload=payload, filename=filename, format=filename.split(".")[-1]
+            )
+        )
+        display(javas)
 
     def download_data(self, _=None):
         """Function to download the data."""

@@ -385,7 +385,7 @@ def projwfc_bands_code(aiida_local_code_factory):
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.configuration.basic.workflow import (
+    from aiidalab_qe.app.configuration.basic import (
         BasicConfigurationSettingsModel,
         BasicConfigurationSettingsPanel,
     )
@@ -482,7 +482,6 @@ def submit_app_generator(
         # Advanced settings
         advanced_model = app.configure_model.get_model("advanced")
 
-        advanced_model.override = True
         advanced_model.total_charge = tot_charge
         advanced_model.van_der_waals = vdw_corr
         advanced_model.kpoints_distance = kpoints_distance
@@ -794,7 +793,6 @@ def generate_qeapp_workchain(
         workchain_model.electronic_type = electronic_type
 
         if spin_type == "collinear":
-            advanced_model.override = True
             magnetization_model = advanced_model.get_model("magnetization")
             if electronic_type == "insulator":
                 magnetization_model.total = tot_magnetization
@@ -822,29 +820,29 @@ def generate_qeapp_workchain(
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
 
-        # Setting up inputs for bands_projwfc
-        inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
-            inputs["bands"]["bands"]["scf"]["pw"]
-        )
-        inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
-            inputs["bands"]["bands"]["bands"]["pw"]
-        )
-        inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
-            "bands"
-        ]["bands"]["pw"]["code"]
-        inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
-            "bands"
-        ]["scf"]["pw"]["code"]
-
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = fixture_code(
-            "quantumespresso.projwfc"
-        )
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
-            {"PROJWFC": {"DeltaE": 0.01}}
-        ).store()
-
         if run_bands:
+            # Setting up inputs for bands_projwfc
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
+                inputs["bands"]["bands"]["scf"]["pw"]
+            )
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
+                inputs["bands"]["bands"]["bands"]["pw"]
+            )
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
+                "bands"
+            ]["bands"]["pw"]["code"]
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
+                "bands"
+            ]["scf"]["pw"]["code"]
+
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = (
+                fixture_code("quantumespresso.projwfc")
+            )
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
+                {"PROJWFC": {"DeltaE": 0.01}}
+            ).store()
             inputs["properties"].append("bands")
+
         if run_pdos:
             inputs["properties"].append("pdos")
 
@@ -854,6 +852,7 @@ def generate_qeapp_workchain(
         # mock output
         if relax_type != "none":
             workchain.out("structure", app.structure_model.input_structure)
+
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
@@ -865,6 +864,7 @@ def generate_qeapp_workchain(
                     namespace="pdos",
                 )
             )
+
         if run_bands:
             from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 

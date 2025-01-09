@@ -12,11 +12,14 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import PluginCodes, PwCodeModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import DependentStep
-from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsPanel
+from aiidalab_qe.common.panel import (
+    PluginResourceSettingsModel,
+    PluginResourceSettingsPanel,
+    ResourceSettingsPanel,
+)
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_widgets_base import WizardAppWidgetStep
+from aiidalab_qe.common.widgets import QeDependentWizardStep
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -24,24 +27,11 @@ from .model import SubmissionStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmitQeAppWorkChainStep(
-    ipw.VBox,
-    WizardAppWidgetStep,
-    DependentStep,
-):
+class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
     missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
 
-    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-
     def __init__(self, model: SubmissionStepModel, qe_auto_setup=True, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
-        super().__init__(
-            children=[LoadingWidget("Loading workflow submission step")],
-            **kwargs,
-        )
-
-        self._model = model
+        super().__init__(model=model, **kwargs)
         self._model.observe(
             self._on_submission,
             "confirmed",
@@ -49,10 +39,6 @@ class SubmitQeAppWorkChainStep(
         self._model.observe(
             self._on_input_parameters_change,
             "input_parameters",
-        )
-        self._model.observe(
-            self._on_process_change,
-            "process",
         )
         self._model.observe(
             self._on_submission_blockers_change,
@@ -77,8 +63,6 @@ class SubmitQeAppWorkChainStep(
             self._on_qe_installed,
             "qe_installed",
         )
-
-        self.rendered = False
 
         global_resources_model = GlobalResourceSettingsModel()
         self.global_resources = GlobalResourceSettingsPanel(
@@ -106,10 +90,7 @@ class SubmitQeAppWorkChainStep(
         self._install_sssp(qe_auto_setup)
         self._set_up_qe(qe_auto_setup)
 
-    def render(self):
-        if self.rendered:
-            return
-
+    def _render(self):
         self.process_label = ipw.Text(
             description="Label:",
             layout=ipw.Layout(width="auto", indent="0px"),
@@ -185,7 +166,7 @@ class SubmitQeAppWorkChainStep(
             self.submission_warning_messages,
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Labeling Your Job</h4>
+                    <h4>Labeling your job</h4>
                     <p style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
                         Label your job and provide a brief description. These details
                         help identify the job later and make the search process easier.
@@ -199,8 +180,7 @@ class SubmitQeAppWorkChainStep(
             self.submit_button,
         ]
 
-        self.rendered = True
-
+    def _post_render(self):
         self._update_tabs()
 
     def submit(self, _=None):
@@ -234,13 +214,6 @@ class SubmitQeAppWorkChainStep(
 
     def _on_plugin_submission_warning_messages_change(self, _):
         self._model.update_submission_warnings()
-
-    def _on_process_change(self, _):
-        with self.hold_trait_notifications():
-            # TODO why here? Do we not populate traits earlier that would cover this?
-            if self._model.process_node is not None:
-                self._model.input_structure = self._model.process_node.inputs.structure
-            self._update_state()
 
     def _on_submission_blockers_change(self, _):
         self._model.update_submission_blocker_message()
@@ -310,7 +283,7 @@ class SubmitQeAppWorkChainStep(
         for identifier, model in self._model.get_models():
             if model.include:
                 settings = self.settings[identifier]
-                titles.append(settings.title)
+                titles.append(model.title)
                 children.append(settings)
         if self.rendered:
             self.tabs.selected_index = None
@@ -343,7 +316,6 @@ class SubmitQeAppWorkChainStep(
                 if key not in resources:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
 
-            panel = resources["panel"]
             model: PluginResourceSettingsModel = resources["model"]()
             model.observe(
                 self._on_plugin_overrides_change,
@@ -359,10 +331,8 @@ class SubmitQeAppWorkChainStep(
             )
             self._model.add_model(identifier, model)
 
-            self.settings[identifier] = panel(
-                identifier=identifier,
-                model=model,
-            )
+            panel: PluginResourceSettingsPanel = resources["panel"](model=model)
+            self.settings[identifier] = panel
 
             codes[identifier] = dict(model.get_models())
 

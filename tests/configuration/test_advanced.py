@@ -8,17 +8,17 @@ def test_advanced_default():
     """Test default behavior of advanced setting."""
     model = AdvancedConfigurationSettingsModel()
     _ = AdvancedConfigurationSettingsPanel(model=model)
+
     smearing_model = model.get_model("smearing")
 
-    # Test override functionality in advanced settings
-    model.override = True
     model.protocol = "fast"
     smearing_model.type = "methfessel-paxton"
     smearing_model.degauss = 0.03
     model.kpoints_distance = 0.22
 
     # Reset values to default w.r.t protocol
-    model.override = False
+    model.reset()
+    smearing_model.reset()
 
     assert smearing_model.type == "cold"
     assert smearing_model.degauss == 0.01
@@ -29,18 +29,9 @@ def test_advanced_smearing_settings():
     """Test Smearing Settings."""
 
     model = AdvancedConfigurationSettingsModel()
-    advanced = AdvancedConfigurationSettingsPanel(model=model)
-    advanced.render()
+    _ = AdvancedConfigurationSettingsPanel(model=model)
+
     smearing_model = model.get_model("smearing")
-
-    # Test widget disable state on override
-    assert advanced.smearing.degauss.disabled is True
-    assert advanced.smearing.smearing.disabled is True
-
-    model.override = True
-
-    assert advanced.smearing.degauss.disabled is False
-    assert advanced.smearing.smearing.disabled is False
 
     assert smearing_model.type == "cold"
     assert smearing_model.degauss == 0.01
@@ -54,7 +45,8 @@ def test_advanced_smearing_settings():
     # Check reset
     smearing_model.type = "gaussian"
     smearing_model.degauss = 0.05
-    model.override = False
+
+    smearing_model.reset()
 
     assert smearing_model.type == "cold"
     assert smearing_model.degauss == 0.01
@@ -63,15 +55,9 @@ def test_advanced_smearing_settings():
 def test_advanced_kpoints_settings():
     """Test kpoints setting of advanced setting widget."""
     model = AdvancedConfigurationSettingsModel()
-    advanced = AdvancedConfigurationSettingsPanel(model=model)
-    advanced.render()
+    _ = AdvancedConfigurationSettingsPanel(model=model)
 
-    # Check the disable of is bind to override switch
-    assert advanced.kpoints_distance.disabled is True
-
-    model.override = True
-    assert advanced.kpoints_distance.disabled is False
-
+    model.protocol = "moderate"
     assert model.kpoints_distance == 0.15
 
     model.protocol = "fast"
@@ -88,20 +74,11 @@ def test_advanced_kpoints_settings():
 def test_advanced_molecule_settings(generate_structure_data):
     """Test kpoints setting of advanced setting widget."""
     model = AdvancedConfigurationSettingsModel()
-    advanced = AdvancedConfigurationSettingsPanel(model=model)
-    advanced.render()
-
-    model.override = True
-    assert advanced.kpoints_distance.disabled is False
+    _ = AdvancedConfigurationSettingsPanel(model=model)
 
     # Create molecule
     structure = generate_structure_data(name="H2O", pbc=(False, False, False))
     model.input_structure = structure
-
-    # Check override can not modify the kpoints_distance
-    assert advanced.kpoints_distance.disabled is True
-    model.override = True
-    assert advanced.kpoints_distance.disabled is True
 
     # Confirm the value of kpoints_distance is fixed
     assert model.kpoints_distance == 100.0
@@ -118,14 +95,7 @@ def test_advanced_molecule_settings(generate_structure_data):
 def test_advanced_tot_charge_settings():
     """Test TotCharge widget."""
     model = AdvancedConfigurationSettingsModel()
-    advanced = AdvancedConfigurationSettingsPanel(model=model)
-    advanced.render()
-
-    # Check the disable of is bind to override switch
-    assert advanced.total_charge.disabled is True
-
-    model.override = True
-    assert advanced.total_charge.disabled is False
+    _ = AdvancedConfigurationSettingsPanel(model=model)
 
     assert model.total_charge == 0.0
 
@@ -144,7 +114,6 @@ def test_advanced_kpoints_mesh(generate_structure_data):
     structure = generate_structure_data(name="silicon")
     model.input_structure = structure
 
-    model.override = True
     assert model.mesh_grid == "Mesh [14, 14, 14]"
 
     # change protocol

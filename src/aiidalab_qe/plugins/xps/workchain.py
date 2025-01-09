@@ -1,7 +1,10 @@
 from aiida.orm import Bool, Dict, Float, Group, QueryBuilder
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
-from aiidalab_qe.plugins.utils import set_component_resources
+from aiidalab_qe.utils import (
+    enable_pencil_decomposition,
+    set_component_resources,
+)
 
 XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
@@ -16,6 +19,7 @@ supercell_min_parameter_map = {
 def update_resources(builder, codes):
     """Update the resources for the builder."""
     set_component_resources(builder.ch_scf.pw, codes.get("pw"))
+    enable_pencil_decomposition(builder.ch_scf.pw)
 
 
 def get_builder(codes, structure, parameters, **kwargs):

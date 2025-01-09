@@ -11,10 +11,6 @@ from .utils import write_csv
 
 
 class XasResultsPanel(ResultsPanel[XasResultsModel]):
-    title = "XAS"
-    identifier = "xas"
-    workchain_labels = ["xas"]
-
     def _render(self):
         variable_broad_select = ipw.Checkbox(
             description="Use variable energy broadening.",
@@ -129,7 +125,7 @@ class XasResultsPanel(ResultsPanel[XasResultsModel]):
         )
         self.plot.layout.xaxis.title = "Relative Photon Energy (eV)"
 
-        self.children = [
+        self.results_container.children = [
             ipw.HBox(
                 [
                     ipw.VBox(

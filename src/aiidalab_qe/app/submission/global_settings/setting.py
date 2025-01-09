@@ -15,9 +15,6 @@ from .model import GlobalResourceSettingsModel
 
 
 class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsModel]):
-    title = "Global resources"
-    identifier = "global"
-
     def __init__(self, model: GlobalResourceSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 

@@ -11,6 +11,8 @@ class MagnetizationConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
+    identifier = "magnetization"
+
     dependencies = [
         "input_structure",
         "electronic_type",
@@ -19,13 +21,12 @@ class MagnetizationConfigurationSettingsModel(
 
     electronic_type = tl.Unicode()
     spin_type = tl.Unicode()
-    override = tl.Bool()
 
     type_options = tl.List(
         trait=tl.List(tl.Unicode()),
         default_value=[
-            ["Starting Magnetization", "starting_magnetization"],
-            ["Tot. Magnetization", "tot_magnetization"],
+            ["Starting magnetization", "starting_magnetization"],
+            ["Total magnetization", "tot_magnetization"],
         ],
     )
     type = tl.Unicode("starting_magnetization")

@@ -3,10 +3,10 @@ from __future__ import annotations
 from aiidalab_qe.common.panel import ResultsModel
 
 
-# TODO if combined, this model should extend `HasModels`, and effectively
-# TODO reduce to a container of Bands and PDOS, similar to its results panel
 class ElectronicStructureResultsModel(ResultsModel):
+    title = "Electronic Structure"
     identifier = "electronic_structure"
+
     identifiers = ("bands", "pdos")
 
     _bands_process_label = "BandsWorkChain"
@@ -15,31 +15,55 @@ class ElectronicStructureResultsModel(ResultsModel):
     _pdos_process_label = "PdosWorkChain"
     _pdos_process_uuid = None
 
-    def get_pdos_node(self):
-        return self._get_child_outputs("pdos")
+    _TITLE_MAPPING = {
+        "bands": "bands",
+        "pdos": "PDOS",
+    }
 
-    def get_bands_node(self):
-        outputs = self._get_child_outputs("bands")
-        if "bands" in outputs:
-            return outputs.bands
-        elif "bands_projwfc" in outputs:
-            return outputs.bands_projwfc
-        else:
-            # If neither 'bands' nor 'bands_projwfc' exist, use 'bands_output' itself
-            # This is the case for compatibility with older versions of the plugin
-            return outputs
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._completed_processes = set()
 
     @property
     def include(self):
-        return all(identifier in self.properties for identifier in self.identifiers)
+        return any(identifier in self.properties for identifier in self.identifiers)
 
     @property
     def has_results(self):
-        return self._has_bands and self._has_pdos
+        return self._has_bands or self._has_pdos
+
+    @property
+    def needs_property_selector(self):
+        return len(self.identifiers) > 1
+
+    def update(self):
+        super().update()
+        self.identifiers = list(
+            filter(
+                lambda identifier: identifier in self.properties,
+                self.identifiers,
+            ),
+        )
+        parts = [self._TITLE_MAPPING[identifier] for identifier in self.identifiers]
+        self.title = f"Electronic {' + '.join(parts)}"
 
     def update_process_status_notification(self):
-        statuses = [self._get_child_process_status(child) for child in self.identifiers]
-        self.process_status_notification = "\n".join(statuses)
+        self._status_notifications = []
+        for identifier in self.identifiers:
+            if identifier in self._completed_processes:
+                continue
+            status = self._get_child_process_status(identifier)
+            self._status_notifications.append(status)
+            if "success" in status:
+                self._completed_processes.add(identifier)
+        self.process_status_notification = "\n".join(self._status_notifications)
+
+    def has_partial_results(self, identifier):
+        if identifier == "bands":
+            return self._has_bands
+        elif identifier == "pdos":
+            return self._has_pdos
+        return False
 
     @property
     def _has_bands(self):

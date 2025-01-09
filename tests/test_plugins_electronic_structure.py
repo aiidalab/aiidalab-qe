@@ -9,11 +9,17 @@ def test_electronic_structure(generate_qeapp_workchain):
 
     workchain = generate_qeapp_workchain()
     model = ElectronicStructureResultsModel()
+    panel = ElectronicStructureResultsPanel(model=model)
     model.process_uuid = workchain.node.uuid
-    result = ElectronicStructureResultsPanel(model=model)
-    result.render()
 
-    widget = result.children[0]
+    assert model.title == "Electronic bands + PDOS"
+    assert model.identifiers == ["bands", "pdos"]
+
+    panel.render()
+
+    assert len(panel.results_container.children) == 2  # has controls
+
+    widget = panel.bands_pdos_container.children[0]  # type: ignore
     model = widget._model
 
     assert isinstance(widget, BandsPdosWidget)

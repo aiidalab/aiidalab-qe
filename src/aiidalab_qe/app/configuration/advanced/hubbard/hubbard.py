@@ -7,8 +7,6 @@ from .model import HubbardConfigurationSettingsModel
 class HubbardConfigurationSettingsPanel(
     AdvancedConfigurationSubSettingsPanel[HubbardConfigurationSettingsModel],
 ):
-    identifier = "hubbard"
-
     def __init__(self, model: HubbardConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
@@ -38,11 +36,6 @@ class HubbardConfigurationSettingsPanel(
             (self._model, "is_active"),
             (self.activate_hubbard_checkbox, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.activate_hubbard_checkbox, "disabled"),
-            lambda override: not override,
-        )
 
         self.eigenvalues_help = ipw.HTML(
             value="For transition metals and lanthanoids, the starting eigenvalues can be defined (Magnetic calculation).",
@@ -56,11 +49,6 @@ class HubbardConfigurationSettingsPanel(
         ipw.link(
             (self._model, "has_eigenvalues"),
             (self.define_eigenvalues_checkbox, "value"),
-        )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.define_eigenvalues_checkbox, "disabled"),
-            lambda override: not override,
         )
 
         self.eigenvalues_container = ipw.VBox(

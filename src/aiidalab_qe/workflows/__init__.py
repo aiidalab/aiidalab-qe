@@ -8,6 +8,7 @@ from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinTy
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
+from aiidalab_qe.utils import enable_pencil_decomposition
 
 XyData = DataFactory("core.array.xy")
 StructureData = DataFactory("core.structure")
@@ -174,6 +175,14 @@ class QeAppWorkChain(WorkChain):
             "base": parameters["advanced"],
             "base_final_scf": parameters["advanced"],
         }
+        # nsteps only for relaxation workflow
+        relax_overrides["base"]["pw"]["parameters"]["CONTROL"]["nstep"] = parameters[
+            "advanced"
+        ]["optimization_maxsteps"]
+        relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
+            parameters["advanced"]["optimization_maxsteps"]
+        )
+
         protocol = parameters["workchain"]["protocol"]
 
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
@@ -187,6 +196,7 @@ class QeAppWorkChain(WorkChain):
             overrides=relax_overrides,
             **kwargs,
         )
+        enable_pencil_decomposition(relax_builder.base.pw)
         # pop the inputs that are excluded from the expose_inputs
         relax_builder.pop("structure", None)
         relax_builder.pop("clean_workdir", None)

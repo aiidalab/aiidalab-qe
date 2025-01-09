@@ -10,6 +10,9 @@ from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 
 class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructure):
+    title = "PDOS"
+    identifier = "pdos"
+
     dependencies = [
         "input_structure",
         "workchain.protocol",

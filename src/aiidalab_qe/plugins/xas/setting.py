@@ -10,9 +10,6 @@ from .model import XasConfigurationSettingsModel
 class XasConfigurationSettingsPanel(
     ConfigurationSettingsPanel[XasConfigurationSettingsModel],
 ):
-    title = "XAS"
-    identifier = "xas"
-
     # TODO: The element selection should lock the "Confirm" button if no elements have been selected for XAS calculation.
 
     def __init__(self, model: XasConfigurationSettingsModel, **kwargs):
@@ -54,65 +51,71 @@ class XasConfigurationSettingsPanel(
             # calculation of molecular systems is not really supported (neither in
             # terms of XAS nor the main App itself) we should not present this option
             # that essentially does nothing.
+            # ipw.HTML("<h4>Structure</h4>"),
             # ipw.HTML("""
-            #     <div style="padding-top: 0px; padding-bottom: 0px">
-            #         <h4>Structure</h4>
-            #     </div>
-            # """),
-            # ipw.HTML("""
-            #     <div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+            #     <div style="line-height: 140%; margin-bottom: 10px">
             #         Below you can indicate if the material should be treated as a
             #         molecule or a crystal.
             #     </div>
             # """),
             # ipw.HBox(
-            #     children=[self.structure_type],
+            #     children=[
+            #         self.structure_type,
+            #     ]
             # ),
+            ipw.HTML("<h4>Element and core-hole treatment settings</h4>"),
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Element and Core-Hole Treatment Setting.</h4>
-                </div>
-            """),
-            ipw.HTML("""
-                <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+                <div style="line-height: 140%; margin-bottom: 10px;">
                     To select elements for calculation of K-edge spectra:
-                    <br>
-                    (1) Tick the checkbox for each element symbol to select the element
-                    for calculation.<br>
-                    (2) Select the core-hole treatment scheme from the dropdown box.
-                    <br>
-                    <br>
+                    <ol>
+                        <li>
+                            Tick the checkbox for each element symbol to select the
+                            element for calculation
+                        </li>
+                        <li>
+                            Select the core-hole treatment scheme from the dropdown box
+                        </li>
+                    </ol>
                     There are three supported options for core-hole treatment:
-                    <br>
-                    - FCH: Remove one electron from the system (any occupations scheme).
-                    <br>
-                    - XCH (Smearing): places the excited electron into the conduction
-                    band (smeared occupations).
-                    <br>
-                    - XCH (Fixed): places the excited electron into the conduction band
-                    (fixed occupations).
-                    <br>
-                    <br>
-                    For XAS calculations of most elements, the FCH treatment is
-                    recommended, however in some cases the XCH treatment should be used instead.
-                    <br>
-                    The recommended setting will be shown for each available element.
-                    Note that only elements for which core-hole pseudopotential sets
-                    are available will be shown.
-                    <br>
+                    <ul>
+                        <li>
+                            FCH: Remove one electron from the system (any occupations
+                            scheme)
+                        </li>
+                        <li>
+                            XCH (Smearing): places the excited electron into the
+                            conduction band (smeared occupations)
+                        </li>
+                        <li>
+                            XCH (Fixed): places the excited electron into the conduction
+                            band (fixed occupations).
+                        </li>
+                    </ul>
+                    <p style="margin-bottom: 10px;">
+                        For XAS calculations of most elements, the FCH treatment is
+                        recommended, however in some cases the XCH treatment should be
+                        used instead.
+                    </p>
+                    <p>
+                        The recommended setting will be shown for each available element.
+                        Note that only elements for which core-hole pseudopotential sets
+                        are available will be shown.
+                    </p>
                 </div>
             """),
             ipw.HBox(
-                children=[self.core_hole_treatments_widget],
+                children=[
+                    self.core_hole_treatments_widget,
+                ],
                 layout=ipw.Layout(width="95%"),
             ),
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
+                <div style="margin-top: 15px;">
                     <h4>Cell size</h4>
                 </div>
             """),
             ipw.HTML("""
-                <div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+                <div style="line-height: 140%; margin-bottom: 10px">
                     Define the minimum cell length in angstrom for the resulting
                     supercell, and thus all output structures. The default value of 8.0
                     angstrom will be used if no input is given. Setting this value to
@@ -120,7 +123,9 @@ class XasConfigurationSettingsPanel(
                 </div>
             """),
             ipw.HBox(
-                children=[self.supercell_min_parameter],
+                children=[
+                    self.supercell_min_parameter,
+                ],
             ),
         ]
 

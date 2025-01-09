@@ -5,12 +5,15 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
+import os
+import typing as t
 from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import time
 
+import anywidget
 import ase
 import ipywidgets as ipw
 import numpy as np
@@ -19,7 +22,12 @@ from IPython.display import HTML, Javascript, clear_output, display
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiidalab_widgets_base import ComputationalResourcesWidget, StructureExamplesWidget
+from aiidalab_qe.common.mvc import Model
+from aiidalab_widgets_base import (
+    ComputationalResourcesWidget,
+    StructureExamplesWidget,
+    WizardAppWidgetStep,
+)
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -467,21 +475,6 @@ class AddingTagsEditor(ipw.VBox):
             button_style="warning",
             layout={"width": "initial"},
         )
-        self.periodicity = ipw.RadioButtons(
-            options=[
-                ("3D (bulk systems)", "xyz"),
-                ("2D (surfaces, slabs, ...)", "xy"),
-                ("1D (wires)", "x"),
-                ("0D (molecules)", "molecule"),
-            ],
-            value="xyz",
-            layout={"width": "initial"},
-        )
-        self.select_periodicity = ipw.Button(
-            description="Select",
-            button_style="primary",
-            layout={"width": "100px"},
-        )
         self.scroll_note = ipw.HTML(
             value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
             layout={"visibility": "hidden"},
@@ -494,13 +487,9 @@ class AddingTagsEditor(ipw.VBox):
         self.add_tags.on_click(self._display_table)
         self.reset_tags.on_click(self._display_table)
         self.reset_all_tags.on_click(self._display_table)
-        self.select_periodicity.on_click(self._select_periodicity)
 
         super().__init__(
             children=[
-                ipw.HTML(
-                    "<b>Set custom tags for atoms</b>",
-                ),
                 ipw.HTML(
                     """
                     <p>
@@ -525,21 +514,6 @@ class AddingTagsEditor(ipw.VBox):
                 self.scroll_note,
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
-                ipw.HTML(
-                    '<div style="margin-top: 20px;"><b>Set structure periodicity</b></div>'
-                ),
-                ipw.HTML("""
-                    <p>Select the periodicity of your system.</p>
-                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
-
-                    <ul style="padding-left: 2em; list-style-type: disc;">
-                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
-                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
-
-                    </ul>
-                """),
-                self.periodicity,
-                self.select_periodicity,
             ],
             **kwargs,
         )
@@ -645,6 +619,50 @@ class AddingTagsEditor(ipw.VBox):
         self.structure = deepcopy(new_structure)
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
+
+
+class PeriodicityEditor(ipw.VBox):
+    """Editor for changing periodicity of structures."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+
+    def __init__(self, title="", **kwargs):
+        self.title = title
+
+        self.periodicity = ipw.RadioButtons(
+            options=[
+                ("3D (bulk systems)", "xyz"),
+                ("2D (surfaces, slabs, ...)", "xy"),
+                ("1D (wires)", "x"),
+                ("0D (molecules)", "molecule"),
+            ],
+            value="xyz",
+            layout={"width": "initial"},
+        )
+        self.apply_periodicity = ipw.Button(
+            description="Apply",
+            button_style="primary",
+            layout={"width": "100px"},
+        )
+        self.apply_periodicity.on_click(self._select_periodicity)
+
+        super().__init__(
+            children=[
+                ipw.HTML("""
+                    <p>Select the periodicity of your system.</p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
+                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
+
+                    </ul>
+                """),
+                self.periodicity,
+                self.apply_periodicity,
+            ],
+            **kwargs,
+        )
 
     def _select_periodicity(self, _=None):
         """Select periodicity."""
@@ -1041,7 +1059,9 @@ class LazyLoadedStructureImporter(ipw.VBox):
 
 
 class LazyLoadedOptimade(LazyLoadedStructureImporter):
-    warning_message = "OPTIMADE may take some time to load"
+    warning_message = (
+        "OPTIMADE may take some time to load depending on your internet connection"
+    )
 
     def _get_widget(self):
         from aiidalab_widgets_base.databases import OptimadeQueryWidget
@@ -1050,7 +1070,9 @@ class LazyLoadedOptimade(LazyLoadedStructureImporter):
 
 
 class LazyLoadedStructureBrowser(LazyLoadedStructureImporter):
-    warning_message = "The browser may take some time to load, depending on the size of your database."
+    warning_message = (
+        "The browser may take some time to load depending on the size of your database"
+    )
 
     def _get_widget(self):
         from aiida import orm
@@ -1091,3 +1113,218 @@ class CategorizedStructureExamplesWidget(StructureExamplesWidget):
         new_category = change["new"]
         new_examples = self.examples_by_category.get(new_category, [])
         self._select_structure.options = self.get_example_structures(new_examples)
+
+
+class LinkButton(ipw.HTML):
+    disabled = traitlets.Bool(False)
+
+    def __init__(
+        self,
+        description=None,
+        link="",
+        in_place=False,
+        classes="",
+        icon="",
+        disabled=False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        html = f"""
+            <a
+                role="button"
+                href="{link}"
+                target="{"_self" if in_place else "_blank"}"
+                class="{classes}"
+            >
+        """
+        if icon:
+            html += f"<i class='fa fa-{icon}'></i>"
+
+        html += f"{description}</a>"
+
+        self.value = html
+
+        self.add_class("jupyter-button")
+        self.add_class("link-button")
+
+        self.disabled = disabled
+
+    @traitlets.observe("disabled")
+    def _on_disabled(self, change):
+        if change["new"]:
+            self.add_class("disabled")
+        else:
+            self.remove_class("disabled")
+
+
+class QeWizardStepModel(Model):
+    identifier = "QE wizard"
+
+
+QWSM = t.TypeVar("QWSM", bound=QeWizardStepModel)
+
+
+class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[QWSM]):
+    def __init__(self, model: QWSM, **kwargs):
+        self.loading_message = LoadingWidget(f"Loading {model.identifier} step")
+        super().__init__(children=[self.loading_message], **kwargs)
+        self._model = model
+        self.rendered = False
+        self._background_class = ""
+
+    def render(self):
+        if self.rendered:
+            return
+        self._render()
+        self.rendered = True
+        self._post_render()
+
+    @traitlets.observe("state")
+    def _on_state_change(self, change):
+        self._update_background_color(change["new"])
+
+    def _render(self):
+        raise NotImplementedError()
+
+    def _post_render(self):
+        pass
+
+    def _update_background_color(self, state: WizardAppWidgetStep.State):
+        self.remove_class(self._background_class)
+        self._background_class = f"qe-app-step-{state.name.lower()}"
+        self.add_class(self._background_class)
+
+
+class QeDependentWizardStep(QeWizardStep[QWSM]):
+    missing_information_warning = "Missing information"
+
+    previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
+
+    def __init__(self, model: QWSM, **kwargs):
+        super().__init__(model, **kwargs)
+        self.previous_children = list(self.children)
+        self.warning_message = ipw.HTML(
+            f"""
+            <div class="alert alert-danger">
+                <b>Warning:</b> {self.missing_information_warning}
+            </div>
+        """
+        )
+
+    def render(self):
+        if "PYTEST_CURRENT_TEST" in os.environ:
+            super().render()
+            return
+        if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
+            self._hide_missing_information_warning()
+            if not self.rendered:
+                super().render()
+                self.previous_children = list(self.children)
+        else:
+            self._show_missing_information_warning()
+
+    def _show_missing_information_warning(self):
+        self.children = [self.warning_message]
+        self.rendered = False
+
+    def _hide_missing_information_warning(self):
+        self.children = self.previous_children
+
+
+class TableWidget(anywidget.AnyWidget):
+    _esm = """
+    function render({ model, el }) {
+        let domElement = document.createElement("div");
+        el.classList.add("custom-table");
+        let selectedIndices = [];
+
+        function drawTable() {
+            const data = model.get("data");
+            domElement.innerHTML = "";
+            let innerHTML = '<table><tr>' + data[0].map(header => `<th>${header}</th>`).join('') + '</tr>';
+
+            for (let i = 1; i < data.length; i++) {
+                innerHTML += '<tr>' + data[i].map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+            }
+
+            innerHTML += "</table>";
+            domElement.innerHTML = innerHTML;
+
+            const rows = domElement.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index > 0) {
+                    row.addEventListener('click', () => {
+                        const rowIndex = index - 1;
+                        if (selectedIndices.includes(rowIndex)) {
+                            selectedIndices = selectedIndices.filter(i => i !== rowIndex);
+                            row.classList.remove('selected-row');
+                        } else {
+                            selectedIndices.push(rowIndex);
+                            row.classList.add('selected-row');
+                        }
+                        model.set('selected_rows', [...selectedIndices]);
+                        model.save_changes();
+                    });
+
+                    row.addEventListener('mouseover', () => {
+                        if (!row.classList.contains('selected-row')) {
+                            row.classList.add('hover-row');
+                        }
+                    });
+
+                    row.addEventListener('mouseout', () => {
+                        row.classList.remove('hover-row');
+                    });
+                }
+            });
+        }
+
+        function updateSelection() {
+            const newSelection = model.get("selected_rows");
+            selectedIndices = [...newSelection]; // Synchronize the JavaScript state with the Python state
+            const rows = domElement.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index > 0) {
+                    if (selectedIndices.includes(index - 1)) {
+                        row.classList.add('selected-row');
+                    } else {
+                        row.classList.remove('selected-row');
+                    }
+                }
+            });
+        }
+
+        drawTable();
+        model.on("change:data", drawTable);
+        model.on("change:selected_rows", updateSelection);
+        el.appendChild(domElement);
+    }
+    export default { render };
+    """
+    _css = """
+    .custom-table table, .custom-table th, .custom-table td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        text-align: left;
+        padding: 4px;
+    }
+    .custom-table th, .custom-table td {
+        min-width: 50px;
+        word-wrap: break-word;
+    }
+    .custom-table table {
+        width: 70%;
+        font-size: 1.0em;
+    }
+    /* Hover effect with light gray background */
+    .custom-table tr.hover-row:not(.selected-row) {
+        background-color: #f0f0f0;
+    }
+    /* Selected row effect with light green background */
+    .custom-table tr.selected-row {
+        background-color: #DFF0D8;
+    }
+    """
+    data = traitlets.List().tag(sync=True)
+    selected_rows = traitlets.List().tag(sync=True)

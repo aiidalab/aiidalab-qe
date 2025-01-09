@@ -13,7 +13,9 @@ class AdvancedCalculationSubSettingsModel(Model):
 
     loaded_from_process = tl.Bool(False)
 
-    _defaults = {}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._defaults = {}
 
     def update(self, specific=""):
         """Updates the model.
@@ -46,10 +48,6 @@ class AdvancedConfigurationSubSettingsPanel(ipw.VBox, t.Generic[M]):
         )
 
         self._model = model
-        self._model.observe(
-            self._on_override_change,
-            "override",
-        )
 
         self.rendered = False
         self.updated = False
@@ -77,10 +75,6 @@ class AdvancedConfigurationSubSettingsPanel(ipw.VBox, t.Generic[M]):
             # Skip resetting to avoid having to inject a structure when testing
             return
         if hasattr(self._model, "input_structure") and not self._model.input_structure:
-            self._reset()
-
-    def _on_override_change(self, change):
-        if not change["new"]:
             self._reset()
 
     def _update(self, specific=""):

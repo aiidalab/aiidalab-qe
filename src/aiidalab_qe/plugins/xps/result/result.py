@@ -9,10 +9,6 @@ from .model import XpsResultsModel
 
 
 class XpsResultsPanel(ResultsPanel[XpsResultsModel]):
-    title = "XPS"
-    identifier = "xps"
-    workchain_labels = ["xps"]
-
     experimental_data = None  # Placeholder for experimental data
 
     def _on_file_upload(self, change):
@@ -152,7 +148,7 @@ class XpsResultsPanel(ResultsPanel[XpsResultsModel]):
         self.plot.layout.xaxis.title = "Chemical shift (eV)"
         self.plot.layout.xaxis.autorange = "reversed"
 
-        self.children = [
+        self.results_container.children = [
             spectra_type,
             ipw.HBox(
                 children=[

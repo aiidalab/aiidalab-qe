@@ -28,34 +28,39 @@ from aiidalab_qe.common.widgets import (
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class Panel(ipw.VBox):
-    """Base class for all the panels.
+class PanelModel(Model):
+    """Base class for all panel models.
 
-    The base class has a method to return the value of all the widgets in
-    the panel as a dictionary. The dictionary is used to construct the
-    input file for the calculation. The class also has a method to load a dictionary to set the value of the widgets in the panel.
-
-    title: the title to be shown in the GUI
-    identifier: which plugin this panel belong to.
-
+    Attributes
+    ----------
+    `title` : `str`
+        The title to be shown in the GUI.
+    `identifier` : `str`
+        Which plugin this panel belong to.
     """
 
-    title = "Panel"
+    title = ""
+    identifier = ""
 
-    # TODO remove `identifier` (and `parent`) from signature
-    # TODO add `model` parameter
-    # TODO add `identifier` property to route to model.identifier
-    def __init__(self, parent=None, identifier=None, **kwargs):
-        """Initialize the panel.
 
-        :param kwargs: keyword arguments to pass to the ipw.VBox constructor.
-        """
-        self.parent = parent
-        self.identifier = identifier or getattr(self, "identifier", "plugin")
-        super().__init__(
-            children=kwargs.pop("children", []),
-            **kwargs,
-        )
+PM = t.TypeVar("PM", bound=PanelModel)
+
+
+class Panel(ipw.VBox, t.Generic[PM]):
+    """Base class for all panels."""
+
+    rendered = False
+    loading_message = "Loading {identifier} panel"
+
+    def __init__(self, model: PM, **kwargs):
+        loading_message = self.loading_message.format(identifier=model.identifier)
+        loading_message = loading_message.replace("_", " ")
+        self.loading_message = LoadingWidget(loading_message)
+        super().__init__(children=[self.loading_message], **kwargs)
+        self._model = model
+
+    def render(self):
+        raise NotImplementedError()
 
 
 class PluginOutline(ipw.HBox):
@@ -82,15 +87,17 @@ class PluginOutline(ipw.HBox):
         )
 
 
-class SettingsModel(Model):
-    title = "Model"
-    identifier = ""
+class SettingsModel(PanelModel):
+    """Base model for settings models."""
+
     dependencies: list[str] = []
 
     include = tl.Bool(False)
     loaded_from_process = tl.Bool(False)
 
-    _defaults = {}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._defaults = {}
 
     def update(self):
         """Updates the model."""
@@ -112,26 +119,14 @@ class SettingsModel(Model):
 SM = t.TypeVar("SM", bound=SettingsModel)
 
 
-class SettingsPanel(Panel, t.Generic[SM]):
-    title = "Settings"
+class SettingsPanel(Panel[SM]):
+    """Base model for settings panels."""
+
+    updated = False
 
     def __init__(self, model: SM, **kwargs):
-        self.loading_message = LoadingWidget(f"Loading {model.identifier} settings")
-
-        super().__init__(
-            children=[self.loading_message],
-            **kwargs,
-        )
-
-        self._model = model
-
-        self.rendered = False
-        self.updated = False
-
+        super().__init__(model=model, **kwargs)
         self.links = []
-
-    def render(self):
-        raise NotImplementedError()
 
 
 class ConfigurationSettingsModel(SettingsModel, Confirmable):
@@ -151,7 +146,7 @@ class ConfigurationSettingsModel(SettingsModel, Confirmable):
 CSM = t.TypeVar("CSM", bound=ConfigurationSettingsModel)
 
 
-class ConfigurationSettingsPanel(SettingsPanel[CSM], t.Generic[CSM]):
+class ConfigurationSettingsPanel(SettingsPanel[CSM]):
     """Base class for configuration settings panels."""
 
     def refresh(self, specific=""):
@@ -205,8 +200,6 @@ class ConfigurationSettingsPanel(SettingsPanel[CSM], t.Generic[CSM]):
 class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
     """Base model for resource setting models."""
 
-    dependencies = []
-
     global_codes = tl.Dict(
         key_trait=tl.Unicode(),
         value_trait=tl.Dict(),
@@ -258,12 +251,11 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
 RSM = t.TypeVar("RSM", bound=ResourceSettingsModel)
 
 
-class ResourceSettingsPanel(SettingsPanel[RSM], t.Generic[RSM]):
+class ResourceSettingsPanel(SettingsPanel[RSM]):
     """Base class for resource setting panels."""
 
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs)
-
         self.code_widgets = {}
 
     def _on_code_resource_change(self, _):
@@ -402,7 +394,7 @@ class PluginResourceSettingsModel(ResourceSettingsModel):
 PRSM = t.TypeVar("PRSM", bound=PluginResourceSettingsModel)
 
 
-class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM], t.Generic[PRSM]):
+class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
     """Base class for plugin resource setting panels."""
 
     def __init__(self, model, **kwargs):
@@ -508,14 +500,14 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM], t.Generic[PRSM]):
             )
 
 
-class ResultsModel(Model, HasProcess):
-    title = "Model"
-    identifier = "model"
-
+class ResultsModel(PanelModel, HasProcess):
     process_status_notification = tl.Unicode("")
 
     _this_process_label = ""
     _this_process_uuid = None
+
+    auto_render = False
+    _completed_process = False
 
     CSS_MAP = {
         "finished": "success",
@@ -529,19 +521,45 @@ class ResultsModel(Model, HasProcess):
     }
 
     @property
+    def include(self):
+        return self.identifier in self.properties
+
+    @property
     def has_results(self):
-        node = self._fetch_child_process_node()
+        node = self.fetch_child_process_node()
         return node and node.is_finished_ok
 
-    def update_process_status_notification(self):
-        self.process_status_notification = self._get_child_process_status()
+    def update(self):
+        if self.has_results:
+            self.auto_render = True
 
-    def _get_child_process_status(self, child="this"):
-        state, exit_message = self._get_child_state_and_exit_message(child)
+    def update_process_status_notification(self):
+        if self._completed_process:
+            self.process_status_notification = ""
+            return
+        status = self._get_child_process_status()
+        self.process_status_notification = status
+        if "success" in status:
+            self._completed_process = True
+
+    def fetch_child_process_node(self, which="this") -> orm.ProcessNode | None:
+        if not self.process_uuid:
+            return
+        which = which.lower()
+        uuid = getattr(self, f"_{which}_process_uuid")
+        label = getattr(self, f"_{which}_process_label")
+        if not uuid:
+            root = self.fetch_process_node()
+            child = next((c for c in root.called if c.process_label == label), None)
+            uuid = child.uuid if child else None
+        return orm.load_node(uuid) if uuid else None  # type: ignore
+
+    def _get_child_process_status(self, which="this"):
+        state, exit_message = self._get_child_state_and_exit_message(which)
         status = state.upper()
         if exit_message:
             status = f"{status} ({exit_message})"
-        label = "Status" if child == "this" else f"{child.capitalize()} status"
+        label = "Status" if which == "this" else f"{which.capitalize()} status"
         alert_class = f"alert-{self.CSS_MAP.get(state, 'info')}"
         return f"""
             <div class="alert {alert_class}" style="padding: 5px 10px;">
@@ -549,9 +567,9 @@ class ResultsModel(Model, HasProcess):
             </div>
         """
 
-    def _get_child_state_and_exit_message(self, child="this"):
+    def _get_child_state_and_exit_message(self, which="this"):
         if not (
-            (node := self._fetch_child_process_node(child))
+            (node := self.fetch_child_process_node(which))
             and hasattr(node, "process_state")
             and node.process_state
         ):
@@ -560,42 +578,18 @@ class ResultsModel(Model, HasProcess):
             return "failed", node.exit_message
         return node.process_state.value, None
 
-    def _get_child_outputs(self, child="this"):
-        if not (node := self._fetch_child_process_node(child)):
+    def _get_child_outputs(self, which="this"):
+        if not (node := self.fetch_child_process_node(which)):
             outputs = super().outputs
-            child = child if child != "this" else self.identifier
+            child = which if which != "this" else self.identifier
             return getattr(outputs, child) if child in outputs else AttributeDict({})
         return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
-
-    def _fetch_child_process_node(self, child="this") -> orm.ProcessNode | None:
-        if not self.process_uuid:
-            return
-        child = child.lower()
-        uuid = getattr(self, f"_{child}_process_uuid")
-        label = getattr(self, f"_{child}_process_label")
-        if not uuid:
-            uuid = (
-                orm.QueryBuilder()
-                .append(
-                    orm.WorkChainNode,
-                    filters={"uuid": self.process_uuid},
-                    tag="root_process",
-                )
-                .append(
-                    orm.WorkChainNode,
-                    filters={"attributes.process_label": label},
-                    project="uuid",
-                    with_incoming="root_process",
-                )
-                .first(flat=True)
-            )
-        return orm.load_node(uuid) if uuid else None  # type: ignore
 
 
 RM = t.TypeVar("RM", bound=ResultsModel)
 
 
-class ResultsPanel(Panel, t.Generic[RM]):
+class ResultsPanel(Panel[RM]):
     """Base class for all the result panels.
 
     The base class has a method to load the result of the calculation.
@@ -603,19 +597,10 @@ class ResultsPanel(Panel, t.Generic[RM]):
     It has a update method to update the result in the panel.
     """
 
-    title = "Results"
-    identifier = "results"
-
-    # To specify which plugins (outputs) are needed
-    # for this result panel.
-    workchain_labels = []
+    loading_message = "Loading {identifier} results"
 
     def __init__(self, model: RM, **kwargs):
-        self.loading_message = LoadingWidget(f"Loading {self.title.lower()} results")
-
-        super().__init__(**kwargs)
-
-        self._model = model
+        super().__init__(model=model, **kwargs)
         self._model.observe(
             self._on_process_change,
             "process_uuid",
@@ -625,38 +610,39 @@ class ResultsPanel(Panel, t.Generic[RM]):
             "monitor_counter",
         )
 
-        self.rendered = False
-        self.has_controls = False
-
-        self.links = []
-
     def render(self):
         if self.rendered:
-            if self.identifier == "structure":
+            if self._model.identifier == "structure":
                 self._render()
             return
-        if self.has_controls or not self._model.has_process:
+
+        if not self._model.has_process:
             return
-        if not self._model.has_results:
-            self._render_controls()
-        else:
+
+        self.results_container = ipw.VBox()
+
+        if self._model.auto_render:
+            self.children = [self.results_container]
             self._load_results()
+        else:
+            self._render_controls()
+            self.children += (self.results_container,)
 
     def _on_process_change(self, _):
-        pass
+        self._model.update()
 
     def _on_monitor_counter_change(self, _):
         self._model.update_process_status_notification()
 
     def _on_load_results_click(self, _):
+        self.load_controls.children = []
         self._load_results()
 
     def _load_results(self):
-        self.children = [self.loading_message]
+        self.results_container.children = [self.loading_message]
         self._render()
         self.rendered = True
         self._post_render()
-        self.has_controls = False
 
     def _render_controls(self):
         self.process_status_notification = ipw.HTML()
@@ -678,21 +664,24 @@ class ResultsPanel(Panel, t.Generic[RM]):
         )
         self.load_results_button.on_click(self._on_load_results_click)
 
+        self.load_controls = ipw.HBox(
+            children=[]
+            if self._model.auto_render
+            else [
+                self.load_results_button,
+                ipw.HTML("""
+                    <div style="margin-left: 10px">
+                        <b>Note:</b> Load time may vary depending on the size of the
+                        calculation
+                    </div>
+                """),
+            ]
+        )
+
         self.children = [
             self.process_status_notification,
-            ipw.HBox(
-                children=[
-                    self.load_results_button,
-                    ipw.HTML("""
-                        <div style="margin-left: 10px">
-                            <b>Note:</b> Load time may vary depending on the size of the calculation
-                        </div>
-                    """),
-                ]
-            ),
+            self.load_controls,
         ]
-
-        self.has_controls = True
 
     def _render(self):
         raise NotImplementedError()

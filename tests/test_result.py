@@ -1,3 +1,4 @@
+import pytest
 from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.main import App
@@ -5,6 +6,10 @@ from aiidalab_qe.app.result.components.summary import WorkChainSummaryModel
 from aiidalab_qe.app.result.components.viewer import (
     WorkChainResultsViewer,
     WorkChainResultsViewerModel,
+)
+from aiidalab_qe.app.result.components.viewer.structure import StructureResultsModel
+from aiidalab_qe.app.result.components.viewer.structure.structure import (
+    StructureResultsPanel,
 )
 
 
@@ -36,8 +41,8 @@ def test_workchainview(generate_qeapp_workchain):
     viewer = WorkChainResultsViewer(model=model)
     model.process_uuid = workchain.node.uuid
     viewer.render()
-    assert len(viewer.tabs.children) == 4
-    assert viewer.tabs._titles["0"] == "Final Geometry"  # type: ignore
+    assert len(viewer.tabs.children) == 2
+    assert viewer.tabs._titles["0"] == "Relaxed structure"  # type: ignore
 
 
 def test_summary_report(data_regression, generate_qeapp_workchain):
@@ -46,6 +51,19 @@ def test_summary_report(data_regression, generate_qeapp_workchain):
     model = WorkChainSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
+    # Discard variable parameters
+    for key in (
+        "pk",
+        "uuid",
+        "creation_time",
+        "modification_time",
+    ):
+        report_parameters["workflow_properties"].pop(key)
+    for key in (
+        "structure_pk",
+        "structure_uuid",
+    ):
+        report_parameters["initial_structure_properties"].pop(key)
     data_regression.check(report_parameters)
 
 
@@ -57,7 +75,37 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
     model = WorkChainSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
-    assert report_parameters["initial_magnetic_moments"]["Si"] == 0.1
+    moments = report_parameters["advanced_settings"]["initial_magnetic_moments"]
+    assert moments["Si"] == 0.1
+
+
+@pytest.mark.parametrize(
+    ("pbc", "symmetry_key"),
+    [
+        [(False, False, False), "point_group"],  # 0D
+        [(True, False, False), "space_group"],  # 1D
+        [(True, True, False), "space_group"],  # 2D
+        [(True, True, True), "space_group"],  # 3D
+    ],
+)
+def test_summary_report_symmetry_group(
+    generate_qeapp_workchain,
+    generate_structure_data,
+    pbc,
+    symmetry_key,
+):
+    """Test summary report includes correct symmetry group for all system dimension."""
+
+    system = generate_structure_data("silicon", pbc=pbc)
+    workchain = generate_qeapp_workchain(
+        structure=system,
+        run_bands=False,
+        relax_type="none",
+    )
+    model = WorkChainSummaryModel()
+    model.process_uuid = workchain.node.uuid
+    report_parameters = model._generate_report_parameters()
+    assert symmetry_key in report_parameters["initial_structure_properties"]
 
 
 def test_summary_view(generate_qeapp_workchain):
@@ -67,12 +115,27 @@ def test_summary_view(generate_qeapp_workchain):
     model.process_uuid = workchain.node.uuid
     report_html = model.generate_report_html()
     parsed = BeautifulSoup(report_html, "html.parser")
-    # find the td with the text "Initial Magnetic Moments"
     parameters = {
         "Energy cutoff (wave functions)": "30.0 Ry",
-        "Total Charge": "0.0",
-        "Initial Magnetic Moments": "",
+        "Total charge": "0.0",
     }
     for key, value in parameters.items():
-        td = parsed.find("td", text=key).find_next_sibling("td")
-        assert td.text == value
+        key_td = parsed.find("td", string=lambda tag, key=key: tag and key in tag.text)
+        value_td = key_td.find_next_sibling("td")
+        assert value in value_td.text
+
+
+def test_structure_results_panel(generate_qeapp_workchain):
+    """Test the structure results panel can be properly generated."""
+    model = StructureResultsModel()
+    _ = StructureResultsPanel(model=model)
+
+    wc = generate_qeapp_workchain(relax_type="none")
+    model.process_uuid = wc.node.uuid
+    assert model.title == "Initial structure"
+    assert "properties" in model.source  # source should be inputs
+
+    wc = generate_qeapp_workchain(relax_type="positions_cell")
+    model.process_uuid = wc.node.uuid
+    assert model.title == "Relaxed structure"
+    assert "properties" not in model.source  # source should be outputs
