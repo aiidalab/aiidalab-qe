@@ -6,7 +6,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
-from aiida.engine import BaseRestartWorkChain, ProcessState
+from aiida.engine import ProcessState
 from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import LoadingWidget
@@ -69,6 +69,7 @@ class SimplifiedProcessTree(ipw.VBox):
         self.collapse_button.on_click(self._collapse_all)
         root = self._model.fetch_process_node()
         self.trunk = WorkChainTreeNode(node=root, on_inspect=self._on_inspect)
+        self.trunk.initialize()
         self.trunk.expand()
         self.rendered = True
         self._update()
@@ -85,76 +86,63 @@ class SimplifiedProcessTree(ipw.VBox):
         self.trunk.collapse(recursive=True)
 
 
-class ProcessTreeNode(ipw.VBox):
+ProcessNodeType = t.TypeVar("ProcessNodeType", bound=orm.ProcessNode)
+
+
+class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
     _MAPPING = {
         "QeAppWorkChain": "Quantum ESPRESSO app workflow",
-        "BandsWorkChain": "Electronic band structure workflow",
         "PwBandsWorkChain": "Electronic band structure workflow",
         "PwRelaxWorkChain": "Structural relaxation workflow",
-        "PhononWorkChain": "Phonons workflow",
         "PdosWorkChain": "Projected density of states workflow",
         "DosCalculation": "Compute density of states",
         "ProjwfcCalculation": "Compute projections",
-        "create_kpoints_from_distance": "Generate k-points",
-        "seekpath_structure_analysis": "Compute high-symmetry k-points",
     }
 
     _PW_MAPPING = {
-        "scf": {
-            "PwBaseWorkChain": "SCF workflow",
-            "PwCalculation": "Run SCF cycle",
-        },
-        "nscf": {
-            "PwBaseWorkChain": "NSCF workflow",
-            "PwCalculation": "Run NSCF cycle",
-        },
-        "bands": {
-            "PwBaseWorkChain": "Bands workflow",
-            "PwCalculation": "Compute bands",
-        },
-        "relax": {
-            "PwBaseWorkChain": "Relaxation workflow",
-            "PwCalculation": "Optimize structure geometry",
-        },
+        "scf": "Run SCF cycle",
+        "nscf": "Run NSCF cycle",
+        "bands": "Compute bands",
+        "relax": "Optimize structure geometry",
     }
 
     def __init__(
         self,
-        node: orm.ProcessNode,
+        node: ProcessNodeType,
         level: int = 0,
         on_inspect: t.Callable[[str], None] | None = None,
         **kwargs,
     ):
-        if not (node and isinstance(node, orm.ProcessNode)):
-            raise ValueError("Process node required")
+        # if not (node and isinstance(node, orm.ProcessNode)):
+        #     raise ValueError("Process node required")
         self.uuid = node.uuid
+        self.level = level
         self.on_inspect = on_inspect
-        self._build_header(node, level)
-        super().__init__(
-            children=[self.header],
-            **kwargs,
-        )
+        super().__init__(**kwargs)
 
     @property
-    def process_node(self) -> orm.ProcessNode:
+    def node(self) -> ProcessNodeType:
         return orm.load_node(self.uuid)  # type: ignore
 
-    def update(self, node: orm.ProcessNode = None):
-        node = node or self.process_node
-        self.state.value = self._get_state(node)
+    def initialize(self):
+        self._build_header()
+        self.update()
+        self.children = [self.header]
+
+    def update(self):
+        self.state.value = self._get_state()
         self.emoji.value = self._get_emoji(self.state.value)
 
-    def _build_header(self, node: orm.ProcessNode, level: int):
-        self.level = level
-        self.title = self._get_human_readable_title(node)
-        self.indentation = self._get_indentation(level)
+    def _build_header(self):
+        self.title = self._get_human_readable_title()
+        self.indentation = self._get_indentation()
         self.emoji = ipw.HTML()
         self.state = ipw.HTML()
         self.header = ipw.HBox()
         self.header.add_class("tree-node-header")
 
-    def _get_indentation(self, level=0):
-        return ipw.HTML(layout=ipw.Layout(width=f"{22 * level}px"))
+    def _get_indentation(self):
+        return ipw.HTML(layout=ipw.Layout(width=f"{22 * self.level}px"))
 
     def _get_emoji(self, state):
         return {
@@ -166,10 +154,10 @@ class ProcessTreeNode(ipw.VBox):
             "excepted": "❌",
         }.get(state, "❓")
 
-    def _get_state(self, node):
-        if not hasattr(node, "process_state"):
+    def _get_state(self):
+        if not hasattr(self.node, "process_state"):
             return "queued"
-        state = node.process_state
+        state = self.node.process_state
         return (
             "running"
             if state is ProcessState.WAITING
@@ -178,17 +166,15 @@ class ProcessTreeNode(ipw.VBox):
             else "created"
         )
 
-    def _get_human_readable_title(self, node):
-        if not hasattr(node, "process_label"):
+    def _get_human_readable_title(self):
+        node = self.node
+        if not (label := node.process_label):
             return "Unknown"
-        label = node.process_label
-        if label in ("PwBaseWorkChain", "PwCalculation"):
-            inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
-            calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
-            mapping = self._PW_MAPPING[calculation]
-        else:
-            mapping = self._MAPPING
-        return mapping.get(label, label)
+        if label not in ("PwBaseWorkChain", "PwCalculation"):
+            return self._MAPPING.get(label, label)
+        inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
+        calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
+        return self._PW_MAPPING[calculation]
 
 
 class ProcessTreeBranches(ipw.VBox):
@@ -208,7 +194,7 @@ class ProcessTreeBranches(ipw.VBox):
         return self
 
 
-class WorkChainTreeNode(ProcessTreeNode):
+class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
     def __init__(
         self,
         node,
@@ -220,18 +206,28 @@ class WorkChainTreeNode(ProcessTreeNode):
         self.pks = set()
         self.branches = ProcessTreeBranches()
         self.branches.add_class("tree-node-branches")
-        self.children += (self.branches,)
+
+    @property
+    def metadata_inputs(self):
+        return self.node.get_metadata_inputs()
+
+    @property
+    def has_sub_workflows(self):
+        return len(set(self.metadata_inputs.keys()) - {"metadata"}) > 1
 
     @property
     def collapsed(self):
         return self.toggle.icon == "plus"
 
-    def update(self, node=None):
-        node = node or self.process_node
-        super().update(node)
-        self.tally.value = self._get_tally(node)
+    def initialize(self):
+        super().initialize()
+        self.children += (self.branches,)
+
+    def update(self):
+        super().update()
+        self.tally.value = self._get_tally()
         if not self.collapsed:
-            self._add_branches(node)
+            self._add_branches()
         for branch in self.branches:
             branch.update()
 
@@ -251,8 +247,8 @@ class WorkChainTreeNode(ProcessTreeNode):
                 if isinstance(branch, WorkChainTreeNode):
                     branch.collapse(recursive=True)
 
-    def _build_header(self, node, level):
-        super()._build_header(node, level)
+    def _build_header(self):
+        super()._build_header()
         self.toggle = ipw.Button(icon="plus")
         self.toggle.add_class("tree-node-toggle")
         self.toggle.on_click(self._toggle_branches)
@@ -270,53 +266,86 @@ class WorkChainTreeNode(ProcessTreeNode):
         ]
 
     def _add_branches(self, node=None):
-        node = node or self.process_node
+        node = node or self.node
         for child in node.called:
-            if child.pk in self.pks:
+            if child.pk in self.pks or isinstance(child, orm.CalcFunctionNode):
                 continue
-            if child.process_label == "BandsWorkChain":
+            TreeNodeClass = (
+                WorkChainTreeNode
+                if isinstance(child, orm.WorkChainNode)
+                else CalcJobTreeNode
+            )
+            branch = TreeNodeClass(
+                child,
+                level=self.level + 1,
+                on_inspect=self.on_inspect,
+            )
+            if isinstance(branch, WorkChainTreeNode) and not branch.has_sub_workflows:
                 self._add_branches(child)
             else:
-                TreeNodeClass = (
-                    WorkChainTreeNode
-                    if isinstance(child, orm.WorkflowNode)
-                    else CalculationTreeNode
-                )
-                branch = TreeNodeClass(
-                    child,
-                    level=self.level + 1,
-                    on_inspect=self.on_inspect,
-                )
-                branch.update()
+                branch.initialize()
                 self.branches += branch
                 self.pks.add(child.pk)
 
-    def _get_tally(self, node):
-        total = self._get_total(node)
-        finished = len(
-            [
-                child.process_state
-                for child in node.called
-                if child.process_state is ProcessState.FINISHED
-            ]
-        )
+    def _get_tally(self):
+        inputs = self.metadata_inputs
+        total, dynamic = self._count_calculations(inputs)
+        finished = self._count_finished_calculations(self.node)
         tally = f"{finished}/{total}"
-        tally += "*" if isinstance(node, BaseRestartWorkChain) else ""
+        tally += "*" if dynamic and total != finished else ""
         tally += " job" if total == 1 else " jobs"
         return tally
 
-    def _get_total(self, node):
-        if isinstance(node, BaseRestartWorkChain):
-            total = len(node.called)
-        else:
-            inputs = node.get_metadata_inputs()
-            processes = [key for key in inputs.keys() if key != "metadata"]
-            total = len(processes)
-        if node.process_label == "PwBaseWorkChain" and "kpoints" not in node.inputs:
-            total += 1  # k-point grid generation
-        if node.process_label == "PwBandsWorkChain":
-            total += 1  # high-symmetry k-point generation
-        return total
+    def _count_finished_calculations(self, node):
+        count = 0
+        for child in node.called:
+            if isinstance(child, orm.WorkChainNode):
+                count += self._count_finished_calculations(child)
+            elif (
+                isinstance(child, orm.CalcJobNode)
+                and child.process_state is ProcessState.FINISHED
+            ):
+                count += 1
+        return count
+
+    def _count_calculations(
+        self,
+        inputs: dict[str, dict],
+        parent: str | None = None,
+    ) -> tuple[int, bool]:
+        """Count all calculations in the metadata inputs dictionary of a workflow.
+
+        Recursively count occurrences of the "metadata" key in the metadata inputs
+        dictionary. Also check if any "metadata" key has a "pw" parent and mark the
+        workflow as dynamic if found. The function ends branch exploration once
+        "metadata" is encountered.
+
+        Parameters
+        ----------
+        `inputs`: `dict[str, dict]`
+            The metadata inputs dictionary of a workflow.
+        `parent`: `str`, optional
+            The parent key of the current metadata inputs dictionary.
+
+        Returns
+        -------
+        `tuple[int, book]`
+            The number of calculations found and if the workflow is dynamic.
+        """
+        count = 0
+        dynamic = False
+
+        for key, sub_inputs in inputs.items():
+            if key == "metadata" and "options" in sub_inputs:  # a calculation
+                count += 1
+                dynamic = parent == "pw"
+                return count, dynamic
+            if isinstance(sub_inputs, dict):
+                sub_count, sub_dynamic = self._count_calculations(sub_inputs, key)
+                count += sub_count
+                dynamic = dynamic or sub_dynamic
+
+        return count, dynamic
 
     def _toggle_branches(self, _):
         if self.collapsed:
@@ -328,9 +357,9 @@ class WorkChainTreeNode(ProcessTreeNode):
             self.toggle.icon = "plus"
 
 
-class CalculationTreeNode(ProcessTreeNode):
-    def _build_header(self, node, level):
-        super()._build_header(node, level)
+class CalcJobTreeNode(ProcessTreeNode[orm.CalcJobNode]):
+    def _build_header(self):
+        super()._build_header()
         self.label = ipw.Button(
             description=self.title,
             tooltip="click to view calculation",

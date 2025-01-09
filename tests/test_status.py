@@ -9,7 +9,7 @@ from aiidalab_qe.app.result.components.status import (
     WorkChainStatusPanel,
 )
 from aiidalab_qe.app.result.components.status.tree import (
-    CalculationTreeNode,
+    CalcJobTreeNode,
     ProcessTreeNode,
     SimplifiedProcessTree,
     SimplifiedProcessTreeModel,
@@ -72,7 +72,7 @@ class TestSimplifiedProcessTree:
         return self.tree.trunk.branches[0]  # type: ignore
 
     @property
-    def calculation_node(self) -> CalculationTreeNode:
+    def calculation_node(self) -> CalcJobTreeNode:
         return self.workchain_node.branches[0]  # type: ignore
 
     @pytest.fixture(scope="class", autouse=True)
@@ -147,7 +147,7 @@ class TestSimplifiedProcessTree:
 
     def test_calculation_node(self):
         calculation_node = self.calculation_node
-        assert isinstance(calculation_node, CalculationTreeNode)
+        assert isinstance(calculation_node, CalcJobTreeNode)
         assert calculation_node.level == 2
         assert calculation_node.emoji.value == "✅"
         assert calculation_node.state.value == "finished"
@@ -182,7 +182,7 @@ class TestWorkChainStatusPanel:
         # from aiidalab_qe.common.node_view import CalcJobNodeViewerWidget
 
         self.tree.trunk.expand(recursive=True)
-        calculation_node: CalculationTreeNode = self.tree.trunk.branches[0].branches[0]
+        calculation_node: CalcJobTreeNode = self.tree.trunk.branches[0].branches[0]
         calculation_node.label.click()
         assert self.panel.accordion.selected_index == 1
         assert self.panel.process_tree.value == calculation_node.uuid
