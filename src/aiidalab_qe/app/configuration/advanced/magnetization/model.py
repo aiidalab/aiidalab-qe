@@ -3,8 +3,10 @@ from copy import deepcopy
 import traitlets as tl
 from aiida_pseudo.groups.family import PseudoPotentialFamily
 
-from aiida.common.exceptions import NotExistent
-from aiida_quantumespresso.workflows.protocols.utils import get_starting_magnetization
+from aiida_quantumespresso.workflows.protocols.utils import (
+    get_magnetization_parameters,
+    get_starting_magnetization,
+)
 from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.utils import fetch_pseudo_family_by_label
 
@@ -50,11 +52,18 @@ class MagnetizationConfigurationSettingsModel(
         </div>
     """
 
+    _DEFAULT_MOMENTS = get_magnetization_parameters()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._default_starting_magnetization = {}
+
     def update(self, specific=""):  # noqa: ARG002
         if self.spin_type == "none" or not self.has_structure:
             self._defaults["moments"] = {}
         else:
             self.update_type_help()
+            self.update_default_starting_magnetization()
             self._update_default_moments()
         with self.hold_trait_notifications():
             self.moments = self._get_default_moments()
@@ -83,6 +92,16 @@ class MagnetizationConfigurationSettingsModel(
                 """
             )
 
+    def update_default_starting_magnetization(self):
+        if not self.has_structure:
+            # TODO this guard shouldn't be here! It IS here only because in the present
+            # implementation, an update is called on app start. This breaks lazy loading
+            # and should be carefully checked!
+            return
+        family = fetch_pseudo_family_by_label(self.family)
+        initial_guess = get_starting_magnetization(self.input_structure, family)
+        self._default_starting_magnetization = initial_guess
+
     def reset(self):
         with self.hold_trait_notifications():
             self.type = self.traits()["type"].default_value
@@ -90,25 +109,17 @@ class MagnetizationConfigurationSettingsModel(
             self.moments = self._get_default_moments()
 
     def _update_default_moments(self):
-        try:
-            family = fetch_pseudo_family_by_label(self.family)
-            guess = get_starting_magnetization(self.input_structure, family)
-            self._defaults["moments"] = {
-                kind.name: self._to_moment(kind.symbol, guess[kind.name], family)
-                for kind in self.input_structure.kinds
-            }
-        except NotExistent:
-            self._defaults["moments"] = {
-                kind_name: 0.0 for kind_name in self.input_structure.get_kind_names()
-            }
+        family = fetch_pseudo_family_by_label(self.family)
+        self._defaults["moments"] = {
+            kind.name: self._to_moment(symbol=kind.symbol, family=family)
+            for kind in self.input_structure.kinds
+        }
 
-    @staticmethod
-    def _to_moment(
-        symbol: str,
-        magnetization: float,
-        family: PseudoPotentialFamily,
-    ):
-        return round(magnetization * family.get_pseudo(symbol).z_valence, 3)
+    def _to_moment(self, symbol: str, family: PseudoPotentialFamily) -> float:
+        magnetization = self._default_starting_magnetization.get(symbol, 0.0)
+        if self._DEFAULT_MOMENTS.get(symbol, {}).get("magmom"):
+            return magnetization * family.get_pseudo(symbol).z_valence
+        return 0.0
 
     def _get_default_moments(self):
         return deepcopy(self._defaults.get("moments", {}))
