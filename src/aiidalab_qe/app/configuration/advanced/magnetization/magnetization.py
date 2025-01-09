@@ -44,13 +44,18 @@ class MagnetizationConfigurationSettingsPanel(
         if self.rendered:
             return
 
-        self.description = ipw.HTML("""
-            <div style="margin-bottom: 5px;">
-                <b>Magnetization:</b>
-                <br>
-                Default magnetic moments correspond to theoretical values.
-            </div>
-        """)
+        self.header = ipw.HTML("<b>Magnetization:</b>")
+
+        self.unit = ipw.HTML(
+            value="µ<sub>B</sub>",
+            layout=ipw.Layout(margin="2px 2px 5px"),
+        )
+
+        self.magnetization_type_help = ipw.HTML()
+        ipw.dlink(
+            (self._model, "type_help"),
+            (self.magnetization_type_help, "value"),
+        )
 
         self.magnetization_type = ipw.ToggleButtons(
             style={
@@ -80,11 +85,19 @@ class MagnetizationConfigurationSettingsPanel(
             (self.tot_magnetization, "value"),
         )
 
+        self.tot_magnetization_with_unit = ipw.HBox(
+            children=[
+                self.tot_magnetization,
+                self.unit,
+            ],
+            layout=ipw.Layout(align_items="center"),
+        )
+
         self.kind_moment_widgets = ipw.VBox()
 
         self.container = ipw.VBox(
             children=[
-                self.tot_magnetization,
+                self.tot_magnetization_with_unit,
             ]
         )
 
@@ -99,12 +112,14 @@ class MagnetizationConfigurationSettingsPanel(
 
     def _on_electronic_type_change(self, _):
         self._switch_widgets()
+        self._model.update_type_help()
 
     def _on_spin_type_change(self, _):
         self.refresh(specific="spin")
 
     def _on_magnetization_type_change(self, _):
         self._toggle_widgets()
+        self._model.update_type_help()
 
     def _update(self, specific=""):
         if self.updated:
@@ -152,7 +167,15 @@ class MagnetizationConfigurationSettingsPanel(
                 ],
             )
             self.links.append(link)
-            children.append(kind_moment_widget)
+            children.append(
+                ipw.HBox(
+                    children=[
+                        kind_moment_widget,
+                        self.unit,
+                    ],
+                    layout=ipw.Layout(align_items="center"),
+                )
+            )
 
         self.kind_moment_widgets.children = children
 
@@ -162,23 +185,29 @@ class MagnetizationConfigurationSettingsPanel(
         if self._model.spin_type == "none":
             children = []
         else:
-            children = [self.description]
+            children = [self.header]
             if self._model.electronic_type == "metal":
                 children.extend(
                     [
                         self.magnetization_type,
+                        self.magnetization_type_help,
                         self.container,
                     ]
                 )
             else:
-                children.append(self.tot_magnetization)
+                children.extend(
+                    [
+                        self.magnetization_type_help,
+                        self.tot_magnetization_with_unit,
+                    ],
+                )
         self.children = children
 
     def _toggle_widgets(self):
         if self._model.spin_type == "none" or not self.rendered:
             return
         self.container.children = [
-            self.tot_magnetization
+            self.tot_magnetization_with_unit
             if self._model.type == "tot_magnetization"
             else self.kind_moment_widgets
         ]
