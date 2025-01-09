@@ -1,14 +1,36 @@
 import ipywidgets as ipw
 import pandas as pd
 from IPython.display import display
+from table_widget import TableWidget
 
 from aiida.orm import QueryBuilder
 
-state_icons = {
+STATE_ICONS = {
     "running": "⏳",
     "finished": "✅",
     "excepted": "⚠️",
     "killed": "❌",
+}
+
+COLUMNS = {
+    "ID": {"headerName": "ID 🔗", "dataType": "link", "editable": False},
+    "Creation time": {
+        "headerName": "Creation Time ⏰",
+        "width": 150,
+        "editable": False,
+    },
+    "Structure": {"headerName": "Structure", "editable": False},
+    "State": {"headerName": "State 🟢", "editable": False},
+    "Label": {"headerName": "Label", "width": 300, "editable": True},
+    "Description": {
+        "headerName": "Description",
+        "width": 300,
+        "editable": True,
+        "hide": True,
+    },
+    "Relax_type": {"headerName": "Relax_type", "editable": False, "hide": True},
+    "Delete": {"headerName": "Delete", "dataType": "link", "editable": False},
+    "Download": {"headerName": "Download", "dataType": "link", "editable": False},
 }
 
 
@@ -18,7 +40,8 @@ class QueryInterface:
 
     def setup_table(self):
         self.df = self.load_data()
-        self.table = ipw.HTML()
+        self.table = TableWidget()
+
         self.setup_widgets()
 
     def load_data(self):
@@ -142,24 +165,6 @@ class QueryInterface:
             value="",  # Default value corresponding to "Any"
             description="Job State:",
         )
-        self.label_search_field = ipw.Text(
-            value="",
-            placeholder="Enter a keyword",
-            description="",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        self.label_search_description = ipw.HTML(
-            "<p><b>Search Label:</b> Enter a keyword to search in both the <i>Label</i> and <i>Description</i> fields. Matches will include any calculations where the keyword is found in either field.</p>"
-        )
-        self.toggle_description_checkbox = ipw.Checkbox(
-            value=False,  # Show the Description column by default
-            description="Show Description",
-            indent=False,
-        )
-        self.toggle_description_checkbox.observe(
-            self.update_table_visibility, names="value"
-        )
         self.toggle_time_format = ipw.ToggleButtons(
             options=["Absolute", "Relative"],
             value="Absolute",  # Default to Absolute time
@@ -172,6 +177,15 @@ class QueryInterface:
             description="ID Format:",
         )
         self.toggle_id_format.observe(self.update_table_visibility, names="value")
+        self.toggle_multi_selection = ipw.ToggleButtons(
+            options=["On", "Off"],
+            value="Off",
+            description="Checkbox selection",
+            tooltips=["Enable multiple selection.", "Disable multiple selection"],
+        )
+        self.toggle_multi_selection.observe(
+            self.update_table_configuration, names="value"
+        )
 
         self.time_start = ipw.DatePicker(description="Start Time:")
         self.time_end = ipw.DatePicker(description="End Time:")
@@ -183,7 +197,6 @@ class QueryInterface:
         self.time_start.observe(self.apply_filters, names="value")
         self.time_end.observe(self.apply_filters, names="value")
         self.job_state_dropdown.observe(self.apply_filters, names="value")
-        self.label_search_field.observe(self.apply_filters, names="value")
 
         self.filters_layout = ipw.VBox(
             [
@@ -192,12 +205,6 @@ class QueryInterface:
                     [
                         self.job_state_dropdown,
                         self.time_box,
-                        ipw.HBox(
-                            [
-                                self.label_search_description,
-                                self.label_search_field,
-                            ]
-                        ),
                         ipw.VBox(
                             [self.properties_filter_description, self.properties_box]
                         ),
@@ -207,9 +214,9 @@ class QueryInterface:
                 ipw.HTML("<h3>Display Options:</h3>"),
                 ipw.VBox(
                     [
-                        self.toggle_description_checkbox,
                         self.toggle_time_format,
                         self.toggle_id_format,
+                        self.toggle_multi_selection,
                     ]
                 ),
             ]
@@ -230,10 +237,6 @@ class QueryInterface:
             display_df["Creation time"] = display_df["ctime"].apply(
                 lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notnull(x) else "N/A"
             )
-        # Conditionally drop the Description column based on the checkbox state
-        if not self.toggle_description_checkbox.value:
-            display_df = display_df.drop(columns=["Description"])
-
         # Adjust the ID column based on the toggle state
         if self.toggle_id_format.value == "PK":
             display_df = display_df.rename(columns={"PK_with_link": "ID"}).drop(
@@ -246,20 +249,15 @@ class QueryInterface:
 
         #
         display_df["State"] = display_df["State"].apply(
-            lambda x: f"{x.capitalize()}{state_icons.get(x.lower())}"
-        )
-        display_df.rename(
-            columns={
-                "State": "State 🟢",
-                "Creation time": "Creation Time ⏰",
-                "ID": "ID 🔗",
-            },
-            inplace=True,
+            lambda x: f"{x.capitalize()}{STATE_ICONS.get(x.lower())}"
         )
         display_df = display_df.drop(columns=["Properties", "ctime"])
-        self.table.value = self.css_style + display_df.to_html(
-            classes="df", escape=False, index=False
-        )
+        columns = []
+        for col in display_df.columns:
+            column = COLUMNS.get(col)
+            column["field"] = col
+            columns.append(COLUMNS[col])
+        self.table.from_data(display_df, columns=columns)
 
     def apply_filters(self, _):
         selected_properties = [
@@ -269,15 +267,6 @@ class QueryInterface:
         filtered_df = filtered_df[
             filtered_df["State"].str.contains(self.job_state_dropdown.value)
         ]
-        if self.label_search_field.value:
-            filtered_df = filtered_df[
-                filtered_df["Label"].str.contains(
-                    self.label_search_field.value, case=False, na=False
-                )
-                | filtered_df["Description"].str.contains(
-                    self.label_search_field.value, case=False, na=False
-                )
-            ]
         if selected_properties:
             filtered_df = filtered_df[
                 filtered_df["Properties"].apply(
@@ -300,6 +289,11 @@ class QueryInterface:
     def update_table_visibility(self, _):
         # Reapply filters to refresh the table visibility when the checkbox changes
         self.apply_filters(None)
+
+    def update_table_configuration(self, _):
+        enable = True if self.toggle_multi_selection.value == "On" else False
+        config = {"pagination": True, "checkboxSelection": enable}
+        self.table.config = config
 
     def display(self):
         display(self.filters_layout)
