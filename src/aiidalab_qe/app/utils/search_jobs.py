@@ -12,21 +12,37 @@ STATE_ICONS = {
     "killed": "❌",
 }
 
+
+def determine_state_icon(row):
+    state = row["State"].lower()
+    if state == "finished" and row["Exit_status"] != 0:
+        return f"Finished{STATE_ICONS['excepted']}"
+    return f"{state.capitalize()}{STATE_ICONS.get(state, '')}"
+
+
 COLUMNS = {
     "ID": {"headerName": "ID 🔗", "dataType": "link", "editable": False},
     "Creation time absolute": {
         "headerName": "Creation time ⏰ (absolute)",
         "type": "date",
-        "width": 150,
+        "width": 100,
         "editable": False,
     },
     "Creation time relative": {
         "headerName": "Creation time ⏰ (relative)",
-        "width": 150,
+        "width": 100,
         "editable": False,
     },
     "Structure": {"headerName": "Structure", "editable": False},
     "State": {"headerName": "State 🟢", "editable": False},
+    "Status": {"headerName": "Status", "editable": False, "hide": True},
+    "Exit_status": {
+        "headerName": "Exit status",
+        "type": "number",
+        "editable": False,
+        "hide": True,
+    },
+    "Exit_message": {"headerName": "Exit message", "editable": False},
     "Label": {"headerName": "Label", "width": 300, "editable": True},
     "Description": {
         "headerName": "Description",
@@ -67,6 +83,9 @@ class CalculationHistory:
             "extras.structure",
             "ctime",
             "attributes.process_state",
+            "attributes.process_status",
+            "attributes.exit_status",
+            "attributes.exit_message",
             "label",
             "description",
             "extras.workchain.relax_type",
@@ -78,6 +97,9 @@ class CalculationHistory:
             "Structure",
             "ctime",
             "State",
+            "Status",
+            "Exit_status",
+            "Exit_message",
             "Label",
             "Description",
             "Relax_type",
@@ -122,6 +144,7 @@ class CalculationHistory:
             # Initialize empty columns for an empty DataFrame
             df["Creation time"] = pd.Series(dtype="str")
             df["Delete"] = pd.Series(dtype="str")
+        print(df[0:5])
         return df[
             [
                 "PK_with_link",
@@ -130,6 +153,9 @@ class CalculationHistory:
                 "Creation time relative",
                 "Structure",
                 "State",
+                "Status",
+                "Exit_status",
+                "Exit_message",
                 "Label",
                 "Description",
                 "Relax_type",
@@ -271,9 +297,8 @@ class CalculationHistory:
             )
 
         #
-        display_df["State"] = display_df["State"].apply(
-            lambda x: f"{x.capitalize()}{STATE_ICONS.get(x.lower())}"
-        )
+        if not display_df.empty:
+            display_df["State"] = display_df.apply(determine_state_icon, axis=1)
         display_df = display_df.drop(columns=["Properties", "ctime"])
         columns = []
         for col in display_df.columns:
