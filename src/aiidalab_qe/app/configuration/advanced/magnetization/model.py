@@ -116,10 +116,12 @@ class MagnetizationConfigurationSettingsModel(
         }
 
     def _to_moment(self, symbol: str, family: PseudoPotentialFamily) -> float:
-        magnetization = self._default_starting_magnetization.get(symbol, 0.0)
-        if self._DEFAULT_MOMENTS.get(symbol, {}).get("magmom"):
-            return magnetization * family.get_pseudo(symbol).z_valence
-        return 0.0
+        magnetization = (
+            self._default_starting_magnetization.get(symbol, 0.1)
+            if self._DEFAULT_MOMENTS.get(symbol, {}).get("magmom")
+            else 0.1
+        )
+        return round(magnetization * family.get_pseudo(symbol).z_valence, 3)
 
     def _get_default_moments(self):
         return deepcopy(self._defaults.get("moments", {}))
