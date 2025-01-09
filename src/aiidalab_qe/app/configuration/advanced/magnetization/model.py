@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 import traitlets as tl
+from aiida_pseudo.groups.family import PseudoPotentialFamily
 
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.workflows.protocols.utils import get_starting_magnetization
@@ -91,18 +92,23 @@ class MagnetizationConfigurationSettingsModel(
     def _update_default_moments(self):
         try:
             family = fetch_pseudo_family_by_label(self.family)
-            initial_guess = get_starting_magnetization(self.input_structure, family)
+            guess = get_starting_magnetization(self.input_structure, family)
             self._defaults["moments"] = {
-                kind.name: round(
-                    initial_guess[kind.name] * family.get_pseudo(kind.symbol).z_valence,
-                    3,
-                )
+                kind.name: self._to_moment(kind.symbol, guess[kind.name], family)
                 for kind in self.input_structure.kinds
             }
         except NotExistent:
             self._defaults["moments"] = {
                 kind_name: 0.0 for kind_name in self.input_structure.get_kind_names()
             }
+
+    @staticmethod
+    def _to_moment(
+        symbol: str,
+        magnetization: float,
+        family: PseudoPotentialFamily,
+    ):
+        return round(magnetization * family.get_pseudo(symbol).z_valence, 3)
 
     def _get_default_moments(self):
         return deepcopy(self._defaults.get("moments", {}))
