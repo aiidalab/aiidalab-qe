@@ -69,6 +69,7 @@ class MagnetizationConfigurationSettingsModel(
             self.moments = self._get_default_moments()
 
     def update_type_help(self):
+        """Update the type field help text w.r.t the current model state."""
         if self.electronic_type == "insulator" or self.type == "tot_magnetization":
             self.type_help = self._TYPE_HELP_TEMPLATE.format(
                 content="""
@@ -92,6 +93,9 @@ class MagnetizationConfigurationSettingsModel(
             )
 
     def update_default_starting_magnetization(self):
+        """Update the default starting magnetization based on the structure and
+        pseudopotential family.
+        """
         if not self.has_structure:
             # TODO this guard shouldn't be here! It IS here only because in the present
             # implementation, an update is called on app start. This breaks lazy loading
@@ -115,6 +119,7 @@ class MagnetizationConfigurationSettingsModel(
         }
 
     def _to_moment(self, symbol: str, family: PseudoPotentialFamily) -> float:
+        """Convert the default magnetization to an initial magnetic moment."""
         magnetization = (
             self._default_starting_magnetization.get(symbol, 0.1)
             if self._DEFAULT_MOMENTS.get(symbol, {}).get("magmom")
