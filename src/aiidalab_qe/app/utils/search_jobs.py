@@ -15,13 +15,13 @@ STATE_ICONS = {
 COLUMNS = {
     "ID": {"headerName": "ID 🔗", "dataType": "link", "editable": False},
     "Creation time absolute": {
-        "headerName": "Creation Time ⏰ (absolute)",
+        "headerName": "Creation time ⏰ (absolute)",
         "type": "date",
         "width": 150,
         "editable": False,
     },
     "Creation time relative": {
-        "headerName": "Creation Time ⏰ (relative)",
+        "headerName": "Creation time ⏰ (relative)",
         "width": 150,
         "editable": False,
     },
@@ -34,7 +34,7 @@ COLUMNS = {
         "editable": True,
         "hide": True,
     },
-    "Relax_type": {"headerName": "Relax_type", "editable": False, "hide": True},
+    "Relax_type": {"headerName": "Relax type", "editable": False, "hide": True},
     "Delete": {"headerName": "Delete", "dataType": "link", "editable": False},
     "Download": {"headerName": "Download", "dataType": "link", "editable": False},
     "UUID": {"headerName": "UUID", "editable": False, "hide": True},
@@ -209,7 +209,7 @@ class CalculationHistory:
             children=[
                 ipw.HTML("<h4>Display options:</h4>"),
                 ipw.VBox(
-                    [
+                    children=[
                         self.toggle_time_format,
                         self.toggle_id_format,
                         # self.toggle_multi_selection,
@@ -218,24 +218,23 @@ class CalculationHistory:
             ],
             layout=ipw.Layout(
                 border="1px solid #ddd",
-                padding="0px",
-                margin="0px, 0px, 100px, 0px",
-                background_color="#f9f9f9",
-                border_radius="5px",
-                box_shadow="0 2px 5px rgba(0, 0, 0, 0.1)",
             ),
         )
         filters = ipw.VBox(
             children=[
                 ipw.HTML("<h4>Filters:</h4>"),
                 ipw.VBox(
-                    [
+                    children=[
                         self.job_state_dropdown,
                         self.time_box,
                         ipw.VBox(
-                            [self.properties_filter_description, self.properties_box],
+                            children=[
+                                self.properties_filter_description,
+                                self.properties_box,
+                            ],
                             layout=ipw.Layout(
-                                border="1px solid #ddd", padding="5px", margin="5px"
+                                border="1px solid #ddd",  # fmt: off
+                                margin="5px",
                             ),
                         ),
                     ]
@@ -243,11 +242,6 @@ class CalculationHistory:
             ],
             layout=ipw.Layout(
                 border="1px solid #ddd",
-                padding="0px",
-                margin="0px, 0px, 100px, 0px",
-                background_color="#f9f9f9",
-                border_radius="5px",
-                box_shadow="0 2px 5px rgba(0, 0, 0, 0.1)",
             ),
         )
 
