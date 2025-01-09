@@ -144,7 +144,6 @@ class CalculationHistory:
             # Initialize empty columns for an empty DataFrame
             df["Creation time"] = pd.Series(dtype="str")
             df["Delete"] = pd.Series(dtype="str")
-        print(df[0:5])
         return df[
             [
                 "PK_with_link",
