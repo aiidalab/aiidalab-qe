@@ -14,9 +14,14 @@ STATE_ICONS = {
 
 COLUMNS = {
     "ID": {"headerName": "ID 🔗", "dataType": "link", "editable": False},
-    "Creation time": {
-        "headerName": "Creation Time ⏰",
-        # "type": "date",
+    "Creation time absolute": {
+        "headerName": "Creation Time ⏰ (absolute)",
+        "type": "date",
+        "width": 150,
+        "editable": False,
+    },
+    "Creation time relative": {
+        "headerName": "Creation Time ⏰ (relative)",
         "width": 150,
         "editable": False,
     },
@@ -40,7 +45,7 @@ class CalculationHistory:
     def __init__(self):
         self.main = ipw.VBox(children=[LoadingWidget("Loading the table...")])
 
-        self.table = TableWidget()
+        self.table = TableWidget(style={"margin-top": "20px"})
 
         def on_row_update(change):
             node = load_node(change["new"]["UUID"])
@@ -87,8 +92,12 @@ class CalculationHistory:
         df = pd.DataFrame(results, columns=headers)
         # Check if DataFrame is not empty
         if not df.empty:
-            df["Creation time"] = df["ctime"].apply(
+            df["Creation time absolute"] = df["ctime"].apply(
                 lambda x: x.strftime("%Y-%m-%d %H:%M:%S")
+            )
+            now = pd.Timestamp.now(tz="UTC")
+            df["Creation time relative"] = df["ctime"].apply(
+                lambda x: f"{(now - x).days}D ago" if pd.notnull(x) else "N/A"
             )
             df["Delete"] = df["PK"].apply(
                 lambda pk: f'<a href="./delete.ipynb?pk={pk}" target="_blank">Delete</a>'
@@ -117,7 +126,8 @@ class CalculationHistory:
             [
                 "PK_with_link",
                 "UUID_with_link",
-                "Creation time",
+                "Creation time absolute",
+                "Creation time relative",
                 "Structure",
                 "State",
                 "Label",
@@ -144,11 +154,10 @@ class CalculationHistory:
             for prop in unique_properties
         ]
         self.properties_box = ipw.HBox(
-            children=property_checkboxes, description="Properties:"
+            children=property_checkboxes,
+            indent=True,
         )
-        self.properties_filter_description = ipw.HTML(
-            "<p><b>Properties filter:</b> Select one or more properties to narrow the results. Only calculations that include all the selected properties will be displayed. Leave all checkboxes unselected to include calculations regardless of their properties.</p>"
-        )
+        self.properties_filter_description = ipw.HTML("<b>Filter by properties</b>:")
         # Replace 'None' in 'Properties' with an empty list
         self.df["Properties"] = self.df["Properties"].apply(
             lambda x: [] if x is None else x
@@ -176,15 +185,15 @@ class CalculationHistory:
             description="ID format:",
         )
         self.toggle_id_format.observe(self.update_table_visibility, names="value")
-        self.toggle_multi_selection = ipw.ToggleButtons(
-            options=["On", "Off"],
-            value="Off",
-            description="Checkbox selection",
-            tooltips=["Enable multiple selection.", "Disable multiple selection"],
-        )
-        self.toggle_multi_selection.observe(
-            self.update_table_configuration, names="value"
-        )
+        # self.toggle_multi_selection = ipw.ToggleButtons(
+        #     options=["On", "Off"],
+        #     value="Off",
+        #     description="Checkbox selection",
+        #     tooltips=["Enable multiple selection.", "Disable multiple selection"],
+        # )
+        # self.toggle_multi_selection.observe(
+        #     self.update_table_configuration, names="value"
+        # )
 
         self.time_start = ipw.DatePicker(description="Start time:")
         self.time_end = ipw.DatePicker(description="End time:")
@@ -196,42 +205,67 @@ class CalculationHistory:
         self.time_start.observe(self.apply_filters, names="value")
         self.time_end.observe(self.apply_filters, names="value")
         self.job_state_dropdown.observe(self.apply_filters, names="value")
+        display_options = ipw.VBox(
+            children=[
+                ipw.HTML("<h4>Display options:</h4>"),
+                ipw.VBox(
+                    [
+                        self.toggle_time_format,
+                        self.toggle_id_format,
+                        # self.toggle_multi_selection,
+                    ]
+                ),
+            ],
+            layout=ipw.Layout(
+                border="1px solid #ddd",
+                padding="0px",
+                margin="0px, 0px, 100px, 0px",
+                background_color="#f9f9f9",
+                border_radius="5px",
+                box_shadow="0 2px 5px rgba(0, 0, 0, 0.1)",
+            ),
+        )
+        filters = ipw.VBox(
+            children=[
+                ipw.HTML("<h4>Filters:</h4>"),
+                ipw.VBox(
+                    [
+                        self.job_state_dropdown,
+                        self.time_box,
+                        ipw.VBox(
+                            [self.properties_filter_description, self.properties_box],
+                            layout=ipw.Layout(
+                                border="1px solid #ddd", padding="5px", margin="5px"
+                            ),
+                        ),
+                    ]
+                ),
+            ],
+            layout=ipw.Layout(
+                border="1px solid #ddd",
+                padding="0px",
+                margin="0px, 0px, 100px, 0px",
+                background_color="#f9f9f9",
+                border_radius="5px",
+                box_shadow="0 2px 5px rgba(0, 0, 0, 0.1)",
+            ),
+        )
 
         self.main.children = [
-            ipw.HTML("<h3>Filters:</h3>"),
-            ipw.VBox(
-                [
-                    self.job_state_dropdown,
-                    self.time_box,
-                    ipw.VBox([self.properties_filter_description, self.properties_box]),
-                    #   self.apply_filters_btn,
-                ]
-            ),
-            ipw.HTML("<h3>Display options:</h3>"),
-            ipw.VBox(
-                [
-                    self.toggle_time_format,
-                    self.toggle_id_format,
-                    self.toggle_multi_selection,
-                ]
-            ),
+            display_options,
+            filters,
             self.table,
         ]
         self.update_table_value(self.df)
 
     def update_table_value(self, display_df):
         # Adjust the Creation time column based on the toggle state
-        if self.toggle_time_format.value == "Relative":
-            now = pd.Timestamp.now(tz="UTC")
-            display_df["Creation time"] = display_df["ctime"].apply(
-                lambda x: f"{(now - x).days}D ago" if pd.notnull(x) else "N/A"
-            )
-            COLUMNS["Creation time"].pop("type", None)
-        else:
-            display_df["Creation time"] = display_df["ctime"].apply(
-                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notnull(x) else "N/A"
-            )
-            # COLUMNS["Creation time"]["type"] = "date"
+        COLUMNS["Creation time relative"]["hide"] = (
+            self.toggle_time_format.value != "Relative"
+        )
+        COLUMNS["Creation time absolute"]["hide"] = (
+            self.toggle_time_format.value != "Absolute"
+        )
         # Adjust the ID column based on the toggle state
         if self.toggle_id_format.value == "PK":
             display_df = display_df.rename(columns={"PK_with_link": "ID"}).drop(
