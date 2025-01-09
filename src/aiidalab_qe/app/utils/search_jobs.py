@@ -1,9 +1,9 @@
 import ipywidgets as ipw
 import pandas as pd
-from IPython.display import display
 from table_widget import TableWidget
 
-from aiida.orm import QueryBuilder
+from aiida.orm import QueryBuilder, load_node
+from aiidalab_qe.common.widgets import LoadingWidget
 
 STATE_ICONS = {
     "running": "⏳",
@@ -16,6 +16,7 @@ COLUMNS = {
     "ID": {"headerName": "ID 🔗", "dataType": "link", "editable": False},
     "Creation time": {
         "headerName": "Creation Time ⏰",
+        # "type": "date",
         "width": 150,
         "editable": False,
     },
@@ -31,17 +32,25 @@ COLUMNS = {
     "Relax_type": {"headerName": "Relax_type", "editable": False, "hide": True},
     "Delete": {"headerName": "Delete", "dataType": "link", "editable": False},
     "Download": {"headerName": "Download", "dataType": "link", "editable": False},
+    "UUID": {"headerName": "UUID", "editable": False, "hide": True},
 }
 
 
-class QueryInterface:
+class CalculationHistory:
     def __init__(self):
-        pass
+        self.main = ipw.VBox(children=[LoadingWidget("Loading the table...")])
 
-    def setup_table(self):
-        self.df = self.load_data()
         self.table = TableWidget()
 
+        def on_row_update(change):
+            node = load_node(change["new"]["UUID"])
+            node.label = change["new"]["Label"]
+            node.description = change["new"]["Description"]
+
+        self.table.observe(on_row_update, "updatedRow")
+
+    def load_table(self):
+        self.df = self.load_data()
         self.setup_widgets()
 
     def load_data(self):
@@ -114,6 +123,7 @@ class QueryInterface:
                 "Label",
                 "Description",
                 "Relax_type",
+                "UUID",
                 "Delete",
                 "Download",
                 "Properties",
@@ -122,17 +132,6 @@ class QueryInterface:
         ]
 
     def setup_widgets(self):
-        self.css_style = """
-            <style>
-                .df { border: none; }
-                .df tbody tr:nth-child(odd) { background-color: #e5e7e9; }
-                .df tbody tr:nth-child(odd):hover { background-color:   #f5b7b1; }
-                .df tbody tr:nth-child(even):hover { background-color:  #f5b7b1; }
-                .df tbody td { min-width: 80px; text-align: center; border: none }
-                .df th { text-align: center; border: none;  border-bottom: 1px solid black;}
-            </style>
-            """
-
         unique_properties = set(self.df["Properties"].explode().dropna())
         unique_properties.discard(None)
         property_checkboxes = [
@@ -198,45 +197,41 @@ class QueryInterface:
         self.time_end.observe(self.apply_filters, names="value")
         self.job_state_dropdown.observe(self.apply_filters, names="value")
 
-        self.filters_layout = ipw.VBox(
-            [
-                ipw.HTML("<h3>Search & filter calculations:</h3>"),
-                ipw.VBox(
-                    [
-                        self.job_state_dropdown,
-                        self.time_box,
-                        ipw.VBox(
-                            [self.properties_filter_description, self.properties_box]
-                        ),
-                        #   self.apply_filters_btn,
-                    ]
-                ),
-                ipw.HTML("<h3>Display options:</h3>"),
-                ipw.VBox(
-                    [
-                        self.toggle_time_format,
-                        self.toggle_id_format,
-                        self.toggle_multi_selection,
-                    ]
-                ),
-            ]
-        )
-        self.get_table_value(self.df)
+        self.main.children = [
+            ipw.HTML("<h3>Filters:</h3>"),
+            ipw.VBox(
+                [
+                    self.job_state_dropdown,
+                    self.time_box,
+                    ipw.VBox([self.properties_filter_description, self.properties_box]),
+                    #   self.apply_filters_btn,
+                ]
+            ),
+            ipw.HTML("<h3>Display options:</h3>"),
+            ipw.VBox(
+                [
+                    self.toggle_time_format,
+                    self.toggle_id_format,
+                    self.toggle_multi_selection,
+                ]
+            ),
+            self.table,
+        ]
+        self.update_table_value(self.df)
 
-    def get_table_value(self, display_df):
-        if display_df.empty:
-            self.table.value = "<h2>No results found</h2>"
-            return
+    def update_table_value(self, display_df):
         # Adjust the Creation time column based on the toggle state
         if self.toggle_time_format.value == "Relative":
             now = pd.Timestamp.now(tz="UTC")
             display_df["Creation time"] = display_df["ctime"].apply(
                 lambda x: f"{(now - x).days}D ago" if pd.notnull(x) else "N/A"
             )
+            COLUMNS["Creation time"].pop("type", None)
         else:
             display_df["Creation time"] = display_df["ctime"].apply(
                 lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notnull(x) else "N/A"
             )
+            # COLUMNS["Creation time"]["type"] = "date"
         # Adjust the ID column based on the toggle state
         if self.toggle_id_format.value == "PK":
             display_df = display_df.rename(columns={"PK_with_link": "ID"}).drop(
@@ -284,7 +279,7 @@ class QueryInterface:
                 (filtered_df["ctime"] >= start_time)
                 & (filtered_df["ctime"] <= end_time)
             ]
-        self.get_table_value(filtered_df)
+        self.update_table_value(filtered_df)
 
     def update_table_visibility(self, _):
         # Reapply filters to refresh the table visibility when the checkbox changes
@@ -294,7 +289,3 @@ class QueryInterface:
         enable = True if self.toggle_multi_selection.value == "On" else False
         config = {"pagination": True, "checkboxSelection": enable}
         self.table.config = config
-
-    def display(self):
-        display(self.filters_layout)
-        display(self.table)
