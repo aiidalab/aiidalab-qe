@@ -54,7 +54,7 @@ class RollingOutput(ipw.VBox):
         self._refresh_output()
         super().__init__(
             [self._output],
-            layout=ipw.Layout(max_height=max_output_height, min_width="51em"),
+            layout=ipw.Layout(max_height=max_output_height),
         )
 
     @traitlets.default("value")
@@ -154,9 +154,7 @@ class FilenameDisplayWidget(ipw.Box):
 
     def __init__(self, max_width=None, **kwargs):
         self.max_width = max_width
-        self._html = ipw.HTML(
-            layout={"margin": "0 0 0 50px"},
-        )
+        self._html = ipw.HTML()
         super().__init__([self._html], **kwargs)
 
     @traitlets.observe("value")
@@ -188,9 +186,7 @@ class LogOutputWidget(ipw.VBox):
             lambda value: value or self.placeholder or "",
         )
 
-        self._filename_display = FilenameDisplayWidget(
-            layout=ipw.Layout(width="auto"), max_width="55em"
-        )
+        self._filename_display = FilenameDisplayWidget(layout=ipw.Layout(width="auto"))
         ipw.dlink(
             (self, "filename"),
             (self._filename_display, "value"),

@@ -54,17 +54,49 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         self.reset_button.on_click(self._reset_process_tree)
 
         self.node_view_container = ipw.VBox()
+        self.node_view_container.add_class("node-view-container")
+
+        self.to_advanced_view_button = ipw.Button(
+            description="View in advanced panel",
+            button_style="primary",
+            icon="eye",
+            tooltip="Switch to the advanced view",
+            layout=ipw.Layout(width="fit-content"),
+        )
+        self.to_advanced_view_button.on_click(self._switch_to_advanced_view)
+
+        simplified_tree_container = ipw.VBox(
+            children=[self.simplified_process_tree],
+        )
+
+        simplified_tree_node_view_container = ipw.VBox(
+            children=[
+                self.to_advanced_view_button,
+                self.node_view_container,
+            ],
+        )
+
+        simplified_view = ipw.Box(
+            children=[
+                simplified_tree_container,
+                simplified_tree_node_view_container,
+            ]
+        )
+        simplified_view.add_class("simplified-view")
+
+        advanced_view = ipw.VBox(
+            children=[
+                self.reset_button,
+                self.process_tree,
+                self.node_view_container,
+            ],
+        )
+        advanced_view.add_class("advanced-view")
 
         self.accordion = ipw.Accordion(
             children=[
-                self.simplified_process_tree,
-                ipw.VBox(
-                    children=[
-                        self.reset_button,
-                        self.process_tree,
-                        self.node_view_container,
-                    ],
-                ),
+                simplified_view,
+                advanced_view,
             ],
             selected_index=None,
         )
@@ -94,10 +126,12 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
     def _on_calculation_link_click(self, change):
         if selected_node_uuid := change["new"]:
             self.process_tree.value = selected_node_uuid
-            self.accordion.selected_index = 1
 
     def _on_node_selection_change(self, change):
         self._update_node_view(change["new"])
+
+    def _switch_to_advanced_view(self, _):
+        self.accordion.selected_index = 1
 
     def _update_process_tree(self):
         if self.rendered:
