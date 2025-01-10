@@ -240,13 +240,6 @@ class CalculationHistory:
                         # self.toggle_multi_selection,
                     ]
                 ),
-            ],
-            layout=ipw.Layout(
-                border="1px solid #ddd",
-            ),
-        )
-        filters = ipw.VBox(
-            children=[
                 ipw.HTML("<h4>Filters:</h4>"),
                 ipw.VBox(
                     children=[
@@ -272,7 +265,6 @@ class CalculationHistory:
 
         self.main.children = [
             display_options,
-            filters,
             self.table,
         ]
         self.update_table_value(self.df)
