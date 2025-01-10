@@ -135,7 +135,7 @@ class TestSimplifiedProcessTree:
     def test_update_on_process_change(self, mock_qeapp_workchain):
         self.model.process_uuid = mock_qeapp_workchain.uuid
         assert self.tree.rendered
-        human_label = ProcessTreeNode._MAPPING["QeAppWorkChain"]
+        human_label = ProcessTreeNode._TITLE_MAPPING["QeAppWorkChain"]
         assert self.tree.trunk.label.value == human_label
         assert not self.tree.trunk.collapsed
         assert len(self.tree.trunk.branches) == 1
@@ -146,7 +146,7 @@ class TestSimplifiedProcessTree:
         assert workchain_node.level == 1
         assert workchain_node.emoji.value == "✅"
         assert workchain_node.state.value == "finished"
-        human_label = ProcessTreeNode._PW_MAPPING["relax"]["PwBaseWorkChain"]
+        human_label = ProcessTreeNode._TITLE_MAPPING["PwBaseWorkChain"]["relax"]
         assert workchain_node.label.value == human_label
         assert isinstance(workchain_node.label, ipw.HTML)
         assert workchain_node.collapsed
@@ -186,7 +186,7 @@ class TestSimplifiedProcessTree:
         assert calculation_node.level == 2
         assert calculation_node.emoji.value == "✅"
         assert calculation_node.state.value == "finished"
-        human_label = ProcessTreeNode._PW_MAPPING["relax"]["PwCalculation"]
+        human_label = ProcessTreeNode._TITLE_MAPPING["PwCalculation"]["relax"]
         assert isinstance(calculation_node.label, ipw.Button)
         assert calculation_node.label.description == human_label
 

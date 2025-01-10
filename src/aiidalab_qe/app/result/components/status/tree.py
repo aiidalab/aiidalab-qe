@@ -95,34 +95,27 @@ ProcessNodeType = t.TypeVar("ProcessNodeType", bound=orm.ProcessNode)
 
 
 class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
-    _MAPPING = {
+    _TITLE_MAPPING = {
         "QeAppWorkChain": "Quantum ESPRESSO app workflow",
+        "BandsWorkChain": "Electronic band structure workflow",
         "PwBandsWorkChain": "Electronic band structure workflow",
         "ProjwfcBandsWorkChain": "Electronic band structure workflow",
+        "PwRelaxWorkChain": "Structure relaxation workflow",
         "PdosWorkChain": "Projected density of states workflow",
+        "PwBaseWorkChain": {
+            "scf": "SCF workflow",
+            "nscf": "NSCF workflow",
+            "bands": "Bands workflow",
+            "relax": "Structure relaxation workflow",
+        },
+        "PwCalculation": {
+            "scf": "Run SCF cycle",
+            "nscf": "Run NSCF cycle",
+            "bands": "Compute bands",
+            "relax": "Optimize structure geometry",
+        },
         "DosCalculation": "Compute density of states",
         "ProjwfcCalculation": "Compute projections",
-        "XpsWorkChain": "X-ray photoelectron spectroscopy workflow",
-        "XspectraCrystalWorkChain": "X-ray absorption spectroscopy workflow",
-    }
-
-    _PW_MAPPING = {
-        "scf": {
-            "PwBaseWorkChain": "SCF workflow",
-            "PwCalculation": "Run SCF cycle",
-        },
-        "nscf": {
-            "PwBaseWorkChain": "NSCF workflow",
-            "PwCalculation": "Run NSCF cycle",
-        },
-        "bands": {
-            "PwBaseWorkChain": "Bands workflow",
-            "PwCalculation": "Compute bands",
-        },
-        "relax": {
-            "PwBaseWorkChain": "Structure relaxation workflow",
-            "PwCalculation": "Optimize structure geometry",
-        },
     }
 
     def __init__(
@@ -192,10 +185,8 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         if label in ("PwBaseWorkChain", "PwCalculation"):
             inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
             calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
-            mapping = self._PW_MAPPING[calculation]
-        else:
-            mapping = self._MAPPING
-        return mapping.get(label, label)
+            return self._TITLE_MAPPING.get(label, {}).get(calculation, label)
+        return self._TITLE_MAPPING.get(label, label)
 
 
 class ProcessTreeBranches(ipw.VBox):
