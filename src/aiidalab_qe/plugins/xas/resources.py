@@ -10,7 +10,7 @@ from aiidalab_qe.common.panel import (
 class XasResourceSettingsModel(PluginResourceSettingsModel):
     """Model for the XAS plugin."""
 
-    title = "XAS Structure"
+    title = "XAS"
     identifier = "xas"
 
     def __init__(self, **kwargs):
