@@ -19,7 +19,7 @@ from aiidalab_qe.common.panel import (
 )
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import QeDependentWizardStep
+from aiidalab_qe.common.widgets import LinkButton, QeDependentWizardStep
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -135,6 +135,12 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             (self.submission_warning_messages, "value"),
         )
 
+        self.setup_new_codes_button = LinkButton(
+            description="Setup resources",
+            link="../home/code_setup.ipynb",
+            icon="database",
+        )
+
         self.refresh_resources_button = ipw.Button(
             description="Refresh resources",
             icon="refresh",
@@ -158,15 +164,20 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
                 <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
                     Select the codes to use for running the calculations. The codes on
                     the local machine (localhost) are installed by default, but you can
-                    configure new ones on potentially more powerful machines by visiting
-                    the <a href="../home/code_setup.ipynb" target="_blank">resource
-                    setup</a> page (see also <i class="fa fa-database"></i>
-                    button at the top of the app). Make sure to click the <b>Refresh
-                    resources</b> button below after making changes to AiiDA resources
-                    to update the app resources.
+                    configure new ones on potentially more powerful machines by clicking
+                    on <i class="fa fa-database"></i> <b>Setup resources</b> (also at
+                    the top of the app). Make sure to click the <b>Refresh resources</b>
+                    button below after making changes to AiiDA resources to update the
+                    app resources.
                 </div>
             """),
-            self.refresh_resources_button,
+            ipw.HBox(
+                children=[
+                    self.setup_new_codes_button,
+                    self.refresh_resources_button,
+                ],
+                layout=ipw.Layout(grid_gap="5px"),
+            ),
             self.tabs,
             self.sssp_installation,
             self.qe_setup,
