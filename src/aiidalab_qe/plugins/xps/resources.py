@@ -10,7 +10,7 @@ from aiidalab_qe.common.panel import (
 class XpsResourceSettingsModel(PluginResourceSettingsModel):
     """Model for the XPS plugin."""
 
-    title = "XPS Structure"
+    title = "XPS"
     identifier = "xps"
 
     def __init__(self, **kwargs):
