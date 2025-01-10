@@ -220,10 +220,15 @@ class TestWorkChainStatusPanel:
         trunk.expand(recursive=True)
         calcjob_node: CalcJobTreeNode = trunk.branches[0].branches[0]
         calcjob_node.label.click()
-        assert self.panel.accordion.selected_index == 1
         assert self.panel.process_tree.value == calcjob_node.uuid
         assert self.panel.process_tree._tree.nodes == (calcjob_node.node,)
         # TODO understand why the following does not trigger automatically as in the app
         # TODO understand why the following triggers a thread
         # self.panel.process_tree.set_trait("selected_nodes", [calcjob_node.node])
-        # assert isinstance(panel.node_view, CalcJobNodeViewerWidget)
+        # assert isinstance(self.panel.node_view, CalcJobNodeViewerWidget)
+        # assert self.panel.node_view_container.children[0] is self.node_view  # type: ignore
+
+    def test_to_advanced_view_button(self):
+        assert self.panel.accordion.selected_index == 0
+        self.panel.to_advanced_view_button.click()
+        assert self.panel.accordion.selected_index == 1
