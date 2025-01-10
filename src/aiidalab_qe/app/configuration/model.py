@@ -129,18 +129,7 @@ class ConfigurationStepModel(
             (self, "confirmed"),
             (model, "confirmed"),
         )
-        for dependency in model.dependencies:
-            dependency_parts = dependency.split(".")
-            if len(dependency_parts) == 1:  # from parent, e.g. input_structure
-                target_model = self
-                trait = dependency
-            else:  # from sibling, e.g. workchain.protocol
-                sibling, trait = dependency_parts
-                target_model = self.get_model(sibling)
-            ipw.dlink(
-                (target_model, trait),
-                (model, trait),
-            )
+        super()._link_model(model)
 
     def _get_properties(self):
         properties = []

@@ -50,6 +50,11 @@ class AdvancedConfigurationSettingsPanel(
             "kpoints_distance",
         )
 
+        # NOTE connect pseudos first, as some settings depend on it
+        pseudos_model = PseudosConfigurationSettingsModel()
+        self.pseudos = PseudosConfigurationSettingsPanel(model=pseudos_model)
+        model.add_model("pseudos", pseudos_model)
+
         smearing_model = SmearingConfigurationSettingsModel()
         self.smearing = SmearingConfigurationSettingsPanel(model=smearing_model)
         model.add_model("smearing", smearing_model)
@@ -63,10 +68,6 @@ class AdvancedConfigurationSettingsPanel(
         hubbard_model = HubbardConfigurationSettingsModel()
         self.hubbard = HubbardConfigurationSettingsPanel(model=hubbard_model)
         model.add_model("hubbard", hubbard_model)
-
-        pseudos_model = PseudosConfigurationSettingsModel()
-        self.pseudos = PseudosConfigurationSettingsPanel(model=pseudos_model)
-        model.add_model("pseudos", pseudos_model)
 
     def render(self):
         if self.rendered:

@@ -255,11 +255,7 @@ class AdvancedConfigurationSettingsModel(
             self._on_any_change,
             tl.All,
         )
-        for trait in model.dependencies:
-            ipw.dlink(
-                (self, trait),
-                (model, trait),
-            )
+        super()._link_model(model)
 
     def _update_kpoints_mesh(self, _=None):
         if not self.has_structure:
