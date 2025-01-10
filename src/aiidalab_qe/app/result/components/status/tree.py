@@ -92,18 +92,33 @@ ProcessNodeType = t.TypeVar("ProcessNodeType", bound=orm.ProcessNode)
 class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
     _MAPPING = {
         "QeAppWorkChain": "Quantum ESPRESSO app workflow",
+        "BandsWorkChain": "Electronic band structure workflow",
         "PwBandsWorkChain": "Electronic band structure workflow",
         "PwRelaxWorkChain": "Structural relaxation workflow",
         "PdosWorkChain": "Projected density of states workflow",
         "DosCalculation": "Compute density of states",
         "ProjwfcCalculation": "Compute projections",
+        "XpsWorkChain": "X-ray photoelectron spectroscopy workflow",
+        "XspectraCrystalWorkChain": "X-ray absorption spectroscopy workflow",
     }
 
     _PW_MAPPING = {
-        "scf": "Run SCF cycle",
-        "nscf": "Run NSCF cycle",
-        "bands": "Compute bands",
-        "relax": "Optimize structure geometry",
+        "scf": {
+            "PwBaseWorkChain": "SCF workflow",
+            "PwCalculation": "Run SCF cycle",
+        },
+        "nscf": {
+            "PwBaseWorkChain": "NSCF workflow",
+            "PwCalculation": "Run NSCF cycle",
+        },
+        "bands": {
+            "PwBaseWorkChain": "Bands workflow",
+            "PwCalculation": "Compute bands",
+        },
+        "relax": {
+            "PwBaseWorkChain": "Relaxation workflow",
+            "PwCalculation": "Optimize structure geometry",
+        },
     }
 
     def __init__(
@@ -126,7 +141,6 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
 
     def initialize(self):
         self._build_header()
-        self.update()
         self.children = [self.header]
 
     def update(self):
@@ -150,13 +164,16 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
             "waiting": "💤",
             "running": "⏳",
             "finished": "✅",
+            "failed": "❌",
             "killed": "💀",
-            "excepted": "❌",
+            "excepted": "⚠️",
         }.get(state, "❓")
 
     def _get_state(self):
         if not hasattr(self.node, "process_state"):
             return "queued"
+        if self.node.is_failed:
+            return "failed"
         state = self.node.process_state
         return (
             "running"
@@ -170,11 +187,13 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         node = self.node
         if not (label := node.process_label):
             return "Unknown"
-        if label not in ("PwBaseWorkChain", "PwCalculation"):
-            return self._MAPPING.get(label, label)
-        inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
-        calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
-        return self._PW_MAPPING[calculation]
+        if label in ("PwBaseWorkChain", "PwCalculation"):
+            inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
+            calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
+            mapping = self._PW_MAPPING[calculation]
+        else:
+            mapping = self._MAPPING
+        return mapping.get(label, label)
 
 
 class ProcessTreeBranches(ipw.VBox):
@@ -195,25 +214,17 @@ class ProcessTreeBranches(ipw.VBox):
 
 
 class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
-    def __init__(
-        self,
-        node,
-        level=0,
-        on_inspect: t.Callable[[str], None] | None = None,
-        **kwargs,
-    ):
-        super().__init__(node, level, on_inspect, **kwargs)
-        self.pks = set()
-        self.branches = ProcessTreeBranches()
-        self.branches.add_class("tree-node-branches")
-
     @property
     def metadata_inputs(self):
         return self.node.get_metadata_inputs()
 
     @property
+    def sub_processes(self):
+        return set(self.metadata_inputs.keys()) - {"metadata"}
+
+    @property
     def has_sub_workflows(self):
-        return len(set(self.metadata_inputs.keys()) - {"metadata"}) > 1
+        return len(self.sub_processes) > 1
 
     @property
     def collapsed(self):
@@ -221,7 +232,12 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
 
     def initialize(self):
         super().initialize()
+        self.pks = set()
+        self.branches = ProcessTreeBranches()
+        self.branches.add_class("tree-node-branches")
         self.children += (self.branches,)
+        self.expected_jobs = self._get_expected(self.metadata_inputs)
+        self.update()
 
     def update(self):
         super().update()
@@ -276,11 +292,11 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
                 else CalcJobTreeNode
             )
             branch = TreeNodeClass(
-                child,
+                node=child,
                 level=self.level + 1,
                 on_inspect=self.on_inspect,
             )
-            if isinstance(branch, WorkChainTreeNode) and not branch.has_sub_workflows:
+            if child.process_label in ("BandsWorkChain", "PwRelaxWorkChain"):
                 self._add_branches(child)
             else:
                 branch.initialize()
@@ -288,64 +304,57 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
                 self.pks.add(child.pk)
 
     def _get_tally(self):
-        inputs = self.metadata_inputs
-        total, dynamic = self._count_calculations(inputs)
-        finished = self._count_finished_calculations(self.node)
+        total = self._get_current_total(self.node)
+        total = max(total, self.expected_jobs["count"])
+        dynamic = self.expected_jobs["dynamic"]
+        finished = self._count_finished(self.node)
         tally = f"{finished}/{total}"
         tally += "*" if dynamic and total != finished else ""
         tally += " job" if total == 1 else " jobs"
         return tally
 
-    def _count_finished_calculations(self, node):
+    def _get_current_total(self, node):
+        total = 0
+        for child in node.called:
+            if isinstance(child, orm.WorkChainNode):
+                total += self._get_current_total(child)
+            elif isinstance(child, orm.CalcJobNode):
+                total += 1
+        return total
+
+    def _count_finished(self, node):
         count = 0
         for child in node.called:
             if isinstance(child, orm.WorkChainNode):
-                count += self._count_finished_calculations(child)
-            elif (
-                isinstance(child, orm.CalcJobNode)
-                and child.process_state is ProcessState.FINISHED
-            ):
+                count += self._count_finished(child)
+            elif isinstance(child, orm.CalcJobNode) and child.is_finished_ok:
                 count += 1
         return count
 
-    def _count_calculations(
-        self,
-        inputs: dict[str, dict],
-        parent: str | None = None,
-    ) -> tuple[int, bool]:
-        """Count all calculations in the metadata inputs dictionary of a workflow.
-
-        Recursively count occurrences of the "metadata" key in the metadata inputs
-        dictionary. Also check if any "metadata" key has a "pw" parent and mark the
-        workflow as dynamic if found. The function ends branch exploration once
-        "metadata" is encountered.
-
-        Parameters
-        ----------
-        `inputs`: `dict[str, dict]`
-            The metadata inputs dictionary of a workflow.
-        `parent`: `str`, optional
-            The parent key of the current metadata inputs dictionary.
-
-        Returns
-        -------
-        `tuple[int, book]`
-            The number of calculations found and if the workflow is dynamic.
-        """
+    def _get_expected(self, inputs: dict[str, dict]) -> dict:
+        expected = {}
         count = 0
         dynamic = False
+        has_dynamic_workflows = False
 
         for key, sub_inputs in inputs.items():
-            if key == "metadata" and "options" in sub_inputs:  # a calculation
+            if "metadata" in sub_inputs and "options" in sub_inputs["metadata"]:
+                # This is a calculation
                 count += 1
-                dynamic = parent == "pw"
-                return count, dynamic
-            if isinstance(sub_inputs, dict):
-                sub_count, sub_dynamic = self._count_calculations(sub_inputs, key)
-                count += sub_count
-                dynamic = dynamic or sub_dynamic
+                dynamic = key == "pw"
+            elif key != "metadata":
+                # This is a workflow
+                nested = self._get_expected(sub_inputs)
+                has_dynamic_workflows = nested["dynamic"]
+                count += nested["count"]
+                expected[key] = nested
 
-        return count, dynamic
+        expected |= {
+            "count": count,
+            "dynamic": dynamic or has_dynamic_workflows,
+        }
+
+        return expected
 
     def _toggle_branches(self, _):
         if self.collapsed:
@@ -358,6 +367,10 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
 
 
 class CalcJobTreeNode(ProcessTreeNode[orm.CalcJobNode]):
+    def initialize(self):
+        super().initialize()
+        self.update()
+
     def _build_header(self):
         super()._build_header()
         self.label = ipw.Button(
