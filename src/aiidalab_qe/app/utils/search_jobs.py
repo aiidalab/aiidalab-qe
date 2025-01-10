@@ -1,5 +1,6 @@
+from datetime import datetime, timezone
+
 import ipywidgets as ipw
-import pandas as pd
 from table_widget import TableWidget
 
 from aiida.orm import QueryBuilder, load_node
@@ -14,46 +15,48 @@ STATE_ICONS = {
 
 
 def determine_state_icon(row):
-    state = row["State"].lower()
-    if state == "finished" and row["Exit_status"] != 0:
+    """Attach an icon to the displayed job state."""
+    state = row["state"].lower()
+    if state == "finished" and row.get("exit_status", 0) != 0:
         return f"Finished{STATE_ICONS['excepted']}"
     return f"{state.capitalize()}{STATE_ICONS.get(state, '')}"
 
 
 COLUMNS = {
-    "ID": {"headerName": "ID 🔗", "dataType": "link", "editable": False},
-    "Creation time absolute": {
+    "id": {"headerName": "ID 🔗", "dataType": "link", "editable": False},
+    "creation_time_absolute": {
         "headerName": "Creation time ⏰ (absolute)",
         "type": "date",
         "width": 100,
         "editable": False,
     },
-    "Creation time relative": {
+    "creation_time_relative": {
         "headerName": "Creation time ⏰ (relative)",
         "width": 100,
         "editable": False,
     },
-    "Structure": {"headerName": "Structure", "editable": False},
-    "State": {"headerName": "State 🟢", "editable": False},
-    "Status": {"headerName": "Status", "editable": False, "hide": True},
-    "Exit_status": {
+    "structure": {"headerName": "Structure", "editable": False},
+    "state": {"headerName": "State 🟢", "editable": False},
+    "status": {"headerName": "Status", "editable": False, "hide": True},
+    "exit_status": {
         "headerName": "Exit status",
         "type": "number",
         "editable": False,
         "hide": True,
     },
-    "Exit_message": {"headerName": "Exit message", "editable": False},
-    "Label": {"headerName": "Label", "width": 300, "editable": True},
-    "Description": {
+    "exit_message": {"headerName": "Exit message", "editable": False},
+    "label": {"headerName": "Label", "width": 300, "editable": True},
+    "description": {
         "headerName": "Description",
         "width": 300,
         "editable": True,
         "hide": True,
     },
-    "Relax_type": {"headerName": "Relax type", "editable": False, "hide": True},
-    "Delete": {"headerName": "Delete", "dataType": "link", "editable": False},
-    "Download": {"headerName": "Download", "dataType": "link", "editable": False},
-    "UUID": {"headerName": "UUID", "editable": False, "hide": True},
+    "relax_type": {"headerName": "Relax type", "editable": False, "hide": True},
+    "delete": {"headerName": "Delete", "dataType": "link", "editable": False},
+    "download": {"headerName": "Download", "dataType": "link", "editable": False},
+    "uuid": {"headerName": "UUID", "editable": False, "hide": True},
+    "properties": {"headerName": "Properties", "editable": False, "hide": True},
 }
 
 
@@ -64,17 +67,29 @@ class CalculationHistory:
         self.table = TableWidget(style={"margin-top": "20px"})
 
         def on_row_update(change):
-            node = load_node(change["new"]["UUID"])
-            node.label = change["new"]["Label"]
-            node.description = change["new"]["Description"]
+            # When the user updates 'label' or 'description' in the table,
+            # reflect these changes in the corresponding AiiDA node.
+            node = load_node(change["new"]["uuid"])
+            node.label = change["new"]["label"]
+            node.description = change["new"]["description"]
 
         self.table.observe(on_row_update, "updatedRow")
 
+        # This will hold the raw data (list of dicts) from the database
+        self.data = []
+        # This will hold the currently displayed data (filtered, with toggles applied, etc.)
+        self.display_data = []
+
     def load_table(self):
-        self.df = self.load_data()
+        """Populate the table after initialization."""
+        self.data = self.load_data()
         self.setup_widgets()
 
     def load_data(self):
+        """Fetch the QeAppWorkChain results using the QueryBuilder and
+        return a list of dictionaries with all required columns.
+
+        """
         from aiidalab_qe.workflows import QeAppWorkChain
 
         projections = [
@@ -91,102 +106,107 @@ class CalculationHistory:
             "extras.workchain.relax_type",
             "extras.workchain.properties",
         ]
-        headers = [
-            "PK",
-            "UUID",
-            "Structure",
-            "ctime",
-            "State",
-            "Status",
-            "Exit_status",
-            "Exit_message",
-            "Label",
-            "Description",
-            "Relax_type",
-            "Properties",
-        ]
 
         qb = QueryBuilder()
         qb.append(QeAppWorkChain, project=projections, tag="process")
         qb.order_by({"process": {"ctime": "desc"}})
         results = qb.all()
 
-        df = pd.DataFrame(results, columns=headers)
-        # Check if DataFrame is not empty
-        if not df.empty:
-            df["Creation time absolute"] = df["ctime"].apply(
-                lambda x: x.strftime("%Y-%m-%d %H:%M:%S")
+        data = []
+        if not results:
+            return data
+
+        now = datetime.now(timezone.utc)
+
+        for row in results:
+            (
+                pk,
+                uuid,
+                structure,
+                creation_time,
+                state,
+                status,
+                exit_status,
+                exit_message,
+                label,
+                description,
+                relax_type,
+                properties,
+            ) = row
+
+            creation_time_str = (
+                creation_time.strftime("%Y-%m-%d %H:%M:%S") if creation_time else ""
             )
-            now = pd.Timestamp.now(tz="UTC")
-            df["Creation time relative"] = df["ctime"].apply(
-                lambda x: f"{(now - x).days}D ago" if pd.notnull(x) else "N/A"
+            if creation_time:
+                days_ago = (now - creation_time).days
+                creation_time_rel = f"{days_ago}D ago"
+            else:
+                creation_time_rel = "N/A"
+
+            # Transform "waiting" to "running" for readbility
+            if state == "waiting":
+                state = "running"
+
+            # Prepare link-based values
+            pk_with_link = f'<a href="./qe.ipynb?pk={pk}" target="_blank">{pk}</a>'
+            uuid_with_link = (
+                f'<a href="./qe.ipynb?pk={pk}" target="_blank">{uuid[:8]}</a>'
             )
-            df["Delete"] = df["PK"].apply(
-                lambda pk: f'<a href="./delete.ipynb?pk={pk}" target="_blank">Delete</a>'
+            delete_link = f'<a href="./delete.ipynb?pk={pk}" target="_blank">Delete</a>'
+            download_link = (
+                f'<a href="./download.ipynb?pk={pk}" target="_blank">Download</a>'
             )
-            df["Download"] = df["PK"].apply(
-                lambda pk: f'<a href="./download.ipynb?pk={pk}" target="_blank">Download</a>'
+
+            # Make sure properties is a list (avoid None)
+            properties = properties if properties is not None else []
+
+            data.append(
+                {
+                    "pk_with_link": pk_with_link,
+                    "uuid_with_link": uuid_with_link,
+                    "creation_time_absolute": creation_time_str,
+                    "creation_time_relative": creation_time_rel,
+                    "structure": structure,
+                    "state": state,
+                    "status": status,
+                    "exit_status": exit_status,
+                    "exit_message": exit_message,
+                    "label": label,
+                    "description": description,
+                    "relax_type": relax_type,
+                    "uuid": uuid,
+                    "delete": delete_link,
+                    "download": download_link,
+                    "properties": properties,
+                    "creation_time": creation_time,
+                }
             )
-            # add a link to the pk so that the user can inspect the calculation
-            df["PK_with_link"] = df["PK"].apply(
-                lambda pk: f'<a href="./qe.ipynb?pk={pk}" target="_blank">{pk}</a>'
-            )
-            # Store initial part of the UUID
-            df["UUID_with_link"] = df.apply(
-                lambda row: f'<a href="./qe.ipynb?pk={row["PK"]}" target="_blank">{row["UUID"][:8]}</a>',
-                axis=1,
-            )
-            # replace all "waiting" states with "running"
-            df["State"] = df["State"].apply(
-                lambda x: "running" if x == "waiting" else x
-            )
-        else:
-            # Initialize empty columns for an empty DataFrame
-            df["Creation time"] = pd.Series(dtype="str")
-            df["Delete"] = pd.Series(dtype="str")
-        return df[
-            [
-                "PK_with_link",
-                "UUID_with_link",
-                "Creation time absolute",
-                "Creation time relative",
-                "Structure",
-                "State",
-                "Status",
-                "Exit_status",
-                "Exit_message",
-                "Label",
-                "Description",
-                "Relax_type",
-                "UUID",
-                "Delete",
-                "Download",
-                "Properties",
-                "ctime",
-            ]
-        ]
+
+        return data
 
     def setup_widgets(self):
-        unique_properties = set(self.df["Properties"].explode().dropna())
-        unique_properties.discard(None)
+        """Create widgets for filtering, toggles for display, etc."""
+        # Gather unique properties
+        all_properties = set()
+        for row in self.data:
+            for prop in row["properties"]:
+                if prop is not None:
+                    all_properties.add(prop)
+
+        # Build a set of checkboxes for properties
         property_checkboxes = [
             ipw.Checkbox(
                 value=False,
                 description=prop,
-                Layout=ipw.Layout(description_width="initial"),
                 indent=False,
+                layout=ipw.Layout(description_width="initial"),
             )
-            for prop in unique_properties
+            for prop in sorted(all_properties)
         ]
-        self.properties_box = ipw.HBox(
-            children=property_checkboxes,
-            indent=True,
-        )
+
+        self.properties_box = ipw.HBox(property_checkboxes)
         self.properties_filter_description = ipw.HTML("<b>Filter by properties</b>:")
-        # Replace 'None' in 'Properties' with an empty list
-        self.df["Properties"] = self.df["Properties"].apply(
-            lambda x: [] if x is None else x
-        )
+
         self.job_state_dropdown = ipw.Dropdown(
             options={
                 "Any": "",
@@ -198,53 +218,43 @@ class CalculationHistory:
             value="",  # Default value corresponding to "Any"
             description="Job state:",
         )
+
         self.toggle_time_format = ipw.ToggleButtons(
             options=["Absolute", "Relative"],
-            value="Absolute",  # Default to Absolute time
+            value="Absolute",  # Default to showing Absolute time
             description="Time format:",
         )
         self.toggle_time_format.observe(self.update_table_visibility, names="value")
+
         self.toggle_id_format = ipw.ToggleButtons(
-            options=["PK", "UUID"],
-            value="PK",  # Default to PK
+            options=["pk", "uuid"],
+            value="pk",
             description="ID format:",
         )
         self.toggle_id_format.observe(self.update_table_visibility, names="value")
-        # self.toggle_multi_selection = ipw.ToggleButtons(
-        #     options=["On", "Off"],
-        #     value="Off",
-        #     description="Checkbox selection",
-        #     tooltips=["Enable multiple selection.", "Disable multiple selection"],
-        # )
-        # self.toggle_multi_selection.observe(
-        #     self.update_table_configuration, names="value"
-        # )
 
+        # Date pickers for range-based filtering
         self.time_start = ipw.DatePicker(description="Start time:")
         self.time_end = ipw.DatePicker(description="End time:")
         self.time_box = ipw.HBox([self.time_start, self.time_end])
-        # self.apply_filters_btn = ipw.Button(description='Apply Filters')
-        # self.apply_filters_btn.on_click(self.apply_filters)
+
+        # Connect checkboxes and dropdowns to the filter logic
         for cb in property_checkboxes:
             cb.observe(self.apply_filters, names="value")
         self.time_start.observe(self.apply_filters, names="value")
         self.time_end.observe(self.apply_filters, names="value")
         self.job_state_dropdown.observe(self.apply_filters, names="value")
+
         display_options = ipw.VBox(
             children=[
-                ipw.VBox(
-                    children=[
-                        self.toggle_time_format,
-                        self.toggle_id_format,
-                        # self.toggle_multi_selection,
-                    ]
-                ),
+                ipw.VBox(children=[self.toggle_time_format, self.toggle_id_format]),
             ],
             layout=ipw.Layout(
                 border="1px solid lightgray",
                 padding="0.5em",
             ),
         )
+
         filters = ipw.VBox(
             children=[
                 ipw.VBox(
@@ -257,7 +267,7 @@ class CalculationHistory:
                                 self.properties_box,
                             ],
                             layout=ipw.Layout(
-                                border="1px solid lightgray",  # fmt: off
+                                border="1px solid lightgray",
                                 padding="0.5em",
                                 margin="5px",
                             ),
@@ -278,69 +288,91 @@ class CalculationHistory:
             filters,
             self.table,
         ]
-        self.update_table_value(self.df)
 
-    def update_table_value(self, display_df):
-        # Adjust the Creation time column based on the toggle state
-        COLUMNS["Creation time relative"]["hide"] = (
+        self.update_table_value(self.data)
+
+    def update_table_value(self, data_list):
+        """Prepare the data to be shown (adding or hiding columns, etc.),
+        and load it into `self.table`.
+        """
+        # Adjust which creation_time columns to hide
+        COLUMNS["creation_time_relative"]["hide"] = (
             self.toggle_time_format.value != "Relative"
         )
-        COLUMNS["Creation time absolute"]["hide"] = (
+        COLUMNS["creation_time_absolute"]["hide"] = (
             self.toggle_time_format.value != "Absolute"
         )
-        # Adjust the ID column based on the toggle state
-        if self.toggle_id_format.value == "PK":
-            display_df = display_df.rename(columns={"PK_with_link": "ID"}).drop(
-                columns=["UUID_with_link"]
-            )
-        else:
-            display_df = display_df.rename(columns={"UUID_with_link": "ID"}).drop(
-                columns=["PK_with_link"]
-            )
 
-        #
-        if not display_df.empty:
-            display_df["State"] = display_df.apply(determine_state_icon, axis=1)
-        display_df = display_df.drop(columns=["Properties", "ctime"])
+        # Build a new list that has an 'id' column, etc.
+        display_data = []
+        for row in data_list:
+            row_copy = dict(row)
+            # Switch the 'id' column depending on pk vs uuid toggle
+            if self.toggle_id_format.value == "pk":
+                row_copy["id"] = row_copy["pk_with_link"]
+            else:
+                row_copy["id"] = row_copy["uuid_with_link"]
+
+            # Overwrite "state" with icon-based representation
+            row_copy["state"] = determine_state_icon(row_copy)
+            display_data.append(row_copy)
+
+        # Figure out which columns to show the table
         columns = []
-        for col in display_df.columns:
-            column = COLUMNS.get(col)
-            column["field"] = col
-            columns.append(COLUMNS[col])
-        self.table.from_data(display_df, columns=columns)
+        for key in COLUMNS.keys():
+            col_spec = dict(COLUMNS[key])
+            col_spec["field"] = key
+            columns.append(col_spec)
+
+        self.table.from_data(display_data, columns=columns)
 
     def apply_filters(self, _):
+        """Filter the raw data based on job state, selected properties,
+        and date range. Then update the table display.
+        """
+        filtered = []
+
         selected_properties = [
             cb.description for cb in self.properties_box.children if cb.value
         ]
-        filtered_df = self.df.copy()
-        filtered_df = filtered_df[
-            filtered_df["State"].str.contains(self.job_state_dropdown.value)
-        ]
-        if selected_properties:
-            filtered_df = filtered_df[
-                filtered_df["Properties"].apply(
-                    lambda x: all(item in x for item in selected_properties)
-                )
-            ]
-        if self.time_start.value and self.time_end.value:
-            start_time = pd.to_datetime(self.time_start.value).normalize()
-            end_time = pd.to_datetime(self.time_end.value).normalize() + pd.Timedelta(
-                days=1, milliseconds=-1
-            )
-            start_time = start_time.tz_localize("UTC")
-            end_time = end_time.tz_localize("UTC")
-            filtered_df = filtered_df[
-                (filtered_df["ctime"] >= start_time)
-                & (filtered_df["ctime"] <= end_time)
-            ]
-        self.update_table_value(filtered_df)
+
+        # Convert DatePicker values (which are dates) into datetimes with UTC
+        start_time = None
+        end_time = None
+        if self.time_start.value is not None:
+            start_time = datetime.combine(self.time_start.value, datetime.min.time())
+            start_time = start_time.replace(tzinfo=timezone.utc)
+
+        if self.time_end.value is not None:
+            end_time = datetime.combine(self.time_end.value, datetime.max.time())
+            end_time = end_time.replace(tzinfo=timezone.utc)
+
+        # State filter (empty string means "Any")
+        desired_state_substring = self.job_state_dropdown.value
+
+        for row in self.data:
+            if desired_state_substring:
+                if desired_state_substring not in row["state"].lower():
+                    continue
+
+            row_props = row["properties"]
+            if selected_properties:
+                # Must have all selected properties in row_props
+                if not all(prop in row_props for prop in selected_properties):
+                    continue
+
+            ctime = row.get("creation_time", None)
+            if ctime is not None:
+                if start_time and ctime < start_time:
+                    continue
+                if end_time and ctime > end_time:
+                    continue
+
+            filtered.append(row)
+
+        self.update_table_value(filtered)
 
     def update_table_visibility(self, _):
-        # Reapply filters to refresh the table visibility when the checkbox changes
+        """Called when toggles for time format or ID format change."""
+        # simply re-apply filters (which triggers a re-draw).
         self.apply_filters(None)
-
-    def update_table_configuration(self, _):
-        enable = True if self.toggle_multi_selection.value == "On" else False
-        config = {"pagination": True, "checkboxSelection": enable}
-        self.table.config = config
