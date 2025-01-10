@@ -232,7 +232,6 @@ class CalculationHistory:
         self.job_state_dropdown.observe(self.apply_filters, names="value")
         display_options = ipw.VBox(
             children=[
-                ipw.HTML("<h4>Display options:</h4>"),
                 ipw.VBox(
                     children=[
                         self.toggle_time_format,
@@ -240,7 +239,14 @@ class CalculationHistory:
                         # self.toggle_multi_selection,
                     ]
                 ),
-                ipw.HTML("<h4>Filters:</h4>"),
+            ],
+            layout=ipw.Layout(
+                border="1px solid lightgray",
+                padding="0.5em",
+            ),
+        )
+        filters = ipw.VBox(
+            children=[
                 ipw.VBox(
                     children=[
                         self.job_state_dropdown,
@@ -251,7 +257,8 @@ class CalculationHistory:
                                 self.properties_box,
                             ],
                             layout=ipw.Layout(
-                                border="1px solid #ddd",  # fmt: off
+                                border="1px solid lightgray",  # fmt: off
+                                padding="0.5em",
                                 margin="5px",
                             ),
                         ),
@@ -259,12 +266,16 @@ class CalculationHistory:
                 ),
             ],
             layout=ipw.Layout(
-                border="1px solid #ddd",
+                border="1px solid lightgray",
+                padding="0.5em",
             ),
         )
 
         self.main.children = [
+            ipw.HTML("<h4>Display options:</h4>"),
             display_options,
+            ipw.HTML("<h4>Filters:</h4>"),
+            filters,
             self.table,
         ]
         self.update_table_value(self.df)
