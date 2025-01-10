@@ -76,6 +76,11 @@ class SimplifiedProcessTree(ipw.VBox):
         self.children = [
             self.collapse_button,
             self.trunk,
+            ipw.HTML("""
+                <div style="margin-top: 5px; font-style: italic;">
+                    *workflow will re-submit failed calculations
+                </div>
+            """),
         ]
 
     def _update(self):
@@ -94,6 +99,7 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         "QeAppWorkChain": "Quantum ESPRESSO app workflow",
         "BandsWorkChain": "Electronic band structure workflow",
         "PwBandsWorkChain": "Electronic band structure workflow",
+        "ProjwfcBandsWorkChain": "Electronic band structure workflow",
         "PwRelaxWorkChain": "Structural relaxation workflow",
         "PdosWorkChain": "Projected density of states workflow",
         "DosCalculation": "Compute density of states",
@@ -116,7 +122,7 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
             "PwCalculation": "Compute bands",
         },
         "relax": {
-            "PwBaseWorkChain": "Relaxation workflow",
+            "PwBaseWorkChain": "Structure relaxation workflow",
             "PwCalculation": "Optimize structure geometry",
         },
     }
@@ -128,8 +134,6 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         on_inspect: t.Callable[[str], None] | None = None,
         **kwargs,
     ):
-        # if not (node and isinstance(node, orm.ProcessNode)):
-        #     raise ValueError("Process node required")
         self.uuid = node.uuid
         self.level = level
         self.on_inspect = on_inspect
@@ -296,7 +300,11 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
                 level=self.level + 1,
                 on_inspect=self.on_inspect,
             )
-            if child.process_label in ("BandsWorkChain", "PwRelaxWorkChain"):
+            if child.process_label in (
+                "BandsWorkChain",
+                "PwRelaxWorkChain",
+                "ProjwfcBaseWorkChain",
+            ):
                 self._add_branches(child)
             else:
                 branch.initialize()
@@ -304,12 +312,11 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
                 self.pks.add(child.pk)
 
     def _get_tally(self):
-        total = self._get_current_total(self.node)
-        total = max(total, self.expected_jobs["count"])
+        total = self.expected_jobs["count"]
         dynamic = self.expected_jobs["dynamic"]
         finished = self._count_finished(self.node)
         tally = f"{finished}/{total}"
-        tally += "*" if dynamic and total != finished else ""
+        tally += "*" if dynamic else ""
         tally += " job" if total == 1 else " jobs"
         return tally
 
@@ -335,7 +342,6 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
         expected = {}
         count = 0
         dynamic = False
-        has_dynamic_workflows = False
 
         for key, sub_inputs in inputs.items():
             if "metadata" in sub_inputs and "options" in sub_inputs["metadata"]:
@@ -345,13 +351,12 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
             elif key != "metadata":
                 # This is a workflow
                 nested = self._get_expected(sub_inputs)
-                has_dynamic_workflows = nested["dynamic"]
                 count += nested["count"]
                 expected[key] = nested
 
         expected |= {
             "count": count,
-            "dynamic": dynamic or has_dynamic_workflows,
+            "dynamic": dynamic,
         }
 
         return expected
