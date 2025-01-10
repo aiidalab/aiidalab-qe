@@ -221,7 +221,9 @@ class QeAppWorkChain(WorkChain):
                 plugin_workchain = entry_point["workchain"]
                 if plugin_workchain.spec().has_input("clean_workdir"):
                     plugin_builder.clean_workdir = clean_workdir
-                setattr(builder, name, plugin_builder)
+                # some plugin's logic depend on whether a input exist or not, but not check if it is empty.
+                # here we remove the empty namespace for safety.
+                setattr(builder, name, plugin_builder._inputs(prune=True))
             else:
                 builder.pop(name, None)
 
