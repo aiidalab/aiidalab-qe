@@ -97,10 +97,8 @@ ProcessNodeType = t.TypeVar("ProcessNodeType", bound=orm.ProcessNode)
 class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
     _MAPPING = {
         "QeAppWorkChain": "Quantum ESPRESSO app workflow",
-        "BandsWorkChain": "Electronic band structure workflow",
         "PwBandsWorkChain": "Electronic band structure workflow",
         "ProjwfcBandsWorkChain": "Electronic band structure workflow",
-        "PwRelaxWorkChain": "Structural relaxation workflow",
         "PdosWorkChain": "Projected density of states workflow",
         "DosCalculation": "Compute density of states",
         "ProjwfcCalculation": "Compute projections",

@@ -20,6 +20,7 @@ from aiidalab_qe.app.result.components.status.tree import (
 def mock_calcjob(label):
     calcjob = orm.CalcJobNode()
     calcjob.set_process_state(ProcessState.FINISHED)
+    calcjob.set_exit_status(0)
     calcjob.set_process_label(label)
     return calcjob
 
@@ -27,6 +28,7 @@ def mock_calcjob(label):
 def mock_workchain(label):
     workchain = orm.WorkChainNode()
     workchain.set_process_state(ProcessState.FINISHED)
+    workchain.set_exit_status(0)
     workchain.set_process_label(label)
     return workchain
 
@@ -35,6 +37,7 @@ def mock_workchain(label):
 def mock_qeapp_workchain():
     qe_workchain = mock_workchain("QeAppWorkChain")
     relax_workchain = mock_workchain("PwRelaxWorkChain")
+    base_workchain = mock_workchain("PwBaseWorkChain")
     relax_calcjob = mock_calcjob("PwCalculation")
     parameters = orm.Dict(dict={"CONTROL": {"calculation": "relax"}})
     parameters.store()
@@ -44,8 +47,18 @@ def mock_qeapp_workchain():
         link_label="parameters",
     )
     relax_calcjob.base.links.add_incoming(
-        relax_workchain,
+        base_workchain,
         link_type=LinkType.CALL_CALC,
+        link_label="iteration_01",
+    )
+    base_workchain.base.links.add_incoming(
+        parameters,
+        link_type=LinkType.INPUT_WORK,
+        link_label="pw__parameters",
+    )
+    base_workchain.base.links.add_incoming(
+        relax_workchain,
+        link_type=LinkType.CALL_WORK,
         link_label="iteration_01",
     )
     relax_workchain.base.links.add_incoming(
@@ -53,11 +66,33 @@ def mock_qeapp_workchain():
         link_type=LinkType.CALL_WORK,
         link_label="relax",
     )
-    relax_workchain.set_metadata_inputs({"": orm.StructureData()})
-    qe_workchain.set_metadata_inputs({"relax": {}})
-    relax_workchain.set_metadata_inputs({"pw": {}})
+    base_workchain.set_metadata_inputs(
+        {
+            "pw": {"metadata": {"options": {}}},
+            "metadata": {},
+        }
+    )
+    relax_workchain.set_metadata_inputs(
+        {
+            "base": {
+                "pw": {"metadata": {"options": {}}},
+                "metadata": {},
+            },
+            "metadata": {},
+        }
+    )
+    qe_workchain.set_metadata_inputs(
+        {
+            "relax": {
+                "base": {
+                    "pw": {"metadata": {"options": {}}},
+                },
+            },
+        }
+    )
     qe_workchain.store()
     relax_workchain.store()
+    base_workchain.store()
     relax_calcjob.store()
     yield qe_workchain
 
@@ -111,7 +146,7 @@ class TestSimplifiedProcessTree:
         assert workchain_node.level == 1
         assert workchain_node.emoji.value == "✅"
         assert workchain_node.state.value == "finished"
-        human_label = ProcessTreeNode._MAPPING["PwRelaxWorkChain"]
+        human_label = ProcessTreeNode._PW_MAPPING["relax"]["PwBaseWorkChain"]
         assert workchain_node.label.value == human_label
         assert isinstance(workchain_node.label, ipw.HTML)
         assert workchain_node.collapsed
@@ -177,20 +212,18 @@ class TestWorkChainStatusPanel:
         assert self.panel.accordion.selected_index == 0
         assert self.panel.simplified_process_tree.rendered
 
-    def test_calculation_node_link(self):
+    def test_calcjob_node_link(self):
         # TODO uncomment if and when the comments below are resolved; discard otherwise
         # from aiidalab_qe.common.node_view import CalcJobNodeViewerWidget
 
-        self.tree.trunk.expand(recursive=True)
-        calculation_node: CalcJobTreeNode = self.tree.trunk.branches[0].branches[0]
-        calculation_node.label.click()
+        trunk = self.tree.trunk
+        trunk.expand(recursive=True)
+        calcjob_node: CalcJobTreeNode = trunk.branches[0].branches[0]
+        calcjob_node.label.click()
         assert self.panel.accordion.selected_index == 1
-        assert self.panel.process_tree.value == calculation_node.uuid
-        assert self.panel.process_tree._tree.nodes == (calculation_node.process_node,)
+        assert self.panel.process_tree.value == calcjob_node.uuid
+        assert self.panel.process_tree._tree.nodes == (calcjob_node.node,)
         # TODO understand why the following does not trigger automatically as in the app
         # TODO understand why the following triggers a thread
-        # self.panel.process_tree.set_trait(
-        #     "selected_nodes",
-        #     [calculation_node.process_node],
-        # )
+        # self.panel.process_tree.set_trait("selected_nodes", [calcjob_node.node])
         # assert isinstance(panel.node_view, CalcJobNodeViewerWidget)
