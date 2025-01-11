@@ -627,6 +627,8 @@ class ResultsPanel(Panel[RM]):
         else:
             self._render_controls()
             self.children += (self.results_container,)
+            if self._model.identifier == "structure":
+                self._load_results()
 
     def _on_process_change(self, _):
         self._model.update()
@@ -666,7 +668,7 @@ class ResultsPanel(Panel[RM]):
 
         self.load_controls = ipw.HBox(
             children=[]
-            if self._model.auto_render
+            if self._model.auto_render or self._model.identifier == "structure"
             else [
                 self.load_results_button,
                 ipw.HTML("""

@@ -1,7 +1,6 @@
 import ipywidgets as ipw
 
 from aiidalab_qe.common.panel import ResultsPanel
-from aiidalab_qe.common.time import format_time, relative_time
 from aiidalab_qe.common.widgets import TableWidget
 from aiidalab_widgets_base.viewers import StructureDataViewer
 
@@ -9,27 +8,95 @@ from .model import StructureResultsModel
 
 
 class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
+    def __init__(self, model: StructureResultsModel, **kwargs):
+        super().__init__(model, **kwargs)
+        self._model.observe(
+            self._on_selected_view_change,
+            "selected_view",
+        )
+
     def _render(self):
         if hasattr(self, "widget"):
             # HACK to resize the NGL viewer in cases where it auto-rendered when its
-            # container was not displayed, which leads to a null width. This hack restores
-            # the original dimensions.
+            # container was not displayed, which leads to a null width. This hack
+            # restores the original dimensions.
             ngl = self.widget._viewer
             ngl._set_size("100%", "300px")
             ngl.control.zoom(0.0)
             return
 
-        structure = self._model.get_structure()
-        self.widget = StructureDataViewer(structure=structure)
+        self.header = ipw.HTML()
+        ipw.dlink(
+            (self._model, "header"),
+            (self.header, "value"),
+        )
+
+        self.view_toggle_button = ipw.Button(
+            icon="eye",
+            layout=ipw.Layout(
+                display="block" if self._model.is_relaxed else "none",
+                width="125px",
+            ),
+        )
+        ipw.dlink(
+            (self._model, "selected_view"),
+            (self.view_toggle_button, "description"),
+            lambda view: f"View {'initial' if view == 'relaxed' else 'relaxed'}",
+        )
+        ipw.dlink(
+            (self._model, "monitor_counter"),
+            (self.view_toggle_button, "disabled"),
+            lambda _: not self._model.has_results,
+        )
+        ipw.dlink(
+            (self.view_toggle_button, "disabled"),
+            (self.view_toggle_button, "tooltip"),
+            lambda disabled: "Waiting for results"
+            if disabled
+            else "Toggle between the initial and relaxed structures",
+        )
+
+        self.view_toggle_button.on_click(self._toggle_view)
+
+        self.structure_info = ipw.HTML(layout=ipw.Layout(margin="0"))
+        ipw.dlink(
+            (self._model, "info"),
+            (self.structure_info, "value"),
+        )
+
+        self.header_box = ipw.HBox(
+            children=[
+                ipw.VBox(
+                    children=[
+                        self.header,
+                        self.view_toggle_button,
+                    ],
+                    layout=ipw.Layout(justify_content="space-between"),
+                ),
+                ipw.VBox(
+                    children=[
+                        self.structure_info,
+                    ],
+                    layout=ipw.Layout(justify_content="flex-end"),
+                ),
+            ],
+            layout=ipw.Layout(grid_gap="1em"),
+        )
+
+        self.widget = StructureDataViewer()
+        ipw.dlink(
+            (self._model, "structure"),
+            (self.widget, "structure"),
+        )
 
         self.widget.configuration_box.selected_index = 2  # select the Cell tab
 
         self.atom_coordinates_table = TableWidget()
         self.atom_coordinates_table.add_class("atom-coordinates-table")
-
-        self._generate_table(structure.get_ase())
-
-        structure_info = self._get_structure_info(structure)
+        ipw.dlink(
+            (self._model, "table_data"),
+            (self.atom_coordinates_table, "data"),
+        )
 
         ipw.link(
             (self.widget, "displayed_selection"),
@@ -37,7 +104,7 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         )
 
         self.results_container.children = [
-            structure_info,
+            self.header_box,
             self.widget,
             ipw.HTML("""
                 <h4 style='margin: 10px 0;'>
@@ -52,40 +119,15 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             self.atom_coordinates_table,
         ]
 
-    def _get_structure_info(self, structure):
-        formatted = format_time(structure.ctime)
-        relative = relative_time(structure.ctime)
-        return ipw.HTML(
-            f"""
-            <div style='line-height: 1.4;'>
-                <strong>PK:</strong> {structure.pk}<br>
-                <strong>Label:</strong> {structure.label}<br>
-                <strong>Description:</strong> {structure.description}<br>
-                <strong>Number of atoms:</strong> {len(structure.sites)}<br>
-                <strong>Creation time:</strong> {formatted} ({relative})<br>
-            </div>
-            """
-        )
+    def _on_process_change(self, _):
+        super()._on_process_change(_)
+        if self.rendered:
+            self.view_toggle_button.layout.display = (
+                "block" if self._model.is_relaxed else "none"
+            )
 
-    def _generate_table(self, structure):
-        data = [
-            [
-                "Atom index",
-                "Chemical symbol",
-                "Tag",
-                "x (Å)",
-                "y (Å)",
-                "z (Å)",
-            ]
-        ]
-        positions = structure.positions
-        chemical_symbols = structure.get_chemical_symbols()
-        tags = structure.get_tags()
+    def _on_selected_view_change(self, _):
+        self._model.update()
 
-        for index, (symbol, tag, position) in enumerate(
-            zip(chemical_symbols, tags, positions), start=1
-        ):
-            formatted_position = [f"{coord:.2f}" for coord in position]
-            data.append([index, symbol, tag, *formatted_position])
-
-        self.atom_coordinates_table.data = data
+    def _toggle_view(self, _):
+        self._model.toggle_selected_view()
