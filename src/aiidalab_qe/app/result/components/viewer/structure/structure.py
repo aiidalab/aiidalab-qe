@@ -25,6 +25,8 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         self.widget.configuration_box.selected_index = 2  # select the Cell tab
 
         self.atom_coordinates_table = TableWidget()
+        self.atom_coordinates_table.add_class("atom-coordinates-table")
+
         self._generate_table(structure.get_ase())
 
         structure_info = self._get_structure_info(structure)

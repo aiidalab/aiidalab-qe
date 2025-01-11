@@ -1,0 +1,35 @@
+/* Structure manager */
+
+.structure-viewer .view-box {
+  justify-content: center !important;
+}
+
+/* Structure coordinates table */
+
+.atom-coordinates-table > div {
+  width: fit-content;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.atom-coordinates-table table {
+  width: 100% !important;
+}
+
+.atom-coordinates-table table tr:first-child {
+  background-color: #ccc !important;
+}
+
+.atom-coordinates-table table tr:not(:first-child):hover {
+  background-color: #ddd !important;
+}
+
+.atom-coordinates-table table tr:not(:first-child):active {
+  background-color: #ccc !important;
+}
+
+.atom-coordinates-table table th,
+.atom-coordinates-table table td {
+  text-align: center !important;
+  padding: 0.5em 1em !important;
+}
