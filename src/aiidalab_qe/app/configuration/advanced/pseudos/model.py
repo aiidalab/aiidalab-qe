@@ -97,13 +97,15 @@ class PseudosConfigurationSettingsModel(
 
     PSEUDO_HELP_WO_SOC = """
         <div class="pseudo-text">
-            If you are unsure, select 'SSSP efficiency', which for most
-            calculations will produce sufficiently accurate results at
-            comparatively small computational costs. If your calculations require a
-            higher accuracy, select 'SSSP accuracy' or 'PseudoDojo stringent',
-            which will be computationally more expensive. SSSP is the standard
-            solid-state pseudopotentials. The PseudoDojo used here has the SR
-            relativistic type.
+            If you are unsure, select 'SSSP efficiency', which for most calculations
+            will produce sufficiently accurate results at comparatively small
+            computational costs.
+            <br>
+            If your calculations require a higher accuracy, select 'SSSP accuracy' or
+            'PseudoDojo stringent', which will be computationally more expensive.
+            <br>
+            SSSP is the standard solid-state pseudopotentials.
+            The PseudoDojo version used here is the SR relativistic type.
         </div>
     """
 

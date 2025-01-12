@@ -82,7 +82,8 @@ class MagnetizationConfigurationSettingsModel(
                 content="""
                     If a nonzero ground-state magnetization is expected, you
                     <strong>must</strong> assign a nonzero value to at least one atomic
-                    type (note that the app already provide tentative initial values).
+                    type (the app already provides tentative initial values).
+                    <br>
                     To simulate an antiferromagnetic state, first, if you have not
                     done so already, please use the atom tag editor <b>(Select
                     structure -> Edit structure -> Edit atom tags)</b> to mark atoms of

@@ -28,9 +28,8 @@ class HubbardConfigurationSettingsPanel(
             return
 
         self.activate_hubbard_checkbox = ipw.Checkbox(
-            description="",
+            description="Define U values",
             indent=False,
-            layout=ipw.Layout(max_width="10%"),
         )
         ipw.link(
             (self._model, "is_active"),
@@ -44,7 +43,6 @@ class HubbardConfigurationSettingsPanel(
         self.define_eigenvalues_checkbox = ipw.Checkbox(
             description="Define eigenvalues",
             indent=False,
-            layout=ipw.Layout(max_width="30%"),
         )
         ipw.link(
             (self._model, "has_eigenvalues"),
@@ -64,12 +62,8 @@ class HubbardConfigurationSettingsPanel(
         self.container = ipw.VBox()
 
         self.children = [
-            ipw.HBox(
-                children=[
-                    ipw.HTML("<b>Hubbard (DFT+U)</b>"),
-                    self.activate_hubbard_checkbox,
-                ]
-            ),
+            ipw.HTML("<b>Hubbard (DFT+U)</b>"),
+            self.activate_hubbard_checkbox,
             self.container,
         ]
 
@@ -107,16 +101,13 @@ class HubbardConfigurationSettingsPanel(
 
         children = []
 
-        if self._model.input_structure:
-            children.append(ipw.HTML("Define U value [eV] "))
-
         for label in self._model.orbital_labels:
             float_widget = ipw.BoundedFloatText(
                 description=label,
                 min=0,
                 max=20,
                 step=0.1,
-                layout={"width": "160px"},
+                style={"description_width": "150px"},
             )
             link = ipw.link(
                 (self._model, "parameters"),
@@ -130,7 +121,14 @@ class HubbardConfigurationSettingsPanel(
                 ],
             )
             self.links.append(link)
-            children.append(float_widget)
+            children.append(
+                ipw.HBox(
+                    children=[
+                        float_widget,
+                        ipw.HTML("eV"),
+                    ],
+                )
+            )
 
         if self._model.needs_eigenvalues_widget:
             children.append(self.eigenvalues_container)
@@ -158,7 +156,7 @@ class HubbardConfigurationSettingsPanel(
 
             for state_index in range(num_states):
                 eigenvalues_up = ipw.Dropdown(
-                    description=f"{state_index+1}",
+                    description=f"{state_index + 1}",
                     layout=ipw.Layout(width="65px"),
                     style={"description_width": "initial"},
                 )
@@ -191,7 +189,7 @@ class HubbardConfigurationSettingsPanel(
                 spin_up_row.children += (eigenvalues_up,)
 
                 eigenvalues_down = ipw.Dropdown(
-                    description=f"{state_index+1}",
+                    description=f"{state_index + 1}",
                     layout=ipw.Layout(width="65px"),
                     style={"description_width": "initial"},
                 )
