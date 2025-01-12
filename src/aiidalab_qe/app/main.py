@@ -103,10 +103,10 @@ class App(ipw.VBox):
 
         super().__init__(
             children=[
-                InAppGuide(identifier="guide-warning", classes=["guide-warning"]),
+                InAppGuide(identifier="guide-header"),
                 self._process_loading_message,
                 self._wizard_app_widget,
-                InAppGuide(identifier="post-guide", classes=["post-guide"]),
+                InAppGuide(identifier="post-guide"),
             ]
         )
 

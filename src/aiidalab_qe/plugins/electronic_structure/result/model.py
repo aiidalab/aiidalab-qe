@@ -5,7 +5,7 @@ from aiidalab_qe.common.panel import ResultsModel
 
 class ElectronicStructureResultsModel(ResultsModel):
     title = "Electronic Structure"
-    identifier = "electronic_structure"
+    identifier = "electronic-structure"
 
     identifiers = ("bands", "pdos")
 

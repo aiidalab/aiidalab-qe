@@ -17,6 +17,7 @@ from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code.model import CodeModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.mixins import Confirmable, HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
@@ -599,8 +600,13 @@ class ResultsPanel(Panel[RM]):
     """
 
     loading_message = "Loading {identifier} results"
+    has_controls = False
 
     def __init__(self, model: RM, **kwargs):
+        self.guide = InAppGuide(
+            identifier=f"{model.identifier}-results",
+            classes=["results-panel-guide"],
+        )
         super().__init__(model=model, **kwargs)
         self._model.observe(
             self._on_process_change,
@@ -623,11 +629,16 @@ class ResultsPanel(Panel[RM]):
         self.results_container = ipw.VBox()
 
         if self._model.auto_render:
-            self.children = [self.results_container]
+            self.children = [
+                self.guide,
+                self.results_container,
+            ]
             self._load_results()
-        else:
+        elif not self.has_controls:
+            self.children = [self.guide]
             self._render_controls()
             self.children += (self.results_container,)
+            self.has_controls = True
             if self._model.identifier == "structure":
                 self._load_results()
 
@@ -682,6 +693,7 @@ class ResultsPanel(Panel[RM]):
         )
 
         self.children = [
+            *self.children,
             self.process_status_notification,
             self.load_controls,
         ]

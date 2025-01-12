@@ -1,164 +1,276 @@
-<div id="guide-warning">
-  You've activated the basic in-app guide. Follow along below to learn the basic
-  features of the Quantum ESPRESSO app.
+<div id="guide-header">
+  You've activated the basic in-app guide. In this guide, you will learn how to
+  use the app to build and submit a workflow of Quantum ESPRESSO calculations
+  designed to compute the electronic structure of bulk gold. Click on
+  <b>Step 1: Select structure</b> and follow the instructions to proceed.
 </div>
 
 <div id="structure-step">
-  In this step, you can select a structure as follows:
+  In the structure selection step, we select a structure for the calculation in
+  one of a several ways:
   <ul>
-    <li><b>Upload file</b>: upload a structure file from your computer.</li>
-    <li><b>OPTIMADE</b>: search for structures in the OPTIMADE database.</li>
+    <li><b>Upload file</b>: upload a structure file from your computer</li>
+    <li><b>OPTIMADE</b>: search for structures in the OPTIMADE database</li>
+    <li><b>AiiDA database</b>: search for structures in your AiiDA database</li>
     <li>
-      <b>AiiDA database</b>: search for structures in your AiiDA database.
-    </li>
-    <li>
-      <b>From Examples</b>: select a structure from a list of example
-      structures.
+      <b>From Examples</b>: select a structure from a list of example structures
     </li>
   </ul>
-  Once selected, you may inspect the structure. You can also edit the structure
-  using the available structure editors. When done, you can choose to modify the
-  structure label and/or provide a description. These will be attached to the
-  input structure node in your AiiDA database. When you are ready, click
-  "Confirm" to proceed to the next step.
+  Once selected, we can view the structure in the viewer below. We can also edit
+  the structure using the available structure editors. When done, we can choose
+  to modify the structure label and/or provide a description. These will be
+  attached to the input structure node in your AiiDA database.
   <br />
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
       <li>Click on the <b>From examples</b> tab</li>
+      <li>Click on <b>Simple crystals</b></li>
       <li>Select <b>Gold</b> from the dropdown list</li>
-      <li>Click the <b>Confirm</b> button to proceed.</li>
+      <li>Click the <b>Confirm</b> button to proceed</li>
     </ol>
-  </div>
-  <div class="alert alert-warning">
-    <b>Warning:</b> If the confirmed structure is not yet stored in the AiiDA
-    database, it will be stored automatically when you proceed to the next step.
-  </div>
-  <div class="alert alert-warning">
-    <b>Warning:</b> Changes after confirmation will unconfirm this step and
-    reset the following steps.
+    <div class="alert alert-warning">
+      <b>Warning:</b> If the confirmed structure is not yet stored in the AiiDA
+      database, it will be stored automatically when you proceed to the next
+      step.
+    </div>
+    <div class="alert alert-warning">
+      <b>Warning:</b> Changes after confirmation will reset the following steps.
+    </div>
   </div>
 </div>
 
 <div id="configuration-step">
-  In this step, we define the workflow tasks, including structure relaxation and
-  which properties to compute, and select the parameters of the calculations.
+  In the configuration step, we define the workflow tasks, such as optimizing
+  the structure geometry and/or computing certain properties. We also select in
+  this step the parameters for the workflow calculations.
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
       <li>Select <b>Full geometry</b> relaxation</li>
-      <li>Open <b>Step 2.1</b> to select properties</li>
-      <li>Open <b>Step 2.2</b> to customize parameters</li>
-      <li>Click <b>Confirm</b> to proceed</li>
+      <li>Open <b>step 2.1</b> for further instructions</li>
     </ol>
-  </div>
-  <div class="alert alert-warning">
-    <b>Note:</b> Changes after confirmation will unconfirm this step and reset
-    the following steps.
   </div>
 </div>
 
 <div id="properties-selection">
-  Here we select the properties to calculate.
+  Here we select the properties to calculate. Each property is associated with a
+  workflow that will submit one or more calculations.
   <div class="alert alert-success">
-    Select <b>Electronic band structure</b> and
-    <b>Projected density of states (PDOS)</b>
+    <h4>Tasks</h4>
+    <ol>
+      <li>Check <b>Electronic band structure</b></li>
+      <li>Check <b>Electronic projected density of states (PDOS)</b></li>
+      <li>Open <b>step 2.2</b> for further instructions</li>
+    </ol>
   </div>
 </div>
 
 <div id="calculation-settings">
-  Here we can customize the calculation parameters.
+  Here we can customize the calculation parameters. The settings are divided
+  into several tabs:
+  <ul>
+    <li><b>Basic settings</b>: top-level calculation settings</li>
+    <li><b>Advanced settings</b>: fine-tune the calculations</li>
+    <li>
+      <b>Plugin settings</b>: parameters for plugin calculations including
+      electronic band structure or projected density of states
+    </li>
+  </ul>
+  Note that the app pre-configures defaults for most parameters.
   <div class="alert alert-success">
-    Click on each tab to customize its settings.
+    See further instructions in the <b>Basic settings</b> panel below.
   </div>
 </div>
 
 <div id="basic-settings">
   The basic settings panel provides top-level calculation settings including the
-  electronic and magnetic properties of the material. It also provides a choice
-  of three protocols that pre-configure many calculation settings, balancing
-  speed with accuracy.
-  <div class="alert alert-success">Select the <b>fast</b> protocol</div>
+  electronic and magnetic properties of the material, and if spin-orbit coupling
+  is to be considered. It also provides a choice of three protocols that
+  pre-configure many calculation settings, balancing speed with accuracy.
   <div class="alert alert-warning">
-    Note: Due to the limited resources provided for the demo server, we select
-    the <b>fast</b> protocol to reduce the cost of the calculation.
+    <b>Note:</b> If running locally (for example, on the AiiDAlab demo server),
+    we recommend selecting the <b>fast</b> protocol to reduce the computational
+    cost.
   </div>
-</div>
-
-<div id="advanced-settings">
-  The Advanced settings allow you to finely tune the calculation.
-  <div class="alert alert-warning">
-    In this walkthrough, we will not modify advanced settings and proceed with
-    the defaults.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select the <b>fast</b> protocol</li>
+      <li>
+        <b>(Optional)</b> visit the <b>Advanced settings</b> panel (we will not
+        customize them in this tutorial)
+      </li>
+      <li>Switch to the <b>Band structure</b> tab</li>
+    </ol>
   </div>
 </div>
 
 <div id="bands-settings">
   Here we configure the settings for computing the band structure.
-  <div class="alert alert-success">Check <b>Fat bands calculation</b></div>
-</div>
-
-<div id="pdos-settings">
-  Here we configure the settings for computing the projected density of states,
-  or PDOS.
-  <div class="alert alert-warning">
-    In this walkthrough, we will not modify pdos settings and proceed with the
-    defaults.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Check <b>Fat bands calculation</b></li>
+      <li>
+        <b>(Optional)</b> visit the <b>PDOS</b> panel (we will not customize
+        them in this tutorial)
+      </li>
+      <li>Click the <b>Confirm</b> button to proceed</li>
+    </ol>
+    <div class="alert alert-warning">
+      <b>Warning:</b> Changes after confirmation will reset the following steps.
+    </div>
   </div>
 </div>
 
 <div id="submission-step">
-  In this step, we define the resources to be used in the calculation. The
-  global resources are used to define resources across all workflow
-  calculations. Optionally, you can override the resource settings for specific
-  calculations.
+  <p>
+    In the submission step, we define the computational resources to be used in
+    the calculations. The global resources are used to define resources across
+    all workflow calculations. Optionally, you can override the resource
+    settings for specific calculations.
+  </p>
+  <div class="alert alert-warning">
+    <b>Warning:</b> If running locally (for example, on the AiiDAlab demo
+    server), we recommend keeping nodes and CPUs at the default minimum of 1
+    each.
+  </div>
+  <p>
+    Once the resources are defined, we can optionally customize the workflow
+    label (pre-filled according to the settings of steps 1 & 2), as well as
+    provide a detailed description of the workflow. Once we are ready, we can
+    submit the workflow.
+  </p>
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Select computational resources</li>
-      <li>Add a description of the calculation</li>
-      <li>Click <b>Submit</b> to proceed</li>
+      <li>Select 1 node and 1 CPU for each of the codes below</li>
+      <li><b>(Optional)</b> customize the workflow label</li>
+      <li><b>(Optional)</b> add a workflow description</li>
+      <li>Click the <b>Submit</b> button to proceed</li>
     </ol>
+    <div class="alert alert-warning">
+      <b>Warning:</b> The workflow may take a moment to submit.
+    </div>
   </div>
 </div>
 
 <div id="results-step">
-  In this step, we can monitor the calculation and view its results. A summary
-  of calculation parameters is also provided. Raw input and output files may be
-  downloaded, as well as an AiiDA archive containing the full calculation
-  provenance.
+  In the final step, we can monitor the calculation and view its results. A
+  summary of calculation parameters is also provided. Raw input and output files
+  may be downloaded upon workflow completion, as well as an AiiDA archive
+  containing the full calculation provenance.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>If not already there, switch over to the <b>Status</b> panel</li>
+      <li>
+        In the process tree, follow (by clicking)
+        <code>QeAppWorkChain -> PwRelaxWorkChain -> PwBaseWorkChain</code>
+      </li>
+      <li>
+        Click on <code>PwCalculation</code> to view a scrollable running log of
+        the calculation
+      </li>
+      <li>
+        While the calculation is running, switch over to the
+        <b>Summary</b> panel to view the submitted parameters
+      </li>
+      <li>
+        When ready, switch over to the <b>Results</b> panel for further
+        instructions
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div id="results-panel">
+  Here in the results panel, each tab will open results pertaining to a specific
+  calculation submitted by the workflow.
+  <div class="alert alert-success">
+    See further instructions below in the <b>Structure</b> tab.
+  </div>
+</div>
+
+<div id="structure-results">
+  In the structure results panel, we can view the initial structure selected for
+  the calculation. The panel is mostly the same as the one we saw in the
+  structure selection step, with the notable additions of the structure node
+  info and structure coordinates table. Most importantly, once the structure
+  relaxation is complete, the toggle button below the title will become active
+  and allow us to switch between the initial and relaxed structure.
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
       <li>
-        In the process tree, click on the root <code>QeAppWorkChain</code> node
-      </li>
-      <li><b>(optional)</b> review the calculation parameters</li>
-      <li>Click on the <b>Final Geometry</b> tab</li>
-      <li>
-        When the structure relaxation is finished, click on
-        <b>Load results</b> to view the final structure geometry
+        Once the calculation is complete, click on the toggle button to switch
+        between the structure views. Note the differences in cell parameters
+        (vector lengths/angles and volume) and atomic positions
       </li>
       <li>
-        Repeat the last two steps for the <b>Bands</b> and <b>PDOS</b> tabs
+        When ready, switch over to the <b>Electronic bands + PDOS </b> panel
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div id="electronic-structure-results">
+  When partial results are available (when one of the bands and PDOS workflows
+  finishes), the <b>Load results</b> button will become active allowing us to
+  load the results from AiiDA.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>When active, click on <b>Load results</b></li>
+      <div class="alert alert-warning">
+        If you did so with only one of the two workflows finished, only the
+        corresponding checkbox will be active and checked. The other will be
+        available once its corresponding workflow finishes. At which point, you
+        will be able to replot the data with both sets of results.
+      </div>
+      <li>
+        Several controls are at your disposal for adjusting the plot. For now,
+        group the orbitals by angular momentum
+      </li>
+      <li>
+        Identify the gold 5d states (you can also double click on Au-5d in the
+        legend)
+      </li>
+      <li>If selected, deselect the Au-5d in the legend (double click)</li>
+      <li>Double click on the plot to zoom out</li>
+      <li>Identify the gold semicore states</li>
+      <li>
+        Feel free to explore further. When ready, you can continue to the
+        post-guide exercises at the bottom of the app
       </li>
     </ol>
   </div>
 </div>
 
 <div id="post-guide">
-  This concludes the basic Quantum ESPRESSO in-app guide.
-  <div class="alert alert-success">
-    <h4>Exercises</h4>
-    <ol>
-      <li>
-        <b>Download</b> the raw input and output files for further analysis
-      </li>
-      <li>
-        <b>Download</b> the AiiDA archive to store the full calculation
-        provenance
-      </li>
-      <li><b>Explore</b> the AiiDA database to view the calculation history</li>
-    </ol>
-  </div>
+  <h4>Post-guide exercises</h4>
+  <ol>
+    <li>Download the raw input and output files for further analysis</li>
+    <div class="alert alert-info">
+      This will download a folder hierarchy with all inputs and outputs of
+      calculations submitted by the workflow, allowing you to dig deeper into
+      the data without requiring an AiiDA installation.
+    </div>
+    <li>Download the AiiDA archive to store the full calculation provenance</li>
+    <div class="alert alert-info">
+      The downloaded archive can be imported in any AiIDA/AiiDAlab instance,
+      reproducing the whole dataset as if it was computed on the platform where
+      it is imported.
+    </div>
+    <li>
+      Explore the AiiDA database by viewing the
+      <a href="./calculation_history.ipynb" target="_blank">
+        calculation history </a
+      >. This will open a Jupyter notebook in a new tab, where you can search,
+      filter, and sort a table of all calculations stored in the AiiDA database.
+      Each entry in the table includes a download feature similar to the
+      previous two steps.
+    </li>
+  </ol>
 </div>
