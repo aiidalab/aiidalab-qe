@@ -81,8 +81,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
 
         self.panels = {
             "Summary": self.summary_panel,
-            "Results": self.results_panel,
             "Status": self.status_panel,
+            "Results": self.results_panel,
         }
 
         self.toggle_controls = ipw.ToggleButtons(
@@ -118,7 +118,11 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
-        self.toggle_controls.value = "Summary"
+        self.toggle_controls.value = (
+            "Results"
+            if (process := self._model.fetch_process_node()) and process.is_finished_ok
+            else "Status"
+        )
 
         self.process_monitor = ProcessMonitor(
             timeout=0.5,

@@ -20,6 +20,8 @@ def test_result_step(app_to_submit, generate_qeapp_workchain):
     step = app.results_step
     app.results_model.process_uuid = generate_qeapp_workchain().node.uuid
     assert step.state == step.State.ACTIVE
+    step.render()
+    assert step.toggle_controls.value == "Status"
 
 
 def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
