@@ -44,7 +44,7 @@ def test_workchainview(generate_qeapp_workchain):
     model.process_uuid = workchain.node.uuid
     viewer.render()
     assert len(viewer.tabs.children) == 2
-    assert viewer.tabs._titles["0"] == "Relaxed structure"  # type: ignore
+    assert viewer.tabs._titles["0"] == "Structure"  # type: ignore
 
 
 def test_summary_report(data_regression, generate_qeapp_workchain):
@@ -129,15 +129,41 @@ def test_summary_view(generate_qeapp_workchain):
 
 def test_structure_results_panel(generate_qeapp_workchain):
     """Test the structure results panel can be properly generated."""
+
     model = StructureResultsModel()
-    _ = StructureResultsPanel(model=model)
+    panel = StructureResultsPanel(model=model)
+
+    def test_table_data(model):
+        rows = model.table_data[1:]  # skip table header
+        for i, row in enumerate(rows):
+            position = model.structure.sites[i].position
+            x, y, z = (f"{coordinate:.2f}" for coordinate in position)
+            assert row == [i + 1, "Si", 0, x, y, z]  # type: ignore
+
+    assert model.title == "Structure"
 
     wc = generate_qeapp_workchain(relax_type="none")
     model.process_uuid = wc.node.uuid
-    assert model.title == "Initial structure"
-    assert "properties" in model.source  # source should be inputs
+    node = model.fetch_process_node()
+    assert "Initial" in model.header
+    assert "properties" in model.source  # inputs
+    assert model.structure.pk == node.inputs.structure.pk
+    assert str(node.inputs.structure.pk) in model.info
+    test_table_data(model)
+
+    panel.render()
+    assert panel.view_toggle_button.layout.display == "none"
 
     wc = generate_qeapp_workchain(relax_type="positions_cell")
     model.process_uuid = wc.node.uuid
-    assert model.title == "Relaxed structure"
-    assert "properties" not in model.source  # source should be outputs
+    node = model.fetch_process_node()
+    assert "Initial" in model.header
+    assert panel.view_toggle_button.layout.display == "block"
+    assert panel.view_toggle_button.description == "View relaxed"
+    panel.view_toggle_button.click()
+    assert panel.view_toggle_button.description == "View initial"
+    assert "Relaxed" in model.header
+    assert "properties" not in model.source  # outputs
+    assert model.structure.pk == node.outputs.structure.pk
+    assert str(node.outputs.structure.pk) in model.info
+    test_table_data(model)
