@@ -189,24 +189,27 @@
   Here in the results panel, each tab will open results pertaining to a specific
   calculation submitted by the workflow.
   <div class="alert alert-success">
-    See further instructions below in the <b>Structure</b> tab.
+    See further instructions below in the <b>Relaxed structure</b> tab.
   </div>
 </div>
 
 <div id="structure-results">
-  In the structure results panel, we can view the initial structure selected for
-  the calculation. The panel is mostly the same as the one we saw in the
-  structure selection step, with the notable additions of the structure node
-  info and structure coordinates table. Most importantly, once the structure
-  relaxation is complete, the toggle button below the title will become active
-  and allow us to switch between the initial and relaxed structure.
+  When the calculation is finished, the <b>Load results</b> button will become
+  active, allowing us to load the relaxation results from AiiDA. The loaded
+  panel is mostly the same as the one we saw in the structure selection step,
+  with the notable additions of the structure node info and structure
+  coordinates table.
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
+      <li>When active, click on <b>Load results</b></li>
       <li>
-        Once the calculation is complete, click on the toggle button to switch
-        between the structure views. Note the differences in cell parameters
-        (vector lengths/angles and volume) and atomic positions
+        Note the differences in cell parameters (vector lengths/angles and
+        volume) and atomic positions
+      </li>
+      <li>
+        Compare the results against the initial structure in the structure
+        selection step at the top of the app
       </li>
       <li>
         When ready, switch over to the <b>Electronic bands + PDOS </b> panel
@@ -251,13 +254,16 @@
 <div id="post-guide">
   <h4>Post-guide exercises</h4>
   <ol>
-    <li>Download the raw input and output files for further analysis</li>
+    <li>Switch back to the <b>Summary</b> panel of the results step</li>
+    <li>Download the raw data (.zip file) for further analysis</li>
     <div class="alert alert-info">
       This will download a folder hierarchy with all inputs and outputs of
       calculations submitted by the workflow, allowing you to dig deeper into
       the data without requiring an AiiDA installation.
     </div>
-    <li>Download the AiiDA archive to store the full calculation provenance</li>
+    <li>
+      Download the AiiDA archive including the full calculation provenance
+    </li>
     <div class="alert alert-info">
       The downloaded archive can be imported in any AiIDA/AiiDAlab instance,
       reproducing the whole dataset as if it was computed on the platform where
