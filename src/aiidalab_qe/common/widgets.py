@@ -687,7 +687,11 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         """Widget to setup the compute resources, which include the code,
         the number of nodes and the number of cpus.
         """
-        self.code_selection = ComputationalResourcesWidget(**kwargs)
+        self.code_selection = ComputationalResourcesWidget(
+            include_setup_widget=False,
+            fetch_codes=True,  # TODO resolve testing issues when set to `False`
+            **kwargs,
+        )
         self.code_selection.layout.width = "80%"
 
         self.num_nodes = ipw.BoundedIntText(
