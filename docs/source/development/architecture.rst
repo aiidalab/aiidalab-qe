@@ -64,14 +64,20 @@ The corresponding View-Controller may look like this:
 
             # Define and link widgets
             widget = ipw.Dropdown(description="Trait")
+
+            # One-way link - widget options defined solely in the model
             ipw.dlink(
                 (self._model, "options"),
-                (widget, "value"),
+                (widget, "options"),
             )
+
+            # Two-way link - trait is synchronized between widget and model
             ipw.link(
                 (self._model, "trait"),
                 (widget, "value"),
             )
+
+            # Heterogeneous link - widget trait depends on the state of a different model trait
             ipw.dlink(
                 (self._model, "override"),
                 (widget, "disabled"),
@@ -199,13 +205,15 @@ When a calculation is submitted, the configuration step will collect the paramet
 Mixins
 ------
 
-The ``HasModels`` mixin class inherited by the ``AdvancedModel`` is used to manage sub-models.
+The app uses mixins (``aiidalab_qe.common.mixins``) to provide additional functionality to models.
+For example, the ``HasModels`` mixin class inherited by the ``AdvancedModel`` is used to manage sub-models.
 It provides functionality to add, register, and get a sub-model.
-It is presently used by the configuration step to register basic, advanced, and plugin models.
+It is used by the configuration step to register basic, advanced, and plugin models.
 It is also used by the advanced panel to register the sub-sections of the advanced settings (e.g. magnetization, hubbard, etc.).
+The mixin allows the advanced panel to easily communicate with its sub-models.
 
-Other mixins, such as ``HasInputStructure``, provide are trait oriented, providing both the trait and methods to work with it.
-The ``Confirmable`` mixin, for example, provides a ``confirmed`` trait, a ``confirm`` method, and an means of un-confirming on any state change in the inheriting model.
+Other mixins, such as ``HasInputStructure``, are trait-oriented, providing both traits and methods to work with them.
+The ``Confirmable`` mixin, for example, provides a ``confirmed`` trait, a ``confirm`` method, and a handler that  un-confirms the inheriting model on any trait state change.
 
 .. code:: python
 
