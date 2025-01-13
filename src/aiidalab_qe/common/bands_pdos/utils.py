@@ -161,7 +161,8 @@ def get_bands_projections_data(
         bands_data, projections, bands_width
     )
     if plot_tag != "total":
-        if not outputs.band_parameters.get("spin_orbit_calculation"):
+        band_parameters: dict = outputs.band_parameters.get_dict()
+        if not band_parameters.get("spin_orbit_calculation"):
             bands_projection["projected_bands"] = _update_pdos_labels(
                 bands_projection["projected_bands"]
             )
@@ -248,7 +249,8 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
 
     # Updata labels if plot_tag is different than total and SOC is false
     if plot_tag != "total":
-        if not pdos.nscf.output_parameters.get("spin_orbit_calculation"):
+        output_parameters: dict = pdos.nscf.output_parameters.get_dict()
+        if not output_parameters.get("spin_orbit_calculation", False):
             data_dict = _update_pdos_labels(data_dict)
 
     return json.loads(json.dumps(data_dict))
