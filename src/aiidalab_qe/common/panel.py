@@ -635,11 +635,14 @@ class ResultsPanel(Panel[RM]):
             ]
             self._load_results()
         else:
-            self.children = [
-                self.guide,
-                self._get_controls_section(),
-                self.results_container,
-            ]
+            children = [self.guide]
+            if (
+                self._model.identifier != "structure"
+                or "relax" in self._model.properties
+            ):
+                children.append(self._get_controls_section())
+            children.append(self.results_container)
+            self.children = children
             if self._model.identifier == "structure":
                 self._load_results()
 

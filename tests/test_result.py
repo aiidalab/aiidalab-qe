@@ -2,13 +2,14 @@ import pytest
 from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.main import App
+from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
 from aiidalab_qe.app.result.components.summary import WorkChainSummaryModel
 from aiidalab_qe.app.result.components.viewer import (
     WorkChainResultsViewer,
     WorkChainResultsViewerModel,
 )
-from aiidalab_qe.app.result.components.viewer.structure import StructureResultsModel
-from aiidalab_qe.app.result.components.viewer.structure.structure import (
+from aiidalab_qe.app.result.components.viewer.structure import (
+    StructureResultsModel,
     StructureResultsPanel,
 )
 
@@ -17,11 +18,16 @@ def test_result_step(app_to_submit, generate_qeapp_workchain):
     """Test the result step is properly updated when the process
     is running."""
     app: App = app_to_submit
-    step = app.results_step
-    app.results_model.process_uuid = generate_qeapp_workchain().node.uuid
+    step: ViewQeAppWorkChainStatusAndResultsStep = app.results_step
+    model = app.results_model
+    model.process_uuid = generate_qeapp_workchain().node.uuid
     assert step.state == step.State.ACTIVE
     step.render()
     assert step.toggle_controls.value == "Status"
+    results_model: WorkChainResultsViewerModel = model.get_model("results")  # type: ignore
+    # All jobs are completed, so there should be no process status notifications
+    for _, model in results_model.get_models():
+        assert model.process_status_notification == ""
 
 
 def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
