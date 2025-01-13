@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import traitlets as tl
+from ase.formula import Formula
 
 from aiida import orm
 from aiidalab_qe.common.panel import ResultsModel
@@ -14,13 +15,15 @@ class StructureResultsModel(ResultsModel):
     structure = tl.Instance(orm.StructureData, allow_none=True)
     selected_view = tl.Unicode("initial")
     header = tl.Unicode()
+    sub_header = tl.Unicode()
     source = tl.Instance(orm.utils.managers.NodeLinksManager, allow_none=True)
     info = tl.Unicode()
     table_data = tl.List(tl.List())
 
     _this_process_label = "PwRelaxWorkChain"
 
-    header_template = "<h1 style='margin: 0;'>{title}</h1>"
+    HEADER_TEMPLATE = "<h2 style='margin: 0;'>{content}</h2>"
+    _SUB_HEADER_TEMPLATE = "<h4 style='margin: 0; font-size: 18px'>{content}</h4>"
 
     @property
     def include(self):
@@ -34,15 +37,18 @@ class StructureResultsModel(ResultsModel):
         super().update()
         with self.hold_trait_notifications():
             if not self.is_relaxed or self.selected_view == "initial":
-                self.header = self.header_template.format(title="Initial")
+                self.sub_header = self._SUB_HEADER_TEMPLATE.format(content="Initial")
                 self.source = self.inputs
             else:
-                self.header = self.header_template.format(title="Relaxed")
+                self.sub_header = self._SUB_HEADER_TEMPLATE.format(content="Relaxed")
                 self.source = self.outputs
             self.structure = self._get_structure()
             if self.structure:
                 self.info = self._get_structure_info()
                 self.table_data = self._get_atom_table_data()
+                if not self.header:
+                    formatted = Formula(self.structure.get_formula()).format("html")
+                    self.header = self.HEADER_TEMPLATE.format(content=formatted)
 
     def toggle_selected_view(self):
         self.selected_view = "relaxed" if self.selected_view == "initial" else "initial"
