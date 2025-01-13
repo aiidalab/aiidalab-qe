@@ -47,7 +47,7 @@ class BandsPdosModel(Model):
             ("No grouping (each orbital separately)", "orbital"),
         ],
     )
-    dos_plot_group = tl.Unicode("total")
+    dos_plot_group = tl.Unicode("angular_momentum")
     selected_atoms = tl.Unicode("")
     project_bands_box = tl.Bool(False)
     proj_bands_width = tl.Float(0.5)
