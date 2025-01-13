@@ -23,6 +23,24 @@
 
 /* Process tree */
 
+.rolling-output {
+  flex: 1;
+  min-height: 300px;
+}
+
+.rolling-output .widget-html .widget-html-content {
+  position: absolute !important;
+  width: 100%;
+}
+
+.rolling-output .widget-html .widget-html-content pre {
+  position: relative !important;
+}
+
+.simplified-process-tree {
+  height: 100%;
+}
+
 .simplified-process-tree .tree-node-header {
   align-items: center;
   padding-left: 12px;

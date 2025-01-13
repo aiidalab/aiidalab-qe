@@ -53,7 +53,7 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         )
         self.reset_button.on_click(self._reset_process_tree)
 
-        self.node_view_container = ipw.VBox()
+        self.node_view_container = ipw.VBox(layout=ipw.Layout(height="100%"))
         self.node_view_container.add_class("node-view-container")
 
         self.to_advanced_view_button = ipw.Button(

@@ -50,12 +50,15 @@ class RollingOutput(ipw.VBox):
 
     def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):  # noqa: ARG002
         self._num_min_lines = num_min_lines
-        self._output = ipw.HTML(layout=ipw.Layout(min_width="50em"))
+        self._output = ipw.HTML(layout=ipw.Layout(min_width="80em"))
         self._refresh_output()
         super().__init__(
-            [self._output],
+            children=[
+                self._output,
+            ],
             layout=ipw.Layout(max_height=max_output_height),
         )
+        self.add_class("rolling-output")
 
     @traitlets.default("value")
     def _default_value(self):
@@ -179,7 +182,10 @@ class LogOutputWidget(ipw.VBox):
     def __init__(self, placeholder=None, **kwargs):
         self.placeholder = placeholder
 
-        self._rolling_output = RollingOutput(layout=ipw.Layout(flex="1 1 auto"))
+        self._rolling_output = RollingOutput(
+            layout=ipw.Layout(flex="1 1 auto"),
+            max_output_height="unset",
+        )
         ipw.dlink(
             (self, "value"),
             (self._rolling_output, "value"),
@@ -230,12 +236,20 @@ class LogOutputWidget(ipw.VBox):
         )
 
         super().__init__(
-            [
+            children=[
                 self._filename_display,
-                ipw.HBox([self._rolling_output, self._btns]),
+                ipw.HBox(
+                    children=[
+                        self._rolling_output,
+                        self._btns,
+                    ],
+                    layout=ipw.Layout(height="100%"),
+                ),
             ],
+            layout=ipw.Layout(height="100%"),
             **kwargs,
         )
+        self.add_class("log-output")
 
     @traitlets.default("placeholder")
     def _default_placeholder(self):

@@ -69,6 +69,7 @@ class SimplifiedProcessTree(ipw.VBox):
         self.collapse_button.on_click(self._collapse_all)
         root = self._model.fetch_process_node()
         self.trunk = WorkChainTreeNode(node=root, on_inspect=self._on_inspect)
+        self.trunk.layout.flex = "1"
         self.trunk.initialize()
         self.trunk.expand()
         self.rendered = True
