@@ -31,7 +31,7 @@ class StructureResultsModel(ResultsModel):
         return "relax" in self.properties
 
     def update(self):
-        self.auto_render = self.has_results
+        super().update()
         with self.hold_trait_notifications():
             if not self.is_relaxed or self.selected_view == "initial":
                 self.header = self.header_template.format(title="Initial")

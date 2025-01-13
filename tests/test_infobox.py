@@ -35,14 +35,9 @@ def test_in_app_guide():
     assert in_app_guide.layout.display == "none"
     guide_manager.active_guide = "general/basic"
     assert in_app_guide.layout.display == "flex"
-    guide_manager.active_guide = "general/advanced"
-    assert in_app_guide.layout.display == "flex"
-    in_app_guide.guide_id = "general/advanced"
-    guide_manager.active_guide = "general/basic"
+    guide_manager.active_guide = "none"
     assert in_app_guide.layout.display == "none"
-    guide_manager.active_guide = "general/advanced"
-    assert in_app_guide.layout.display == "flex"
 
     guide_manager.active_guide = "general/basic"
-    in_app_guide = InAppGuide(identifier="guide-warning")
+    in_app_guide = InAppGuide(identifier="guide-header")
     assert "You've activated the basic in-app guide" in in_app_guide.children[0].value

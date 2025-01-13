@@ -17,6 +17,7 @@ from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code.model import CodeModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.mixins import Confirmable, HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
@@ -529,8 +530,7 @@ class ResultsModel(PanelModel, HasProcess):
         return node and node.is_finished_ok
 
     def update(self):
-        if self.has_results:
-            self.auto_render = True
+        self.auto_render = self.has_results
 
     def update_process_status_notification(self):
         if self._completed_process:
@@ -620,16 +620,29 @@ class ResultsPanel(Panel[RM]):
         if not self._model.has_process:
             return
 
+        self.guide = InAppGuide(
+            identifier=f"{self._model.identifier}-results",
+            classes=["results-panel-guide"],
+        )
+
         self.results_container = ipw.VBox()
 
         if self._model.auto_render:
-            self.children = [self.results_container]
+            self.children = [
+                self.guide,
+                self.results_container,
+            ]
             self._load_results()
         else:
-            self._render_controls()
-            self.children += (self.results_container,)
+            self.children = [
+                self.guide,
+                self._get_controls_section(),
+                self.results_container,
+            ]
             if self._model.identifier == "structure":
                 self._load_results()
+
+        self.rendered = True
 
     def _on_process_change(self, _):
         self._model.update()
@@ -644,10 +657,9 @@ class ResultsPanel(Panel[RM]):
     def _load_results(self):
         self.results_container.children = [self.loading_message]
         self._render()
-        self.rendered = True
         self._post_render()
 
-    def _render_controls(self):
+    def _get_controls_section(self) -> ipw.VBox:
         self.process_status_notification = ipw.HTML()
         ipw.dlink(
             (self._model, "process_status_notification"),
@@ -681,10 +693,12 @@ class ResultsPanel(Panel[RM]):
             ]
         )
 
-        self.children = [
-            self.process_status_notification,
-            self.load_controls,
-        ]
+        return ipw.VBox(
+            children=[
+                self.process_status_notification,
+                self.load_controls,
+            ]
+        )
 
     def _render(self):
         raise NotImplementedError()
