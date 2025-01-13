@@ -515,7 +515,6 @@ class ResultsModel(PanelModel, HasProcess):
         "excepted": "danger",
         "killed": "danger",
         "queued": "warning",
-        "waiting": "info",
         "running": "info",
         "created": "info",
     }
@@ -556,6 +555,8 @@ class ResultsModel(PanelModel, HasProcess):
 
     def _get_child_process_status(self, which="this"):
         state, exit_message = self._get_child_state_and_exit_message(which)
+        if state == "waiting":
+            state = "running"
         status = state.upper()
         if exit_message:
             status = f"{status} ({exit_message})"
