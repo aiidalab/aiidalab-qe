@@ -1,5 +1,7 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.widgets import HBoxWithUnits
+
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import MagnetizationConfigurationSettingsModel
 
@@ -48,12 +50,9 @@ class MagnetizationConfigurationSettingsPanel(
         if self.rendered:
             return
 
-        self.header = ipw.HTML("<b>Magnetization:</b>")
+        self.header = ipw.HTML("<h2>Magnetization</h2>")
 
-        self.unit = ipw.HTML(
-            value="µ<sub>B</sub>",
-            layout=ipw.Layout(margin="2px 2px 5px"),
-        )
+        self.unit = "µ<sub>B</sub>"
 
         self.magnetization_type_help = ipw.HTML()
         ipw.dlink(
@@ -62,11 +61,8 @@ class MagnetizationConfigurationSettingsPanel(
         )
 
         self.magnetization_type = ipw.ToggleButtons(
-            style={
-                "description_width": "initial",
-                "button_width": "initial",
-            },
-            layout=ipw.Layout(margin="0 0 10px 0"),
+            style={"button_width": "initial"},
+            layout=ipw.Layout(margin="0 0 5px"),
         )
         ipw.dlink(
             (self._model, "type_options"),
@@ -82,19 +78,16 @@ class MagnetizationConfigurationSettingsPanel(
             max=100,
             step=1,
             description="Total magnetization:",
-            style={"description_width": "initial"},
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "total"),
             (self.tot_magnetization, "value"),
         )
 
-        self.tot_magnetization_with_unit = ipw.HBox(
-            children=[
-                self.tot_magnetization,
-                self.unit,
-            ],
-            layout=ipw.Layout(align_items="center"),
+        self.tot_magnetization_with_unit = HBoxWithUnits(
+            self.tot_magnetization,
+            self.unit,
         )
 
         self.kind_moment_widgets = ipw.VBox()
@@ -161,6 +154,7 @@ class MagnetizationConfigurationSettingsPanel(
                 min=-7,
                 max=7,
                 step=0.1,
+                style={"description_width": "150px"},
             )
             link = ipw.link(
                 (self._model, "moments"),
@@ -174,15 +168,7 @@ class MagnetizationConfigurationSettingsPanel(
                 ],
             )
             self.links.append(link)
-            children.append(
-                ipw.HBox(
-                    children=[
-                        kind_moment_widget,
-                        self.unit,
-                    ],
-                    layout=ipw.Layout(align_items="center"),
-                )
-            )
+            children.append(HBoxWithUnits(kind_moment_widget, "µ<sub>B</sub>"))
 
         self.kind_moment_widgets.children = children
 
