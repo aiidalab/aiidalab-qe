@@ -235,12 +235,12 @@
         group the orbitals by angular momentum
       </li>
       <li>
-        Identify the gold 5d states (you can also double click on Au-5d in the
+        Identify the Au-5d states (you can also double click on Au-5d in the
         legend)
       </li>
       <li>If selected, deselect the Au-5d in the legend (double click)</li>
       <li>Double click on the plot to zoom out</li>
-      <li>Identify the gold semicore states</li>
+      <li>Identify the Au semicore states</li>
       <li>
         Feel free to explore further. When ready, you can continue to the
         post-guide exercises at the bottom of the app
@@ -252,29 +252,81 @@
 <div id="post-guide">
   <h4>Post-guide exercises</h4>
   <ol>
-    <li>Switch back to the <b>Summary</b> panel of the results step</li>
-    <li>Download the raw data (.zip file) for further analysis</li>
-    <div class="alert alert-info">
-      This will download a folder hierarchy with all inputs and outputs of
-      calculations submitted by the workflow, allowing you to dig deeper into
-      the data without requiring an AiiDA installation.
-    </div>
     <li>
-      Download the AiiDA archive including the full calculation provenance
+      Switch back to the <b>Summary</b> panel of the results step
+      <ul>
+        <li>
+          Download the workflow's raw data (zip file containing a folder
+          hierarchy of the inputs and outputs)
+          <ul>
+            <li>
+              Compare it against the process tree in the <b>Status</b> panel of
+              the results step
+            </li>
+            <li>Verify that they are the same by traversing both trees</li>
+          </ul>
+        </li>
+        <li>
+          <b>(Advanced users)</b> download the AiiDA archive
+          <ul>
+            <li>
+              The archive includes the full calculation provenance and can be
+              imported into any AiiDA instance
+            </li>
+            <li>
+              This reproduces the whole dataset on the receiving instance as if
+              it was executed there
+            </li>
+            <li>
+              More details can be found
+              <a
+                href="https://aiida.readthedocs.io/projects/aiida-core/en/latest/howto/share_data.html"
+                target="_blank"
+              >
+                here</a
+              >
+            </li>
+          </ul>
+        </li>
+      </ul>
     </li>
-    <div class="alert alert-info">
-      The downloaded archive can be imported in any AiIDA/AiiDAlab instance,
-      reproducing the whole dataset as if it was computed on the platform where
-      it is imported.
-    </div>
+    <li>
+      Use the app to compute the band structure of Si
+      <ul>
+        <li>
+          See if you get a band gap (DFT is not expected to predict the correct
+          gap)
+        </li>
+        <li>
+          Verify that the valence bands are mostly of p character, while
+          conduction bands are mostly of s character
+        </li>
+      </ul>
+    </li>
     <li>
       Explore the AiiDA database by viewing the
       <a href="./calculation_history.ipynb" target="_blank">
-        calculation history </a
-      >. This will open a Jupyter notebook in a new tab, where you can search,
-      filter, and sort a table of all calculations stored in the AiiDA database.
-      Each entry in the table includes a download feature similar to the
-      previous two steps.
+        calculation history
+      </a>
+      <ul>
+        <li>
+          This will open a Jupyter notebook (new tab), where you can search,
+          filter, and sort a table of all calculations stored in the AiiDA
+          database
+        </li>
+        <li>
+          Find your recent calculations for Au (and Si if exercise 2 was
+          submitted)
+        </li>
+        <li>
+          Click on the id of either calculation to open it in a new instance of
+          the app (new tab)
+        </li>
+        <li>
+          Verify that it is indeed your previously submitted calculation,
+          results included (if available)
+        </li>
+      </ul>
     </li>
   </ol>
 </div>
