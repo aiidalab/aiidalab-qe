@@ -31,6 +31,12 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             (self.header, "value"),
         )
 
+        self.sub_header = ipw.HTML()
+        ipw.dlink(
+            (self._model, "sub_header"),
+            (self.sub_header, "value"),
+        )
+
         self.view_toggle_button = ipw.Button(
             icon="eye",
             layout=ipw.Layout(
@@ -68,7 +74,12 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             children=[
                 ipw.VBox(
                     children=[
-                        self.header,
+                        ipw.VBox(
+                            children=[
+                                self.header,
+                                self.sub_header,
+                            ],
+                        ),
                         self.view_toggle_button,
                     ],
                     layout=ipw.Layout(justify_content="space-between"),

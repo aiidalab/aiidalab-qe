@@ -151,7 +151,8 @@ def test_structure_results_panel(generate_qeapp_workchain):
     wc = generate_qeapp_workchain(relax_type="none")
     model.process_uuid = wc.node.uuid
     node = model.fetch_process_node()
-    assert "Initial" in model.header
+    assert "Si<sub>2</sub>" in model.header
+    assert "Initial" in model.sub_header
     assert "properties" in model.source  # inputs
     assert model.structure.pk == node.inputs.structure.pk
     assert str(node.inputs.structure.pk) in model.info
@@ -163,12 +164,12 @@ def test_structure_results_panel(generate_qeapp_workchain):
     wc = generate_qeapp_workchain(relax_type="positions_cell")
     model.process_uuid = wc.node.uuid
     node = model.fetch_process_node()
-    assert "Initial" in model.header
+    assert "Initial" in model.sub_header
     assert panel.view_toggle_button.layout.display == "block"
     assert panel.view_toggle_button.description == "View relaxed"
     panel.view_toggle_button.click()
     assert panel.view_toggle_button.description == "View initial"
-    assert "Relaxed" in model.header
+    assert "Relaxed" in model.sub_header
     assert "properties" not in model.source  # outputs
     assert model.structure.pk == node.outputs.structure.pk
     assert str(node.outputs.structure.pk) in model.info
