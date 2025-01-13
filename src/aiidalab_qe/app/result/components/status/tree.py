@@ -276,7 +276,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
 
     def _add_branches(self, node=None):
         node = node or self.node
-        for child in node.called:
+        for child in sorted(node.called, key=lambda child: child.ctime):
             if child.pk in self.pks or isinstance(child, orm.CalcFunctionNode):
                 continue
             TreeNodeClass = (
