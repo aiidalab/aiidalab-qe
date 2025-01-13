@@ -53,7 +53,8 @@ For plugin developers, additional instances of either flavor are recommended to 
 Plugin guides
 -------------
 
-Plugin developers may introduce additional guides to the app. To do so, add the following key/value entry in your plugin's ``__init__.py`` file:
+Plugin developers can enhance user experience while using the app by introducing custom guides.
+To do so, add the following key/value entry in your plugin's ``__init__.py`` file:
 
 .. code:: python
 
