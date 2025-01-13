@@ -140,10 +140,10 @@ def test_advanced_hubbard_settings(generate_structure_data):
     assert model.orbital_labels == ["Co - 3d", "O - 2p", "Li - 2s"]
 
     # Change the Hubbard U parameters for Co, O, and Li
-    hubbard_parameters = hubbard.hubbard_widget.children[1:]  # type: ignore
-    hubbard_parameters[0].value = 1  # Co - 3d
-    hubbard_parameters[1].value = 2  # O - 2p
-    hubbard_parameters[2].value = 3  # Li - 2s
+    hubbard_parameters = hubbard.hubbard_widget.children[:]  # type: ignore
+    hubbard_parameters[0].children[0].value = 1  # Co - 3d
+    hubbard_parameters[1].children[0].value = 2  # O - 2p
+    hubbard_parameters[2].children[0].value = 3  # Li - 2s
 
     assert model.parameters == {
         "Co - 3d": 1.0,
