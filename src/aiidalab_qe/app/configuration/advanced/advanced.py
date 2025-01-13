@@ -7,6 +7,7 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
+from aiidalab_qe.common.widgets import HBoxWithUnits
 
 from .hubbard import (
     HubbardConfigurationSettingsModel,
@@ -84,7 +85,7 @@ class AdvancedConfigurationSettingsPanel(
         self.clean_workdir = ipw.Checkbox(
             description="Delete the work directory after the calculation",
             indent=False,
-            layout=ipw.Layout(width="fit-content"),
+            layout=ipw.Layout(width="fit-content", margin="5px 2px"),
         )
         ipw.link(
             (self._model, "clean_workdir"),
@@ -153,7 +154,6 @@ class AdvancedConfigurationSettingsPanel(
         self.scf_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            format="0.0e",
             description="SCF:",
             style={"description_width": "150px"},
         )
@@ -226,16 +226,38 @@ class AdvancedConfigurationSettingsPanel(
             self.clean_workdir,
             self.total_charge,
             self.van_der_waals,
-            self.magnetization,
-            ipw.HTML("<b>Convergence thresholds</b>"),
-            self.forc_conv_thr,
-            self.etot_conv_thr,
+            ipw.HTML("<h2>Convergence</h2>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Control the convergence criteria of the self-consistent field (SCF)
+                    geometry optimization cycles.
+                </div>
+            """),
+            ipw.HTML("<h4>Thresholds</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Setting thresholds for energy, force, and self-consistency ensures calculation accuracy and stability.
+                    <br>
+                    Lower values increase the accuracy but also the computational cost.
+                    <br>
+                    The default values are set by the <b>protocol</b> are usually a
+                    good starting point.
+                </div>
+            """),
+            HBoxWithUnits(self.forc_conv_thr, "a.u."),
+            HBoxWithUnits(self.etot_conv_thr, "a.u."),
             self.scf_conv_thr,
-            ipw.HTML("<b>Maximum cycle steps</b>"),
+            ipw.HTML("<h4>Maximum cycle steps</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Setting a maximum number of electronic and ionic optimization steps
+                    ensures that the calculation does not run indefinitely.
+                </div>
+            """),
             self.electron_maxstep,
             self.optimization_maxsteps,
             self.smearing,
-            ipw.HTML("<b>K-points</b>"),
+            ipw.HTML("<h2>K-points</h2>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
                     The k-points mesh density of the SCF calculation is set by the
@@ -249,12 +271,12 @@ class AdvancedConfigurationSettingsPanel(
             """),
             ipw.HBox(
                 children=[
-                    self.kpoints_distance,
-                    ipw.HTML("Å<sup>-1</sup>"),
+                    HBoxWithUnits(self.kpoints_distance, "Å<sup>-1</sup>"),
                     self.mesh_grid,
                 ],
                 layout=ipw.Layout(align_items="center"),
             ),
+            self.magnetization,
             self.hubbard,
             self.pseudos,
         ]

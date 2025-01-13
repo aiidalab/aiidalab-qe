@@ -1,5 +1,7 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.widgets import HBoxWithUnits
+
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import SmearingConfigurationSettingsModel
 
@@ -20,7 +22,7 @@ class SmearingConfigurationSettingsPanel(
             return
 
         self.smearing = ipw.Dropdown(
-            description="Smearing type:",
+            description="Type:",
             style={"description_width": "150px"},
         )
         ipw.dlink(
@@ -34,7 +36,7 @@ class SmearingConfigurationSettingsPanel(
 
         self.degauss = ipw.FloatText(
             step=0.005,
-            description="Smearing width:",
+            description="Width:",
             style={"description_width": "150px"},
         )
         ipw.link(
@@ -43,10 +45,15 @@ class SmearingConfigurationSettingsPanel(
         )
 
         self.children = [
-            ipw.HTML("<b>Smearing</b>"),
+            ipw.HTML("<h2>Smearing</h2>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
-                    The smearing type and width is set by the chosen <b>protocol</b>.
+                    Smear electronic state occupations near the Fermi level to
+                    simulate finite temperature.
+                    <br>
+                    This helps to stabilize the SCF calculation and is important for metallic systems.
+                    <br>
+                    The smearing type and width are set by the chosen <b>protocol</b>.
                     <br>
                     Changes are not advised unless you've mastered
                     <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
@@ -54,12 +61,7 @@ class SmearingConfigurationSettingsPanel(
                 </div>
             """),
             self.smearing,
-            ipw.HBox(
-                children=[
-                    self.degauss,
-                    ipw.HTML("Ry"),
-                ],
-            ),
+            HBoxWithUnits(self.degauss, "Ry"),
         ]
 
         self.rendered = True

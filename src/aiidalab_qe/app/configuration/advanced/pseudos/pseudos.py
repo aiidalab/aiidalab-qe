@@ -7,7 +7,7 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.plugins import DataFactory, GroupFactory
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_qe.common.widgets import HBoxWithUnits, LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML
 
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
@@ -134,7 +134,7 @@ class PseudosConfigurationSettingsPanel(
         )
 
         self.children = [
-            ipw.HTML("<h4 style='margin-bottom: 0;'>Accuracy and precision</h4>"),
+            ipw.HTML("<h2>Accuracy and precision</h2>"),
             ipw.HTML("""
                 <div class="pseudo-text">
                     The exchange-correlation functional and pseudopotential library is
@@ -158,7 +158,7 @@ class PseudosConfigurationSettingsPanel(
                     self.family_help,
                 ],
             ),
-            ipw.HTML("<b>Pseudopotentials</b>"),
+            ipw.HTML("<h4>Pseudopotentials</h4>"),
             ipw.HTML("""
                 <div class="pseudo-text">
                     The pseudopotential for each kind of atom in the structure can be
@@ -172,28 +172,23 @@ class PseudosConfigurationSettingsPanel(
                 </div>
             """),  # noqa: RUF001
             self.setter_widget,
-            ipw.HTML("<b>Cutoffs</b>"),
+            ipw.HTML("<h4>Cutoffs</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4;">
-                    The cutoffs used for the calculation are the maximum of the
-                    default cutoffs from all pseudopotentials.
+                    The
+                    <a
+                        href="https://www.quantum-espresso.org/Doc/INPUT_PW.html#idm312"
+                        target="_blank"
+                    >
+                        default cutoffs
+                    </a> used for the calculation are the maximum of the default cutoffs
+                    from all pseudopotentials.
+                    <br>
                     You can override them here.
                 </div>
             """),
-            ipw.HBox(
-                children=[
-                    self.ecutwfc,
-                    ipw.HTML("Ry"),
-                ],
-                layout=ipw.Layout(align_items="center"),
-            ),
-            ipw.HBox(
-                children=[
-                    self.ecutrho,
-                    ipw.HTML("Ry"),
-                ],
-                layout=ipw.Layout(align_items="center"),
-            ),
+            HBoxWithUnits(self.ecutwfc, "Ry"),
+            HBoxWithUnits(self.ecutrho, "Ry"),
             self._status_message,
         ]
 
@@ -249,13 +244,11 @@ class PseudosConfigurationSettingsPanel(
             pseudo_family_link = "http://www.pseudo-dojo.org/"
 
         self.family_prompt.value = f"""
-            <div class="pseudo-text">
-                <b>
-                    <a href="{pseudo_family_link}" target="_blank">
-                        Pseudopotential family
-                    </a>
-                </b>
-            </div>
+            <h4>
+                <a href="{pseudo_family_link}" target="_blank">
+                    Pseudopotential family
+                </a>
+            </h4>
         """
 
     def _show_loading(self):

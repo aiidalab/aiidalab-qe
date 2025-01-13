@@ -169,7 +169,7 @@ class FilenameDisplayWidget(ipw.Box):
             overflow:hidden;
             text-overflow:ellipsis;
             {width_style}">
-            {icon} {change['new']}
+            {icon} {change["new"]}
         </div>
         """
 
@@ -537,7 +537,7 @@ class AddingTagsEditor(ipw.VBox):
                 symbol = chemichal_symbols[index]
                 if tag == 0:
                     tag = ""
-                table_data.append([f"{index+ 1}", f"{symbol}", f"{tag}"])
+                table_data.append([f"{index + 1}", f"{symbol}", f"{tag}"])
 
             # Create an HTML table
             table_html = "<table>"
@@ -1328,3 +1328,18 @@ class TableWidget(anywidget.AnyWidget):
     """
     data = traitlets.List().tag(sync=True)
     selected_rows = traitlets.List().tag(sync=True)
+
+
+class HBoxWithUnits(ipw.HBox):
+    def __init__(self, widget: ipw.ValueWidget, units: str, **kwargs):
+        super().__init__(
+            children=[
+                widget,
+                ipw.HTML(units),
+            ],
+            layout=ipw.Layout(
+                align_items="center",
+                grid_gap="2px",
+            ),
+            **kwargs,
+        )

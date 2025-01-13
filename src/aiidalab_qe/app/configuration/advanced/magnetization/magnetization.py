@@ -1,5 +1,7 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.widgets import HBoxWithUnits
+
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import MagnetizationConfigurationSettingsModel
 
@@ -48,9 +50,9 @@ class MagnetizationConfigurationSettingsPanel(
         if self.rendered:
             return
 
-        self.header = ipw.HTML("<b>Magnetization</b>")
+        self.header = ipw.HTML("<h2>Magnetization</h2>")
 
-        self.unit = ipw.HTML("µ<sub>B</sub>")
+        self.unit = "µ<sub>B</sub>"
 
         self.magnetization_type_help = ipw.HTML()
         ipw.dlink(
@@ -83,11 +85,9 @@ class MagnetizationConfigurationSettingsPanel(
             (self.tot_magnetization, "value"),
         )
 
-        self.tot_magnetization_with_unit = ipw.HBox(
-            children=[
-                self.tot_magnetization,
-                self.unit,
-            ],
+        self.tot_magnetization_with_unit = HBoxWithUnits(
+            self.tot_magnetization,
+            self.unit,
         )
 
         self.kind_moment_widgets = ipw.VBox()
@@ -168,14 +168,7 @@ class MagnetizationConfigurationSettingsPanel(
                 ],
             )
             self.links.append(link)
-            children.append(
-                ipw.HBox(
-                    children=[
-                        kind_moment_widget,
-                        self.unit,
-                    ],
-                )
-            )
+            children.append(HBoxWithUnits(kind_moment_widget, "µ<sub>B</sub>"))
 
         self.kind_moment_widgets.children = children
 
