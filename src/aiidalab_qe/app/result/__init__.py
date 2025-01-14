@@ -1,217 +1,257 @@
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida import orm
 from aiida.engine import ProcessState
-from aiida.engine.processes import control
-from aiidalab_widgets_base import (
-    AiidaNodeViewWidget,
-    ProcessMonitor,
-    ProcessNodesTreeWidget,
-    WizardAppWidgetStep,
-)
+from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.widgets import LoadingWidget, QeDependentWizardStep
+from aiidalab_widgets_base import ProcessMonitor, WizardAppWidgetStep
 
-# trigger registration of the viewer widget:
-from .workchain_viewer import WorkChainViewer  # noqa: F401
+from .components import ResultsComponent
+from .components.status import WorkChainStatusModel, WorkChainStatusPanel
+from .components.summary import WorkChainSummary, WorkChainSummaryModel
+from .components.viewer import WorkChainResultsViewer, WorkChainResultsViewerModel
+from .model import ResultsStepModel
 
 PROCESS_COMPLETED = "<h4>Workflow completed successfully!</h4>"
 PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
 PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 
 
-class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
-    process = tl.Unicode(allow_none=True)
+class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepModel]):
+    missing_information_warning = (
+        "No available results. Did you submit or load a calculation?"
+    )
 
-    def __init__(self, **kwargs):
-        self.process_tree = ProcessNodesTreeWidget()
-        ipw.dlink(
-            (self, "process"),
-            (self.process_tree, "value"),
+    def __init__(self, model: ResultsStepModel, **kwargs):
+        super().__init__(model=model, **kwargs)
+        self.observe(
+            self._on_previous_step_state_change,
+            "previous_step_state",
+        )
+        self._model.observe(
+            self._on_process_change,
+            "process_uuid",
         )
 
-        self.node_view = AiidaNodeViewWidget(layout={"width": "auto", "height": "auto"})
-        ipw.dlink(
-            (self.process_tree, "selected_nodes"),
-            (self.node_view, "node"),
-            transform=lambda nodes: nodes[0] if nodes else None,
-        )
-        self.process_status = ipw.VBox(children=[self.process_tree, self.node_view])
-
-        # Setup process monitor
-        self.process_monitor = ProcessMonitor(
-            timeout=0.2,
-            callbacks=[
-                self.process_tree.update,
-                self._update_state,
-            ],
-        )
-        ipw.dlink((self, "process"), (self.process_monitor, "value"))
-
+    def _render(self):
         self.kill_button = ipw.Button(
             description="Kill workchain",
             tooltip="Kill the below workchain.",
             button_style="danger",
             icon="stop",
-            layout=ipw.Layout(width="120px", display="none", margin="0px 20px 0px 0px"),
+            layout=ipw.Layout(width="auto", display="none"),
         )
-        self.kill_button.on_click(self._on_click_kill_button)
+        ipw.dlink(
+            (self, "state"),
+            (self.kill_button, "disabled"),
+            lambda state: state is not self.State.ACTIVE,
+        )
+        self.kill_button.on_click(self._on_kill_button_click)
 
         self.clean_scratch_button = ipw.Button(
             description="Clean remote data",
             tooltip="Clean the remote folders of the workchain.",
             button_style="danger",
             icon="trash",
-            layout=ipw.Layout(width="150px", display="none", margin="0px 20px 0px 0px"),
+            layout=ipw.Layout(width="auto", display="none"),
         )
-        self.clean_scratch_button.on_click(self._on_click_clean_scratch_button)
-        self.update_result_button = ipw.Button(
-            description="Update results tabs",
-            tooltip="Trigger the update of the results tabs.",
-            button_style="success",
-            icon="refresh",
-            layout=ipw.Layout(
-                width="150px", display="block", margin="0px 20px 0px 0px"
-            ),
+        ipw.dlink(
+            (self._model, "process_remote_folder_is_clean"),
+            (self.clean_scratch_button, "disabled"),
         )
-        self.update_result_button.on_click(self._on_click_update_result_button)
+        self.clean_scratch_button.on_click(self._on_clean_scratch_button_click)
 
         self.process_info = ipw.HTML()
-
-        super().__init__(
-            [
-                self.process_info,
-                ipw.HBox(
-                    children=[
-                        self.kill_button,
-                        self.update_result_button,
-                        self.clean_scratch_button,
-                    ]
-                ),
-                self.process_status,
-            ],
-            **kwargs,
+        ipw.dlink(
+            (self._model, "process_info"),
+            (self.process_info, "value"),
         )
 
+        summary_model = WorkChainSummaryModel()
+        self.summary_panel = WorkChainSummary(model=summary_model)
+        self._model.add_model("summary", summary_model)
+
+        results_model = WorkChainResultsViewerModel()
+        self.results_panel = WorkChainResultsViewer(model=results_model)
+        self._model.add_model("results", results_model)
+
+        status_model = WorkChainStatusModel()
+        self.status_panel = WorkChainStatusPanel(model=status_model)
+        self._model.add_model("status", status_model)
+
+        self.panels = {
+            "Summary": self.summary_panel,
+            "Status": self.status_panel,
+            "Results": self.results_panel,
+        }
+
+        self.toggle_controls = ipw.ToggleButtons(
+            options=[*self.panels.keys()],
+            tooltips=[
+                "A summary of calculation parameters",
+                "The calculation results",
+                "A detailed progress status of the workflow",
+            ],
+            icons=[
+                "file-text-o",
+                "bar-chart",
+                "tasks",
+            ],
+            value=None,
+        )
+        self.toggle_controls.add_class("results-step-toggles")
+        self.toggle_controls.observe(
+            self._on_toggle_change,
+            "value",
+        )
+
+        self.container = ipw.VBox(
+            children=[
+                self.status_panel,
+            ],
+        )
+
+        if self._model.has_process:
+            self._update_children()
+
+    def _post_render(self):
         self._update_kill_button_layout()
+        self._update_clean_scratch_button_layout()
+
+        self.toggle_controls.value = (
+            "Results"
+            if (process := self._model.fetch_process_node()) and process.is_finished_ok
+            else "Status"
+        )
+
+        self.process_monitor = ProcessMonitor(
+            timeout=0.5,
+            callbacks=[
+                self._update_status,
+                self._update_state,
+            ],
+        )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.process_monitor, "value"),
+        )
 
     def can_reset(self):
-        "Do not allow reset while process is running."
+        "Checks if process is running (active), which disallows a reset."
         return self.state is not self.State.ACTIVE
 
     def reset(self):
-        self.process = None
+        self._model.reset()
 
-    def _update_state(self):
-        """Based on the process state, update the state of the step."""
-        if self.process is None:
-            self.state = self.State.INIT
-        else:
-            process = orm.load_node(self.process)
-            process_state = process.process_state
-            if process_state in (
-                ProcessState.CREATED,
-                ProcessState.RUNNING,
-                ProcessState.WAITING,
-            ):
-                self.state = self.State.ACTIVE
-                self.process_info.value = PROCESS_RUNNING
-            elif (
-                process_state in (ProcessState.EXCEPTED, ProcessState.KILLED)
-                or process.is_failed
-            ):
-                self.state = self.State.FAIL
-                self.process_info.value = PROCESS_EXCEPTED
-            elif process.is_finished_ok:
-                self.state = self.State.SUCCESS
-                self.process_info.value = PROCESS_COMPLETED
-            # trigger the update of kill and clean button.
-            if self.state in [self.State.SUCCESS, self.State.FAIL]:
-                self._update_kill_button_layout()
-                self._update_clean_scratch_button_layout()
-
-    def _update_kill_button_layout(self):
-        """Update the layout of the kill button."""
-        # If no process is selected, hide the button.
-        if self.process is None or self.process == "":
-            self.kill_button.layout.display = "none"
-        else:
-            process = orm.load_node(self.process)
-            # If the process is terminated, hide the button.
-            if process.is_terminated:
-                self.kill_button.layout.display = "none"
-            else:
-                self.kill_button.layout.display = "block"
-
-        # If the step is not activated, no point to click the button, so disable it.
-        # Only enable it if the process is on (RUNNING, CREATED, WAITING).
-        if self.state is self.State.ACTIVE:
-            self.kill_button.disabled = False
-        else:
-            self.kill_button.disabled = True
-
-    def _update_clean_scratch_button_layout(self):
-        """Update the layout of the kill button."""
-        # The button is hidden by default, but if we load a new process, we hide again.
-        if not self.process:
-            self.clean_scratch_button.layout.display = "none"
-        else:
-            process = orm.load_node(self.process)
-            # If the process is terminated, show the button.
-            if process.is_terminated:
-                self.clean_scratch_button.layout.display = "block"
-            else:
-                self.clean_scratch_button.layout.display = "none"
-
-            # If the scratch is already empty, we should deactivate the button.
-            # not sure about the performance if descendants are several.
-            cleaned_bool = []
-            for called_descendant in process.called_descendants:
-                if isinstance(called_descendant, orm.CalcJobNode):
-                    try:
-                        cleaned_bool.append(
-                            called_descendant.outputs.remote_folder.is_empty
-                        )
-                    except Exception:
-                        pass
-            self.clean_scratch_button.disabled = all(cleaned_bool)
-
-    def _on_click_kill_button(self, _=None):
-        """callback for the kill button.
-        First kill the process, then update the kill button layout.
-        """
-        workchain = [orm.load_node(self.process)]
-        control.kill_processes(workchain)
-
-        # update the kill button layout
+    @tl.observe("state")
+    def _on_state_change(self, change):
+        super()._on_state_change(change)
         self._update_kill_button_layout()
 
-    def _on_click_clean_scratch_button(self, _=None):
-        """callback for the clean scratch button.
-        First clean the remote folders, then update the clean button layout.
-        """
-        process = orm.load_node(self.process)
+    def _on_previous_step_state_change(self, _):
+        if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
+            process_node = self._model.fetch_process_node()
+            message = (
+                "Loading results"
+                if process_node and process_node.is_finished
+                else "Submitting calculation"
+            )
+            self.children = [LoadingWidget(message)]
 
-        for called_descendant in process.called_descendants:
-            if isinstance(called_descendant, orm.CalcJobNode):
-                try:
-                    called_descendant.outputs.remote_folder._clean()
-                except Exception:
-                    pass
+    def _on_toggle_change(self, change):
+        panel = self.panels[change["new"]]
+        self._toggle_view(panel)
 
-        # update the kill button layout
-        self._update_clean_scratch_button_layout()
-
-    def _on_click_update_result_button(self, _=None):
-        """Trigger the update of the results tabs."""
-        # change the node to trigger the update of the view.
-        self.node_view.node = None
-        self.node_view.node = orm.load_node(self.process)
-
-    @tl.observe("process")
-    def _observe_process(self, _):
-        """Callback for when the process is changed."""
-        # The order of the following calls matters,
-        # as the self.state is updated in the _update_state method.
+    def _on_process_change(self, _):
+        if self.rendered:
+            self._update_children()
+        self._model.update()
         self._update_state()
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
+
+    def _on_kill_button_click(self, _):
+        self._model.kill_process()
+        self._update_kill_button_layout()
+
+    def _on_clean_scratch_button_click(self, _):
+        self._model.clean_remote_data()
+        self._update_clean_scratch_button_layout()
+
+    def _update_children(self):
+        self.children = [
+            InAppGuide(identifier="results-step"),
+            self.process_info,
+            ipw.HBox(
+                children=[
+                    self.kill_button,
+                    self.clean_scratch_button,
+                ],
+                layout=ipw.Layout(margin="0 3px"),
+            ),
+            self.toggle_controls,
+            self.container,
+        ]
+        self.previous_children = list(self.children)
+
+    def _toggle_view(self, panel: ResultsComponent):
+        self.container.children = [panel]
+        panel.render()
+
+    def _update_kill_button_layout(self):
+        if not self.rendered:
+            return
+        process_node = self._model.fetch_process_node()
+        if (
+            not process_node
+            or process_node.is_finished
+            or process_node.is_excepted
+            or self.state
+            in (
+                self.State.SUCCESS,
+                self.State.FAIL,
+            )
+        ):
+            self.kill_button.layout.display = "none"
+        else:
+            self.kill_button.layout.display = "block"
+
+    def _update_clean_scratch_button_layout(self):
+        if not self.rendered:
+            return
+        process_node = self._model.fetch_process_node()
+        if process_node and process_node.is_terminated:
+            self.clean_scratch_button.layout.display = "block"
+        else:
+            self.clean_scratch_button.layout.display = "none"
+
+    def _update_status(self):
+        self._model.monitor_counter += 1
+
+    def _update_state(self):
+        process_node = self._model.fetch_process_node()
+        if not process_node:
+            self.state = self.State.INIT
+        elif process_node.process_state in (
+            ProcessState.CREATED,
+            ProcessState.RUNNING,
+            ProcessState.WAITING,
+        ):
+            self.state = self.State.ACTIVE
+            self._model.process_info = PROCESS_RUNNING
+        elif (
+            process_node.process_state
+            in (
+                ProcessState.EXCEPTED,
+                ProcessState.KILLED,
+            )
+            or process_node.is_failed
+        ):
+            self.state = self.State.FAIL
+            self._model.process_info = PROCESS_EXCEPTED
+        elif process_node.is_finished_ok:
+            self.state = self.State.SUCCESS
+            self._model.process_info = PROCESS_COMPLETED
+        if self.state in (self.State.SUCCESS, self.State.FAIL):
+            self._update_kill_button_layout()
+            self._update_clean_scratch_button_layout()

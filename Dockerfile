@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG FULL_STACK_VER=2024.1023
+ARG FULL_STACK_VER=2025.1025
 ARG UV_VER=0.4.7
 ARG QE_VER=7.2
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
@@ -58,6 +58,12 @@ RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/d
     tar xf hq.tar.gz -C /opt/conda/
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
+# temporary solution to install aiida-pseudos from repo to avoid downloading issues
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
+     "aiida-pseudo@git+https://github.com/aiidateam/aiida-pseudo"
+
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 

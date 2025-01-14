@@ -5,8 +5,6 @@ from dataclasses import make_dataclass
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida.tools.query.calculation import CalculationQueryBuilder
-
 
 class WorkChainSelector(ipw.HBox):
     """A widget to select a WorkChainNode of a given process label.
@@ -93,6 +91,8 @@ class WorkChainSelector(ipw.HBox):
         return {}
 
     def find_work_chains(self):
+        from aiida.tools.query.calculation import CalculationQueryBuilder
+
         builder = CalculationQueryBuilder()
         filters = builder.get_filters(
             process_label=self.process_label,

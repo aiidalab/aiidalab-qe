@@ -15,6 +15,7 @@ workchain:
 
 ## Advanced pw settings
 advanced:
+    clean_workdir: false
     pseudo_family:
         library: SSSP
         version: 1.3
@@ -39,3 +40,5 @@ codes:
         code: xspectra-7.2@localhost
     hp:
         code: hp-7.2@localhost
+
+summary_format: list

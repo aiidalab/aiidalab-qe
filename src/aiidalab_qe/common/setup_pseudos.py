@@ -10,6 +10,13 @@ from .widgets import ProgressBar
 
 
 class PseudosInstallWidget(ProgressBar):
+    """The SSSP installation status widget shows the installation status of the SSSP
+    pseudo potentials and triggers the installation in case that they are not yet
+    installed. The widget will remain in a "busy" state in case that the installation
+    was already triggered elsewhere, e.g., by the start up scripts. The submission is
+    blocked while the potentials are not yet installed.
+    """
+
     installed = traitlets.Bool(allow_none=True).tag(readonly=True)
     busy = traitlets.Bool().tag(readonly=True)
     installing = traitlets.Bool().tag(readonly=True)

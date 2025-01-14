@@ -1,8 +1,13 @@
+from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
-from aiidalab_qe.plugins.utils import set_component_resources
+from aiidalab_qe.utils import (
+    enable_pencil_decomposition,
+    set_component_resources,
+)
 
 PdosWorkChain = WorkflowFactory("quantumespresso.pdos")
+PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 
 
 def check_codes(pw_code, dos_code, projwfc_code):
@@ -35,6 +40,9 @@ def update_resources(builder, codes):
     set_component_resources(builder.nscf.pw, codes.get("pw"))
     set_component_resources(builder.dos, codes.get("dos"))
     set_component_resources(builder.projwfc, codes.get("projwfc"))
+    enable_pencil_decomposition(builder.scf.pw)
+    enable_pencil_decomposition(builder.nscf.pw)
+
     # disable the parallelization setting for projwfc
     # npool = codes["pw"]["parallelization"]["npool"]
     # builder.projwfc.settings = orm.Dict(dict={"cmdline": ["-nk", str(npool)]})
@@ -53,8 +61,20 @@ def get_builder(codes, structure, parameters, **kwargs):
     nscf_overrides = deepcopy(parameters["advanced"])
 
     # Dos Projwfc overrides
-    dos_overrides = {"parameters": {"DOS": {}}}
-    projwfc_overrides = {"parameters": {"PROJWFC": {}}}
+    dos_overrides = {
+        "parameters": {
+            "DOS": {
+                "DeltaE": parameters["pdos"]["energy_grid_step"],
+            }
+        }
+    }
+    projwfc_overrides = {
+        "parameters": {
+            "PROJWFC": {
+                "DeltaE": parameters["pdos"]["energy_grid_step"],
+            }
+        }
+    }
 
     if parameters["pdos"]["use_pdos_degauss"]:
         dos_overrides["parameters"]["DOS"] = {
@@ -86,6 +106,10 @@ def get_builder(codes, structure, parameters, **kwargs):
             overrides=overrides,
             **kwargs,
         )
+        # include nbands_factor (Same as in BandsWorkChain)
+        pdos["nbands_factor"] = orm.Float(
+            PwBandsWorkChain.get_protocol_inputs()["nbands_factor"]
+        )
         # pop the inputs that are exclueded from the expose_inputs
         pdos.pop("structure", None)
         pdos.pop("clean_workdir", None)
@@ -106,11 +130,6 @@ def get_builder(codes, structure, parameters, **kwargs):
 def update_inputs(inputs, ctx):
     """Update the inputs using context."""
     inputs.structure = ctx.current_structure
-    inputs.nscf.pw.parameters = inputs.nscf.pw.parameters.get_dict()
-    if ctx.current_number_of_bands:
-        inputs.nscf.pw.parameters.setdefault("SYSTEM", {}).setdefault(
-            "nbnd", ctx.current_number_of_bands
-        )
 
 
 workchain_and_builder = {

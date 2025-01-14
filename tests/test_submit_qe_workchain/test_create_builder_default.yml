@@ -2,6 +2,7 @@ advanced:
   clean_workdir: false
   initial_magnetic_moments: null
   kpoints_distance: 0.12
+  optimization_maxsteps: 50
   pseudo_family: SSSP/1.3/PBEsol/efficiency
   pw:
     parameters:
@@ -22,32 +23,67 @@ advanced:
 bands:
   projwfc_bands: false
 codes:
-  dos:
-    cpus: 1
-    cpus_per_task: 1
-    max_wallclock_seconds: 43200
-    nodes: 1
-    ntasks_per_node: 1
-  projwfc:
-    cpus: 1
-    cpus_per_task: 1
-    max_wallclock_seconds: 43200
-    nodes: 1
-    ntasks_per_node: 1
-  projwfc_bands:
-    cpus: 1
-    cpus_per_task: 1
-    max_wallclock_seconds: 43200
-    nodes: 1
-    ntasks_per_node: 1
-  pw:
-    cpus: 2
-    cpus_per_task: 1
-    max_wallclock_seconds: 43200
-    nodes: 1
-    ntasks_per_node: 2
-    parallelization: {}
+  bands:
+    codes:
+      projwfc_bands:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      pw:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+        parallelization: {}
+    override: false
+  global:
+    codes:
+      quantumespresso.dos:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      quantumespresso.projwfc:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      quantumespresso.pw:
+        cpus: 2
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 2
+        parallelization: {}
+  pdos:
+    codes:
+      dos:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      projwfc:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+      pw:
+        cpus: 1
+        cpus_per_task: 1
+        max_wallclock_seconds: 43200
+        nodes: 1
+        ntasks_per_node: 1
+        parallelization: {}
+    override: false
 pdos:
+  energy_grid_step: 0.01
   nscf_kpoints_distance: 0.1
   pdos_degauss: 0.005
   use_pdos_degauss: false

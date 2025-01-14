@@ -6,92 +6,115 @@ Authors: AiiDAlab team
 import pathlib
 
 import ipywidgets as ipw
-import traitlets as tl
 
-import aiida
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common import AddingTagsEditor
+from aiidalab_qe.common import (
+    AddingTagsEditor,
+    LazyLoadedOptimade,
+    LazyLoadedStructureBrowser,
+    PeriodicityEditor,
+)
+from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget, QeWizardStep
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
-    OptimadeQueryWidget,
-    StructureBrowserWidget,
-    StructureExamplesWidget,
     StructureManagerWidget,
     StructureUploadWidget,
-    WizardAppWidgetStep,
 )
 
 # The Examples list of (name, file) tuple curretly passed to
 # StructureExamplesWidget.
 file_path = pathlib.Path(__file__).parent
 Examples = [
-    ("Bulk silicon (primitive cell)", file_path / "examples" / "Si.cif"),
-    ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
-    ("Diamond (primitive cell)", file_path / "examples" / "Diamond.cif"),
-    ("Gallium arsenide (primitive cell)", file_path / "examples" / "GaAs.cif"),
-    ("Gold (conventional cell)", file_path / "examples" / "Au.cif"),
-    ("Cobalt (primitive cell)", file_path / "examples" / "Co.cif"),
-    ("Lithium carbonate", file_path / "examples" / "Li2CO3.cif"),
-    ("Phenylacetylene molecule", file_path / "examples" / "Phenylacetylene.xyz"),
-    ("ETFA molecule", file_path / "examples" / "ETFA.xyz"),
+    ("Bulk silicon", file_path / "examples" / "Si.cif"),
+    ("Diamond", file_path / "examples" / "Diamond.cif"),
+    ("Gallium arsenide", file_path / "examples" / "GaAs.cif"),
+    ("Gold", file_path / "examples" / "Au.cif"),
+    ("Nickel", file_path / "examples" / "Ni.cif"),
     ("LiCoO2", file_path / "examples" / "LiCoO2.cif"),
+    ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
 ]
 
 
-class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
+class StructureSelectionStep(QeWizardStep[StructureStepModel]):
     """Integrated widget for the selection and edition of structure.
     The widget includes a structure manager that allows to select a structure
     from different sources. It also includes the structure editor. Both the
     structure importers and the structure editors can be extended by plugins.
     """
 
-    structure = tl.Instance(aiida.orm.StructureData, allow_none=True)
-    confirmed_structure = tl.Instance(aiida.orm.StructureData, allow_none=True)
+    def __init__(self, model: StructureStepModel, **kwargs):
+        super().__init__(model=model, **kwargs)
+        self._model.observe(
+            self._on_confirmation_change,
+            "confirmed",
+        )
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
 
-    def __init__(self, description=None, **kwargs):
+    def _render(self):
+        examples_by_category = {"Simple crystals": Examples}
+        plugin_structure_examples = {
+            item["title"]: item["structures"]
+            for item in get_entry_items(
+                "aiidalab_qe.properties", "structure_examples"
+            ).values()
+        }
+        examples_by_category.update(plugin_structure_examples)
+
         importers = [
             StructureUploadWidget(title="Upload file"),
-            OptimadeQueryWidget(embedded=False),
-            StructureBrowserWidget(
-                title="AiiDA database",
-                query_types=(
-                    aiida.orm.StructureData,
-                    aiida.orm.CifData,
-                    HubbardStructureData,
-                ),
+            LazyLoadedOptimade(title="OPTIMADE"),
+            LazyLoadedStructureBrowser(title="AiiDA database"),
+            CategorizedStructureExamplesWidget(
+                title="From examples", examples_by_category=examples_by_category
             ),
-            StructureExamplesWidget(title="From Examples", examples=Examples),
         ]
-        # add plugin specific structure importers
-        entries = get_entry_items("aiidalab_qe.properties", "importer")
-        importers.extend([entry_point() for entry_point in entries.values()])
-        # add plugin specific structure editors
+
+        plugin_importers = get_entry_items("aiidalab_qe.properties", "importer")
+        importers.extend([importer() for importer in plugin_importers.values()])
+
         editors = [
             BasicCellEditor(title="Edit cell"),
             BasicStructureEditor(title="Edit structure"),
-            AddingTagsEditor(title="Edit StructureData"),
+            AddingTagsEditor(title="Edit atom tags"),
+            PeriodicityEditor(title="Edit periodicity"),
         ]
-        entries = get_entry_items("aiidalab_qe.properties", "editor")
-        editors.extend([entry_point() for entry_point in entries.values()])
-        #
+
+        plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
+        editors.extend([editor() for editor in plugin_editors.values()])
+
         self.manager = StructureManagerWidget(
             importers=importers,
             editors=editors,
             node_class="StructureData",
             storable=False,
-            configuration_tabs=["Cell", "Selection", "Appearance", "Download"],
+            configuration_tabs=[
+                "Cell",
+                "Selection",
+                "Appearance",
+                "Download",
+            ],
         )
 
-        if description is None:
-            description = ipw.HTML(
-                """
-                <p>Select a structure from one of the following sources and then click
-                "Confirm" to go to the next step. </p>
-                """
-            )
-        self.description = description
+        if self._model.confirmed:  # loaded from a process
+            # NOTE important to do this prior to setting up the links
+            # to avoid an override of the structure in the model,
+            # which in turn would trigger a reset of the model
+            self.manager.input_structure = self._model.input_structure
+
+        ipw.dlink(
+            (self.manager, "structure_node"),
+            (self._model, "input_structure"),
+        )
+        ipw.link(
+            (self._model, "manager_output"),
+            (self.manager.output, "value"),
+        )
 
         self.structure_name_text = ipw.Text(
             placeholder="[No structure selected]",
@@ -99,88 +122,72 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             disabled=True,
             layout=ipw.Layout(width="auto", flex="1 1 auto"),
         )
+        ipw.dlink(
+            (self._model, "structure_name"),
+            (self.structure_name_text, "value"),
+        )
 
         self.confirm_button = ipw.Button(
             description="Confirm",
             tooltip="Confirm the currently selected structure and go to the next step.",
             button_style="success",
             icon="check-circle",
-            disabled=True,
             layout=ipw.Layout(width="auto"),
         )
+        ipw.dlink(
+            (self, "state"),
+            (self.confirm_button, "disabled"),
+            lambda state: state != self.State.CONFIGURED,
+        )
         self.confirm_button.on_click(self.confirm)
+
         self.message_area = ipw.HTML()
-
-        # Create directional link from the (read-only) 'structure_node' traitlet of the
-        # structure manager to our 'structure' traitlet:
-        ipw.dlink((self.manager, "structure_node"), (self, "structure"))
-
-        super().__init__(
-            children=[
-                self.description,
-                self.manager,
-                self.structure_name_text,
-                self.message_area,
-                self.confirm_button,
-            ],
-            **kwargs,
+        ipw.dlink(
+            (self._model, "message_area"),
+            (self.message_area, "value"),
         )
 
-    @tl.default("state")
-    def _default_state(self):
-        return self.State.INIT
+        self.children = [
+            InAppGuide(identifier="structure-step"),
+            ipw.HTML("""
+                <p>
+                    Select a structure from one of the following sources, then
+                    click <span style="color: #4caf50;">
+                        <i class="fa fa-check-circle"></i> <b>Confirm</b>
+                    </span> to go to the next step
+                </p>
+            """),
+            self.manager,
+            self.structure_name_text,
+            self.message_area,
+            self.confirm_button,
+        ]
 
-    def _update_state(self):
-        if self.structure is None:
-            if self.confirmed_structure is None:
-                self.state = self.State.READY
-            else:
-                self.state = self.State.SUCCESS
-        else:
-            if self.confirmed_structure is None:
-                self.state = self.State.CONFIGURED
-            else:
-                self.state = self.State.SUCCESS
-
-    @tl.observe("structure")
-    def _observe_structure(self, change):
-        structure = change["new"]
-        with self.hold_trait_notifications():
-            if structure is None:
-                self.structure_name_text.value = ""
-                self.message_area.value = ""
-            else:
-                self.structure_name_text.value = str(self.structure.get_formula())
-            self._update_state()
-
-    @tl.observe("confirmed_structure")
-    def _observe_confirmed_structure(self, _):
-        with self.hold_trait_notifications():
-            self._update_state()
-
-    @tl.observe("state")
-    def _observe_state(self, change):
-        with self.hold_trait_notifications():
-            state = change["new"]
-            self.confirm_button.disabled = state != self.State.CONFIGURED
-            self.manager.disabled = state is self.State.SUCCESS
+    def is_saved(self):
+        return self._model.confirmed
 
     def confirm(self, _=None):
         self.manager.store_structure()
-        self.confirmed_structure = self.structure
-        self.message_area.value = ""
-
-    def is_saved(self):
-        """Check if the current structure is saved.
-        That all changes are confirmed."""
-        return self.confirmed_structure == self.structure
+        self._model.message_area = ""
+        self._model.confirm()
 
     def can_reset(self):
-        return self.confirmed_structure is not None
+        return self._model.confirmed
 
-    def reset(self):  # unconfirm
-        """Reset the widget to its initial state."""
-        self.confirmed_structure = None
-        self.manager.structure = None
-        self.manager.viewer.structure = None
-        self.manager.output.value = ""
+    def reset(self):
+        self._model.reset()
+
+    def _on_input_structure_change(self, _):
+        self._model.update_widget_text()
+        self._update_state()
+
+    def _on_confirmation_change(self, _):
+        self._update_state()
+
+    def _update_state(self):
+        if self._model.confirmed:
+            self.state = self.State.SUCCESS
+        elif self._model.input_structure is None:
+            self.state = self.State.READY
+        else:
+            self.state = self.State.CONFIGURED

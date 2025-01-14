@@ -1,29 +1,32 @@
-import pytest
-
-
-@pytest.mark.usefixtures("sssp")
 def test_result(generate_qeapp_workchain):
     import plotly.graph_objects as go
 
-    from aiidalab_qe.common.bandpdoswidget import BandPdosWidget
-    from aiidalab_qe.plugins.pdos.result import Result
-
-    wkchain = generate_qeapp_workchain()
-    # generate structure for scf calculation
-    result = Result(node=wkchain.node)
-    result._update_view()
-    assert isinstance(result.children[0], BandPdosWidget)
-    assert isinstance(result.children[0].bandsplot_widget, go.FigureWidget)
-
-    # Check if data is correct
-    assert result.children[0].bands_data is None
-    assert result.children[0].pdos_data is not None
-
-    # Check PDOS settings is not None
-
-    # Check Bands axis
-    assert (
-        result.children[0].bandsplot_widget.layout.xaxis.title.text
-        == "Density of states (eV)"
+    from aiidalab_qe.common.bands_pdos import BandsPdosWidget
+    from aiidalab_qe.plugins.electronic_structure.result import (
+        ElectronicStructureResultsModel,
+        ElectronicStructureResultsPanel,
     )
-    assert result.children[0].bandsplot_widget.layout.yaxis.title.text is None
+
+    workchain = generate_qeapp_workchain(run_bands=False)
+    model = ElectronicStructureResultsModel()
+    panel = ElectronicStructureResultsPanel(model=model)
+    model.process_uuid = workchain.node.uuid
+
+    assert model.title == "Electronic PDOS"
+    assert model.identifiers == ["pdos"]
+
+    panel.render()
+
+    assert len(panel.results_container.children) == 1  # only pdos, so no controls
+
+    widget = panel.bands_pdos_container.children[0]  # type: ignore
+    model = widget._model
+
+    assert isinstance(widget, BandsPdosWidget)
+    assert isinstance(widget.plot, go.FigureWidget)
+
+    assert not model.bands_data
+    assert model.pdos_data
+
+    assert widget.plot.layout.xaxis.title.text == "Density of states (eV)"
+    assert widget.plot.layout.yaxis.title.text is None

@@ -5,23 +5,29 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
+import os
+import typing as t
 from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import time
 
+import anywidget
 import ase
 import ipywidgets as ipw
 import numpy as np
 import traitlets
 from IPython.display import HTML, Javascript, clear_output, display
-from pymatgen.core.periodic_table import Element
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-from aiidalab_widgets_base import ComputationalResourcesWidget
+from aiidalab_qe.common.mvc import Model
+from aiidalab_widgets_base import (
+    ComputationalResourcesWidget,
+    StructureExamplesWidget,
+    WizardAppWidgetStep,
+)
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -44,12 +50,15 @@ class RollingOutput(ipw.VBox):
 
     def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):  # noqa: ARG002
         self._num_min_lines = num_min_lines
-        self._output = ipw.HTML(layout=ipw.Layout(min_width="50em"))
+        self._output = ipw.HTML(layout=ipw.Layout(min_width="80em"))
         self._refresh_output()
         super().__init__(
-            [self._output],
-            layout=ipw.Layout(max_height=max_output_height, min_width="51em"),
+            children=[
+                self._output,
+            ],
+            layout=ipw.Layout(max_height=max_output_height),
         )
+        self.add_class("rolling-output")
 
     @traitlets.default("value")
     def _default_value(self):
@@ -148,10 +157,9 @@ class FilenameDisplayWidget(ipw.Box):
 
     def __init__(self, max_width=None, **kwargs):
         self.max_width = max_width
-        self._html = ipw.HTML(
-            layout={"margin": "0 0 0 50px"},
-        )
+        self._html = ipw.HTML()
         super().__init__([self._html], **kwargs)
+        self.add_class("filename-display")
 
     @traitlets.observe("value")
     def _observe_filename(self, change):
@@ -163,7 +171,7 @@ class FilenameDisplayWidget(ipw.Box):
             overflow:hidden;
             text-overflow:ellipsis;
             {width_style}">
-            {icon} {change['new']}
+            {icon} {change["new"]}
         </div>
         """
 
@@ -175,16 +183,17 @@ class LogOutputWidget(ipw.VBox):
     def __init__(self, placeholder=None, **kwargs):
         self.placeholder = placeholder
 
-        self._rolling_output = RollingOutput(layout=ipw.Layout(flex="1 1 auto"))
+        self._rolling_output = RollingOutput(
+            layout=ipw.Layout(flex="1 1 auto"),
+            max_output_height="unset",
+        )
         ipw.dlink(
             (self, "value"),
             (self._rolling_output, "value"),
             lambda value: value or self.placeholder or "",
         )
 
-        self._filename_display = FilenameDisplayWidget(
-            layout=ipw.Layout(width="auto"), max_width="55em"
-        )
+        self._filename_display = FilenameDisplayWidget(layout=ipw.Layout(width="auto"))
         ipw.dlink(
             (self, "filename"),
             (self._filename_display, "value"),
@@ -228,12 +237,20 @@ class LogOutputWidget(ipw.VBox):
         )
 
         super().__init__(
-            [
+            children=[
                 self._filename_display,
-                ipw.HBox([self._rolling_output, self._btns]),
+                ipw.HBox(
+                    children=[
+                        self._rolling_output,
+                        self._btns,
+                    ],
+                    layout=ipw.Layout(height="100%"),
+                ),
             ],
+            layout=ipw.Layout(height="100%"),
             **kwargs,
         )
+        self.add_class("log-output")
 
     @traitlets.default("placeholder")
     def _default_placeholder(self):
@@ -437,11 +454,16 @@ class AddingTagsEditor(ipw.VBox):
     input_selection = traitlets.List(traitlets.Int, allow_none=True)
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
-    def __init__(self, title=""):
+    def __init__(self, title="", **kwargs):
         self.title = title
+
         self._status_message = StatusHTML()
         self.atom_selection = ipw.Text(
-            description="Index of atoms", value="", layout={"width": "initial"}
+            placeholder="e.g. 1..5 8 10",
+            description="Index of atoms",
+            value="",
+            style={"description_width": "100px"},
+            layout={"width": "initial"},
         )
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
@@ -464,16 +486,9 @@ class AddingTagsEditor(ipw.VBox):
             button_style="warning",
             layout={"width": "initial"},
         )
-        self.periodicity = ipw.RadioButtons(
-            options=["xyz", "xy", "x", "molecule"],
-            value="xyz",
-            description="Periodicty: ",
-            layout={"width": "initial"},
-        )
-        self.select_periodicity = ipw.Button(
-            description="Select",
-            button_style="primary",
-            layout={"width": "100px"},
+        self.scroll_note = ipw.HTML(
+            value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
+            layout={"visibility": "hidden"},
         )
         self.tag_display = ipw.Output()
         self.add_tags.on_click(self._add_tags)
@@ -483,11 +498,21 @@ class AddingTagsEditor(ipw.VBox):
         self.add_tags.on_click(self._display_table)
         self.reset_tags.on_click(self._display_table)
         self.reset_all_tags.on_click(self._display_table)
-        self.select_periodicity.on_click(self._select_periodicity)
+
         super().__init__(
             children=[
                 ipw.HTML(
-                    "<b>Adding a tag to atoms</b>",
+                    """
+                    <p>
+                    These are used to distinguish atoms of the same chemical element. <br>
+                    For example, they can be used to assign different initial magnetization values for antiferromagnetic systems.
+                    </p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>Atom indices start from 1, not 0. This means that the first atom in the list is numbered 1, the second atom is numbered 2, and so on.</li>
+                    </ul>
+                    </p>
+                    """
                 ),
                 ipw.HBox(
                     [
@@ -497,14 +522,11 @@ class AddingTagsEditor(ipw.VBox):
                     ]
                 ),
                 self.tag_display,
+                self.scroll_note,
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
-                ipw.HTML(
-                    "<b>Define periodicity</b>",
-                ),
-                self.periodicity,
-                self.select_periodicity,
-            ]
+            ],
+            **kwargs,
         )
 
     def _display_table(self, _=None):
@@ -515,14 +537,18 @@ class AddingTagsEditor(ipw.VBox):
         current_tags = self.structure.get_tags()
         chemichal_symbols = self.structure.get_chemical_symbols()
 
-        if selection and (max(selection) <= (len(self.structure) - 1)):
+        if (
+            selection
+            and (min(selection) >= 0)
+            and (max(selection) <= (len(self.structure) - 1))
+        ):
             table_data = []
             for index in selection:
                 tag = current_tags[index]
                 symbol = chemichal_symbols[index]
                 if tag == 0:
                     tag = ""
-                table_data.append([f"{index}", f"{symbol}", f"{tag}"])
+                table_data.append([f"{index + 1}", f"{symbol}", f"{tag}"])
 
             # Create an HTML table
             table_html = "<table>"
@@ -543,10 +569,12 @@ class AddingTagsEditor(ipw.VBox):
             with self.tag_display:
                 clear_output()
                 display(HTML(table_html))
+            self.scroll_note.layout = {"visibility": "visible"}
         else:
             self.tag_display.layout = {}
             with self.tag_display:
                 clear_output()
+            self.scroll_note.layout = {"visibility": "hidden"}
 
     def _from_selection(self, _=None):
         """Set the atom selection from the current selection."""
@@ -603,6 +631,50 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
 
+
+class PeriodicityEditor(ipw.VBox):
+    """Editor for changing periodicity of structures."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+
+    def __init__(self, title="", **kwargs):
+        self.title = title
+
+        self.periodicity = ipw.RadioButtons(
+            options=[
+                ("3D (bulk systems)", "xyz"),
+                ("2D (surfaces, slabs, ...)", "xy"),
+                ("1D (wires)", "x"),
+                ("0D (molecules)", "molecule"),
+            ],
+            value="xyz",
+            layout={"width": "initial"},
+        )
+        self.apply_periodicity = ipw.Button(
+            description="Apply",
+            button_style="primary",
+            layout={"width": "100px"},
+        )
+        self.apply_periodicity.on_click(self._select_periodicity)
+
+        super().__init__(
+            children=[
+                ipw.HTML("""
+                    <p>Select the periodicity of your system.</p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
+                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
+
+                    </ul>
+                """),
+                self.periodicity,
+                self.apply_periodicity,
+            ],
+            **kwargs,
+        )
+
     def _select_periodicity(self, _=None):
         """Select periodicity."""
         periodicity_options = {
@@ -626,7 +698,11 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         """Widget to setup the compute resources, which include the code,
         the number of nodes and the number of cpus.
         """
-        self.code_selection = ComputationalResourcesWidget(**kwargs)
+        self.code_selection = ComputationalResourcesWidget(
+            include_setup_widget=False,
+            fetch_codes=True,  # TODO resolve testing issues when set to `False`
+            **kwargs,
+        )
         self.code_selection.layout.width = "80%"
 
         self.num_nodes = ipw.BoundedIntText(
@@ -659,25 +735,26 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         )
         traitlets.link((self.code_selection, "value"), (self, "value"))
 
-    @traitlets.observe("value")
-    def _update_resources(self, change):
+    def update_resources(self, change):
         if change["new"]:
             self.set_resource_defaults(load_code(change["new"]).computer)
 
     def set_resource_defaults(self, computer=None):
-        import os
-
-        if computer is None or computer.hostname == "localhost":
+        if computer is None:
             self.num_nodes.disabled = True
             self.num_nodes.value = 1
-            self.num_cpus.max = os.cpu_count()
+            self.num_cpus.max = 1
             self.num_cpus.value = 1
             self.num_cpus.description = "CPUs"
         else:
             default_mpiprocs = computer.get_default_mpiprocs_per_machine()
-            self.num_nodes.disabled = False
+            self.num_nodes.disabled = (
+                True if computer.hostname == "localhost" else False
+            )
             self.num_cpus.max = default_mpiprocs
-            self.num_cpus.value = default_mpiprocs
+            self.num_cpus.value = (
+                1 if computer.hostname == "localhost" else default_mpiprocs
+            )
             self.num_cpus.description = "CPUs"
 
     @property
@@ -895,425 +972,390 @@ class PwCodeResourceSetupWidget(QEAppComputationalResourcesWidget):
             self.set_parallelization(parameters["parallelization"])
 
 
-class HubbardWidget(ipw.VBox):
-    """Widget for setting up Hubbard parameters."""
+class LoadingWidget(ipw.HBox):
+    """Widget for displaying a loading spinner."""
 
-    def __init__(self, input_structure=None):
-        self.input_structure = input_structure
-        self.eigenvalues_help = ipw.HTML(
-            value="For transition metals and lanthanoids, the starting eigenvalues can be defined (Magnetic calculation).",
-            layout=ipw.Layout(width="auto"),
+    def __init__(self, message="Loading", **kwargs):
+        self.message = ipw.Label(message)
+        super().__init__(
+            children=[
+                self.message,
+                ipw.HTML("<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>"),
+            ],
+            **kwargs,
         )
-        self.activate_hubbard = ipw.Checkbox(
-            description="",
-            tooltip="Use Hubbard DFT+U.",
-            indent=False,
-            value=False,
-            layout=ipw.Layout(max_width="10%"),
+        self.add_class("loading")
+
+
+class LazyLoader(ipw.VBox):
+    identifier = "widget"
+
+    def __init__(self, widget_class, widget_kwargs=None, **kwargs):
+        super().__init__(
+            children=[LoadingWidget(f"Loading {self.identifier}")],
+            **kwargs,
         )
-        self.eigenvalues_label = ipw.Checkbox(
-            description="Define eigenvalues",
-            tooltip="Define eigenvalues",
-            indent=False,
-            value=False,
-            layout=ipw.Layout(max_width="30%"),
+
+        self._widget_class = widget_class
+        self._widget_kwargs = widget_kwargs or {}
+
+        self.rendered = False
+
+    def set_widget_kwargs(self, kwargs):
+        self._widget_kwargs = kwargs
+
+    def render(self):
+        if self.rendered:
+            return
+        self.widget = self._widget_class(**self._widget_kwargs)
+        self.children = [self.widget]
+        self.rendered = True
+
+
+class LazyLoadedStructureImporter(ipw.VBox):
+    """A wrapper that may be used to lazy-load a structure import widget."""
+
+    warning_message = "This may take some time to load"
+
+    structure = traitlets.Union(
+        [
+            traitlets.Instance(ase.Atoms),
+            traitlets.Instance(orm_Data),
+        ],
+        allow_none=True,
+    )
+
+    def __init__(self, title=None, **kwargs):
+        self.title = title or "Structure importer"
+
+        render_button = ipw.Button(
+            layout=ipw.Layout(margin="0 10px 0 0", width="auto"),
+            description=f"Load {self.title} widget",
+            icon="refresh",
         )
-        self.hubbard_widget = self.create_hubbard_widget()
-        self.hubbard_widget_out = ipw.Output()
-        self.eigen_values_widget = self.create_eigenvalues_widget()
-        self.eigen_values_widget_out = ipw.Output()
+        render_button.on_click(self._on_render_click)
 
         super().__init__(
             children=[
                 ipw.HBox(
+                    layout=ipw.Layout(align_items="center"),
                     children=[
-                        ipw.HTML("<b>Hubbard (DFT+U)</b>"),
-                        self.activate_hubbard,
-                    ]
+                        render_button,
+                        ipw.HTML("<span class='warning'>WARNING: </span>"),
+                        ipw.HTML(f"<span>{self.warning_message}</span>"),
+                    ],
                 ),
-                self.hubbard_widget_out,
-                self.eigen_values_widget_out,
-            ]
+            ],
+            **kwargs,
         )
-        self.activate_hubbard.observe(self.toggle_hubbard_widgets, names="value")
-        self.eigenvalues_label.observe(self.toggle_eigenvalues_widgets, names="value")
 
-    def create_hubbard_widget(self):
+        self.rendered = False
+
+    def render(self):
+        if self.rendered:
+            return
+
+        self.children = [LoadingWidget(f"Loading {self.title} widget")]
+
+        widget = self._get_widget()
+        ipw.dlink(
+            (widget, "structure"),
+            (self, "structure"),
+        )
+
+        self.children = [widget]
+
+        self.rendered = True
+
+    def _get_widget(self):
+        raise NotImplementedError()
+
+    def _on_render_click(self, _):
+        self.render()
+
+
+class LazyLoadedOptimade(LazyLoadedStructureImporter):
+    warning_message = (
+        "OPTIMADE may take some time to load depending on your internet connection"
+    )
+
+    def _get_widget(self):
+        from aiidalab_widgets_base.databases import OptimadeQueryWidget
+
+        return OptimadeQueryWidget(embedded=False)
+
+
+class LazyLoadedStructureBrowser(LazyLoadedStructureImporter):
+    warning_message = (
+        "The browser may take some time to load depending on the size of your database"
+    )
+
+    def _get_widget(self):
+        from aiida import orm
+        from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+        from aiidalab_widgets_base.structures import StructureBrowserWidget
+
+        return StructureBrowserWidget(
+            title=self.title,
+            query_types=(
+                orm.StructureData,
+                orm.CifData,
+                HubbardStructureData,
+            ),
+        )
+
+
+class CategorizedStructureExamplesWidget(StructureExamplesWidget):
+    """Extended widget to provide categorized example structures."""
+
+    def __init__(self, examples_by_category, title="", **kwargs):
+        self.examples_by_category = examples_by_category
+        self._category_buttons = ipw.ToggleButtons(
+            options=list(examples_by_category.keys()),
+            description="Category:",
+        )
+        self._category_buttons.observe(self._on_category_change, names="value")
+
+        # Initialize with the first category
+        initial_category = next(iter(examples_by_category.keys()))
+        super().__init__(
+            examples=examples_by_category[initial_category], title=title, **kwargs
+        )
+
+        self.children = [self._category_buttons, *list(self.children)]
+
+    def _on_category_change(self, change):
+        """Update the dropdown when the category changes."""
+        new_category = change["new"]
+        new_examples = self.examples_by_category.get(new_category, [])
+        self._select_structure.options = self.get_example_structures(new_examples)
+
+
+class LinkButton(ipw.HTML):
+    disabled = traitlets.Bool(False)
+
+    def __init__(
+        self,
+        description=None,
+        link="",
+        in_place=False,
+        classes="",
+        icon="",
+        disabled=False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        html = f"""
+            <a
+                role="button"
+                href="{link}"
+                target="{"_self" if in_place else "_blank"}"
+                class="{classes}"
+            >
         """
-        Creates a widget for defining Hubbard U values for each atomic species in the input structure.
+        if icon:
+            html += f"<i class='fa fa-{icon}'></i>"
 
-        Returns:
-            hubbard_widget (ipywidgets.VBox): The widget containing the input fields for defining Hubbard U values.
-        """
+        html += f"{description}</a>"
 
-        def _display_checkbox(symbols):
-            return any(
-                Element(symbol).is_transition_metal
-                or Element(symbol).is_lanthanoid
-                or Element(symbol).is_actinoid
-                for symbol in symbols
-            )
+        self.value = html
 
-        condition = False
-        if self.input_structure is None:
-            self.input_labels = []
+        self.add_class("jupyter-button")
+        self.add_class("link-button")
+
+        self.disabled = disabled
+
+    @traitlets.observe("disabled")
+    def _on_disabled(self, change):
+        if change["new"]:
+            self.add_class("disabled")
         else:
-            self.input_labels = self._hubbard_widget_labels()
-            condition = _display_checkbox(self.input_structure.get_symbols_set())
-        widgets_list = []
-        for label in self.input_labels:
-            hbox_container = ipw.HBox()
-            float_widget = ipw.BoundedFloatText(
-                description=label,
-                min=0,
-                max=20,
-                step=0.1,
-                value=0.0,
-                layout={"width": "160px"},
-            )
-            hbox_container.children = [float_widget]
-            widgets_list.append(hbox_container)
+            self.remove_class("disabled")
 
-        if condition:
-            hubbard_widget = ipw.VBox(
-                [
-                    ipw.HTML("Define U value [eV] "),
-                    *widgets_list,
-                    self.eigenvalues_help,
-                    self.eigenvalues_label,
-                ]
-            )
+
+class QeWizardStepModel(Model):
+    identifier = "QE wizard"
+
+
+QWSM = t.TypeVar("QWSM", bound=QeWizardStepModel)
+
+
+class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[QWSM]):
+    def __init__(self, model: QWSM, **kwargs):
+        self.loading_message = LoadingWidget(f"Loading {model.identifier} step")
+        super().__init__(children=[self.loading_message], **kwargs)
+        self._model = model
+        self.rendered = False
+        self._background_class = ""
+
+    def render(self):
+        if self.rendered:
+            return
+        self._render()
+        self.rendered = True
+        self._post_render()
+
+    @traitlets.observe("state")
+    def _on_state_change(self, change):
+        self._update_background_color(change["new"])
+
+    def _render(self):
+        raise NotImplementedError()
+
+    def _post_render(self):
+        pass
+
+    def _update_background_color(self, state: WizardAppWidgetStep.State):
+        self.remove_class(self._background_class)
+        self._background_class = f"qe-app-step-{state.name.lower()}"
+        self.add_class(self._background_class)
+
+
+class QeDependentWizardStep(QeWizardStep[QWSM]):
+    missing_information_warning = "Missing information"
+
+    previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
+
+    def __init__(self, model: QWSM, **kwargs):
+        super().__init__(model, **kwargs)
+        self.previous_children = list(self.children)
+        self.warning_message = ipw.HTML(
+            f"""
+            <div class="alert alert-danger">
+                <b>Warning:</b> {self.missing_information_warning}
+            </div>
+        """
+        )
+
+    def render(self):
+        if "PYTEST_CURRENT_TEST" in os.environ:
+            super().render()
+            return
+        if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
+            self._hide_missing_information_warning()
+            if not self.rendered:
+                super().render()
+                self.previous_children = list(self.children)
         else:
-            hubbard_widget = ipw.VBox([ipw.HTML("Define U value [eV] "), *widgets_list])
-        return hubbard_widget
+            self._show_missing_information_warning()
 
-    def _hubbard_widget_labels(self):
-        """
-        Returns a list of labels for the Hubbard widget.
+    def _show_missing_information_warning(self):
+        self.children = [self.warning_message]
+        self.rendered = False
 
-        The labels are generated based on the kind names and the corresponding Hubbard manifolds
-        of the input structure.
+    def _hide_missing_information_warning(self):
+        self.children = self.previous_children
 
-        Returns:
-            list: A list of labels in the format "{kind} - {manifold}".
-        """
-        kind_list = self.input_structure.get_kind_names()
-        hubbard_manifold_list = [
-            self._get_hubbard_manifold(Element(x.symbol))
-            for x in self.input_structure.kinds
-        ]
-        result = [
-            f"{kind} - {manifold}"
-            for kind, manifold in zip(kind_list, hubbard_manifold_list)
-        ]
-        return result
 
-    def _get_hubbard_manifold(self, element):
-        """
-        Get the Hubbard manifold for a given element.
+class TableWidget(anywidget.AnyWidget):
+    _esm = """
+    function render({ model, el }) {
+        let domElement = document.createElement("div");
+        el.classList.add("custom-table");
+        let selectedIndices = [];
 
-        Parameters:
-        element (Element): The element for which to determine the Hubbard manifold.
+        function drawTable() {
+            const data = model.get("data");
+            domElement.innerHTML = "";
+            let innerHTML = '<table><tr>' + data[0].map(header => `<th>${header}</th>`).join('') + '</tr>';
 
-        Returns:
-        str: The Hubbard manifold for the given element.
-        """
-        valence = [
-            orbital
-            for orbital in element.electronic_structure.split(".")
-            if "[" not in orbital
-        ]
-        orbital_shells = [shell[:2] for shell in valence]
+            for (let i = 1; i < data.length; i++) {
+                innerHTML += '<tr>' + data[i].map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+            }
 
-        def is_condition_met(shell):
-            return condition and condition in shell
+            innerHTML += "</table>";
+            domElement.innerHTML = innerHTML;
 
-        # Conditions for determining the Hubbard manifold to be selected from the electronic structure
-        hubbard_conditions = {
-            element.is_transition_metal: "d",
-            element.is_lanthanoid or element.is_actinoid: "f",
-            element.is_post_transition_metal
-            or element.is_metalloid
-            or element.is_halogen
-            or element.is_chalcogen
-            or element.symbol in ["C", "N", "P"]: "p",
-            element.is_alkaline or element.is_alkali or element.is_noble_gas: "s",
+            const rows = domElement.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index > 0) {
+                    row.addEventListener('click', () => {
+                        const rowIndex = index - 1;
+                        if (selectedIndices.includes(rowIndex)) {
+                            selectedIndices = selectedIndices.filter(i => i !== rowIndex);
+                            row.classList.remove('selected-row');
+                        } else {
+                            selectedIndices.push(rowIndex);
+                            row.classList.add('selected-row');
+                        }
+                        model.set('selected_rows', [...selectedIndices]);
+                        model.save_changes();
+                    });
+
+                    row.addEventListener('mouseover', () => {
+                        if (!row.classList.contains('selected-row')) {
+                            row.classList.add('hover-row');
+                        }
+                    });
+
+                    row.addEventListener('mouseout', () => {
+                        row.classList.remove('hover-row');
+                    });
+                }
+            });
         }
 
-        condition = next(
-            (shell for condition, shell in hubbard_conditions.items() if condition),
-            None,
-        )
-
-        hubbard_manifold = next(
-            (shell for shell in orbital_shells if is_condition_met(shell)), None
-        )
-
-        return hubbard_manifold
-
-    def create_eigenvalues_widget(self):
-        """
-        Creates and returns a widget for selecting eigenvalues of different kinds of atoms.
-
-        Returns:
-        occup_kinds_widget (ipywidgets.VBox): Widget for selecting eigenvalues.
-        """
-
-        if self.input_structure is None:
-            self.input_kinds_eigenvalues = []
-        else:
-            list_of_kinds = [
-                [index + 1, value.name, Element(value.symbol)]
-                for index, value in enumerate(self.input_structure.kinds)
-            ]
-            self.input_kinds_eigenvalues = [
-                x
-                for x in list_of_kinds
-                if x[2].is_transition_metal or x[2].is_lanthanoid
-            ]
-
-        kind_list = []
-        for kind in self.input_kinds_eigenvalues:
-            if kind[2].is_transition_metal:
-                num_states = 5  # d states
-            if kind[2].is_lanthanoid:
-                num_states = 7  # f states
-            if kind[2].is_transition_metal or kind[2].is_lanthanoid:
-                widgets_list_up = []
-                widgets_list_down = []
-                for i in range(num_states):
-                    eigenvalues_up = ipw.Dropdown(
-                        description=f"{i+1}",
-                        options=["-1", "0", "1"],
-                        layout=ipw.Layout(width="65px"),
-                        style={"description_width": "initial"},
-                    )
-                    eigenvalues_down = ipw.Dropdown(
-                        description=f"{i+1}",
-                        options=["-1", "0", "1"],
-                        layout=ipw.Layout(width="65px"),
-                        style={"description_width": "initial"},
-                    )
-                    widgets_list_up.append(eigenvalues_up)
-                    widgets_list_down.append(eigenvalues_down)
-
-                row_up = ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Up:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="50px"
-                            ),
-                        ),
-                        *widgets_list_up,
-                    ],
-                )
-
-                row_down = ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Down:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="50px"
-                            ),
-                        ),
-                        *widgets_list_down,
-                    ],
-                )
-                eigenvalues_container = ipw.VBox(children=[row_up, row_down])
-                kind_container = ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            kind[1],
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="50px"
-                            ),
-                        ),
-                        eigenvalues_container,
-                    ]
-                )
-                kind_list.append(kind_container)
-        occup_kinds_widget = ipw.VBox(kind_list)
-        return occup_kinds_widget
-
-    def update_widgets(self, change):
-        """
-        Update the widgets based on the given change.
-        """
-        self.input_structure = change
-        self.hubbard_widget = self.create_hubbard_widget()
-        self.eigenvalues_label.value = False
-        if self.activate_hubbard.value:
-            with self.hubbard_widget_out:
-                clear_output()
-                display(self.hubbard_widget)
-
-        self.eigen_values_widget = self.create_eigenvalues_widget()
-        if self.eigenvalues_label.value:
-            with self.eigen_values_widget_out:
-                clear_output()
-                display(self.eigen_values_widget)
-
-        if isinstance(self.input_structure, HubbardStructureData):
-            self.set_parameters_from_hubbardstructure(self.input_structure)
-
-    def set_parameters_from_hubbardstructure(self, hubbard_structure):
-        hubbard_parameters = hubbard_structure.hubbard.dict()["parameters"]
-        parameters = {
-            f"{hubbard_structure.sites[item['atom_index']].kind_name} - {item['atom_manifold']}": item[
-                "value"
-            ]
-            for item in hubbard_parameters
+        function updateSelection() {
+            const newSelection = model.get("selected_rows");
+            selectedIndices = [...newSelection]; // Synchronize the JavaScript state with the Python state
+            const rows = domElement.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index > 0) {
+                    if (selectedIndices.includes(index - 1)) {
+                        row.classList.add('selected-row');
+                    } else {
+                        row.classList.remove('selected-row');
+                    }
+                }
+            });
         }
-        self.set_hubbard_widget(parameters)
-        self.activate_hubbard.value = True
 
-    def toggle_hubbard_widgets(self, change):
-        """
-        Toggle the visibility of the Hubbard widgets based on the value of check box.
-        """
-        if change["new"]:
-            with self.hubbard_widget_out:
-                clear_output()
-                display(self.hubbard_widget)
-            if self.eigenvalues_label.value:
-                with self.eigen_values_widget_out:
-                    clear_output()
-                    display(self.eigen_values_widget)
-        else:
-            with self.hubbard_widget_out:
-                clear_output()
-            with self.eigen_values_widget_out:
-                clear_output()
+        drawTable();
+        model.on("change:data", drawTable);
+        model.on("change:selected_rows", updateSelection);
+        el.appendChild(domElement);
+    }
+    export default { render };
+    """
+    _css = """
+    .custom-table table, .custom-table th, .custom-table td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        text-align: left;
+        padding: 4px;
+    }
+    .custom-table th, .custom-table td {
+        min-width: 50px;
+        word-wrap: break-word;
+    }
+    .custom-table table {
+        width: 70%;
+        font-size: 1.0em;
+    }
+    /* Hover effect with light gray background */
+    .custom-table tr.hover-row:not(.selected-row) {
+        background-color: #f0f0f0;
+    }
+    /* Selected row effect with light green background */
+    .custom-table tr.selected-row {
+        background-color: #DFF0D8;
+    }
+    """
+    data = traitlets.List().tag(sync=True)
+    selected_rows = traitlets.List().tag(sync=True)
 
-    def toggle_eigenvalues_widgets(self, change):
-        """
-        Toggle the visibility of eigenvalues widgets based on the value of the eigenvalues check box.
-        """
-        if change["new"]:
-            with self.eigen_values_widget_out:
-                clear_output()
-                display(self.eigen_values_widget)
-        else:
-            with self.eigen_values_widget_out:
-                clear_output()
 
-    def _get_hubbard_u(self) -> dict:
-        """
-        Get the Hubbard U values for each input label.
-
-        Returns:
-            dict: A dictionary containing the Hubbard U values for each input label.
-                    The dictionary format is {'kind_name - hubbard_manifold': U_value}
-
-        """
-        hubbard_u = {}
-        for index, label in enumerate(self.input_labels):
-            value_hubbard = self.hubbard_widget.children[index + 1].children[0].value
-            if value_hubbard != 0:
-                hubbard_u[label] = (
-                    self.hubbard_widget.children[index + 1].children[0].value
-                )
-        return hubbard_u
-
-    def _get_starting_ns_eigenvalue(self) -> list:
-        """
-        Get the starting ns eigenvalues for transition metal and lanthanoid elements.
-
-        Returns:
-            list: A list of starting ns eigenvalues for each element.
-                  Each element in the list is a list containing the following information:
-                  - The eigenvalue
-                  - The spin index
-                  - The element symbol
-                  - The value of the eigenvalue
-        """
-        starting_ns_eigenvalue = []
-        for index, kind in enumerate(self.input_kinds_eigenvalues):
-            if kind[2].is_transition_metal or kind[2].is_lanthanoid:
-                if kind[2].is_transition_metal:
-                    num_states = 5
-                else:
-                    num_states = 7
-                for i in range(2):  # up and down
-                    spin = (
-                        self.eigen_values_widget.children[index].children[1].children[i]
-                    )
-                    for j in range(num_states):
-                        value_eigenvalue = int(spin.children[j + 1].value)
-                        if value_eigenvalue != -1:
-                            starting_ns_eigenvalue.append(
-                                [j + 1, i + 1, kind[1], value_eigenvalue]
-                            )
-
-        return starting_ns_eigenvalue
-
-    def set_hubbard_widget(self, parameters):
-        """
-        Set the Hubbard widget based on the given parameters.
-
-        Parameters:
-            parameters (dict): A dictionary containing the Hubbard U values for each input label.
-                               The dictionary format is {'kind_name - hubbard_manifold': U_value}
-        """
-        for index, label in enumerate(self.input_labels):
-            if label in parameters:
-                self.hubbard_widget.children[index + 1].children[0].value = parameters[
-                    label
-                ]
-
-    def set_eigenvalues_widget(self, parameters):
-        """
-        Set the eigenvalues widget based on the given parameters.
-
-        Parameters:
-            parameters (list): A list of starting ns eigenvalues for each element.
-                               Each element in the list is a list containing the following information:
-                               - The eigenvalue
-                               - The spin index
-                               - The element symbol
-                               - The value of the eigenvalue
-        """
-        for param in parameters:
-            eigenvalue, spin_index, element_symbol, value = param
-            for index, kind in enumerate(self.input_kinds_eigenvalues):
-                if kind[1] == element_symbol:
-                    spin = (
-                        self.eigen_values_widget.children[index]
-                        .children[1]
-                        .children[spin_index - 1]
-                    )
-                    spin.children[eigenvalue].value = str(value)
-
-    def reset(self):
-        """Reset the widget."""
-        self.activate_hubbard.value = False
-        self.eigenvalues_label.value = False
-        self.hubbard_widget = self.create_hubbard_widget()
-        self.eigen_values_widget = self.create_eigenvalues_widget()
-        with self.hubbard_widget_out:
-            clear_output()
-        with self.eigen_values_widget_out:
-            clear_output()
-        if isinstance(self.input_structure, HubbardStructureData):
-            self.set_parameters_from_hubbardstructure(self.input_structure)
-
-    @property
-    def hubbard_dict(self) -> dict:
-        if self.activate_hubbard.value:
-            hubbard_dict = {
-                "hubbard_u": self._get_hubbard_u(),
-            }
-        else:
-            hubbard_dict = {}
-        return hubbard_dict
-
-    @property
-    def eigenvalues_dict(self) -> dict:
-        if self.eigenvalues_label.value:
-            eigenvalues_dict = {
-                "starting_ns_eigenvalue": self._get_starting_ns_eigenvalue()
-            }
-        else:
-            eigenvalues_dict = {}
-        return eigenvalues_dict
+class HBoxWithUnits(ipw.HBox):
+    def __init__(self, widget: ipw.ValueWidget, units: str, **kwargs):
+        super().__init__(
+            children=[
+                widget,
+                ipw.HTML(units),
+            ],
+            layout=ipw.Layout(
+                align_items="center",
+                grid_gap="2px",
+            ),
+            **kwargs,
+        )
