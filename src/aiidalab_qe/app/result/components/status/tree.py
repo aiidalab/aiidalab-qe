@@ -108,12 +108,14 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
             "nscf": "NSCF workflow",
             "bands": "Bands workflow",
             "relax": "Structure relaxation workflow",
+            "md": "Molecular dynamics workflow",
         },
         "PwCalculation": {
             "scf": "Run SCF cycle",
             "nscf": "Run NSCF cycle",
             "bands": "Compute bands",
             "relax": "Optimize structure geometry",
+            "md": "Run molecular dynamics simulation",
         },
         "DosCalculation": "Compute density of states",
         "ProjwfcCalculation": "Compute projections",
@@ -186,6 +188,7 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         if label in ("PwBaseWorkChain", "PwCalculation"):
             inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
             calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
+            calculation = calculation.replace("vc-", "")
             return self._TITLE_MAPPING.get(label, {}).get(calculation, label)
         return self._TITLE_MAPPING.get(label, label)
 
