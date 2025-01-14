@@ -258,8 +258,8 @@ class BandsPdosWidget(ipw.VBox):
         )
 
         self.bands_width_percentage = ipw.IntSlider(
-            min=20,
-            max=80,
+            min=10,
+            max=90,
             step=5,
             description="Bands width %:",
             orientation="horizontal",

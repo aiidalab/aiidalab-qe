@@ -305,8 +305,8 @@ class BandsPdosModel(Model):
         """Update the combined_column_widths of the combined plot based on percentage."""
         bands_width = bands_width_percentage / 100
         self.plot.update_layout(
-            xaxis={"domain": [0, bands_width]},
-            xaxis2={"domain": [bands_width, 1]},
+            xaxis={"domain": [0, bands_width - 0.004]},
+            xaxis2={"domain": [bands_width + 0.004, 1]},
         )
 
     def download_image(self, _=None):
