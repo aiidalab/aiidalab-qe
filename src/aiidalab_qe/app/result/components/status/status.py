@@ -66,7 +66,9 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         self.to_advanced_view_button.on_click(self._switch_to_advanced_view)
 
         simplified_tree_container = ipw.VBox(
-            children=[self.simplified_process_tree],
+            children=[
+                self.simplified_process_tree,
+            ],
         )
 
         simplified_tree_node_view_container = ipw.VBox(

@@ -21,6 +21,14 @@
   }
 }
 
+.simplified-view .widget-button {
+  min-height: 28px;
+}
+
+.filename-display {
+  min-height: 32px;
+}
+
 /* Process tree */
 
 .rolling-output {
@@ -48,10 +56,6 @@
 
 .simplified-process-tree .widget-html-content {
   line-height: 1.5;
-}
-
-.simplified-process-tree .widget-button {
-  height: fit-content;
 }
 
 .simplified-process-tree .tree-node-toggle:focus:enabled,
@@ -96,6 +100,7 @@
 
 .simplified-process-tree .calculation-link {
   color: var(--color-link);
+  margin: 0 2px;
 }
 
 .simplified-process-tree .calculation-link:hover:enabled,
