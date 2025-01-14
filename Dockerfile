@@ -49,6 +49,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 # - Install QE codes and pseudopotentials
 # - Archive home folder
 FROM build_deps AS home_build
+ARG UV_CACHE_DIR
 ARG QE_DIR
 ARG HQ_VER
 ARG HQ_COMPUTER
