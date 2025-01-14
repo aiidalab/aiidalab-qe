@@ -77,11 +77,32 @@ class SimplifiedProcessTree(ipw.VBox):
         self.children = [
             self.collapse_button,
             self.trunk,
-            ipw.HTML("""
-                <div style="margin-top: 5px; font-style: italic;">
-                    *workflow will re-submit failed calculations
-                </div>
-            """),
+            ipw.HBox(
+                children=[
+                    ipw.HTML(
+                        value="*",
+                        layout=ipw.Layout(margin="0"),
+                    ),
+                    ipw.HTML(
+                        value="""
+                            <div style="font-style: italic;">
+                                workflow will automatically re-submit failed calculations
+                                <br>
+                                <b>(advanced users)</b> click
+                                <a
+                                    href="https://aiida.readthedocs.io/projects/aiida-core/en/stable/howto/workchains_restart.html"
+                                    target="_blank"
+                                >here</a> to learn how AiiDA handles errors
+                            </div>
+                        """,
+                        layout=ipw.Layout(margin="0"),
+                    ),
+                ],
+                layout=ipw.Layout(
+                    align_items="flex-start",
+                    margin="5px 0 0 0",
+                ),
+            ),
         ]
 
     def _update(self):
@@ -108,12 +129,14 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
             "nscf": "NSCF workflow",
             "bands": "Bands workflow",
             "relax": "Structure relaxation workflow",
+            "md": "Molecular dynamics workflow",
         },
         "PwCalculation": {
             "scf": "Run SCF cycle",
             "nscf": "Run NSCF cycle",
             "bands": "Compute bands",
             "relax": "Optimize structure geometry",
+            "md": "Run molecular dynamics simulation",
         },
         "DosCalculation": "Compute density of states",
         "ProjwfcCalculation": "Compute projections",
@@ -186,6 +209,7 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         if label in ("PwBaseWorkChain", "PwCalculation"):
             inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
             calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
+            calculation = calculation.replace("vc-", "")
             return self._TITLE_MAPPING.get(label, {}).get(calculation, label)
         return self._TITLE_MAPPING.get(label, label)
 

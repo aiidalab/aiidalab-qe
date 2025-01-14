@@ -159,6 +159,7 @@ class FilenameDisplayWidget(ipw.Box):
         self.max_width = max_width
         self._html = ipw.HTML()
         super().__init__([self._html], **kwargs)
+        self.add_class("filename-display")
 
     @traitlets.observe("value")
     def _observe_filename(self, change):
