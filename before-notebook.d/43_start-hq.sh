@@ -10,34 +10,51 @@ set -x
 # But for developers, please update your cgroup version to v2.
 # See: https://kubernetes.io/docs/concepts/architecture/cgroups/#using-cgroupv2
 
-# computer memory from runtime
-MEMORY_LIMIT=$(cat /sys/fs/cgroup/memory.max)
+# Default to cgroupv1 paths
+CPU_QUOTA_PATH="/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
+CPU_PERIOD_PATH="/sys/fs/cgroup/cpu/cpu.cfs_period_us"
+MEMORY_LIMIT_PATH="/sys/fs/cgroup/memory/memory.limit_in_bytes"
 
-if [ "$MEMORY_LIMIT" = "max" ]; then
+# Fallback if cgroupv2 paths exist
+if [ -f /sys/fs/cgroup/cpu.max ]; then
+  CPU_QUOTA_PATH="/sys/fs/cgroup/cpu.max"
+  CPU_PERIOD_PATH="/sys/fs/cgroup/cpu.max"
+fi
+
+if [ -f /sys/fs/cgroup/memory.max ]; then
+  MEMORY_LIMIT_PATH="/sys/fs/cgroup/memory.max"
+fi
+
+# Compute memory limit
+if [ -f "$MEMORY_LIMIT_PATH" ]; then
+  MEMORY_LIMIT=$(cat "$MEMORY_LIMIT_PATH")
+  if [ "$MEMORY_LIMIT" = "max" ] || [ "$MEMORY_LIMIT" -eq -1 ]; then
+    MEMORY_LIMIT=4096
+  else
+    MEMORY_LIMIT=$(echo "scale=0; $MEMORY_LIMIT / (1024 * 1024)" | bc)
+  fi
+else
   MEMORY_LIMIT=4096
-  echo "No memory limit set, use 4GiB"
-else
-  MEMORY_LIMIT=$(echo "scale=0; $MEMORY_LIMIT / (1024 * 1024)" | bc)
-  echo "Memory Limit: ${MEMORY_LIMIT} MiB"
 fi
+echo "Memory Limit: ${MEMORY_LIMIT} MiB"
 
-# Compute number of cpus allocated to the container
-CPU_LIMIT=$(awk '{print $1}' /sys/fs/cgroup/cpu.max)
-CPU_PERIOD=$(awk '{print $2}' /sys/fs/cgroup/cpu.max)
+# Compute CPU limit
+if [ -f "$CPU_QUOTA_PATH" ] && [ -f "$CPU_PERIOD_PATH" ]; then
+  CPU_LIMIT=$(cat "$CPU_QUOTA_PATH")
+  CPU_PERIOD=$(cat "$CPU_PERIOD_PATH")
 
-if [ "$CPU_PERIOD" -ne 0 ]; then
-  CPU_NUMBER=$(echo "scale=2; $CPU_LIMIT / $CPU_PERIOD" | bc)
-  echo "Number of CPUs allocated: $CPU_NUMBER"
-
-  # for HQ setting round to integer number of CPUs, the left are for system tasks
-  CPU_LIMIT=$(echo "scale=0; $CPU_LIMIT / $CPU_PERIOD" | bc)
+  if [ "$CPU_LIMIT" != "max" ] && [ "$CPU_PERIOD" -ne 0 ]; then
+    CPU_NUMBER=$(echo "scale=2; $CPU_LIMIT / $CPU_PERIOD" | bc)
+    CPU_LIMIT=$(echo "$CPU_NUMBER / 1" | bc)  # Round down to integer
+  else
+    CPU_LIMIT=$(nproc)
+  fi
 else
-  # if no limit (with local OCI without setting cpu limit, use all CPUs)
   CPU_LIMIT=$(nproc)
-  echo "No CPU limit set"
 fi
+echo "Number of CPUs allocated: $CPU_LIMIT"
 
-# Start hq server with a worker
+# Start HQ server and worker
 run-one-constantly hq server start 1>$HOME/.hq-stdout 2>$HOME/.hq-stderr &
 run-one-constantly hq worker start --cpus=${CPU_LIMIT} --resource "mem=sum(${MEMORY_LIMIT})" --no-detect-resources &
 
