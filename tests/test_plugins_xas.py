@@ -1,9 +1,9 @@
-from aiidalab_qe.app.main import App
+from aiidalab_qe.app.wizard_app import WizardApp
 
 
 def test_settings(submit_app_generator):
     """Test the settings of the xas app."""
-    app: App = submit_app_generator(properties=["xas"])
+    app: WizardApp = submit_app_generator(properties=["xas"])
 
     xas_model = app.configure_model.get_model("xas")
     xas_model.update()

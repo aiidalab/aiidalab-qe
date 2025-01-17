@@ -17,8 +17,12 @@ from aiidalab_widgets_base.utils.loaders import load_css
 
 
 class QeApp:
-    def __init__(self, process=None, bug_report_url=None):
+    def __init__(self, process=None, qe_auto_setup=True, bug_report_url=None):
         """Initialize the AiiDAlab QE application with the necessary setup."""
+
+        self.process = process
+        self.qe_auto_setup = qe_auto_setup
+
         self._load_styles()
 
         # Initialize MVC components
@@ -37,7 +41,6 @@ class QeApp:
         # setup UI controls
         self.controller = AppWrapperContoller(self.model, self.view)
         self.controller.enable_controls()
-        self.process = process
 
     def _load_styles(self):
         """Load CSS styles from the static directory."""
@@ -45,7 +48,7 @@ class QeApp:
 
     def load(self):
         """Initialize the WizardApp and integrate the app into the main view."""
-        self.app = WizardApp(qe_auto_setup=True)
+        self.app = WizardApp(qe_auto_setup=self.qe_auto_setup)
         self.view.main.children = [self.app]
         # load a previous calculation if it is provided
         if self.process:
