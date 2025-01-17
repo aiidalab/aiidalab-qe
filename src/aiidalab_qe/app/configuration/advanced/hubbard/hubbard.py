@@ -39,10 +39,12 @@ class HubbardConfigurationSettingsPanel(
         )
 
         self.eigenvalues_help = ipw.HTML("""
-            <div style="line-height: 1.4; margin-bottom: 5px;">
+            <div style="line-height: 1.4; margin: 10px 0 5px;">
                 For transition metals and lanthanoids, the starting eigenvalues can be defined (magnetic calculation).
                 <br>
-                It is useful to suggest the desired orbital occupations when the default choice takes another path.
+                It is useful to suggest the desired orbital occupations  when the default choice takes another path.
+                <br>
+                To do so, tick the checkbox below and set the desired eigenvalues to a value other than -1 (unset).
             </div>
         """)
         self.define_eigenvalues_checkbox = ipw.Checkbox(
