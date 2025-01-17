@@ -15,9 +15,13 @@ from aiidalab_widgets_base.bug_report import (
 )
 from aiidalab_widgets_base.utils.loaders import load_css
 
+DEFAULT_BUG_REPORT_URL = "https://github.com/aiidalab/aiidalab-qe/issues/new"
+
 
 class QeApp:
-    def __init__(self, process=None, qe_auto_setup=True, bug_report_url=None):
+    def __init__(
+        self, process=None, qe_auto_setup=True, bug_report_url=DEFAULT_BUG_REPORT_URL
+    ):
         """Initialize the AiiDAlab QE application with the necessary setup."""
 
         self.process = process
