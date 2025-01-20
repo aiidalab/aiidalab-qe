@@ -7,7 +7,7 @@ import tempfile
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.main import App
+from aiidalab_qe.app.wizard_app import WizardApp
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
@@ -418,7 +418,7 @@ def smearing_settings_generator():
 
 @pytest.fixture
 def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
-    app = App(qe_auto_setup=False)
+    app = WizardApp(qe_auto_setup=False)
 
     # Since we use `qe_auto_setup=False`, which will skip the pseudo library
     # installation, we need to mock set the installation status to `True` to
@@ -447,7 +447,7 @@ def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
 
 @pytest.fixture()
 def submit_app_generator(
-    app: App,
+    app: WizardApp,
     generate_structure_data,
 ):
     """Return a function that generates a submit step widget."""
@@ -511,7 +511,7 @@ def submit_app_generator(
 
 
 @pytest.fixture
-def app_to_submit(app: App, generate_structure_data):
+def app_to_submit(app: WizardApp, generate_structure_data):
     # Step 1: select structure from example
     app.structure_model.input_structure = generate_structure_data()
     app.structure_model.confirm()
@@ -736,7 +736,7 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app: App,
+    app: WizardApp,
     generate_structure_data,
     generate_workchain,
     generate_pdos_workchain,
