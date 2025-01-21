@@ -90,7 +90,9 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
+    # NOTE: The work folder is empty but if included clashes with the work folder in a Renku
+    # session whose permissions cannot be changed.
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work .
 
 # STAGE 3 - Final stage
 # - Install python dependencies
