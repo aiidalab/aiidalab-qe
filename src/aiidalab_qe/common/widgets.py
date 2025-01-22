@@ -468,7 +468,7 @@ class AddingTagsEditor(ipw.VBox):
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
         self.tag = ipw.BoundedIntText(
-            description="Tag", value=1, min=0, max=4, layout={"width": "initial"}
+            description="Tag", value=1, min=0, max=11, layout={"width": "initial"}
         )
         self.add_tags = ipw.Button(
             description="Update tags",
