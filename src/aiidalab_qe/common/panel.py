@@ -17,6 +17,7 @@ from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code.model import CodeModel
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.mixins import Confirmable, HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
@@ -218,6 +219,10 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         super().add_model(identifier, model)
         model.update(self.DEFAULT_USER_EMAIL)
 
+    def refresh_codes(self):
+        for _, code_model in self.get_models():
+            code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
+
     def update_submission_blockers(self):
         self.submission_blockers = list(self._check_submission_blockers())
 
@@ -226,6 +231,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
             "codes": {
                 identifier: code_model.get_model_state()
                 for identifier, code_model in self.get_models()
+                if code_model.is_ready
             },
         }
 
@@ -334,7 +340,6 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
         code_model.observe(
             self._on_code_resource_change,
             [
-                "options",
                 "selected",
                 "num_cpus",
                 "num_nodes",
@@ -357,6 +362,10 @@ class PluginResourceSettingsModel(ResourceSettingsModel):
 
     override = tl.Bool(False)
 
+    def add_model(self, identifier, model: CodeModel):
+        super().add_model(identifier, model)
+        model.activate()
+
     def update(self):
         """Updates the code models from the global resources.
 
@@ -369,9 +378,6 @@ class PluginResourceSettingsModel(ResourceSettingsModel):
             default_calc_job_plugin = code_model.default_calc_job_plugin
             if default_calc_job_plugin in self.global_codes:
                 code_resources: dict = self.global_codes[default_calc_job_plugin]  # type: ignore
-                options = code_resources.get("options", [])
-                if options != code_model.options:
-                    code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
                 code_model.set_model_state(code_resources)
 
     def get_model_state(self):
@@ -441,7 +447,8 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
 
         # Render any active codes
         for _, code_model in self._model.get_models():
-            self._toggle_code(code_model)
+            if code_model.is_active:
+                self._toggle_code(code_model)
 
         return self.code_widgets_container
 
@@ -479,11 +486,6 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
         )
         ipw.dlink(
             (code_model, "override"),
-            (code_widget.code_selection.btn_setup_new_code, "disabled"),
-            lambda override: not override,
-        )
-        ipw.dlink(
-            (code_model, "override"),
             (code_widget.btn_setup_resource_detail, "disabled"),
             lambda override: not override,
         )
@@ -515,7 +517,6 @@ class ResultsModel(PanelModel, HasProcess):
         "excepted": "danger",
         "killed": "danger",
         "queued": "warning",
-        "waiting": "info",
         "running": "info",
         "created": "info",
     }
@@ -530,8 +531,7 @@ class ResultsModel(PanelModel, HasProcess):
         return node and node.is_finished_ok
 
     def update(self):
-        if self.has_results:
-            self.auto_render = True
+        self.auto_render = self.has_results
 
     def update_process_status_notification(self):
         if self._completed_process:
@@ -556,6 +556,8 @@ class ResultsModel(PanelModel, HasProcess):
 
     def _get_child_process_status(self, which="this"):
         state, exit_message = self._get_child_state_and_exit_message(which)
+        if state == "waiting":
+            state = "running"
         status = state.upper()
         if exit_message:
             status = f"{status} ({exit_message})"
@@ -619,14 +621,32 @@ class ResultsPanel(Panel[RM]):
         if not self._model.has_process:
             return
 
+        self.guide = InAppGuide(
+            identifier=f"{self._model.identifier}-results",
+            classes=["results-panel-guide"],
+        )
+
         self.results_container = ipw.VBox()
 
         if self._model.auto_render:
-            self.children = [self.results_container]
+            self.children = [
+                self.guide,
+                self.results_container,
+            ]
             self._load_results()
         else:
-            self._render_controls()
-            self.children += (self.results_container,)
+            children = [self.guide]
+            if (
+                self._model.identifier != "structure"
+                or "relax" in self._model.properties
+            ):
+                children.append(self._get_controls_section())
+            children.append(self.results_container)
+            self.children = children
+            if self._model.identifier == "structure":
+                self._load_results()
+
+        self.rendered = True
 
     def _on_process_change(self, _):
         self._model.update()
@@ -641,10 +661,9 @@ class ResultsPanel(Panel[RM]):
     def _load_results(self):
         self.results_container.children = [self.loading_message]
         self._render()
-        self.rendered = True
         self._post_render()
 
-    def _render_controls(self):
+    def _get_controls_section(self) -> ipw.VBox:
         self.process_status_notification = ipw.HTML()
         ipw.dlink(
             (self._model, "process_status_notification"),
@@ -666,7 +685,7 @@ class ResultsPanel(Panel[RM]):
 
         self.load_controls = ipw.HBox(
             children=[]
-            if self._model.auto_render
+            if self._model.auto_render or self._model.identifier == "structure"
             else [
                 self.load_results_button,
                 ipw.HTML("""
@@ -678,10 +697,12 @@ class ResultsPanel(Panel[RM]):
             ]
         )
 
-        self.children = [
-            self.process_status_notification,
-            self.load_controls,
-        ]
+        return ipw.VBox(
+            children=[
+                self.process_status_notification,
+                self.load_controls,
+            ]
+        )
 
     def _render(self):
         raise NotImplementedError()

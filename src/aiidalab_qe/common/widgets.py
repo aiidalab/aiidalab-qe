@@ -13,6 +13,7 @@ from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import time
 
+import anywidget
 import ase
 import ipywidgets as ipw
 import numpy as np
@@ -49,12 +50,15 @@ class RollingOutput(ipw.VBox):
 
     def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):  # noqa: ARG002
         self._num_min_lines = num_min_lines
-        self._output = ipw.HTML(layout=ipw.Layout(min_width="50em"))
+        self._output = ipw.HTML(layout=ipw.Layout(min_width="80em"))
         self._refresh_output()
         super().__init__(
-            [self._output],
-            layout=ipw.Layout(max_height=max_output_height, min_width="51em"),
+            children=[
+                self._output,
+            ],
+            layout=ipw.Layout(max_height=max_output_height),
         )
+        self.add_class("rolling-output")
 
     @traitlets.default("value")
     def _default_value(self):
@@ -153,10 +157,9 @@ class FilenameDisplayWidget(ipw.Box):
 
     def __init__(self, max_width=None, **kwargs):
         self.max_width = max_width
-        self._html = ipw.HTML(
-            layout={"margin": "0 0 0 50px"},
-        )
+        self._html = ipw.HTML()
         super().__init__([self._html], **kwargs)
+        self.add_class("filename-display")
 
     @traitlets.observe("value")
     def _observe_filename(self, change):
@@ -168,7 +171,7 @@ class FilenameDisplayWidget(ipw.Box):
             overflow:hidden;
             text-overflow:ellipsis;
             {width_style}">
-            {icon} {change['new']}
+            {icon} {change["new"]}
         </div>
         """
 
@@ -180,16 +183,17 @@ class LogOutputWidget(ipw.VBox):
     def __init__(self, placeholder=None, **kwargs):
         self.placeholder = placeholder
 
-        self._rolling_output = RollingOutput(layout=ipw.Layout(flex="1 1 auto"))
+        self._rolling_output = RollingOutput(
+            layout=ipw.Layout(flex="1 1 auto"),
+            max_output_height="unset",
+        )
         ipw.dlink(
             (self, "value"),
             (self._rolling_output, "value"),
             lambda value: value or self.placeholder or "",
         )
 
-        self._filename_display = FilenameDisplayWidget(
-            layout=ipw.Layout(width="auto"), max_width="55em"
-        )
+        self._filename_display = FilenameDisplayWidget(layout=ipw.Layout(width="auto"))
         ipw.dlink(
             (self, "filename"),
             (self._filename_display, "value"),
@@ -233,12 +237,20 @@ class LogOutputWidget(ipw.VBox):
         )
 
         super().__init__(
-            [
+            children=[
                 self._filename_display,
-                ipw.HBox([self._rolling_output, self._btns]),
+                ipw.HBox(
+                    children=[
+                        self._rolling_output,
+                        self._btns,
+                    ],
+                    layout=ipw.Layout(height="100%"),
+                ),
             ],
+            layout=ipw.Layout(height="100%"),
             **kwargs,
         )
+        self.add_class("log-output")
 
     @traitlets.default("placeholder")
     def _default_placeholder(self):
@@ -456,7 +468,7 @@ class AddingTagsEditor(ipw.VBox):
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
         self.tag = ipw.BoundedIntText(
-            description="Tag", value=1, min=0, max=4, layout={"width": "initial"}
+            description="Tag", value=1, min=0, max=11, layout={"width": "initial"}
         )
         self.add_tags = ipw.Button(
             description="Update tags",
@@ -474,21 +486,6 @@ class AddingTagsEditor(ipw.VBox):
             button_style="warning",
             layout={"width": "initial"},
         )
-        self.periodicity = ipw.RadioButtons(
-            options=[
-                ("3D (bulk systems)", "xyz"),
-                ("2D (surfaces, slabs, ...)", "xy"),
-                ("1D (wires)", "x"),
-                ("0D (molecules)", "molecule"),
-            ],
-            value="xyz",
-            layout={"width": "initial"},
-        )
-        self.apply_periodicity = ipw.Button(
-            description="Apply",
-            button_style="primary",
-            layout={"width": "100px"},
-        )
         self.scroll_note = ipw.HTML(
             value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
             layout={"visibility": "hidden"},
@@ -501,13 +498,9 @@ class AddingTagsEditor(ipw.VBox):
         self.add_tags.on_click(self._display_table)
         self.reset_tags.on_click(self._display_table)
         self.reset_all_tags.on_click(self._display_table)
-        self.apply_periodicity.on_click(self._select_periodicity)
 
         super().__init__(
             children=[
-                ipw.HTML(
-                    "<b>Set custom tags for atoms</b>",
-                ),
                 ipw.HTML(
                     """
                     <p>
@@ -532,21 +525,6 @@ class AddingTagsEditor(ipw.VBox):
                 self.scroll_note,
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
-                ipw.HTML(
-                    '<div style="margin-top: 20px;"><b>Set structure periodicity</b></div>'
-                ),
-                ipw.HTML("""
-                    <p>Select the periodicity of your system.</p>
-                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
-
-                    <ul style="padding-left: 2em; list-style-type: disc;">
-                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
-                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
-
-                    </ul>
-                """),
-                self.periodicity,
-                self.apply_periodicity,
             ],
             **kwargs,
         )
@@ -570,7 +548,7 @@ class AddingTagsEditor(ipw.VBox):
                 symbol = chemichal_symbols[index]
                 if tag == 0:
                     tag = ""
-                table_data.append([f"{index+ 1}", f"{symbol}", f"{tag}"])
+                table_data.append([f"{index + 1}", f"{symbol}", f"{tag}"])
 
             # Create an HTML table
             table_html = "<table>"
@@ -653,6 +631,50 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
 
+
+class PeriodicityEditor(ipw.VBox):
+    """Editor for changing periodicity of structures."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+
+    def __init__(self, title="", **kwargs):
+        self.title = title
+
+        self.periodicity = ipw.RadioButtons(
+            options=[
+                ("3D (bulk systems)", "xyz"),
+                ("2D (surfaces, slabs, ...)", "xy"),
+                ("1D (wires)", "x"),
+                ("0D (molecules)", "molecule"),
+            ],
+            value="xyz",
+            layout={"width": "initial"},
+        )
+        self.apply_periodicity = ipw.Button(
+            description="Apply",
+            button_style="primary",
+            layout={"width": "100px"},
+        )
+        self.apply_periodicity.on_click(self._select_periodicity)
+
+        super().__init__(
+            children=[
+                ipw.HTML("""
+                    <p>Select the periodicity of your system.</p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
+                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
+
+                    </ul>
+                """),
+                self.periodicity,
+                self.apply_periodicity,
+            ],
+            **kwargs,
+        )
+
     def _select_periodicity(self, _=None):
         """Select periodicity."""
         periodicity_options = {
@@ -676,7 +698,11 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         """Widget to setup the compute resources, which include the code,
         the number of nodes and the number of cpus.
         """
-        self.code_selection = ComputationalResourcesWidget(**kwargs)
+        self.code_selection = ComputationalResourcesWidget(
+            include_setup_widget=False,
+            fetch_codes=True,  # TODO resolve testing issues when set to `False`
+            **kwargs,
+        )
         self.code_selection.layout.width = "80%"
 
         self.num_nodes = ipw.BoundedIntText(
@@ -950,9 +976,10 @@ class LoadingWidget(ipw.HBox):
     """Widget for displaying a loading spinner."""
 
     def __init__(self, message="Loading", **kwargs):
+        self.message = ipw.Label(message)
         super().__init__(
             children=[
-                ipw.Label(message),
+                self.message,
                 ipw.HTML("<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>"),
             ],
             **kwargs,
@@ -1219,3 +1246,116 @@ class QeDependentWizardStep(QeWizardStep[QWSM]):
 
     def _hide_missing_information_warning(self):
         self.children = self.previous_children
+
+
+class TableWidget(anywidget.AnyWidget):
+    _esm = """
+    function render({ model, el }) {
+        let domElement = document.createElement("div");
+        el.classList.add("custom-table");
+        let selectedIndices = [];
+
+        function drawTable() {
+            const data = model.get("data");
+            domElement.innerHTML = "";
+            let innerHTML = '<table><tr>' + data[0].map(header => `<th>${header}</th>`).join('') + '</tr>';
+
+            for (let i = 1; i < data.length; i++) {
+                innerHTML += '<tr>' + data[i].map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+            }
+
+            innerHTML += "</table>";
+            domElement.innerHTML = innerHTML;
+
+            const rows = domElement.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index > 0) {
+                    row.addEventListener('click', () => {
+                        const rowIndex = index - 1;
+                        if (selectedIndices.includes(rowIndex)) {
+                            selectedIndices = selectedIndices.filter(i => i !== rowIndex);
+                            row.classList.remove('selected-row');
+                        } else {
+                            selectedIndices.push(rowIndex);
+                            row.classList.add('selected-row');
+                        }
+                        model.set('selected_rows', [...selectedIndices]);
+                        model.save_changes();
+                    });
+
+                    row.addEventListener('mouseover', () => {
+                        if (!row.classList.contains('selected-row')) {
+                            row.classList.add('hover-row');
+                        }
+                    });
+
+                    row.addEventListener('mouseout', () => {
+                        row.classList.remove('hover-row');
+                    });
+                }
+            });
+        }
+
+        function updateSelection() {
+            const newSelection = model.get("selected_rows");
+            selectedIndices = [...newSelection]; // Synchronize the JavaScript state with the Python state
+            const rows = domElement.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index > 0) {
+                    if (selectedIndices.includes(index - 1)) {
+                        row.classList.add('selected-row');
+                    } else {
+                        row.classList.remove('selected-row');
+                    }
+                }
+            });
+        }
+
+        drawTable();
+        model.on("change:data", drawTable);
+        model.on("change:selected_rows", updateSelection);
+        el.appendChild(domElement);
+    }
+    export default { render };
+    """
+    _css = """
+    .custom-table table, .custom-table th, .custom-table td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        text-align: left;
+        padding: 4px;
+    }
+    .custom-table th, .custom-table td {
+        min-width: 50px;
+        word-wrap: break-word;
+    }
+    .custom-table table {
+        width: 70%;
+        font-size: 1.0em;
+    }
+    /* Hover effect with light gray background */
+    .custom-table tr.hover-row:not(.selected-row) {
+        background-color: #f0f0f0;
+    }
+    /* Selected row effect with light green background */
+    .custom-table tr.selected-row {
+        background-color: #DFF0D8;
+    }
+    """
+    data = traitlets.List().tag(sync=True)
+    selected_rows = traitlets.List().tag(sync=True)
+
+
+class HBoxWithUnits(ipw.HBox):
+    def __init__(self, widget: ipw.ValueWidget, units: str, **kwargs):
+        super().__init__(
+            children=[
+                widget,
+                ipw.HTML(units),
+            ],
+            layout=ipw.Layout(
+                align_items="center",
+                grid_gap="2px",
+            ),
+            **kwargs,
+        )

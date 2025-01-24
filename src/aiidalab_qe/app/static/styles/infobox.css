@@ -5,8 +5,8 @@
   border-left: 3px solid #add8e6;
   background-color: #d9edf7;
 }
-.info-box p {
-  line-height: 24px;
+.info-box .widget-html-content {
+  line-height: 1.5;
 }
 .info-box.in-app-guide.show {
   display: flex !important;
@@ -14,15 +14,21 @@
 .guide ol {
   list-style: none;
 }
-.guide p:not(:last-of-type) {
+.guide p:last-of-type {
   margin-bottom: 0.5em;
 }
-.guide-warning {
-  background-color: #fcf8e3;
-  border-color: #ffe4c4;
+.in-app-guide:has(#guide-header),
+.in-app-guide:has(#post-guide) {
+  background-color: var(--color-success);
+  border-color: #8fbc8f;
+}
+.in-app-guide:has(#guide-header) {
   margin-bottom: 1em;
 }
-.post-guide {
+.in-app-guide:has(#post-guide) {
+  margin-top: 1em;
+}
+#post-guide {
   margin: 1em 0;
 }
 .in-app-guide .alert {
@@ -40,4 +46,8 @@
 }
 .in-app-guide h4 {
   font-weight: bold;
+}
+
+.results-panel-guide {
+  margin-bottom: 1em;
 }

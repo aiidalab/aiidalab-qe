@@ -47,7 +47,7 @@ class BandsPdosModel(Model):
             ("No grouping (each orbital separately)", "orbital"),
         ],
     )
-    dos_plot_group = tl.Unicode("total")
+    dos_plot_group = tl.Unicode("angular_momentum")
     selected_atoms = tl.Unicode("")
     project_bands_box = tl.Bool(False)
     proj_bands_width = tl.Float(0.5)
@@ -70,6 +70,12 @@ class BandsPdosModel(Model):
         trait=tl.Unicode(), default_value=["png", "jpeg", "svg", "pdf"]
     )
     image_format = tl.Unicode("png")
+
+    # Aspect ratio
+    horizontal_width = 850  # pixels
+    horizontal_width_percentage = tl.Int(100)
+
+    bands_width_percentage = tl.Int(70)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -289,6 +295,19 @@ class BandsPdosModel(Model):
 
         # Update the color picker to match the updated trace
         self.color_picker = rgba_to_hex(self.plot.data[self.trace].line.color)
+
+    def update_horizontal_width(self, width_percentage):
+        """Update the horizontal width based on the percentge."""
+        horizontal_width = int((width_percentage / 100) * self.horizontal_width)
+        self.plot.layout.width = horizontal_width
+
+    def update_column_width_ratio(self, bands_width_percentage):
+        """Update the combined_column_widths of the combined plot based on percentage."""
+        bands_width = bands_width_percentage / 100
+        self.plot.update_layout(
+            xaxis={"domain": [0, bands_width - 0.004]},
+            xaxis2={"domain": [bands_width + 0.004, 1]},
+        )
 
     def download_image(self, _=None):
         """

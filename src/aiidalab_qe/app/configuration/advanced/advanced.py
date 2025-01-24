@@ -7,6 +7,7 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
+from aiidalab_qe.common.widgets import HBoxWithUnits
 
 from .hubbard import (
     HubbardConfigurationSettingsModel,
@@ -50,6 +51,11 @@ class AdvancedConfigurationSettingsPanel(
             "kpoints_distance",
         )
 
+        # NOTE connect pseudos first, as some settings depend on it
+        pseudos_model = PseudosConfigurationSettingsModel()
+        self.pseudos = PseudosConfigurationSettingsPanel(model=pseudos_model)
+        model.add_model("pseudos", pseudos_model)
+
         smearing_model = SmearingConfigurationSettingsModel()
         self.smearing = SmearingConfigurationSettingsPanel(model=smearing_model)
         model.add_model("smearing", smearing_model)
@@ -64,31 +70,27 @@ class AdvancedConfigurationSettingsPanel(
         self.hubbard = HubbardConfigurationSettingsPanel(model=hubbard_model)
         model.add_model("hubbard", hubbard_model)
 
-        pseudos_model = PseudosConfigurationSettingsModel()
-        self.pseudos = PseudosConfigurationSettingsPanel(model=pseudos_model)
-        model.add_model("pseudos", pseudos_model)
-
     def render(self):
         if self.rendered:
             return
 
-        # clean-up workchain settings
-        self.clean_workdir = ipw.Checkbox(
-            description="Tick to delete the work directory after the calculation is finished",
-            indent=False,
+        self.reset_to_defaults_button = ipw.Button(
+            description="Reset to defaults",
+            button_style="primary",
+            icon="undo",
             layout=ipw.Layout(width="fit-content"),
+        )
+        self.reset_to_defaults_button.on_click(self._on_reset_to_defaults_button_click)
+
+        self.clean_workdir = ipw.Checkbox(
+            description="Delete the work directory after the calculation",
+            indent=False,
+            layout=ipw.Layout(width="fit-content", margin="5px 2px"),
         )
         ipw.link(
             (self._model, "clean_workdir"),
             (self.clean_workdir, "value"),
         )
-        self.reset_to_defaults_button = ipw.Button(
-            description="Reset to defaults",
-            button_style="warning",
-            icon="undo",
-            layout=ipw.Layout(width="fit-content"),
-        )
-        self.reset_to_defaults_button.on_click(self._on_reset_to_defaults_button_click)
 
         # Smearing setting widget
         self.smearing.render()
@@ -97,8 +99,8 @@ class AdvancedConfigurationSettingsPanel(
         self.kpoints_distance = ipw.BoundedFloatText(
             min=0.0,
             step=0.05,
-            description="K-points distance (1/Å):",
-            style={"description_width": "initial"},
+            description="K-points distance:",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "kpoints_distance"),
@@ -109,7 +111,7 @@ class AdvancedConfigurationSettingsPanel(
             (self.kpoints_distance, "disabled"),
             lambda _: not self._model.has_pbc,
         )
-        self.mesh_grid = ipw.HTML()
+        self.mesh_grid = ipw.HTML(layout=ipw.Layout(margin="0 0 0 10px"))
         ipw.dlink(
             (self._model, "mesh_grid"),
             (self.mesh_grid, "value"),
@@ -124,7 +126,7 @@ class AdvancedConfigurationSettingsPanel(
             max=3,
             step=0.01,
             description="Total charge:",
-            style={"description_width": "initial"},
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "total_charge"),
@@ -134,7 +136,7 @@ class AdvancedConfigurationSettingsPanel(
         # Van der Waals setting widget
         self.van_der_waals = ipw.Dropdown(
             description="Van der Waals correction:",
-            style={"description_width": "initial"},
+            style={"description_width": "150px"},
         )
         ipw.dlink(
             (self._model, "van_der_waals_options"),
@@ -152,8 +154,8 @@ class AdvancedConfigurationSettingsPanel(
         self.scf_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            description="SCF conv.:",
-            style={"description_width": "initial"},
+            description="SCF:",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "scf_conv_thr"),
@@ -166,8 +168,9 @@ class AdvancedConfigurationSettingsPanel(
         self.forc_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            description="Force conv.:",
-            style={"description_width": "initial"},
+            format="0.0e",
+            description="Force:",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "forc_conv_thr"),
@@ -180,8 +183,9 @@ class AdvancedConfigurationSettingsPanel(
         self.etot_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            description="Energy conv.:",
-            style={"description_width": "initial"},
+            format="0.0e",
+            description="Energy:",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "etot_conv_thr"),
@@ -195,56 +199,84 @@ class AdvancedConfigurationSettingsPanel(
             min=20,
             max=1000,
             step=1,
-            description="Max. electron steps:",
-            style={"description_width": "initial"},
+            description="Electronic:",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "electron_maxstep"),
             (self.electron_maxstep, "value"),
         )
 
+        self.optimization_maxsteps = ipw.BoundedIntText(
+            min=50,
+            max=1000,
+            step=1,
+            description="Ionic:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "optimization_maxsteps"),
+            (self.optimization_maxsteps, "value"),
+        )
         self.pseudos.render()
 
         self.children = [
             InAppGuide(identifier="advanced-settings"),
-            ipw.HBox(
-                children=[
-                    self.clean_workdir,
-                    self.reset_to_defaults_button,
-                ],
-                layout=ipw.Layout(
-                    justify_content="space-between",
-                    margin="0 0 10px 0",
-                ),
-            ),
+            self.reset_to_defaults_button,
+            self.clean_workdir,
             self.total_charge,
             self.van_der_waals,
-            self.magnetization,
-            ipw.HTML("<b>Convergence thresholds:</b>"),
-            ipw.HBox(
-                children=[
-                    self.forc_conv_thr,
-                    self.etot_conv_thr,
-                    self.scf_conv_thr,
-                ],
-                layout=ipw.Layout(justify_content="space-between"),
-            ),
-            self.electron_maxstep,
-            self.smearing,
+            ipw.HTML("<h2>Convergence</h2>"),
             ipw.HTML("""
-                <div>
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Control the convergence criteria of the self-consistent field (SCF)
+                    geometry optimization cycles.
+                </div>
+            """),
+            ipw.HTML("<h4>Thresholds</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Setting thresholds for energy, force, and self-consistency ensures calculation accuracy and stability.
+                    <br>
+                    Lower values increase the accuracy but also the computational cost.
+                    <br>
+                    The default values are set by the <b>protocol</b> are usually a
+                    good starting point.
+                </div>
+            """),
+            HBoxWithUnits(self.forc_conv_thr, "a.u."),
+            HBoxWithUnits(self.etot_conv_thr, "a.u."),
+            self.scf_conv_thr,
+            ipw.HTML("<h4>Maximum cycle steps</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Setting a maximum number of electronic and ionic optimization steps
+                    ensures that the calculation does not run indefinitely.
+                </div>
+            """),
+            self.electron_maxstep,
+            self.optimization_maxsteps,
+            self.smearing,
+            ipw.HTML("<h2>K-points</h2>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
                     The k-points mesh density of the SCF calculation is set by the
-                    <b>protocol</b>. The value below represents the maximum distance
-                    between the k-points in each direction of reciprocal space. Smaller
-                    is more accurate and costly.
+                    <b>protocol</b>.
+                    <br>
+                    The value below represents the maximum distance between k-points
+                    in each direction of reciprocal space.
+                    <br>
+                    Smaller is more accurate and costly.
                 </div>
             """),
             ipw.HBox(
                 children=[
-                    self.kpoints_distance,
+                    HBoxWithUnits(self.kpoints_distance, "Å<sup>-1</sup>"),
                     self.mesh_grid,
-                ]
+                ],
+                layout=ipw.Layout(align_items="center"),
             ),
+            self.magnetization,
             self.hubbard,
             self.pseudos,
         ]

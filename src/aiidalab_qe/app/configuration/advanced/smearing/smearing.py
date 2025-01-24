@@ -1,5 +1,7 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.widgets import HBoxWithUnits
+
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import SmearingConfigurationSettingsModel
 
@@ -20,8 +22,8 @@ class SmearingConfigurationSettingsPanel(
             return
 
         self.smearing = ipw.Dropdown(
-            description="Smearing type:",
-            style={"description_width": "initial"},
+            description="Type:",
+            style={"description_width": "150px"},
         )
         ipw.dlink(
             (self._model, "type_options"),
@@ -34,8 +36,8 @@ class SmearingConfigurationSettingsPanel(
 
         self.degauss = ipw.FloatText(
             step=0.005,
-            description="Smearing width (Ry):",
-            style={"description_width": "initial"},
+            description="Width:",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "degauss"),
@@ -43,20 +45,23 @@ class SmearingConfigurationSettingsPanel(
         )
 
         self.children = [
+            ipw.HTML("<h2>Smearing</h2>"),
             ipw.HTML("""
-                <p>
-                    The smearing type and width is set by the chosen <b>protocol</b>.
-                    It is not advised unless you've mastered <b>smearing effects</b>
-                    (click <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
-                    target="_blank">here</a> for a discussion).
-                </p>
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Smear electronic state occupations near the Fermi level to
+                    simulate finite temperature.
+                    <br>
+                    This helps to stabilize the SCF calculation and is important for metallic systems.
+                    <br>
+                    The smearing type and width are set by the chosen <b>protocol</b>.
+                    <br>
+                    Changes are not advised unless you've mastered
+                    <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
+                    target="_blank"><b>smearing effects</b></a>.
+                </div>
             """),
-            ipw.HBox(
-                children=[
-                    self.smearing,
-                    self.degauss,
-                ]
-            ),
+            self.smearing,
+            HBoxWithUnits(self.degauss, "Ry"),
         ]
 
         self.rendered = True

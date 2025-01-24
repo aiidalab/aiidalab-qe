@@ -51,6 +51,14 @@ class ConfigureQeAppWorkChainStep(QeDependentWizardStep[ConfigurationStepModel])
         )
         self._model.add_model("advanced", advanced_model)
 
+        # HACK due to spin orbit moving to basic settings (#984), we need to
+        # sync the basic model's spin orbit when the advanced model's spin
+        # orbit is set from loaded process
+        ipw.dlink(
+            (self._model.get_model("advanced"), "spin_orbit"),
+            (self._model.get_model("workchain"), "spin_orbit"),
+        )
+
         self.settings = {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,

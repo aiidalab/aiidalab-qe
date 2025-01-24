@@ -1,7 +1,12 @@
 # trigger registration of the viewer widget:
 from .node_view import CalcJobNodeViewerWidget  # noqa: F401
 from .process import QeAppWorkChainSelector, WorkChainSelector
-from .widgets import AddingTagsEditor, LazyLoadedOptimade, LazyLoadedStructureBrowser
+from .widgets import (
+    AddingTagsEditor,
+    LazyLoadedOptimade,
+    LazyLoadedStructureBrowser,
+    PeriodicityEditor,
+)
 
 __all__ = [
     "AddingTagsEditor",
@@ -9,4 +14,5 @@ __all__ = [
     "LazyLoadedStructureBrowser",
     "QeAppWorkChainSelector",
     "WorkChainSelector",
+    "PeriodicityEditor",
 ]

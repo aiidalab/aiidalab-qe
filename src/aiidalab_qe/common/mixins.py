@@ -26,6 +26,13 @@ class HasInputStructure(tl.HasTraits):
     def has_pbc(self):
         return not self.has_structure or any(self.input_structure.pbc)
 
+    @property
+    def has_tags(self):
+        return any(
+            not kind_name.isalpha()
+            for kind_name in self.input_structure.get_kind_names()
+        )
+
 
 class HasModels(t.Generic[T]):
     def __init__(self):
@@ -51,7 +58,20 @@ class HasModels(t.Generic[T]):
         return self._models.items()
 
     def _link_model(self, model: T):
-        pass
+        if not hasattr(model, "dependencies"):
+            return
+        for dependency in model.dependencies:
+            dependency_parts = dependency.split(".")
+            if len(dependency_parts) == 1:  # from parent
+                target_model = self
+                trait = dependency
+            else:  # from sibling
+                sibling, trait = dependency_parts
+                target_model = self.get_model(sibling)
+            tl.dlink(
+                (target_model, trait),
+                (model, trait),
+            )
 
 
 class HasProcess(tl.HasTraits):

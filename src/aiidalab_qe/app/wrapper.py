@@ -159,6 +159,7 @@ class AppWrapperView(ipw.VBox):
         from IPython.display import Image
         from jinja2 import Environment
 
+        from aiidalab_qe.app.static import images as images_folder
         from aiidalab_qe.app.static import templates
         from aiidalab_qe.common.infobox import InfoBox
         from aiidalab_qe.version import __version__
@@ -168,7 +169,7 @@ class AppWrapperView(ipw.VBox):
         self.output = ipw.Output()
 
         logo_img = Image(
-            filename="docs/source/_static/logo.png",
+            filename=files(images_folder) / "logo.png",
             width="700",
         )
         logo = ipw.Output()
@@ -212,13 +213,21 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
+        self.setup_resources_link = LinkButton(
+            description="Setup resources",
+            link="../home/code_setup.ipynb",
+            icon="database",
+            disabled=True,
+        )
+
         self.controls = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
                 self.calculation_history_link,
+                self.setup_resources_link,
                 self.new_workchain_link,
-            ]
+            ],
         )
         self.controls.add_class("app-controls")
 

@@ -175,6 +175,14 @@ class QeAppWorkChain(WorkChain):
             "base": parameters["advanced"],
             "base_final_scf": parameters["advanced"],
         }
+        # nsteps only for relaxation workflow
+        relax_overrides["base"]["pw"]["parameters"]["CONTROL"]["nstep"] = parameters[
+            "advanced"
+        ]["optimization_maxsteps"]
+        relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
+            parameters["advanced"]["optimization_maxsteps"]
+        )
+
         protocol = parameters["workchain"]["protocol"]
 
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
@@ -213,7 +221,9 @@ class QeAppWorkChain(WorkChain):
                 plugin_workchain = entry_point["workchain"]
                 if plugin_workchain.spec().has_input("clean_workdir"):
                     plugin_builder.clean_workdir = clean_workdir
-                setattr(builder, name, plugin_builder)
+                # some plugin's logic depend on whether a input exist or not, but not check if it is empty.
+                # here we remove the empty namespace for safety.
+                setattr(builder, name, plugin_builder._inputs(prune=True))
             else:
                 builder.pop(name, None)
 

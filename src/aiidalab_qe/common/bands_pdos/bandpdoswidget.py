@@ -235,6 +235,49 @@ class BandsPdosWidget(ipw.VBox):
             "value",
         )
 
+        # Aspect ratio
+        self.horizontal_width_percentage = ipw.IntSlider(
+            min=30,
+            max=100,
+            step=5,
+            description="Horizonal width %:",
+            orientation="horizontal",
+            continuous_update=False,
+            readout=True,
+            readout_format=".0f",
+            style={"description_width": "initial"},
+            layout=ipw.Layout(width="380px"),
+        )
+        ipw.link(
+            (self._model, "horizontal_width_percentage"),
+            (self.horizontal_width_percentage, "value"),
+        )
+        self.horizontal_width_percentage.observe(
+            self._on_horizontal_width_change,
+            "value",
+        )
+
+        self.bands_width_percentage = ipw.IntSlider(
+            min=10,
+            max=90,
+            step=5,
+            description="Bands width %:",
+            orientation="horizontal",
+            continuous_update=False,
+            readout=True,
+            readout_format=".0f",
+            style={"description_width": "initial"},
+            layout=ipw.Layout(width="380px"),
+        )
+        ipw.link(
+            (self._model, "bands_width_percentage"),
+            (self.bands_width_percentage, "value"),
+        )
+        self.bands_width_percentage.observe(
+            self._on_bands_width_change,
+            "value",
+        )
+
         self.legend_interaction_description = ipw.HTML(
             """
                 <div style="line-height: 140%; padding-top: 10px; padding-bottom: 5px; max-width: 600px;">
@@ -289,7 +332,13 @@ class BandsPdosWidget(ipw.VBox):
                 layout=ipw.Layout(margin="0 auto"),
             ),
             self.color_selector,
+            self.horizontal_width_percentage,
         ]
+        if self._model.helper.plot_type == "combined":
+            self.children = [
+                *self.children,
+                self.bands_width_percentage,
+            ]
 
     def _update_bands_projections(self, _):
         """Update the plot with the selected projection."""
@@ -352,3 +401,9 @@ class BandsPdosWidget(ipw.VBox):
 
     def _update_trace_color(self, change):
         self._model.update_trace_color(change["new"])
+
+    def _on_horizontal_width_change(self, change):
+        self._model.update_horizontal_width(change["new"])
+
+    def _on_bands_width_change(self, change):
+        self._model.update_column_width_ratio(change["new"])

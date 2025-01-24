@@ -19,7 +19,7 @@ from aiidalab_qe.common.panel import (
 )
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import QeDependentWizardStep
+from aiidalab_qe.common.widgets import LinkButton, QeDependentWizardStep
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -135,6 +135,20 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             (self.submission_warning_messages, "value"),
         )
 
+        self.setup_new_codes_button = LinkButton(
+            description="Setup resources",
+            link="../home/code_setup.ipynb",
+            icon="database",
+        )
+
+        self.refresh_resources_button = ipw.Button(
+            description="Refresh resources",
+            icon="refresh",
+            button_style="primary",
+            layout=ipw.Layout(width="fit-content", margin="2px 2px 12px"),
+        )
+        self.refresh_resources_button.on_click(self._refresh_resources)
+
         self.tabs = ipw.Tab(
             layout=ipw.Layout(min_height="250px"),
             selected_index=None,
@@ -147,32 +161,34 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
         self.children = [
             InAppGuide(identifier="submission-step"),
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Codes</h4>
-                </div>
-            """),
-            ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-                    Select the code to use for running the calculations. The codes on
+                    Select the codes to use for running the calculations. The codes on
                     the local machine (localhost) are installed by default, but you can
                     configure new ones on potentially more powerful machines by clicking
-                    on "Setup new code".
+                    on <i class="fa fa-database"></i> <b>Setup resources</b> (also at
+                    the top of the app). Make sure to click the <b>Refresh resources</b>
+                    button below after making changes to AiiDA resources to update the
+                    app resources.
                 </div>
             """),
+            ipw.HBox(
+                children=[
+                    self.setup_new_codes_button,
+                    self.refresh_resources_button,
+                ],
+                layout=ipw.Layout(grid_gap="5px"),
+            ),
             self.tabs,
             self.sssp_installation,
             self.qe_setup,
             self.submission_blocker_messages,
             self.submission_warning_messages,
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 0px">
-                    <h4>Labeling your job</h4>
-                    <p style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
-                        Label your job and provide a brief description. These details
-                        help identify the job later and make the search process easier.
-                        While optional, adding a description is recommended for better
-                        clarity.
-                    </p>
+                <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
+                    Label your job and provide a brief description. These details
+                    help identify the job later and make the search process easier.
+                    While optional, adding a description is recommended for better
+                    clarity.
                 </div>
             """),
             self.process_label,
@@ -276,6 +292,10 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
     def _toggle_qe_installation_widget(self):
         qe_installation_display = "none" if self._model.qe_installed else "block"
         self.qe_setup.layout.display = qe_installation_display
+
+    def _refresh_resources(self, _=None):
+        for _, model in self._model.get_models():
+            model.refresh_codes()
 
     def _update_tabs(self):
         children = []

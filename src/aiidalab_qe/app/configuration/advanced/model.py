@@ -69,6 +69,8 @@ class AdvancedConfigurationSettingsModel(
     scf_conv_thr = tl.Float(0.0)
     scf_conv_thr_step = tl.Float(1e-10)
     electron_maxstep = tl.Int(80)
+    optimization_maxsteps = tl.Int(50)
+
     kpoints_distance = tl.Float(0.0)
     mesh_grid = tl.Unicode("")
 
@@ -109,6 +111,7 @@ class AdvancedConfigurationSettingsModel(
             },
             "clean_workdir": self.clean_workdir,
             "kpoints_distance": self.kpoints_distance,
+            "optimization_maxsteps": self.optimization_maxsteps,
         }
 
         hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
@@ -192,6 +195,7 @@ class AdvancedConfigurationSettingsModel(
             pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
 
         self.kpoints_distance = parameters.get("kpoints_distance", 0.15)
+        self.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)
 
         if (pw_parameters := parameters.get("pw", {}).get("parameters")) is not None:
             self._set_pw_parameters(pw_parameters)
@@ -237,6 +241,7 @@ class AdvancedConfigurationSettingsModel(
             self.electron_maxstep = self._get_default("electron_maxstep")
             self.spin_orbit = self._get_default("spin_orbit")
             self.kpoints_distance = self._get_default("kpoints_distance")
+            self.optimization_maxsteps = self._get_default("optimization_maxsteps")
 
     def _get_default(self, trait):
         return self._defaults.get(trait, self.traits()[trait].default_value)
@@ -250,11 +255,7 @@ class AdvancedConfigurationSettingsModel(
             self._on_any_change,
             tl.All,
         )
-        for trait in model.dependencies:
-            ipw.dlink(
-                (self, trait),
-                (model, trait),
-            )
+        super()._link_model(model)
 
     def _update_kpoints_mesh(self, _=None):
         if not self.has_structure:
