@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG FULL_STACK_VER=2025.1025
 ARG UV_VER=0.4.7
-ARG QE_VER=7.2
+ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
 
