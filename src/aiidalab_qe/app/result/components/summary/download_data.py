@@ -83,7 +83,6 @@ class DownloadDataWidget(ipw.VBox):
         Args:
             button_instance (ipywidgets.Button): The button instance that was clicked.
         """
-        self._disable_buttons()
         if "archive" in button_instance.description:
             what = "archive"
             filename = f"export_qeapp_calculation_pk_{self.node.pk}.aiida"
@@ -91,6 +90,7 @@ class DownloadDataWidget(ipw.VBox):
             what = "raw"
             filename = f"export_{self.node.pk}_raw.zip"
 
+        self._disable_buttons()
         self._show_downloading_message(what)
         data = self.produce_bitestream(self.node, what=what)
         self._download(payload=data, filename=filename)
@@ -99,7 +99,12 @@ class DownloadDataWidget(ipw.VBox):
         self._enable_buttons()
 
     def _show_downloading_message(self, what):
-        self._downloading_message.value = f"Downloading {what} data..."
+        self._downloading_message.value = f"""
+            <div style="display: flex; align-items: center; margin: 6px 0;">
+                Creating {what} data to download
+                <i class="fa fa-spinner fa-spin fa-2x fa-fw" style="margin-left: 4px;"></i>
+            </div>
+        """
 
     def _hide_downloading_message(self):
         self._downloading_message.value = ""

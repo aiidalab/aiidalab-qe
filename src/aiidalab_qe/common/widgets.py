@@ -980,7 +980,7 @@ class LoadingWidget(ipw.HBox):
         super().__init__(
             children=[
                 self.message,
-                ipw.HTML("<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>"),
+                ipw.HTML("<i class='fa fa-spinner fa-spin fa-2x fa-fw'></i>"),
             ],
             **kwargs,
         )
