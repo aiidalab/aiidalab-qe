@@ -979,9 +979,17 @@ class LoadingWidget(ipw.HBox):
         self.message = ipw.Label(message)
         super().__init__(
             children=[
-                self.message,
-                ipw.HTML("<i class='fa fa-spinner fa-spin fa-2x fa-fw'></i>"),
+                ipw.Label(message),
+                ipw.HTML(
+                    value="<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>",
+                    layout=ipw.Layout(margin="12px 0 6px"),
+                ),
             ],
+            layout=ipw.Layout(
+                justify_content="center",
+                align_items="center",
+                **kwargs.pop("layout", {}),
+            ),
             **kwargs,
         )
         self.add_class("loading")
