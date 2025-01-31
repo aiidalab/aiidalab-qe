@@ -282,11 +282,11 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
         else:
             code_widget = self.code_widgets[code_model.name]
         if not code_model.is_rendered:
-            self._render_code_widget(code_model, code_widget)
             code_widget.observe(
                 code_widget.update_resources,
                 "value",
             )
+            self._render_code_widget(code_model, code_widget)
 
     def _render_code_widget(
         self,
