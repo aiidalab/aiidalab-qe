@@ -42,6 +42,7 @@ def update_resources(builder, codes):
     set_component_resources(builder.projwfc, codes.get("projwfc"))
     enable_pencil_decomposition(builder.scf.pw)
     enable_pencil_decomposition(builder.nscf.pw)
+    enable_pencil_decomposition(builder.dos)
 
     # disable the parallelization setting for projwfc
     # npool = codes["pw"]["parallelization"]["npool"]
