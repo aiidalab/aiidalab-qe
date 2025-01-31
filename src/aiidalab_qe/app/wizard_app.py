@@ -93,7 +93,7 @@ class WizardApp(ipw.VBox):
 
         self._process_loading_message = LoadingWidget(
             message="Loading process",
-            layout=ipw.Layout(display="none"),
+            layout={"display": "none"},
         )
 
         super().__init__(
