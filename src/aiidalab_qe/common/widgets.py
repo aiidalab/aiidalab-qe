@@ -6,6 +6,7 @@ Authors: AiiDAlab team
 import base64
 import hashlib
 import os
+import subprocess
 import typing as t
 from copy import deepcopy
 from queue import Queue
@@ -17,6 +18,7 @@ import anywidget
 import ase
 import ipywidgets as ipw
 import numpy as np
+import requests as req
 import traitlets
 from IPython.display import HTML, Javascript, clear_output, display
 
@@ -1367,3 +1369,128 @@ class HBoxWithUnits(ipw.HBox):
             ),
             **kwargs,
         )
+
+
+class ArchiveImporter(ipw.VBox):
+    GITHUB = "https://github.com"
+    INFO_TEMPLATE = "{} <i class='fa fa-spinner fa-spin'></i>"
+
+    def __init__(
+        self,
+        repo: str,
+        branch: str,
+        archive_list: str,
+        archives_dir: str,
+        logger: t.Optional[dict] = None,
+        **kwargs,
+    ):
+        refs = "refs/heads"
+        raw = f"https://raw.githubusercontent.com/{repo}/{refs}/{branch}"
+        self.archive_list_url = f"{raw}/{archive_list}"
+        self.archives_url = f"{self.GITHUB}/{repo}/raw/{refs}/{branch}/{archives_dir}"
+        if logger:
+            self.logger_placeholder = logger.get("placeholder", "")
+            self.clear_log_on_import = logger.get("clear_on_import", False)
+            self.logger = RollingOutput()
+            self.logger.value = self.logger_placeholder
+        super().__init__(children=[LoadingWidget()], **kwargs)
+
+    def render(self):
+        self.selector = ipw.SelectMultiple(
+            options=[],
+            description="Examples:",
+            rows=10,
+            style={"description_width": "initial"},
+            layout=ipw.Layout(width="auto"),
+        )
+
+        import_button = ipw.Button(
+            description="Import",
+            button_style="success",
+            layout=ipw.Layout(width="fit-content"),
+            icon="download",
+        )
+        ipw.dlink(
+            (self.selector, "value"),
+            (import_button, "disabled"),
+            lambda value: not value,
+        )
+        import_button.on_click(self.import_examples)
+
+        self.info = ipw.HTML()
+
+        accordion = None
+        if self.logger:
+            accordion = ipw.Accordion(children=[self.logger])
+            accordion.set_title(0, "Archive import log")
+            accordion.selected_index = None
+
+        self.children = [
+            self.selector,
+            ipw.HBox(
+                [
+                    import_button,
+                    self.info,
+                ],
+                layout=ipw.Layout(
+                    margin="2px 2px 4px 68px",
+                    align_items="center",
+                    grid_gap="4px",
+                ),
+            ),
+            accordion or ipw.Box,
+        ]
+
+        self.selector.options = self.get_options()
+
+    def get_options(self) -> list[tuple[str, str]]:
+        response: req.Response = req.get(self.archive_list_url)
+        if not response.ok:
+            self.info.value = "Failed to fetch archive list"
+            return []
+        if archives := response.content.decode("utf-8").strip().split("\n"):
+            return [(archive, archive.split("-")[0].strip()) for archive in archives]
+        self.info.value = "No archives found"
+        return []
+
+    def import_examples(self, _):
+        if self.logger and self.clear_log_on_import:
+            self.logger.value = ""
+        for archive in self.selector.value:
+            if self.download_archive(archive):
+                self.import_archive(archive)
+                self.delete_archive(archive)
+
+    def download_archive(self, filename: str) -> bool:
+        self.info.value = self.INFO_TEMPLATE.format(f"Downloading {filename}")
+        file_url = f"{self.archives_url}/{filename}"
+        response: req.Response = req.get(file_url, stream=True)
+        if not response.ok:
+            self.info.value = f"Failed to download {filename}"
+            return False
+        with open(filename, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        return True
+
+    def import_archive(self, filename: str):
+        self.info.value = self.INFO_TEMPLATE.format(f"Importing {filename}")
+        process = subprocess.Popen(
+            ["verdi", "archive", "import", "-v", "critical", filename],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        stdout, stderr = process.communicate()
+        if stderr:
+            self.info.value = f"Failed to import {filename}"
+        if self.logger:
+            self.logger.value += stdout
+            if stderr:
+                self.logger.value += f"\n[ERROR] {stderr}"
+                self.info.value += " -> see log for details"
+
+    def delete_archive(self, filename: str):
+        self.info.value = self.INFO_TEMPLATE.format("Cleaning up")
+        os.remove(filename)
+        self.info.value = ""
