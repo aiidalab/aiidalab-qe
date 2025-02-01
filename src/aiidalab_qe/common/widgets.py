@@ -1415,7 +1415,7 @@ class ArchiveImporter(ipw.VBox):
             (import_button, "disabled"),
             lambda value: not value,
         )
-        import_button.on_click(self.import_examples)
+        import_button.on_click(self.import_archives)
 
         self.info = ipw.HTML()
 
@@ -1453,44 +1453,33 @@ class ArchiveImporter(ipw.VBox):
         self.info.value = "No archives found"
         return []
 
-    def import_examples(self, _):
+    def import_archives(self, _):
         if self.logger and self.clear_log_on_import:
             self.logger.value = ""
-        for archive in self.selector.value:
-            if self.download_archive(archive):
-                self.import_archive(archive)
-                self.delete_archive(archive)
-
-    def download_archive(self, filename: str) -> bool:
-        self.info.value = self.INFO_TEMPLATE.format(f"Downloading {filename}")
-        file_url = f"{self.archives_url}/{filename}"
-        response: req.Response = req.get(file_url, stream=True)
-        if not response.ok:
-            self.info.value = f"Failed to download {filename}"
-            return False
-        with open(filename, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        return True
+        for filename in self.selector.value:
+            self.import_archive(filename)
 
     def import_archive(self, filename: str):
         self.info.value = self.INFO_TEMPLATE.format(f"Importing {filename}")
+        file_url = f"{self.archives_url}/{filename}"
         process = subprocess.Popen(
-            ["verdi", "archive", "import", "-v", "critical", filename],
+            ["verdi", "archive", "import", "-v", "critical", file_url],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
         )
         stdout, stderr = process.communicate()
-        if stderr:
+        self._report(filename, stdout, stderr)
+
+    def _report(self, filename: str, stdout: str, stderr: str):
+        if stderr and "Success" not in stdout:
             self.info.value = f"Failed to import {filename}"
         if self.logger:
             self.logger.value += stdout
             if stderr:
-                self.logger.value += f"\n[ERROR] {stderr}"
-                self.info.value += " -> see log for details"
-
-    def delete_archive(self, filename: str):
-        self.info.value = self.INFO_TEMPLATE.format("Cleaning up")
-        os.remove(filename)
-        self.info.value = ""
+                if "Success" not in stdout:
+                    self.logger.value += "\n[ERROR]"
+                    self.info.value = "Error -> see log for details"
+                else:
+                    self.info.value = ""
+                self.logger.value += f"\n{stderr}"
