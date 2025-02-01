@@ -47,6 +47,17 @@ def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
                 </a>
                 <a
                     class="feature"
+                    href="{appbase}/examples.ipynb"
+                    target="_blank">
+                    <img
+                        class="feature-logo"
+                        src="{appbase}/miscellaneous/logos/download.png"
+                        alt="Download examples"
+                    />
+                    <div class="feature-label">Download examples</div>
+                </a>
+                <a
+                    class="feature"
                     href="https://www.quantum-espresso.org/"
                     target="_blank">
                     <img
