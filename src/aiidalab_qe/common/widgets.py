@@ -1149,7 +1149,8 @@ class LinkButton(ipw.HTML):
         description=None,
         link="",
         in_place=False,
-        classes="",
+        class_="",
+        style_="",
         icon="",
         disabled=False,
         **kwargs,
@@ -1161,7 +1162,8 @@ class LinkButton(ipw.HTML):
                 role="button"
                 href="{link}"
                 target="{"_self" if in_place else "_blank"}"
-                class="{classes}"
+                class="jupyter-button widget-button {class_}"
+                style="cursor: default; width: fit-content; {style_}"
             >
         """
         if icon:
@@ -1419,6 +1421,18 @@ class ArchiveImporter(ipw.VBox):
 
         self.info = ipw.HTML()
 
+        history_link = LinkButton(
+            description="Calculation history",
+            link="./calculation_history.ipynb",
+            icon="list",
+            class_="mod-primary",
+            style_="color: white;",
+            layout=ipw.Layout(
+                width="fit-content",
+                margin="2px 0 2px auto",
+            ),
+        )
+
         accordion = None
         if self.logger:
             accordion = ipw.Accordion(children=[self.logger])
@@ -1431,6 +1445,7 @@ class ArchiveImporter(ipw.VBox):
                 [
                     import_button,
                     self.info,
+                    history_link,
                 ],
                 layout=ipw.Layout(
                     margin="2px 2px 4px 68px",
