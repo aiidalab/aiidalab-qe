@@ -71,3 +71,4 @@ class BasicConfigurationSettingsModel(
             self.protocol = self.traits()["protocol"].default_value
             self.spin_type = self.traits()["spin_type"].default_value
             self.electronic_type = self.traits()["electronic_type"].default_value
+            self.spin_orbit = self.traits()["spin_orbit"].default_value

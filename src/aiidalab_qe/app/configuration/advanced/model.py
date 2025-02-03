@@ -239,7 +239,6 @@ class AdvancedConfigurationSettingsModel(
             self.scf_conv_thr = self._get_default("scf_conv_thr")
             self.scf_conv_thr_step = self._get_default("scf_conv_thr_step")
             self.electron_maxstep = self._get_default("electron_maxstep")
-            self.spin_orbit = self._get_default("spin_orbit")
             self.kpoints_distance = self._get_default("kpoints_distance")
             self.optimization_maxsteps = self._get_default("optimization_maxsteps")
 
