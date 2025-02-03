@@ -129,6 +129,9 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
             """),
             self.atom_coordinates_table,
         ]
+        # same reason as above for the hack
+        self.widget._viewer.handle_resize()
+        self._model.toggle_selected_view()
 
     def _on_process_change(self, _):
         super()._on_process_change(_)

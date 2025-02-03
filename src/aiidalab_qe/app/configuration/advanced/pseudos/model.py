@@ -183,12 +183,12 @@ class PseudosConfigurationSettingsModel(
         ecutrho_list = []
         for kind in kinds:
             cutoff = cutoff_dict.get(kind.symbol, {})
-            ecutrho, ecutwfc = (
-                U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
-                for v in cutoff.values()
-            )
-            ecutwfc_list.append(ecutwfc)
-            ecutrho_list.append(ecutrho)
+            cutoff = {
+                key: U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
+                for key, v in cutoff.items()
+            }
+            ecutwfc_list.append(cutoff["cutoff_wfc"])
+            ecutrho_list.append(cutoff["cutoff_rho"])
 
         self._defaults["cutoffs"] = [ecutwfc_list or [0.0], ecutrho_list or [0.0]]
         self.cutoffs = self._get_default_cutoffs()

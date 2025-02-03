@@ -162,6 +162,9 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
             self.message_area,
             self.confirm_button,
         ]
+        # after rendering the widget, nglview needs to be resized
+        # to properly display the structure
+        self.manager.viewer._viewer.handle_resize()
 
     def is_saved(self):
         return self._model.confirmed
