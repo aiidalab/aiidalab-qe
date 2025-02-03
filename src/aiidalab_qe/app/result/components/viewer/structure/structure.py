@@ -131,7 +131,11 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         ]
         # same reason as above for the hack
         self.widget._viewer.handle_resize()
-        self._model.toggle_selected_view()
+        # trigger the view update
+        structure = self._model.structure
+        self._model.structure = None
+        self._model.structure = structure
+
 
     def _on_process_change(self, _):
         super()._on_process_change(_)
