@@ -1162,7 +1162,6 @@ class LinkButton(ipw.HTML):
                 role="button"
                 href="{link}"
                 target="{"_self" if in_place else "_blank"}"
-                class="jupyter-button widget-button {class_}"
                 style="cursor: default; width: fit-content; {style_}"
             >
         """
@@ -1174,7 +1173,9 @@ class LinkButton(ipw.HTML):
         self.value = html
 
         self.add_class("jupyter-button")
+        self.add_class("widget-button")
         self.add_class("link-button")
+        self.add_class(class_)
 
         self.disabled = disabled
 
