@@ -136,7 +136,6 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         self._model.structure = None
         self._model.structure = structure
 
-
     def _on_process_change(self, _):
         super()._on_process_change(_)
         if self.rendered:
