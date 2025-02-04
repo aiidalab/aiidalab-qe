@@ -67,7 +67,7 @@ class QeApp:
         # Set up bug report handling (if a URL is provided)
         if bug_report_url:
             install_create_github_issue_exception_handler(
-                self.view.output,
+                self.log_widget if show_log else self.view.output,
                 url=bug_report_url,
                 labels=("bug", "automated-report"),
             )
