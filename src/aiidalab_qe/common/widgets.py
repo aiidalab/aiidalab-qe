@@ -1503,38 +1503,38 @@ class ArchiveImporter(ipw.VBox):
                 self.logger.value += f"\n{stderr}"
 
 
-class ShakenBreakEditor(ipw.VBox):
+class ShakeNBreakEditor(ipw.VBox):
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
     selection = traitlets.List(traitlets.Int)
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
-    def __init__(self, title="Editor Shakenbreak"):
+    def __init__(self, title="Editor ShakeNbreak"):
         self.title = title
         self._status_message = StatusHTML()
         self.num_nearest_neighbours = ipw.IntText(
             description="Num. neighbours atoms:",
             value=8,
             step=1,
-            style={"description_width": "initial"},
-            layout={"width": "initial"},
+            style={"description_width": "150px"},
         )
         self.defect_position = ipw.Text(
-            description="Defect atom:", layout={"width": "initial"}
+            description="Defect atom:",
+            layout={"width": "initial"},
+            style={"description_width": "150px"},
         )
         # Only select one atom!
         self.btn_defect_position = ipw.Button(
             description="From selection",
-            layout={"width": "initial"},
+            style={"description_width": "150px"},
         )
         # Center of the selection
         self.btn_defect_position_vac = ipw.Button(
             description="From selection",
-            layout={"width": "initial"},
+            style={"description_width": "150px"},
         )
         self.vacancy_coords = ipw.Text(
             description="Vacancy coords:",
-            layout={"width": "initial"},
-            style={"description_width": "initial"},
+            style={"description_width": "150px"},
         )
         self.btn_defect_position.on_click(self._defect_position)
         self.btn_defect_position_vac.on_click(self._defect_position_vac)
@@ -1544,8 +1544,7 @@ class ShakenBreakEditor(ipw.VBox):
             max=1.8,
             step=0.1,
             description="Distortion factor:",
-            style={"description_width": "initial"},
-            layout={"width": "initial"},
+            style={"description_width": "150px"},
         )
         self.btn_apply_bond_distortion = ipw.Button(
             description="Apply bond distortion",
@@ -1554,13 +1553,10 @@ class ShakenBreakEditor(ipw.VBox):
         )
         self.btn_apply_bond_distortion.on_click(self._apply_bond_distortion)
         self.selected_atoms = ipw.Text(
-            description="Select atoms:",
-            value="",
-            style={"description_width": "initial"},
+            description="Select atoms:", value="", style={"description_width": "150px"}
         )
         self.btn_selected_atoms = ipw.Button(
-            description="From selection",
-            layout={"width": "initial"},
+            description="From selection", style={"description_width": "150px"}
         )
         self.btn_selected_atoms.on_click(self._selected_atoms)
         self.wrong_syntax = ipw.HTML(
@@ -1569,22 +1565,19 @@ class ShakenBreakEditor(ipw.VBox):
         )
         self.radial_cutoff = ipw.FloatText(
             description="Radial cutoff distance (Å):",
-            value=3,
-            style={"description_width": "initial"},
-            layout={"width": "initial"},
+            value=3.0,
+            style={"description_width": "150px"},
         )
         self.btn_apply_random_distorion_all = ipw.Button(
-            description="Apply random displacement to all atoms",
+            description="Apply to all atoms",
             button_style="primary",
-            disabled=False,
-            layout={"width": "initial"},
+            style={"description_width": "250px"},
         )
         self.btn_apply_random_distorion_all.on_click(self._apply_random_distortion_all)
         self.btn_apply_random_distortion = ipw.Button(
-            description="Apply local random displacement",
+            description="Apply locally",
             button_style="primary",
-            disabled=False,
-            layout={"width": "initial"},
+            style={"description_width": "250px"},
         )
         self.btn_apply_random_distortion.on_click(self._apply_random_distortion)
         super().__init__(
@@ -1592,14 +1585,13 @@ class ShakenBreakEditor(ipw.VBox):
                 ipw.HTML(
                     """
                     <p>
-                    Use the <a href="https://github.com/SMTG-Bham/ShakeNBreak" target="_blank">ShakeNBreak</a> package
-                    to apply bond distortions or random displacements and locate metastable structures
-                    of point defects in solids.
+                    Apply bond distortions or random displacements to explore metastable structures of point defects in solids.
+                    This editor allows you to manipulate atomic positions and study defect behaviors in materials.
                     </p>
                     """
                 ),
                 ipw.HTML(
-                    "<b>Define defect position:</b>",
+                    "<h4>Define defect position:</h4>",
                 ),
                 ipw.HTML(
                     """
@@ -1610,16 +1602,28 @@ class ShakenBreakEditor(ipw.VBox):
                     </p>
                     """
                 ),
-                ipw.HBox(
+                ipw.VBox(
                     [
-                        self.defect_position,
-                        self.btn_defect_position,
-                        self.vacancy_coords,
-                        self.btn_defect_position_vac,
+                        ipw.HBox(
+                            [
+                                self.defect_position,
+                                self.btn_defect_position,
+                            ]
+                        ),
+                    ]
+                ),
+                ipw.VBox(
+                    [
+                        ipw.HBox(
+                            [
+                                self.vacancy_coords,
+                                self.btn_defect_position_vac,
+                            ]
+                        ),
                     ]
                 ),
                 ipw.HTML(
-                    "<b>Bond distortion around defect:</b>",
+                    "<h4>Bond distortion around defect:</h4>",
                 ),
                 ipw.HTML(
                     """
@@ -1631,7 +1635,7 @@ class ShakenBreakEditor(ipw.VBox):
                     </p>
                     """
                 ),
-                ipw.HBox(
+                ipw.VBox(
                     [
                         self.num_nearest_neighbours,
                         self.distortion_factor,
@@ -1639,23 +1643,41 @@ class ShakenBreakEditor(ipw.VBox):
                     ]
                 ),
                 ipw.HTML(
-                    "<b>Random displacements to all atoms or selected ones:</b>",
+                    "<h4>Random displacements to all atoms or selected ones:</h4>",
                 ),
-                ipw.HBox(
+                ipw.HTML(
+                    """
+                    <p>
+                    Define atoms for local random displacement around the defect or vacancy, and set the radial cutoff distance (in Å) to determine neighboring atoms for distance checks.
+                    </p>
+                    """
+                ),
+                ipw.VBox(
                     [
-                        self.selected_atoms,
-                        self.btn_selected_atoms,
-                        self.wrong_syntax,
+                        ipw.HBox(
+                            [
+                                self.selected_atoms,
+                                self.btn_selected_atoms,
+                                self.wrong_syntax,
+                            ]
+                        ),
                         self.radial_cutoff,
                     ]
                 ),
-                ipw.HBox(
+                ipw.VBox(
                     [
-                        self.btn_apply_random_distorion_all,
                         self.btn_apply_random_distortion,
-                    ]
+                        self.btn_apply_random_distorion_all,
+                    ],
                 ),
                 self._status_message,
+                ipw.HTML(
+                    """
+                    <p>
+                    Uses the <a href="https://github.com/SMTG-Bham/ShakeNBreak" target="_blank">ShakeNBreak</a> package.
+                    </p>
+                    """
+                ),
             ]
         )
 

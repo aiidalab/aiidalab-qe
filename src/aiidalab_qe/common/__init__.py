@@ -6,7 +6,7 @@ from .widgets import (
     LazyLoadedOptimade,
     LazyLoadedStructureBrowser,
     PeriodicityEditor,
-    ShakenBreakEditor,
+    ShakeNBreakEditor,
 )
 
 __all__ = [
@@ -16,6 +16,5 @@ __all__ = [
     "PeriodicityEditor",
     "QeAppWorkChainSelector",
     "WorkChainSelector",
-    "PeriodicityEditor",
-    "ShakenBreakEditor",
+    "ShakeNBreakEditor",
 ]
