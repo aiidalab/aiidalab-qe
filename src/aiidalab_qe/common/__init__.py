@@ -13,6 +13,7 @@ __all__ = [
     "AddingTagsEditor",
     "LazyLoadedOptimade",
     "LazyLoadedStructureBrowser",
+    "PeriodicityEditor",
     "QeAppWorkChainSelector",
     "WorkChainSelector",
     "PeriodicityEditor",
