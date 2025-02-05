@@ -87,6 +87,8 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     # Update the nscf kpoints distance from the setting panel
     nscf_overrides["kpoints_distance"] = parameters["pdos"]["nscf_kpoints_distance"]
+    if structure.pbc == (False, False, False):
+        nscf_overrides["pw"]["parameters"]["SYSTEM"]["occupations"] = "tetrahedra"
 
     overrides = {
         "scf": scf_overrides,
