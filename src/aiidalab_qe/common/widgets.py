@@ -1519,7 +1519,6 @@ class ShakeNBreakEditor(ipw.VBox):
         )
         self.defect_position = ipw.Text(
             description="Defect atom:",
-            layout={"width": "initial"},
             style={"description_width": "150px"},
         )
         # Only select one atom!
@@ -1602,24 +1601,16 @@ class ShakeNBreakEditor(ipw.VBox):
                     </p>
                     """
                 ),
-                ipw.VBox(
+                ipw.HBox(
                     [
-                        ipw.HBox(
-                            [
-                                self.defect_position,
-                                self.btn_defect_position,
-                            ]
-                        ),
+                        self.defect_position,
+                        self.btn_defect_position,
                     ]
                 ),
-                ipw.VBox(
+                ipw.HBox(
                     [
-                        ipw.HBox(
-                            [
-                                self.vacancy_coords,
-                                self.btn_defect_position_vac,
-                            ]
-                        ),
+                        self.vacancy_coords,
+                        self.btn_defect_position_vac,
                     ]
                 ),
                 ipw.HTML(
@@ -1652,19 +1643,15 @@ class ShakeNBreakEditor(ipw.VBox):
                     </p>
                     """
                 ),
-                ipw.VBox(
+                ipw.HBox(
                     [
-                        ipw.HBox(
-                            [
-                                self.selected_atoms,
-                                self.btn_selected_atoms,
-                                self.wrong_syntax,
-                            ]
-                        ),
-                        self.radial_cutoff,
+                        self.selected_atoms,
+                        self.btn_selected_atoms,
+                        self.wrong_syntax,
                     ]
                 ),
-                ipw.VBox(
+                self.radial_cutoff,
+                ipw.HBox(
                     [
                         self.btn_apply_random_distortion,
                         self.btn_apply_random_distorion_all,

@@ -84,7 +84,7 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
             BasicStructureEditor(title="Edit structure"),
             AddingTagsEditor(title="Edit atom tags"),
             PeriodicityEditor(title="Edit periodicity"),
-            ShakeNBreakEditor(title="ShakeNBreak editor"),
+            ShakeNBreakEditor(title="ShakeNBreak"),
         ]
 
         plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
