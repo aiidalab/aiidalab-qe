@@ -23,12 +23,14 @@ class WizardApp(ipw.VBox):
     # The PK or UUID of the work chain node.
     process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
 
-    def __init__(self, qe_auto_setup=True):
+    def __init__(self, qe_auto_setup=True, **kwargs):
         # Initialize the models
         self.structure_model = StructureStepModel()
         self.configure_model = ConfigurationStepModel()
         self.submit_model = SubmissionStepModel()
         self.results_model = ResultsStepModel()
+
+        log_widget = kwargs.pop("log_widget", None)
 
         # Create the application steps
         self.structure_step = StructureSelectionStep(
@@ -46,6 +48,7 @@ class WizardApp(ipw.VBox):
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep(
             model=self.results_model,
+            log_widget=log_widget,
         )
 
         # Wizard step observations
@@ -102,7 +105,8 @@ class WizardApp(ipw.VBox):
                 self._process_loading_message,
                 self._wizard_app_widget,
                 InAppGuide(identifier="post-guide"),
-            ]
+            ],
+            **kwargs,
         )
 
         self._wizard_app_widget.selected_index = None
