@@ -23,6 +23,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
     )
 
     def __init__(self, model: ResultsStepModel, **kwargs):
+        self.log_widget = kwargs.pop("log_widget", None)
         super().__init__(model=model, **kwargs)
         self.observe(
             self._on_previous_step_state_change,
@@ -130,6 +131,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
                 self._update_status,
                 self._update_state,
             ],
+            log_widget=self.log_widget,
         )
         ipw.dlink(
             (self._model, "process_uuid"),

@@ -73,12 +73,6 @@ class PseudosConfigurationSettingsPanel(
             (self.family_help, "value"),
         )
 
-        self.functional_prompt = ipw.HTML("""
-            <div class="pseudo-text"><b>
-                Exchange-correlation  functional</b>
-            </div>
-        """)
-
         self.functional_help = ipw.HTML("""
             <div class="pseudo-text">
                 The exchange-correlation energy is calculated using this functional.
@@ -146,7 +140,7 @@ class PseudosConfigurationSettingsPanel(
             """),
             ipw.VBox(
                 children=[
-                    self.functional_prompt,
+                    ipw.HTML("<h4>Exchange-correlation functional</h4>"),
                     self.functional,
                     self.functional_help,
                 ],
