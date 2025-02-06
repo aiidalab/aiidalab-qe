@@ -28,9 +28,13 @@ class BandsPdosPlotly:
         "horizontal_range_pdos": [-10, 10],
     }
 
-    def __init__(self, bands_data=None, 
-                 wannier90_bands_data=None,
-                 pdos_data=None, bands_projections_data=None):
+    def __init__(
+        self,
+        bands_data=None,
+        wannier90_bands_data=None,
+        pdos_data=None,
+        bands_projections_data=None,
+    ):
         self.bands_data = bands_data
         self.wannier90_bands_data = wannier90_bands_data
         self.pdos_data = pdos_data
@@ -200,10 +204,12 @@ class BandsPdosPlotly:
                     line={"color": self.SETTINGS["vertical_linecolor"], "width": 1},
                 )
         if self.wannier90_bands_data:
-            self._add_band_traces(fig, bands_data=self.wannier90_bands_data,
-                                  name="Wannier90 Bands",
-                                  dash="dash")
-
+            self._add_band_traces(
+                fig,
+                bands_data=self.wannier90_bands_data,
+                name="Wannier90 Bands",
+                dash="dash",
+            )
 
     def adding_pdos_traces(self, fig):
         if self.pdos_data:
@@ -297,7 +303,7 @@ class BandsPdosPlotly:
                     line={
                         "color": colors[(spin_polarized, spin)],
                         "shape": "linear",
-                        "dash": dash  # Options: "solid", "dash", "dot", "dashdot", "longdash", "longdashdot"
+                        "dash": dash,  # Options: "solid", "dash", "dot", "dashdot", "longdash", "longdashdot"
                     },
                     showlegend=spin_polarized,
                     name=trace_name_mapping[(spin_polarized, spin)],
