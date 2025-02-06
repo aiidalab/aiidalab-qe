@@ -28,8 +28,11 @@ class BandsPdosPlotly:
         "horizontal_range_pdos": [-10, 10],
     }
 
-    def __init__(self, bands_data=None, pdos_data=None, bands_projections_data=None):
+    def __init__(self, bands_data=None, 
+                 wannier90_bands_data=None,
+                 pdos_data=None, bands_projections_data=None):
         self.bands_data = bands_data
+        self.wannier90_bands_data = wannier90_bands_data
         self.pdos_data = pdos_data
         self.project_bands = bands_projections_data
 
@@ -188,7 +191,7 @@ class BandsPdosPlotly:
 
     def adding_bands_traces(self, fig):
         if self.bands_data:
-            self._add_band_traces(fig)
+            self._add_band_traces(fig, bands_data=self.bands_data, name="Bands")
 
             band_labels = self.bands_data.get("pathlabels")
             for label in band_labels[1]:
@@ -196,6 +199,11 @@ class BandsPdosPlotly:
                     x=label,
                     line={"color": self.SETTINGS["vertical_linecolor"], "width": 1},
                 )
+        if self.wannier90_bands_data:
+            self._add_band_traces(fig, bands_data=self.wannier90_bands_data,
+                                  name="Wannier90 Bands",
+                                  dash="dash")
+
 
     def adding_pdos_traces(self, fig):
         if self.pdos_data:
@@ -240,7 +248,7 @@ class BandsPdosPlotly:
         else:
             fig.add_traces(traces)
 
-    def _add_band_traces(self, fig):
+    def _add_band_traces(self, fig, bands_data, name="Bands", dash="solid"):
         """Generate the band traces and add them to the figure."""
         colors = {
             (True, 0): self.SETTINGS["bands_up_linecolor"],
@@ -253,12 +261,12 @@ class BandsPdosPlotly:
         }
 
         trace_name_mapping = {
-            (False, 0): "Bands",  # Base case: non-spin-polarized
-            (True, 0): "Bands (↑)",  # Spin-up case
-            (True, 1): "Bands (↓)",  # Spin-down case
+            (False, 0): f"{name}",  # Base case: non-spin-polarized
+            (True, 0): f"{name} (↑)",  # Spin-up case
+            (True, 1): f"{name} (↓)",  # Spin-down case
         }
 
-        bands_data = self.bands_data
+        bands_data = bands_data
         # Convert paths to a list of Scatter objects
         scatter_objects = []
 
@@ -289,6 +297,7 @@ class BandsPdosPlotly:
                     line={
                         "color": colors[(spin_polarized, spin)],
                         "shape": "linear",
+                        "dash": dash  # Options: "solid", "dash", "dot", "dashdot", "longdash", "longdashdot"
                     },
                     showlegend=spin_polarized,
                     name=trace_name_mapping[(spin_polarized, spin)],
