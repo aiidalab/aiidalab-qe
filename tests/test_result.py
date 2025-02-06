@@ -1,89 +1,176 @@
 import pytest
+from bs4 import BeautifulSoup
+
+from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
+from aiidalab_qe.app.result.components.summary import WorkChainSummaryModel
+from aiidalab_qe.app.result.components.viewer import (
+    WorkChainResultsViewer,
+    WorkChainResultsViewerModel,
+)
+from aiidalab_qe.app.result.components.viewer.structure import (
+    StructureResultsModel,
+    StructureResultsPanel,
+)
+from aiidalab_qe.app.wizard_app import WizardApp
 
 
-@pytest.mark.usefixtures("sssp")
 def test_result_step(app_to_submit, generate_qeapp_workchain):
     """Test the result step is properly updated when the process
     is running."""
-
-    step = app_to_submit.results_step
-    step.process = generate_qeapp_workchain().node.uuid
+    app: WizardApp = app_to_submit
+    step: ViewQeAppWorkChainStatusAndResultsStep = app.results_step
+    model = app.results_model
+    model.process_uuid = generate_qeapp_workchain().node.uuid
     assert step.state == step.State.ACTIVE
+    step.render()
+    assert step.toggle_controls.value == "Status"
+    results_model: WorkChainResultsViewerModel = model.get_model("results")  # type: ignore
+    # All jobs are completed, so there should be no process status notifications
+    for _, model in results_model.get_models():
+        assert model.process_status_notification == ""
 
 
-@pytest.mark.usefixtures("sssp")
 def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
     """Test the kill and clean_scratch button are properly displayed when the process
     is in different states."""
-
     step = app_to_submit.results_step
-    step.process = generate_qeapp_workchain().node.uuid
-    step._update_state()
-    step._update_kill_button_layout()
-    step._update_clean_scratch_button_layout()
+    step.render()
+    model = app_to_submit.results_model
+    model.process_uuid = generate_qeapp_workchain().node.uuid
     assert step.kill_button.layout.display == "block"
     assert step.clean_scratch_button.layout.display == "none"
 
 
-@pytest.mark.usefixtures("sssp")
 def test_workchainview(generate_qeapp_workchain):
     """Test the result tabs are properly updated"""
-    import time
-
-    from aiidalab_qe.app.result.workchain_viewer import WorkChainViewer
-
-    wkchain = generate_qeapp_workchain()
-    wkchain.node.seal()
-    wcv = WorkChainViewer(wkchain.node)
-    time.sleep(3)
-    assert len(wcv.result_tabs.children) == 5
-    assert wcv.result_tabs._titles["0"] == "Workflow Summary"
-    assert wcv.result_tabs._titles["1"] == "Final Geometry"
+    workchain = generate_qeapp_workchain()
+    workchain.node.seal()
+    model = WorkChainResultsViewerModel()
+    viewer = WorkChainResultsViewer(model=model)
+    model.process_uuid = workchain.node.uuid
+    viewer.render()
+    assert len(viewer.tabs.children) == 2
+    assert viewer.tabs._titles["0"] == "Structure"  # type: ignore
 
 
-@pytest.mark.usefixtures("sssp")
 def test_summary_report(data_regression, generate_qeapp_workchain):
     """Test the summary report can be properly generated."""
-    from aiidalab_qe.app.result.summary_viewer import SummaryView
+    workchain = generate_qeapp_workchain()
+    model = WorkChainSummaryModel()
+    model.process_uuid = workchain.node.uuid
+    report_parameters = model._generate_report_parameters()
+    # Discard variable parameters
+    for key in (
+        "pk",
+        "uuid",
+        "creation_time",
+        "modification_time",
+    ):
+        report_parameters["workflow_properties"].pop(key)
+    for key in (
+        "structure_pk",
+        "structure_uuid",
+    ):
+        report_parameters["initial_structure_properties"].pop(key)
+    data_regression.check(report_parameters)
 
-    wkchain = generate_qeapp_workchain()
-    viewer = SummaryView(wkchain.node)
-    report = viewer.report
-    # regression test
-    data_regression.check(report)
 
-
-@pytest.mark.usefixtures("sssp")
 def test_summary_report_advanced_settings(data_regression, generate_qeapp_workchain):
     """Test advanced settings are properly reported"""
-    from aiidalab_qe.app.result.summary_viewer import SummaryView
-
-    wkchain = generate_qeapp_workchain(
+    workchain = generate_qeapp_workchain(
         spin_type="collinear", electronic_type="metal", initial_magnetic_moments=0.1
     )
-    viewer = SummaryView(wkchain.node)
-    report = viewer.report
-    assert report["initial_magnetic_moments"]["Si"] == 0.1
+    model = WorkChainSummaryModel()
+    model.process_uuid = workchain.node.uuid
+    report_parameters = model._generate_report_parameters()
+    moments = report_parameters["advanced_settings"]["initial_magnetic_moments"]
+    assert moments["Si"] == 0.1
 
 
-@pytest.mark.usefixtures("sssp")
+@pytest.mark.parametrize(
+    ("pbc", "symmetry_key"),
+    [
+        [(False, False, False), "point_group"],  # 0D
+        [(True, False, False), "space_group"],  # 1D
+        [(True, True, False), "space_group"],  # 2D
+        [(True, True, True), "space_group"],  # 3D
+    ],
+)
+def test_summary_report_symmetry_group(
+    generate_qeapp_workchain,
+    generate_structure_data,
+    pbc,
+    symmetry_key,
+):
+    """Test summary report includes correct symmetry group for all system dimension."""
+
+    system = generate_structure_data("silicon", pbc=pbc)
+    workchain = generate_qeapp_workchain(
+        structure=system,
+        run_bands=False,
+        relax_type="none",
+    )
+    model = WorkChainSummaryModel()
+    model.process_uuid = workchain.node.uuid
+    report_parameters = model._generate_report_parameters()
+    assert symmetry_key in report_parameters["initial_structure_properties"]
+
+
 def test_summary_view(generate_qeapp_workchain):
     """Test the report html can be properly generated."""
-    from bs4 import BeautifulSoup
-
-    from aiidalab_qe.app.result.summary_viewer import SummaryView
-
-    wkchain = generate_qeapp_workchain()
-    viewer = SummaryView(wkchain.node)
-    report_html = viewer.report_html
-    # report_html = generate_report_html(wcv.node)
+    workchain = generate_qeapp_workchain()
+    model = WorkChainSummaryModel()
+    model.process_uuid = workchain.node.uuid
+    report_html = model.generate_report_html()
     parsed = BeautifulSoup(report_html, "html.parser")
-    # find the td with the text "Initial Magnetic Moments"
     parameters = {
         "Energy cutoff (wave functions)": "30.0 Ry",
-        "Total Charge": "0.0",
-        "Initial Magnetic Moments": "",
+        "Total charge": "0.0",
     }
     for key, value in parameters.items():
-        td = parsed.find("td", text=key).find_next_sibling("td")
-        assert td.text == value
+        key_td = parsed.find("td", string=lambda tag, key=key: tag and key in tag.text)
+        value_td = key_td.find_next_sibling("td")
+        assert value in value_td.text
+
+
+def test_structure_results_panel(generate_qeapp_workchain):
+    """Test the structure results panel can be properly generated."""
+
+    model = StructureResultsModel()
+    panel = StructureResultsPanel(model=model)
+
+    def test_table_data(model):
+        rows = model.table_data[1:]  # skip table header
+        for i, row in enumerate(rows):
+            position = model.structure.sites[i].position
+            x, y, z = (f"{coordinate:.2f}" for coordinate in position)
+            assert row == [i + 1, "Si", 0, x, y, z]  # type: ignore
+
+    assert model.title == "Structure"
+
+    wc = generate_qeapp_workchain(relax_type="none")
+    model.process_uuid = wc.node.uuid
+    node = model.fetch_process_node()
+    assert "Si<sub>2</sub>" in model.header
+    assert "Initial" in model.sub_header
+    assert "properties" in model.source  # inputs
+    assert model.structure.pk == node.inputs.structure.pk
+    assert str(node.inputs.structure.pk) in model.info
+    test_table_data(model)
+
+    panel.render()
+    assert panel.view_toggle_button.layout.display == "none"
+
+    wc = generate_qeapp_workchain(relax_type="positions_cell")
+    model.process_uuid = wc.node.uuid
+    node = model.fetch_process_node()
+    assert "Initial" in model.sub_header
+    assert panel.view_toggle_button.layout.display == "block"
+    assert panel.view_toggle_button.description == "View relaxed"
+    panel.view_toggle_button.click()
+    assert panel.view_toggle_button.description == "View initial"
+    assert "Relaxed" in model.sub_header
+    assert "properties" not in model.source  # outputs
+    assert model.structure.pk == node.outputs.structure.pk
+    assert str(node.outputs.structure.pk) in model.info
+    test_table_data(model)

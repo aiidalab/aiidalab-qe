@@ -1,0 +1,10 @@
+:root {
+  --color-link: #0000ee;
+  --color-init: #eee;
+  --color-ready: #fcf8e3;
+  --color-active: #d9edf7;
+  --color-success: #dff0d8;
+  --color-failed: #f2dede;
+  --color-info: #00bcd4;
+  --color-info-dark: #0097a7;
+}

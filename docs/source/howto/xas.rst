@@ -167,6 +167,19 @@ Finally, click on the "Download CSV" button to the upper left of the plot area t
     * The normalised & weighted spectrum. (with respect to ratio of site multiplicity to total multiplicity)
     * The normalised & un-weighted spectrum.
 
+Additional Note on Charged Systems
+----------------------------------
+Computing XANES spectra for systems where a charge has been applied (in this case using the `Total charge` advanced setting) is possible using the tools
+available in the QE App, however such workflows should always be tested by the user against experimental data if possible.
+
+When running XAS workflows for systems where a total charge has been applied, it is suggested to use the following settings for the total charge to ensure the corresponding
+core-hole treatment is applied correctly:
+
+* "xch_fixed" or "xch_smear": Set the total charge as required for the system's charged ground-state.
+* "full": **Increase** the total charge by 1 *relative* to the system's charged ground-state (e.g. set total charge = 2 in the advanced settings tab if the charge is normally 1).
+
+Note that for neutral systems (total charge = 0), the QE App will handle these settings automatically.
+
 Summary
 -------
 

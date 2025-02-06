@@ -19,3 +19,11 @@ aiidalab-qe-muon:
     description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties (local fields and polarization signals).
     author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
     github: https://github.com/mikibonacci/aiidalab-qe-muon
+
+aiida-qe-xspec:
+    title: Core-level spectroscopy (aiida-qe-xspec)
+    description: Core-level spectroscopy calculations with Quantum ESPRESSO.
+    author: Xing Wang, Peter Gillespie
+    github: https://github.com/aiidaplugins/aiida-qe-xspec
+    documentation: https://aiida-qe-xspec.readthedocs.io/
+    pip: aiida-qe-xspec

@@ -1,31 +1,24 @@
-from aiidalab_qe.common.panel import OutlinePanel
-from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
+from aiidalab_qe.common.panel import PluginOutline
 
-from .result import Result
-from .setting import Setting
+from .model import PdosConfigurationSettingsModel
+from .resources import PdosResourceSettingsModel, PdosResourceSettingsPanel
+from .setting import PdosConfigurationSettingPanel
 from .workchain import workchain_and_builder
 
 
-class PdosOutline(OutlinePanel):
-    title = "Projected Density of States (PDOS)"
-    help = """"""
-
-
-dos_code = QEAppComputationalResourcesWidget(
-    description="dos.x",
-    default_calc_job_plugin="quantumespresso.dos",
-)
-
-projwfc_code = QEAppComputationalResourcesWidget(
-    description="projwfc.x",
-    default_calc_job_plugin="quantumespresso.projwfc",
-)
+class PdosPluginOutline(PluginOutline):
+    title = "Electronic projected density of states (PDOS)"
 
 
 pdos = {
-    "outline": PdosOutline,
-    "code": {"dos": dos_code, "projwfc": projwfc_code},
-    "setting": Setting,
-    "result": Result,
+    "outline": PdosPluginOutline,
+    "configuration": {
+        "panel": PdosConfigurationSettingPanel,
+        "model": PdosConfigurationSettingsModel,
+    },
+    "resources": {
+        "panel": PdosResourceSettingsPanel,
+        "model": PdosResourceSettingsModel,
+    },
     "workchain": workchain_and_builder,
 }

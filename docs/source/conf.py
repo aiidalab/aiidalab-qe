@@ -13,7 +13,7 @@ import time
 
 # -- Project information -----------------------------------------------------
 
-version = "v24.10.0a2"
+version = "v24.10.0a7"
 release = f"{version}-dev"
 project = "Quantum ESPRESSO App"
 copyright_first_year = "2023"
@@ -82,6 +82,20 @@ html_theme_options = {
         "image_light": "logo.png",
         "image_dark": "logo_dark.png",
     },
+    "icon_links": [
+        {
+            "name": "AiiDAlab",
+            "url": "http://aiidalab.net",
+            "icon": "fa-solid fa-globe",
+            "type": "fontawesome",
+        },
+        {
+            "name": "GitHub",
+            "url": "https://www.github.com/aiidalab/aiidalab-qe",
+            "icon": "fa-brands fa-square-github",
+            "type": "fontawesome",
+        },
+    ],
 }
 
 # If true, links to the reST sources are added to the pages.

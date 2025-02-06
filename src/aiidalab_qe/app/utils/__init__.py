@@ -15,12 +15,14 @@ def print_error(entry_point, e):
 
 # load entry points
 def get_entries(entry_point_name="aiidalab_qe.properties"):
-    from importlib.metadata import entry_points
+    from importlib_metadata import entry_points
 
     entries = {}
-    for entry_point in entry_points().get(entry_point_name, []):
+    for entry_point in entry_points(group=entry_point_name):
         try:
             # Attempt to load the entry point
+            if entry_point.name in entries:
+                continue
             loaded_entry_point = entry_point.load()
             entries[entry_point.name] = loaded_entry_point
         except Exception as e:

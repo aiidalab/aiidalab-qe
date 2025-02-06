@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import ipywidgets as ipw
-import traitlets
+import traitlets as tl
+from IPython.display import display
+
+from aiidalab_qe.common.guide_manager import guide_manager
+from aiidalab_qe.common.widgets import LinkButton, LoadingWidget
 
 
 def without_triggering(toggle: str):
@@ -44,53 +48,101 @@ class AppWrapperContoller:
         self._view = view
         self._set_event_handlers()
 
-    def enable_toggles(self) -> None:
-        """Enable the toggle buttons."""
-        self._view.guide_toggle.disabled = False
-        self._view.about_toggle.disabled = False
-        self._view.job_history_toggle.disabled = False
+    def enable_controls(self) -> None:
+        """Enable the control buttons at the top of the app."""
+        for control in self._view.controls.children:
+            control.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
         """Toggle the guide section."""
         if change["new"]:
-            self._view.job_history_toggle.value = False
-        self._view.info_container.children = [self._view.guide] if change["new"] else []
-        self._view.info_container.layout.display = "flex" if change["new"] else "none"
+            self._view.info_container.children = [
+                self._view.guide,
+                ipw.HBox(
+                    children=[
+                        self._view.guide_category_selection,
+                        self._view.guide_selection,
+                    ],
+                    layout=ipw.Layout(align_items="baseline"),
+                ),
+            ]
+            self._view.info_container.layout.display = "flex"
+        else:
+            self._view.info_container.children = []
+            self._view.info_container.layout.display = "none"
 
     @without_triggering("guide_toggle")
     def _on_about_toggle(self, change: dict):
         """Toggle the about section."""
         if change["new"]:
-            self._view.job_history_toggle.value = False
-        self._view.info_container.children = [self._view.about] if change["new"] else []
-        self._view.info_container.layout.display = "flex" if change["new"] else "none"
-
-    def _on_job_history_toggle(self, change: dict):
-        """Toggle the job list section."""
-        if change["new"]:
-            self._view.about_toggle.value = False
-            self._view.guide_toggle.value = False
-            self._view.job_history.setup_table()
-            self._view.main.children = [
-                self._view.job_history.filters_layout,
-                self._view.job_history.table,
-            ]
+            self._view.info_container.children = [self._view.about]
+            self._view.info_container.layout.display = "flex"
         else:
-            self._view.main.children = [self._view.app]
+            self._view.info_container.children = []
+            self._view.info_container.layout.display = "none"
+
+    def _on_guide_category_selection_change(self, change):
+        self._model.guide_options = guide_manager.get_guides(change["new"])
+
+    def _on_guide_selection_change(self, _):
+        category = self._view.guide_category_selection.value
+        guide = self._view.guide_selection.value
+        self._model.update_active_guide(category, guide)
 
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
-        self._view.guide_toggle.observe(self._on_guide_toggle, "value")
-        self._view.about_toggle.observe(self._on_about_toggle, "value")
-        self._view.job_history_toggle.observe(self._on_job_history_toggle, "value")
+        self._model.observe(
+            self._on_guide_category_selection_change,
+            "selected_guide_category",
+        )
+        self._model.observe(
+            self._on_guide_selection_change,
+            [
+                "selected_guide_category",
+                "selected_guide",
+            ],
+        )
+
+        self._view.guide_toggle.observe(
+            self._on_guide_toggle,
+            "value",
+        )
+        self._view.about_toggle.observe(
+            self._on_about_toggle,
+            "value",
+        )
+
+        ipw.dlink(
+            (self._model, "guide_category_options"),
+            (self._view.guide_category_selection, "options"),
+        )
+        ipw.link(
+            (self._model, "selected_guide_category"),
+            (self._view.guide_category_selection, "value"),
+        )
+        ipw.dlink(
+            (self._model, "guide_options"),
+            (self._view.guide_selection, "options"),
+        )
+        ipw.link(
+            (self._model, "selected_guide"),
+            (self._view.guide_selection, "value"),
+        )
 
 
-class AppWrapperModel(traitlets.HasTraits):
+class AppWrapperModel(tl.HasTraits):
     """An MVC model for `AppWrapper`."""
 
-    def __init__(self):
-        """`AppWrapperModel` constructor."""
+    guide_category_options = tl.List(["none", *guide_manager.get_guide_categories()])
+    selected_guide_category = tl.Unicode("none")
+    guide_options = tl.List(tl.Unicode())
+    selected_guide = tl.Unicode(None, allow_none=True)
+
+    def update_active_guide(self, category, guide):
+        """Sets the current active guide."""
+        active_guide = f"{category}/{guide}" if category != "none" else category
+        guide_manager.active_guide = active_guide
 
 
 class AppWrapperView(ipw.VBox):
@@ -104,11 +156,11 @@ class AppWrapperView(ipw.VBox):
         from datetime import datetime
 
         from importlib_resources import files
-        from IPython.display import Image, display
+        from IPython.display import Image
         from jinja2 import Environment
 
+        from aiidalab_qe.app.static import images as images_folder
         from aiidalab_qe.app.static import templates
-        from aiidalab_qe.app.utils.search_jobs import QueryInterface
         from aiidalab_qe.common.infobox import InfoBox
         from aiidalab_qe.version import __version__
 
@@ -117,7 +169,7 @@ class AppWrapperView(ipw.VBox):
         self.output = ipw.Output()
 
         logo_img = Image(
-            filename="docs/source/_static/logo.png",
+            filename=files(images_folder) / "logo.png",
             width="700",
         )
         logo = ipw.Output()
@@ -128,16 +180,17 @@ class AppWrapperView(ipw.VBox):
         subtitle = ipw.HTML("<h3 id='subtitle'>🎉 Happy computing 🎉</h3>")
 
         self.guide_toggle = ipw.ToggleButton(
+            layout=ipw.Layout(width="auto"),
             button_style="",
             icon="book",
             value=False,
-            description="Getting Started",
+            description="Getting started",
             tooltip="Learn how to use the app",
             disabled=True,
-            layout=ipw.Layout(width="140px"),
         )
 
         self.about_toggle = ipw.ToggleButton(
+            layout=ipw.Layout(width="auto"),
             button_style="",
             icon="info",
             value=False,
@@ -146,24 +199,37 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.job_history_toggle = ipw.ToggleButton(
-            button_style="",
+        self.calculation_history_link = LinkButton(
+            description="Calculation history",
+            link="./calculation_history.ipynb",
             icon="list",
-            value=False,
-            description="Job History",
-            tooltip="View all jobs run with this app",
             disabled=True,
-            layout=ipw.Layout(width="140px"),
         )
 
-        info_toggles = ipw.HBox(
+        self.new_workchain_link = LinkButton(
+            description="New calculation",
+            link="./qe.ipynb",
+            icon="plus-circle",
+            disabled=True,
+        )
+
+        self.setup_resources_link = LinkButton(
+            description="Setup resources",
+            link="../home/code_setup.ipynb",
+            icon="database",
+            disabled=True,
+        )
+
+        self.controls = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
-                self.job_history_toggle,
-            ]
+                self.calculation_history_link,
+                self.setup_resources_link,
+                self.new_workchain_link,
+            ],
         )
-        info_toggles.add_class("info-toggles")
+        self.controls.add_class("app-controls")
 
         env = Environment()
         guide_template = files(templates).joinpath("guide.jinja").read_text()
@@ -172,26 +238,25 @@ class AppWrapperView(ipw.VBox):
         self.guide = ipw.HTML(env.from_string(guide_template).render())
         self.about = ipw.HTML(env.from_string(about_template).render())
 
-        self.info_container = InfoBox()
-        self.job_history = QueryInterface()
+        self.guide_category_selection = ipw.RadioButtons(
+            description="Guides:",
+            layout=ipw.Layout(width="max-content"),
+        )
+        self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(margin="2px 20px"))
+
+        self.info_container = InfoBox(layout=ipw.Layout(margin="14px 2px 0"))
 
         header = ipw.VBox(
             children=[
                 logo,
                 subtitle,
-                info_toggles,
+                self.controls,
                 self.info_container,
             ],
         )
         header.add_class("app-header")
 
-        loading = ipw.HTML("""
-            <div id="loading">
-                Loading the app <i class="fa fa-spinner fa-spin"></i>
-            </div>
-        """)
-
-        self.main = ipw.VBox(children=[loading])
+        self.main = ipw.VBox(children=[LoadingWidget("Loading the app")])
 
         current_year = datetime.now().year
         footer = ipw.HTML(f"""

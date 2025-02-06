@@ -102,8 +102,14 @@ class CalcJobNodeViewerWidget(ipw.VBox):
         self.output_follower.observe(self._observe_output_follower_lineno, ["lineno"])
 
         super().__init__(
-            [ipw.HTML(f"CalcJob: {self.calcjob}"), self.log_output], **kwargs
+            children=[
+                ipw.HTML(f"CalcJob: {self.calcjob}"),
+                self.log_output,
+            ],
+            layout=ipw.Layout(height="100%"),
+            **kwargs,
         )
+        self.add_class("calcjob-node-viewer")
 
     def _observe_output_follower_lineno(self, _):
         with self.hold_trait_notifications():

@@ -7,9 +7,39 @@ import tempfile
 import pytest
 
 from aiida import orm
-from aiidalab_qe.setup.pseudos import SSSP_VERSION
+from aiidalab_qe.app.wizard_app import WizardApp
+from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
+
+ELEMENTS = [
+    "H",
+    "Li",
+    "O",
+    "S",
+    "Si",
+    "Co",
+    "Mo",
+]
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--skip-slow", action="store_true", default=False, help="run slow tests"
+    )
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "slow: mark test as slow to run")
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--skip-slow"):
+        return
+    skip_slow = pytest.mark.skip(reason="Slow test")
+    for item in items:
+        if "slow" in item.keywords:
+            item.add_marker(skip_slow)
 
 
 @pytest.fixture
@@ -106,7 +136,6 @@ def generate_structure_data():
             structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
 
         elif name == "H2O-larger":
-            # just a larger supercell. To test the warning messages
             cell = [[20.0, 0.0, 0.0], [0.0, 20.0, 0.0], [0.0, 0.0, 20.0]]
             structure = orm.StructureData(cell=cell)
             structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
@@ -205,47 +234,19 @@ def generate_projection_data(generate_bands_data):
     return _generate_projection_data
 
 
-@pytest.fixture(scope="function")
-def sssp(aiida_profile, generate_upf_data):
-    """Create an SSSP pseudo potential family from scratch."""
-    from aiida.common.constants import elements
-    from aiida.plugins import GroupFactory
-
-    aiida_profile.clear_profile()
-
-    SsspFamily = GroupFactory("pseudo.family.sssp")
+@pytest.fixture(scope="session", autouse=True)
+def sssp(generate_upf_data_for_session):
+    """Create SSSP pseudopotentials from scratch."""
+    from aiida_pseudo.groups.family import SsspFamily
 
     cutoffs = {}
     stringency = "standard"
 
-    actinides = (
-        "Ac",
-        "Th",
-        "Pa",
-        "U",
-        "Np",
-        "Pu",
-        "Am",
-        "Cm",
-        "Bk",
-        "Cf",
-        "Es",
-        "Fm",
-        "Md",
-        "No",
-        "Lr",
-    )
-
     with tempfile.TemporaryDirectory() as d:
         dirpath = pathlib.Path(d)
 
-        for values in elements.values():
-            element = values["symbol"]
-
-            if element in actinides:
-                continue
-
-            upf = generate_upf_data(element)
+        for element in ELEMENTS:
+            upf = generate_upf_data_for_session(element)
             filename = dirpath / f"{element}.upf"
 
             with open(filename, "w+b") as handle:
@@ -258,17 +259,76 @@ def sssp(aiida_profile, generate_upf_data):
                 "cutoff_rho": 240.0,
             }
 
-        label = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
-        family = SsspFamily.create_from_folder(dirpath, label)
+        for functional in ("PBE", "PBEsol"):
+            for accuracy in ("efficiency", "precision"):
+                label = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
+                family = SsspFamily.create_from_folder(dirpath, label)
+                family.set_cutoffs(cutoffs, stringency, unit="Ry")
 
-    family.set_cutoffs(cutoffs, stringency, unit="Ry")
 
-    return family
+@pytest.fixture(scope="session", autouse=True)
+def pseudodojo(generate_upf_data_for_session):
+    """Create pseudodojo pseudopotentials from scratch."""
+    from aiida_pseudo.data.pseudo import UpfData
+    from aiida_pseudo.groups.family import PseudoDojoFamily
+
+    cutoffs = {}
+
+    with tempfile.TemporaryDirectory() as d:
+        dirpath = pathlib.Path(d)
+
+        for element in ELEMENTS:
+            upf = generate_upf_data_for_session(element)
+            filename = dirpath / f"{element}.upf"
+
+            with open(filename, "w+b") as handle:
+                with upf.open(mode="rb") as source:
+                    handle.write(source.read())
+                    handle.flush()
+
+            cutoffs[element] = {
+                "cutoff_wfc": 36.0,
+                "cutoff_rho": 144.0,
+            }
+
+        ROOT = f"PseudoDojo/{PSEUDODOJO_VERSION}"
+        for stringency in ("standard", "stringent"):
+            for functional in ("PBE", "PBEsol"):
+                for spin_orbit in ("SR", "FR"):
+                    label = f"{ROOT}/{functional}/{spin_orbit}/{stringency}/upf"
+                    family = PseudoDojoFamily.create_from_folder(
+                        dirpath,
+                        label,
+                        pseudo_type=UpfData,
+                    )
+                    family.set_cutoffs(cutoffs, stringency, unit="Ry")
 
 
 @pytest.fixture(scope="function")
 def generate_upf_data():
     """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
+
+    def _generate_upf_data(element, filename=None):
+        """Return `UpfData` node."""
+        from aiida_pseudo.data.pseudo import UpfData
+
+        content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="4.0"\n/></UPF>\n'
+        stream = io.BytesIO(content.encode("utf-8"))
+
+        if filename is None:
+            filename = f"{element}.upf"
+
+        return UpfData(stream, filename=filename)
+
+    return _generate_upf_data
+
+
+@pytest.fixture(scope="session")
+def generate_upf_data_for_session():
+    """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`.
+
+    NOTE: Duplicated fixture for use in the session-scoped pseudos fixtures
+    """
 
     def _generate_upf_data(element, filename=None):
         """Return `UpfData` node."""
@@ -325,10 +385,14 @@ def projwfc_bands_code(aiida_local_code_factory):
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.configuration.workflow import WorkChainSettings
+    from aiidalab_qe.app.configuration.basic import (
+        BasicConfigurationSettingsModel,
+        BasicConfigurationSettingsPanel,
+    )
 
     def _workchain_settings_generator(**kwargs):
-        workchain_settings = WorkChainSettings()
+        model = BasicConfigurationSettingsModel()
+        workchain_settings = BasicConfigurationSettingsPanel(model=model)
         workchain_settings._update_settings(**kwargs)
         return workchain_settings
 
@@ -338,10 +402,14 @@ def workchain_settings_generator():
 @pytest.fixture()
 def smearing_settings_generator():
     """Return a function that generates a smearing settings dictionary."""
-    from aiidalab_qe.app.configuration.advanced import SmearingSettings
+    from aiidalab_qe.app.configuration.advanced.smearing import (
+        SmearingConfigurationSettingsModel,
+        SmearingConfigurationSettingsPanel,
+    )
 
     def _smearing_settings_generator(**kwargs):
-        smearing_settings = SmearingSettings()
+        model = SmearingConfigurationSettingsModel()
+        smearing_settings = SmearingConfigurationSettingsPanel(model=model)
         smearing_settings.update_settings(**kwargs)
         return smearing_settings
 
@@ -350,32 +418,36 @@ def smearing_settings_generator():
 
 @pytest.fixture
 def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
-    from aiidalab_qe.app.main import App
+    app = WizardApp(qe_auto_setup=False)
 
-    # Since we use `qe_auto_setup=False`, which will skip the pseudo library installation
-    # we need to mock set the installation status to `True` to avoid the blocker message pop up in the
-    # submmision step.
-    app = App(qe_auto_setup=False)
-    app.submit_step.sssp_installation_status.installed = True
+    # Since we use `qe_auto_setup=False`, which will skip the pseudo library
+    # installation, we need to mock set the installation status to `True` to
+    # avoid the blocker message pop up in the submission step.
+    app.submit_model.installing_qe = False
+    app.submit_model.installing_sssp = False
+    app.submit_model.sssp_installed = True
+    app.submit_model.qe_installed = True
 
     # set up codes
-    app.submit_step.pw_code.code_selection.refresh()
-    app.submit_step.codes["dos"].code_selection.refresh()
-    app.submit_step.codes["projwfc"].code_selection.refresh()
-    app.submit_step.codes["projwfc_bands"].code_selection.refresh()
+    global_model = app.submit_model.get_model("global")
+    global_model.get_model("quantumespresso.pw").activate()
+    global_model.get_model("quantumespresso.dos").activate()
+    global_model.get_model("quantumespresso.projwfc").activate()
 
-    app.submit_step.pw_code.value = pw_code.uuid
-    app.submit_step.codes["dos"].value = dos_code.uuid
-    app.submit_step.codes["projwfc"].value = projwfc_code.uuid
-    app.submit_step.codes["projwfc_bands"].value = projwfc_bands_code.uuid
+    global_model.set_selected_codes(
+        {
+            "pw": {"code": pw_code.label},
+            "dos": {"code": dos_code.label},
+            "projwfc": {"code": projwfc_code.label},
+        }
+    )
 
     yield app
 
 
 @pytest.fixture()
-@pytest.mark.usefixtures("sssp")
 def submit_app_generator(
-    app,
+    app: WizardApp,
     generate_structure_data,
 ):
     """Return a function that generates a submit step widget."""
@@ -394,9 +466,8 @@ def submit_app_generator(
         initial_magnetic_moments=0.0,
         electron_maxstep=80,
     ):
-        configure_step = app.configure_step
         # Settings
-        configure_step.input_structure = generate_structure_data()
+        app.configure_model.input_structure = generate_structure_data()
         parameters = {
             "workchain": {
                 "relax_type": relax_type,
@@ -406,24 +477,33 @@ def submit_app_generator(
                 "protocol": workchain_protocol,
             }
         }
-        configure_step.set_configuration_parameters(parameters)
+        app.configure_model.set_model_state(parameters)
+
         # Advanced settings
-        configure_step.advanced_settings.override.value = True
-        configure_step.advanced_settings.total_charge.value = tot_charge
-        configure_step.advanced_settings.van_der_waals.value = vdw_corr
-        configure_step.advanced_settings.kpoints_distance.value = kpoints_distance
-        configure_step.advanced_settings.magnetization._set_magnetization_values(
-            initial_magnetic_moments
+        advanced_model = app.configure_model.get_model("advanced")
+
+        advanced_model.total_charge = tot_charge
+        advanced_model.van_der_waals = vdw_corr
+        advanced_model.kpoints_distance = kpoints_distance
+        advanced_model.electron_maxstep = electron_maxstep
+        if isinstance(initial_magnetic_moments, (int, float)):
+            initial_magnetic_moments = [initial_magnetic_moments]
+        advanced_model.get_model("magnetization").moments = dict(
+            zip(
+                app.configure_model.input_structure.get_kind_names(),
+                initial_magnetic_moments,
+            )
         )
-        configure_step.advanced_settings.electron_maxstep.value = electron_maxstep
         # mimic the behavior of the smearing widget set up
-        configure_step.advanced_settings.smearing.smearing.value = smearing
-        configure_step.advanced_settings.smearing.degauss.value = degauss
-        configure_step.confirm()
-        #
-        submit_step = app.submit_step
-        submit_step.input_structure = generate_structure_data()
-        submit_step.pw_code.num_cpus.value = 2
+        smearing_model = advanced_model.get_model("smearing")
+        smearing_model.type = smearing
+        smearing_model.degauss = degauss
+        app.configure_model.confirm()
+
+        app.submit_model.input_structure = generate_structure_data()
+        app.submit_model.get_model("global").get_model(
+            "quantumespresso.pw"
+        ).num_cpus = 2
 
         return app
 
@@ -431,17 +511,15 @@ def submit_app_generator(
 
 
 @pytest.fixture
-def app_to_submit(app):
+def app_to_submit(app: WizardApp, generate_structure_data):
     # Step 1: select structure from example
-    step1 = app.structure_step
-    structure = step1.manager.children[0].children[3]
-    structure.children[0].value = structure.children[0].options[1][1]
-    step1.confirm()
+    app.structure_model.input_structure = generate_structure_data()
+    app.structure_model.confirm()
     # Step 2: configure calculation
-    step2 = app.configure_step
-    step2.workchain_settings.properties["bands"].run.value = True
-    step2.workchain_settings.properties["pdos"].run.value = True
-    step2.confirm()
+    # TODO do we need to include bands and pdos here?
+    app.configure_model.get_model("bands").include = True
+    app.configure_model.get_model("pdos").include = True
+    app.configure_model.confirm()
     yield app
 
 
@@ -658,7 +736,8 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app,
+    app: WizardApp,
+    generate_structure_data,
     generate_workchain,
     generate_pdos_workchain,
     generate_bands_workchain,
@@ -681,104 +760,128 @@ def generate_qeapp_workchain(
 
         from aiida.orm import Dict
         from aiida.orm.utils.serialize import serialize
-        from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-        from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
         from aiidalab_qe.workflows import QeAppWorkChain
 
         # Step 1: select structure from example
-        s1 = app.structure_step
         if structure is None:
-            from_example = s1.manager.children[0].children[3]
-            # TODO: (unkpcz) using options to set value in test is cranky, instead, use fixture which will make the test more static and robust.
-            from_example.children[0].value = from_example.children[0].options[1][1]
+            structure = generate_structure_data()
         else:
             structure.store()
-            aiida_database = s1.manager.children[0].children[2]
-            aiida_database.search()
-            aiida_database.results.value = structure
-        s1.confirm()
-        structure = s1.confirmed_structure
+            # TODO is this necessary?
+            # aiida_database_wrapper = app.structure_step.manager.children[0].children[2]  # type: ignore
+            # aiida_database_wrapper.render()
+            # aiida_database = aiida_database_wrapper.children[0]  # type: ignore
+            # aiida_database.search()
+            # aiida_database.results.value = structure
+
+        app.structure_model.input_structure = structure
+        app.structure_model.confirm()
+
         # step 2 configure
-        s2: ConfigureQeAppWorkChainStep = app.configure_step
-        s2.workchain_settings.relax_type.value = relax_type
-        # In order to parepare a complete inputs, I set all the properties to true
-        # this can be overrided later
-        s2.workchain_settings.properties["bands"].run.value = run_bands
-        s2.workchain_settings.properties["pdos"].run.value = run_pdos
-        s2.workchain_settings.workchain_protocol.value = "fast"
-        s2.workchain_settings.spin_type.value = spin_type
-        s2.workchain_settings.electronic_type.value = electronic_type
+        workchain_model = app.configure_model.get_model("workchain")
+        advanced_model = app.configure_model.get_model("advanced")
+
+        app.configure_model.relax_type = relax_type
+
+        # In order to prepare complete inputs, I set all the properties to true
+        # this can be overridden later
+        app.configure_model.get_model("bands").include = run_bands
+        app.configure_model.get_model("pdos").include = run_pdos
+
+        workchain_model.protocol = "fast"
+        workchain_model.spin_type = spin_type
+        workchain_model.electronic_type = electronic_type
+
         if spin_type == "collinear":
-            s2.advanced_settings.override.value = True
-            magnetization_values = (
-                initial_magnetic_moments
-                if magnetization_type == "starting_magnetization"
-                else tot_magnetization
-            )
-            s2.advanced_settings.magnetization._set_tot_magnetization(
-                tot_magnetization
-            ) if electronic_type == "insulator" else s2.advanced_settings.magnetization._set_magnetization_values(
-                magnetization_values
-            )
+            magnetization_model = advanced_model.get_model("magnetization")
+            if electronic_type == "insulator":
+                magnetization_model.total = tot_magnetization
+            elif magnetization_type == "starting_magnetization":
+                if isinstance(initial_magnetic_moments, (int, float)):
+                    initial_magnetic_moments = [initial_magnetic_moments]
+                magnetization_model.moments = dict(
+                    zip(
+                        structure.get_kind_names(),
+                        initial_magnetic_moments,
+                    )
+                )
+            else:
+                magnetization_model.total = tot_magnetization
 
-        s2.confirm()
+        app.configure_model.confirm()
+
         # step 3 setup code and resources
-        s3: SubmitQeAppWorkChainStep = app.submit_step
-        s3.pw_code.num_cpus.value = 4
+        app.submit_model.get_model("global").get_model(
+            "quantumespresso.pw"
+        ).num_cpus = 4
+        parameters = app.submit_model.get_model_state()
+        builder = app.submit_model._create_builder(parameters)
 
-        builder = s3._create_builder()
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
 
-        # Setting up inputs for bands_projwfc
-        inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
-            inputs["bands"]["bands"]["scf"]["pw"]
-        )
-        inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
-            inputs["bands"]["bands"]["bands"]["pw"]
-        )
-        inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
-            "bands"
-        ]["bands"]["pw"]["code"]
-        inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
-            "bands"
-        ]["scf"]["pw"]["code"]
-
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = fixture_code(
-            "quantumespresso.projwfc"
-        )
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
-            {"PROJWFC": {"DeltaE": 0.01}}
-        ).store()
-
         if run_bands:
+            # Setting up inputs for bands_projwfc
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
+                inputs["bands"]["bands"]["scf"]["pw"]
+            )
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
+                inputs["bands"]["bands"]["bands"]["pw"]
+            )
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
+                "bands"
+            ]["bands"]["pw"]["code"]
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
+                "bands"
+            ]["scf"]["pw"]["code"]
+
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = (
+                fixture_code("quantumespresso.projwfc")
+            )
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
+                {"PROJWFC": {"DeltaE": 0.01}}
+            ).store()
             inputs["properties"].append("bands")
+
         if run_pdos:
             inputs["properties"].append("pdos")
 
-        wkchain = generate_workchain(QeAppWorkChain, inputs)
-        wkchain.setup()
+        workchain = generate_workchain(QeAppWorkChain, inputs)
+        workchain.setup()
+
         # mock output
         if relax_type != "none":
-            wkchain.out("structure", s1.confirmed_structure)
+            workchain.out("structure", app.structure_model.input_structure)
+
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
             pdos = generate_pdos_workchain(structure, spin_type)
-            wkchain.out_many(
-                wkchain.exposed_outputs(pdos.node, PdosWorkChain, namespace="pdos")
+            workchain.out_many(
+                workchain.exposed_outputs(
+                    pdos.node,
+                    PdosWorkChain,
+                    namespace="pdos",
+                )
             )
+
         if run_bands:
             from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 
             bands = generate_bands_workchain(structure)
-            wkchain.out_many(
-                wkchain.exposed_outputs(bands.node, BandsWorkChain, namespace="bands")
+            workchain.out_many(
+                workchain.exposed_outputs(
+                    bands.node,
+                    BandsWorkChain,
+                    namespace="bands",
+                )
             )
-        wkchain.update_outputs()
+        workchain.update_outputs()
+
         # set ui_parameters
-        qeapp_node = wkchain.node
-        qeapp_node.base.extras.set("ui_parameters", serialize(s3.ui_parameters))
-        return wkchain
+        qeapp_node = workchain.node
+        qeapp_node.base.extras.set("ui_parameters", serialize(parameters))
+
+        return workchain
 
     return _generate_qeapp_workchain

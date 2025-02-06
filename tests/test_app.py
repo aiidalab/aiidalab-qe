@@ -1,78 +1,54 @@
-import pytest
+from aiidalab_qe.app.wizard_app import WizardApp
 
 
-# TODO: (jusong.yu) I have to add this fixture after I change sssp fixture from session to function
-# The fixtures are a bit messy, we need to clean it up
-# Same for other tests that use sssp fixture
-@pytest.mark.usefixtures("sssp")
-def test_reload_and_reset(submit_app_generator, generate_qeapp_workchain):
-    """Test if the GUI paramters can be reload and reset properly"""
-    wkchain = generate_qeapp_workchain(
-        relax_type="positions", run_bands=True, run_pdos=False, spin_type="collinear"
+def test_reload_and_reset(generate_qeapp_workchain):
+    app = WizardApp(qe_auto_setup=False)
+    workchain = generate_qeapp_workchain(
+        relax_type="positions",
+        spin_type="collinear",
+        run_bands=True,
+        run_pdos=False,
     )
-    app = submit_app_generator()
-    # select the pk
-    app.process = wkchain.node.pk
-    # check if the value are reload correctly
-    assert app.configure_step.workchain_settings.relax_type.value == "positions"
-    assert app.configure_step.workchain_settings.spin_type.value == "collinear"
-    assert app.configure_step.workchain_settings.properties["bands"].run.value is True
-    assert app.configure_step.workchain_settings.properties["pdos"].run.value is False
-    assert (
-        len(
-            app.configure_step.advanced_settings.pseudo_setter.pseudo_setting_widgets.children
-        )
-        > 0
-    )
+
+    # Test if the app can be loaded from process
+    app.process = workchain.node.pk
+    assert app.configure_model.relax_type == "positions"
+    assert app.configure_model.get_model("workchain").spin_type == "collinear"
+    assert app.configure_model.get_model("bands").include is True
+    assert app.configure_model.get_model("pdos").include is False
+    advanced_model = app.configure_model.get_model("advanced")
+    assert len(advanced_model.get_model("pseudos").dictionary) > 0
     assert app.configure_step.state == app.configure_step.State.SUCCESS
-    # in the reload case, go to the submit step should not
-    # trigger the reset of previous steps
-    app._wizard_app_widget.selected_index = 2
-    assert app.configure_step.state == app.configure_step.State.SUCCESS
-    # new workflow, this will reset the GUI
-    app.process = None
-    # check if the value are reload correctly
-    assert app.structure_step.manager.structure is None
-    assert app.configure_step.workchain_settings.relax_type.value == "positions_cell"
-    assert app.configure_step.workchain_settings.spin_type.value == "none"
-    assert app.configure_step.workchain_settings.properties["bands"].run.value is False
-    assert app.configure_step.workchain_settings.properties["pdos"].run.value is False
-    assert app.configure_step.advanced_settings.pseudo_setter.ecutwfc_setter.value == 0
-    assert (
-        len(
-            app.configure_step.advanced_settings.pseudo_setter.pseudo_setting_widgets.children
-        )
-        == 0
-    )
-    assert app.submit_step.pw_code.num_cpus.value == 4
 
 
-def test_select_new_structure(app_to_submit, generate_structure_data):
-    """Test if the new structure is selected, the confirmed structure is reset"""
-    app = app_to_submit
-    assert app.structure_step.confirmed_structure is not None
-    # select a new structure will reset the confirmed structure
-    app.structure_step.structure = generate_structure_data()
-    assert app.structure_step.confirmed_structure is None
+def test_selecting_new_structure_unconfirms_model(generate_structure_data):
+    from aiidalab_qe.app.structure.model import StructureStepModel
+
+    model = StructureStepModel()
+    model.input_structure = generate_structure_data()
+    assert model.has_structure
+    model.confirm()
+    model.input_structure = generate_structure_data()
+    assert not model.confirmed
 
 
 def test_unsaved_changes(app_to_submit):
     """Test if the unsaved changes are handled correctly"""
     from aiidalab_widgets_base import WizardAppWidgetStep
 
-    app = app_to_submit
-    # go to the configue step, and make some changes
+    app: WizardApp = app_to_submit
+    # go to the configure step, and make some changes
     app._wizard_app_widget.selected_index = 1
-    app.configure_step.workchain_settings.relax_type.value = "positions"
+    app.configure_model.relax_type = "positions"
     # go to the submit step
     app._wizard_app_widget.selected_index = 2
-    # the state of the configue step should be updated.
+    # the state of the configure step should be updated.
     assert app.configure_step.state == WizardAppWidgetStep.State.CONFIGURED
     # check if a new blocker is added
-    assert len(app.submit_step.external_submission_blockers) == 1
+    assert len(app.submit_model.external_submission_blockers) == 1
     # confirm the changes
     app._wizard_app_widget.selected_index = 1
-    app.configure_step.confirm()
+    app.configure_model.confirm()
     app._wizard_app_widget.selected_index = 2
     # the blocker should be removed
-    assert len(app.submit_step.external_submission_blockers) == 0
+    assert len(app.submit_model.external_submission_blockers) == 0
