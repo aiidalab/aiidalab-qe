@@ -29,6 +29,7 @@ from .bandpdosplotly import BandsPdosPlotly
 
 class BandsPdosModel(Model):
     bands = tl.Instance(AttributeDict, allow_none=True)
+    wannier90_bands = tl.Instance(AttributeDict, allow_none=True)
     pdos = tl.Instance(AttributeDict, allow_none=True)
 
     dos_atoms_group_options = tl.List(
@@ -63,6 +64,7 @@ class BandsPdosModel(Model):
 
     pdos_data = {}
     bands_data = {}
+    wannier90_bands_data = {}
     bands_projections_data = {}
 
     # Image format options
@@ -143,7 +145,9 @@ class BandsPdosModel(Model):
         """Fetch the data from the nodes."""
         if self.bands:
             if not self.bands_data:
-                self.bands_data = self._get_bands_data()
+                self.bands_data = self._get_bands_data(self.bands)
+            if not self.wannier90_bands_data:
+                self.wannier90_bands_data = self._get_bands_data(self.wannier90_bands)
 
         if self.pdos:
             self.pdos_data = self._get_pdos_data()
@@ -152,6 +156,7 @@ class BandsPdosModel(Model):
         """Create the plot."""
         self.helper = BandsPdosPlotly(
             bands_data=self.bands_data,
+            wannier90_bands_data=self.wannier90_bands_data,
             bands_projections_data=None,
             pdos_data=self.pdos_data,
         )
@@ -233,11 +238,11 @@ class BandsPdosModel(Model):
             )
         return None
 
-    def _get_bands_data(self):
-        if not self.bands:
+    def _get_bands_data(self, bands=None):
+        if not bands:
             return None
 
-        bands_data = get_bands_data(self.bands)
+        bands_data = get_bands_data(bands)
         return bands_data
 
     def _get_bands_projections_data(self):
