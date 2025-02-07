@@ -64,7 +64,14 @@ def test_reminder_info():
     model = ConfigurationStepModel()
     config = ConfigureQeAppWorkChainStep(model=model)
     config.render()
-    bands_info = config.property_children[2].children[1]
+    bands_info = next(
+        (
+            child.children[1]
+            for child in config.property_children
+            if "Electronic band structure" in child.children[1]
+        ),
+        None,
+    )
     assert bands_info.value == ""
     bands_model = model.get_model("bands")
     bands_model.include = True
