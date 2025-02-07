@@ -21,6 +21,8 @@ import numpy as np
 import requests as req
 import traitlets
 from IPython.display import HTML, Javascript, clear_output, display
+from pymatgen.io.ase import AseAtomsAdaptor
+from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
@@ -1499,3 +1501,288 @@ class ArchiveImporter(ipw.VBox):
                 else:
                     self.info.value = ""
                 self.logger.value += f"\n{stderr}"
+
+
+class ShakeNBreakEditor(ipw.VBox):
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    selection = traitlets.List(traitlets.Int)
+    structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
+
+    def __init__(self, title="Editor ShakeNbreak"):
+        self.title = title
+        self._status_message = StatusHTML()
+        self.num_nearest_neighbours = ipw.IntText(
+            description="Num. neighbours atoms:",
+            value=8,
+            step=1,
+            style={"description_width": "150px"},
+        )
+        self.defect_position = ipw.Text(
+            description="Defect atom:",
+            style={"description_width": "150px"},
+        )
+        # Only select one atom!
+        self.btn_defect_position = ipw.Button(
+            description="From selection",
+            style={"description_width": "150px"},
+        )
+        # Center of the selection
+        self.btn_defect_position_vac = ipw.Button(
+            description="From selection",
+            style={"description_width": "150px"},
+        )
+        self.vacancy_coords = ipw.Text(
+            description="Vacancy coords:",
+            style={"description_width": "150px"},
+        )
+        self.btn_defect_position.on_click(self._defect_position)
+        self.btn_defect_position_vac.on_click(self._defect_position_vac)
+        self.distortion_factor = ipw.BoundedFloatText(
+            value=1.0,
+            min=0.2,
+            max=1.8,
+            step=0.1,
+            description="Distortion factor:",
+            style={"description_width": "150px"},
+        )
+        self.btn_apply_bond_distortion = ipw.Button(
+            description="Apply bond distortion",
+            button_style="primary",
+            disabled=False,
+        )
+        self.btn_apply_bond_distortion.on_click(self._apply_bond_distortion)
+        self.selected_atoms = ipw.Text(
+            description="Select atoms:", value="", style={"description_width": "150px"}
+        )
+        self.btn_selected_atoms = ipw.Button(
+            description="From selection", style={"description_width": "150px"}
+        )
+        self.btn_selected_atoms.on_click(self._selected_atoms)
+        self.wrong_syntax = ipw.HTML(
+            value="""<i class="fa fa-times" style="color:red;font-size:2em;" ></i> wrong syntax""",
+            layout={"visibility": "hidden"},
+        )
+        self.radial_cutoff = ipw.FloatText(
+            description="Radial cutoff distance (Å):",
+            value=3.0,
+            style={"description_width": "150px"},
+        )
+        self.btn_apply_random_distorion_all = ipw.Button(
+            description="Apply to all atoms",
+            button_style="primary",
+            style={"description_width": "250px"},
+        )
+        self.btn_apply_random_distorion_all.on_click(self._apply_random_distortion_all)
+        self.btn_apply_random_distortion = ipw.Button(
+            description="Apply locally",
+            button_style="primary",
+            style={"description_width": "250px"},
+        )
+        self.btn_apply_random_distortion.on_click(self._apply_random_distortion)
+        super().__init__(
+            children=[
+                ipw.HTML(
+                    """
+                    <p>
+                    Apply bond distortions or random displacements to explore metastable structures of point defects in solids.
+                    This editor allows you to manipulate atomic positions and study defect behaviors in materials.
+                    </p>
+                    """
+                ),
+                ipw.HTML(
+                    "<h4>Define defect position:</h4>",
+                ),
+                ipw.HTML(
+                    """
+                    <p>
+                    To apply bond distortions, you can define either:<br>
+                    - A <strong>defect atom</strong>: Select an atom in the viewer to mark it as a defect.<br>
+                    - A <strong>vacancy position</strong>: Select the center of mass of the selection to define the vacancy position.
+                    </p>
+                    """
+                ),
+                ipw.HBox(
+                    [
+                        self.defect_position,
+                        self.btn_defect_position,
+                    ]
+                ),
+                ipw.HBox(
+                    [
+                        self.vacancy_coords,
+                        self.btn_defect_position_vac,
+                    ]
+                ),
+                ipw.HTML(
+                    "<h4>Bond distortion around defect:</h4>",
+                ),
+                ipw.HTML(
+                    """
+                    <p>
+                    Specify the number of neighboring atoms to apply the bond distortion.
+                    Set a distortion factor to adjust atomic positions:<br>
+                    - A value less than 1.0 shrinks the positions (e.g., 0.8 for a 20% reduction). <br>
+                    - A value greater than 1.0 expands the positions (e.g., 1.8 for an 80% increase).
+                    </p>
+                    """
+                ),
+                ipw.VBox(
+                    [
+                        self.num_nearest_neighbours,
+                        self.distortion_factor,
+                        self.btn_apply_bond_distortion,
+                    ]
+                ),
+                ipw.HTML(
+                    "<h4>Random displacements to all atoms or selected ones:</h4>",
+                ),
+                ipw.HTML(
+                    """
+                    <p>
+                    Define atoms for local random displacement around the defect or vacancy, and set the radial cutoff distance (in Å) to determine neighboring atoms for distance checks.
+                    </p>
+                    """
+                ),
+                ipw.HBox(
+                    [
+                        self.selected_atoms,
+                        self.btn_selected_atoms,
+                        self.wrong_syntax,
+                    ]
+                ),
+                self.radial_cutoff,
+                ipw.HBox(
+                    [
+                        self.btn_apply_random_distortion,
+                        self.btn_apply_random_distorion_all,
+                    ],
+                ),
+                self._status_message,
+                ipw.HTML(
+                    """
+                    <p>
+                    Uses the <a href="https://github.com/SMTG-Bham/ShakeNBreak" target="_blank">ShakeNBreak</a> package.
+                    </p>
+                    """
+                ),
+            ]
+        )
+
+    def sel2com(self):
+        """Get center of mass of the selection."""
+        if self.selection:
+            com = np.average(
+                self.structure[self.selection].get_scaled_positions(), axis=0
+            )
+        else:
+            com = [0, 0, 0]
+
+        return com
+
+    def str2vec(self, string):
+        return np.array(list(map(float, string.split())))
+
+    def vec2str(self, vector):
+        return (
+            str(round(vector[0], 2))
+            + " "
+            + str(round(vector[1], 2))
+            + " "
+            + str(round(vector[2], 2))
+        )
+
+    def _defect_position_vac(self, _=None):
+        """Define vaccancy coordinates."""
+        self.vacancy_coords.value = self.vec2str(self.sel2com())
+
+    def _defect_position(self, _=None):
+        """Define vaccancy coordinates."""
+        if len(self.selection) != 1:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select one atom first.</strong>
+            </div>
+            """
+        else:
+            self.defect_position.value = list_to_string_range(self.selection)
+
+    def _selected_atoms(self, _=None):
+        """Selected atoms to displace."""
+        self.selected_atoms.value = list_to_string_range(self.selection)
+
+    def _apply_bond_distortion(self, _=None):
+        if not self.defect_position.value and not self.vacancy_coords.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select the position of the defect or vacancy.</strong>
+            </div>
+            """
+        else:
+            if self.defect_position.value == "":
+                site_index = None
+            else:
+                site_index = int(self.defect_position.value)
+            if self.vacancy_coords.value == "":
+                frac_coords = None
+            else:
+                frac_coords = self.str2vec(self.vacancy_coords.value)
+
+            self._apply_distortion(
+                distort,
+                num_nearest_neighbours=self.num_nearest_neighbours.value,
+                site_index=site_index,
+                distortion_factor=self.distortion_factor.value,
+                frac_coords=frac_coords,
+            )
+
+    def _apply_random_distortion(self, _=None):
+        if not self.defect_position.value and not self.vacancy_coords.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select the position of the defect or vacancy.</strong>
+            </div>
+            """
+        else:
+            if self.defect_position.value == "":
+                site_index = None
+            else:
+                site_index = int(self.defect_position.value)
+            if self.vacancy_coords.value == "":
+                frac_coords = None
+            else:
+                frac_coords = self.str2vec(self.vacancy_coords.value)
+
+            active_atoms, syntax_ok = string_range_to_list(self.selected_atoms.value)
+            if not active_atoms:
+                active_atoms = None
+            if not syntax_ok:
+                self.wrong_syntax.layout.visibility = "visible"
+            else:
+                self.wrong_syntax.layout.visibility = "hidden"
+
+                self._apply_distortion(
+                    local_mc_rattle,
+                    site_index=site_index,
+                    frac_coords=frac_coords,
+                    active_atoms=active_atoms,
+                    nbr_cutoff=self.radial_cutoff.value,
+                )
+
+    def _apply_random_distortion_all(self, _=None):
+        self._apply_distortion(
+            rattle,
+            active_atoms=None,
+            nbr_cutoff=self.radial_cutoff.value,
+        )
+
+    def _apply_distortion(self, distortion_func, **kwargs):
+        pymatgen_ase = AseAtomsAdaptor()
+        pymatgen_structure = pymatgen_ase.get_structure(self.structure)
+        struc_distorted = distortion_func(structure=pymatgen_structure, **kwargs)
+        periodicity = self.structure.pbc
+        if "distorted_structure" in struc_distorted:
+            atoms = pymatgen_ase.get_atoms(struc_distorted["distorted_structure"])
+        else:
+            atoms = pymatgen_ase.get_atoms(struc_distorted)
+        atoms.set_pbc(periodicity)
+        self.structure = atoms
