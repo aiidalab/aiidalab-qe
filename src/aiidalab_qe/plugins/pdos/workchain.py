@@ -88,6 +88,10 @@ def get_builder(codes, structure, parameters, **kwargs):
     # Update the nscf kpoints distance from the setting panel
     nscf_overrides["kpoints_distance"] = parameters["pdos"]["nscf_kpoints_distance"]
 
+    # Since tetrahedra_opt doesnt produce projections in projwfc for molecules we use tetrahedra_lin
+    if structure.pbc == (False, False, False):
+        nscf_overrides["pw"]["parameters"]["SYSTEM"]["occupations"] = "tetrahedra_lin"
+
     overrides = {
         "scf": scf_overrides,
         "nscf": nscf_overrides,
