@@ -68,7 +68,7 @@ def test_reminder_info():
         (
             child.children[1]
             for child in config.property_children
-            if "Electronic band structure" in child.children[1]
+            if "Electronic band structure" in child.children[0].title
         ),
         None,
     )
