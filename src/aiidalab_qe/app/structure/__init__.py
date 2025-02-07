@@ -14,6 +14,7 @@ from aiidalab_qe.common import (
     LazyLoadedOptimade,
     LazyLoadedStructureBrowser,
     PeriodicityEditor,
+    ShakeNBreakEditor,
 )
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget, QeWizardStep
@@ -83,6 +84,7 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
             BasicStructureEditor(title="Edit structure"),
             AddingTagsEditor(title="Edit atom tags"),
             PeriodicityEditor(title="Edit periodicity"),
+            ShakeNBreakEditor(title="ShakeNBreak"),
         ]
 
         plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
