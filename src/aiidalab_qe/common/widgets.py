@@ -1383,16 +1383,16 @@ class ArchiveImporter(ipw.VBox):
     def __init__(
         self,
         repo: str,
-        branch: str,
+        tag: str,
         archive_list: str,
         archives_dir: str,
         logger: t.Optional[dict] = None,
         **kwargs,
     ):
-        refs = "refs/heads"
-        raw = f"https://raw.githubusercontent.com/{repo}/{refs}/{branch}"
+        refs = "refs/tags"
+        raw = f"https://raw.githubusercontent.com/{repo}/{refs}/{tag}"
         self.archive_list_url = f"{raw}/{archive_list}"
-        self.archives_url = f"{self.GITHUB}/{repo}/raw/{refs}/{branch}/{archives_dir}"
+        self.archives_url = f"{self.GITHUB}/{repo}/raw/{refs}/{tag}/{archives_dir}"
         if logger:
             self.logger_placeholder = logger.get("placeholder", "")
             self.clear_log_on_import = logger.get("clear_on_import", False)
