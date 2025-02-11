@@ -147,7 +147,7 @@ def test_warning_messages(
     submit_model = app.submit_model
     global_model = submit_model.get_model("global")
 
-    pw_code = global_model.get_model("quantumespresso.pw")
+    pw_code = global_model.get_model("quantumespresso__pw")
 
     # we increase the resources, so we should have the Warning-3
     pw_code.num_cpus = len(os.sched_getaffinity(0))

@@ -186,7 +186,7 @@ class QeAppWorkChain(WorkChain):
         protocol = parameters["workchain"]["protocol"]
 
         relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
-            code=codes["global"]["codes"].get("quantumespresso.pw")["code"],
+            code=codes["global"]["codes"].get("quantumespresso__pw")["code"],
             structure=structure,
             protocol=protocol,
             relax_type=RelaxType(parameters["workchain"]["relax_type"]),
