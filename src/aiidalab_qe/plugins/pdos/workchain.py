@@ -84,13 +84,14 @@ def get_builder(codes, structure, parameters, **kwargs):
         projwfc_overrides["parameters"]["PROJWFC"] = {
             "degauss": parameters["pdos"]["pdos_degauss"]
         }
+        # Using Gaussian smearing with 'tetrahedra_opt' in NSCF calculations
+        # causes projwfc.x to fail in producing projections.
+        # This issue occurs in 3D, 2D, and 1D systems, as well as in molecules.
+        # To avoid this, we use 'tetrahedra_lin' instead when 'pdos_degauss' is set.
+        nscf_overrides["pw"]["parameters"]["SYSTEM"]["occupations"] = "tetrahedra_lin"
 
     # Update the nscf kpoints distance from the setting panel
     nscf_overrides["kpoints_distance"] = parameters["pdos"]["nscf_kpoints_distance"]
-
-    # Since tetrahedra_opt doesnt produce projections in projwfc for molecules we use tetrahedra_lin
-    if structure.pbc == (False, False, False):
-        nscf_overrides["pw"]["parameters"]["SYSTEM"]["occupations"] = "tetrahedra_lin"
 
     overrides = {
         "scf": scf_overrides,
