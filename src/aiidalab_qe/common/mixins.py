@@ -50,8 +50,12 @@ class HasModels(t.Generic[T]):
             self.add_model(identifier, model)
 
     def get_model(self, identifier) -> T:
-        if self.has_model(identifier):
-            return self._models[identifier]
+        keys = identifier.split(".", 1)
+        if self.has_model(keys[0]):
+            if len(keys) == 1:
+                return self._models[identifier]
+            else:
+                return self._models[keys[0]].get_model(keys[1])
         raise ValueError(f"Model with identifier '{identifier}' not found.")
 
     def get_models(self) -> t.Iterable[tuple[str, T]]:
@@ -61,7 +65,7 @@ class HasModels(t.Generic[T]):
         if not hasattr(model, "dependencies"):
             return
         for dependency in model.dependencies:
-            dependency_parts = dependency.split(".")
+            dependency_parts = dependency.rsplit(".", 1)
             if len(dependency_parts) == 1:  # from parent
                 target_model = self
                 trait = dependency
