@@ -31,12 +31,12 @@ class BandsPdosPlotly:
     def __init__(
         self,
         bands_data=None,
-        wannier90_bands_data=None,
+        external_bands_data=None,
         pdos_data=None,
         bands_projections_data=None,
     ):
         self.bands_data = bands_data
-        self.wannier90_bands_data = wannier90_bands_data
+        self.external_bands_data = external_bands_data
         self.pdos_data = pdos_data
         self.project_bands = bands_projections_data
 
@@ -203,13 +203,15 @@ class BandsPdosPlotly:
                     x=label,
                     line={"color": self.SETTINGS["vertical_linecolor"], "width": 1},
                 )
-        if self.wannier90_bands_data:
-            self._add_band_traces(
-                fig,
-                bands_data=self.wannier90_bands_data,
-                name="Wannier90 Bands",
-                dash="dash",
-            )
+            if self.external_bands_data:
+                for key, bands_data in self.external_bands_data.items():
+                    dash = bands_data.get("plot_settings", {}).pop("dash", "solid")
+                    self._add_band_traces(
+                        fig,
+                        bands_data=bands_data,
+                        name=key,
+                        dash=dash,
+                    )
 
     def adding_pdos_traces(self, fig):
         if self.pdos_data:
@@ -272,7 +274,6 @@ class BandsPdosPlotly:
             (True, 1): f"{name} (↓)",  # Spin-down case
         }
 
-        bands_data = bands_data
         # Convert paths to a list of Scatter objects
         scatter_objects = []
 

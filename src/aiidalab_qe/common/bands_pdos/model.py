@@ -29,7 +29,7 @@ from .bandpdosplotly import BandsPdosPlotly
 
 class BandsPdosModel(Model):
     bands = tl.Instance(AttributeDict, allow_none=True)
-    wannier90_bands = tl.Instance(AttributeDict, allow_none=True)
+    external_bands = tl.Dict(value_trait=tl.Instance(AttributeDict), allow_none=True)
     pdos = tl.Instance(AttributeDict, allow_none=True)
 
     dos_atoms_group_options = tl.List(
@@ -64,7 +64,7 @@ class BandsPdosModel(Model):
 
     pdos_data = {}
     bands_data = {}
-    wannier90_bands_data = {}
+    external_bands_data = {}
     bands_projections_data = {}
 
     # Image format options
@@ -146,8 +146,12 @@ class BandsPdosModel(Model):
         if self.bands:
             if not self.bands_data:
                 self.bands_data = self._get_bands_data(self.bands)
-            if not self.wannier90_bands_data:
-                self.wannier90_bands_data = self._get_bands_data(self.wannier90_bands)
+            if not self.external_bands_data:
+                for key, bands_data in self.external_bands.items():
+                    self.external_bands_data[key] = self._get_bands_data(bands_data)
+                    self.external_bands_data[key]["plot_settings"] = bands_data.get(
+                        "plot_settings", {}
+                    )
 
         if self.pdos:
             self.pdos_data = self._get_pdos_data()
@@ -156,7 +160,7 @@ class BandsPdosModel(Model):
         """Create the plot."""
         self.helper = BandsPdosPlotly(
             bands_data=self.bands_data,
-            wannier90_bands_data=self.wannier90_bands_data,
+            external_bands_data=self.external_bands_data,
             bands_projections_data=None,
             pdos_data=self.pdos_data,
         )
