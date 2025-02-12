@@ -29,9 +29,9 @@ aiida-qe-xspec:
     pip: aiida-qe-xspec
 
 aiidalab-qe-wannier90:
-    title: Wannier90 calculations (aiidalab-qe-wannier90)
-    description: A plugin for running Wannier calculations inside the AiiDAlab Quantum ESPRESSO App.
-    author: Xing Wang
+    title: Wannier functions (aiidalab-qe-wannier90)
+    description: A plugin to compute Wannier functions using AiiDA and the Wannier90 code.
+    author: Xing Wang, Junfeng Qiao
     github: https://github.com/superstar54/aiidalab-qe-wannier90
     documentation: https://aiidalab-qe-wannier90.readthedocs.io/
     pip: aiidalab-qe-wannier90
