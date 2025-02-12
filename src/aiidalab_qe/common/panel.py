@@ -375,9 +375,9 @@ class PluginResourceSettingsModel(ResourceSettingsModel):
         if self.override:
             return
         for _, code_model in self.get_models():
-            default_calc_job_plugin = code_model.default_calc_job_plugin
-            if default_calc_job_plugin in self.global_codes:
-                code_resources: dict = self.global_codes[default_calc_job_plugin]  # type: ignore
+            model_key = code_model.default_calc_job_plugin.replace(".", "__")
+            if model_key in self.global_codes:
+                code_resources: dict = self.global_codes[model_key]  # type: ignore
                 code_model.set_model_state(code_resources)
 
     def get_model_state(self):
