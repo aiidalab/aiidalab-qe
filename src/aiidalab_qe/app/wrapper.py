@@ -206,17 +206,24 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.new_workchain_link = LinkButton(
-            description="New calculation",
-            link="./qe.ipynb",
-            icon="plus-circle",
-            disabled=True,
-        )
-
         self.setup_resources_link = LinkButton(
             description="Setup resources",
             link="../home/code_setup.ipynb",
             icon="database",
+            disabled=True,
+        )
+
+        self.download_examples_link = LinkButton(
+            description="Download examples",
+            link="./examples.ipynb",
+            icon="download",
+            disabled=True,
+        )
+
+        self.new_workchain_link = LinkButton(
+            description="New calculation",
+            link="./qe.ipynb",
+            icon="plus-circle",
             disabled=True,
         )
 
@@ -226,6 +233,7 @@ class AppWrapperView(ipw.VBox):
                 self.about_toggle,
                 self.calculation_history_link,
                 self.setup_resources_link,
+                self.download_examples_link,
                 self.new_workchain_link,
             ],
         )
