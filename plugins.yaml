@@ -30,8 +30,16 @@ aiida-qe-xspec:
 
 aiidalab-qe-wannier90:
     title: Wannier functions (aiidalab-qe-wannier90)
-    description: A plugin to compute Wannier functions using AiiDA and the Wannier90 code.
-    author: Xing Wang, Junfeng Qiao
+    description: A plugin to compute Wannier functions using Quantum ESPRESSO and the Wannier90 code.
+    author: Xing Wang, Junfeng Qiao and Giovanni Pizzi
     github: https://github.com/superstar54/aiidalab-qe-wannier90
     documentation: https://aiidalab-qe-wannier90.readthedocs.io/
     pip: aiidalab-qe-wannier90
+
+aiidalab-qe-hp:
+    title: Habbard parameter (aiidalab-qe-hp)
+    description: A plugin to compute Habbard parameter with Quantum ESPRESSO.
+    author: Xing Wang, Iurii Timrov and Giovanni Pizzi
+    github: https://github.com/superstar54/aiidalab-qe-hp
+    documentation: https://aiidalab-qe-hp.readthedocs.io/
+    pip: aiidalab-qe-hp
