@@ -8,12 +8,13 @@ from ..subsettings import AdvancedCalculationSubSettingsModel
 
 
 class SmearingConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
+    identifier = "smearing"
+
     dependencies = [
         "protocol",
     ]
 
     protocol = tl.Unicode()
-    override = tl.Bool()
 
     type_options = tl.List(
         trait=tl.Unicode(),

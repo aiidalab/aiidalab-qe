@@ -1,5 +1,7 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.widgets import HBoxWithUnits
+
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import SmearingConfigurationSettingsModel
 
@@ -7,8 +9,6 @@ from .model import SmearingConfigurationSettingsModel
 class SmearingConfigurationSettingsPanel(
     AdvancedConfigurationSubSettingsPanel[SmearingConfigurationSettingsModel],
 ):
-    identifier = "smearing"
-
     def __init__(self, model: SmearingConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
@@ -22,8 +22,8 @@ class SmearingConfigurationSettingsPanel(
             return
 
         self.smearing = ipw.Dropdown(
-            description="Smearing type:",
-            style={"description_width": "initial"},
+            description="Type:",
+            style={"description_width": "150px"},
         )
         ipw.dlink(
             (self._model, "type_options"),
@@ -33,43 +33,35 @@ class SmearingConfigurationSettingsPanel(
             (self._model, "type"),
             (self.smearing, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.smearing, "disabled"),
-            lambda override: not override,
-        )
 
         self.degauss = ipw.FloatText(
             step=0.005,
-            description="Smearing width (Ry):",
-            style={"description_width": "initial"},
+            description="Width:",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "degauss"),
             (self.degauss, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.degauss, "disabled"),
-            lambda override: not override,
-        )
 
         self.children = [
+            ipw.HTML("<h2>Smearing</h2>"),
             ipw.HTML("""
-                <p>
-                    The smearing type and width is set by the chosen <b>protocol</b>.
-                    Tick the box to override the default, not advised unless you've
-                    mastered <b>smearing effects</b> (click
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Smear electronic state occupations near the Fermi level to
+                    simulate finite temperature.
+                    <br>
+                    This helps to stabilize the SCF calculation and is important for metallic systems.
+                    <br>
+                    The smearing type and width are set by the chosen <b>protocol</b>.
+                    <br>
+                    Changes are not advised unless you've mastered
                     <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
-                    target="_blank">here</a> for a discussion).
-                </p>
+                    target="_blank"><b>smearing effects</b></a>.
+                </div>
             """),
-            ipw.HBox(
-                children=[
-                    self.smearing,
-                    self.degauss,
-                ]
-            ),
+            self.smearing,
+            HBoxWithUnits(self.degauss, "Ry"),
         ]
 
         self.rendered = True

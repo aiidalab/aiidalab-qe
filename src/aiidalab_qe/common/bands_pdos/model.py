@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import json
 
@@ -6,9 +8,12 @@ import numpy as np
 import traitlets as tl
 from IPython.display import display
 
+from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.bands_pdos.utils import (
     HTML_TAGS,
+    extract_bands_output,
+    extract_pdos_output,
     get_bands_data,
     get_bands_projections_data,
     get_pdos_data,
@@ -24,6 +29,7 @@ from .bandpdosplotly import BandsPdosPlotly
 
 class BandsPdosModel(Model):
     bands = tl.Instance(AttributeDict, allow_none=True)
+    external_bands = tl.Dict(value_trait=tl.Instance(AttributeDict), allow_none=True)
     pdos = tl.Instance(AttributeDict, allow_none=True)
 
     dos_atoms_group_options = tl.List(
@@ -42,7 +48,7 @@ class BandsPdosModel(Model):
             ("No grouping (each orbital separately)", "orbital"),
         ],
     )
-    dos_plot_group = tl.Unicode("total")
+    dos_plot_group = tl.Unicode("angular_momentum")
     selected_atoms = tl.Unicode("")
     project_bands_box = tl.Bool(False)
     proj_bands_width = tl.Float(0.5)
@@ -58,7 +64,20 @@ class BandsPdosModel(Model):
 
     pdos_data = {}
     bands_data = {}
+    external_bands_data = {}
     bands_projections_data = {}
+
+    # Image format options
+    image_format_options = tl.List(
+        trait=tl.Unicode(), default_value=["png", "jpeg", "svg", "pdf"]
+    )
+    image_format = tl.Unicode("png")
+
+    # Aspect ratio
+    horizontal_width = 850  # pixels
+    horizontal_width_percentage = tl.Int(100)
+
+    bands_width_percentage = tl.Int(70)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -79,11 +98,60 @@ class BandsPdosModel(Model):
             lambda _: self._has_pdos or self.needs_projections_controls,
         )
 
+    @classmethod
+    def from_nodes(
+        cls,
+        bands: orm.WorkChainNode | None = None,
+        pdos: orm.WorkChainNode | None = None,
+        root: orm.WorkChainNode | None = None,
+    ):
+        """Create a `BandsPdosModel` instance from the provided nodes.
+
+        The method attempts to extract the output attribute dictionaries from the
+        nodes and creates from them an instance of the model.
+
+        Parameters
+        ----------
+        `bands` : `orm.WorkChainNode`, optional
+            The bands workchain node.
+        `pdos` : `orm.WorkChainNode`, optional
+            The PDOS workchain node.
+        `root`: `orm.WorkChainNode`, optional
+            The root QE app workchain node.
+
+        Returns
+        -------
+        `BandsPdosModel`
+            The model instance.
+
+        Raises
+        ------
+        `ValueError`
+            If neither of the nodes is provided or if the parsing of the nodes fails.
+        """
+        if bands or pdos:
+            bands_output = extract_bands_output(bands)
+            pdos_output = extract_pdos_output(pdos)
+        elif root:
+            bands_output = extract_bands_output(root)
+            pdos_output = extract_pdos_output(root)
+        else:
+            raise ValueError("At least one of the nodes must be provided")
+        if bands_output or pdos_output:
+            return cls(bands=bands_output, pdos=pdos_output)
+        raise ValueError("Failed to parse at least one node")
+
     def fetch_data(self):
         """Fetch the data from the nodes."""
         if self.bands:
             if not self.bands_data:
-                self.bands_data = self._get_bands_data()
+                self.bands_data = self._get_bands_data(self.bands)
+            if not self.external_bands_data:
+                for key, bands_data in self.external_bands.items():
+                    self.external_bands_data[key] = self._get_bands_data(bands_data)
+                    self.external_bands_data[key]["plot_settings"] = bands_data.get(
+                        "plot_settings", {}
+                    )
 
         if self.pdos:
             self.pdos_data = self._get_pdos_data()
@@ -92,6 +160,7 @@ class BandsPdosModel(Model):
         """Create the plot."""
         self.helper = BandsPdosPlotly(
             bands_data=self.bands_data,
+            external_bands_data=self.external_bands_data,
             bands_projections_data=None,
             pdos_data=self.pdos_data,
         )
@@ -173,11 +242,11 @@ class BandsPdosModel(Model):
             )
         return None
 
-    def _get_bands_data(self):
-        if not self.bands:
+    def _get_bands_data(self, bands=None):
+        if not bands:
             return None
 
-        bands_data = get_bands_data(self.bands)
+        bands_data = get_bands_data(bands)
         return bands_data
 
     def _get_bands_projections_data(self):
@@ -235,6 +304,54 @@ class BandsPdosModel(Model):
 
         # Update the color picker to match the updated trace
         self.color_picker = rgba_to_hex(self.plot.data[self.trace].line.color)
+
+    def update_horizontal_width(self, width_percentage):
+        """Update the horizontal width based on the percentge."""
+        horizontal_width = int((width_percentage / 100) * self.horizontal_width)
+        self.plot.layout.width = horizontal_width
+
+    def update_column_width_ratio(self, bands_width_percentage):
+        """Update the combined_column_widths of the combined plot based on percentage."""
+        bands_width = bands_width_percentage / 100
+        self.plot.update_layout(
+            xaxis={"domain": [0, bands_width - 0.004]},
+            xaxis2={"domain": [bands_width + 0.004, 1]},
+        )
+
+    def download_image(self, _=None):
+        """
+        Downloads the current plot as an image in the format specified by self.image_format.
+        """
+        # Define the filename
+        if self.bands and self.pdos:
+            filename = f"bands_pdos.{self.image_format}"
+        else:
+            filename = f"{'bands' if self.bands else 'pdos'}.{self.image_format}"
+
+        # Generate the image in the specified format
+        image_payload = self.plot.to_image(format=self.image_format)
+        image_payload_base64 = base64.b64encode(image_payload).decode("utf-8")
+
+        self._download_image(payload=image_payload_base64, filename=filename)
+
+    @staticmethod
+    def _download_image(payload, filename):
+        from IPython.display import Javascript
+
+        # Safely format the JavaScript code
+        javas = Javascript(
+            """
+            var link = document.createElement('a');
+            link.href = 'data:image/{format};base64,{payload}';
+            link.download = "{filename}";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            """.format(
+                payload=payload, filename=filename, format=filename.split(".")[-1]
+            )
+        )
+        display(javas)
 
     def download_data(self, _=None):
         """Function to download the data."""

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import Javascript, display
+from IPython.display import display
 
 from aiidalab_qe.common.guide_manager import guide_manager
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_qe.common.widgets import LinkButton, LoadingWidget
 
 
 def without_triggering(toggle: str):
@@ -82,12 +82,6 @@ class AppWrapperContoller:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
 
-    def _on_calculation_history_click(self, _):
-        self._open_external_notebook("./calculation_history.ipynb")
-
-    def _on_new_workchain_click(self, _):
-        self._open_external_notebook("./qe.ipynb")
-
     def _on_guide_category_selection_change(self, change):
         self._model.guide_options = guide_manager.get_guides(change["new"])
 
@@ -95,10 +89,6 @@ class AppWrapperContoller:
         category = self._view.guide_category_selection.value
         guide = self._view.guide_selection.value
         self._model.update_active_guide(category, guide)
-
-    def _open_external_notebook(self, url):
-        """Open an external notebook in a new tab."""
-        display(Javascript(f"window.open('{url}', '_blank')"))
 
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
@@ -122,8 +112,6 @@ class AppWrapperContoller:
             self._on_about_toggle,
             "value",
         )
-        self._view.calculation_history_link.on_click(self._on_calculation_history_click)
-        self._view.new_workchain_link.on_click(self._on_new_workchain_click)
 
         ipw.dlink(
             (self._model, "guide_category_options"),
@@ -171,6 +159,7 @@ class AppWrapperView(ipw.VBox):
         from IPython.display import Image
         from jinja2 import Environment
 
+        from aiidalab_qe.app.static import images as images_folder
         from aiidalab_qe.app.static import templates
         from aiidalab_qe.common.infobox import InfoBox
         from aiidalab_qe.version import __version__
@@ -180,7 +169,7 @@ class AppWrapperView(ipw.VBox):
         self.output = ipw.Output()
 
         logo_img = Image(
-            filename="docs/source/_static/logo.png",
+            filename=files(images_folder) / "logo.png",
             width="700",
         )
         logo = ipw.Output()
@@ -210,21 +199,24 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.calculation_history_link = ipw.Button(
-            layout=ipw.Layout(width="auto"),
-            button_style="",
-            icon="list",
+        self.calculation_history_link = LinkButton(
             description="Calculation history",
-            tooltip="View all calculations run with this app",
+            link="./calculation_history.ipynb",
+            icon="list",
             disabled=True,
         )
 
-        self.new_workchain_link = ipw.Button(
-            layout=ipw.Layout(width="auto"),
-            button_style="",
-            icon="plus-circle",
+        self.new_workchain_link = LinkButton(
             description="New calculation",
-            tooltip="Open a new page to start a separate calculation",
+            link="./qe.ipynb",
+            icon="plus-circle",
+            disabled=True,
+        )
+
+        self.setup_resources_link = LinkButton(
+            description="Setup resources",
+            link="../home/code_setup.ipynb",
+            icon="database",
             disabled=True,
         )
 
@@ -233,10 +225,11 @@ class AppWrapperView(ipw.VBox):
                 self.guide_toggle,
                 self.about_toggle,
                 self.calculation_history_link,
+                self.setup_resources_link,
                 self.new_workchain_link,
-            ]
+            ],
         )
-        self.controls.add_class("info-toggles")
+        self.controls.add_class("app-controls")
 
         env = Environment()
         guide_template = files(templates).joinpath("guide.jinja").read_text()
@@ -251,7 +244,7 @@ class AppWrapperView(ipw.VBox):
         )
         self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(margin="2px 20px"))
 
-        self.info_container = InfoBox()
+        self.info_container = InfoBox(layout=ipw.Layout(margin="14px 2px 0"))
 
         header = ipw.VBox(
             children=[

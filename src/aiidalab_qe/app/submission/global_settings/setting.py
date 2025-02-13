@@ -15,9 +15,6 @@ from .model import GlobalResourceSettingsModel
 
 
 class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsModel]):
-    title = "Global resources"
-    identifier = "global"
-
     def __init__(self, model: GlobalResourceSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
@@ -59,7 +56,6 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
         self.rendered = True
 
         # Render any active codes
-        self._model.get_model("quantumespresso.pw").activate()
         for _, code_model in self._model.get_models():
             if code_model.is_active:
                 self._toggle_code(code_model)
@@ -120,14 +116,6 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
                     "max_wallclock_seconds",
                 ],
             )
-
-        def update_options(_, model=code_model):
-            model.update(self._model.DEFAULT_USER_EMAIL, refresh=True)
-
-        code_widget.code_selection.code_select_dropdown.observe(
-            update_options,
-            "options",
-        )
 
         def toggle_widget(_=None, model=code_model, widget=code_widget):
             widget = self.code_widgets[model.name]

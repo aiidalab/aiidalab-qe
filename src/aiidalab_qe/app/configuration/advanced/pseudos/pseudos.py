@@ -7,7 +7,7 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.plugins import DataFactory, GroupFactory
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_qe.common.widgets import HBoxWithUnits, LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML
 
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
@@ -22,8 +22,6 @@ CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 class PseudosConfigurationSettingsPanel(
     AdvancedConfigurationSubSettingsPanel[PseudosConfigurationSettingsModel],
 ):
-    identifier = "pseudos"
-
     def __init__(self, model: PseudosConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
@@ -46,6 +44,10 @@ class PseudosConfigurationSettingsPanel(
         self._model.observe(
             self._on_family_change,
             "family",
+        )
+        self._model.observe(
+            self._on_reset_trigger_change,
+            "pseudo_filename_reset_trigger",
         )
 
         ipw.dlink(
@@ -71,21 +73,16 @@ class PseudosConfigurationSettingsPanel(
             (self.family_help, "value"),
         )
 
-        self.functional_prompt = ipw.HTML("""
-            <div class="pseudo-text"><b>
-                Exchange-correlation  functional</b>
-            </div>
-        """)
-
         self.functional_help = ipw.HTML("""
             <div class="pseudo-text">
-                The exchange-correlation energy is calculated using this functional. We
-                currently provide support for two well-established generalized gradient
-                approximation (GGA) functionals: PBE and PBEsol.
+                The exchange-correlation energy is calculated using this functional.
+                <br>
+                We currently provide support for two well-established generalized
+                gradient approximation (GGA) functionals: PBE and PBEsol.
             </div>
         """)
 
-        self.functional = ipw.Dropdown(style={"description_width": "initial"})
+        self.functional = ipw.ToggleButtons()
         ipw.dlink(
             (self._model, "functional_options"),
             (self.functional, "options"),
@@ -94,13 +91,8 @@ class PseudosConfigurationSettingsPanel(
             (self._model, "functional"),
             (self.functional, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.functional, "disabled"),
-            lambda override: not override,
-        )
 
-        self.library = ipw.ToggleButtons(layout=ipw.Layout(max_width="80%"))
+        self.library = ipw.ToggleButtons()
         ipw.dlink(
             (self._model, "library_options"),
             (self.library, "options"),
@@ -109,21 +101,6 @@ class PseudosConfigurationSettingsPanel(
             (self._model, "library"),
             (self.library, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.library, "disabled"),
-            lambda override: not override,
-        )
-
-        self.setter_widget_helper = ipw.HTML("""
-            <div class="pseudo-text">
-                The pseudopotential for each kind of atom in the structure can be
-                custom set. The default pseudopotential and cutoffs are get from
-                the pseudo family. The cutoffs used for the calculation are the
-                maximum of the default from all pseudopotentials and can be custom
-                set.
-            </div>
-        """)
 
         self.setter_widget = ipw.VBox()
 
@@ -133,90 +110,79 @@ class PseudosConfigurationSettingsPanel(
             (self._status_message, "message"),
         )
 
-        self.cutoff_helper = ipw.HTML("""
-            <div class="pseudo-text">
-                Please set the cutoffs for the calculation. The default cutoffs are get
-                from the pseudo family.
-            </div>
-        """)
         self.ecutwfc = ipw.FloatText(
-            description="Wavefunction cutoff (Ry)",
-            style={"description_width": "initial"},
+            description="Wavefunction",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "ecutwfc"),
             (self.ecutwfc, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.ecutwfc, "disabled"),
-            lambda override: not override,
-        )
         self.ecutrho = ipw.FloatText(
-            description="Charge density cutoff (Ry)",
-            style={"description_width": "initial"},
+            description="Charge density",
+            style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "ecutrho"),
             (self.ecutrho, "value"),
         )
-        ipw.dlink(
-            (self._model, "override"),
-            (self.ecutrho, "disabled"),
-            lambda override: not override,
-        )
 
         self.children = [
+            ipw.HTML("<h2>Accuracy and precision</h2>"),
             ipw.HTML("""
-                <div style="padding-top: 0px; padding-bottom: 10px">
-                    <h4>Accuracy and precision</h4>
+                <div class="pseudo-text">
+                    The exchange-correlation functional and pseudopotential library is
+                    set by the <b>protocol</b> configured in the <b>Basic settings</b>
+                    tab.
+                    <br>
+                    Here you can override the defaults if desired.
                 </div>
             """),
-            ipw.HBox(
+            ipw.VBox(
                 children=[
-                    ipw.HTML(
-                        """
-                        <div class="pseudo-text">
-                            The exchange-correlation functional and pseudopotential
-                            library is set by the <b>protocol</b> configured in the
-                            "Workflow" tab. Here you can override the defaults if
-                            desired.
-                        </div>
-                        """,
-                        layout=ipw.Layout(max_width="60%"),
-                    ),
+                    ipw.HTML("<h4>Exchange-correlation functional</h4>"),
+                    self.functional,
+                    self.functional_help,
                 ],
-                layout=ipw.Layout(height="50px", justify_content="space-between"),
             ),
-            ipw.HBox(
-                [
-                    ipw.VBox(
-                        children=[
-                            self.functional_prompt,
-                            self.functional,
-                            self.functional_help,
-                        ],
-                        layout=ipw.Layout(max_width="40%"),
-                    ),
-                    ipw.VBox(
-                        children=[
-                            self.family_prompt,
-                            self.library,
-                            self.family_help,
-                        ],
-                        layout=ipw.Layout(max_width="60%"),
-                    ),
-                ]
+            ipw.VBox(
+                children=[
+                    self.family_prompt,
+                    self.library,
+                    self.family_help,
+                ],
             ),
-            self.setter_widget_helper,
+            ipw.HTML("<h4>Pseudopotentials</h4>"),
+            ipw.HTML("""
+                <div class="pseudo-text">
+                    The pseudopotential for each kind of atom in the structure can be
+                    custom set.
+                    <br>
+                    The default pseudopotential and cutoffs are taken from the
+                    pseudopotential family.
+                    <br>
+                    Recommended wavefunction (ψ) and charge density (ρ) cutoffs are
+                    given to the right of each pseudopotential.
+                </div>
+            """),  # noqa: RUF001
             self.setter_widget,
-            self.cutoff_helper,
-            ipw.HBox(
-                children=[
-                    self.ecutwfc,
-                    self.ecutrho,
-                ],
-            ),
+            ipw.HTML("<h4>Cutoffs</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4;">
+                    The
+                    <a
+                        href="https://www.quantum-espresso.org/Doc/INPUT_PW.html#idm312"
+                        target="_blank"
+                    >
+                        default cutoffs
+                    </a> used for the calculation are the maximum of the default cutoffs
+                    from all pseudopotentials.
+                    <br>
+                    You can override them here.
+                </div>
+            """),
+            HBoxWithUnits(self.ecutwfc, "Ry"),
+            HBoxWithUnits(self.ecutrho, "Ry"),
             self._status_message,
         ]
 
@@ -240,6 +206,13 @@ class PseudosConfigurationSettingsPanel(
         self._update_family_link()
         self._model.update_default_pseudos()
         self._model.update_default_cutoffs()
+
+    def _on_reset_trigger_change(self, _):
+        if not self.rendered:
+            return
+        upload_widget: PseudoUploadWidget
+        for upload_widget in self.setter_widget.children:
+            upload_widget.reset_pseudo_filename_widget()
 
     def _update(self, specific=""):
         if self.updated:
@@ -265,13 +238,11 @@ class PseudosConfigurationSettingsPanel(
             pseudo_family_link = "http://www.pseudo-dojo.org/"
 
         self.family_prompt.value = f"""
-            <div class="pseudo-text">
-                <b>
-                    <a href="{pseudo_family_link}" target="_blank">
-                        Pseudopotential family
-                    </a>
-                </b>
-            </div>
+            <h4>
+                <a href="{pseudo_family_link}" target="_blank">
+                    Pseudopotential family
+                </a>
+            </h4>
         """
 
     def _show_loading(self):
@@ -301,10 +272,6 @@ class PseudosConfigurationSettingsPanel(
                     },
                 ],
             )
-            pseudo_override_link = ipw.dlink(
-                (self._model, "override"),
-                (upload_widget, "override"),
-            )
             cutoffs_link = ipw.dlink(
                 (self._model, "cutoffs"),
                 (upload_widget, "cutoffs"),
@@ -317,7 +284,6 @@ class PseudosConfigurationSettingsPanel(
             self.links.extend(
                 [
                     pseudo_link,
-                    pseudo_override_link,
                     cutoffs_link,
                     *upload_widget.links,
                 ]
@@ -331,8 +297,6 @@ class PseudosConfigurationSettingsPanel(
 # TODO implement/improve MVC in this widget
 class PseudoUploadWidget(ipw.HBox):
     """Class that allows to upload pseudopotential from user's computer."""
-
-    override = tl.Bool(False)
 
     pseudo = tl.Instance(UpfData, allow_none=True)
     cutoffs = tl.List(tl.Float(), [])
@@ -352,33 +316,30 @@ class PseudoUploadWidget(ipw.HBox):
         if self.rendered:
             return
 
-        self.pseudo_text = ipw.Text(description=self.kind_name)
+        self.pseudo_text = ipw.Text(
+            description=self.kind_name,
+            style={"description_width": "50px"},
+        )
         pseudo_link = ipw.dlink(
             (self, "pseudo"),
             (self.pseudo_text, "value"),
             lambda pseudo: pseudo.filename if pseudo else "",
         )
-        pseudo_override_link = ipw.dlink(
-            (self, "override"),
-            (self.pseudo_text, "disabled"),
-            lambda override: not override,
-        )
         self.file_upload = ipw.FileUpload(
             description="Upload",
             multiple=False,
-        )
-        upload_link = ipw.dlink(
-            (self, "override"),
-            (self.file_upload, "disabled"),
-            lambda override: not override,
+            layout=ipw.Layout(
+                width="fit-content",
+                margin="2px 10px 2px 2px",
+            ),
         )
         self.file_upload.observe(self._on_file_upload, "value")
 
         cutoffs_message_template = """
             <div class="pseudo-text">
-                Recommended ecutwfc: <b>{ecutwfc} Ry</b> ecutrho: <b>{ecutrho} Ry</b>
+                ψ: <b>{ecutwfc} Ry</b> | ρ: <b>{ecutrho} Ry</b>
             </div>
-        """
+        """  # noqa: RUF001
 
         self.cutoff_message = ipw.HTML()
         cutoff_link = ipw.dlink(
@@ -392,8 +353,6 @@ class PseudoUploadWidget(ipw.HBox):
 
         self.links = [
             pseudo_link,
-            pseudo_override_link,
-            upload_link,
             cutoff_link,
         ]
 
@@ -406,6 +365,9 @@ class PseudoUploadWidget(ipw.HBox):
         ]
 
         self.rendered = True
+
+    def reset_pseudo_filename_widget(self):
+        self.pseudo_text.value = self.pseudo.filename if self.pseudo else ""
 
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""

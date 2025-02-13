@@ -2,10 +2,12 @@
   display: flex;
   margin: 10px auto;
 }
+
 .results-step-toggles div {
   display: flex;
   column-gap: 8px;
 }
+
 .results-step-toggles i {
   margin-left: 4px;
 }

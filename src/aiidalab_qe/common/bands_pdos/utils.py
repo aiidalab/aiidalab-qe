@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import json
 import re
 
 import numpy as np
 from pymatgen.core.periodic_table import Element
 
-from aiida.orm import ProjectionData
+from aiida.common.extendeddicts import AttributeDict
+from aiida.orm import ProjectionData, WorkChainNode
 
 # Constants for HTML tags
 HTML_TAGS = {
@@ -35,6 +38,56 @@ HTML_TAGS = {
     "l": "<i>l</i>",
     "m_j": "m<sub>j</sub>",
 }
+
+
+def extract_pdos_output(node: WorkChainNode) -> AttributeDict | None:
+    """Extract the PDOS output node from the given node.
+
+    Parameters
+    ----------
+    `node`: `WorkChainNode`
+        The node to extract the PDOS output from.
+
+    Returns
+    -------
+    `AttributeDict | None`
+        The PDOS output node, if available.
+    """
+    if not node:
+        return
+    if node.process_label == "QeAppWorkChain" and "pdos" in node.outputs:
+        return node.outputs.pdos
+    if "dos" in node.outputs and "projwfc" in node.outputs:
+        items = {key: getattr(node.outputs, key) for key in node.outputs}
+        return AttributeDict(items)
+
+
+def extract_bands_output(node: WorkChainNode) -> AttributeDict | None:
+    """Extract the bands output node from the given node.
+
+    Parameters
+    ----------
+    `node`: `WorkChainNode`
+        The node to extract the bands output from.
+
+    Returns
+    -------
+    `AttributeDict | None`
+        The bands output node, if available.
+    """
+    if not node:
+        return
+    if node.process_label == "QeAppWorkChain" and "bands" in node.outputs:
+        outputs = node.outputs.bands
+    else:
+        outputs = node.outputs
+    return (
+        outputs.bands
+        if "bands" in outputs
+        else outputs.bands_projwfc
+        if "bands_projwfc" in outputs
+        else None
+    )
 
 
 def get_bands_data(outputs, fermi_energy=None):
@@ -108,7 +161,8 @@ def get_bands_projections_data(
         bands_data, projections, bands_width
     )
     if plot_tag != "total":
-        if not outputs.band_parameters.get("spin_orbit_calculation"):
+        band_parameters: dict = outputs.band_parameters.get_dict()
+        if not band_parameters.get("spin_orbit_calculation"):
             bands_projection["projected_bands"] = _update_pdos_labels(
                 bands_projection["projected_bands"]
             )
@@ -195,7 +249,8 @@ def get_pdos_data(pdos, group_tag, plot_tag, selected_atoms):
 
     # Updata labels if plot_tag is different than total and SOC is false
     if plot_tag != "total":
-        if not pdos.nscf.output_parameters.get("spin_orbit_calculation"):
+        output_parameters: dict = pdos.nscf.output_parameters.get_dict()
+        if not output_parameters.get("spin_orbit_calculation", False):
             data_dict = _update_pdos_labels(data_dict)
 
     return json.loads(json.dumps(data_dict))

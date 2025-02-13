@@ -16,11 +16,11 @@ class HubbardConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
+    identifier = "hubbard"
+
     dependencies = [
         "input_structure",
     ]
-
-    override = tl.Bool()
 
     is_active = tl.Bool(False)
     has_eigenvalues = tl.Bool(False)
@@ -66,16 +66,22 @@ class HubbardConfigurationSettingsModel(
             self.needs_eigenvalues_widget = len(self.applicable_kind_names) > 0
 
     def get_active_eigenvalues(self):
-        active_eigenvalues = [
-            orbital_eigenvalue
-            for element_eigenvalues in self.eigenvalues
-            for spin_row in element_eigenvalues
-            for orbital_eigenvalue in spin_row
-            if orbital_eigenvalue[-1] != -1
-        ]
+        if not (
+            active_eigenvalues := [
+                orbital_eigenvalue
+                for element_eigenvalues in self.eigenvalues
+                for spin_row in element_eigenvalues
+                for orbital_eigenvalue in spin_row
+                if orbital_eigenvalue[-1] != -1
+            ]
+        ):
+            return []
         eigenvalues_array = np.array(active_eigenvalues, dtype=object)
-        new_shape = (np.prod(eigenvalues_array.shape[:-1]), 4)
-        return eigenvalues_array.reshape(new_shape).tolist()
+        new_shape = (int(np.prod(eigenvalues_array.shape[:-1])), 4)
+        return [
+            tuple(eigenvalue)
+            for eigenvalue in eigenvalues_array.reshape(new_shape).tolist()
+        ]
 
     def set_active_eigenvalues(self, eigenvalues: list):
         eigenvalues_array = np.array(eigenvalues, dtype=object)

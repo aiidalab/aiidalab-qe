@@ -1,0 +1,184 @@
+{
+  "pk": {
+    "title": "PK",
+    "type": "text",
+    "description": "The AiiDA PK of the calculation"
+  },
+  "uuid": {
+    "title": "UUID",
+    "type": "text",
+    "description": "The AiiDA UUID of the calculation"
+  },
+  "label": {
+    "title": "Label",
+    "type": "text",
+    "description": "The label of the calculation"
+  },
+  "description": {
+    "title": "Description",
+    "type": "text",
+    "description": "The description of the calculation"
+  },
+  "creation_time": {
+    "title": "Creation time",
+    "type": "text",
+    "description": "The creation time of the calculation"
+  },
+  "modification_time": {
+    "title": "Modification time",
+    "type": "text",
+    "description": "The modification time of the calculation"
+  },
+  "structure_pk": {
+    "title": "Structure PK",
+    "type": "text",
+    "description": "The AiiDA PK of the structure"
+  },
+  "structure_uuid": {
+    "title": "Structure UUID",
+    "type": "text",
+    "description": "The AiiDA UUID of the structure"
+  },
+  "formula": {
+    "title": "Chemical formula",
+    "type": "text",
+    "description": "The formula of the structure"
+  },
+  "num_atoms": {
+    "title": "Number of atoms",
+    "type": "text",
+    "description": "The number of atoms in the structure"
+  },
+  "space_group": {
+    "title": "Space group",
+    "type": "text",
+    "description": "The space group of the structure"
+  },
+  "point_group": {
+    "title": "Point group",
+    "type": "text",
+    "description": "The point group of the molecule"
+  },
+  "cell_lengths": {
+    "title": "Cell lengths in Å",
+    "type": "text",
+    "description": "The cell lengths of the structure"
+  },
+  "cell_angles": {
+    "title": "Cell angles in degrees",
+    "type": "text",
+    "description": "The cell angles of the structure"
+  },
+  "relaxed": {
+    "title": "Structure geometry optimization",
+    "type": "text",
+    "description": "Whether the structure geometry is optimized (and to what level)"
+  },
+  "protocol": {
+    "title": "Protocol",
+    "type": "text",
+    "description": "The protocol used for the calculation"
+  },
+  "spin_type": {
+    "title": "Magnetism",
+    "type": "text",
+    "description": "The spin type considered"
+  },
+  "electronic_type": {
+    "title": "Electronic type",
+    "type": "text",
+    "description": "The electronic type considered"
+  },
+  "periodicity": {
+    "title": "Periodicity",
+    "type": "text",
+    "description": "The periodicity of the structure"
+  },
+  "functional": {
+    "title": "Functional",
+    "type": "link",
+    "description": "The DFT functional used for the calculation"
+  },
+  "pseudo_library": {
+    "title": "Pseudopotential library",
+    "type": "link",
+    "description": "The pseudopotential library used for the calculation"
+  },
+  "pseudo_protocol": {
+    "title": "Pseudopotential protocol",
+    "type": "text",
+    "description": "The pseudopotential protocol used for the calculation"
+  },
+  "energy_cutoff_wfc": {
+    "title": "Energy cutoff (wave functions)",
+    "type": "text",
+    "description": "The energy cutoff for wavefunctions"
+  },
+  "energy_cutoff_rho": {
+    "title": "Energy cutoff (charge density)",
+    "type": "text",
+    "description": "The energy cutoff for the charge density"
+  },
+  "occupation_type": {
+    "title": "Occupation type (SCF)",
+    "type": "text",
+    "description": "The occupation type used for the SCF calculation"
+  },
+  "degauss": {
+    "title": "Smearing width (degauss)",
+    "type": "text",
+    "indent": 1,
+    "description": "The smearing width used for the calculation"
+  },
+  "smearing": {
+    "title": "Smearing type",
+    "type": "text",
+    "indent": 1,
+    "description": "The smearing type used for the calculation"
+  },
+  "scf_kpoints_distance": {
+    "title": "K-point mesh distance (SCF)",
+    "type": "text",
+    "description": "The distance between k-points for the SCF calculation"
+  },
+  "bands_kpoints_distance": {
+    "title": "K-point mesh distance (Bands)",
+    "type": "text",
+    "description": "The distance between k-points for the bands calculation"
+  },
+  "nscf_kpoints_distance": {
+    "title": "K-point mesh distance (NSCF)",
+    "type": "text",
+    "description": "The distance between k-points for the PDOS calculation"
+  },
+  "tot_charge": {
+    "title": "Total charge",
+    "type": "text",
+    "description": "The total charge of the system"
+  },
+  "vdw_corr": {
+    "title": "Van der Waals correction",
+    "type": "text",
+    "description": "The van der Waals correction used for the calculation"
+  },
+  "tot_magnetization": {
+    "title": "Total magnetization",
+    "type": "text",
+    "description": "The total magnetization of the system"
+  },
+  "initial_magnetic_moments": {
+    "title": "Initial magnetic moments",
+    "type": "text",
+    "description": "The initial magnetic moments of the system"
+  },
+  "hubbard_u": {
+    "title": "DFT+U",
+    "type": "text",
+    "description": "The Hubbard U values used for the calculation"
+  },
+  "spin_orbit": {
+    "title": "Spin-orbit coupling",
+    "type": "bool",
+    "description": "Whether spin-orbit coupling is considered"
+  }
+}

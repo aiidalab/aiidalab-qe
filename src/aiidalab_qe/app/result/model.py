@@ -7,16 +7,18 @@ import traitlets as tl
 from aiida import orm
 from aiida.engine.processes import control
 from aiidalab_qe.common.mixins import HasModels, HasProcess
-from aiidalab_qe.common.mvc import Model
+from aiidalab_qe.common.widgets import QeWizardStepModel
 
 from .components import ResultsComponentModel
 
 
 class ResultsStepModel(
-    Model,
+    QeWizardStepModel,
     HasModels[ResultsComponentModel],
     HasProcess,
 ):
+    identifier = "results"
+
     process_info = tl.Unicode("")
     process_remote_folder_is_clean = tl.Bool(False)
 

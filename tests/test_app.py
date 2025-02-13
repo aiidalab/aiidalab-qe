@@ -1,8 +1,8 @@
-from aiidalab_qe.app.main import App
+from aiidalab_qe.app.wizard_app import WizardApp
 
 
 def test_reload_and_reset(generate_qeapp_workchain):
-    app = App(qe_auto_setup=False)
+    app = WizardApp(qe_auto_setup=False)
     workchain = generate_qeapp_workchain(
         relax_type="positions",
         spin_type="collinear",
@@ -36,7 +36,7 @@ def test_unsaved_changes(app_to_submit):
     """Test if the unsaved changes are handled correctly"""
     from aiidalab_widgets_base import WizardAppWidgetStep
 
-    app: App = app_to_submit
+    app: WizardApp = app_to_submit
     # go to the configure step, and make some changes
     app._wizard_app_widget.selected_index = 1
     app.configure_model.relax_type = "positions"

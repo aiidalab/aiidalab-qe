@@ -1,14 +1,16 @@
 import traitlets as tl
 
 from aiidalab_qe.common.mixins import Confirmable, HasInputStructure
-from aiidalab_qe.common.mvc import Model
+from aiidalab_qe.common.widgets import QeWizardStepModel
 
 
 class StructureStepModel(
-    Model,
+    QeWizardStepModel,
     HasInputStructure,
     Confirmable,
 ):
+    identifier = "structure"
+
     structure_name = tl.Unicode("")
     manager_output = tl.Unicode("")
     message_area = tl.Unicode("")

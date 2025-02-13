@@ -15,6 +15,7 @@ class GlobalResourceSettingsModel(
 ):
     """Model for the global code setting."""
 
+    title = "Global resources"
     identifier = "global"
 
     dependencies = [
@@ -51,7 +52,7 @@ class GlobalResourceSettingsModel(
 
     def update_active_codes(self):
         for identifier, code_model in self.get_models():
-            if identifier != "quantumespresso.pw":
+            if identifier != "quantumespresso__pw":
                 code_model.deactivate()
         properties = self._get_properties()
         for identifier, code_names in self.plugin_mapping.items():
@@ -84,6 +85,8 @@ class GlobalResourceSettingsModel(
         base_code_model = None
         default_calc_job_plugin = code_model.default_calc_job_plugin
         name = default_calc_job_plugin.split(".")[-1]
+        # "." in the model key means nested models
+        model_key = default_calc_job_plugin.replace(".", "__")
 
         if not self.has_model(default_calc_job_plugin):
             if default_calc_job_plugin == "quantumespresso.pw":
@@ -92,26 +95,27 @@ class GlobalResourceSettingsModel(
                     description=name,
                     default_calc_job_plugin=default_calc_job_plugin,
                 )
+                base_code_model.activate()
             else:
                 base_code_model = CodeModel(
                     name=name,
                     description=name,
                     default_calc_job_plugin=default_calc_job_plugin,
                 )
-            self.add_model(default_calc_job_plugin, base_code_model)
+            self.add_model(model_key, base_code_model)
 
         if identifier not in self.plugin_mapping:
-            self.plugin_mapping[identifier] = [default_calc_job_plugin]
+            self.plugin_mapping[identifier] = [model_key]
         else:
-            self.plugin_mapping[identifier].append(default_calc_job_plugin)
+            self.plugin_mapping[identifier].append(model_key)
 
         return base_code_model
 
     def check_resources(self):
-        if not self.has_model("quantumespresso.pw"):
+        if not self.has_model("quantumespresso__pw"):
             return
 
-        pw_code_model = self.get_model("quantumespresso.pw")
+        pw_code_model = self.get_model("quantumespresso__pw")
         protocol = self.input_parameters.get("workchain", {}).get("protocol", "fast")
 
         if not self.input_structure or not pw_code_model.selected:
@@ -205,7 +209,7 @@ class GlobalResourceSettingsModel(
 
     def _check_submission_blockers(self):
         # No pw code selected
-        pw_code_model = self.get_model("quantumespresso.pw")
+        pw_code_model = self.get_model("quantumespresso__pw")
         if pw_code_model and not pw_code_model.selected:
             yield ("No pw code selected")
 

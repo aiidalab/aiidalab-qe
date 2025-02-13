@@ -13,9 +13,6 @@ from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 class BasicConfigurationSettingsPanel(
     ConfigurationSettingsPanel[BasicConfigurationSettingsModel],
 ):
-    title = "Basic Settings"
-    identifier = "workchain"
-
     def __init__(self, model: BasicConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
         self._model.observe(
@@ -27,6 +24,17 @@ class BasicConfigurationSettingsPanel(
         if self.rendered:
             return
 
+        # ElectronicType: electronic properties of material
+        self.electronic_type = ipw.ToggleButtons(style={"description_width": "initial"})
+        ipw.dlink(
+            (self._model, "electronic_type_options"),
+            (self.electronic_type, "options"),
+        )
+        ipw.link(
+            (self._model, "electronic_type"),
+            (self.electronic_type, "value"),
+        )
+
         # SpinType: magnetic properties of material
         self.spin_type = ipw.ToggleButtons(style={"description_width": "initial"})
         ipw.dlink(
@@ -37,16 +45,18 @@ class BasicConfigurationSettingsPanel(
             (self._model, "spin_type"),
             (self.spin_type, "value"),
         )
-
-        # ElectronicType: electronic properties of material
-        self.electronic_type = ipw.ToggleButtons(style={"description_width": "initial"})
-        ipw.dlink(
-            (self._model, "electronic_type_options"),
-            (self.electronic_type, "options"),
+        self.spin_type.observe(
+            self._on_spin_type_change,
+            "value",
         )
-        ipw.link(
-            (self._model, "electronic_type"),
-            (self.electronic_type, "value"),
+
+        self.magnetization_info = ipw.HTML(
+            value="""
+                <div style="margin-left: 10px;">
+                    Set the desired magnetic configuration in <b>advanced</b> settings
+                </div>
+            """,
+            layout=ipw.Layout(display="none"),
         )
 
         # Spin-Orbit calculation
@@ -69,6 +79,29 @@ class BasicConfigurationSettingsPanel(
         ipw.link(
             (self._model, "protocol"),
             (self.protocol, "value"),
+        )
+
+        self.warning = ipw.HTML(
+            value="""
+                <div
+                    class="alert alert-warning"
+                    style="line-height: 140%; margin: 10px 0 0"
+                >
+                    <p>
+                        <b>Warning:</b> detected multiples atoms with different tags.
+                        You may be interested in an antiferromagnetic system. Note that
+                        default starting magnetic moments do not distinguish tagged
+                        atoms and are set to the same value.
+                    </p>
+                    <p>
+                        Please go to <b>Advanced settings</b> and override the default
+                        values, specifying appropriate magnetic moments for each
+                        species (e.g. with different signs for an antiferromagnetic
+                        configuration).
+                    </p>
+                </div>
+            """,
+            layout=ipw.Layout(display="none"),
         )
 
         self.children = [
@@ -98,11 +131,12 @@ class BasicConfigurationSettingsPanel(
             ipw.HBox(
                 children=[
                     ipw.Label(
-                        "Electronic Type:",
+                        "Electronic type:",
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.electronic_type,
-                ]
+                ],
+                layout=ipw.Layout(align_items="baseline"),
             ),
             ipw.HBox(
                 children=[
@@ -111,7 +145,9 @@ class BasicConfigurationSettingsPanel(
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.spin_type,
-                ]
+                    self.magnetization_info,
+                ],
+                layout=ipw.Layout(align_items="baseline"),
             ),
             ipw.HBox(
                 children=[
@@ -120,7 +156,8 @@ class BasicConfigurationSettingsPanel(
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.spin_orbit,
-                ]
+                ],
+                layout=ipw.Layout(align_items="baseline"),
             ),
             ipw.HBox(
                 children=[
@@ -129,7 +166,8 @@ class BasicConfigurationSettingsPanel(
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.protocol,
-                ]
+                ],
+                layout=ipw.Layout(align_items="baseline"),
             ),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
@@ -139,9 +177,19 @@ class BasicConfigurationSettingsPanel(
                     (at the price of longer/costlier calculations).
                 </div>
             """),
+            self.warning,
         ]
 
         self.rendered = True
 
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
+
+    def _on_spin_type_change(self, _):
+        if self._model.spin_type == "collinear":
+            self.magnetization_info.layout.display = "block"
+            if self._model.has_tags:
+                self.warning.layout.display = "flex"
+        else:
+            self.magnetization_info.layout.display = "none"
+            self.warning.layout.display = "none"

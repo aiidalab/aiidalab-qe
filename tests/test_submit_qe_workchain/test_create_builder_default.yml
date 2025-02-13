@@ -2,6 +2,7 @@ advanced:
   clean_workdir: false
   initial_magnetic_moments: null
   kpoints_distance: 0.12
+  optimization_maxsteps: 50
   pseudo_family: SSSP/1.3/PBEsol/efficiency
   pw:
     parameters:
@@ -40,32 +41,25 @@ codes:
     override: false
   global:
     codes:
-      quantumespresso.dos:
+      quantumespresso__dos:
         cpus: 1
         cpus_per_task: 1
         max_wallclock_seconds: 43200
         nodes: 1
         ntasks_per_node: 1
-      quantumespresso.projwfc:
+      quantumespresso__projwfc:
         cpus: 1
         cpus_per_task: 1
         max_wallclock_seconds: 43200
         nodes: 1
         ntasks_per_node: 1
-      quantumespresso.pw:
+      quantumespresso__pw:
         cpus: 2
         cpus_per_task: 1
         max_wallclock_seconds: 43200
         nodes: 1
         ntasks_per_node: 2
         parallelization: {}
-      quantumespresso.xspectra:
-        code: null
-        cpus: 1
-        cpus_per_task: 1
-        max_wallclock_seconds: 43200
-        nodes: 1
-        ntasks_per_node: 1
   pdos:
     codes:
       dos:

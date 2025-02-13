@@ -15,7 +15,7 @@ class DownloadDataWidget(ipw.VBox):
             button_style="primary",
             disabled=False,
             tooltip="Download the AiiDA archive of the simulation, ready to be shared or imported into another AiiDA profile",
-            layout=ipw.Layout(width="auto"),
+            layout=ipw.Layout(width="100%"),
         )
         self.download_archive_button.on_click(self._download_data_thread)
 
@@ -25,7 +25,7 @@ class DownloadDataWidget(ipw.VBox):
             button_style="primary",
             disabled=False,
             tooltip="Download the raw data of the simulation, organized in intuitive directory paths.",
-            layout=ipw.Layout(width="auto"),
+            layout=ipw.Layout(width="100%"),
         )
         try:
             # check that we can import the ProcessDumper (not implemented in old AiiDA versions)
@@ -33,37 +33,39 @@ class DownloadDataWidget(ipw.VBox):
             from aiida.tools.dumping.processes import ProcessDumper  # noqa: F401
 
             self.download_raw_button.on_click(self._download_data_thread)
-            dumper_is_available = True
+            self.dumper_is_available = True
         except Exception:
-            dumper_is_available = False
+            self.dumper_is_available = False
 
-        self.download_raw_button.disabled = not dumper_is_available
+        self.download_raw_button.disabled = not self.dumper_is_available
 
         self.node = workchain_node
 
-        super().__init__(
-            children=[
-                ipw.HTML(
-                    "<h3>Download the data</h3>"
-                    "It is possible to download raw data (i.e. input and output files) and/or the AiiDA archive (ready to be shared or imported into another AiiDA profile)"
-                ),
-                ipw.HBox(
-                    children=[self.download_raw_button],
-                    layout=ipw.Layout(width="700px"),  # Set the desired width here
-                ),
-                ipw.HBox(
-                    children=[self.download_archive_button],
-                    layout=ipw.Layout(width="700px"),  # Set the desired width here
-                ),
-            ],
+        self._downloading_message = ipw.HTML()
+
+        children = []
+
+        if not self.dumper_is_available:
+            children.append(
+                ipw.HTML("""
+                    <p style="color:red; line-height: 140%;">
+                        The raw data download is not available because the AiiDA
+                        version is too old.
+                    </p>
+                """),
+            )
+
+        children.extend(
+            [
+                ipw.HBox(children=[self.download_raw_button]),
+                ipw.HBox(children=[self.download_archive_button]),
+                self._downloading_message,
+            ]
         )
 
-        if not dumper_is_available:
-            self.children[1].children += (
-                ipw.HTML(
-                    "<p style='color:red;'>The raw data download is not available because the AiiDA version is too old.</p>"
-                ),
-            )
+        super().__init__(
+            children=children,
+        )
 
     def _download_data_thread(self, button_instance):
         thread = Thread(target=lambda: self._download_data(button_instance))
@@ -81,23 +83,40 @@ class DownloadDataWidget(ipw.VBox):
         Args:
             button_instance (ipywidgets.Button): The button instance that was clicked.
         """
-        button_instance.disabled = True
         if "archive" in button_instance.description:
             what = "archive"
             filename = f"export_qeapp_calculation_pk_{self.node.pk}.aiida"
-            box = self.children[2]
         else:
             what = "raw"
             filename = f"export_{self.node.pk}_raw.zip"
-            box = self.children[1]
 
-        box.children += (ipw.HTML("Downloading data..."),)
-
+        self._disable_buttons()
+        self._show_downloading_message(what)
         data = self.produce_bitestream(self.node, what=what)
         self._download(payload=data, filename=filename)
         del data
-        box.children = box.children[:1]
-        button_instance.disabled = False
+        self._hide_downloading_message()
+        self._enable_buttons()
+
+    def _show_downloading_message(self, what):
+        self._downloading_message.value = f"""
+            <div style="display: flex; align-items: center; margin: 6px 0;">
+                Creating {what} data to download
+                <i class="fa fa-spinner fa-spin fa-2x fa-fw" style="margin-left: 4px;"></i>
+            </div>
+        """
+
+    def _hide_downloading_message(self):
+        self._downloading_message.value = ""
+
+    def _disable_buttons(self):
+        self.download_raw_button.disabled = True
+        self.download_archive_button.disabled = True
+
+    def _enable_buttons(self):
+        if self.dumper_is_available:
+            self.download_raw_button.disabled = False
+        self.download_archive_button.disabled = False
 
     @staticmethod
     def _download(payload, filename):

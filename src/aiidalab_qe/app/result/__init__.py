@@ -3,8 +3,7 @@ import traitlets as tl
 
 from aiida.engine import ProcessState
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import DependentStep
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_qe.common.widgets import LoadingWidget, QeDependentWizardStep
 from aiidalab_widgets_base import ProcessMonitor, WizardAppWidgetStep
 
 from .components import ResultsComponent
@@ -18,24 +17,14 @@ PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
 PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
 
 
-class ViewQeAppWorkChainStatusAndResultsStep(
-    ipw.VBox,
-    WizardAppWidgetStep,
-    DependentStep,
-):
-    previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
-
+class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepModel]):
     missing_information_warning = (
         "No available results. Did you submit or load a calculation?"
     )
 
     def __init__(self, model: ResultsStepModel, **kwargs):
-        super().__init__(
-            children=[LoadingWidget("Loading results step")],
-            **kwargs,
-        )
-
-        self._model = model
+        self.log_widget = kwargs.pop("log_widget", None)
+        super().__init__(model=model, **kwargs)
         self.observe(
             self._on_previous_step_state_change,
             "previous_step_state",
@@ -45,12 +34,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(
             "process_uuid",
         )
 
-        self.rendered = False
-
-    def render(self):
-        if self.rendered:
-            return
-
+    def _render(self):
         self.kill_button = ipw.Button(
             description="Kill workchain",
             tooltip="Kill the below workchain.",
@@ -98,8 +82,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(
 
         self.panels = {
             "Summary": self.summary_panel,
-            "Results": self.results_panel,
             "Status": self.status_panel,
+            "Results": self.results_panel,
         }
 
         self.toggle_controls = ipw.ToggleButtons(
@@ -130,28 +114,24 @@ class ViewQeAppWorkChainStatusAndResultsStep(
 
         if self._model.has_process:
             self._update_children()
-        elif self.previous_step_state is not WizardAppWidgetStep.State.SUCCESS:
-            self.children = [
-                ipw.HTML("""
-                    <div class="alert alert-danger" style="text-align: center;">
-                        No process detected. Please submit a calculation.
-                    </div>
-                """),
-            ]
 
-        self.rendered = True
-
+    def _post_render(self):
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
-        self.toggle_controls.value = "Summary"
+        self.toggle_controls.value = (
+            "Results"
+            if (process := self._model.fetch_process_node()) and process.is_finished_ok
+            else "Status"
+        )
 
         self.process_monitor = ProcessMonitor(
-            timeout=0.2,
+            timeout=0.5,
             callbacks=[
                 self._update_status,
                 self._update_state,
             ],
+            log_widget=self.log_widget,
         )
         ipw.dlink(
             (self._model, "process_uuid"),
@@ -166,7 +146,8 @@ class ViewQeAppWorkChainStatusAndResultsStep(
         self._model.reset()
 
     @tl.observe("state")
-    def _on_state_change(self, _):
+    def _on_state_change(self, change):
+        super()._on_state_change(change)
         self._update_kill_button_layout()
 
     def _on_previous_step_state_change(self, _):
@@ -213,6 +194,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(
             self.toggle_controls,
             self.container,
         ]
+        self.previous_children = list(self.children)
 
     def _toggle_view(self, panel: ResultsComponent):
         self.container.children = [panel]

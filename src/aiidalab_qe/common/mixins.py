@@ -1,6 +1,5 @@
 import typing as t
 
-import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
@@ -8,23 +7,6 @@ from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 T = t.TypeVar("T")
-
-
-class DependentStep:
-    missing_information_warning = "Missing information"
-    previous_children = []
-
-    def show_missing_information_warning(self):
-        self.children = [
-            ipw.HTML(f"""
-                <div class="alert alert-danger">
-                    <b>Warning:</b> {self.missing_information_warning}
-                </div>
-            """)
-        ]
-
-    def hide_missing_information_warning(self):
-        self.children = self.previous_children
 
 
 class HasInputStructure(tl.HasTraits):
@@ -44,6 +26,13 @@ class HasInputStructure(tl.HasTraits):
     def has_pbc(self):
         return not self.has_structure or any(self.input_structure.pbc)
 
+    @property
+    def has_tags(self):
+        return any(
+            not kind_name.isalpha()
+            for kind_name in self.input_structure.get_kind_names()
+        )
+
 
 class HasModels(t.Generic[T]):
     def __init__(self):
@@ -61,15 +50,32 @@ class HasModels(t.Generic[T]):
             self.add_model(identifier, model)
 
     def get_model(self, identifier) -> T:
-        if self.has_model(identifier):
-            return self._models[identifier]
+        keys = identifier.split(".", 1)
+        if self.has_model(keys[0]):
+            if len(keys) == 1:
+                return self._models[identifier]
+            else:
+                return self._models[keys[0]].get_model(keys[1])
         raise ValueError(f"Model with identifier '{identifier}' not found.")
 
     def get_models(self) -> t.Iterable[tuple[str, T]]:
         return self._models.items()
 
     def _link_model(self, model: T):
-        pass
+        if not hasattr(model, "dependencies"):
+            return
+        for dependency in model.dependencies:
+            dependency_parts = dependency.rsplit(".", 1)
+            if len(dependency_parts) == 1:  # from parent
+                target_model = self
+                trait = dependency
+            else:  # from sibling
+                sibling, trait = dependency_parts
+                target_model = self.get_model(sibling)
+            tl.dlink(
+                (target_model, trait),
+                (model, trait),
+            )
 
 
 class HasProcess(tl.HasTraits):

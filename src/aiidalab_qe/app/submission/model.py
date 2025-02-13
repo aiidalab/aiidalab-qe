@@ -11,25 +11,29 @@ from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasModels
-from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
+from aiidalab_qe.common.widgets import QeWizardStepModel
 from aiidalab_qe.workflows import QeAppWorkChain
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStepModel(
-    Model,
+    QeWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
     Confirmable,
 ):
+    identifier = "submission"
+
     input_parameters = tl.Dict()
 
     process_node = tl.Instance(orm.WorkChainNode, allow_none=True)
     process_label = tl.Unicode("")
     process_description = tl.Unicode("")
 
+    internal_submission_blockers = tl.List(tl.Unicode())
+    external_submission_blockers = tl.List(tl.Unicode())
     submission_blocker_messages = tl.Unicode("")
     submission_warning_messages = tl.Unicode("")
 
@@ -38,10 +42,19 @@ class SubmissionStepModel(
     qe_installed = tl.Bool(allow_none=True)
     sssp_installed = tl.Bool(allow_none=True)
 
-    internal_submission_blockers = tl.List(tl.Unicode())
-    external_submission_blockers = tl.List(tl.Unicode())
-
     plugin_overrides = tl.List(tl.Unicode())
+
+    confirmation_exceptions = [
+        "confirmed",
+        "internal_submission_blockers",
+        "external_submission_blockers",
+        "submission_blocker_messages",
+        "submission_warning_messages",
+        "installing_qe",
+        "installing_sssp",
+        "qe_installed",
+        "sssp_installed",
+    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -70,7 +83,6 @@ class SubmissionStepModel(
 
     def confirm(self):
         super().confirm()
-        self.unobserve_all("confirmed")  # should no longer be unconfirmed
         if not self.process_node:
             self._submit()
 
@@ -268,15 +280,15 @@ class SubmissionStepModel(
         codes = parameters["codes"]["global"]["codes"]
 
         builder.relax.base.pw.metadata.options.resources = {
-            "num_machines": codes.get("quantumespresso.pw")["nodes"],
-            "num_mpiprocs_per_machine": codes.get("quantumespresso.pw")[
+            "num_machines": codes.get("quantumespresso__pw")["nodes"],
+            "num_mpiprocs_per_machine": codes.get("quantumespresso__pw")[
                 "ntasks_per_node"
             ],
-            "num_cores_per_mpiproc": codes.get("quantumespresso.pw")["cpus_per_task"],
+            "num_cores_per_mpiproc": codes.get("quantumespresso__pw")["cpus_per_task"],
         }
-        mws = codes.get("quantumespresso.pw")["max_wallclock_seconds"]
+        mws = codes.get("quantumespresso__pw")["max_wallclock_seconds"]
         builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = mws
-        parallelization = codes["quantumespresso.pw"]["parallelization"]
+        parallelization = codes["quantumespresso__pw"]["parallelization"]
         builder.relax.base.pw.parallelization = orm.Dict(dict=parallelization)
 
         return builder

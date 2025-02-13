@@ -13,15 +13,16 @@ from aiidalab_qe.common import (
     AddingTagsEditor,
     LazyLoadedOptimade,
     LazyLoadedStructureBrowser,
+    PeriodicityEditor,
+    ShakeNBreakEditor,
 )
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget
+from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget, QeWizardStep
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
     StructureManagerWidget,
     StructureUploadWidget,
-    WizardAppWidgetStep,
 )
 
 # The Examples list of (name, file) tuple curretly passed to
@@ -38,7 +39,7 @@ Examples = [
 ]
 
 
-class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
+class StructureSelectionStep(QeWizardStep[StructureStepModel]):
     """Integrated widget for the selection and edition of structure.
     The widget includes a structure manager that allows to select a structure
     from different sources. It also includes the structure editor. Both the
@@ -46,14 +47,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     """
 
     def __init__(self, model: StructureStepModel, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
-        super().__init__(
-            children=[LoadingWidget("Loading structure selection step")],
-            **kwargs,
-        )
-
-        self._model = model
+        super().__init__(model=model, **kwargs)
         self._model.observe(
             self._on_confirmation_change,
             "confirmed",
@@ -63,13 +57,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             "input_structure",
         )
 
-        self.rendered = False
-
-    def render(self):
-        """docstring"""
-        if self.rendered:
-            return
-
+    def _render(self):
         examples_by_category = {"Simple crystals": Examples}
         plugin_structure_examples = {
             item["title"]: item["structures"]
@@ -84,7 +72,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             LazyLoadedOptimade(title="OPTIMADE"),
             LazyLoadedStructureBrowser(title="AiiDA database"),
             CategorizedStructureExamplesWidget(
-                title="From Examples", examples_by_category=examples_by_category
+                title="From examples", examples_by_category=examples_by_category
             ),
         ]
 
@@ -94,7 +82,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
         editors = [
             BasicCellEditor(title="Edit cell"),
             BasicStructureEditor(title="Edit structure"),
-            AddingTagsEditor(title="Edit StructureData"),
+            AddingTagsEditor(title="Edit atom tags"),
+            PeriodicityEditor(title="Edit periodicity"),
+            ShakeNBreakEditor(title="ShakeNBreak"),
         ]
 
         plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
@@ -163,8 +153,10 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             InAppGuide(identifier="structure-step"),
             ipw.HTML("""
                 <p>
-                    Select a structure from one of the following sources and then
-                    click "Confirm" to go to the next step.
+                    Select a structure from one of the following sources, then
+                    click <span style="color: #4caf50;">
+                        <i class="fa fa-check-circle"></i> <b>Confirm</b>
+                    </span> to go to the next step
                 </p>
             """),
             self.manager,
@@ -172,8 +164,9 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
             self.message_area,
             self.confirm_button,
         ]
-
-        self.rendered = True
+        # after rendering the widget, nglview needs to be resized
+        # to properly display the structure
+        self.manager.viewer._viewer.handle_resize()
 
     def is_saved(self):
         return self._model.confirmed

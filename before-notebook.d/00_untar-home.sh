@@ -15,10 +15,11 @@ if [ ! -e $home/.FLAG_HOME_INITIALIZED ]; then
   fi
 
   echo "Extracting $HOME_TAR to $home"
-  # NOTE: a tar error when deployed to k8s but at the momment not cause any issue
-  # tar: .: Cannot utime: Operation not permitted
-  # tar: .: Cannot change mode to rwxr-s---: Operation not permitted
-  tar -xf $HOME_TAR -C "$home"
+  # NOTE: the added flags to tar are to address some errors that occur in k8s
+  # tar: .: Cannot utime: Operation not permitted -> --touch solves this problem
+  # tar: .: Cannot change mode to rwxr-s---: Operation not permitted -> --no-overwrite-dir solves this problem
+  # this only refers to the metadata and permissions of existing directories, not their contents
+  tar -xf $HOME_TAR -C "$home" --no-overwrite-dir --touch
 else
   echo "$home folder is not empty!"
   ls -lrta "$home"
