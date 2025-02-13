@@ -54,6 +54,15 @@ class MagnetizationConfigurationSettingsPanel(
 
         self.unit = "µ<sub>B</sub>"
 
+        self.insulator_help = ipw.HTML("""
+            <div style="line-height: 1.4;">
+                <b>Note:</b> defining the starting magnetic moments per atomic species
+                is available only for metallic systems. To enable the feature, please
+                set the <b>Electronic type</b> to <b>Metal</b> in the <b>Basic
+                settings</b> tab.
+            </div>
+        """)
+
         self.magnetization_type_help = ipw.HTML()
         ipw.dlink(
             (self._model, "type_help"),
@@ -190,6 +199,7 @@ class MagnetizationConfigurationSettingsPanel(
             else:
                 children.extend(
                     [
+                        self.insulator_help,
                         self.magnetization_type_help,
                         self.tot_magnetization_with_unit,
                     ],
