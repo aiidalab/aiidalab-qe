@@ -34,6 +34,10 @@ class BasicConfigurationSettingsPanel(
             (self._model, "electronic_type"),
             (self.electronic_type, "value"),
         )
+        self.electronic_type.observe(
+            self._on_spin_type_change,
+            "value",
+        )
 
         # SpinType: magnetic properties of material
         self.spin_type = ipw.ToggleButtons(style={"description_width": "initial"})
@@ -50,9 +54,18 @@ class BasicConfigurationSettingsPanel(
             "value",
         )
 
+        self.starting_magmom_warning = ipw.HTML(
+            value="""
+                <div class="alert alert-inline alert-info" style="margin-left: 10px;">
+                    Can only set total magnetization for insulating systems
+                </div>
+            """,
+            layout=ipw.Layout(display="none"),
+        )
+
         self.magnetization_info = ipw.HTML(
             value="""
-                <div style="margin-left: 10px;">
+                <div class="alert alert-inline alert-info" style="margin-left: 10px;">
                     Set the desired magnetic configuration in <b>advanced</b> settings
                 </div>
             """,
@@ -135,6 +148,7 @@ class BasicConfigurationSettingsPanel(
                         layout=ipw.Layout(justify_content="flex-start", width="120px"),
                     ),
                     self.electronic_type,
+                    self.starting_magmom_warning,
                 ],
                 layout=ipw.Layout(align_items="baseline"),
             ),
@@ -185,11 +199,21 @@ class BasicConfigurationSettingsPanel(
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
 
+    def _on_electronic_type_change(self, _):
+        self._update_info_warning_messages()
+
     def _on_spin_type_change(self, _):
+        self._update_info_warning_messages()
+
+    def _update_info_warning_messages(self):
         if self._model.spin_type == "collinear":
             self.magnetization_info.layout.display = "block"
+            self.starting_magmom_warning.layout.display = (
+                "block" if self._model.electronic_type == "insulator" else "none"
+            )
             if self._model.has_tags:
                 self.warning.layout.display = "flex"
         else:
+            self.starting_magmom_warning.layout.display = "none"
             self.magnetization_info.layout.display = "none"
             self.warning.layout.display = "none"

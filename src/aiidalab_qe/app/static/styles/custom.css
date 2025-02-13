@@ -112,3 +112,8 @@ footer {
 .p-TabBar-tab {
   min-width: fit-content !important;
 }
+
+.alert-inline {
+  padding: 0 5px;
+  margin: -1px;
+}
