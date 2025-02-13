@@ -1409,7 +1409,7 @@ class ArchiveImporter(ipw.VBox):
             layout=ipw.Layout(width="auto"),
         )
 
-        import_button = ipw.Button(
+        self.import_button = ipw.Button(
             description="Import",
             button_style="success",
             layout=ipw.Layout(width="fit-content"),
@@ -1417,10 +1417,10 @@ class ArchiveImporter(ipw.VBox):
         )
         ipw.dlink(
             (self.selector, "value"),
-            (import_button, "disabled"),
+            (self.import_button, "disabled"),
             lambda value: not value,
         )
-        import_button.on_click(self.import_archives)
+        self.import_button.on_click(self.import_archives)
 
         self.info = ipw.HTML()
 
@@ -1446,7 +1446,7 @@ class ArchiveImporter(ipw.VBox):
             self.selector,
             ipw.HBox(
                 [
-                    import_button,
+                    self.import_button,
                     self.info,
                     history_link,
                 ],
@@ -1472,10 +1472,12 @@ class ArchiveImporter(ipw.VBox):
         return []
 
     def import_archives(self, _):
+        self.import_button.disabled = True
         if self.logger and self.clear_log_on_import:
             self.logger.value = ""
         for filename in self.selector.value:
             self.import_archive(filename)
+        self.import_button.disabled = False
 
     def import_archive(self, filename: str):
         self.info.value = self.INFO_TEMPLATE.format(f"Importing {filename}")
