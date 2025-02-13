@@ -5,21 +5,33 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
+import os
+import subprocess
+import typing as t
 from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import time
 
+import anywidget
 import ase
 import ipywidgets as ipw
 import numpy as np
+import requests as req
 import traitlets
 from IPython.display import HTML, Javascript, clear_output, display
+from pymatgen.io.ase import AseAtomsAdaptor
+from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiidalab_widgets_base import ComputationalResourcesWidget
+from aiidalab_qe.common.mvc import Model
+from aiidalab_widgets_base import (
+    ComputationalResourcesWidget,
+    StructureExamplesWidget,
+    WizardAppWidgetStep,
+)
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -42,12 +54,15 @@ class RollingOutput(ipw.VBox):
 
     def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):  # noqa: ARG002
         self._num_min_lines = num_min_lines
-        self._output = ipw.HTML(layout=ipw.Layout(min_width="50em"))
+        self._output = ipw.HTML(layout=ipw.Layout(min_width="80em"))
         self._refresh_output()
         super().__init__(
-            [self._output],
-            layout=ipw.Layout(max_height=max_output_height, min_width="51em"),
+            children=[
+                self._output,
+            ],
+            layout=ipw.Layout(max_height=max_output_height),
         )
+        self.add_class("rolling-output")
 
     @traitlets.default("value")
     def _default_value(self):
@@ -146,10 +161,9 @@ class FilenameDisplayWidget(ipw.Box):
 
     def __init__(self, max_width=None, **kwargs):
         self.max_width = max_width
-        self._html = ipw.HTML(
-            layout={"margin": "0 0 0 50px"},
-        )
+        self._html = ipw.HTML()
         super().__init__([self._html], **kwargs)
+        self.add_class("filename-display")
 
     @traitlets.observe("value")
     def _observe_filename(self, change):
@@ -161,7 +175,7 @@ class FilenameDisplayWidget(ipw.Box):
             overflow:hidden;
             text-overflow:ellipsis;
             {width_style}">
-            {icon} {change['new']}
+            {icon} {change["new"]}
         </div>
         """
 
@@ -173,16 +187,17 @@ class LogOutputWidget(ipw.VBox):
     def __init__(self, placeholder=None, **kwargs):
         self.placeholder = placeholder
 
-        self._rolling_output = RollingOutput(layout=ipw.Layout(flex="1 1 auto"))
+        self._rolling_output = RollingOutput(
+            layout=ipw.Layout(flex="1 1 auto"),
+            max_output_height="unset",
+        )
         ipw.dlink(
             (self, "value"),
             (self._rolling_output, "value"),
             lambda value: value or self.placeholder or "",
         )
 
-        self._filename_display = FilenameDisplayWidget(
-            layout=ipw.Layout(width="auto"), max_width="55em"
-        )
+        self._filename_display = FilenameDisplayWidget(layout=ipw.Layout(width="auto"))
         ipw.dlink(
             (self, "filename"),
             (self._filename_display, "value"),
@@ -226,12 +241,20 @@ class LogOutputWidget(ipw.VBox):
         )
 
         super().__init__(
-            [
+            children=[
                 self._filename_display,
-                ipw.HBox([self._rolling_output, self._btns]),
+                ipw.HBox(
+                    children=[
+                        self._rolling_output,
+                        self._btns,
+                    ],
+                    layout=ipw.Layout(height="100%"),
+                ),
             ],
+            layout=ipw.Layout(height="100%"),
             **kwargs,
         )
+        self.add_class("log-output")
 
     @traitlets.default("placeholder")
     def _default_placeholder(self):
@@ -449,7 +472,7 @@ class AddingTagsEditor(ipw.VBox):
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
         self.tag = ipw.BoundedIntText(
-            description="Tag", value=1, min=0, max=4, layout={"width": "initial"}
+            description="Tag", value=1, min=0, max=11, layout={"width": "initial"}
         )
         self.add_tags = ipw.Button(
             description="Update tags",
@@ -467,21 +490,6 @@ class AddingTagsEditor(ipw.VBox):
             button_style="warning",
             layout={"width": "initial"},
         )
-        self.periodicity = ipw.RadioButtons(
-            options=[
-                ("3D (bulk systems)", "xyz"),
-                ("2D (surfaces, slabs, ...)", "xy"),
-                ("1D (wires)", "x"),
-                ("0D (molecules)", "molecule"),
-            ],
-            value="xyz",
-            layout={"width": "initial"},
-        )
-        self.select_periodicity = ipw.Button(
-            description="Select",
-            button_style="primary",
-            layout={"width": "100px"},
-        )
         self.scroll_note = ipw.HTML(
             value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
             layout={"visibility": "hidden"},
@@ -494,13 +502,9 @@ class AddingTagsEditor(ipw.VBox):
         self.add_tags.on_click(self._display_table)
         self.reset_tags.on_click(self._display_table)
         self.reset_all_tags.on_click(self._display_table)
-        self.select_periodicity.on_click(self._select_periodicity)
 
         super().__init__(
             children=[
-                ipw.HTML(
-                    "<b>Set custom tags for atoms</b>",
-                ),
                 ipw.HTML(
                     """
                     <p>
@@ -525,21 +529,6 @@ class AddingTagsEditor(ipw.VBox):
                 self.scroll_note,
                 ipw.HBox([self.add_tags, self.reset_tags, self.reset_all_tags]),
                 self._status_message,
-                ipw.HTML(
-                    '<div style="margin-top: 20px;"><b>Set structure periodicity</b></div>'
-                ),
-                ipw.HTML("""
-                    <p>Select the periodicity of your system.</p>
-                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
-
-                    <ul style="padding-left: 2em; list-style-type: disc;">
-                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
-                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
-
-                    </ul>
-                """),
-                self.periodicity,
-                self.select_periodicity,
             ],
             **kwargs,
         )
@@ -563,7 +552,7 @@ class AddingTagsEditor(ipw.VBox):
                 symbol = chemichal_symbols[index]
                 if tag == 0:
                     tag = ""
-                table_data.append([f"{index+ 1}", f"{symbol}", f"{tag}"])
+                table_data.append([f"{index + 1}", f"{symbol}", f"{tag}"])
 
             # Create an HTML table
             table_html = "<table>"
@@ -646,6 +635,50 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
 
+
+class PeriodicityEditor(ipw.VBox):
+    """Editor for changing periodicity of structures."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+
+    def __init__(self, title="", **kwargs):
+        self.title = title
+
+        self.periodicity = ipw.RadioButtons(
+            options=[
+                ("3D (bulk systems)", "xyz"),
+                ("2D (surfaces, slabs, ...)", "xy"),
+                ("1D (wires)", "x"),
+                ("0D (molecules)", "molecule"),
+            ],
+            value="xyz",
+            layout={"width": "initial"},
+        )
+        self.apply_periodicity = ipw.Button(
+            description="Apply",
+            button_style="primary",
+            layout={"width": "100px"},
+        )
+        self.apply_periodicity.on_click(self._select_periodicity)
+
+        super().__init__(
+            children=[
+                ipw.HTML("""
+                    <p>Select the periodicity of your system.</p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>For <b>2D</b> systems (e.g., surfaces, slabs), the non-periodic direction must be the third lattice vector (z-axis).</li>
+                        <li>For <b>1D</b> systems (e.g., wires), the periodic direction must be the first lattice vector (x-axis).</li>
+
+                    </ul>
+                """),
+                self.periodicity,
+                self.apply_periodicity,
+            ],
+            **kwargs,
+        )
+
     def _select_periodicity(self, _=None):
         """Select periodicity."""
         periodicity_options = {
@@ -669,7 +702,11 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         """Widget to setup the compute resources, which include the code,
         the number of nodes and the number of cpus.
         """
-        self.code_selection = ComputationalResourcesWidget(**kwargs)
+        self.code_selection = ComputationalResourcesWidget(
+            include_setup_widget=False,
+            fetch_codes=True,  # TODO resolve testing issues when set to `False`
+            **kwargs,
+        )
         self.code_selection.layout.width = "80%"
 
         self.num_nodes = ipw.BoundedIntText(
@@ -702,25 +739,26 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         )
         traitlets.link((self.code_selection, "value"), (self, "value"))
 
-    @traitlets.observe("value")
-    def _update_resources(self, change):
+    def update_resources(self, change):
         if change["new"]:
             self.set_resource_defaults(load_code(change["new"]).computer)
 
     def set_resource_defaults(self, computer=None):
-        import os
-
-        if computer is None or computer.hostname == "localhost":
+        if computer is None:
             self.num_nodes.disabled = True
             self.num_nodes.value = 1
-            self.num_cpus.max = os.cpu_count()
+            self.num_cpus.max = 1
             self.num_cpus.value = 1
             self.num_cpus.description = "CPUs"
         else:
             default_mpiprocs = computer.get_default_mpiprocs_per_machine()
-            self.num_nodes.disabled = False
+            self.num_nodes.disabled = (
+                True if computer.hostname == "localhost" else False
+            )
             self.num_cpus.max = default_mpiprocs
-            self.num_cpus.value = default_mpiprocs
+            self.num_cpus.value = (
+                1 if computer.hostname == "localhost" else default_mpiprocs
+            )
             self.num_cpus.description = "CPUs"
 
     @property
@@ -942,11 +980,20 @@ class LoadingWidget(ipw.HBox):
     """Widget for displaying a loading spinner."""
 
     def __init__(self, message="Loading", **kwargs):
+        self.message = ipw.Label(message)
         super().__init__(
             children=[
                 ipw.Label(message),
-                ipw.HTML("<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>"),
+                ipw.HTML(
+                    value="<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>",
+                    layout=ipw.Layout(margin="12px 0 6px"),
+                ),
             ],
+            layout=ipw.Layout(
+                justify_content="center",
+                align_items="center",
+                **kwargs.pop("layout", {}),
+            ),
             **kwargs,
         )
         self.add_class("loading")
@@ -1040,7 +1087,9 @@ class LazyLoadedStructureImporter(ipw.VBox):
 
 
 class LazyLoadedOptimade(LazyLoadedStructureImporter):
-    warning_message = "OPTIMADE may take some time to load"
+    warning_message = (
+        "OPTIMADE may take some time to load depending on your internet connection"
+    )
 
     def _get_widget(self):
         from aiidalab_widgets_base.databases import OptimadeQueryWidget
@@ -1049,7 +1098,9 @@ class LazyLoadedOptimade(LazyLoadedStructureImporter):
 
 
 class LazyLoadedStructureBrowser(LazyLoadedStructureImporter):
-    warning_message = "The browser may take some time to load, depending on the size of your database."
+    warning_message = (
+        "The browser may take some time to load depending on the size of your database"
+    )
 
     def _get_widget(self):
         from aiida import orm
@@ -1064,3 +1115,674 @@ class LazyLoadedStructureBrowser(LazyLoadedStructureImporter):
                 HubbardStructureData,
             ),
         )
+
+
+class CategorizedStructureExamplesWidget(StructureExamplesWidget):
+    """Extended widget to provide categorized example structures."""
+
+    def __init__(self, examples_by_category, title="", **kwargs):
+        self.examples_by_category = examples_by_category
+        self._category_buttons = ipw.ToggleButtons(
+            options=list(examples_by_category.keys()),
+            description="Category:",
+        )
+        self._category_buttons.observe(self._on_category_change, names="value")
+
+        # Initialize with the first category
+        initial_category = next(iter(examples_by_category.keys()))
+        super().__init__(
+            examples=examples_by_category[initial_category], title=title, **kwargs
+        )
+
+        self.children = [self._category_buttons, *list(self.children)]
+
+    def _on_category_change(self, change):
+        """Update the dropdown when the category changes."""
+        new_category = change["new"]
+        new_examples = self.examples_by_category.get(new_category, [])
+        self._select_structure.options = self.get_example_structures(new_examples)
+
+
+class LinkButton(ipw.HTML):
+    disabled = traitlets.Bool(False)
+
+    def __init__(
+        self,
+        description=None,
+        link="",
+        in_place=False,
+        class_="",
+        style_="",
+        icon="",
+        disabled=False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        html = f"""
+            <a
+                role="button"
+                href="{link}"
+                target="{"_self" if in_place else "_blank"}"
+                style="cursor: default; width: fit-content; {style_}"
+            >
+        """
+        if icon:
+            html += f"<i class='fa fa-{icon}'></i>"
+
+        html += f"{description}</a>"
+
+        self.value = html
+
+        self.add_class("jupyter-button")
+        self.add_class("widget-button")
+        self.add_class("link-button")
+        self.add_class(class_)
+
+        self.disabled = disabled
+
+    @traitlets.observe("disabled")
+    def _on_disabled(self, change):
+        if change["new"]:
+            self.add_class("disabled")
+        else:
+            self.remove_class("disabled")
+
+
+class QeWizardStepModel(Model):
+    identifier = "QE wizard"
+
+
+QWSM = t.TypeVar("QWSM", bound=QeWizardStepModel)
+
+
+class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[QWSM]):
+    def __init__(self, model: QWSM, **kwargs):
+        self.loading_message = LoadingWidget(f"Loading {model.identifier} step")
+        super().__init__(children=[self.loading_message], **kwargs)
+        self._model = model
+        self.rendered = False
+        self._background_class = ""
+
+    def render(self):
+        if self.rendered:
+            return
+        self._render()
+        self.rendered = True
+        self._post_render()
+
+    @traitlets.observe("state")
+    def _on_state_change(self, change):
+        self._update_background_color(change["new"])
+
+    def _render(self):
+        raise NotImplementedError()
+
+    def _post_render(self):
+        pass
+
+    def _update_background_color(self, state: WizardAppWidgetStep.State):
+        self.remove_class(self._background_class)
+        self._background_class = f"qe-app-step-{state.name.lower()}"
+        self.add_class(self._background_class)
+
+
+class QeDependentWizardStep(QeWizardStep[QWSM]):
+    missing_information_warning = "Missing information"
+
+    previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
+
+    def __init__(self, model: QWSM, **kwargs):
+        super().__init__(model, **kwargs)
+        self.previous_children = list(self.children)
+        self.warning_message = ipw.HTML(
+            f"""
+            <div class="alert alert-danger">
+                <b>Warning:</b> {self.missing_information_warning}
+            </div>
+        """
+        )
+
+    def render(self):
+        if "PYTEST_CURRENT_TEST" in os.environ:
+            super().render()
+            return
+        if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
+            self._hide_missing_information_warning()
+            if not self.rendered:
+                super().render()
+                self.previous_children = list(self.children)
+        else:
+            self._show_missing_information_warning()
+
+    def _show_missing_information_warning(self):
+        self.children = [self.warning_message]
+        self.rendered = False
+
+    def _hide_missing_information_warning(self):
+        self.children = self.previous_children
+
+
+class TableWidget(anywidget.AnyWidget):
+    _esm = """
+    function render({ model, el }) {
+        let domElement = document.createElement("div");
+        el.classList.add("custom-table");
+        let selectedIndices = [];
+
+        function drawTable() {
+            const data = model.get("data");
+            domElement.innerHTML = "";
+            let innerHTML = '<table><tr>' + data[0].map(header => `<th>${header}</th>`).join('') + '</tr>';
+
+            for (let i = 1; i < data.length; i++) {
+                innerHTML += '<tr>' + data[i].map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+            }
+
+            innerHTML += "</table>";
+            domElement.innerHTML = innerHTML;
+
+            const rows = domElement.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index > 0) {
+                    row.addEventListener('click', () => {
+                        const rowIndex = index - 1;
+                        if (selectedIndices.includes(rowIndex)) {
+                            selectedIndices = selectedIndices.filter(i => i !== rowIndex);
+                            row.classList.remove('selected-row');
+                        } else {
+                            selectedIndices.push(rowIndex);
+                            row.classList.add('selected-row');
+                        }
+                        model.set('selected_rows', [...selectedIndices]);
+                        model.save_changes();
+                    });
+
+                    row.addEventListener('mouseover', () => {
+                        if (!row.classList.contains('selected-row')) {
+                            row.classList.add('hover-row');
+                        }
+                    });
+
+                    row.addEventListener('mouseout', () => {
+                        row.classList.remove('hover-row');
+                    });
+                }
+            });
+        }
+
+        function updateSelection() {
+            const newSelection = model.get("selected_rows");
+            selectedIndices = [...newSelection]; // Synchronize the JavaScript state with the Python state
+            const rows = domElement.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                if (index > 0) {
+                    if (selectedIndices.includes(index - 1)) {
+                        row.classList.add('selected-row');
+                    } else {
+                        row.classList.remove('selected-row');
+                    }
+                }
+            });
+        }
+
+        drawTable();
+        model.on("change:data", drawTable);
+        model.on("change:selected_rows", updateSelection);
+        el.appendChild(domElement);
+    }
+    export default { render };
+    """
+    _css = """
+    .custom-table table, .custom-table th, .custom-table td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        text-align: left;
+        padding: 4px;
+    }
+    .custom-table th, .custom-table td {
+        min-width: 50px;
+        word-wrap: break-word;
+    }
+    .custom-table table {
+        width: 70%;
+        font-size: 1.0em;
+    }
+    /* Hover effect with light gray background */
+    .custom-table tr.hover-row:not(.selected-row) {
+        background-color: #f0f0f0;
+    }
+    /* Selected row effect with light green background */
+    .custom-table tr.selected-row {
+        background-color: #DFF0D8;
+    }
+    """
+    data = traitlets.List().tag(sync=True)
+    selected_rows = traitlets.List().tag(sync=True)
+
+
+class HBoxWithUnits(ipw.HBox):
+    def __init__(self, widget: ipw.ValueWidget, units: str, **kwargs):
+        super().__init__(
+            children=[
+                widget,
+                ipw.HTML(units),
+            ],
+            layout=ipw.Layout(
+                align_items="center",
+                grid_gap="2px",
+            ),
+            **kwargs,
+        )
+
+
+class ArchiveImporter(ipw.VBox):
+    GITHUB = "https://github.com"
+    INFO_TEMPLATE = "{} <i class='fa fa-spinner fa-spin'></i>"
+
+    def __init__(
+        self,
+        repo: str,
+        tag: str,
+        archive_list: str,
+        archives_dir: str,
+        logger: t.Optional[dict] = None,
+        **kwargs,
+    ):
+        refs = "refs/tags"
+        raw = f"https://raw.githubusercontent.com/{repo}/{refs}/{tag}"
+        self.archive_list_url = f"{raw}/{archive_list}"
+        self.archives_url = f"{self.GITHUB}/{repo}/raw/{refs}/{tag}/{archives_dir}"
+        if logger:
+            self.logger_placeholder = logger.get("placeholder", "")
+            self.clear_log_on_import = logger.get("clear_on_import", False)
+            self.logger = RollingOutput()
+            self.logger.value = self.logger_placeholder
+        super().__init__(children=[LoadingWidget()], **kwargs)
+
+    def render(self):
+        self.selector = ipw.SelectMultiple(
+            options=[],
+            description="Examples:",
+            rows=10,
+            style={"description_width": "initial"},
+            layout=ipw.Layout(width="auto"),
+        )
+
+        import_button = ipw.Button(
+            description="Import",
+            button_style="success",
+            layout=ipw.Layout(width="fit-content"),
+            icon="download",
+        )
+        ipw.dlink(
+            (self.selector, "value"),
+            (import_button, "disabled"),
+            lambda value: not value,
+        )
+        import_button.on_click(self.import_archives)
+
+        self.info = ipw.HTML()
+
+        history_link = LinkButton(
+            description="Calculation history",
+            link="./calculation_history.ipynb",
+            icon="list",
+            class_="mod-primary",
+            style_="color: white;",
+            layout=ipw.Layout(
+                width="fit-content",
+                margin="2px 0 2px auto",
+            ),
+        )
+
+        accordion = None
+        if self.logger:
+            accordion = ipw.Accordion(children=[self.logger])
+            accordion.set_title(0, "Archive import log")
+            accordion.selected_index = None
+
+        self.children = [
+            self.selector,
+            ipw.HBox(
+                [
+                    import_button,
+                    self.info,
+                    history_link,
+                ],
+                layout=ipw.Layout(
+                    margin="2px 2px 4px 68px",
+                    align_items="center",
+                    grid_gap="4px",
+                ),
+            ),
+            accordion or ipw.Box,
+        ]
+
+        self.selector.options = self.get_options()
+
+    def get_options(self) -> list[tuple[str, str]]:
+        response: req.Response = req.get(self.archive_list_url)
+        if not response.ok:
+            self.info.value = "Failed to fetch archive list"
+            return []
+        if archives := response.content.decode("utf-8").strip().split("\n"):
+            return [(archive, archive.split("-")[0].strip()) for archive in archives]
+        self.info.value = "No archives found"
+        return []
+
+    def import_archives(self, _):
+        if self.logger and self.clear_log_on_import:
+            self.logger.value = ""
+        for filename in self.selector.value:
+            self.import_archive(filename)
+
+    def import_archive(self, filename: str):
+        self.info.value = self.INFO_TEMPLATE.format(f"Importing {filename}")
+        file_url = f"{self.archives_url}/{filename}"
+        process = subprocess.Popen(
+            ["verdi", "archive", "import", "-v", "critical", file_url],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        stdout, stderr = process.communicate()
+        self._report(filename, stdout, stderr)
+
+    def _report(self, filename: str, stdout: str, stderr: str):
+        if stderr and "Success" not in stdout:
+            self.info.value = f"Failed to import {filename}"
+        if self.logger:
+            self.logger.value += stdout
+            if stderr:
+                if "Success" not in stdout:
+                    self.logger.value += "\n[ERROR]"
+                    self.info.value = "Error -> see log for details"
+                else:
+                    self.info.value = ""
+                self.logger.value += f"\n{stderr}"
+
+
+class ShakeNBreakEditor(ipw.VBox):
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    selection = traitlets.List(traitlets.Int)
+    structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
+
+    def __init__(self, title="Editor ShakeNbreak"):
+        self.title = title
+        self._status_message = StatusHTML()
+        self.num_nearest_neighbours = ipw.IntText(
+            description="Num. neighbours atoms:",
+            value=8,
+            step=1,
+            style={"description_width": "150px"},
+        )
+        self.defect_position = ipw.Text(
+            description="Defect atom:",
+            style={"description_width": "150px"},
+        )
+        # Only select one atom!
+        self.btn_defect_position = ipw.Button(
+            description="From selection",
+            style={"description_width": "150px"},
+        )
+        # Center of the selection
+        self.btn_defect_position_vac = ipw.Button(
+            description="From selection",
+            style={"description_width": "150px"},
+        )
+        self.vacancy_coords = ipw.Text(
+            description="Vacancy coords:",
+            style={"description_width": "150px"},
+        )
+        self.btn_defect_position.on_click(self._defect_position)
+        self.btn_defect_position_vac.on_click(self._defect_position_vac)
+        self.distortion_factor = ipw.BoundedFloatText(
+            value=1.0,
+            min=0.2,
+            max=1.8,
+            step=0.1,
+            description="Distortion factor:",
+            style={"description_width": "150px"},
+        )
+        self.btn_apply_bond_distortion = ipw.Button(
+            description="Apply bond distortion",
+            button_style="primary",
+            disabled=False,
+        )
+        self.btn_apply_bond_distortion.on_click(self._apply_bond_distortion)
+        self.selected_atoms = ipw.Text(
+            description="Select atoms:", value="", style={"description_width": "150px"}
+        )
+        self.btn_selected_atoms = ipw.Button(
+            description="From selection", style={"description_width": "150px"}
+        )
+        self.btn_selected_atoms.on_click(self._selected_atoms)
+        self.wrong_syntax = ipw.HTML(
+            value="""<i class="fa fa-times" style="color:red;font-size:2em;" ></i> wrong syntax""",
+            layout={"visibility": "hidden"},
+        )
+        self.radial_cutoff = ipw.FloatText(
+            description="Radial cutoff distance (Å):",
+            value=3.0,
+            style={"description_width": "150px"},
+        )
+        self.btn_apply_random_distorion_all = ipw.Button(
+            description="Apply to all atoms",
+            button_style="primary",
+            style={"description_width": "250px"},
+        )
+        self.btn_apply_random_distorion_all.on_click(self._apply_random_distortion_all)
+        self.btn_apply_random_distortion = ipw.Button(
+            description="Apply locally",
+            button_style="primary",
+            style={"description_width": "250px"},
+        )
+        self.btn_apply_random_distortion.on_click(self._apply_random_distortion)
+        super().__init__(
+            children=[
+                ipw.HTML(
+                    """
+                    <p>
+                    Apply bond distortions or random displacements to explore metastable structures of point defects in solids.
+                    This editor allows you to manipulate atomic positions and study defect behaviors in materials.
+                    </p>
+                    """
+                ),
+                ipw.HTML(
+                    "<h4>Define defect position:</h4>",
+                ),
+                ipw.HTML(
+                    """
+                    <p>
+                    To apply bond distortions, you can define either:<br>
+                    - A <strong>defect atom</strong>: Select an atom in the viewer to mark it as a defect.<br>
+                    - A <strong>vacancy position</strong>: Select the center of mass of the selection to define the vacancy position.
+                    </p>
+                    """
+                ),
+                ipw.HBox(
+                    [
+                        self.defect_position,
+                        self.btn_defect_position,
+                    ]
+                ),
+                ipw.HBox(
+                    [
+                        self.vacancy_coords,
+                        self.btn_defect_position_vac,
+                    ]
+                ),
+                ipw.HTML(
+                    "<h4>Bond distortion around defect:</h4>",
+                ),
+                ipw.HTML(
+                    """
+                    <p>
+                    Specify the number of neighboring atoms to apply the bond distortion.
+                    Set a distortion factor to adjust atomic positions:<br>
+                    - A value less than 1.0 shrinks the positions (e.g., 0.8 for a 20% reduction). <br>
+                    - A value greater than 1.0 expands the positions (e.g., 1.8 for an 80% increase).
+                    </p>
+                    """
+                ),
+                ipw.VBox(
+                    [
+                        self.num_nearest_neighbours,
+                        self.distortion_factor,
+                        self.btn_apply_bond_distortion,
+                    ]
+                ),
+                ipw.HTML(
+                    "<h4>Random displacements to all atoms or selected ones:</h4>",
+                ),
+                ipw.HTML(
+                    """
+                    <p>
+                    Define atoms for local random displacement around the defect or vacancy, and set the radial cutoff distance (in Å) to determine neighboring atoms for distance checks.
+                    </p>
+                    """
+                ),
+                ipw.HBox(
+                    [
+                        self.selected_atoms,
+                        self.btn_selected_atoms,
+                        self.wrong_syntax,
+                    ]
+                ),
+                self.radial_cutoff,
+                ipw.HBox(
+                    [
+                        self.btn_apply_random_distortion,
+                        self.btn_apply_random_distorion_all,
+                    ],
+                ),
+                self._status_message,
+                ipw.HTML(
+                    """
+                    <p>
+                    Uses the <a href="https://github.com/SMTG-Bham/ShakeNBreak" target="_blank">ShakeNBreak</a> package.
+                    </p>
+                    """
+                ),
+            ]
+        )
+
+    def sel2com(self):
+        """Get center of mass of the selection."""
+        if self.selection:
+            com = np.average(
+                self.structure[self.selection].get_scaled_positions(), axis=0
+            )
+        else:
+            com = [0, 0, 0]
+
+        return com
+
+    def str2vec(self, string):
+        return np.array(list(map(float, string.split())))
+
+    def vec2str(self, vector):
+        return (
+            str(round(vector[0], 2))
+            + " "
+            + str(round(vector[1], 2))
+            + " "
+            + str(round(vector[2], 2))
+        )
+
+    def _defect_position_vac(self, _=None):
+        """Define vaccancy coordinates."""
+        self.vacancy_coords.value = self.vec2str(self.sel2com())
+
+    def _defect_position(self, _=None):
+        """Define vaccancy coordinates."""
+        if len(self.selection) != 1:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select one atom first.</strong>
+            </div>
+            """
+        else:
+            self.defect_position.value = list_to_string_range(self.selection)
+
+    def _selected_atoms(self, _=None):
+        """Selected atoms to displace."""
+        self.selected_atoms.value = list_to_string_range(self.selection)
+
+    def _apply_bond_distortion(self, _=None):
+        if not self.defect_position.value and not self.vacancy_coords.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select the position of the defect or vacancy.</strong>
+            </div>
+            """
+        else:
+            if self.defect_position.value == "":
+                site_index = None
+            else:
+                site_index = int(self.defect_position.value)
+            if self.vacancy_coords.value == "":
+                frac_coords = None
+            else:
+                frac_coords = self.str2vec(self.vacancy_coords.value)
+
+            self._apply_distortion(
+                distort,
+                num_nearest_neighbours=self.num_nearest_neighbours.value,
+                site_index=site_index,
+                distortion_factor=self.distortion_factor.value,
+                frac_coords=frac_coords,
+            )
+
+    def _apply_random_distortion(self, _=None):
+        if not self.defect_position.value and not self.vacancy_coords.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select the position of the defect or vacancy.</strong>
+            </div>
+            """
+        else:
+            if self.defect_position.value == "":
+                site_index = None
+            else:
+                site_index = int(self.defect_position.value)
+            if self.vacancy_coords.value == "":
+                frac_coords = None
+            else:
+                frac_coords = self.str2vec(self.vacancy_coords.value)
+
+            active_atoms, syntax_ok = string_range_to_list(self.selected_atoms.value)
+            if not active_atoms:
+                active_atoms = None
+            if not syntax_ok:
+                self.wrong_syntax.layout.visibility = "visible"
+            else:
+                self.wrong_syntax.layout.visibility = "hidden"
+
+                self._apply_distortion(
+                    local_mc_rattle,
+                    site_index=site_index,
+                    frac_coords=frac_coords,
+                    active_atoms=active_atoms,
+                    nbr_cutoff=self.radial_cutoff.value,
+                )
+
+    def _apply_random_distortion_all(self, _=None):
+        self._apply_distortion(
+            rattle,
+            active_atoms=None,
+            nbr_cutoff=self.radial_cutoff.value,
+        )
+
+    def _apply_distortion(self, distortion_func, **kwargs):
+        pymatgen_ase = AseAtomsAdaptor()
+        pymatgen_structure = pymatgen_ase.get_structure(self.structure)
+        struc_distorted = distortion_func(structure=pymatgen_structure, **kwargs)
+        periodicity = self.structure.pbc
+        if "distorted_structure" in struc_distorted:
+            atoms = pymatgen_ase.get_atoms(struc_distorted["distorted_structure"])
+        else:
+            atoms = pymatgen_ase.get_atoms(struc_distorted)
+        atoms.set_pbc(periodicity)
+        self.structure = atoms

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
-ARG FULL_STACK_VER=2024.1023
+ARG FULL_STACK_VER=2025.1025
 ARG UV_VER=0.4.7
-ARG QE_VER=7.2
+ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
 
@@ -49,6 +49,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 # - Install QE codes and pseudopotentials
 # - Archive home folder
 FROM build_deps AS home_build
+ARG UV_CACHE_DIR
 ARG QE_DIR
 ARG HQ_VER
 ARG HQ_COMPUTER
@@ -58,6 +59,12 @@ RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/d
     tar xf hq.tar.gz -C /opt/conda/
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
+# temporary solution to install aiida-pseudos from repo to avoid downloading issues
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
+     "aiida-pseudo@git+https://github.com/aiidateam/aiida-pseudo"
+
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
@@ -83,7 +90,9 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar .
+    # NOTE: The work folder is empty but if included clashes with the work folder in a Renku
+    # session whose permissions cannot be changed.
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work .
 
 # STAGE 3 - Final stage
 # - Install python dependencies

@@ -1,25 +1,29 @@
 import traitlets as tl
 
-from aiida import orm
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
+class BasicConfigurationSettingsModel(
+    ConfigurationSettingsModel,
+    HasInputStructure,
+):
+    title = "Basic settings"
+    identifier = "workchain"
+
     dependencies = [
         "input_structure",
     ]
 
-    input_structure = tl.Union([tl.Instance(orm.StructureData)], allow_none=True)
-
     protocol_options = tl.List(
-        trait=tl.Unicode(),
+        trait=tl.Tuple(tl.Unicode(), tl.Unicode()),
         default_value=[
-            "fast",
-            "moderate",
-            "precise",
+            ("Fast", "fast"),
+            ("Moderate", "moderate"),
+            ("Precise", "precise"),
         ],
     )
     protocol = tl.Unicode(DEFAULT["workchain"]["protocol"])
@@ -39,6 +43,14 @@ class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
         ],
     )
     electronic_type = tl.Unicode(DEFAULT["workchain"]["electronic_type"])
+    spin_orbit_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ["Off", "wo_soc"],
+            ["On", "soc"],
+        ],
+    )
+    spin_orbit = tl.Unicode("wo_soc")
 
     include = True
 
@@ -59,3 +71,4 @@ class BasicConfigurationSettingsModel(ConfigurationSettingsModel):
             self.protocol = self.traits()["protocol"].default_value
             self.spin_type = self.traits()["spin_type"].default_value
             self.electronic_type = self.traits()["electronic_type"].default_value
+            self.spin_orbit = self.traits()["spin_orbit"].default_value

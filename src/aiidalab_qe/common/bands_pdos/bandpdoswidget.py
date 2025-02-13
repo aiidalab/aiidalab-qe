@@ -7,31 +7,34 @@ from .model import BandsPdosModel
 
 
 class BandsPdosWidget(ipw.VBox):
-    """
-    A widget for plotting band structure and projected density of states (PDOS) data.
+    """A widget for plotting band structure and projected density of states (PDOS).
 
     Parameters
     ----------
-    - bands (optional): A node containing band structure data.
-    - pdos (optional): A node containing PDOS data.
+    `model`: `BandsPdosModel`
+        The MVC model containing the data and logic for the widget.
 
     Attributes
     ----------
-    - description: HTML description of the widget.
-    - dos_atoms_group: Dropdown widget to select the grouping of atoms for PDOS plotting.
-    - dos_plot_group: Dropdown widget to select the type of PDOS contributions to plot.
-    - selected_atoms: Text widget to select specific atoms for PDOS plotting.
-    - update_plot_button: Button widget to update the plot.
-    - download_button: Button widget to download the data.
-    - project_bands_box: Checkbox widget to choose whether projected bands should be plotted.
-    - plot_widget: Plotly widget for band structure and PDOS plot.
-    - bands_widget: Output widget to display the bandsplot widget.
+    `description`: `ipywidgets.HTML`
+         HTML description of the widget.
+    `dos_atoms_group`: `ipywidgets.Dropdown`
+         Dropdown widget to select the grouping of atoms for PDOS plotting.
+    `dos_plot_group`: `ipywidgets.Dropdown`
+         Dropdown widget to select the type of PDOS contributions to plot.
+    `selected_atoms`: `ipywidgets.Text`
+         Text widget to select specific atoms for PDOS plotting.
+    `update_plot_button`: `ipywidgets.Button`
+         Button widget to update the plot.
+    `download_button`: `ipywidgets.Button`
+         Button widget to download the data.
+    `project_bands_box`: `ipywidgets.Checkbox`
+         Checkbox widget to choose whether projected bands should be plotted.
+    `plot`: `plotly.graph_objects.FigureWidget`
+         Plotly widget for band structure and PDOS plot.
     """
 
-    def __init__(self, model: BandsPdosModel, bands=None, pdos=None, **kwargs):
-        if bands is None and pdos is None:
-            raise ValueError("Either bands or pdos must be provided")
-
+    def __init__(self, model: BandsPdosModel, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading widgets")],
             **kwargs,
@@ -48,9 +51,6 @@ class BandsPdosWidget(ipw.VBox):
         )
 
         self.rendered = False
-
-        self._model.bands = bands
-        self._model.pdos = pdos
 
     def render(self):
         if self.rendered:
@@ -113,13 +113,29 @@ class BandsPdosWidget(ipw.VBox):
         self.update_plot_button.on_click(self._update_pdos_plot)
 
         self.download_button = ipw.Button(
-            description="Download Data",
+            description="Download data",
             icon="download",
             button_style="primary",
             layout=ipw.Layout(visibility="hidden"),
         )
         self.download_button.on_click(self._model.download_data)
 
+        self.download_image = ipw.Button(
+            description="Download image",
+            button_style="primary",
+            icon="fa-image",
+        )
+        self.download_image.on_click(self._model.download_image)
+        self.image_format = ipw.Dropdown(
+            description="Format:",
+            layout=ipw.Layout(width="auto"),
+        )
+        ipw.dlink((self._model, "image_format_options"), (self.image_format, "options"))
+        ipw.link((self._model, "image_format"), (self.image_format, "value"))
+
+        self.download_buttons = ipw.HBox(
+            children=[self.download_button, self.download_image, self.image_format]
+        )
         self.project_bands_box = ipw.Checkbox(
             description="Add `fat bands` projections",
             style={"description_width": "initial"},
@@ -135,7 +151,7 @@ class BandsPdosWidget(ipw.VBox):
 
         self.proj_bands_width_slider = ipw.FloatSlider(
             min=0.01,
-            max=2.0,
+            max=5.0,
             step=0.01,
             description="`Fat bands` max width (eV):",
             orientation="horizontal",
@@ -219,6 +235,49 @@ class BandsPdosWidget(ipw.VBox):
             "value",
         )
 
+        # Aspect ratio
+        self.horizontal_width_percentage = ipw.IntSlider(
+            min=30,
+            max=100,
+            step=5,
+            description="Horizonal width %:",
+            orientation="horizontal",
+            continuous_update=False,
+            readout=True,
+            readout_format=".0f",
+            style={"description_width": "initial"},
+            layout=ipw.Layout(width="380px"),
+        )
+        ipw.link(
+            (self._model, "horizontal_width_percentage"),
+            (self.horizontal_width_percentage, "value"),
+        )
+        self.horizontal_width_percentage.observe(
+            self._on_horizontal_width_change,
+            "value",
+        )
+
+        self.bands_width_percentage = ipw.IntSlider(
+            min=10,
+            max=90,
+            step=5,
+            description="Bands width %:",
+            orientation="horizontal",
+            continuous_update=False,
+            readout=True,
+            readout_format=".0f",
+            style={"description_width": "initial"},
+            layout=ipw.Layout(width="380px"),
+        )
+        ipw.link(
+            (self._model, "bands_width_percentage"),
+            (self.bands_width_percentage, "value"),
+        )
+        self.bands_width_percentage.observe(
+            self._on_bands_width_change,
+            "value",
+        )
+
         self.legend_interaction_description = ipw.HTML(
             """
                 <div style="line-height: 140%; padding-top: 10px; padding-bottom: 5px; max-width: 600px;">
@@ -240,7 +299,7 @@ class BandsPdosWidget(ipw.VBox):
                 </div>
             """),
             self.pdos_options,
-            self.download_button,
+            self.download_buttons,
             self.legend_interaction_description,
         ]
 
@@ -266,7 +325,20 @@ class BandsPdosWidget(ipw.VBox):
         )
         self.download_button.layout.visibility = "visible"
         self.project_bands_box.layout.visibility = "visible"
-        self.children = (*self.children, self.plot, self.color_selector)
+        self.children = [
+            *self.children,
+            ipw.Box(
+                children=[self.plot],
+                layout=ipw.Layout(margin="0 auto"),
+            ),
+            self.color_selector,
+            self.horizontal_width_percentage,
+        ]
+        if self._model.helper.plot_type == "combined":
+            self.children = [
+                *self.children,
+                self.bands_width_percentage,
+            ]
 
     def _update_bands_projections(self, _):
         """Update the plot with the selected projection."""
@@ -310,6 +382,7 @@ class BandsPdosWidget(ipw.VBox):
         self.proj_controls.layout.display = (
             "flex" if self._model.needs_projections_controls else "none"
         )
+        self._model.project_bands_box = True
 
     def _toggle_pdos_options(self):
         """Plot the options only if the pdos is provided or in case the bands data
@@ -328,3 +401,9 @@ class BandsPdosWidget(ipw.VBox):
 
     def _update_trace_color(self, change):
         self._model.update_trace_color(change["new"])
+
+    def _on_horizontal_width_change(self, change):
+        self._model.update_horizontal_width(change["new"])
+
+    def _on_bands_width_change(self, change):
+        self._model.update_column_width_ratio(change["new"])

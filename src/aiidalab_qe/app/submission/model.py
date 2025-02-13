@@ -4,31 +4,36 @@ from copy import deepcopy
 
 import ipywidgets as ipw
 import traitlets as tl
+from IPython.display import Javascript, display
 
 from aiida import orm
 from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasModels
-from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.panel import ResourceSettingsModel
+from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
+from aiidalab_qe.common.widgets import QeWizardStepModel
 from aiidalab_qe.workflows import QeAppWorkChain
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStepModel(
-    Model,
+    QeWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
     Confirmable,
 ):
+    identifier = "submission"
+
     input_parameters = tl.Dict()
 
     process_node = tl.Instance(orm.WorkChainNode, allow_none=True)
     process_label = tl.Unicode("")
     process_description = tl.Unicode("")
 
+    internal_submission_blockers = tl.List(tl.Unicode())
+    external_submission_blockers = tl.List(tl.Unicode())
     submission_blocker_messages = tl.Unicode("")
     submission_warning_messages = tl.Unicode("")
 
@@ -37,8 +42,19 @@ class SubmissionStepModel(
     qe_installed = tl.Bool(allow_none=True)
     sssp_installed = tl.Bool(allow_none=True)
 
-    internal_submission_blockers = tl.List(tl.Unicode())
-    external_submission_blockers = tl.List(tl.Unicode())
+    plugin_overrides = tl.List(tl.Unicode())
+
+    confirmation_exceptions = [
+        "confirmed",
+        "internal_submission_blockers",
+        "external_submission_blockers",
+        "submission_blocker_messages",
+        "submission_warning_messages",
+        "installing_qe",
+        "installing_sssp",
+        "qe_installed",
+        "sssp_installed",
+    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -66,24 +82,13 @@ class SubmissionStepModel(
         )
 
     def confirm(self):
+        super().confirm()
         if not self.process_node:
             self._submit()
-        super().confirm()
-        # Once submitted, nothing should unconfirm the model!
-        self.unobserve_all("confirmed")
 
-    def refresh_codes(self):
+    def update(self):
         for _, model in self.get_models():
-            model.refresh_codes()
-
-    def update_active_models(self):
-        for identifier, model in self.get_models():
-            if identifier in ["global"]:
-                continue
-            if identifier not in self._get_properties():
-                model.include = False
-            else:
-                model.include = True
+            model.update()
 
     def update_process_label(self):
         if not self.input_structure:
@@ -99,9 +104,13 @@ class SubmissionStepModel(
             {"properties": []},
         )
 
-        soc_parameters = self.input_parameters["advanced"]["pw"]["parameters"][
-            "SYSTEM"
-        ].get("lspinorb", False)
+        soc_parameters = (
+            self.input_parameters.get("advanced", {})
+            .get("pw", {})
+            .get("parameters", {})
+            .get("SYSTEM", {})
+            .get("lspinorb", False)
+        )
 
         soc_info = "spin-orbit coupling" if soc_parameters else ""
 
@@ -127,29 +136,43 @@ class SubmissionStepModel(
 
         self.process_label = label
 
+    def update_plugin_inclusion(self):
+        properties = self._get_properties()
+        for identifier, model in self.get_models():
+            if identifier in self._default_models:
+                continue
+            model.include = identifier in properties
+
+    def update_plugin_overrides(self):
+        self.plugin_overrides = [
+            identifier
+            for identifier, model in self.get_models()
+            if isinstance(model, PluginResourceSettingsModel)
+            and model.include
+            and model.override
+        ]
+
     def update_submission_blockers(self):
         submission_blockers = list(self._check_submission_blockers())
         for _, model in self.get_models():
-            if hasattr(model, "submission_blockers"):
-                submission_blockers += model.submission_blockers
+            submission_blockers += model.submission_blockers
         self.internal_submission_blockers = submission_blockers
 
     def update_submission_warnings(self):
         submission_warning_messages = self._check_submission_warnings()
         for _, model in self.get_models():
-            if hasattr(model, "submission_warning_messages"):
-                submission_warning_messages += model.submission_warning_messages
+            submission_warning_messages += model.submission_warning_messages
         self.submission_warning_messages = submission_warning_messages
 
     def update_submission_blocker_message(self):
         blockers = self.internal_submission_blockers + self.external_submission_blockers
         if any(blockers):
-            fmt_list = "\n".join(f"<li>{item}</li>" for item in sorted(blockers))
+            formatted = "\n".join(f"<li>{item}</li>" for item in blockers)
             self.submission_blocker_messages = f"""
-                <div class="alert alert-info">
+                <div class="alert alert-danger">
                     <b>The submission is blocked due to the following reason(s):</b>
                     <ul>
-                        {fmt_list}
+                        {formatted}
                     </ul>
                 </div>
             """
@@ -160,31 +183,29 @@ class SubmissionStepModel(
         parameters: dict = deepcopy(self.input_parameters)  # type: ignore
         parameters["codes"] = {
             identifier: model.get_model_state()
-            for identifier, model in self._models.items()
+            for identifier, model in self.get_models()
             if model.include
         }
         return parameters
 
     def set_model_state(self, parameters):
+        codes: dict = parameters.get("codes", {})
+
         if "resources" in parameters:
-            parameters["codes"] = {
-                key: {"code": value} for key, value in parameters["codes"].items()
-            }
-            parameters["codes"]["pw"]["nodes"] = parameters["resources"]["num_machines"]
-            parameters["codes"]["pw"]["cpus"] = parameters["resources"][
-                "num_mpiprocs_per_machine"
-            ]
-            parameters["codes"]["pw"]["parallelization"] = {
-                "npool": parameters["resources"]["npools"]
-            }
+            resources = parameters["resources"]
+            codes |= {key: {"code": value} for key, value in codes.items()}
+            codes["pw"]["nodes"] = resources["num_machines"]
+            codes["pw"]["cpus"] = resources["num_mpiprocs_per_machine"]
+            codes["pw"]["parallelization"] = {"npool": resources["npools"]}
+
         workchain_parameters: dict = parameters.get("workchain", {})
         properties = set(workchain_parameters.get("properties", []))
-        with self.hold_trait_notifications():
-            for identifier, model in self._models.items():
-                model.include = identifier in self._default_models | properties
-                if parameters["codes"].get(identifier):
-                    model.set_model_state(parameters["codes"][identifier]["codes"])
-                    model.loaded_from_process = True
+        included = self._default_models | properties
+        for identifier, model in self.get_models():
+            model.include = identifier in included
+            if codes.get(identifier):
+                model.set_model_state(codes[identifier])
+                model.loaded_from_process = True
 
         if self.process_node:
             self.process_label = self.process_node.label
@@ -193,8 +214,8 @@ class SubmissionStepModel(
 
     def get_selected_codes(self) -> dict[str, dict]:
         return {
-            name: code_model.get_model_state()
-            for name, code_model in self.get_model("global").codes.items()
+            identifier: code_model.get_model_state()
+            for identifier, code_model in self.get_model("global").get_models()
             if code_model.is_ready
         }
 
@@ -203,7 +224,7 @@ class SubmissionStepModel(
             self.input_structure = None
             self.input_parameters = {}
             self.process_node = None
-            for identifier, model in self._models.items():
+            for identifier, model in self.get_models():
                 if identifier not in self._default_models:
                     model.include = False
 
@@ -226,6 +247,12 @@ class SubmissionStepModel(
                 self.input_structure.get_formula(),
             )
             self.process_node = process_node
+
+            self._update_url()
+
+    def _update_url(self):
+        pk = self.process_node.pk
+        display(Javascript(f"window.history.pushState(null, '', '?pk={pk}');"))
 
     def _link_model(self, model: ResourceSettingsModel):
         for dependency in model.dependencies:
@@ -253,25 +280,23 @@ class SubmissionStepModel(
         codes = parameters["codes"]["global"]["codes"]
 
         builder.relax.base.pw.metadata.options.resources = {
-            "num_machines": codes.get("quantumespresso.pw")["nodes"],
-            "num_mpiprocs_per_machine": codes.get("quantumespresso.pw")[
+            "num_machines": codes.get("quantumespresso__pw")["nodes"],
+            "num_mpiprocs_per_machine": codes.get("quantumespresso__pw")[
                 "ntasks_per_node"
             ],
-            "num_cores_per_mpiproc": codes.get("quantumespresso.pw")["cpus_per_task"],
+            "num_cores_per_mpiproc": codes.get("quantumespresso__pw")["cpus_per_task"],
         }
-        mws = codes.get("quantumespresso.pw")["max_wallclock_seconds"]
+        mws = codes.get("quantumespresso__pw")["max_wallclock_seconds"]
         builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = mws
-        parallelization = codes["quantumespresso.pw"]["parallelization"]
+        parallelization = codes["quantumespresso__pw"]["parallelization"]
         builder.relax.base.pw.parallelization = orm.Dict(dict=parallelization)
 
         return builder
 
     def _check_submission_blockers(self):
-        # Do not submit while any of the background setup processes are running.
         if self.installing_qe or self.installing_sssp:
             yield "Background setup processes must finish."
 
-        # SSSP library not installed
         if not self.sssp_installed:
             yield "The SSSP library is not installed."
 

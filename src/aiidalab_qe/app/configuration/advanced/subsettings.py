@@ -8,11 +8,14 @@ from aiidalab_qe.common.mvc import Model
 
 
 class AdvancedCalculationSubSettingsModel(Model):
+    identifier = "sub"
     dependencies = []
 
     loaded_from_process = tl.Bool(False)
 
-    _defaults = {}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._defaults = {}
 
     def update(self, specific=""):
         """Updates the model.
@@ -33,12 +36,10 @@ M = t.TypeVar("M", bound=AdvancedCalculationSubSettingsModel)
 
 
 class AdvancedConfigurationSubSettingsPanel(ipw.VBox, t.Generic[M]):
-    identifier = "sub"
-
     def __init__(self, model: M, **kwargs):
         from aiidalab_qe.common.widgets import LoadingWidget
 
-        self.loading_message = LoadingWidget(f"Loading {self.identifier} settings")
+        self.loading_message = LoadingWidget(f"Loading {model.identifier} settings")
 
         super().__init__(
             layout={"justify_content": "space-between", **kwargs.get("layout", {})},
@@ -47,10 +48,6 @@ class AdvancedConfigurationSubSettingsPanel(ipw.VBox, t.Generic[M]):
         )
 
         self._model = model
-        self._model.observe(
-            self._on_override_change,
-            "override",
-        )
 
         self.rendered = False
         self.updated = False
@@ -78,10 +75,6 @@ class AdvancedConfigurationSubSettingsPanel(ipw.VBox, t.Generic[M]):
             # Skip resetting to avoid having to inject a structure when testing
             return
         if hasattr(self._model, "input_structure") and not self._model.input_structure:
-            self._reset()
-
-    def _on_override_change(self, change):
-        if not change["new"]:
             self._reset()
 
     def _update(self, specific=""):

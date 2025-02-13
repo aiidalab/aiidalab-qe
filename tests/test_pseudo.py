@@ -151,10 +151,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     model = PseudosConfigurationSettingsModel()
     pseudos = PseudosConfigurationSettingsPanel(model=model)
 
-    assert model.override is False
-
     # Test the default family
-    model.override = True
     model.spin_orbit = "wo_soc"
     assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
@@ -233,7 +230,7 @@ def test_pseudo_upload_widget(generate_upf_data):
     w.cutoffs = [30, 240]
     w.render()
 
-    message = "Recommended ecutwfc: <b>{ecutwfc} Ry</b> ecutrho: <b>{ecutrho} Ry</b>"
+    message = "ψ: <b>{ecutwfc} Ry</b> | ρ: <b>{ecutrho} Ry</b>"  # noqa: RUF001
 
     assert w.pseudo.filename == "O_old.upf"
     assert w.kind_name == "O1"

@@ -10,21 +10,25 @@ from aiidalab_qe.common.mixins import (
     HasInputStructure,
     HasModels,
 )
-from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
+from aiidalab_qe.common.widgets import QeWizardStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
+NO_RELAXATION_OPTION = ("Structure as is", "none")
+
 
 class ConfigurationStepModel(
-    Model,
+    QeWizardStepModel,
     HasModels[ConfigurationSettingsModel],
     HasInputStructure,
     Confirmable,
 ):
+    identifier = "configuration"
+
     relax_type_help = tl.Unicode()
-    relax_type_options = tl.List([DEFAULT["workchain"]["relax_type"]])
-    relax_type = tl.Unicode(DEFAULT["workchain"]["relax_type"])
+    relax_type_options = tl.List([NO_RELAXATION_OPTION])
+    relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -60,7 +64,7 @@ class ConfigurationStepModel(
                 ),
             )
             relax_type_options = [
-                ("Structure as is", "none"),
+                NO_RELAXATION_OPTION,
                 ("Atomic positions", "positions"),
                 ("Full geometry", "positions_cell"),
             ]
@@ -70,23 +74,28 @@ class ConfigurationStepModel(
                 full_relaxation_option="",
             )
             relax_type_options = [
-                ("Structure as is", "none"),
+                NO_RELAXATION_OPTION,
                 ("Atomic positions", "positions"),
             ]
+
+        default = DEFAULT["workchain"]["relax_type"]
+        default_available = [default in [option[1] for option in relax_type_options]]
+        relax_type = default if default_available else relax_type_options[-1][-1]
+
         self._defaults = {
             "relax_type_help": relax_type_help,
             "relax_type_options": relax_type_options,
-            "relax_type": relax_type_options[-1][-1],
+            "relax_type": relax_type,
         }
-        with self.hold_trait_notifications():
-            self.relax_type_help = self._get_default_relax_type_help()
-            self.relax_type_options = self._get_default_relax_type_options()
-            self.relax_type = self._get_default_relax_type()
+
+        self.relax_type_help = self._get_default_relax_type_help()
+        self.relax_type_options = self._get_default_relax_type_options()
+        self.relax_type = self._get_default_relax_type()
 
     def get_model_state(self):
         parameters = {
             identifier: model.get_model_state()
-            for identifier, model in self._models.items()
+            for identifier, model in self.get_models()
             if model.include
         }
         parameters["workchain"] |= {
@@ -100,7 +109,7 @@ class ConfigurationStepModel(
             workchain_parameters: dict = parameters.get("workchain", {})
             self.relax_type = workchain_parameters.get("relax_type")
             properties = set(workchain_parameters.get("properties", []))
-            for identifier, model in self._models.items():
+            for identifier, model in self.get_models():
                 model.include = identifier in self._default_models | properties
                 if parameters.get(identifier):
                     model.set_model_state(parameters[identifier])
@@ -111,7 +120,7 @@ class ConfigurationStepModel(
         self.relax_type_help = self._get_default_relax_type_help()
         self.relax_type_options = self._get_default_relax_type_options()
         self.relax_type = self._get_default_relax_type()
-        for identifier, model in self._models.items():
+        for identifier, model in self.get_models():
             if identifier not in self._default_models:
                 model.include = False
 
@@ -120,22 +129,11 @@ class ConfigurationStepModel(
             (self, "confirmed"),
             (model, "confirmed"),
         )
-        for dependency in model.dependencies:
-            dependency_parts = dependency.split(".")
-            if len(dependency_parts) == 1:  # from parent, e.g. input_structure
-                target_model = self
-                trait = dependency
-            else:  # from sibling, e.g. workchain.protocol
-                sibling, trait = dependency_parts
-                target_model = self.get_model(sibling)
-            ipw.dlink(
-                (target_model, trait),
-                (model, trait),
-            )
+        super()._link_model(model)
 
     def _get_properties(self):
         properties = []
-        for identifier, model in self._models.items():
+        for identifier, model in self.get_models():
             if identifier in self._default_models:
                 continue
             if model.include:
@@ -148,7 +146,13 @@ class ConfigurationStepModel(
         return self._defaults.get("relax_type_help", "")
 
     def _get_default_relax_type_options(self):
-        return self._defaults.get("relax_type_options", [""])
+        return self._defaults.get("relax_type_options", [NO_RELAXATION_OPTION])
 
     def _get_default_relax_type(self):
-        return self._defaults.get("relax_type", "")
+        options = self._get_default_relax_type_options()
+        relax_type = self._defaults.get("relax_type", NO_RELAXATION_OPTION[-1])
+        return (
+            relax_type
+            if relax_type in [option[1] for option in options]
+            else options[-1][-1]
+        )

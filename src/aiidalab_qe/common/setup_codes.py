@@ -16,7 +16,7 @@ FN_DO_NOT_SETUP = Path.cwd().joinpath(".do-not-setup-on-localhost")
 
 class QESetupWidget(ipw.VBox):
     """The QE setup widget checks whether there are codes that match specific expected
-    labels (e.g. "pw-7.2@localhost") and triggers both the installation of QE into a
+    labels (e.g. "pw-7.4@localhost") and triggers both the installation of QE into a
     dedicated conda environment and the setup of the codes in case that they are not
     already configured.
     """

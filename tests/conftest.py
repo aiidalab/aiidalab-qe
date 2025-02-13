@@ -7,7 +7,7 @@ import tempfile
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.main import App
+from aiidalab_qe.app.wizard_app import WizardApp
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
@@ -385,7 +385,7 @@ def projwfc_bands_code(aiida_local_code_factory):
 @pytest.fixture()
 def workchain_settings_generator():
     """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.configuration.basic.workflow import (
+    from aiidalab_qe.app.configuration.basic import (
         BasicConfigurationSettingsModel,
         BasicConfigurationSettingsPanel,
     )
@@ -418,7 +418,7 @@ def smearing_settings_generator():
 
 @pytest.fixture
 def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
-    app = App(qe_auto_setup=False)
+    app = WizardApp(qe_auto_setup=False)
 
     # Since we use `qe_auto_setup=False`, which will skip the pseudo library
     # installation, we need to mock set the installation status to `True` to
@@ -429,19 +429,12 @@ def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
     app.submit_model.qe_installed = True
 
     # set up codes
-    pw_code_model = app.submit_model.get_model("global").get_code("quantumespresso.pw")
-    dos_code_model = app.submit_model.get_model("global").get_code(
-        "quantumespresso.dos"
-    )
-    projwfc_code_model = app.submit_model.get_model("global").get_code(
-        "quantumespresso.projwfc"
-    )
+    global_model = app.submit_model.get_model("global")
+    global_model.get_model("quantumespresso__pw").activate()
+    global_model.get_model("quantumespresso__dos").activate()
+    global_model.get_model("quantumespresso__projwfc").activate()
 
-    pw_code_model.activate()
-    dos_code_model.activate()
-    projwfc_code_model.activate()
-
-    app.submit_model.get_model("global").set_selected_codes(
+    global_model.set_selected_codes(
         {
             "pw": {"code": pw_code.label},
             "dos": {"code": dos_code.label},
@@ -454,7 +447,7 @@ def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
 
 @pytest.fixture()
 def submit_app_generator(
-    app: App,
+    app: WizardApp,
     generate_structure_data,
 ):
     """Return a function that generates a submit step widget."""
@@ -489,7 +482,6 @@ def submit_app_generator(
         # Advanced settings
         advanced_model = app.configure_model.get_model("advanced")
 
-        advanced_model.override = True
         advanced_model.total_charge = tot_charge
         advanced_model.van_der_waals = vdw_corr
         advanced_model.kpoints_distance = kpoints_distance
@@ -509,7 +501,9 @@ def submit_app_generator(
         app.configure_model.confirm()
 
         app.submit_model.input_structure = generate_structure_data()
-        app.submit_model.get_model("global").get_code("quantumespresso.pw").num_cpus = 2
+        app.submit_model.get_model("global").get_model(
+            "quantumespresso__pw"
+        ).num_cpus = 2
 
         return app
 
@@ -517,7 +511,7 @@ def submit_app_generator(
 
 
 @pytest.fixture
-def app_to_submit(app: App, generate_structure_data):
+def app_to_submit(app: WizardApp, generate_structure_data):
     # Step 1: select structure from example
     app.structure_model.input_structure = generate_structure_data()
     app.structure_model.confirm()
@@ -742,7 +736,7 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app: App,
+    app: WizardApp,
     generate_structure_data,
     generate_workchain,
     generate_pdos_workchain,
@@ -799,7 +793,6 @@ def generate_qeapp_workchain(
         workchain_model.electronic_type = electronic_type
 
         if spin_type == "collinear":
-            advanced_model.override = True
             magnetization_model = advanced_model.get_model("magnetization")
             if electronic_type == "insulator":
                 magnetization_model.total = tot_magnetization
@@ -818,36 +811,38 @@ def generate_qeapp_workchain(
         app.configure_model.confirm()
 
         # step 3 setup code and resources
-        app.submit_model.get_model("global").get_code("quantumespresso.pw").num_cpus = 4
+        app.submit_model.get_model("global").get_model(
+            "quantumespresso__pw"
+        ).num_cpus = 4
         parameters = app.submit_model.get_model_state()
         builder = app.submit_model._create_builder(parameters)
 
         inputs = builder._inputs()
         inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
 
-        # Setting up inputs for bands_projwfc
-        inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
-            inputs["bands"]["bands"]["scf"]["pw"]
-        )
-        inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
-            inputs["bands"]["bands"]["bands"]["pw"]
-        )
-        inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
-            "bands"
-        ]["bands"]["pw"]["code"]
-        inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
-            "bands"
-        ]["scf"]["pw"]["code"]
-
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = fixture_code(
-            "quantumespresso.projwfc"
-        )
-        inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
-            {"PROJWFC": {"DeltaE": 0.01}}
-        ).store()
-
         if run_bands:
+            # Setting up inputs for bands_projwfc
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
+                inputs["bands"]["bands"]["scf"]["pw"]
+            )
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
+                inputs["bands"]["bands"]["bands"]["pw"]
+            )
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
+                "bands"
+            ]["bands"]["pw"]["code"]
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"]["code"] = inputs["bands"][
+                "bands"
+            ]["scf"]["pw"]["code"]
+
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = (
+                fixture_code("quantumespresso.projwfc")
+            )
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
+                {"PROJWFC": {"DeltaE": 0.01}}
+            ).store()
             inputs["properties"].append("bands")
+
         if run_pdos:
             inputs["properties"].append("pdos")
 
@@ -857,6 +852,7 @@ def generate_qeapp_workchain(
         # mock output
         if relax_type != "none":
             workchain.out("structure", app.structure_model.input_structure)
+
         if run_pdos:
             from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 
@@ -868,6 +864,7 @@ def generate_qeapp_workchain(
                     namespace="pdos",
                 )
             )
+
         if run_bands:
             from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 

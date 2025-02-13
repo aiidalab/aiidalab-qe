@@ -32,19 +32,23 @@ class AdvancedConfigurationSettingsModel(
     HasModels[AdvancedCalculationSubSettingsModel],
     HasInputStructure,
 ):
+    title = "Advanced settings"
+    identifier = "advanced"
+
     dependencies = [
         "input_structure",
         "workchain.protocol",
         "workchain.spin_type",
         "workchain.electronic_type",
+        "workchain.spin_orbit",
     ]
 
     protocol = tl.Unicode()
     spin_type = tl.Unicode()
     electronic_type = tl.Unicode()
+    spin_orbit = tl.Unicode()
 
-    clean_workdir = tl.Bool(False)
-    override = tl.Bool(False)
+    clean_workdir = tl.Bool(DEFAULT["advanced"]["clean_workdir"])
     total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
     van_der_waals_options = tl.List(
         trait=tl.List(tl.Unicode()),
@@ -58,14 +62,6 @@ class AdvancedConfigurationSettingsModel(
         ],
     )
     van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
-    spin_orbit_options = tl.List(
-        trait=tl.List(tl.Unicode()),
-        default_value=[
-            ["Off", "wo_soc"],
-            ["On", "soc"],
-        ],
-    )
-    spin_orbit = tl.Unicode("wo_soc")
     forc_conv_thr = tl.Float(0.0)
     forc_conv_thr_step = tl.Float(1e-4)
     etot_conv_thr = tl.Float(0.0)
@@ -73,6 +69,8 @@ class AdvancedConfigurationSettingsModel(
     scf_conv_thr = tl.Float(0.0)
     scf_conv_thr_step = tl.Float(1e-10)
     electron_maxstep = tl.Int(80)
+    optimization_maxsteps = tl.Int(50)
+
     kpoints_distance = tl.Float(0.0)
     mesh_grid = tl.Unicode("")
 
@@ -113,11 +111,16 @@ class AdvancedConfigurationSettingsModel(
             },
             "clean_workdir": self.clean_workdir,
             "kpoints_distance": self.kpoints_distance,
+            "optimization_maxsteps": self.optimization_maxsteps,
         }
 
         hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
         if hubbard.is_active:
-            parameters["hubbard_parameters"] = {"hubbard_u": hubbard.parameters}
+            parameters["hubbard_parameters"] = {
+                "hubbard_u": {
+                    label: value for label, value in hubbard.parameters.items() if value
+                }
+            }
             if hubbard.has_eigenvalues:
                 parameters["pw"]["parameters"]["SYSTEM"] |= {
                     "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()
@@ -154,8 +157,8 @@ class AdvancedConfigurationSettingsModel(
         # Set tot_magnetization for collinear simulations.
         if self.spin_type == "collinear":
             # Conditions for metallic systems.
-            # Select the magnetization type and set the value if override is True
-            if self.electronic_type == "metal" and self.override:
+            # Select the magnetization type and set the value
+            if self.electronic_type == "metal":
                 if magnetization.type == "tot_magnetization":
                     parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
                         magnetization.total
@@ -192,6 +195,7 @@ class AdvancedConfigurationSettingsModel(
             pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
 
         self.kpoints_distance = parameters.get("kpoints_distance", 0.15)
+        self.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)
 
         if (pw_parameters := parameters.get("pw", {}).get("parameters")) is not None:
             self._set_pw_parameters(pw_parameters)
@@ -235,9 +239,8 @@ class AdvancedConfigurationSettingsModel(
             self.scf_conv_thr = self._get_default("scf_conv_thr")
             self.scf_conv_thr_step = self._get_default("scf_conv_thr_step")
             self.electron_maxstep = self._get_default("electron_maxstep")
-            self.spin_orbit = self._get_default("spin_orbit")
             self.kpoints_distance = self._get_default("kpoints_distance")
-            self.override = self._get_default("override")
+            self.optimization_maxsteps = self._get_default("optimization_maxsteps")
 
     def _get_default(self, trait):
         return self._defaults.get(trait, self.traits()[trait].default_value)
@@ -247,19 +250,11 @@ class AdvancedConfigurationSettingsModel(
             (self, "loaded_from_process"),
             (model, "loaded_from_process"),
         )
-        ipw.dlink(
-            (self, "override"),
-            (model, "override"),
-        )
         model.observe(
             self._on_any_change,
             tl.All,
         )
-        for trait in model.dependencies:
-            ipw.dlink(
-                (self, trait),
-                (model, trait),
-            )
+        super()._link_model(model)
 
     def _update_kpoints_mesh(self, _=None):
         if not self.has_structure:

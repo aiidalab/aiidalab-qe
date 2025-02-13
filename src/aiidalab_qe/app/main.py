@@ -1,201 +1,92 @@
-"""The main widget that shows the application in the Jupyter notebook.
+"""The main app that shows the application in the Jupyter notebook.
 
 Authors: AiiDAlab team
 """
 
+from pathlib import Path
+
 import ipywidgets as ipw
-import traitlets as tl
-from IPython.display import Javascript, display
+from IPython.display import display
 
-from aiida.orm import load_node
-from aiida.orm.utils.serialize import deserialize_unsafe
-from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-from aiidalab_qe.app.configuration.model import ConfigurationStepModel
-from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
-from aiidalab_qe.app.result.model import ResultsStepModel
-from aiidalab_qe.app.structure import StructureSelectionStep
-from aiidalab_qe.app.structure.model import StructureStepModel
-from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.app.submission.model import SubmissionStepModel
-from aiidalab_qe.common.widgets import LoadingWidget
-from aiidalab_widgets_base import WizardAppWidget
+from aiidalab_qe.app.static import styles
+from aiidalab_qe.app.wizard_app import WizardApp
+from aiidalab_qe.app.wrapper import AppWrapperContoller, AppWrapperModel, AppWrapperView
+from aiidalab_widgets_base.bug_report import (
+    install_create_github_issue_exception_handler,
+)
+from aiidalab_widgets_base.utils.loaders import load_css
+
+DEFAULT_BUG_REPORT_URL = "https://github.com/aiidalab/aiidalab-qe/issues/new"
 
 
-class App(ipw.VBox):
-    """The main widget that combines all the application steps together."""
+class QeApp:
+    def __init__(
+        self,
+        process=None,
+        qe_auto_setup=True,
+        bug_report_url=DEFAULT_BUG_REPORT_URL,
+        show_log=False,
+    ):
+        """Initialize the AiiDAlab QE application with the necessary setup."""
 
-    # The PK or UUID of the work chain node.
-    process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
+        self.process = process
+        self.qe_auto_setup = qe_auto_setup
+        self.log_widget = None
 
-    def __init__(self, qe_auto_setup=True):
-        # Initialize the models
-        self.structure_model = StructureStepModel()
-        self.configure_model = ConfigurationStepModel()
-        self.submit_model = SubmissionStepModel()
-        self.results_model = ResultsStepModel()
+        self._load_styles()
 
-        # Create the application steps
-        self.structure_step = StructureSelectionStep(
-            model=self.structure_model,
-            auto_advance=True,
+        # Initialize MVC components
+        self.model = AppWrapperModel()
+        self.view = AppWrapperView()
+        display(self.view)
+
+        if show_log:
+            self.log_widget = ipw.Output(
+                layout=ipw.Layout(
+                    border="solid 1px lightgray",
+                    margin="2px",
+                    padding="5px",
+                ),
+            )
+            reset_button = ipw.Button(
+                description="Clear log",
+                button_style="primary",
+                icon="trash",
+                layout=ipw.Layout(width="fit-content"),
+            )
+            reset_button.on_click(lambda _: self.log_widget.clear_output())
+            display(
+                ipw.VBox(
+                    children=[
+                        reset_button,
+                        self.log_widget,
+                    ],
+                )
+            )
+
+        # Set up bug report handling (if a URL is provided)
+        if bug_report_url:
+            install_create_github_issue_exception_handler(
+                self.log_widget if show_log else self.view.output,
+                url=bug_report_url,
+                labels=("bug", "automated-report"),
+            )
+
+        # setup UI controls
+        self.controller = AppWrapperContoller(self.model, self.view)
+        self.controller.enable_controls()
+
+    def _load_styles(self):
+        """Load CSS styles from the static directory."""
+        load_css(css_path=Path(styles.__file__).parent)
+
+    def load(self):
+        """Initialize the WizardApp and integrate the app into the main view."""
+        self.app = WizardApp(
+            qe_auto_setup=self.qe_auto_setup,
+            log_widget=self.log_widget,
         )
-        self.configure_step = ConfigureQeAppWorkChainStep(
-            model=self.configure_model,
-            auto_advance=True,
-        )
-        self.submit_step = SubmitQeAppWorkChainStep(
-            model=self.submit_model,
-            auto_advance=True,
-            qe_auto_setup=qe_auto_setup,
-        )
-        self.results_step = ViewQeAppWorkChainStatusAndResultsStep(
-            model=self.results_model,
-        )
-
-        # Wizard step observations
-        ipw.dlink(
-            (self.structure_step, "state"),
-            (self.configure_step, "previous_step_state"),
-        )
-        self.structure_model.observe(
-            self._on_structure_confirmation_change,
-            "confirmed",
-        )
-        ipw.dlink(
-            (self.configure_step, "state"),
-            (self.submit_step, "previous_step_state"),
-        )
-        self.configure_model.observe(
-            self._on_configuration_confirmation_change,
-            "confirmed",
-        )
-        self.submit_model.observe(
-            self._on_submission,
-            "confirmed",
-        )
-
-        # Add the application steps to the application
-        self._wizard_app_widget = WizardAppWidget(
-            steps=[
-                ("Select structure", self.structure_step),
-                ("Configure workflow", self.configure_step),
-                ("Choose computational resources", self.submit_step),
-                ("Status & Results", self.results_step),
-            ]
-        )
-        self._wizard_app_widget.observe(
-            self._on_step_change,
-            "selected_index",
-        )
-
-        # Hide the header
-        self._wizard_app_widget.children[0].layout.display = "none"  # type: ignore
-
-        # Add a button to start a new calculation
-        self.new_workchain_button = ipw.Button(
-            layout=ipw.Layout(width="auto"),
-            button_style="success",
-            icon="plus-circle",
-            description="Start New Calculation",
-            tooltip="Open a new page to start a separate calculation",
-        )
-
-        self.new_workchain_button.on_click(self._on_new_workchain_button_click)
-
-        self._process_loading_message = LoadingWidget(
-            message="Loading process",
-            layout=ipw.Layout(display="none"),
-        )
-
-        super().__init__(
-            children=[
-                self.new_workchain_button,
-                self._process_loading_message,
-                self._wizard_app_widget,
-            ]
-        )
-
-        self._wizard_app_widget.selected_index = None
-
-        self._update_blockers()
-
-    @property
-    def steps(self):
-        return self._wizard_app_widget.steps
-
-    @tl.observe("process")
-    def _on_process_change(self, change):
-        self._update_from_process(change["new"])
-
-    def _on_new_workchain_button_click(self, _):
-        display(Javascript("window.open('./qe.ipynb', '_blank')"))
-
-    def _on_step_change(self, change):
-        if (step_index := change["new"]) is not None:
-            self._render_step(step_index)
-
-    def _on_structure_confirmation_change(self, _):
-        self._update_configuration_step()
-        self._update_blockers()
-
-    def _on_configuration_confirmation_change(self, _):
-        self._update_submission_step()
-        self._update_blockers()
-
-    def _on_submission(self, _):
-        self._update_results_step()
-
-    def _render_step(self, step_index):
-        step = self.steps[step_index][1]
-        step.render()
-
-    def _update_configuration_step(self):
-        if self.structure_model.confirmed:
-            self.configure_model.input_structure = self.structure_model.input_structure
-        else:
-            self.configure_model.input_structure = None
-
-    def _update_submission_step(self):
-        if self.configure_model.confirmed:
-            self.submit_model.input_structure = self.structure_model.input_structure
-            self.submit_model.input_parameters = self.configure_model.get_model_state()
-        else:
-            self.submit_model.input_structure = None
-            self.submit_model.input_parameters = {}
-
-    def _update_results_step(self):
-        node = self.submit_model.process_node
-        self.results_model.process_uuid = node.uuid if node is not None else None
-
-    def _update_blockers(self):
-        self.submit_model.external_submission_blockers = [
-            f"Unsaved changes in the <b>{title}</b> step. Please confirm the changes before submitting."
-            for title, step in self.steps[:2]
-            if not step.is_saved()
-        ]
-
-    def _update_from_process(self, pk):
-        if pk is None:
-            self._wizard_app_widget.reset()
-            self._wizard_app_widget.selected_index = 0
-        else:
-            self._show_process_loading_message()
-            process_node = load_node(pk)
-            self.structure_model.input_structure = process_node.inputs.structure
-            self.structure_model.confirm()
-            parameters = process_node.base.extras.get("ui_parameters", {})
-            if parameters and isinstance(parameters, str):
-                parameters = deserialize_unsafe(parameters)
-            self.configure_model.set_model_state(parameters)
-            self.configure_model.confirm()
-            self.submit_model.process_node = process_node
-            self.submit_model.set_model_state(parameters)
-            self.submit_model.confirm()
-            self._wizard_app_widget.selected_index = 3
-            self._hide_process_loading_message()
-
-    def _show_process_loading_message(self):
-        self._process_loading_message.layout.display = "flex"
-
-    def _hide_process_loading_message(self):
-        self._process_loading_message.layout.display = "none"
+        self.view.main.children = [self.app]
+        # load a previous calculation if it is provided
+        if self.process:
+            self.app.process = self.process

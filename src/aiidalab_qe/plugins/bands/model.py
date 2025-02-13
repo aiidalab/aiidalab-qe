@@ -6,6 +6,9 @@ from aiidalab_qe.common.panel import ConfigurationSettingsModel
 class BandsConfigurationSettingsModel(ConfigurationSettingsModel):
     """Model for the band structure plugin."""
 
+    title = "Band structure"
+    identifier = "bands"
+
     projwfc_bands = tl.Bool(False)
 
     def get_model_state(self):

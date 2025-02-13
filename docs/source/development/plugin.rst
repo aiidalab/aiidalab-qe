@@ -249,7 +249,7 @@ feed the `metadata` of each Calcjob which is submitted in the workchain. For exa
 
 .. code-block:: python
 
-    from aiidalab_qe.plugins.utils import set_component_resources
+    from aiidalab_qe.utils import set_component_resources
 
     def update_resources(builder, codes):
         set_component_resources(builder.pw, codes.get("pw"))

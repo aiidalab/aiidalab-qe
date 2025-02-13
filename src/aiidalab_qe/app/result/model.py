@@ -6,11 +6,19 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.engine.processes import control
-from aiidalab_qe.common.mixins import HasProcess
-from aiidalab_qe.common.mvc import Model
+from aiidalab_qe.common.mixins import HasModels, HasProcess
+from aiidalab_qe.common.widgets import QeWizardStepModel
+
+from .components import ResultsComponentModel
 
 
-class ResultsStepModel(Model, HasProcess):
+class ResultsStepModel(
+    QeWizardStepModel,
+    HasModels[ResultsComponentModel],
+    HasProcess,
+):
+    identifier = "results"
+
     process_info = tl.Unicode("")
     process_remote_folder_is_clean = tl.Bool(False)
 
@@ -35,7 +43,8 @@ class ResultsStepModel(Model, HasProcess):
         self.process_info = ""
 
     def _update_process_remote_folder_state(self):
-        if not (process_node := self.fetch_process_node()):
+        process_node = self.fetch_process_node()
+        if not (process_node and process_node.called_descendants):
             return
         cleaned = []
         for called_descendant in process_node.called_descendants:
@@ -43,3 +52,13 @@ class ResultsStepModel(Model, HasProcess):
                 with contextlib.suppress(Exception):
                     cleaned.append(called_descendant.outputs.remote_folder.is_empty)
         self.process_remote_folder_is_clean = all(cleaned)
+
+    def _link_model(self, model: ResultsComponentModel):
+        tl.dlink(
+            (self, "process_uuid"),
+            (model, "process_uuid"),
+        )
+        tl.dlink(
+            (self, "monitor_counter"),
+            (model, "monitor_counter"),
+        )
