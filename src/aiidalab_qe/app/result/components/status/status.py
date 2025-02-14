@@ -2,22 +2,15 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 
-from aiida import orm
 from aiidalab_qe.app.result.components import ResultsComponent
-from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_widgets_base import ProcessNodesTreeWidget
-from aiidalab_widgets_base.viewers import viewer as node_viewer
+from aiidalab_widgets_base.viewers import AiidaNodeViewWidget
 
 from .model import WorkChainStatusModel
 from .tree import SimplifiedProcessTree, SimplifiedProcessTreeModel
 
 
 class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
-    def __init__(self, model: WorkChainStatusModel, **kwargs):
-        super().__init__(model=model, **kwargs)
-        self.node_views = {}  # node-view cache
-        self.node_view_loading_message = LoadingWidget("Loading node view")
-
     def _render(self):
         model = SimplifiedProcessTreeModel()
         self.simplified_process_tree = SimplifiedProcessTree(model=model)
@@ -35,10 +28,6 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         )
 
         self.process_tree = ProcessNodesTreeWidget()
-        self.process_tree.observe(
-            self._on_node_selection_change,
-            "selected_nodes",
-        )
         ipw.dlink(
             (self._model, "process_uuid"),
             (self.process_tree, "value"),
@@ -53,8 +42,12 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         )
         self.reset_button.on_click(self._reset_process_tree)
 
-        self.node_view_container = ipw.VBox(layout=ipw.Layout(height="100%"))
-        self.node_view_container.add_class("node-view-container")
+        self.node_view = AiidaNodeViewWidget()
+        ipw.dlink(
+            (self.process_tree, "selected_nodes"),
+            (self.node_view, "node"),
+            transform=lambda nodes: nodes[0] if nodes else None,
+        )
 
         self.to_advanced_view_button = ipw.Button(
             description="View in advanced panel",
@@ -74,7 +67,7 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         simplified_tree_node_view_container = ipw.VBox(
             children=[
                 self.to_advanced_view_button,
-                self.node_view_container,
+                self.node_view,
             ],
         )
 
@@ -90,7 +83,7 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
             children=[
                 self.reset_button,
                 self.process_tree,
-                self.node_view_container,
+                self.node_view,
             ],
         )
         advanced_view.add_class("advanced-view")
@@ -129,44 +122,12 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         if selected_node_uuid := change["new"]:
             self.process_tree.value = selected_node_uuid
 
-    def _on_node_selection_change(self, change):
-        self._update_node_view(change["new"])
-
     def _switch_to_advanced_view(self, _):
         self.accordion.selected_index = 1
 
     def _update_process_tree(self):
         if self.rendered:
             self.process_tree.update()
-
-    def _update_node_view(self, nodes, refresh=False):
-        """Update the node view based on the selected nodes.
-
-        parameters
-        ----------
-        `nodes`: `list`
-            List of selected nodes.
-        `refresh`: `bool`, optional
-            If True, the viewer will be refreshed.
-            Occurs when user presses the "Update results" button.
-        """
-
-        if not nodes:
-            return
-        # only show the first selected node
-        node = nodes[0]
-
-        # check if the viewer is already added
-        if node.uuid in self.node_views and not refresh:
-            self.node_view = self.node_views[node.uuid]
-        elif not isinstance(node, orm.WorkChainNode):
-            self.node_view_container.children = [self.node_view_loading_message]
-            self.node_view = node_viewer(node)
-            self.node_views[node.uuid] = self.node_view
-        else:
-            self.node_view = ipw.HTML("No viewer available for this node.")
-
-        self.node_view_container.children = [self.node_view]
 
     def _reset_process_tree(self, _):
         if not self.rendered:
