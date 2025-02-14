@@ -17,8 +17,6 @@ from aiidalab_qe.common.panel import (
     PluginResourceSettingsPanel,
     ResourceSettingsPanel,
 )
-from aiidalab_qe.common.setup_codes import QESetupWidget
-from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.common.widgets import LinkButton, QeDependentWizardStep
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
@@ -30,7 +28,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
     missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
 
-    def __init__(self, model: SubmissionStepModel, qe_auto_setup=True, **kwargs):
+    def __init__(self, model: SubmissionStepModel, **kwargs):
         super().__init__(model=model, **kwargs)
         self._model.observe(
             self._on_submission,
@@ -46,22 +44,6 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
                 "internal_submission_blockers",
                 "external_submission_blockers",
             ],
-        )
-        self._model.observe(
-            self._on_installation_change,
-            ["installing_sssp", "sssp_installed"],
-        )
-        self._model.observe(
-            self._on_sssp_installed,
-            "sssp_installed",
-        )
-        self._model.observe(
-            self._on_installation_change,
-            ["installing_qe", "qe_installed"],
-        )
-        self._model.observe(
-            self._on_qe_installed,
-            "qe_installed",
         )
 
         global_resources_model = GlobalResourceSettingsModel()
@@ -86,9 +68,6 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             "global": self.global_resources,
         }
         self._fetch_plugin_resource_settings()
-
-        self._install_sssp(qe_auto_setup)
-        self._set_up_qe(qe_auto_setup)
 
     def _render(self):
         self.process_label = ipw.Text(
@@ -179,8 +158,6 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
                 layout=ipw.Layout(grid_gap="5px"),
             ),
             self.tabs,
-            self.sssp_installation,
-            self.qe_setup,
             self.submission_blocker_messages,
             self.submission_warning_messages,
             ipw.HTML("""
@@ -235,63 +212,8 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
         self._model.update_submission_blocker_message()
         self._update_state()
 
-    def _on_installation_change(self, _):
-        self._model.update_submission_blockers()
-
-    def _on_qe_installed(self, _):
-        self._toggle_qe_installation_widget()
-        if self._model.qe_installed:
-            self._model.update()
-
-    def _on_sssp_installed(self, _):
-        self._toggle_sssp_installation_widget()
-
     def _on_submission(self, _):
         self._update_state()
-
-    def _install_sssp(self, qe_auto_setup):
-        self.sssp_installation = PseudosInstallWidget(auto_start=False)
-        ipw.dlink(
-            (self.sssp_installation, "busy"),
-            (self._model, "installing_sssp"),
-        )
-        ipw.dlink(
-            (self.sssp_installation, "installed"),
-            (self._model, "installing_sssp"),
-            lambda installed: not installed,
-        )
-        ipw.dlink(
-            (self.sssp_installation, "installed"),
-            (self._model, "sssp_installed"),
-        )
-        if qe_auto_setup:
-            self.sssp_installation.refresh()
-
-    def _set_up_qe(self, qe_auto_setup):
-        self.qe_setup = QESetupWidget(auto_start=False)
-        ipw.dlink(
-            (self.qe_setup, "busy"),
-            (self._model, "installing_qe"),
-        )
-        ipw.dlink(
-            (self.qe_setup, "installed"),
-            (self._model, "installing_qe"),
-            lambda installed: not installed,
-        )
-        ipw.dlink(
-            (self.qe_setup, "installed"),
-            (self._model, "qe_installed"),
-        )
-        if qe_auto_setup:
-            self.qe_setup.refresh()
-
-    def _toggle_sssp_installation_widget(self):
-        sssp_installation_display = "none" if self._model.sssp_installed else "block"
-        self.sssp_installation.layout.display = sssp_installation_display
-
-    def _toggle_qe_installation_widget(self):
-        qe_installation_display = "none" if self._model.qe_installed else "block"
-        self.qe_setup.layout.display = qe_installation_display
 
     def _refresh_resources(self, _=None):
         for _, model in self._model.get_models():

@@ -18,7 +18,7 @@ def test_set_selected_codes(submit_app_generator):
     app: WizardApp = submit_app_generator()
     parameters = app.submit_model.get_model_state()
     model = SubmissionStepModel()
-    _ = SubmitQeAppWorkChainStep(model=model, qe_auto_setup=False)
+    _ = SubmitQeAppWorkChainStep(model=model)
     for identifier, code_model in app.submit_model.get_model("global").get_models():
         model.get_model("global").get_model(identifier).is_active = code_model.is_active
     model.qe_installed = True
