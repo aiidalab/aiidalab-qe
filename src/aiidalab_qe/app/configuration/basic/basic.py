@@ -57,7 +57,7 @@ class BasicConfigurationSettingsPanel(
         self.starting_magmom_warning = ipw.HTML(
             value="""
                 <div class="alert alert-inline alert-info" style="margin-left: 10px;">
-                    Can only set total magnetization for insulating systems
+                    <b>Note:</b> only total magnetization can be set for insulators
                 </div>
             """,
             layout=ipw.Layout(display="none"),
@@ -66,7 +66,8 @@ class BasicConfigurationSettingsPanel(
         self.magnetization_info = ipw.HTML(
             value="""
                 <div class="alert alert-inline alert-info" style="margin-left: 10px;">
-                    Set the desired magnetic configuration in <b>advanced</b> settings
+                    <b>Note:</b> set the desired magnetic configuration in <b>advanced
+                    </b> settings
                 </div>
             """,
             layout=ipw.Layout(display="none"),
