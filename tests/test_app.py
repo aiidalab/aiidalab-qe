@@ -2,7 +2,7 @@ from aiidalab_qe.app.wizard_app import WizardApp
 
 
 def test_reload_and_reset(generate_qeapp_workchain):
-    app = WizardApp(qe_auto_setup=False)
+    app = WizardApp()
     workchain = generate_qeapp_workchain(
         relax_type="positions",
         spin_type="collinear",

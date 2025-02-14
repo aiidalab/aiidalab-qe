@@ -71,6 +71,7 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
             (self._model, "failed_calculation_report"),
             (self.failed_calculation_report, "value"),
         )
+        self._model.generate_failure_report()
 
         self.children = [
             container,
