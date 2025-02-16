@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing as t
+from copy import deepcopy
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -234,7 +235,14 @@ class ProcessTreeBranches(ipw.VBox):
 class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
     @property
     def metadata_inputs(self):
-        return self.node.get_metadata_inputs()
+        inputs = deepcopy(self.node.get_metadata_inputs()) or {}
+        if "properties" in self.node.inputs:
+            inputs = {
+                key: value
+                for key, value in inputs.items()
+                if key in self.node.inputs.properties
+            }
+        return inputs
 
     @property
     def sub_processes(self):
