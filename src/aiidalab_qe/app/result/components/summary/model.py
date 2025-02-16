@@ -226,17 +226,10 @@ class WorkChainSummaryModel(ResultsComponentModel):
             },
         }
 
-        # Extract the pw calculation parameters from the workchain's inputs
-        # energy_cutoff is same for all pw calculations when pseudopotentials are fixed
-        # as well as the smearing settings (smearing and degauss) and scf kpoints distance
-        # read from the first pw calculation of relax workflow.
-        # It is safe then to extract these parameters from the first pw calculation, since the
-        # builder is anyway set with subworkchain inputs even it is not run which controlled by
-        # the properties inputs.
-        relax = inputs.relax.base
-        pw_parameters = relax.pw.parameters.get_dict()
+        # Extract the pw calculation parameters from the ui_parameters
+        pw_parameters = ui_parameters["advanced"].get("pw", {}).get("parameters", {})
         system = pw_parameters["SYSTEM"]
-        occupation = system["occupations"]
+        occupation = system.get("occupations", "fixed")
         report["advanced_settings"] |= {
             "energy_cutoff_wfc": f"{system['ecutwfc']} Ry",
             "energy_cutoff_rho": f"{system['ecutrho']} Ry",
@@ -248,7 +241,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "degauss": f"{system['degauss']} Ry",
             }
         inv_ang = "Å<sup>-1</sup>"
-        kpoints = relax.kpoints_distance.base.attributes.get("value")
+        kpoints = ui_parameters["advanced"]["kpoints_distance"]
         report["advanced_settings"]["scf_kpoints_distance"] = f"{kpoints} {inv_ang}"
         if "bands" in inputs:
             key = "bands_kpoints_distance"
