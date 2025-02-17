@@ -229,7 +229,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
         # Extract the pw calculation parameters from the ui_parameters
         pw_parameters = ui_parameters["advanced"].get("pw", {}).get("parameters", {})
         system = pw_parameters["SYSTEM"]
-        occupation = system.get("occupations", "fixed")
+        occupation = "fixed" if basic["electronic_type"] == "insulator" else "smearing"
         report["advanced_settings"] |= {
             "energy_cutoff_wfc": f"{system['ecutwfc']} Ry",
             "energy_cutoff_rho": f"{system['ecutrho']} Ry",

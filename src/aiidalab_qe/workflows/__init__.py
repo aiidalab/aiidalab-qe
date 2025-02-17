@@ -231,7 +231,6 @@ class QeAppWorkChain(WorkChain):
                 setattr(builder, name, plugin_builder._inputs(prune=True))
             else:
                 builder.pop(name, None)
-        print(builder)
         return builder
 
     def setup(self):

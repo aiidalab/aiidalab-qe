@@ -818,7 +818,8 @@ def generate_qeapp_workchain(
         builder = app.submit_model._create_builder(parameters)
 
         inputs = builder._inputs()
-        inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
+        if "relax" in inputs:
+            inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
 
         if run_bands:
             # Setting up inputs for bands_projwfc
