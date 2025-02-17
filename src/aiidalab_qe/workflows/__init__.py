@@ -185,26 +185,31 @@ class QeAppWorkChain(WorkChain):
 
         protocol = parameters["workchain"]["protocol"]
 
-        relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
-            code=codes["global"]["codes"].get("quantumespresso__pw")["code"],
-            structure=structure,
-            protocol=protocol,
-            relax_type=RelaxType(parameters["workchain"]["relax_type"]),
-            electronic_type=ElectronicType(parameters["workchain"]["electronic_type"]),
-            spin_type=SpinType(parameters["workchain"]["spin_type"]),
-            initial_magnetic_moments=parameters["advanced"]["initial_magnetic_moments"],
-            overrides=relax_overrides,
-            **kwargs,
-        )
-        enable_pencil_decomposition(relax_builder.base.pw)
-        # pop the inputs that are excluded from the expose_inputs
-        relax_builder.pop("structure", None)
-        relax_builder.pop("clean_workdir", None)
-        relax_builder.pop("base_final_scf", None)  # never run a final scf
-        builder.relax = relax_builder
+        if "relax" in properties:
+            relax_builder = PwRelaxWorkChain.get_builder_from_protocol(
+                code=codes["global"]["codes"].get("quantumespresso__pw")["code"],
+                structure=structure,
+                protocol=protocol,
+                relax_type=RelaxType(parameters["workchain"]["relax_type"]),
+                electronic_type=ElectronicType(
+                    parameters["workchain"]["electronic_type"]
+                ),
+                spin_type=SpinType(parameters["workchain"]["spin_type"]),
+                initial_magnetic_moments=parameters["advanced"][
+                    "initial_magnetic_moments"
+                ],
+                overrides=relax_overrides,
+                **kwargs,
+            )
+            enable_pencil_decomposition(relax_builder.base.pw)
+            # pop the inputs that are excluded from the expose_inputs
+            relax_builder.pop("structure", None)
+            relax_builder.pop("clean_workdir", None)
+            relax_builder.pop("base_final_scf", None)  # never run a final scf
+            builder.relax = relax_builder
+        else:
+            builder.pop("relax")
 
-        if properties is None:
-            properties = []
         builder.properties = orm.List(list=properties)
         # clean workdir
         clean_workdir = orm.Bool(parameters["advanced"]["clean_workdir"])
@@ -226,7 +231,6 @@ class QeAppWorkChain(WorkChain):
                 setattr(builder, name, plugin_builder._inputs(prune=True))
             else:
                 builder.pop(name, None)
-
         return builder
 
     def setup(self):
