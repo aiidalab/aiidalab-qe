@@ -247,6 +247,11 @@ class ProcessTreeBranches(ipw.VBox):
 class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
     @property
     def metadata_inputs(self):
+        # BACKWARDS COMPATIBILITY: originally this was added because "relax" was in the
+        # metadata inputs regardless if running relaxation, as it was used also for the
+        # summary to extract pw parameters. #1163 removes this dependency, thus allowing
+        # the popping of the "relax" port if not running relaxation. However, this is
+        # kept for backwards compatibility, for jobs ran before #1163.
         inputs = deepcopy(self.node.get_metadata_inputs()) or {}
         if "properties" in self.node.inputs:
             inputs = {
