@@ -47,8 +47,7 @@ def recursive_merge(d1, d2):
 
 DEFAULT_PARAMETERS = yaml.safe_load(resources.read_text(parameters, "qeapp.yaml"))
 
-
-custom_config_file = Path.home() / ".aiidalab" / "quantumespresso" / "config.yml"
+custom_config_file = Path.home() / ".aiidalab" / "quantum-espresso" / "qe-config.yml"
 if custom_config_file.exists():
     custom_config = yaml.safe_load(custom_config_file.read_text())
     DEFAULT_PARAMETERS = recursive_merge(DEFAULT_PARAMETERS, custom_config)
