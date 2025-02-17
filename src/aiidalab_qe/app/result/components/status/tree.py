@@ -78,37 +78,20 @@ class SimplifiedProcessTree(ipw.VBox):
         self.children = [
             self.collapse_button,
             self.trunk,
-            ipw.VBox(
+            ipw.HBox(
                 children=[
-                    ipw.HBox(
-                        children=[
-                            ipw.HTML(
-                                value="""
-                            <div style="font-style: italic;">
-                                <sup>†</sup>may run additional relaxation to verify
-                                convergence
-                            </div>
-                        """,
-                            ),
-                        ],
-                    ),
-                    ipw.HBox(
-                        children=[
-                            ipw.HTML(
-                                value="""
-                            <div style="font-style: italic;">
-                                *may submit additional calculations (error recovery,
-                                convergence testing)
-                                <br>
-                                <b>(advanced users)</b> click
-                                <a
-                                    href="https://aiida.readthedocs.io/projects/aiida-core/en/stable/howto/workchains_restart.html"
-                                    target="_blank"
-                                >here</a> to learn how AiiDA handles errors
-                            </div>
-                        """,
-                            ),
-                        ],
+                    ipw.HTML(
+                        value="""
+                        <div style="font-style: italic;">
+                            *dynamic workflow may submit more jobs than expected
+                            <br>
+                            <b>(advanced)</b> click
+                            <a
+                                href="https://aiida.readthedocs.io/projects/aiida-core/en/stable/howto/workchains_restart.html"
+                                target="_blank"
+                            >here</a> to learn about AiiDA's dynamic error handling
+                        </div>
+                    """,
                     ),
                 ],
                 layout=ipw.Layout(
@@ -355,7 +338,6 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
         finished = self._count_finished(self.node)
         tally = f"{finished}/{total}"
         tally += "*" if dynamic else ""
-        tally += "<sup>†</sup>" if self.node.process_label == "PwRelaxWorkChain" else ""
         tally += " job" if total == 1 else " jobs"
         return tally
 
