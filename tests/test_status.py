@@ -97,18 +97,25 @@ def mock_qeapp_workchain():
     yield qe_workchain
 
 
-class TestSimplifiedProcessTree:
-    model: SimplifiedProcessTreeModel
-    node: orm.WorkChainNode
+class TreeTestingMixin:
     tree: SimplifiedProcessTree
 
     @property
-    def workchain_node(self) -> WorkChainTreeNode:
+    def relax_workchain_node(self) -> WorkChainTreeNode:
         return self.tree.trunk.branches[0]  # type: ignore
 
     @property
-    def calculation_node(self) -> CalcJobTreeNode:
-        return self.workchain_node.branches[0]  # type: ignore
+    def base_workchain_node(self) -> WorkChainTreeNode:
+        return self.relax_workchain_node.branches[0]  # type: ignore
+
+    @property
+    def calcjob_node(self) -> CalcJobTreeNode:
+        return self.base_workchain_node.branches[0]  # type: ignore
+
+
+class TestSimplifiedProcessTree(TreeTestingMixin):
+    model: SimplifiedProcessTreeModel
+    node: orm.WorkChainNode
 
     @pytest.fixture(scope="class", autouse=True)
     def setup(self, request):
@@ -140,58 +147,77 @@ class TestSimplifiedProcessTree:
         assert not self.tree.trunk.collapsed
         assert len(self.tree.trunk.branches) == 1
 
-    def test_workchain_node(self):
-        workchain_node = self.workchain_node
-        assert isinstance(workchain_node, WorkChainTreeNode)
-        assert workchain_node.level == 1
-        assert workchain_node.emoji.value == "✅"
-        assert workchain_node.state.value == "finished"
-        human_label = ProcessTreeNode._TITLE_MAPPING["PwBaseWorkChain"]["relax"]
-        assert workchain_node.label.value == human_label
-        assert isinstance(workchain_node.label, ipw.HTML)
-        assert workchain_node.collapsed
-        assert len(workchain_node.branches) == 0
+    def test_relax_workchain_manager_node(self):
+        assert isinstance(self.relax_workchain_node, WorkChainTreeNode)
+        assert self.relax_workchain_node.level == 1
+        assert self.relax_workchain_node.emoji.value == "✅"
+        assert self.relax_workchain_node.state.value == "finished"
+        human_label = ProcessTreeNode._TITLE_MAPPING["PwRelaxWorkChain"]
+        assert self.relax_workchain_node.label.value == human_label
+        assert isinstance(self.relax_workchain_node.label, ipw.HTML)
+        assert self.relax_workchain_node.collapsed
+        assert len(self.relax_workchain_node.branches) == 0
 
     def test_expand(self):
-        workchain_node = self.workchain_node
-        workchain_node.expand()
-        assert "open" in workchain_node.branches._dom_classes
-        assert workchain_node.toggle.icon == "minus"
+        self.relax_workchain_node.expand()
+        assert "open" in self.relax_workchain_node.branches._dom_classes
+        assert self.relax_workchain_node.toggle.icon == "minus"
+        assert len(self.relax_workchain_node.branches) == 1
 
     def test_collapse(self):
-        workchain_node = self.workchain_node
-        workchain_node.collapse()
-        assert "open" not in workchain_node.branches._dom_classes
-        assert workchain_node.toggle.icon == "plus"
+        self.relax_workchain_node.collapse()
+        assert "open" not in self.relax_workchain_node.branches._dom_classes
+        assert self.relax_workchain_node.toggle.icon == "plus"
 
     def test_expand_recursive(self):
         self.tree.trunk.expand(recursive=True)
-        assert not self.tree.trunk.collapsed
-        assert not self.workchain_node.collapsed
+        assert all(
+            not branch.collapsed
+            for branch in (
+                self.tree.trunk,
+                self.relax_workchain_node,
+                self.base_workchain_node,
+            )
+        )
+
+    def test_workchain_node(self):
+        assert isinstance(self.base_workchain_node, WorkChainTreeNode)
+        assert self.base_workchain_node.level == 2
+        assert self.base_workchain_node.emoji.value == "✅"
+        assert self.base_workchain_node.state.value == "finished"
+        human_label = ProcessTreeNode._TITLE_MAPPING["PwBaseWorkChain"]["relax"]
+        assert self.base_workchain_node.label.value == human_label
+        assert isinstance(self.base_workchain_node.label, ipw.HTML)
+        assert len(self.base_workchain_node.branches) == 1
 
     def test_collapse_recursive(self):
-        self.tree.trunk.collapse(recursive=True)
-        assert self.tree.trunk.collapsed
-        assert self.workchain_node.collapsed
+        self.relax_workchain_node.collapse(recursive=True)
+        assert self.relax_workchain_node.collapsed
+        assert self.base_workchain_node.collapsed
 
     def test_collapse_all_button(self):
         self.tree.trunk.expand(recursive=True)
         self.tree.collapse_button.click()
-        assert self.tree.trunk.collapsed
-        assert self.workchain_node.collapsed
+        assert all(
+            branch.collapsed
+            for branch in (
+                self.tree.trunk,
+                self.relax_workchain_node,
+                self.base_workchain_node,
+            )
+        )
 
-    def test_calculation_node(self):
-        calculation_node = self.calculation_node
-        assert isinstance(calculation_node, CalcJobTreeNode)
-        assert calculation_node.level == 2
-        assert calculation_node.emoji.value == "✅"
-        assert calculation_node.state.value == "finished"
+    def test_calcjob_node(self):
+        assert isinstance(self.calcjob_node, CalcJobTreeNode)
+        assert self.calcjob_node.level == 3
+        assert self.calcjob_node.emoji.value == "✅"
+        assert self.calcjob_node.state.value == "finished"
         human_label = ProcessTreeNode._TITLE_MAPPING["PwCalculation"]["relax"]
-        assert isinstance(calculation_node.label, ipw.Button)
-        assert calculation_node.label.description == human_label
+        assert isinstance(self.calcjob_node.label, ipw.Button)
+        assert self.calcjob_node.label.description == human_label
 
 
-class TestWorkChainStatusPanel:
+class TestWorkChainStatusPanel(TreeTestingMixin):
     model: WorkChainStatusModel
     panel: WorkChainStatusPanel
 
@@ -218,13 +244,12 @@ class TestWorkChainStatusPanel:
 
         trunk = self.tree.trunk
         trunk.expand(recursive=True)
-        calcjob_node: CalcJobTreeNode = trunk.branches[0].branches[0]
-        calcjob_node.label.click()
-        assert self.panel.process_tree.value == calcjob_node.uuid
-        assert self.panel.process_tree._tree.nodes == (calcjob_node.node,)
+        self.calcjob_node.label.click()
+        assert self.panel.process_tree.value == self.calcjob_node.uuid
+        assert self.panel.process_tree._tree.nodes == (self.calcjob_node.node,)
         # TODO understand why the following does not trigger automatically as in the app
         # TODO understand why the following triggers a thread
-        # self.panel.process_tree.set_trait("selected_nodes", [calcjob_node.node])
+        # self.panel.process_tree.set_trait("selected_nodes", [self.calcjob_node.node])
         # assert isinstance(self.panel.node_view, CalcJobNodeViewerWidget)
         # assert self.panel.node_view_container.children[0] is self.node_view  # type: ignore
 
