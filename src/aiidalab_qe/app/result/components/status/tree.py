@@ -83,20 +83,16 @@ class SimplifiedProcessTree(ipw.VBox):
                     ipw.HTML(
                         value="""
                         <div style="font-style: italic;">
-                            *dynamic workflow may submit more jobs than expected
-                            <br>
-                            <b>(advanced)</b> click
-                            <a
-                                href="https://aiida.readthedocs.io/projects/aiida-core/en/stable/howto/workchains_restart.html"
-                                target="_blank"
-                            >here</a> to learn about AiiDA's dynamic error handling
+                            *Actual number of jobs may exceed estimated total due to
+                            error handling, dynamic sub-workflows, and/or other runtime
+                            adjustments
                         </div>
                     """,
                     ),
                 ],
                 layout=ipw.Layout(
                     align_items="flex-start",
-                    margin="5px 0 0 0",
+                    margin="5px 10px 0 0",
                 ),
             ),
         ]
