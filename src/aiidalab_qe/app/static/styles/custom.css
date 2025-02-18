@@ -43,6 +43,7 @@
 
 .link-button {
   padding: 0;
+  width: fit-content;
 }
 
 .link-button a {

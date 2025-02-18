@@ -1164,7 +1164,7 @@ class LinkButton(ipw.HTML):
                 role="button"
                 href="{link}"
                 target="{"_self" if in_place else "_blank"}"
-                style="cursor: default; width: fit-content; {style_}"
+                style="cursor: default; {style_}"
             >
         """
         if icon:
