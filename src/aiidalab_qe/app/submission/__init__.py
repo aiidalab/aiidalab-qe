@@ -6,7 +6,6 @@ Authors: AiiDAlab team
 from __future__ import annotations
 
 import ipywidgets as ipw
-import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
@@ -18,8 +17,8 @@ from aiidalab_qe.common.panel import (
     ResourceSettingsPanel,
 )
 from aiidalab_qe.common.setup_codes import QESetupWidget
-from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-from aiidalab_qe.common.widgets import LinkButton, QeDependentWizardStep
+from aiidalab_qe.common.widgets import LinkButton
+from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -27,33 +26,18 @@ from .model import SubmissionStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
+class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepModel]):
     missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
 
-    def __init__(self, model: SubmissionStepModel, qe_auto_setup=True, **kwargs):
-        super().__init__(model=model, **kwargs)
-        self._model.observe(
-            self._on_submission,
-            "confirmed",
-        )
-        self._model.observe(
-            self._on_input_parameters_change,
-            "input_parameters",
-        )
-        self._model.observe(
-            self._on_submission_blockers_change,
-            [
-                "internal_submission_blockers",
-                "external_submission_blockers",
-            ],
-        )
-        self._model.observe(
-            self._on_installation_change,
-            ["installing_sssp", "sssp_installed"],
-        )
-        self._model.observe(
-            self._on_sssp_installed,
-            "sssp_installed",
+    def __init__(self, model: SubmissionStepModel, auto_setup=True, **kwargs):
+        super().__init__(
+            model=model,
+            confirm_kwargs={
+                "description": "Submit",
+                "tooltip": "Submit the calculation with the selected parameters.",
+                "icon": "play",
+            },
+            **kwargs,
         )
         self._model.observe(
             self._on_installation_change,
@@ -62,6 +46,10 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
         self._model.observe(
             self._on_qe_installed,
             "qe_installed",
+        )
+        self._model.observe(
+            self._on_input_parameters_change,
+            "input_parameters",
         )
 
         global_resources_model = GlobalResourceSettingsModel()
@@ -74,12 +62,12 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             (global_resources_model, "plugin_overrides"),
         )
         global_resources_model.observe(
-            self._on_plugin_submission_blockers_change,
-            ["submission_blockers"],
+            self._on_plugin_blockers_change,
+            "blockers",
         )
         global_resources_model.observe(
-            self._on_plugin_submission_warning_messages_change,
-            ["submission_warning_messages"],
+            self._on_plugin_warning_messages_change,
+            ["warning_messages"],
         )
 
         self.settings = {
@@ -87,10 +75,11 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
         }
         self._fetch_plugin_resource_settings()
 
-        self._install_sssp(qe_auto_setup)
-        self._set_up_qe(qe_auto_setup)
+        self._set_up_qe(auto_setup)
 
     def _render(self):
+        super()._render()
+
         self.process_label = ipw.Text(
             description="Label:",
             layout=ipw.Layout(width="auto", indent="0px"),
@@ -108,31 +97,10 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             (self.process_description, "value"),
         )
 
-        self.submit_button = ipw.Button(
-            description="Submit",
-            tooltip="Submit the calculation with the selected parameters.",
-            icon="play",
-            button_style="success",
-            layout=ipw.Layout(width="auto", flex="1 1 auto"),
-            disabled=True,
-        )
+        self.warning_messages = ipw.HTML()
         ipw.dlink(
-            (self, "state"),
-            (self.submit_button, "disabled"),
-            lambda state: state != self.State.CONFIGURED,
-        )
-        self.submit_button.on_click(self.submit)
-
-        self.submission_blocker_messages = ipw.HTML()
-        ipw.dlink(
-            (self._model, "submission_blocker_messages"),
-            (self.submission_blocker_messages, "value"),
-        )
-
-        self.submission_warning_messages = ipw.HTML()
-        ipw.dlink(
-            (self._model, "submission_warning_messages"),
-            (self.submission_warning_messages, "value"),
+            (self._model, "warning_messages"),
+            (self.warning_messages, "value"),
         )
 
         self.setup_new_codes_button = LinkButton(
@@ -158,7 +126,7 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             "selected_index",
         )
 
-        self.children = [
+        self.content.children = [
             InAppGuide(identifier="submission-step"),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
@@ -179,10 +147,6 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
                 layout=ipw.Layout(grid_gap="5px"),
             ),
             self.tabs,
-            self.sssp_installation,
-            self.qe_setup,
-            self.submission_blocker_messages,
-            self.submission_warning_messages,
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px">
                     Label your job and provide a brief description. These details
@@ -193,21 +157,20 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             """),
             self.process_label,
             self.process_description,
-            self.submit_button,
+        ]
+
+        self.confirm_box.children += (self.qe_setup,)
+
+        self.children = [
+            self.content,
+            self.confirm_box,
         ]
 
     def _post_render(self):
         self._update_tabs()
 
-    def submit(self, _=None):
-        self._model.confirm()
-
     def reset(self):
         self._model.reset()
-
-    @tl.observe("previous_step_state")
-    def _on_previous_step_state_change(self, _):
-        self._update_state()
 
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
@@ -219,55 +182,27 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
         self._model.update_process_label()
         self._model.update_plugin_inclusion()
         self._model.update_plugin_overrides()
-        self._model.update_submission_blockers()
+        self._model.update_blockers()
         self._update_tabs()
 
     def _on_plugin_overrides_change(self, _):
         self._model.update_plugin_overrides()
 
-    def _on_plugin_submission_blockers_change(self, _):
-        self._model.update_submission_blockers()
+    def _on_plugin_blockers_change(self, _):
+        self._model.update_blockers()
 
-    def _on_plugin_submission_warning_messages_change(self, _):
-        self._model.update_submission_warnings()
-
-    def _on_submission_blockers_change(self, _):
-        self._model.update_submission_blocker_message()
-        self._update_state()
+    def _on_plugin_warning_messages_change(self, _):
+        self._model.update_warnings()
 
     def _on_installation_change(self, _):
-        self._model.update_submission_blockers()
+        self._model.update_blockers()
 
     def _on_qe_installed(self, _):
         self._toggle_qe_installation_widget()
         if self._model.qe_installed:
             self._model.update()
 
-    def _on_sssp_installed(self, _):
-        self._toggle_sssp_installation_widget()
-
-    def _on_submission(self, _):
-        self._update_state()
-
-    def _install_sssp(self, qe_auto_setup):
-        self.sssp_installation = PseudosInstallWidget(auto_start=False)
-        ipw.dlink(
-            (self.sssp_installation, "busy"),
-            (self._model, "installing_sssp"),
-        )
-        ipw.dlink(
-            (self.sssp_installation, "installed"),
-            (self._model, "installing_sssp"),
-            lambda installed: not installed,
-        )
-        ipw.dlink(
-            (self.sssp_installation, "installed"),
-            (self._model, "sssp_installed"),
-        )
-        if qe_auto_setup:
-            self.sssp_installation.refresh()
-
-    def _set_up_qe(self, qe_auto_setup):
+    def _set_up_qe(self, auto_setup):
         self.qe_setup = QESetupWidget(auto_start=False)
         ipw.dlink(
             (self.qe_setup, "busy"),
@@ -282,12 +217,8 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
             (self.qe_setup, "installed"),
             (self._model, "qe_installed"),
         )
-        if qe_auto_setup:
+        if auto_setup:
             self.qe_setup.refresh()
-
-    def _toggle_sssp_installation_widget(self):
-        sssp_installation_display = "none" if self._model.sssp_installed else "block"
-        self.sssp_installation.layout.display = sssp_installation_display
 
     def _toggle_qe_installation_widget(self):
         qe_installation_display = "none" if self._model.qe_installed else "block"
@@ -342,12 +273,12 @@ class SubmitQeAppWorkChainStep(QeDependentWizardStep[SubmissionStepModel]):
                 "override",
             )
             model.observe(
-                self._on_plugin_submission_blockers_change,
-                ["submission_blockers"],
+                self._on_plugin_blockers_change,
+                "blockers",
             )
             model.observe(
-                self._on_plugin_submission_warning_messages_change,
-                ["submission_warning_messages"],
+                self._on_plugin_warning_messages_change,
+                "warning_messages",
             )
             self._model.add_model(identifier, model)
 

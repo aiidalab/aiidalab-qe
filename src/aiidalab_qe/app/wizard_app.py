@@ -13,7 +13,8 @@ from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
 from aiidalab_qe.app.submission.model import SubmissionStepModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.widgets import LoadingWidget, QeWizardStep
+from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_qe.common.wizard import QeWizardStep
 from aiidalab_widgets_base import WizardAppWidget
 
 
@@ -23,7 +24,7 @@ class WizardApp(ipw.VBox):
     # The PK or UUID of the work chain node.
     process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
 
-    def __init__(self, qe_auto_setup=True, **kwargs):
+    def __init__(self, auto_setup=True, **kwargs):
         # Initialize the models
         self.structure_model = StructureStepModel()
         self.configure_model = ConfigurationStepModel()
@@ -36,6 +37,7 @@ class WizardApp(ipw.VBox):
         self.structure_step = StructureSelectionStep(
             model=self.structure_model,
             auto_advance=True,
+            auto_setup=auto_setup,
         )
         self.configure_step = ConfigureQeAppWorkChainStep(
             model=self.configure_model,
@@ -44,7 +46,7 @@ class WizardApp(ipw.VBox):
         self.submit_step = SubmitQeAppWorkChainStep(
             model=self.submit_model,
             auto_advance=True,
-            qe_auto_setup=qe_auto_setup,
+            auto_setup=auto_setup,
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep(
             model=self.results_model,
@@ -113,8 +115,6 @@ class WizardApp(ipw.VBox):
 
         self.structure_step.state = QeWizardStep.State.READY
 
-        self._update_blockers()
-
     @property
     def steps(self):
         return self._wizard_app_widget.steps
@@ -132,11 +132,9 @@ class WizardApp(ipw.VBox):
 
     def _on_structure_confirmation_change(self, _):
         self._update_configuration_step()
-        self._update_blockers()
 
     def _on_configuration_confirmation_change(self, _):
         self._update_submission_step()
-        self._update_blockers()
 
     def _on_submission(self, _):
         self._update_results_step()
@@ -174,13 +172,6 @@ class WizardApp(ipw.VBox):
             self.submit_model,
         ):
             model.unobserve_all("confirmed")
-
-    def _update_blockers(self):
-        self.submit_model.external_submission_blockers = [
-            f"Unsaved changes in the <b>{title}</b> step. Please confirm the changes before submitting."
-            for title, step in self.steps[:2]
-            if not step.is_saved()
-        ]
 
     def _update_from_process(self, pk):
         if pk is None:
