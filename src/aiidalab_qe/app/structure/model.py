@@ -1,24 +1,31 @@
 import traitlets as tl
 
-from aiidalab_qe.common.mixins import Confirmable, HasInputStructure
-from aiidalab_qe.common.widgets import QeWizardStepModel
+from aiidalab_qe.common.mixins import HasInputStructure
+from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
 
 
 class StructureStepModel(
-    QeWizardStepModel,
+    QeConfirmableWizardStepModel,
     HasInputStructure,
-    Confirmable,
 ):
     identifier = "structure"
 
     structure_name = tl.Unicode("")
     manager_output = tl.Unicode("")
-    message_area = tl.Unicode("")
+
+    installing_sssp = tl.Bool(False)
+    sssp_installed = tl.Bool(allow_none=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.confirmation_exceptions += [
+            "installing_sssp",
+            "sssp_installed",
+        ]
 
     def update_widget_text(self):
         if not self.has_structure:
             self.structure_name = ""
-            self.message_area = ""
         else:
             self.manager_output = ""
             self.structure_name = str(self.input_structure.get_formula())
@@ -27,4 +34,7 @@ class StructureStepModel(
         self.input_structure = None
         self.structure_name = ""
         self.manager_output = ""
-        self.message_area = ""
+
+    def _check_blockers(self):
+        if not self.sssp_installed:
+            yield "The SSSP library is not installed"

@@ -141,7 +141,7 @@ class GlobalResourceSettingsModel(
 
         # List of possible suggestions for warnings:
         suggestions = {
-            "more_resources": f"<li>Increase the resources (total number of CPUs should be equal or more than {min(100,estimated_CPUs)}, if possible) </li>",
+            "more_resources": f"<li>Increase the resources (total number of CPUs should be equal or more than {min(100, estimated_CPUs)}, if possible) </li>",
             "change_configuration": "<li>Review the configuration (e.g. choosing <i>fast protocol</i> - this will affect precision) </li>",
             "go_remote": "<li>Select a code that runs on a larger machine</li>",
             "avoid_overloading": "<li>Reduce the number of CPUs to avoid the overloading of the local machine </li>",
@@ -194,7 +194,7 @@ class GlobalResourceSettingsModel(
                 + "</ul>"
             )
 
-        self.submission_warning_messages = (
+        self.warning_messages = (
             ""
             if (on_localhost and num_cpus / machine_cpus) <= 0.8
             and (not large_system or estimated_CPUs <= num_cpus)
@@ -207,7 +207,7 @@ class GlobalResourceSettingsModel(
     def _get_properties(self) -> list[str]:
         return self.input_parameters.get("workchain", {}).get("properties", [])
 
-    def _check_submission_blockers(self):
+    def _check_blockers(self):
         # No pw code selected
         pw_code_model = self.get_model("quantumespresso__pw")
         if pw_code_model and not pw_code_model.selected:

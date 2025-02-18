@@ -7,7 +7,7 @@ import traitlets as tl
 from aiida import orm
 from aiida.engine.processes import control
 from aiidalab_qe.common.mixins import HasModels, HasProcess
-from aiidalab_qe.common.widgets import QeWizardStepModel
+from aiidalab_qe.common.wizard import QeWizardStepModel
 
 from .components import ResultsComponentModel
 

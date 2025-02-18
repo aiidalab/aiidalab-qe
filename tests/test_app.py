@@ -2,7 +2,7 @@ from aiidalab_qe.app.wizard_app import WizardApp
 
 
 def test_reload_and_reset(generate_qeapp_workchain):
-    app = WizardApp(qe_auto_setup=False)
+    app = WizardApp(auto_setup=False)
     workchain = generate_qeapp_workchain(
         relax_type="positions",
         spin_type="collinear",
@@ -30,25 +30,3 @@ def test_selecting_new_structure_unconfirms_model(generate_structure_data):
     model.confirm()
     model.input_structure = generate_structure_data()
     assert not model.confirmed
-
-
-def test_unsaved_changes(app_to_submit):
-    """Test if the unsaved changes are handled correctly"""
-    from aiidalab_widgets_base import WizardAppWidgetStep
-
-    app: WizardApp = app_to_submit
-    # go to the configure step, and make some changes
-    app._wizard_app_widget.selected_index = 1
-    app.configure_model.relax_type = "positions"
-    # go to the submit step
-    app._wizard_app_widget.selected_index = 2
-    # the state of the configure step should be updated.
-    assert app.configure_step.state == WizardAppWidgetStep.State.CONFIGURED
-    # check if a new blocker is added
-    assert len(app.submit_model.external_submission_blockers) == 1
-    # confirm the changes
-    app._wizard_app_widget.selected_index = 1
-    app.configure_model.confirm()
-    app._wizard_app_widget.selected_index = 2
-    # the blocker should be removed
-    assert len(app.submit_model.external_submission_blockers) == 0

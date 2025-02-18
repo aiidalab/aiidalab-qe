@@ -17,7 +17,8 @@ from aiidalab_qe.common import (
     ShakeNBreakEditor,
 )
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget, QeWizardStep
+from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget
+from aiidalab_qe.common.wizard import QeConfirmableWizardStep
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
@@ -25,7 +26,7 @@ from aiidalab_widgets_base import (
     StructureUploadWidget,
 )
 
-# The Examples list of (name, file) tuple curretly passed to
+# The Examples list of (name, file) tuple currently passed to
 # StructureExamplesWidget.
 file_path = pathlib.Path(__file__).parent
 Examples = [
@@ -39,25 +40,38 @@ Examples = [
 ]
 
 
-class StructureSelectionStep(QeWizardStep[StructureStepModel]):
+class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
     """Integrated widget for the selection and edition of structure.
     The widget includes a structure manager that allows to select a structure
     from different sources. It also includes the structure editor. Both the
     structure importers and the structure editors can be extended by plugins.
     """
 
-    def __init__(self, model: StructureStepModel, **kwargs):
-        super().__init__(model=model, **kwargs)
+    def __init__(self, model: StructureStepModel, auto_setup=True, **kwargs):
+        super().__init__(
+            model=model,
+            confirm_kwargs={
+                "tooltip": "Confirm the currently selected structure and go to the next step",
+            },
+            **kwargs,
+        )
         self._model.observe(
-            self._on_confirmation_change,
-            "confirmed",
+            self._on_installation_change,
+            ["installing_sssp", "sssp_installed"],
+        )
+        self._model.observe(
+            self._on_sssp_installed,
+            "sssp_installed",
         )
         self._model.observe(
             self._on_input_structure_change,
             "input_structure",
         )
+        self._install_sssp(auto_setup)
 
     def _render(self):
+        super()._render()
+
         examples_by_category = {"Simple crystals": Examples}
         plugin_structure_examples = {
             item["title"]: item["structures"]
@@ -65,7 +79,7 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
                 "aiidalab_qe.properties", "structure_examples"
             ).values()
         }
-        examples_by_category.update(plugin_structure_examples)
+        examples_by_category |= plugin_structure_examples
 
         importers = [
             StructureUploadWidget(title="Upload file"),
@@ -129,27 +143,7 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
             (self.structure_name_text, "value"),
         )
 
-        self.confirm_button = ipw.Button(
-            description="Confirm",
-            tooltip="Confirm the currently selected structure and go to the next step.",
-            button_style="success",
-            icon="check-circle",
-            layout=ipw.Layout(width="auto"),
-        )
-        ipw.dlink(
-            (self, "state"),
-            (self.confirm_button, "disabled"),
-            lambda state: state != self.State.CONFIGURED,
-        )
-        self.confirm_button.on_click(self.confirm)
-
-        self.message_area = ipw.HTML()
-        ipw.dlink(
-            (self._model, "message_area"),
-            (self.message_area, "value"),
-        )
-
-        self.children = [
+        self.content.children = [
             InAppGuide(identifier="structure-step"),
             ipw.HTML("""
                 <p>
@@ -161,20 +155,23 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
             """),
             self.manager,
             self.structure_name_text,
-            self.message_area,
-            self.confirm_button,
         ]
-        # after rendering the widget, nglview needs to be resized
+
+        self.confirm_box.children += (self.sssp_installation,)
+
+        self.children = [
+            self.content,
+            self.confirm_box,
+        ]
+
+    def _post_render(self):
+        # After rendering the widget, nglview needs to be resized
         # to properly display the structure
         self.manager.viewer._viewer.handle_resize()
 
-    def is_saved(self):
-        return self._model.confirmed
-
     def confirm(self, _=None):
         self.manager.store_structure()
-        self._model.message_area = ""
-        self._model.confirm()
+        super().confirm()
 
     def can_reset(self):
         return self._model.confirmed
@@ -182,12 +179,39 @@ class StructureSelectionStep(QeWizardStep[StructureStepModel]):
     def reset(self):
         self._model.reset()
 
+    def _on_installation_change(self, _):
+        self._model.update_blockers()
+
+    def _on_sssp_installed(self, _):
+        self._toggle_sssp_installation_widget()
+
     def _on_input_structure_change(self, _):
         self._model.update_widget_text()
         self._update_state()
 
-    def _on_confirmation_change(self, _):
-        self._update_state()
+    def _install_sssp(self, auto_setup):
+        from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
+
+        self.sssp_installation = PseudosInstallWidget(auto_start=False)
+        ipw.dlink(
+            (self.sssp_installation, "busy"),
+            (self._model, "installing_sssp"),
+        )
+        ipw.dlink(
+            (self.sssp_installation, "installed"),
+            (self._model, "installing_sssp"),
+            lambda installed: not installed,
+        )
+        ipw.dlink(
+            (self.sssp_installation, "installed"),
+            (self._model, "sssp_installed"),
+        )
+        if auto_setup:
+            self.sssp_installation.refresh()
+
+    def _toggle_sssp_installation_widget(self):
+        sssp_installation_display = "none" if self._model.sssp_installed else "block"
+        self.sssp_installation.layout.display = sssp_installation_display
 
     def _update_state(self):
         if self._model.confirmed:

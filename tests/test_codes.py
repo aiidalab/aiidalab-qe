@@ -18,7 +18,7 @@ def test_set_selected_codes(submit_app_generator):
     app: WizardApp = submit_app_generator()
     parameters = app.submit_model.get_model_state()
     model = SubmissionStepModel()
-    _ = SubmitQeAppWorkChainStep(model=model, qe_auto_setup=False)
+    _ = SubmitQeAppWorkChainStep(model=model, auto_setup=False)
     for identifier, code_model in app.submit_model.get_model("global").get_models():
         model.get_model("global").get_model(identifier).is_active = code_model.is_active
     model.qe_installed = True
@@ -42,28 +42,28 @@ def test_update_codes_display(app: WizardApp):
     assert global_resources.code_widgets["dos"].layout.display == "block"
 
 
-def test_check_submission_blockers(app: WizardApp):
+def test_check_blockers(app: WizardApp):
     """Test check_submission_blockers method."""
     model = app.submit_model
 
-    model.update_submission_blockers()
-    assert len(model.internal_submission_blockers) == 0
+    model.update_blockers()
+    assert len(model.blockers) == 0
 
     model.input_parameters = {"workchain": {"properties": ["pdos"]}}
-    model.update_submission_blockers()
-    assert len(model.internal_submission_blockers) == 0
+    model.update_blockers()
+    assert len(model.blockers) == 0
 
     # set dos code to None, will introduce another blocker
     dos_code = model.get_model("global").get_model("quantumespresso__dos")
     dos_value = dos_code.selected
     dos_code.selected = None
-    model.update_submission_blockers()
-    assert len(model.internal_submission_blockers) == 1
+    model.update_blockers()
+    assert len(model.blockers) == 1
 
     # set dos code back will remove the blocker
     dos_code.selected = dos_value
-    model.update_submission_blockers()
-    assert len(model.internal_submission_blockers) == 0
+    model.update_blockers()
+    assert len(model.blockers) == 0
 
 
 def test_qeapp_computational_resources_widget(app: WizardApp):

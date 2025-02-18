@@ -23,14 +23,14 @@ class QeApp:
     def __init__(
         self,
         process=None,
-        qe_auto_setup=True,
+        auto_setup=True,
         bug_report_url=DEFAULT_BUG_REPORT_URL,
         show_log=False,
     ):
         """Initialize the AiiDAlab QE application with the necessary setup."""
 
         self.process = process
-        self.qe_auto_setup = qe_auto_setup
+        self.auto_setup = auto_setup
         self.log_widget = None
 
         self._load_styles()
@@ -83,7 +83,7 @@ class QeApp:
     def load(self):
         """Initialize the WizardApp and integrate the app into the main view."""
         self.app = WizardApp(
-            qe_auto_setup=self.qe_auto_setup,
+            auto_setup=self.auto_setup,
             log_widget=self.log_widget,
         )
         self.view.main.children = [self.app]

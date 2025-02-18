@@ -418,14 +418,14 @@ def smearing_settings_generator():
 
 @pytest.fixture
 def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
-    app = WizardApp(qe_auto_setup=False)
+    app = WizardApp(auto_setup=False)
 
-    # Since we use `qe_auto_setup=False`, which will skip the pseudo library
+    # Since we use `auto_setup=False`, which will skip the pseudo library
     # installation, we need to mock set the installation status to `True` to
     # avoid the blocker message pop up in the submission step.
+    app.structure_model.installing_sssp = False
+    app.structure_model.sssp_installed = True
     app.submit_model.installing_qe = False
-    app.submit_model.installing_sssp = False
-    app.submit_model.sssp_installed = True
     app.submit_model.qe_installed = True
 
     # set up codes

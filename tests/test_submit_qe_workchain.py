@@ -153,7 +153,7 @@ def test_warning_messages(
     pw_code.num_cpus = len(os.sched_getaffinity(0))
     global_model.check_resources()
     for suggestion in ["avoid_overloading", "go_remote"]:
-        assert suggestions[suggestion] in submit_model.submission_warning_messages
+        assert suggestions[suggestion] in submit_model.warning_messages
 
     # now we use a large structure, so we should have the Warning-1 (and 2 if not on localhost)
     structure = generate_structure_data("H2O-larger")
@@ -165,7 +165,7 @@ def test_warning_messages(
     estimated_CPUs = global_model._estimate_min_cpus(num_sites, volume)
     assert estimated_CPUs == 2
     for suggestion in ["more_resources", "change_configuration"]:
-        assert suggestions[suggestion] in submit_model.submission_warning_messages
+        assert suggestions[suggestion] in submit_model.warning_messages
 
 
 def builder_to_readable_dict(builder):
