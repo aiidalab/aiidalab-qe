@@ -111,8 +111,11 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
 
         self.children = [self.accordion]
 
+    def _post_render(self):
+        self._select_tree_root()
+
     def _on_monitor_counter_change(self, _):
-        self._update_process_tree()
+        self.process_tree.update()
 
     def _on_accordion_change(self, change):
         if change["new"] == 0:
@@ -125,9 +128,10 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
     def _switch_to_advanced_view(self, _):
         self.accordion.selected_index = 1
 
-    def _update_process_tree(self):
+    def _select_tree_root(self):
         if self.rendered:
-            self.process_tree.update()
+            self.process_tree.value = None
+            self.process_tree.value = self._model.process_uuid
 
     def _reset_process_tree(self, _):
         if not self.rendered:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing as t
+from copy import deepcopy
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -51,7 +52,7 @@ class SimplifiedProcessTree(ipw.VBox):
     def _on_monitor_counter_change(self, _):
         self._update()
 
-    def _on_inspect(self, uuid):
+    def _on_inspect(self, uuid: str):
         self._model.clicked = None  # ensure event is triggered when label is reclicked
         self._model.clicked = uuid
 
@@ -80,27 +81,18 @@ class SimplifiedProcessTree(ipw.VBox):
             ipw.HBox(
                 children=[
                     ipw.HTML(
-                        value="*",
-                        layout=ipw.Layout(margin="0"),
-                    ),
-                    ipw.HTML(
                         value="""
-                            <div style="font-style: italic;">
-                                workflow will automatically re-submit failed calculations
-                                <br>
-                                <b>(advanced users)</b> click
-                                <a
-                                    href="https://aiida.readthedocs.io/projects/aiida-core/en/stable/howto/workchains_restart.html"
-                                    target="_blank"
-                                >here</a> to learn how AiiDA handles errors
-                            </div>
-                        """,
-                        layout=ipw.Layout(margin="0"),
+                        <div style="font-style: italic;">
+                            *Actual number of jobs may exceed estimated total due to
+                            error handling, dynamic sub-workflows, and/or other runtime
+                            adjustments
+                        </div>
+                    """,
                     ),
                 ],
                 layout=ipw.Layout(
                     align_items="flex-start",
-                    margin="5px 0 0 0",
+                    margin="5px 10px 0 0",
                 ),
             ),
         ]
@@ -122,7 +114,7 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         "BandsWorkChain": "Electronic band structure workflow",
         "PwBandsWorkChain": "Electronic band structure workflow",
         "ProjwfcBandsWorkChain": "Electronic band structure workflow",
-        "PwRelaxWorkChain": "Structure relaxation workflow",
+        "PwRelaxWorkChain": "Structure relaxation workflow manager",
         "PdosWorkChain": "Projected density of states workflow",
         "PwBaseWorkChain": {
             "scf": "SCF workflow",
@@ -234,7 +226,19 @@ class ProcessTreeBranches(ipw.VBox):
 class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
     @property
     def metadata_inputs(self):
-        return self.node.get_metadata_inputs()
+        # BACKWARDS COMPATIBILITY: originally this was added because "relax" was in the
+        # metadata inputs regardless if running relaxation, as it was used also for the
+        # summary to extract pw parameters. #1163 removes this dependency, thus allowing
+        # the popping of the "relax" port if not running relaxation. However, this is
+        # kept for backwards compatibility, for jobs ran before #1163.
+        inputs = deepcopy(self.node.get_metadata_inputs()) or {}
+        if "properties" in self.node.inputs:
+            inputs = {
+                key: value
+                for key, value in inputs.items()
+                if key in self.node.inputs.properties
+            }
+        return inputs
 
     @property
     def sub_processes(self):
@@ -273,7 +277,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
                 if isinstance(branch, WorkChainTreeNode):
                     branch.expand(recursive=True)
 
-    def collapse(self, recursive=False):
+    def collapse(self, recursive: bool = False):
         if not self.collapsed:
             self.toggle.click()
         if recursive:
@@ -299,7 +303,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
             self.tally,
         ]
 
-    def _add_branches(self, node=None):
+    def _add_branches(self, node: orm.ProcessNode | None = None):
         node = node or self.node
         for child in sorted(node.called, key=lambda child: child.ctime):
             if child.pk in self.pks or isinstance(child, orm.CalcFunctionNode):
@@ -316,7 +320,6 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
             )
             if child.process_label in (
                 "BandsWorkChain",
-                "PwRelaxWorkChain",
                 "ProjwfcBaseWorkChain",
             ):
                 self._add_branches(child)
@@ -334,7 +337,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
         tally += " job" if total == 1 else " jobs"
         return tally
 
-    def _get_current_total(self, node):
+    def _get_current_total(self, node: orm.ProcessNode):
         total = 0
         for child in node.called:
             if isinstance(child, orm.WorkChainNode):
@@ -343,7 +346,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
                 total += 1
         return total
 
-    def _count_finished(self, node):
+    def _count_finished(self, node: orm.ProcessNode):
         count = 0
         for child in node.called:
             if isinstance(child, orm.WorkChainNode):
@@ -361,11 +364,12 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
             if "metadata" in sub_inputs and "options" in sub_inputs["metadata"]:
                 # This is a calculation
                 count += 1
-                dynamic = key == "pw"
+                dynamic = dynamic or key == "pw"
             elif key != "metadata":
                 # This is a workflow
                 nested = self._get_expected(sub_inputs)
                 count += nested["count"]
+                dynamic = dynamic or nested["dynamic"]
                 expected[key] = nested
 
         expected |= {
