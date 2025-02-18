@@ -4,8 +4,14 @@ import ipywidgets as ipw
 import traitlets as tl
 from IPython.display import display
 
+from aiidalab_qe.app.wizard_app import WizardApp
 from aiidalab_qe.common.guide_manager import guide_manager
+from aiidalab_qe.common.setup_codes import QESetupWidget
+from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.common.widgets import LinkButton, LoadingWidget
+from aiidalab_widgets_base.bug_report import (
+    install_create_github_issue_exception_handler,
+)
 
 
 def without_triggering(toggle: str):
@@ -48,10 +54,9 @@ class AppWrapperContoller:
         self._view = view
         self._set_event_handlers()
 
-    def enable_controls(self) -> None:
-        """Enable the control buttons at the top of the app."""
-        for control in self._view.controls.children:
-            control.disabled = False
+    def setup(self):
+        self._install_sssp()
+        self._set_up_qe()
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -90,6 +95,37 @@ class AppWrapperContoller:
         guide = self._view.guide_selection.value
         self._model.update_active_guide(category, guide)
 
+    def _on_installation_change(self, _):
+        return
+        if all([self._model.qe_installed, self._model.sssp_installed]):
+            self.load_app()
+
+    def _install_sssp(self):
+        self.sssp_installation = PseudosInstallWidget(auto_start=False)
+        self._view.main.children += (self.sssp_installation,)
+        ipw.dlink(
+            (self.sssp_installation, "installed"),
+            (self._model, "sssp_installed"),
+        )
+        if self._model.qe_auto_setup:
+            self.sssp_installation.refresh()
+
+    def _set_up_qe(self):
+        self.qe_setup = QESetupWidget(auto_start=False)
+        self._view.main.children += (self.qe_setup,)
+        ipw.dlink(
+            (self.qe_setup, "installed"),
+            (self._model, "qe_installed"),
+        )
+        if self._model.qe_auto_setup:
+            self.qe_setup.refresh()
+
+    def load_app(self):
+        self._view.main.children = [LoadingWidget("Loading the app")]
+        self.app = WizardApp(log_widget=self._view.log_widget)
+        self._view.main.children = [self.app]
+        self.app.process = self._model.process
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._model.observe(
@@ -102,6 +138,14 @@ class AppWrapperContoller:
                 "selected_guide_category",
                 "selected_guide",
             ],
+        )
+        self._model.observe(
+            self._on_installation_change,
+            "sssp_installed",
+        )
+        self._model.observe(
+            self._on_installation_change,
+            "qe_installed",
         )
 
         self._view.guide_toggle.observe(
@@ -134,10 +178,18 @@ class AppWrapperContoller:
 class AppWrapperModel(tl.HasTraits):
     """An MVC model for `AppWrapper`."""
 
+    process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
+
     guide_category_options = tl.List(["none", *guide_manager.get_guide_categories()])
     selected_guide_category = tl.Unicode("none")
     guide_options = tl.List(tl.Unicode())
     selected_guide = tl.Unicode(None, allow_none=True)
+
+    qe_installed = tl.Bool(allow_none=True)
+    sssp_installed = tl.Bool(allow_none=True)
+
+    qe_auto_setup = tl.Bool(True)
+    show_log = tl.Bool(False)
 
     def update_active_guide(self, category, guide):
         """Sets the current active guide."""
@@ -148,7 +200,7 @@ class AppWrapperModel(tl.HasTraits):
 class AppWrapperView(ipw.VBox):
     """An MVC view for `AppWrapper`."""
 
-    def __init__(self) -> None:
+    def __init__(self, show_log: bool = False, bug_report_url: str = "") -> None:
         """`AppWrapperView` constructor."""
 
         ################# LAZY LOADING #################
@@ -186,7 +238,6 @@ class AppWrapperView(ipw.VBox):
             value=False,
             description="Getting started",
             tooltip="Learn how to use the app",
-            disabled=True,
         )
 
         self.about_toggle = ipw.ToggleButton(
@@ -196,35 +247,30 @@ class AppWrapperView(ipw.VBox):
             value=False,
             description="About",
             tooltip="Learn about the app",
-            disabled=True,
         )
 
         self.calculation_history_link = LinkButton(
             description="Calculation history",
             link="./calculation_history.ipynb",
             icon="list",
-            disabled=True,
         )
 
         self.setup_resources_link = LinkButton(
             description="Setup resources",
             link="../home/code_setup.ipynb",
             icon="database",
-            disabled=True,
         )
 
         self.download_examples_link = LinkButton(
             description="Download examples",
             link="./examples.ipynb",
             icon="download",
-            disabled=True,
         )
 
         self.new_workchain_link = LinkButton(
             description="New calculation",
             link="./qe.ipynb",
             icon="plus-circle",
-            disabled=True,
         )
 
         self.controls = ipw.HBox(
@@ -264,7 +310,7 @@ class AppWrapperView(ipw.VBox):
         )
         header.add_class("app-header")
 
-        self.main = ipw.VBox(children=[LoadingWidget("Loading the app")])
+        self.main = ipw.VBox()
 
         current_year = datetime.now().year
         footer = ipw.HTML(f"""
@@ -274,6 +320,38 @@ class AppWrapperView(ipw.VBox):
             </footer>
         """)
 
+        self.log_container = ipw.VBox()
+
+        if show_log:
+            self.log_widget = ipw.Output(
+                layout=ipw.Layout(
+                    border="solid 1px lightgray",
+                    margin="2px",
+                    padding="5px",
+                ),
+            )
+            reset_button = ipw.Button(
+                description="Clear log",
+                button_style="primary",
+                icon="trash",
+                layout=ipw.Layout(width="fit-content"),
+            )
+            reset_button.on_click(lambda _: self.log_widget.clear_output())
+            self.log_container.children = [
+                reset_button,
+                self.log_widget,
+            ]
+        else:
+            self.log_widget = None
+
+        # Set up bug report handling (if a URL is provided)
+        if bug_report_url:
+            install_create_github_issue_exception_handler(
+                self.log_widget if show_log else self.output,
+                url=bug_report_url,
+                labels=("bug", "automated-report"),
+            )
+
         super().__init__(
             layout={},
             children=[
@@ -281,5 +359,6 @@ class AppWrapperView(ipw.VBox):
                 header,
                 self.main,
                 footer,
+                self.log_container,
             ],
         )

@@ -37,11 +37,6 @@ class SubmissionStepModel(
     submission_blocker_messages = tl.Unicode("")
     submission_warning_messages = tl.Unicode("")
 
-    installing_qe = tl.Bool(False)
-    installing_sssp = tl.Bool(False)
-    qe_installed = tl.Bool(allow_none=True)
-    sssp_installed = tl.Bool(allow_none=True)
-
     plugin_overrides = tl.List(tl.Unicode())
 
     confirmation_exceptions = [
@@ -50,10 +45,6 @@ class SubmissionStepModel(
         "external_submission_blockers",
         "submission_blocker_messages",
         "submission_warning_messages",
-        "installing_qe",
-        "installing_sssp",
-        "qe_installed",
-        "sssp_installed",
     ]
 
     def __init__(self, *args, **kwargs):
@@ -153,16 +144,15 @@ class SubmissionStepModel(
         ]
 
     def update_submission_blockers(self):
-        submission_blockers = list(self._check_submission_blockers())
+        submission_blockers = []
         for _, model in self.get_models():
             submission_blockers += model.submission_blockers
         self.internal_submission_blockers = submission_blockers
 
     def update_submission_warnings(self):
-        submission_warning_messages = self._check_submission_warnings()
-        for _, model in self.get_models():
-            submission_warning_messages += model.submission_warning_messages
-        self.submission_warning_messages = submission_warning_messages
+        self.submission_warning_messages = "".join(
+            model.submission_warning_messages for _, model in self.get_models()
+        )  # type: ignore
 
     def update_submission_blocker_message(self):
         blockers = self.internal_submission_blockers + self.external_submission_blockers
@@ -294,14 +284,3 @@ class SubmissionStepModel(
             builder.relax.base.pw.parallelization = orm.Dict(dict=parallelization)
 
         return builder
-
-    def _check_submission_blockers(self):
-        if self.installing_qe or self.installing_sssp:
-            yield "Background setup processes must finish."
-
-        if not self.sssp_installed:
-            yield "The SSSP library is not installed."
-
-    def _check_submission_warnings(self):
-        """Check for any warnings that should be displayed to the user."""
-        return ""
