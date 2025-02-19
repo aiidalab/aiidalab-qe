@@ -125,3 +125,37 @@ class Confirmable(tl.HasTraits):
 
     def _unconfirm(self):
         self.confirmed = False
+
+
+class HasBlockers(tl.HasTraits):
+    blockers = tl.List(tl.Unicode())
+    blocker_messages = tl.Unicode("")
+
+    @property
+    def is_blocked(self):
+        return any(self.blockers)
+
+    def update_blockers(self):
+        blockers = list(self._check_blockers())
+        if isinstance(self, HasModels):
+            for _, model in self.get_models():
+                if isinstance(model, HasBlockers):
+                    blockers += model.blockers
+        self.blockers = blockers
+
+    def update_blocker_messages(self):
+        if self.is_blocked:
+            formatted = "\n".join(f"<li>{item}</li>" for item in self.blockers)
+            self.blocker_messages = f"""
+                <div class="alert alert-danger">
+                    <b>The step is blocked due to the following reason(s):</b>
+                    <ul>
+                        {formatted}
+                    </ul>
+                </div>
+            """
+        else:
+            self.blocker_messages = ""
+
+    def _check_blockers(self):
+        raise NotImplementedError

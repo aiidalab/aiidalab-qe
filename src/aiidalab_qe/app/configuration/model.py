@@ -6,12 +6,11 @@ import traitlets as tl
 from aiida_quantumespresso.common.types import RelaxType
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import (
-    Confirmable,
     HasInputStructure,
     HasModels,
 )
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
-from aiidalab_qe.common.widgets import QeWizardStepModel
+from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -19,10 +18,9 @@ NO_RELAXATION_OPTION = ("Structure as is", "none")
 
 
 class ConfigurationStepModel(
-    QeWizardStepModel,
+    QeConfirmableWizardStepModel,
     HasModels[ConfigurationSettingsModel],
     HasInputStructure,
-    Confirmable,
 ):
     identifier = "configuration"
 

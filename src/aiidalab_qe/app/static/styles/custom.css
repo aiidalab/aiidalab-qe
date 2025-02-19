@@ -118,3 +118,8 @@ footer {
   padding: 0 5px;
   margin: -1px;
 }
+
+.blocker-messages .alert {
+  margin-bottom: 0;
+  padding: 10px;
+}

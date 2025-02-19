@@ -5,7 +5,6 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
-import os
 import subprocess
 import typing as t
 from copy import deepcopy
@@ -26,11 +25,9 @@ from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiidalab_qe.common.mvc import Model
 from aiidalab_widgets_base import (
     ComputationalResourcesWidget,
     StructureExamplesWidget,
-    WizardAppWidgetStep,
 )
 from aiidalab_widgets_base.utils import (
     StatusHTML,
@@ -1187,80 +1184,6 @@ class LinkButton(ipw.HTML):
             self.add_class("disabled")
         else:
             self.remove_class("disabled")
-
-
-class QeWizardStepModel(Model):
-    identifier = "QE wizard"
-
-
-QWSM = t.TypeVar("QWSM", bound=QeWizardStepModel)
-
-
-class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[QWSM]):
-    def __init__(self, model: QWSM, **kwargs):
-        self.loading_message = LoadingWidget(f"Loading {model.identifier} step")
-        super().__init__(children=[self.loading_message], **kwargs)
-        self._model = model
-        self.rendered = False
-        self._background_class = ""
-
-    def render(self):
-        if self.rendered:
-            return
-        self._render()
-        self.rendered = True
-        self._post_render()
-
-    @traitlets.observe("state")
-    def _on_state_change(self, change):
-        self._update_background_color(change["new"])
-
-    def _render(self):
-        raise NotImplementedError()
-
-    def _post_render(self):
-        pass
-
-    def _update_background_color(self, state: WizardAppWidgetStep.State):
-        self.remove_class(self._background_class)
-        self._background_class = f"qe-app-step-{state.name.lower()}"
-        self.add_class(self._background_class)
-
-
-class QeDependentWizardStep(QeWizardStep[QWSM]):
-    missing_information_warning = "Missing information"
-
-    previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
-
-    def __init__(self, model: QWSM, **kwargs):
-        super().__init__(model, **kwargs)
-        self.previous_children = list(self.children)
-        self.warning_message = ipw.HTML(
-            f"""
-            <div class="alert alert-danger">
-                <b>Warning:</b> {self.missing_information_warning}
-            </div>
-        """
-        )
-
-    def render(self):
-        if "PYTEST_CURRENT_TEST" in os.environ:
-            super().render()
-            return
-        if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
-            self._hide_missing_information_warning()
-            if not self.rendered:
-                super().render()
-                self.previous_children = list(self.children)
-        else:
-            self._show_missing_information_warning()
-
-    def _show_missing_information_warning(self):
-        self.children = [self.warning_message]
-        self.rendered = False
-
-    def _hide_missing_information_warning(self):
-        self.children = self.previous_children
 
 
 class TableWidget(anywidget.AnyWidget):

@@ -18,7 +18,7 @@ from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code.model import CodeModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import Confirmable, HasModels, HasProcess
+from aiidalab_qe.common.mixins import Confirmable, HasBlockers, HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
     LoadingWidget,
@@ -88,7 +88,7 @@ class PluginOutline(ipw.HBox):
         )
 
 
-class SettingsModel(PanelModel):
+class SettingsModel(PanelModel, HasBlockers):
     """Base model for settings models."""
 
     dependencies: list[str] = []
@@ -206,8 +206,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         value_trait=tl.Dict(),
     )
 
-    submission_blockers = tl.List(tl.Unicode())
-    submission_warning_messages = tl.Unicode("")
+    warning_messages = tl.Unicode("")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -222,9 +221,6 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
     def refresh_codes(self):
         for _, code_model in self.get_models():
             code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
-
-    def update_submission_blockers(self):
-        self.submission_blockers = list(self._check_submission_blockers())
 
     def get_model_state(self):
         return {
@@ -250,7 +246,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
             if identifier in code_data:
                 code_model.set_model_state(code_data[identifier])
 
-    def _check_submission_blockers(self):
+    def _check_blockers(self):
         return []
 
 
@@ -266,6 +262,10 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
 
     def _on_code_resource_change(self, _):
         pass
+
+    def _on_code_options_change(self, change: dict):
+        widget: ipw.Dropdown = change["owner"]
+        widget.disabled = not widget.options
 
     def _toggle_code(self, code_model: CodeModel):
         if not self.rendered:
@@ -347,6 +347,10 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
                 "cpus_per_task",
                 "max_wallclock_seconds",
             ],
+        )
+        code_widget.code_selection.code_select_dropdown.observe(
+            self._on_code_options_change,
+            "options",
         )
         code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
         self.code_widgets_container.children = [*code_widgets, code_widget]

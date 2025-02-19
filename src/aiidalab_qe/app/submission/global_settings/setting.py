@@ -91,7 +91,7 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
         self._toggle_code(change["owner"])
 
     def _on_code_selection_change(self, _):
-        self._model.update_submission_blockers()
+        self._model.update_blockers()
 
     def _on_pw_code_resource_change(self, _):
         self._model.check_resources()
