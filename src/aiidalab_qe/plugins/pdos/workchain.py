@@ -137,10 +137,16 @@ def update_inputs(inputs, ctx):
     """Update the inputs using context."""
     inputs.structure = ctx.current_structure
 
+def get_workchain_metadata(parameters: dict):
+    """Return the metadata for the workchain."""
+    return {"dynamic": False,
+            "number_of_calcjob": 4,
+            }
 
 workchain_and_builder = {
     "workchain": PdosWorkChain,
     "exclude": ("structure", "relax"),
     "get_builder": get_builder,
     "update_inputs": update_inputs,
+    "get_workchain_metadata": get_workchain_metadata,
 }
