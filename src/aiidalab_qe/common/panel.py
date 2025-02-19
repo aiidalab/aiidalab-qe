@@ -263,6 +263,10 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
     def _on_code_resource_change(self, _):
         pass
 
+    def _on_code_options_change(self, change: dict):
+        widget: ipw.Dropdown = change["owner"]
+        widget.disabled = not widget.options
+
     def _toggle_code(self, code_model: CodeModel):
         if not self.rendered:
             return
@@ -343,6 +347,10 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
                 "cpus_per_task",
                 "max_wallclock_seconds",
             ],
+        )
+        code_widget.code_selection.code_select_dropdown.observe(
+            self._on_code_options_change,
+            "options",
         )
         code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
         self.code_widgets_container.children = [*code_widgets, code_widget]

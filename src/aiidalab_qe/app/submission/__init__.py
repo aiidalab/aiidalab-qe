@@ -201,6 +201,7 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         self._toggle_qe_installation_widget()
         if self._model.qe_installed:
             self._model.update()
+            self._refresh_resources()
 
     def _set_up_qe(self, auto_setup):
         self.qe_setup = QESetupWidget(auto_start=False)
