@@ -3,11 +3,14 @@ from __future__ import annotations
 import ipywidgets as ipw
 
 from aiidalab_qe.app.result.components import ResultsComponent
+from aiidalab_qe.common.process.tree import (
+    SimplifiedProcessTree,
+    SimplifiedProcessTreeModel,
+)
 from aiidalab_widgets_base import ProcessNodesTreeWidget
 from aiidalab_widgets_base.viewers import AiidaNodeViewWidget
 
 from .model import WorkChainStatusModel
-from .tree import SimplifiedProcessTree, SimplifiedProcessTreeModel
 
 
 class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
