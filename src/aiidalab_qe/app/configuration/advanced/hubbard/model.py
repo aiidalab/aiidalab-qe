@@ -66,7 +66,6 @@ class HubbardConfigurationSettingsModel(
             self.needs_eigenvalues_widget = len(self.applicable_kind_names) > 0
 
     def get_active_eigenvalues(self):
-        print(self.eigenvalues)
         if not (
             active_eigenvalues := [
                 orbital_eigenvalue
@@ -78,7 +77,6 @@ class HubbardConfigurationSettingsModel(
         ):
             return []
         eigenvalues_array = np.array(active_eigenvalues, dtype=object)
-        print(eigenvalues_array)
         new_shape = (int(np.prod(eigenvalues_array.shape[:-1])), 4)
         return [
             tuple(eigenvalue)
