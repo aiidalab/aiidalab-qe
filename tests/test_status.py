@@ -1,3 +1,5 @@
+import threading
+
 import ipywidgets as ipw
 import pytest
 
@@ -215,6 +217,29 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         human_label = ProcessTreeNode._TITLE_MAPPING["PwCalculation"]["relax"]
         assert isinstance(self.calcjob_node.label, ipw.Button)
         assert self.calcjob_node.label.description == human_label
+
+    @pytest.mark.parametrize("_", range(1, 10))
+    def test_tree_monitor_updates(self, _):
+        self.tree.trunk.collapse()
+        self.tree.trunk.clear()
+        assert not self.tree.trunk.branches
+
+        def update_monitor():
+            self.model.monitor_counter += 1
+
+        # Start a separate thread to increment monitor_counter
+        # This will trigger an update, which will in turn attempt
+        # to add branches if the parent branch is expanded
+        monitor_thread = threading.Thread(target=update_monitor)
+        monitor_thread.start()
+
+        # Meanwhile, expand in the main thread
+        self.tree.trunk.toggle.click()
+
+        # Wait for the background thread to finish before asserting
+        monitor_thread.join()
+
+        assert len(self.tree.trunk.branches) == 1
 
 
 class TestWorkChainStatusPanel(TreeTestingMixin):

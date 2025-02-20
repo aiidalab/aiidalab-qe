@@ -218,6 +218,9 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
 
 
 class ProcessTreeBranches(ipw.VBox):
+    def clear(self):
+        self.children = []
+
     def __len__(self):
         return len(self.children)
 
@@ -235,6 +238,8 @@ class ProcessTreeBranches(ipw.VBox):
 
 
 class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
+    _adding_branches = False
+
     @property
     def metadata_inputs(self):
         # BACKWARDS COMPATIBILITY: originally this was added because "relax" was in the
@@ -280,6 +285,10 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
         for branch in self.branches:
             branch.update()
 
+    def clear(self):
+        self.branches.clear()
+        self.pks.clear()
+
     def expand(self, recursive=False):
         if self.collapsed:
             self.toggle.click()
@@ -314,7 +323,14 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
             self.tally,
         ]
 
-    def _add_branches(self, node: orm.ProcessNode | None = None):
+    def _add_branches(self):
+        if self._adding_branches:
+            return
+        self._adding_branches = True
+        self._add_branches_recursive()
+        self._adding_branches = False
+
+    def _add_branches_recursive(self, node: orm.ProcessNode | None = None):
         node = node or self.node
         for child in sorted(node.called, key=lambda child: child.ctime):
             if isinstance(child, orm.CalcFunctionNode):
@@ -325,7 +341,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
                 "BandsWorkChain",
                 "ProjwfcBaseWorkChain",
             ):
-                self._add_branches(child)
+                self._add_branches_recursive(child)
             else:
                 self._add_branch(child)
 
