@@ -218,28 +218,43 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         assert isinstance(self.calcjob_node.label, ipw.Button)
         assert self.calcjob_node.label.description == human_label
 
-    @pytest.mark.parametrize("_", range(1, 10))
-    def test_tree_monitor_updates(self, _):
+    @pytest.mark.parametrize("without_flag", [True, False])
+    def test_tree_monitor_updates(self, without_flag):
         self.tree.trunk.collapse()
         self.tree.trunk.clear()
         assert not self.tree.trunk.branches
 
         def update_monitor():
-            self.model.monitor_counter += 1
+            for _ in range(10):
+                self.model.monitor_counter += 1
 
-        # Start a separate thread to increment monitor_counter
-        # This will trigger an update, which will in turn attempt
-        # to add branches if the parent branch is expanded
+        if without_flag:
+            # Skip `_adding_branches` flag check
+            add_branches = self.tree.trunk._add_branches  # store original method
+            self.tree.trunk._add_branches = self.tree.trunk._add_branches_recursive
+
+        # Start monitoring thread to update the tree, which will also
+        # attempt to add branches to expanded parents
         monitor_thread = threading.Thread(target=update_monitor)
         monitor_thread.start()
 
-        # Meanwhile, expand in the main thread
+        # Expand the trunk in the main thread
         self.tree.trunk.toggle.click()
 
         # Wait for the background thread to finish before asserting
         monitor_thread.join()
 
-        assert len(self.tree.trunk.branches) == 1
+        if without_flag:
+            # Without the `_adding_branches` flag, the monitor thread will
+            # attempt to add branches at the same time as the main thread,
+            # which will result in duplicate branches
+            assert len(self.tree.trunk.branches) > 1
+            self.tree.trunk._add_branches = add_branches  # restore original method
+        else:
+            # With the flag in place, the monitor thread bails from adding
+            # branches when the parent branch is presently doing so, leading
+            # to only the adding of the single intended branch
+            assert len(self.tree.trunk.branches) == 1
 
 
 class TestWorkChainStatusPanel(TreeTestingMixin):
