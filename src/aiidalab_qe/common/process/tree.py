@@ -7,7 +7,9 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
+from aiida.common.links import LinkType
 from aiida.engine import ProcessState
+from aiida.tools.graph.graph_traversers import traverse_graph
 from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import LoadingWidget
@@ -345,29 +347,32 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
     def _get_tally(self):
         total = self.expected_jobs["count"]
         dynamic = self.expected_jobs["dynamic"]
-        finished = self._count_finished(self.node)
+        finished = self._count_finished()
         tally = f"{finished}/{total}"
         tally += "*" if dynamic else ""
         tally += " job" if total == 1 else " jobs"
         return tally
 
-    def _get_current_total(self, node: orm.ProcessNode):
-        total = 0
-        for child in node.called:
-            if isinstance(child, orm.WorkChainNode):
-                total += self._get_current_total(child)
-            elif isinstance(child, orm.CalcJobNode):
-                total += 1
-        return total
-
-    def _count_finished(self, node: orm.ProcessNode):
-        count = 0
-        for child in node.called:
-            if isinstance(child, orm.WorkChainNode):
-                count += self._count_finished(child)
-            elif isinstance(child, orm.CalcJobNode) and child.is_finished_ok:
-                count += 1
-        return count
+    def _count_finished(self):
+        traverser = traverse_graph(
+            starting_pks=[self.node.pk],
+            links_forward=[
+                LinkType.CALL_WORK,
+                LinkType.CALL_CALC,
+            ],
+        )
+        return (
+            orm.QueryBuilder()
+            .append(
+                orm.CalcJobNode,
+                filters=(
+                    (orm.CalcJobNode.fields.pk.in_(traverser.get("nodes")))
+                    & (orm.CalcJobNode.fields.process_state == "finished")
+                    & (orm.CalcJobNode.fields.exit_status == 0)
+                ),
+            )
+            .count()
+        )
 
     def _get_expected(self, inputs: dict[str, dict]) -> dict:
         expected = {}
