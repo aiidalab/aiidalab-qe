@@ -94,7 +94,7 @@ class HasProcess(tl.HasTraits):
     @property
     def properties(self):
         process_node = self.fetch_process_node()
-        return process_node.inputs.properties if process_node else []
+        return process_node.inputs.properties.get_list() if process_node else []
 
     @property
     def outputs(self):
