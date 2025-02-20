@@ -319,25 +319,28 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
                 continue
             if child.pk in self.pks:
                 continue
-            TreeNodeClass = (
-                WorkChainTreeNode
-                if isinstance(child, orm.WorkChainNode)
-                else CalcJobTreeNode
-            )
-            branch = TreeNodeClass(
-                node=child,
-                level=self.level + 1,
-                on_inspect=self.on_inspect,
-            )
             if child.process_label in (
                 "BandsWorkChain",
                 "ProjwfcBaseWorkChain",
             ):
                 self._add_branches(child)
             else:
-                branch.initialize()
-                self.branches += branch
-                self.pks.add(child.pk)
+                self._add_branch(child)
+
+    def _add_branch(self, child: orm.ProcessNode):
+        TreeNodeClass = (
+            WorkChainTreeNode
+            if isinstance(child, orm.WorkChainNode)
+            else CalcJobTreeNode
+        )
+        branch = TreeNodeClass(
+            node=child,
+            level=self.level + 1,
+            on_inspect=self.on_inspect,
+        )
+        branch.initialize()
+        self.branches += branch
+        self.pks.add(child.pk)
 
     def _get_tally(self):
         total = self.expected_jobs["count"]
