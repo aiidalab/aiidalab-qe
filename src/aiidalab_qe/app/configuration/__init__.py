@@ -6,7 +6,6 @@ Authors: AiiDAlab team
 from __future__ import annotations
 
 import ipywidgets as ipw
-import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
@@ -15,7 +14,7 @@ from aiidalab_qe.common.panel import (
     ConfigurationSettingsModel,
     ConfigurationSettingsPanel,
 )
-from aiidalab_qe.common.widgets import QeDependentWizardStep
+from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
 
 from .advanced import (
     AdvancedConfigurationSettingsModel,
@@ -27,14 +26,18 @@ from .model import ConfigurationStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class ConfigureQeAppWorkChainStep(QeDependentWizardStep[ConfigurationStepModel]):
+class ConfigureQeAppWorkChainStep(
+    QeConfirmableDependentWizardStep[ConfigurationStepModel]
+):
     missing_information_warning = "Missing input structure. Please set it first."
 
     def __init__(self, model: ConfigurationStepModel, **kwargs):
-        super().__init__(model=model, **kwargs)
-        self._model.observe(
-            self._on_confirmation_change,
-            "confirmed",
+        super().__init__(
+            model=model,
+            confirm_kwargs={
+                "tooltip": "Confirm the currently selected settings and go to the next step",
+            },
+            **kwargs,
         )
         self._model.observe(
             self._on_input_structure_change,
@@ -69,6 +72,8 @@ class ConfigureQeAppWorkChainStep(QeDependentWizardStep[ConfigurationStepModel])
         self._fetch_plugin_calculation_settings()
 
     def _render(self):
+        super()._render()
+
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
         ipw.dlink(
@@ -115,22 +120,7 @@ class ConfigureQeAppWorkChainStep(QeDependentWizardStep[ConfigurationStepModel])
         self.sub_steps.set_title(0, "Step 2.1: Select which properties to calculate")
         self.sub_steps.set_title(1, "Step 2.2: Customize calculation parameters")
 
-        self.confirm_button = ipw.Button(
-            description="Confirm",
-            tooltip="Confirm the currently selected settings and go to the next step.",
-            button_style="success",
-            icon="check-circle",
-            disabled=True,
-            layout=ipw.Layout(width="auto"),
-        )
-        ipw.dlink(
-            (self, "state"),
-            (self.confirm_button, "disabled"),
-            lambda state: state != self.State.CONFIGURED,
-        )
-        self.confirm_button.on_click(self.confirm)
-
-        self.children = [
+        self.content.children = [
             InAppGuide(identifier="configuration-step"),
             ipw.HTML("""
                 <div style="padding-top: 0px; padding-bottom: 0px">
@@ -140,27 +130,21 @@ class ConfigureQeAppWorkChainStep(QeDependentWizardStep[ConfigurationStepModel])
             self.relax_type_help,
             self.relax_type,
             self.sub_steps,
-            self.confirm_button,
+        ]
+
+        self.children = [
+            self.content,
+            self.confirm_box,
         ]
 
     def _post_render(self):
         self._update_tabs()
-
-    def is_saved(self):
-        return self._model.confirmed
-
-    def confirm(self, _=None):
-        self._model.confirm()
 
     def reset(self):
         self._model.reset()
         if self.rendered:
             self.sub_steps.selected_index = None
             self.tabs.selected_index = 0
-
-    @tl.observe("previous_step_state")
-    def _on_previous_step_state_change(self, _):
-        self._update_state()
 
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
@@ -172,9 +156,6 @@ class ConfigureQeAppWorkChainStep(QeDependentWizardStep[ConfigurationStepModel])
     def _on_input_structure_change(self, _):
         self._model.update()
         self.reset()
-
-    def _on_confirmation_change(self, _):
-        self._update_state()
 
     def _update_tabs(self):
         children = []

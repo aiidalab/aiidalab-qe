@@ -10,19 +10,18 @@ from aiida import orm
 from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.mixins import Confirmable, HasInputStructure, HasModels
+from aiidalab_qe.common.mixins import HasInputStructure, HasModels
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
-from aiidalab_qe.common.widgets import QeWizardStepModel
+from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
 from aiidalab_qe.workflows import QeAppWorkChain
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStepModel(
-    QeWizardStepModel,
+    QeConfirmableWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
-    Confirmable,
 ):
     identifier = "submission"
 
@@ -32,32 +31,20 @@ class SubmissionStepModel(
     process_label = tl.Unicode("")
     process_description = tl.Unicode("")
 
-    internal_submission_blockers = tl.List(tl.Unicode())
-    external_submission_blockers = tl.List(tl.Unicode())
-    submission_blocker_messages = tl.Unicode("")
-    submission_warning_messages = tl.Unicode("")
+    warning_messages = tl.Unicode("")
 
     installing_qe = tl.Bool(False)
-    installing_sssp = tl.Bool(False)
     qe_installed = tl.Bool(allow_none=True)
-    sssp_installed = tl.Bool(allow_none=True)
 
     plugin_overrides = tl.List(tl.Unicode())
 
-    confirmation_exceptions = [
-        "confirmed",
-        "internal_submission_blockers",
-        "external_submission_blockers",
-        "submission_blocker_messages",
-        "submission_warning_messages",
-        "installing_qe",
-        "installing_sssp",
-        "qe_installed",
-        "sssp_installed",
-    ]
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.confirmation_exceptions += [
+            "warning_messages",
+            "installing_qe",
+            "qe_installed",
+        ]
 
         self._default_models = {
             "global",
@@ -71,15 +58,6 @@ class SubmissionStepModel(
                 <strong>{message}</strong>
             </div>
         """
-
-    @property
-    def is_blocked(self):
-        return any(
-            [
-                *self.internal_submission_blockers,
-                *self.external_submission_blockers,
-            ]
-        )
 
     def confirm(self):
         super().confirm()
@@ -152,32 +130,11 @@ class SubmissionStepModel(
             and model.override
         ]
 
-    def update_submission_blockers(self):
-        submission_blockers = list(self._check_submission_blockers())
+    def update_warnings(self):
+        warning_messages = self._check_warnings()
         for _, model in self.get_models():
-            submission_blockers += model.submission_blockers
-        self.internal_submission_blockers = submission_blockers
-
-    def update_submission_warnings(self):
-        submission_warning_messages = self._check_submission_warnings()
-        for _, model in self.get_models():
-            submission_warning_messages += model.submission_warning_messages
-        self.submission_warning_messages = submission_warning_messages
-
-    def update_submission_blocker_message(self):
-        blockers = self.internal_submission_blockers + self.external_submission_blockers
-        if any(blockers):
-            formatted = "\n".join(f"<li>{item}</li>" for item in blockers)
-            self.submission_blocker_messages = f"""
-                <div class="alert alert-danger">
-                    <b>The submission is blocked due to the following reason(s):</b>
-                    <ul>
-                        {formatted}
-                    </ul>
-                </div>
-            """
-        else:
-            self.submission_blocker_messages = ""
+            warning_messages += model.warning_messages
+        self.warning_messages = warning_messages
 
     def get_model_state(self) -> dict[str, dict[str, dict]]:
         parameters: dict = deepcopy(self.input_parameters)  # type: ignore
@@ -295,13 +252,13 @@ class SubmissionStepModel(
 
         return builder
 
-    def _check_submission_blockers(self):
-        if self.installing_qe or self.installing_sssp:
-            yield "Background setup processes must finish."
+    def _check_blockers(self):
+        if self.installing_qe:
+            yield "Installing Quantum ESPRESSO codes..."
 
-        if not self.sssp_installed:
-            yield "The SSSP library is not installed."
+        if not self.qe_installed:
+            yield "Quantum ESPRESSO is not yet installed"
 
-    def _check_submission_warnings(self):
+    def _check_warnings(self):
         """Check for any warnings that should be displayed to the user."""
         return ""
