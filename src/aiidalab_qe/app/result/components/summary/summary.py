@@ -18,6 +18,8 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
             self._render_summary()
 
     def _on_monitor_counter_change(self, _):
+        if not self.rendered:
+            return
         if not self.has_download_widget:
             self._render_download_widget()
         if not self._model.has_failure_report:
