@@ -185,7 +185,7 @@ class HubbardConfigurationSettingsPanel(
                         state_index=state_index,
                         kind_name=kind_name: update(
                             kind_index,
-                            0,
+                            1,
                             state_index,
                             kind_name,
                             float(value),
@@ -218,7 +218,7 @@ class HubbardConfigurationSettingsPanel(
                         state_index=state_index,
                         kind_name=kind_name: update(
                             kind_index,
-                            1,
+                            2,
                             state_index,
                             kind_name,
                             float(value),
