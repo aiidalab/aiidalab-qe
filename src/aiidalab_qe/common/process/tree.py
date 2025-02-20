@@ -50,7 +50,8 @@ class SimplifiedProcessTree(ipw.VBox):
         self._update()
 
     def _on_monitor_counter_change(self, _):
-        self._update()
+        if self.rendered:
+            self._update()
 
     def _on_inspect(self, uuid: str):
         self._model.clicked = None  # ensure event is triggered when label is reclicked
@@ -73,7 +74,6 @@ class SimplifiedProcessTree(ipw.VBox):
         self.trunk.layout.flex = "1"
         self.trunk.initialize()
         self.trunk.expand()
-        self.rendered = True
         self._update()
         self.children = [
             self.collapse_button,
@@ -97,9 +97,10 @@ class SimplifiedProcessTree(ipw.VBox):
             ),
         ]
 
+        self.rendered = True
+
     def _update(self):
-        if self.rendered:
-            self.trunk.update()
+        self.trunk.update()
 
     def _collapse_all(self, _):
         self.trunk.collapse(recursive=True)

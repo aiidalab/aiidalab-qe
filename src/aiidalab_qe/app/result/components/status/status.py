@@ -118,7 +118,8 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
         self._select_tree_root()
 
     def _on_monitor_counter_change(self, _):
-        self.process_tree.update()
+        if self.rendered:
+            self.process_tree.update()
 
     def _on_accordion_change(self, change):
         if change["new"] == 0:
