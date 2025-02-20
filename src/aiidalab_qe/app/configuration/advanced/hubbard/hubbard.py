@@ -178,7 +178,7 @@ class HubbardConfigurationSettingsPanel(
                         lambda eigenvalues,
                         kind_index=kind_index,
                         state_index=state_index: str(
-                            eigenvalues[kind_index][0][state_index][-1]
+                            int(eigenvalues[kind_index][0][state_index][-1])
                         ),
                         lambda value,
                         kind_index=kind_index,
@@ -211,7 +211,7 @@ class HubbardConfigurationSettingsPanel(
                         lambda eigenvalues,
                         kind_index=kind_index,
                         state_index=state_index: str(
-                            eigenvalues[kind_index][1][state_index][-1]
+                            int(eigenvalues[kind_index][1][state_index][-1])
                         ),
                         lambda value,
                         kind_index=kind_index,
