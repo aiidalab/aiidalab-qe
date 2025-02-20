@@ -188,7 +188,7 @@ class HubbardConfigurationSettingsPanel(
                             0,
                             state_index,
                             kind_name,
-                            int(value),
+                            float(value),
                         ),
                     ],
                 )
@@ -221,7 +221,7 @@ class HubbardConfigurationSettingsPanel(
                             1,
                             state_index,
                             kind_name,
-                            int(value),
+                            float(value),
                         ),
                     ],
                 )
