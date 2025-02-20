@@ -263,6 +263,8 @@ class BandsPdosPlotly:
 
     def _add_band_traces(self, fig, bands_data, trace_settings=None):
         """Generate the band traces and add them to the figure."""
+        from copy import deepcopy
+
         trace_settings = trace_settings or {}
         name = trace_settings.pop("name", "Bands")
         trace_settings.setdefault("dash", "solid")
@@ -288,6 +290,7 @@ class BandsPdosPlotly:
 
         spin_polarized = 1 in bands_data["band_type_idx"]
         for spin in [0, 1]:
+            trace_settings_spin = deepcopy(trace_settings)
             # In case of non-spin-polarized or SOC calculations, the spin index is only 0
             if spin not in bands_data["band_type_idx"]:
                 continue
@@ -304,13 +307,13 @@ class BandsPdosPlotly:
                 ("fermi_energy" in self.fermi_energy, spin),
                 self.fermi_energy.get("fermi_energy"),
             )
-            trace_settings.setdefault("color", colors[(spin_polarized, spin)])
+            trace_settings_spin.setdefault("color", colors[(spin_polarized, spin)])
             scatter_objects.append(
                 go.Scattergl(
                     x=x_bands_comb,
                     y=y_bands_comb - fermi_energy,
                     mode="lines",
-                    line=trace_settings,
+                    line=trace_settings_spin,
                     showlegend=spin_polarized,
                     name=trace_name_mapping[(spin_polarized, spin)],
                 )
