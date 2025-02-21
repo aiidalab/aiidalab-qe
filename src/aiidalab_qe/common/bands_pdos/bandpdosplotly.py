@@ -34,11 +34,13 @@ class BandsPdosPlotly:
         external_bands_data=None,
         pdos_data=None,
         bands_projections_data=None,
+        plot_settings=None,
     ):
         self.bands_data = bands_data
         self.external_bands_data = external_bands_data
         self.pdos_data = pdos_data
         self.project_bands = bands_projections_data
+        self.plot_settings = plot_settings or {}
 
         self.fermi_energy = self._get_fermi_energy()
 
@@ -195,7 +197,10 @@ class BandsPdosPlotly:
 
     def adding_bands_traces(self, fig):
         if self.bands_data:
-            self._add_band_traces(fig, bands_data=self.bands_data, name="Bands")
+            bands_trace_settings = self.plot_settings.get("bands_trace_settings", None)
+            self._add_band_traces(
+                fig, bands_data=self.bands_data, trace_settings=bands_trace_settings
+            )
 
             band_labels = self.bands_data.get("pathlabels")
             for label in band_labels[1]:
@@ -205,12 +210,12 @@ class BandsPdosPlotly:
                 )
             if self.external_bands_data:
                 for key, bands_data in self.external_bands_data.items():
-                    dash = bands_data.get("plot_settings", {}).pop("dash", "solid")
+                    trace_settings = bands_data.get("trace_settings", {})
+                    trace_settings.setdefault("name", key)
                     self._add_band_traces(
                         fig,
                         bands_data=bands_data,
-                        name=key,
-                        dash=dash,
+                        trace_settings=trace_settings,
                     )
 
     def adding_pdos_traces(self, fig):
@@ -256,8 +261,14 @@ class BandsPdosPlotly:
         else:
             fig.add_traces(traces)
 
-    def _add_band_traces(self, fig, bands_data, name="Bands", dash="solid"):
+    def _add_band_traces(self, fig, bands_data, trace_settings=None):
         """Generate the band traces and add them to the figure."""
+        from copy import deepcopy
+
+        trace_settings = trace_settings or {}
+        name = trace_settings.pop("name", "Bands")
+        trace_settings.setdefault("dash", "solid")
+        trace_settings.setdefault("shape", "linear")
         colors = {
             (True, 0): self.SETTINGS["bands_up_linecolor"],
             (True, 1): self.SETTINGS["bands_down_linecolor"],
@@ -279,6 +290,7 @@ class BandsPdosPlotly:
 
         spin_polarized = 1 in bands_data["band_type_idx"]
         for spin in [0, 1]:
+            trace_settings_spin = deepcopy(trace_settings)
             # In case of non-spin-polarized or SOC calculations, the spin index is only 0
             if spin not in bands_data["band_type_idx"]:
                 continue
@@ -295,17 +307,13 @@ class BandsPdosPlotly:
                 ("fermi_energy" in self.fermi_energy, spin),
                 self.fermi_energy.get("fermi_energy"),
             )
-
+            trace_settings_spin.setdefault("color", colors[(spin_polarized, spin)])
             scatter_objects.append(
                 go.Scattergl(
                     x=x_bands_comb,
                     y=y_bands_comb - fermi_energy,
                     mode="lines",
-                    line={
-                        "color": colors[(spin_polarized, spin)],
-                        "shape": "linear",
-                        "dash": dash,  # Options: "solid", "dash", "dot", "dashdot", "longdash", "longdashdot"
-                    },
+                    line=trace_settings_spin,
                     showlegend=spin_polarized,
                     name=trace_name_mapping[(spin_polarized, spin)],
                 )

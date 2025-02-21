@@ -31,6 +31,7 @@ class BandsPdosModel(Model):
     bands = tl.Instance(AttributeDict, allow_none=True)
     external_bands = tl.Dict(value_trait=tl.Instance(AttributeDict), allow_none=True)
     pdos = tl.Instance(AttributeDict, allow_none=True)
+    plot_settings = tl.Dict(allow_none=True)
 
     dos_atoms_group_options = tl.List(
         trait=tl.List(tl.Unicode()),
@@ -149,8 +150,8 @@ class BandsPdosModel(Model):
             if not self.external_bands_data:
                 for key, bands_data in self.external_bands.items():
                     self.external_bands_data[key] = self._get_bands_data(bands_data)
-                    self.external_bands_data[key]["plot_settings"] = bands_data.get(
-                        "plot_settings", {}
+                    self.external_bands_data[key]["trace_settings"] = bands_data.get(
+                        "trace_settings", {}
                     )
 
         if self.pdos:
@@ -163,6 +164,7 @@ class BandsPdosModel(Model):
             external_bands_data=self.external_bands_data,
             bands_projections_data=None,
             pdos_data=self.pdos_data,
+            plot_settings=self.plot_settings,
         )
         self.plot = self.helper.bandspdosfigure
         self._get_traces_selector_options()
