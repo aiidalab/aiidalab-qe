@@ -171,8 +171,15 @@ def test_advanced_hubbard_settings(generate_structure_data):
     Co_spin_down_row.children[3].value = "1"
     Co_spin_down_row.children[5].value = "1"
 
+    Co_spin_up_row = Co_eigenvalues.children[0]
+    Co_spin_up_row.children[1].value = "0"
+    Co_spin_up_row.children[3].value = "0"
+    Co_spin_up_row.children[5].value = "0"
     assert model.get_active_eigenvalues() == [
-        (1, 1, "Co", 1),
-        (3, 1, "Co", 1),
-        (5, 1, "Co", 1),
+        (1, 1, "Co", 0.0),
+        (3, 1, "Co", 0.0),
+        (5, 1, "Co", 0.0),
+        (1, 2, "Co", 1.0),
+        (3, 2, "Co", 1.0),
+        (5, 2, "Co", 1.0),
     ]
