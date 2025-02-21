@@ -143,7 +143,7 @@ class HubbardConfigurationSettingsModel(
                     [state + 1, spin, kind_name, -1]  # default eigenvalue
                     for state in range(num_states)
                 ]
-                for spin in [2, 1]  # spin up and down
+                for spin in [1, 2]  # spin up and down
             ]
             for kind_name, num_states in self.applicable_kind_names  # transition metals and lanthanoids
         ]
