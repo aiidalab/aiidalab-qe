@@ -13,9 +13,12 @@ from .components.summary import WorkChainSummary, WorkChainSummaryModel
 from .components.viewer import WorkChainResultsViewer, WorkChainResultsViewerModel
 from .model import ResultsStepModel
 
-PROCESS_COMPLETED = "<h4>Workflow completed successfully!</h4>"
-PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
-PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
+STATUS_TEMPLATE = "<h4>Workflow status: {}</h4"
+
+STATUS_MAP = {
+    ProcessState.EXCEPTED: "Excepted",
+    ProcessState.KILLED: "Killed",
+}
 
 
 class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepModel]):
@@ -241,7 +244,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
             ProcessState.WAITING,
         ):
             self.state = self.State.ACTIVE
-            self._model.process_info = PROCESS_RUNNING
+            self._model.process_info = STATUS_TEMPLATE.format("Running")
         elif (
             process_node.process_state
             in (
@@ -251,10 +254,11 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
             or process_node.is_failed
         ):
             self.state = self.State.FAIL
-            self._model.process_info = PROCESS_EXCEPTED
+            status = STATUS_MAP.get(process_node.process_state, "Failed")
+            self._model.process_info = STATUS_TEMPLATE.format(status)
         elif process_node.is_finished_ok:
             self.state = self.State.SUCCESS
-            self._model.process_info = PROCESS_COMPLETED
+            self._model.process_info = STATUS_TEMPLATE.format("Completed successfully")
         if self.state in (self.State.SUCCESS, self.State.FAIL):
             self._update_kill_button_layout()
             self._update_clean_scratch_button_layout()
