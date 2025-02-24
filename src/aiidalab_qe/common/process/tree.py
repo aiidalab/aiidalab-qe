@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import typing as t
 from copy import deepcopy
 
@@ -156,10 +157,14 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         self.level = level
         self.on_inspect = on_inspect
         super().__init__(**kwargs)
+        self._node: dict[int, ProcessNodeType] = {}  # thread_id: node
 
     @property
     def node(self) -> ProcessNodeType:
-        return orm.load_node(self.uuid)  # type: ignore
+        if (tid := threading.get_ident()) not in self._node:
+            node = orm.load_node(self.uuid)
+            self._node[tid] = node
+        return self._node[tid]
 
     def initialize(self):
         self._build_header()
