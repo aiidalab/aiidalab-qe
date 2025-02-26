@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 import time
 
@@ -232,11 +234,25 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         if without_flag:  # skip `_adding_branches` flag check
             add_branches = self.tree.trunk._add_branches  # store original method
 
-            def delayed_add_branches():
-                self.tree.trunk._add_branches_recursive()
-                time.sleep(0.5)
+            def delayed_add_branches_recursive(
+                node: orm.ProcessNode | None = None,
+            ):
+                node = node or self.tree.trunk.node
+                for child in sorted(node.called, key=lambda child: child.ctime):
+                    if isinstance(child, orm.CalcFunctionNode):
+                        continue
+                    if child.pk in self.tree.trunk.pks:
+                        continue
+                    if child.process_label in (
+                        "BandsWorkChain",
+                        "ProjwfcBaseWorkChain",
+                    ):
+                        delayed_add_branches_recursive(child)
+                    else:
+                        time.sleep(0.5)
+                        self.tree.trunk._add_branch(child)
 
-            self.tree.trunk._add_branches = delayed_add_branches
+            self.tree.trunk._add_branches = delayed_add_branches_recursive
 
         # Start monitoring thread to update the tree, which will also
         # attempt to add branches to expanded parents
