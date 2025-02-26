@@ -4,14 +4,8 @@ import ipywidgets as ipw
 from table_widget import TableWidget
 
 from aiida.orm import QueryBuilder, load_node
+from aiidalab_qe.common.process import STATE_ICONS
 from aiidalab_qe.common.widgets import LoadingWidget
-
-STATE_ICONS = {
-    "running": "⏳",
-    "finished": "✅",
-    "excepted": "⚠️",
-    "killed": "❌",
-}
 
 
 def determine_state_icon(row):

@@ -15,6 +15,8 @@ from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import LoadingWidget
 
+from .state import STATE_ICONS
+
 
 class SimplifiedProcessTreeModel(Model, HasProcess):
     clicked = tl.Unicode(None, allow_none=True)
@@ -186,15 +188,7 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         return ipw.HTML(layout=ipw.Layout(width=f"{22 * self.level}px"))
 
     def _get_emoji(self, state):
-        return {
-            "created": "🚀",
-            "waiting": "💤",
-            "running": "⏳",
-            "finished": "✅",
-            "failed": "❌",
-            "killed": "💀",
-            "excepted": "⚠️",
-        }.get(state, "❓")
+        return STATE_ICONS.get(state, "❓")
 
     def _get_state(self):
         if not hasattr(self.node, "process_state"):
