@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import threading
+import time
 
 import ipywidgets as ipw
 import pytest
@@ -228,10 +231,28 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
             for _ in range(10):
                 self.model.monitor_counter += 1
 
-        if without_flag:
-            # Skip `_adding_branches` flag check
+        if without_flag:  # skip `_adding_branches` flag check
             add_branches = self.tree.trunk._add_branches  # store original method
-            self.tree.trunk._add_branches = self.tree.trunk._add_branches_recursive
+
+            def delayed_add_branches_recursive(
+                node: orm.ProcessNode | None = None,
+            ):
+                node = node or self.tree.trunk.node
+                for child in sorted(node.called, key=lambda child: child.ctime):
+                    if isinstance(child, orm.CalcFunctionNode):
+                        continue
+                    if child.pk in self.tree.trunk.pks:
+                        continue
+                    if child.process_label in (
+                        "BandsWorkChain",
+                        "ProjwfcBaseWorkChain",
+                    ):
+                        delayed_add_branches_recursive(child)
+                    else:
+                        time.sleep(0.5)
+                        self.tree.trunk._add_branch(child)
+
+            self.tree.trunk._add_branches = delayed_add_branches_recursive
 
         # Start monitoring thread to update the tree, which will also
         # attempt to add branches to expanded parents

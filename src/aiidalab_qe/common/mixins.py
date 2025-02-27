@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing as t
 
 import traitlets as tl
@@ -94,16 +96,22 @@ class HasProcess(tl.HasTraits):
     @property
     def properties(self):
         process_node = self.fetch_process_node()
-        return process_node.inputs.properties if process_node else []
+        # read the attributes directly instead of using the `get_list` method
+        # to avoid error in case of the orm.List object being converted to a orm.Data object
+        return (
+            process_node.inputs.properties.base.attributes.get("list")
+            if process_node
+            else []
+        )
 
     @property
     def outputs(self):
         process_node = self.fetch_process_node()
         return process_node.outputs if process_node else []
 
-    def fetch_process_node(self):
+    def fetch_process_node(self) -> orm.ProcessNode | None:
         try:
-            return orm.load_node(self.process_uuid) if self.process_uuid else None
+            return orm.load_node(self.process_uuid) if self.process_uuid else None  # type: ignore
         except NotExistent:
             return None
 
