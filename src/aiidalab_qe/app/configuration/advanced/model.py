@@ -333,3 +333,4 @@ class AdvancedConfigurationSettingsModel(
         )  # type: ignore
         if "tot_magnetization" in system_params:
             magnetization.type = "tot_magnetization"
+            magnetization.total = system_params["tot_magnetization"]
