@@ -66,7 +66,7 @@ run-one-constantly hq worker start --cpus=${CPU_LIMIT} --resource "mem=sum(${MEM
 # In addition, set default mpiprocs and memor per machine
 # TODO: this will be run every time the container start, we need a lock file to prevent it.
 job_poll_interval="2.0"
-computer_name=${HQ_COMPUTER}
+computer_name=${COMPUTER_LABEL}
 python -c "
 from aiida import load_profile; from aiida.orm import load_computer;
 load_profile();
