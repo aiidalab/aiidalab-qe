@@ -2,6 +2,13 @@
 
 set -x
 
+# Disable and rename the default 'localhost' computer to 'localhost-non-hq'.
+# This is necessary because we will create a new 'localhost' computer
+# configured with HyperQueue as the job management system.
+verdi computer disable localhost aiida@localhost
+python -c "from aiida import orm, load_profile;load_profile();orm.load_computer(label='localhost').label = 'localhost-non-hq'"
+
+
 # computer
 verdi computer show ${HQ_COMPUTER} || verdi computer setup        \
   --non-interactive                                               \
@@ -16,6 +23,3 @@ verdi computer show ${HQ_COMPUTER} || verdi computer setup        \
 verdi computer configure core.local "${HQ_COMPUTER}"              \
   --non-interactive                                               \
   --safe-interval 5.0
-
-# disable the localhost which is set in base image
-verdi computer disable localhost aiida@localhost

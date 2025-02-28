@@ -7,7 +7,7 @@ ARG HQ_VER=0.19.0
 
 ARG UV_CACHE_DIR=/tmp/uv_cache
 ARG QE_APP_SRC=/tmp/quantum-espresso
-ARG HQ_COMPUTER="localhost-hq"
+ARG HQ_COMPUTER="localhost"
 
 FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
@@ -125,7 +125,8 @@ COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
 
-COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
+# We exclude 42_setup-hq-computer.sh file because the computer is already steup, thus it is not needed in the final image.
+COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /usr/local/bin/before-notebook.d/
 
 ENV HQ_COMPUTER=$HQ_COMPUTER
 
