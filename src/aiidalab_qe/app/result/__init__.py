@@ -3,6 +3,7 @@ import traitlets as tl
 
 from aiida.engine import ProcessState
 from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.process import STATE_ICONS
 from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_qe.common.wizard import QeDependentWizardStep
 from aiidalab_widgets_base import ProcessMonitor, WizardAppWidgetStep
@@ -13,15 +14,13 @@ from .components.summary import WorkChainSummary, WorkChainSummaryModel
 from .components.viewer import WorkChainResultsViewer, WorkChainResultsViewerModel
 from .model import ResultsStepModel
 
-PROCESS_COMPLETED = "<h4>Workflow completed successfully!</h4>"
-PROCESS_EXCEPTED = "<h4>Workflow is excepted!</h4>"
-PROCESS_RUNNING = "<h4>Workflow is running!</h4>"
-
 
 class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepModel]):
     missing_information_warning = (
         "No available results. Did you submit or load a calculation?"
     )
+
+    STATUS_TEMPLATE = "<h4>Workflow status: {}</h4"
 
     def __init__(self, model: ResultsStepModel, **kwargs):
         self.log_widget = kwargs.pop("log_widget", None)
@@ -232,29 +231,42 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
         self._model.monitor_counter += 1
 
     def _update_state(self):
-        process_node = self._model.fetch_process_node()
-        if not process_node:
+        if not (process_node := self._model.fetch_process_node()):
             self.state = self.State.INIT
-        elif process_node.process_state in (
-            ProcessState.CREATED,
+            self._update_controls()
+            return
+
+        if process_state := process_node.process_state:
+            status = self._get_process_status(process_state.value)
+        else:
+            status = "Unknown"
+
+        if process_state is ProcessState.CREATED:
+            self.state = self.State.ACTIVE
+        elif process_state in (
             ProcessState.RUNNING,
             ProcessState.WAITING,
         ):
             self.state = self.State.ACTIVE
-            self._model.process_info = PROCESS_RUNNING
-        elif (
-            process_node.process_state
-            in (
-                ProcessState.EXCEPTED,
-                ProcessState.KILLED,
-            )
-            or process_node.is_failed
+            status = self._get_process_status("running")  # overwrite status
+        elif process_state in (
+            ProcessState.EXCEPTED,
+            ProcessState.KILLED,
         ):
             self.state = self.State.FAIL
-            self._model.process_info = PROCESS_EXCEPTED
+        elif process_node.is_failed:
+            self.state = self.State.FAIL
         elif process_node.is_finished_ok:
             self.state = self.State.SUCCESS
-            self._model.process_info = PROCESS_COMPLETED
+
+        self._model.process_info = self.STATUS_TEMPLATE.format(status)
+
+        self._update_controls()
+
+    def _update_controls(self):
         if self.state in (self.State.SUCCESS, self.State.FAIL):
             self._update_kill_button_layout()
             self._update_clean_scratch_button_layout()
+
+    def _get_process_status(self, state: str):
+        return f"{state.capitalize()} {STATE_ICONS[state]}"
