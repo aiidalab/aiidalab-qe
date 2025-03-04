@@ -32,6 +32,10 @@ if [ -f "$MEMORY_LIMIT_PATH" ]; then
     MEMORY_LIMIT=4096
   else
     MEMORY_LIMIT=$(echo "scale=0; $MEMORY_LIMIT / (1024 * 1024)" | bc)
+    # Temporary fix for https://github.com/aiidalab/aiidalab-qe/issues/1193
+    if [ "$MEMORY_LIMIT" -gt 1024000 ]; then
+      MEMORY_LIMIT=4096
+    fi
   fi
 else
   MEMORY_LIMIT=4096
@@ -56,7 +60,7 @@ fi
 # Temporary fix for https://github.com/aiidalab/aiidalab-qe/issues/1193
 # Ensure CPU_LIMIT is at least 1
 if [ "$CPU_LIMIT" -le 0 ]; then
-  CPU_LIMIT=1
+  CPU_LIMIT=4
 fi
 
 echo "Number of CPUs allocated: $CPU_LIMIT"
