@@ -52,6 +52,13 @@ if [ -f "$CPU_QUOTA_PATH" ] && [ -f "$CPU_PERIOD_PATH" ]; then
 else
   CPU_LIMIT=$(nproc)
 fi
+
+# Temporary fix for https://github.com/aiidalab/aiidalab-qe/issues/1193
+# Ensure CPU_LIMIT is at least 1
+if [ "$CPU_LIMIT" -le 0 ]; then
+  CPU_LIMIT=1
+fi
+
 echo "Number of CPUs allocated: $CPU_LIMIT"
 
 # Start HQ server and worker
