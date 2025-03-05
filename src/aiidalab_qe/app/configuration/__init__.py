@@ -14,6 +14,7 @@ from aiidalab_qe.common.panel import (
     ConfigurationSettingsModel,
     ConfigurationSettingsPanel,
 )
+from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
 
 from .advanced import (
@@ -99,12 +100,31 @@ class ConfigureQeAppWorkChainStep(
             "selected_index",
         )
 
+        self.install_new_plugin_button = LinkButton(
+            description="Install More Plugins",
+            link="plugin_manager.ipynb",
+            icon="plus-circle",
+            button_style="primary",  # Makes it more prominent
+            tooltip="Go to Plugin Manager to install additional plugins",
+        )
+
         self.sub_steps = ipw.Accordion(
             children=[
                 ipw.VBox(
                     children=[
                         InAppGuide(identifier="properties-selection"),
+                        self.install_new_plugin_button,
                         *self.property_children,
+                        ipw.HTML(
+                            value="""
+                            <p style="font-size:14px; line-height:1.6;">
+                                🔍 <b>Select the properties to calculate.</b> Supported calculations have enabled checkboxes.
+                                Some additional properties require plugins that are not installed—these are listed but disabled.
+                                📦 You can install missing plugins from the <b>Plugin Store</b>.
+                            </p>
+                            """,
+                            layout=ipw.Layout(margin="10px 0px"),
+                        ),
                     ]
                 ),
                 ipw.VBox(
