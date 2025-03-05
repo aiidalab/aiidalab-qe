@@ -68,7 +68,8 @@ class ConfigureQeAppWorkChainStep(
             "advanced": self.advanced_settings,
         }
 
-        self.property_children = []
+        self.installed_property_children = []
+        self.not_installed_property_children = []
 
         self._fetch_plugin_calculation_settings()
 
@@ -101,11 +102,11 @@ class ConfigureQeAppWorkChainStep(
         )
 
         self.install_new_plugin_button = LinkButton(
-            description="Install More Plugins",
+            description="Open Plugin Store",
             link="plugin_manager.ipynb",
-            icon="plus-circle",
-            button_style="primary",  # Makes it more prominent
-            tooltip="Go to Plugin Manager to install additional plugins",
+            icon="puzzle-piece",  # More intuitive icon
+            button_style="primary",  # Keeps it prominent
+            tooltip="Browse and install additional plugins from the Plugin Store",
         )
 
         self.sub_steps = ipw.Accordion(
@@ -113,18 +114,19 @@ class ConfigureQeAppWorkChainStep(
                 ipw.VBox(
                     children=[
                         InAppGuide(identifier="properties-selection"),
-                        self.install_new_plugin_button,
-                        *self.property_children,
+                        *self.installed_property_children,
                         ipw.HTML(
                             value="""
                             <p style="font-size:14px; line-height:1.6;">
-                                🔍 <b>Select the properties to calculate.</b> Supported calculations have enabled checkboxes.
-                                Some additional properties require plugins that are not installed—these are listed but disabled.
-                                📦 You can install missing plugins from the <b>Plugin Store</b>.
+                                🔹 <b>Additional property calculations are available but require missing plugins.</b><br>
+                                These properties are listed below but currently disabled.
+                                📦 To enable them, please visit the <b>Plugin store page</b> and install the required plugins.
                             </p>
                             """,
                             layout=ipw.Layout(margin="10px 0px"),
                         ),
+                        self.install_new_plugin_button,
+                        *self.not_installed_property_children,
                     ]
                 ),
                 ipw.VBox(
@@ -203,6 +205,31 @@ class ConfigureQeAppWorkChainStep(
             self.state = self.State.INIT
 
     def _fetch_plugin_calculation_settings(self):
+        from aiidalab_qe.app.utils.plugin_manager import (
+            PluginManager,
+            is_package_installed,
+        )
+
+        plugin_manager = PluginManager(
+            config_source="/home/wang_x3/repos/superstar54/aiidalab-qe/plugins.yaml"
+        )
+        for plugin_name, plugin_data in plugin_manager.data.items():
+            if (
+                plugin_data.get("category", "").lower() != "calculation"
+            ):  # Ignore non-property plugins
+                continue
+
+            is_installed = is_package_installed(plugin_name)
+            if not is_installed:
+                checkbox = ipw.Checkbox(
+                    value=False,
+                    description=plugin_data["title"],
+                    disabled=True,
+                    indent=False,
+                    style={"description_width": "initial"},
+                )
+                self.not_installed_property_children.append(checkbox)
+
         outlines = get_entry_items("aiidalab_qe.properties", "outline")
         entries = get_entry_items("aiidalab_qe.properties", "configuration")
         for identifier, configuration in entries.items():
@@ -242,7 +269,7 @@ class ConfigureQeAppWorkChainStep(
                 "include",
             )
 
-            self.property_children.append(
+            self.installed_property_children.append(
                 ipw.HBox(
                     children=[
                         outline,

@@ -7,7 +7,7 @@ aiidalab-qe-vibroscopy:
     post_install: setup-phonopy
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>=24.04.0'
+    requires_aiidalab_qe: '>=24.10.0'
 
 aiidalab-qe-muon:
     title: Muon spectroscopy (aiidalab-qe-muon)
@@ -15,7 +15,8 @@ aiidalab-qe-muon:
     author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
     github: https://github.com/mikibonacci/aiidalab-qe-muon
     status: stable
-    requires_aiidalab_qe: '>=24.04.0'
+    category: calculation
+    requires_aiidalab_qe: '>=24.10.0'
 
 aiida-qe-xspec:
     title: Core-level spectroscopy (aiida-qe-xspec)
@@ -26,7 +27,7 @@ aiida-qe-xspec:
     pip: aiida-qe-xspec
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>=24.04.0'
+    requires_aiidalab_qe: '>=24.10.0'
 
 aiida-bader:
     title: Bader charge analysis (aiida-bader)

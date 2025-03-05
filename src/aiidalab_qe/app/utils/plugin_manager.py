@@ -306,7 +306,6 @@ class PluginManager:
         self.config_source = config_source
         self.data = self._load_config()
         self.accordion = ipw.Accordion()
-        self._build_ui()
 
     def _load_config(self) -> dict:
         """
@@ -469,4 +468,5 @@ class PluginManager:
         """
         Display the Accordion UI in a Jupyter notebook.
         """
+        self._build_ui()
         display(self.accordion)
