@@ -32,6 +32,10 @@ if [ -f "$MEMORY_LIMIT_PATH" ]; then
     MEMORY_LIMIT=4096
   else
     MEMORY_LIMIT=$(echo "scale=0; $MEMORY_LIMIT / (1024 * 1024)" | bc)
+    # Temporary fix for https://github.com/aiidalab/aiidalab-qe/issues/1193
+    if [ "$MEMORY_LIMIT" -gt 1024000 ]; then
+      MEMORY_LIMIT=4096
+    fi
   fi
 else
   MEMORY_LIMIT=4096
@@ -52,6 +56,13 @@ if [ -f "$CPU_QUOTA_PATH" ] && [ -f "$CPU_PERIOD_PATH" ]; then
 else
   CPU_LIMIT=$(nproc)
 fi
+
+# Temporary fix for https://github.com/aiidalab/aiidalab-qe/issues/1193
+# Ensure CPU_LIMIT is at least 1
+if [ "$CPU_LIMIT" -le 0 ]; then
+  CPU_LIMIT=4
+fi
+
 echo "Number of CPUs allocated: $CPU_LIMIT"
 
 # Start HQ server and worker
@@ -66,7 +77,7 @@ run-one-constantly hq worker start --cpus=${CPU_LIMIT} --resource "mem=sum(${MEM
 # In addition, set default mpiprocs and memor per machine
 # TODO: this will be run every time the container start, we need a lock file to prevent it.
 job_poll_interval="2.0"
-computer_name=${HQ_COMPUTER}
+computer_name=${COMPUTER_LABEL}
 python -c "
 from aiida import load_profile; from aiida.orm import load_computer;
 load_profile();

@@ -7,7 +7,7 @@ ARG HQ_VER=0.19.0
 
 ARG UV_CACHE_DIR=/tmp/uv_cache
 ARG QE_APP_SRC=/tmp/quantum-espresso
-ARG HQ_COMPUTER="localhost-hq"
+ARG COMPUTER_LABEL="localhost"
 
 FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
@@ -52,7 +52,7 @@ FROM build_deps AS home_build
 ARG UV_CACHE_DIR
 ARG QE_DIR
 ARG HQ_VER
-ARG HQ_COMPUTER
+ARG COMPUTER_LABEL
 
 # Install hq binary
 RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz && \
@@ -78,14 +78,12 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
-ENV HQ_COMPUTER=$HQ_COMPUTER
-
 # TODO: Remove PGSQL and daemon log files, and other unneeded files
 RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/20_start-postgresql.sh && \
     bash /usr/local/bin/before-notebook.d/40_prepare-aiida.sh && \
     bash /usr/local/bin/before-notebook.d/42_setup-hq-computer.sh && \
-    python -m aiidalab_qe install-qe --computer ${HQ_COMPUTER} && \
+    python -m aiidalab_qe install-qe --computer ${COMPUTER_LABEL} && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
@@ -104,7 +102,7 @@ FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
 ARG QE_DIR
 ARG QE_APP_SRC
 ARG UV_CACHE_DIR
-ARG HQ_COMPUTER
+ARG COMPUTER_LABEL
 USER ${NB_USER}
 
 WORKDIR /tmp
@@ -125,9 +123,10 @@ COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
 
-COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
+# We exclude 42_setup-hq-computer.sh file because the computer is already steup, thus it is not needed in the final image.
+COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /usr/local/bin/before-notebook.d/
 
-ENV HQ_COMPUTER=$HQ_COMPUTER
+ENV COMPUTER_LABEL=$COMPUTER_LABEL
 
 # Remove content of $HOME
 # '-mindepth=1' ensures that we do not remove the home directory itself.
