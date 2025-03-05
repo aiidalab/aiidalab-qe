@@ -1,24 +1,18 @@
 ---
-aiida-bader:
-    title: Bader charge analysis (aiida-bader)
-    description: Perform Bader charge analysis of the electronic charge density
-    author: Xing Wang
-    github: https://github.com/superstar54/aiida-bader
-    documentation: https://aiida-bader.readthedocs.io/
-    pip: aiida-bader
-
 aiidalab-qe-vibroscopy:
     title: Phonons and IR/Raman (aiidalab-qe-vibroscopy)
     description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials via finite displacement and finite field approach.
     author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
     pip: aiidalab-qe-vibroscopy~=1.1.3
     post_install: setup-phonopy
+    status: production
 
 aiidalab-qe-muon:
     title: Muon spectroscopy (aiidalab-qe-muon)
     description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties (local fields and polarization signals).
     author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
     github: https://github.com/mikibonacci/aiidalab-qe-muon
+    status: production
 
 aiida-qe-xspec:
     title: Core-level spectroscopy (aiida-qe-xspec)
@@ -27,6 +21,16 @@ aiida-qe-xspec:
     github: https://github.com/aiidaplugins/aiida-qe-xspec
     documentation: https://aiida-qe-xspec.readthedocs.io/
     pip: aiida-qe-xspec
+    status: production
+
+aiida-bader:
+    title: Bader charge analysis (aiida-bader)
+    description: Perform Bader charge analysis of the electronic charge density
+    author: Xing Wang
+    github: https://github.com/superstar54/aiida-bader
+    documentation: https://aiida-bader.readthedocs.io/
+    pip: aiida-bader
+    status: production
 
 aiidalab-qe-wannier90:
     title: Wannier functions (aiidalab-qe-wannier90)
@@ -35,6 +39,7 @@ aiidalab-qe-wannier90:
     github: https://github.com/superstar54/aiidalab-qe-wannier90
     documentation: https://aiidalab-qe-wannier90.readthedocs.io/
     pip: aiidalab-qe-wannier90
+    status: beta
 
 aiidalab-qe-hp:
     title: Habbard parameter (aiidalab-qe-hp)
@@ -43,3 +48,4 @@ aiidalab-qe-hp:
     github: https://github.com/superstar54/aiidalab-qe-hp
     documentation: https://aiidalab-qe-hp.readthedocs.io/
     pip: aiidalab-qe-hp
+    status: beta
