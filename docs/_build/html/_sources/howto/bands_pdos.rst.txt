@@ -48,7 +48,7 @@ Select `Full geometry` to relax the structure and select `Electronic band struct
     :align: center
 
 .. note::
-    We will use the `moderate` protocol for this calculation, as it provides a good balance between accuracy and computational cost. If you have access to a remote machine, 
+    We will use the `moderate` protocol for this calculation, as it provides a good balance between accuracy and computational cost. If you have access to a remote machine,
     you can use the `precise` protocol for more accurate results. At variance, the `fast` protocol can be used for a quick (test) calculation.
 
 Open the `Band structure` settings tab in `Step 2.2`, and select `Fat bands calculation` to enable the calculation of the band structure with projected atomic orbitals contributions.
@@ -60,7 +60,7 @@ Open the `Band structure` settings tab in `Step 2.2`, and select `Fat bands calc
 Step 3 - Choose computational resources
 ***************************************
 
-In `Step 3`, you can select a given `pw.x` code and computer to run the simulations. As mentioned above, we will use `moderate` protocol for this calculation. 
+In `Step 3`, you can select a given `pw.x` code and computer to run the simulations. As mentioned above, we will use `moderate` protocol for this calculation.
 If you have access to a remote machine, you can set it up and then use it. Please refer to the relevant :doc:`How-To </howto/setup_computer_code>` section for this procedure.
 
 Then, click the `Submit` button to start the AiiDA workflow.
@@ -83,7 +83,7 @@ There are several parameters you can use to tune the plots, e.g. the atomic/orbi
 
 
 .. note::
-    All the data can be downloaded by means of the corresponding `Download data` button. 
+    All the data can be downloaded by means of the corresponding `Download data` button.
 
 You can inspect the interactive plot, for example zooming on specific regions, or selecting specific orbitals to visualize their contributions to the band structure.
 

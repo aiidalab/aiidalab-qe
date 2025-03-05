@@ -83,7 +83,7 @@ Step 3: Choose computational resources
 Codes
 ^^^^^
 
-The AiiDAlab image comes pre-configured with a default computer (localhost) and the 
+The AiiDAlab image comes pre-configured with a default computer (localhost) and the
 following codes (versions and names can change, depending on the version of the app):
 
 - pw-7.0@localhost
