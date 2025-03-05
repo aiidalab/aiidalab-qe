@@ -27,7 +27,7 @@ COLOR_MAP = {
     "deprecated": "#FF0000",  # 🔴 Red - No longer maintained
     "archived": "#808080",  # ⚪ Grey - Retained for reference, no updates
 }
-GITHUB_PLUGINS_URL = (
+DEFAULT_PLUGIN_CONFIG_SOURCE = (
     "https://raw.githubusercontent.com/aiidalab/aiidalab-qe/main/plugins.yaml"
 )
 
@@ -297,7 +297,7 @@ class PluginManager:
     those plugins in a Jupyter environment.
     """
 
-    def __init__(self, config_source: str = GITHUB_PLUGINS_URL):
+    def __init__(self, config_source: str = DEFAULT_PLUGIN_CONFIG_SOURCE):
         """
         Initialize the PluginManager with a path to a YAML config or a URL.
 

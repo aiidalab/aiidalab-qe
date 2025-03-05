@@ -78,3 +78,15 @@ def test_reminder_info():
     assert bands_info.value == "Customize bands settings in <b>Step 2.2</b> if needed"
     bands_model.include = False
     assert bands_info.value == ""
+
+
+def test_not_installed_property_children():
+    import os
+
+    current_file = os.path.abspath(__file__)
+    plugin_file = os.path.join(os.path.dirname(current_file), "../plugins.yaml")
+    model = ConfigurationStepModel()
+    config = ConfigureQeAppWorkChainStep(model=model)
+    config._fetch_plugin_calculation_settings(str(plugin_file))
+    assert len(config.installed_property_children) > 0
+    assert len(config.not_installed_property_children) > 0

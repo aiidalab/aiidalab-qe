@@ -70,11 +70,12 @@ class ConfigureQeAppWorkChainStep(
 
         self.installed_property_children = []
         self.not_installed_property_children = []
+        self._fetch_plugin_calculation_settings()
 
     def _render(self):
         super()._render()
 
-        self._fetch_plugin_calculation_settings()
+        self._fetch_not_installed_property()
 
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
@@ -204,13 +205,17 @@ class ConfigureQeAppWorkChainStep(
         else:
             self.state = self.State.INIT
 
-    def _fetch_plugin_calculation_settings(self):
+    def _fetch_not_installed_property(self, plugin_config_source=None):
         from aiidalab_qe.app.utils.plugin_manager import (
+            DEFAULT_PLUGIN_CONFIG_SOURCE,
             PluginManager,
             is_package_installed,
         )
 
-        plugin_manager = PluginManager()
+        self.not_installed_property_children = []
+
+        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
+        plugin_manager = PluginManager(plugin_config_source)
         for plugin_name, plugin_data in plugin_manager.data.items():
             if (
                 plugin_data.get("category", "").lower() != "calculation"
@@ -228,6 +233,7 @@ class ConfigureQeAppWorkChainStep(
                 )
                 self.not_installed_property_children.append(checkbox)
 
+    def _fetch_plugin_calculation_settings(self):
         outlines = get_entry_items("aiidalab_qe.properties", "outline")
         entries = get_entry_items("aiidalab_qe.properties", "configuration")
         for identifier, configuration in entries.items():
