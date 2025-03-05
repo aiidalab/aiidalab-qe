@@ -5,23 +5,23 @@ aiidalab-qe-vibroscopy:
     author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
     pip: aiidalab-qe-vibroscopy~=1.1.3
     post_install: setup-phonopy
-    status: production
+    status: stable
 
 aiidalab-qe-muon:
     title: Muon spectroscopy (aiidalab-qe-muon)
     description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties (local fields and polarization signals).
     author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
     github: https://github.com/mikibonacci/aiidalab-qe-muon
-    status: production
+    status: stable
 
 aiida-qe-xspec:
     title: Core-level spectroscopy (aiida-qe-xspec)
     description: Core-level spectroscopy calculations with Quantum ESPRESSO.
-    author: Xing Wang, Peter Gillespie
+    author: Peter Gillespie, Michael A. Hernandez-Bertran, Giovanni Pizzi, Deborah Prezzi, Xing Wang (ordered by last name alphabetically)
     github: https://github.com/aiidaplugins/aiida-qe-xspec
     documentation: https://aiida-qe-xspec.readthedocs.io/
     pip: aiida-qe-xspec
-    status: production
+    status: stable
 
 aiida-bader:
     title: Bader charge analysis (aiida-bader)
@@ -30,21 +30,21 @@ aiida-bader:
     github: https://github.com/superstar54/aiida-bader
     documentation: https://aiida-bader.readthedocs.io/
     pip: aiida-bader
-    status: production
+    status: stable
 
 aiidalab-qe-wannier90:
     title: Wannier functions (aiidalab-qe-wannier90)
     description: A plugin to compute Wannier functions using Quantum ESPRESSO and the Wannier90 code.
-    author: Xing Wang, Junfeng Qiao and Giovanni Pizzi
+    author: Xing Wang, Junfeng Qiao, Nicola Marzari and Giovanni Pizzi
     github: https://github.com/superstar54/aiidalab-qe-wannier90
     documentation: https://aiidalab-qe-wannier90.readthedocs.io/
     pip: aiidalab-qe-wannier90
     status: beta
 
 aiidalab-qe-hp:
-    title: Habbard parameter (aiidalab-qe-hp)
-    description: A plugin to compute Habbard parameter with Quantum ESPRESSO.
-    author: Xing Wang, Iurii Timrov and Giovanni Pizzi
+    title: Hubbard parameter (aiidalab-qe-hp)
+    description: A plugin to compute Hubbard parameter with Quantum ESPRESSO.
+    author: Xing Wang, Lorenzo Bastonero and Iurii Timrov
     github: https://github.com/superstar54/aiidalab-qe-hp
     documentation: https://aiidalab-qe-hp.readthedocs.io/
     pip: aiidalab-qe-hp

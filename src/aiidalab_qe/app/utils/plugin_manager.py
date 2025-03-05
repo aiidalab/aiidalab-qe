@@ -16,6 +16,16 @@ import ipywidgets as ipw
 import yaml
 from IPython.display import display
 
+# Define badge colors based on status
+COLOR_MAP = {
+    "experimental": "#FF8C00",  # 🟠 Orange - Early development
+    "beta": "#FFA500",  # 🟡 Darker Orange - Testing phase
+    "stable": "#1E90FF",  # 🔵 Dodger Blue - Well-tested, feature-complete
+    "production": "#008000",  # 🟢 Green - Fully stable and recommended
+    "deprecated": "#FF0000",  # 🔴 Red - No longer maintained
+    "archived": "#808080",  # ⚪ Grey - Retained for reference, no updates
+}
+
 
 def is_package_installed(package_name: str) -> bool:
     """
@@ -273,14 +283,8 @@ class PluginManager:
             )
 
             status_value = plugin_data.get("status", "").strip().lower()
-            # Define badge colors based on status
-            color_map = {
-                "experimental": "#FF8C00",
-                "beta": "#FFA500",
-                "production": "#008000",
-            }
             # Default color if no status or unknown status
-            badge_color = color_map.get(status_value, "#666666")
+            badge_color = COLOR_MAP.get(status_value, "#666666")
             if status_value:
                 # Capitalize first letter for display
                 display_text = status_value.capitalize()
