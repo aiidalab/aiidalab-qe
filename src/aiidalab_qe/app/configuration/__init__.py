@@ -204,13 +204,18 @@ class ConfigureQeAppWorkChainStep(
         else:
             self.state = self.State.INIT
 
-    def _fetch_plugin_calculation_settings(self):
+    def _fetch_plugin_calculation_settings(self, plugin_config_source=None):
         from aiidalab_qe.app.utils.plugin_manager import (
+            DEFAULT_PLUGIN_CONFIG_SOURCE,
             PluginManager,
             is_package_installed,
         )
 
-        plugin_manager = PluginManager()
+        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
+        self.installed_property_children = []
+        self.not_installed_property_children = []
+
+        plugin_manager = PluginManager(plugin_config_source)
         for plugin_name, plugin_data in plugin_manager.data.items():
             if (
                 plugin_data.get("category", "").lower() != "calculation"
