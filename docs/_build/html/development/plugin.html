@@ -1,0 +1,923 @@
+
+
+<!DOCTYPE html>
+
+
+<html >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Create your plugin &#8212; Quantum ESPRESSO App v24.10.0a8-dev documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/design-tabs.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'development/plugin';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Plugin Registry" href="plugin_registry.html" />
+    <link rel="prev" title="Architecture" href="architecture.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="None"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../_static/logo_dark.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../installation/index.html">
+                        Installation Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../howto/index.html">
+                        How-to guides
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        Developer guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../blogs/index.html">
+                        Blogs
+                      </a>
+                    </li>
+                
+            <div class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    More
+                </button>
+                <div class="dropdown-menu">
+                    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../report_issue.html">
+                        Report an issue
+                      </a>
+                    </li>
+                
+                </div>
+            </div>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="http://aiidalab.net" title="AiiDAlab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-solid fa-globe"></i></span>
+            <label class="sr-only">AiiDAlab</label></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.github.com/aiidalab/aiidalab-qe" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../installation/index.html">
+                        Installation Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../howto/index.html">
+                        How-to guides
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        Developer guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../blogs/index.html">
+                        Blogs
+                      </a>
+                    </li>
+                
+            <div class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    More
+                </button>
+                <div class="dropdown-menu">
+                    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../report_issue.html">
+                        Report an issue
+                      </a>
+                    </li>
+                
+                </div>
+            </div>
+            
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="http://aiidalab.net" title="AiiDAlab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-solid fa-globe"></i></span>
+            <label class="sr-only">AiiDAlab</label></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.github.com/aiidalab/aiidalab-qe" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Create your plugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plugin_registry.html">Plugin Registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides.html">Guides</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Developer guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Create your plugin</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="create-your-plugin">
+<span id="develop-create-plugin"></span><h1>Create your plugin<a class="headerlink" href="#create-your-plugin" title="Permalink to this headline">#</a></h1>
+<p>A QuantumESPRESSO app plugin will typically register new panels (setting, result), and workchain to extend the app’s functionality.</p>
+<section id="your-first-plugin">
+<h2>Your First Plugin<a class="headerlink" href="#your-first-plugin" title="Permalink to this headline">#</a></h2>
+<p>Here is the an example plugin to calculate the equation of state (EOS) of a material.
+This plugin will register the following items:</p>
+<ul class="simple">
+<li><p>Outline</p></li>
+<li><p>Setting</p></li>
+<li><p>Result</p></li>
+<li><p>Workchain</p></li>
+</ul>
+<p>Let’s go through each item in detail.</p>
+<section id="outline">
+<h3>Outline<a class="headerlink" href="#outline" title="Permalink to this headline">#</a></h3>
+<p>A  <code class="xref py py-class docutils literal notranslate"><span class="pre">Outline</span></code> widget can add an item, as a checkbox, in the properties section of the workflow panel in the configuration step.
+You only need to set the title of the outline.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aiidalab_qe.common.panel</span> <span class="kn">import</span> <span class="n">OutlinePanel</span>
+
+<span class="k">class</span> <span class="nc">EosOutline</span><span class="p">(</span><span class="n">OutlinePanel</span><span class="p">):</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Equation of State (EOS)&quot;</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">EOS</span></code> outline is shown below.</p>
+<img alt="../_images/plugin_outline.png" class="align-center" src="../_images/plugin_outline.png" />
+</section>
+<section id="setting">
+<h3>Setting<a class="headerlink" href="#setting" title="Permalink to this headline">#</a></h3>
+<p>A setting <code class="xref py py-class docutils literal notranslate"><span class="pre">Panel</span></code> widget will register a new panel in the configuration step, e.g. the <code class="docutils literal notranslate"><span class="pre">EOS</span> <span class="pre">setting</span></code> panel.</p>
+<img alt="../_images/plugin_setting.png" src="../_images/plugin_setting.png" />
+<p>In this panel, you can add widgets to set the input parameters for the plugin’s WorkChain.
+For example, a <code class="docutils literal notranslate"><span class="pre">FloatText</span></code> widget to set the scale of the structure, and a <code class="docutils literal notranslate"><span class="pre">IntText</span></code> widget to set the number of points.
+Beside, you need to override the the following methods:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">get_panel_value</span></code> to tell the app how to get the values from the widgets.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_panel_value</span></code> to tell the app how to reload the panel values from the previous calculation.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reset</span></code> to reset the panel to the default values.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ipywidgets</span> <span class="k">as</span> <span class="nn">ipw</span>
+<span class="kn">from</span> <span class="nn">aiidalab_qe.common.panel</span> <span class="kn">import</span> <span class="n">Panel</span>
+
+<span class="k">class</span> <span class="nc">Setting</span><span class="p">(</span><span class="n">Panel</span><span class="p">):</span>
+
+    <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;EOS Settings&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_title</span> <span class="o">=</span> <span class="n">ipw</span><span class="o">.</span><span class="n">HTML</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;&lt;div style=&quot;padding-top: 0px; padding-bottom: 0px&quot;&gt;</span>
+<span class="sd">            &lt;h4&gt;Settings&lt;/h4&gt;&lt;/div&gt;&quot;&quot;&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_help</span> <span class="o">=</span> <span class="n">ipw</span><span class="o">.</span><span class="n">HTML</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;&lt;div style=&quot;line-height: 140%; padding-top: 0px; padding-bottom: 5px&quot;&gt;</span>
+<span class="sd">            Please set the value of scale and number of points.</span>
+<span class="sd">            &lt;/div&gt;&quot;&quot;&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">ipw</span><span class="o">.</span><span class="n">FloatText</span><span class="p">(</span>
+            <span class="n">value</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Scale:&quot;</span><span class="p">,</span>
+            <span class="n">disabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">style</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;description_width&quot;</span><span class="p">:</span> <span class="s2">&quot;initial&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npoint</span> <span class="o">=</span> <span class="n">ipw</span><span class="o">.</span><span class="n">IntText</span><span class="p">(</span>
+            <span class="n">value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Npoint:&quot;</span><span class="p">,</span>
+            <span class="n">disabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">style</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;description_width&quot;</span><span class="p">:</span> <span class="s2">&quot;initial&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">=</span><span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">settings_title</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">settings_help</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">npoint</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_panel_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a dictionary with the input parameters for the plugin.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s2">&quot;npoint&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">npoint</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">set_panel_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the value of the widgets in the panel from the input dictionary.</span>
+<span class="sd">        This method is called when the user wants to reload the panel from the previous calculation,</span>
+<span class="sd">        or reset the panel to the default values.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scale&quot;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npoint</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;npoint&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset the input fields.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_panel_value</span><span class="p">({</span><span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s2">&quot;npoint&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">})</span>
+</pre></div>
+</div>
+</section>
+<section id="result">
+<h3>Result<a class="headerlink" href="#result" title="Permalink to this headline">#</a></h3>
+<p>A  <code class="xref py py-class docutils literal notranslate"><span class="pre">ResultPanel</span></code> widget will register a new panel in the results step.
+The <code class="docutils literal notranslate"><span class="pre">EOS</span></code> panel is shown below:</p>
+<img alt="../_images/plugin_result.png" src="../_images/plugin_result.png" />
+<p>In this widget, you need to:</p>
+<ul class="simple">
+<li><p>specify the <cite>workchain_labels</cite> to tell the app which workchains the panel is intended for.</p></li>
+<li><p>implement the <code class="docutils literal notranslate"><span class="pre">_update_view</span></code> method to tell the app how to show the results of the workchain.</p></li>
+</ul>
+<p>The output of the workchain will be stored in <code class="docutils literal notranslate"><span class="pre">self.outputs.plugin_name</span></code>.
+For example, you can access the <code class="docutils literal notranslate"><span class="pre">output_parameters</span></code> output of the <code class="docutils literal notranslate"><span class="pre">EOSWorkChain</span></code> by <code class="docutils literal notranslate"><span class="pre">self.outputs.eos.output_parameters</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aiidalab_qe.common.panel</span> <span class="kn">import</span> <span class="n">ResultPanel</span>
+<span class="kn">import</span> <span class="nn">ipywidgets</span> <span class="k">as</span> <span class="nn">ipw</span>
+
+<span class="k">class</span> <span class="nc">Result</span><span class="p">(</span><span class="n">ResultPanel</span><span class="p">):</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;EOS&quot;</span>
+    <span class="n">workchain_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;eos&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">node</span><span class="o">=</span><span class="n">node</span><span class="p">,</span> <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;eos&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_update_view</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
+        <span class="kn">from</span> <span class="nn">ase.eos</span> <span class="kn">import</span> <span class="n">EquationOfState</span>
+        <span class="c1"># init figure</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">FigureWidget</span><span class="p">(</span>
+            <span class="n">layout</span><span class="o">=</span><span class="n">go</span><span class="o">.</span><span class="n">Layout</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Equation of State&quot;</span><span class="p">),</span>
+                <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;overlay&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Volume (A^3)&quot;</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Energy (eV)&quot;</span>
+        <span class="c1"># get the output parameters</span>
+        <span class="n">eos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">eos</span><span class="o">.</span><span class="n">output_parameters</span><span class="o">.</span><span class="n">get_dict</span><span class="p">()</span>
+        <span class="n">volumes</span> <span class="o">=</span> <span class="n">eos</span><span class="p">[</span><span class="s2">&quot;volumes&quot;</span><span class="p">]</span>
+        <span class="n">energies</span> <span class="o">=</span> <span class="n">eos</span><span class="p">[</span><span class="s2">&quot;energies&quot;</span><span class="p">]</span>
+        <span class="n">eos</span> <span class="o">=</span> <span class="n">EquationOfState</span><span class="p">(</span><span class="n">volumes</span><span class="p">,</span> <span class="n">energies</span><span class="p">,</span> <span class="n">eos</span><span class="o">=</span><span class="s2">&quot;birchmurnaghan&quot;</span><span class="p">)</span>
+        <span class="n">v0</span><span class="p">,</span> <span class="n">e0</span><span class="p">,</span> <span class="n">B</span> <span class="o">=</span> <span class="n">eos</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+        <span class="n">plotdata</span> <span class="o">=</span> <span class="n">eos</span><span class="o">.</span><span class="n">getplotdata</span><span class="p">()</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">add_scatter</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">volumes</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">energies</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;DFT&quot;</span><span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">add_scatter</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">plotdata</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">y</span><span class="o">=</span><span class="n">plotdata</span><span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Birch-Murnaghan&quot;</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">summary_view</span> <span class="o">=</span> <span class="n">ipw</span><span class="o">.</span><span class="n">HTML</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;&lt;div style=&quot;padding-top: 0px; padding-bottom: 0px&quot;&gt;</span>
+<span class="sd">            &lt;h4&gt;Parameters&lt;/h4&gt;</span>
+<span class="sd">            &lt;table&gt;</span>
+<span class="sd">                &lt;tr&gt;</span>
+<span class="sd">                    &lt;td&gt;V0&lt;/td&gt;</span>
+<span class="sd">                    &lt;td&gt;{:1.3f}&lt;/td&gt;</span>
+<span class="sd">                &lt;/tr&gt;</span>
+<span class="sd">                &lt;tr&gt;</span>
+<span class="sd">                    &lt;td&gt;E0&lt;/td&gt;</span>
+<span class="sd">                    &lt;td&gt;{:1.3f}&lt;/td&gt;</span>
+<span class="sd">                &lt;/tr&gt;</span>
+<span class="sd">                &lt;tr&gt;</span>
+<span class="sd">                    &lt;td&gt;B&lt;/td&gt;</span>
+<span class="sd">                    &lt;td&gt;{:1.3f}&lt;/td&gt;</span>
+<span class="sd">                &lt;/tr&gt;</span>
+<span class="sd">                &lt;/table&gt;</span>
+<span class="sd">            &lt;/div&gt;&quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v0</span><span class="p">,</span> <span class="n">e0</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ipw</span><span class="o">.</span><span class="n">HBox</span><span class="p">(</span>
+                    <span class="n">children</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">summary_view</span><span class="p">,</span> <span class="n">g</span><span class="p">],</span>
+                    <span class="n">layout</span><span class="o">=</span><span class="n">ipw</span><span class="o">.</span><span class="n">Layout</span><span class="p">(</span><span class="n">justify_content</span><span class="o">=</span><span class="s2">&quot;space-between&quot;</span><span class="p">,</span> <span class="n">margin</span><span class="o">=</span><span class="s2">&quot;10px&quot;</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="workchain-and-builder">
+<h3>WorkChain and Builder<a class="headerlink" href="#workchain-and-builder" title="Permalink to this headline">#</a></h3>
+<p>You need to implement a <code class="docutils literal notranslate"><span class="pre">get_builder</span></code> function to tell QuantumESPRESSO app how to use the input parameters from the GUI.</p>
+<p>The <cite>parameters</cite> passed to the <cite>get_builder</cite> function has the following structure:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;workchain&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;protocol&quot;</span><span class="p">:</span> <span class="s2">&quot;fast&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;relax_type&quot;</span><span class="p">:</span> <span class="s2">&quot;positions&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;bands&quot;</span><span class="p">,</span> <span class="s2">&quot;pdos&quot;</span><span class="p">,</span> <span class="s2">&quot;relax&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;spin_type&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;electronic_type&quot;</span><span class="p">:</span> <span class="s2">&quot;insulator&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;advanced&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;initial_magnetic_moments&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;pw&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;SYSTEM&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;ecutwfc&quot;</span><span class="p">:</span> <span class="mf">30.0</span><span class="p">,</span> <span class="s2">&quot;ecutrho&quot;</span><span class="p">:</span> <span class="mf">240.0</span><span class="p">,</span> <span class="s2">&quot;tot_charge&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;pseudos&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;Si&quot;</span><span class="p">:</span> <span class="s2">&quot;eaef3352-2b0e-4205-b404-e6565a88aec8&quot;</span><span class="p">},</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;pseudo_family&quot;</span><span class="p">:</span> <span class="s2">&quot;SSSP/1.3/PBEsol/efficiency&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;kpoints_distance&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;bands&quot;</span><span class="p">:</span> <span class="p">{},</span>
+    <span class="s2">&quot;pdos&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
+    <span class="s2">&quot;eos&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
+    <span class="s2">&quot;plugin_1&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>You need to decide which parameters are needed for the workchain, and how to use them.
+For example, the <code class="docutils literal notranslate"><span class="pre">EOSWorkChain</span></code> needs the <code class="docutils literal notranslate"><span class="pre">pw</span></code> code and the <code class="docutils literal notranslate"><span class="pre">advanced</span></code> setting for the <code class="docutils literal notranslate"><span class="pre">pw</span></code> code.
+It also needs the <code class="docutils literal notranslate"><span class="pre">parameters</span></code> which are defined in the <code class="docutils literal notranslate"><span class="pre">EOS</span> <span class="pre">Setting</span></code> panel.
+The <code class="docutils literal notranslate"><span class="pre">get_builder</span></code> function will return a <code class="docutils literal notranslate"><span class="pre">builder</span></code> for the <code class="docutils literal notranslate"><span class="pre">EOSWorkChain</span></code>, which will be attached to the main builder of the <code class="docutils literal notranslate"><span class="pre">QeAppWorkchain</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_builder</span><span class="p">(</span><span class="n">codes</span><span class="p">,</span> <span class="n">structure</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;workchain&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;protocol&#39;</span><span class="p">,</span> <span class="s2">&quot;fast&quot;</span><span class="p">)</span>
+    <span class="n">pw_code</span> <span class="o">=</span> <span class="n">codes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pw&quot;</span><span class="p">)[</span><span class="s1">&#39;code&#39;</span><span class="p">]</span>
+    <span class="n">overrides</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;pw&quot;</span><span class="p">:</span> <span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;advanced&quot;</span><span class="p">],</span>
+    <span class="p">}</span>
+    <span class="n">builder</span> <span class="o">=</span> <span class="n">EOSWorkChain</span><span class="o">.</span><span class="n">get_builder_from_protocol</span><span class="p">(</span>
+                <span class="n">pw_code</span><span class="o">=</span><span class="n">pw_code</span><span class="p">,</span>
+                <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
+                <span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">,</span>
+                <span class="n">electronic_type</span><span class="o">=</span><span class="n">ElectronicType</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;workchain&quot;</span><span class="p">]</span>  <span class="p">[</span><span class="s2">&quot;electronic_type&quot;</span><span class="p">]),</span>
+                <span class="n">spin_type</span><span class="o">=</span><span class="n">SpinType</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;workchain&quot;</span><span class="p">][</span><span class="s2">&quot;spin_type&quot;</span><span class="p">]),</span>
+                <span class="n">initial_magnetic_moments</span><span class="o">=</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;advanced&quot;</span><span class="p">]</span> <span class="p">[</span><span class="s2">&quot;initial_magnetic_moments&quot;</span><span class="p">],</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;eos&quot;</span><span class="p">],</span>
+                <span class="n">overrides</span><span class="o">=</span><span class="n">overrides</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+            <span class="p">)</span>
+    <span class="c1"># update resources</span>
+    <span class="n">update_resources</span><span class="p">(</span><span class="n">builder</span><span class="p">,</span> <span class="n">codes</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">builder</span>
+</pre></div>
+</div>
+<p>The <cite>update_resources</cite> function is used to set the computational resources of the builder. It will basically
+feed the <cite>metadata</cite> of each Calcjob which is submitted in the workchain. For example, in the EOSWorkChain case:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aiidalab_qe.utils</span> <span class="kn">import</span> <span class="n">set_component_resources</span>
+
+<span class="k">def</span> <span class="nf">update_resources</span><span class="p">(</span><span class="n">builder</span><span class="p">,</span> <span class="n">codes</span><span class="p">):</span>
+    <span class="n">set_component_resources</span><span class="p">(</span><span class="n">builder</span><span class="o">.</span><span class="n">pw</span><span class="p">,</span> <span class="n">codes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pw&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>This function can and should be adapted for each plugin specific case.
+Then add the workchain and builder into the <cite>workchain_and_builder</cite> dict, so that the QuantumESPRESSO app can load them.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># register the workchain and builder</span>
+<span class="n">workchain_and_builder</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;workchain&quot;</span><span class="p">:</span> <span class="n">EOSWorkChain</span><span class="p">,</span>
+    <span class="s2">&quot;get_builder&quot;</span><span class="p">:</span> <span class="n">get_builder</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="entry-point">
+<h3>Entry point<a class="headerlink" href="#entry-point" title="Permalink to this headline">#</a></h3>
+<p>Finally, you need to register the entry point of the plugin.
+Here is the entry point for this plugin.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># this is the entry point of the plugin</span>
+<span class="n">eos</span> <span class="o">=</span><span class="p">{</span>
+    <span class="s2">&quot;outline&quot;</span><span class="p">:</span> <span class="n">EosOutline</span><span class="p">,</span>
+    <span class="s2">&quot;setting&quot;</span><span class="p">:</span> <span class="n">Setting</span><span class="p">,</span>
+    <span class="s2">&quot;workchain&quot;</span><span class="p">:</span> <span class="n">workchain_and_builder</span><span class="p">,</span>
+    <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">Result</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="install-the-plugin">
+<h3>Install the plugin<a class="headerlink" href="#install-the-plugin" title="Permalink to this headline">#</a></h3>
+<p>To install the plugin, you can creating a new package or adding it to the <cite>aiidalab_qe.plugins</cite> folder.
+You need to add the path of <code class="docutils literal notranslate"><span class="pre">eos</span></code> to <code class="docutils literal notranslate"><span class="pre">entry_points</span></code> inside the setup file.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">entry_points</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">&quot;aiidalab_qe.properties&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;eos = aiidalab_qe_plugin_demos.eos:eos&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">},</span>
+</pre></div>
+</div>
+<p><strong>Bringing It All Together</strong>, you can find all the code above in the <a class="reference external" href="https://github.com/aiidalab/aiidalab-qe-plugin-demos">aiidalab-qe-plugin-demos</a> repository.</p>
+</section>
+</section>
+<section id="advanced-usage">
+<h2>Advanced usage<a class="headerlink" href="#advanced-usage" title="Permalink to this headline">#</a></h2>
+<p>A plugin does not need to register all the items (settings, workchain, results).
+The panel in each step is pluggable, which means you could only register one item in a plugin.
+For example, the built-in <cite>electronic_structure</cite> plugin only has a result panel without doing any property calculation.
+The pupose of the <cite>electronic_structure</cite> plugin is to show the results of the <cite>bands`</cite> and <cite>pdos`</cite> plugins together.
+In order to do this, it set add both <code class="docutils literal notranslate"><span class="pre">pdos</span></code> and <code class="docutils literal notranslate"><span class="pre">bands</span></code> to the <code class="docutils literal notranslate"><span class="pre">workchain_labels</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Result</span><span class="p">(</span><span class="n">ResultPanel</span><span class="p">):</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Electronic Structure&quot;</span>
+    <span class="n">workchain_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;bands&quot;</span><span class="p">,</span> <span class="s2">&quot;pdos&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Here is the entry point for the <cite>electronic_structure</cite> plugin.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">.result</span> <span class="kn">import</span> <span class="n">Result</span>
+
+<span class="n">electronic_structure</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">Result</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<section id="structure-importer-and-editor">
+<h3>Structure importer and editor<a class="headerlink" href="#structure-importer-and-editor" title="Permalink to this headline">#</a></h3>
+<p>The app also allows the user to add new panels in the structure selection step:</p>
+<ul class="simple">
+<li><p>structure <code class="docutils literal notranslate"><span class="pre">importer</span></code>: specific for particular structures, e.g. surface,  adsorbate.</p></li>
+<li><p>structure <code class="docutils literal notranslate"><span class="pre">editor</span></code>: to edit a structure for the plugin, e.g. edit tags, and cut surface.</p></li>
+</ul>
+<p>You can find an example plugin, <code class="docutils literal notranslate"><span class="pre">surface</span></code>, in the <a class="reference external" href="https://github.com/aiidalab/aiidalab-qe-plugin-demos">aiidalab-qe-plugin-demos</a> repository.
+It adds a new structure importer and editor to generate the surface structure.
+Here is the entry point for the <cite>surface</cite> plugin.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">.importer</span> <span class="kn">import</span> <span class="n">SurfaceImporter</span>
+<span class="kn">from</span> <span class="nn">.editor</span> <span class="kn">import</span> <span class="n">SurfaceEditor</span>
+
+<span class="n">surface</span> <span class="o">=</span><span class="p">{</span>
+    <span class="s2">&quot;importer&quot;</span><span class="p">:</span> <span class="n">SurfaceImporter</span><span class="p">,</span>
+    <span class="s2">&quot;editor&quot;</span><span class="p">:</span> <span class="n">SurfaceEditor</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="computational-resources">
+<h3>Computational Resources<a class="headerlink" href="#computational-resources" title="Permalink to this headline">#</a></h3>
+<p>You can also add new code in the plugin.
+Here is the example of the built-in <cite>pdos</cite> plugins with codes <cite>dos.x</cite> and <cite>projwfc.x</cite>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aiidalab_qe.common.widgets</span> <span class="kn">import</span> <span class="n">QEAppComputationalResourcesWidget</span>
+
+<span class="n">dos_code</span> <span class="o">=</span> <span class="n">QEAppComputationalResourcesWidget</span><span class="p">(</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;dos.x&quot;</span><span class="p">,</span>
+    <span class="n">default_calc_job_plugin</span><span class="o">=</span><span class="s2">&quot;quantumespresso.dos&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">projwfc_code</span> <span class="o">=</span> <span class="n">ComputationalResourcesWidget</span><span class="p">(</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;projwfc.x&quot;</span><span class="p">,</span>
+    <span class="n">default_calc_job_plugin</span><span class="o">=</span><span class="s2">&quot;quantumespresso.projwfc&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">pdos</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;outline&quot;</span><span class="p">:</span> <span class="n">PdosOutline</span><span class="p">,</span>
+    <span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;dos&quot;</span><span class="p">:</span> <span class="n">dos_code</span><span class="p">,</span> <span class="s2">&quot;projwfc&quot;</span><span class="p">:</span> <span class="n">projwfc_code</span><span class="p">},</span>
+    <span class="s2">&quot;setting&quot;</span><span class="p">:</span> <span class="n">Setting</span><span class="p">,</span>
+    <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">Result</span><span class="p">,</span>
+    <span class="s2">&quot;workchain&quot;</span><span class="p">:</span> <span class="n">workchain_and_builder</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For the moment, the app does not support set up the newly added codes automatically.
+Thus, the user needs to set up the codes manually.</p>
+</section>
+</section>
+<section id="further-reading">
+<h2>Further Reading<a class="headerlink" href="#further-reading" title="Permalink to this headline">#</a></h2>
+<p>QuantumESPRESSO app comes with several built-in plugins, which can be found in the <code class="docutils literal notranslate"><span class="pre">aiidalab_qe.plugins</span></code> folder.
+You can also use them as a start point to create your own plugins.</p>
+<p>You can register your plugin to facilitate its discovery and use by the community.
+Please refer to the <a class="reference internal" href="plugin_registry.html"><span class="doc">Plugin registry</span></a> for more details.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+                <footer class="bd-footer-article">
+                  
+<div class="footer-article-items footer-article__inner">
+  
+    <div class="footer-article-item"><!-- Previous / next buttons -->
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="architecture.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Architecture</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="plugin_registry.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Plugin Registry</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div></div>
+  
+</div>
+
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#your-first-plugin">Your First Plugin</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#outline">Outline</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#setting">Setting</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#result">Result</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#workchain-and-builder">WorkChain and Builder</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#entry-point">Entry point</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#install-the-plugin">Install the plugin</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-usage">Advanced usage</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#structure-importer-and-editor">Structure importer and editor</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#computational-resources">Computational Resources</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#further-reading">Further Reading</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright 2023-2025, The AiiDAlab Team. All rights reserved.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,717 @@
+
+
+<!DOCTYPE html>
+
+
+<html >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>How to calculate XANES spectra &#8212; Quantum ESPRESSO App v24.10.0a8-dev documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/design-tabs.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto/xas copy';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="None"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../_static/logo_dark.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../installation/index.html">
+                        Installation Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="index.html">
+                        How-to guides
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../development/index.html">
+                        Developer guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../blogs/index.html">
+                        Blogs
+                      </a>
+                    </li>
+                
+            <div class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    More
+                </button>
+                <div class="dropdown-menu">
+                    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../report_issue.html">
+                        Report an issue
+                      </a>
+                    </li>
+                
+                </div>
+            </div>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="http://aiidalab.net" title="AiiDAlab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-solid fa-globe"></i></span>
+            <label class="sr-only">AiiDAlab</label></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.github.com/aiidalab/aiidalab-qe" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../installation/index.html">
+                        Installation Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="index.html">
+                        How-to guides
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../development/index.html">
+                        Developer guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../blogs/index.html">
+                        Blogs
+                      </a>
+                    </li>
+                
+            <div class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    More
+                </button>
+                <div class="dropdown-menu">
+                    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../report_issue.html">
+                        Report an issue
+                      </a>
+                    </li>
+                
+                </div>
+            </div>
+            
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="http://aiidalab.net" title="AiiDAlab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-solid fa-globe"></i></span>
+            <label class="sr-only">AiiDAlab</label></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.github.com/aiidalab/aiidalab-qe" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">How to calculate XANES spectra</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="how-to-calculate-xanes-spectra">
+<h1>How to calculate XANES spectra<a class="headerlink" href="#how-to-calculate-xanes-spectra" title="Permalink to this headline">#</a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">#</a></h2>
+<p>Using the XSpectra module of Quantum Espresso, it is possible to calculate X-ray Absorption Near Edge Spectra (XANES) for many types of systems.
+Here we will compute XANES spectra for lithium carbonate (Li<sub>2</sub>CO<sub>3</sub>).</p>
+<p>Due to the number of calculation steps required, we will need to set up our environment to submit to a remote machine capable of handling the calculation.
+Please refer to the relevant <a class="reference internal" href="setup_computer_code.html"><span class="doc">How-To</span></a> section for this procedure.</p>
+<div class="admonition-goal admonition">
+<p class="admonition-title">Goal</p>
+<p>To submit an XANES calculation with XSpectra and post-process the results</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The XAS plugin feature is available in the official AiiDALab-QE App as of pre-release <cite>v24.04.0a1</cite> and upwards.
+See the relevant <a class="reference internal" href="upgrade_uninstall.html"><span class="doc">How-To</span></a> guide on upgrading and remember to tick <cite>include prereleases</cite> when searching for the latest version in the App Manager.</p>
+</div>
+</section>
+<section id="start">
+<h2>Start<a class="headerlink" href="#start" title="Permalink to this headline">#</a></h2>
+<p>To start, go ahead and <a class="reference internal" href="../installation/launch.html"><span class="doc">launch</span></a> the app, then follow the steps below.</p>
+<section id="step-1-select-a-structure">
+<h3>Step 1: Select a structure<a class="headerlink" href="#step-1-select-a-structure" title="Permalink to this headline">#</a></h3>
+<p>Select <cite>Lithium Carbonate</cite> from the <cite>From Examples</cite> tab and click <cite>Confirm</cite>.</p>
+<img alt="../_images/XAS_Plugin_Structure_Panel-Li2CO3.png" src="../_images/XAS_Plugin_Structure_Panel-Li2CO3.png" />
+</section>
+<section id="step-2-configure-the-workflow">
+<h3>Step 2: Configure the workflow<a class="headerlink" href="#step-2-configure-the-workflow" title="Permalink to this headline">#</a></h3>
+<p>Select <cite>Full geometry</cite> to relax the structure and set <cite>ElectronicType</cite> to <cite>Insulator</cite>, then select <cite>X-ray absorption spectroscopy (XAS)</cite> as the properties of interest.</p>
+<p>For the protocol, select <cite>fast</cite> to quickly produce results, or, if you have enough resources, you can select the <cite>moderate</cite> protocol for increased accuracy.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>For this example of Li<sub>2</sub>CO<sub>3</sub> changing the <strong>K-points distance</strong> to 0.25 from 0.15 in the <cite>advanced settings</cite> tab while using the <cite>moderate</cite> protocol will speed up calculations without compromising accuracy.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>At present the pseudopotential set available for XAS calculations only covers the PBE functional.
+In order to run the workflow: select the <cite>Advanced settings</cite> tab, navigate to <cite>Accuracy and precision</cite>, tick the <cite>Override</cite> box on the right-hand-side and in the dropdown box under <cite>Exchange-correlation functional</cite> select <cite>PBE</cite>.</p>
+<a class="reference internal image-reference" href="../_images/XAS_Plugin-Set_Adv_Options-Alt-Annotated-Cropped.png"><img alt="../_images/XAS_Plugin-Set_Adv_Options-Alt-Annotated-Cropped.png" class="align-center" src="../_images/XAS_Plugin-Set_Adv_Options-Alt-Annotated-Cropped.png" style="width: 574.75px; height: 356.40000000000003px;" /></a>
+</div>
+<p>Open the <cite>XAS Settings</cite> tab.
+Selection of elements for XANES calculations is found below the explanatory text for the core-hole treatment.
+You may wish to test different treatments for each element to see how this changes the spectra at a later date, however for this example we will use the default values.</p>
+<blockquote>
+<div><a class="reference internal image-reference" href="../_images/XAS_Plugin_Setting_Panel-Annotated-Cropped.png"><img alt="../_images/XAS_Plugin_Setting_Panel-Annotated-Cropped.png" class="align-center" src="../_images/XAS_Plugin_Setting_Panel-Annotated-Cropped.png" style="width: 704.25px; height: 405.0px;" /></a>
+</div></blockquote>
+<p>Tick the boxes for O and C to select these for calculation, then click <cite>Confirm</cite> to proceed.</p>
+</section>
+<section id="step-3-choose-computational-resources">
+<h3>Step 3 - Choose computational resources<a class="headerlink" href="#step-3-choose-computational-resources" title="Permalink to this headline">#</a></h3>
+<p>As mentioned in the overview, our calculation will require more computational resources than the basic tutorial.
+Please make sure to read the relevant <a class="reference internal" href="setup_computer_code.html"><span class="doc">How-To</span></a> section to configure the environment with a remote machine.</p>
+<p>Since the workflow uses <cite>xspectra.x</cite> to calculate the XANES spectrum, a code for this will also be required.
+When you’re done, click <cite>Submit</cite> to submit the calculation.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><cite>xspectra.x</cite> does not require additional conserdiations for installation or setup compared to <cite>pw.x</cite>, so re-using the configuration for the <cite>pw.x</cite> code and changing the executable &amp; plugin entry point will be sufficient.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As the XSpectra module of Quantum Espresso is not currently able to exploit GPU accelleration, it is strongly recommend to configure this calculation for a non-GPU system if possible.</p>
+</div>
+</section>
+<section id="step-4-check-the-status">
+<h3>Step 4: Check the status<a class="headerlink" href="#step-4-check-the-status" title="Permalink to this headline">#</a></h3>
+<p>While the calculation is running, you can monitor its status as shown in the <a class="reference internal" href="../tutorials/basic.html#basic-status"><span class="std std-ref">basic tutorial</span></a>.
+You can view the results once the calculation is finished.</p>
+</section>
+<section id="step-5-spectrum-view-and-post-processing">
+<h3>Step 5: Spectrum view and post-processing<a class="headerlink" href="#step-5-spectrum-view-and-post-processing" title="Permalink to this headline">#</a></h3>
+<p>Once the calculation is finished, you can view the calculated spectra in the <cite>XAS</cite> tab of the results panel.
+You can change which element to view XANES spectra for using the dropdown box in the top left.
+Select carbon from the dropdown box.</p>
+<blockquote>
+<div><figure class="align-center" id="id8">
+<a class="reference internal image-reference" href="../_images/XAS_Plugin_Result_Panel-Carbon-Annotated-Cropped.png"><img alt="../_images/XAS_Plugin_Result_Panel-Carbon-Annotated-Cropped.png" src="../_images/XAS_Plugin_Result_Panel-Carbon-Annotated-Cropped.png" style="width: 678.6px; height: 349.7px;" /></a>
+<figcaption>
+<p><span class="caption-text">XAS result panel for carbon K-edge of Li<sub>2</sub>CO<sub>3</sub>.</span><a class="headerlink" href="#id8" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+</div></blockquote>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You should notice that “C K-edge” and “Site 4” are listed in the legend to the right of the plot - this is because all carbon atoms in the structure are symmetrically equivalent and thus will produce the same spectrum.
+The workflow has accounted for this and only calculates the spectrum of the first carbon atom (site number 4 in the structure.)</p>
+</div>
+<p>Immediately below the element selection box are the broadening parameters.
+The XANES spectrum returned by the workflow will initially have a Lorentzian broadening of 0.1 eV.
+As broadening parameters cannot be calculated from first-principles, we will tune these parameters by hand.
+We will first compare to an experimentally-obtained C K-edge spectrum of Li<sub>2</sub>CO<sub>3</sub>.</p>
+<p>Try changing the first slider (<span class="math notranslate nohighlight">\(\Gamma_{hole}\)</span>).
+This will initially apply a constant Lorentzian broadening for the entire spectrum.
+Comparing to the experimental reference for carbon, we can see that it is difficult to effectively re-create the experimental spectrum with a constant Lorentzian broadening scheme.
+Setting this to 0 eV will plot the spectrum with no post-processing.</p>
+<p>Navigate to the upper center of the XAS panel and tick the box next to <cite>use variable energy broadening</cite>, which will change the behaviour of the broadening tools to use an arctangent-like function commonly used for broadening XANES spectra (see <a class="reference external" href="https://dx.doi.org/10.1103/PhysRevB.87.205105">Calandra &amp; Bunau (2013)</a><a class="footnote-reference brackets" href="#id5" id="id1">1</a> for further discussion).
+Set the three sliders in the following configuration:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\Gamma_{hole} = 0.3\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(\Gamma_{max} = 5.0\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(E_{center} = 15\)</span></p></li>
+</ul>
+<p>The resulting spectrum should now more closely resemble the features seen in the experimental example:</p>
+<figure class="align-center" id="id9">
+<a class="reference internal image-reference" href="../_images/Li2CO3_Example-C_K-edge-XCH_Only-Cropped.png"><img alt="../_images/Li2CO3_Example-C_K-edge-XCH_Only-Cropped.png" src="../_images/Li2CO3_Example-C_K-edge-XCH_Only-Cropped.png" style="width: 355.5px; height: 292.5px;" /></a>
+<figcaption>
+<p><span class="caption-text">Carbon K-edge XRS (low-q)<a class="footnote-reference brackets" href="#id6" id="id2">2</a> of Li<sub>2</sub>CO<sub>3</sub> compared to the XANES dipole computed with the XCH approximation.
+Note that computed and experimental spectra are aligned according to the first peak of the signal in this case.</span><a class="headerlink" href="#id9" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<blockquote>
+<div><p>For advice with parameter tuning:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\Gamma_{hole}\)</span> sets the initial Lorentzian broadening value up to the Fermi level (<span class="math notranslate nohighlight">\(E_{F}\)</span>, where <span class="math notranslate nohighlight">\(E_{F} = 0\)</span> eV on the relative energy scale used here). The natural linewidth of the core-hole (if known) typically provides a good reference value (<a class="reference external" href="https://dx.doi.org/10.1063/1.555595">reference for atomic numbers 10-110</a>).</p></li>
+<li><p><span class="math notranslate nohighlight">\(\Gamma_{max}\)</span> sets the “sharpness” of the s-curve of the function - lower values give a smoother change at the inflexion point, while higher values cause the broadening to increase more quickly at the inflexion point.</p></li>
+<li><p><span class="math notranslate nohighlight">\(E_{center}\)</span> sets the energy position of the inflexion point of the function.</p></li>
+</ul>
+</div></blockquote>
+<p>The variable energy function (<span class="math notranslate nohighlight">\(\Gamma(\Omega)\)</span>) and its parameters can be visualised in the following plot (from Fig.1 of <a class="reference external" href="https://dx.doi.org/10.1103/PhysRevB.87.205105">Calandra &amp; Bunau (2013)</a><a class="footnote-reference brackets" href="#id5" id="id3">1</a>):</p>
+<blockquote>
+<div><a class="reference internal image-reference" href="../_images/Calandra_Bunau-PRB-205105-2013-gamma_func_plot.png"><img alt="../_images/Calandra_Bunau-PRB-205105-2013-gamma_func_plot.png" class="align-center" src="../_images/Calandra_Bunau-PRB-205105-2013-gamma_func_plot.png" style="width: 356.07px; height: 174.57000000000002px;" /></a>
+</div></blockquote>
+</div>
+<p>Next, select the oxygen K-edge spectrum using the dropdown box in the upper left.
+With the broadening scheme used for carbon, the spectrum should already resemble the experimental spectrum quite well, though you may try to tune the parameters further if desired - particularly increasing the initial broadening (<span class="math notranslate nohighlight">\(\Gamma_{hole}\)</span>):</p>
+<figure class="align-center" id="id10">
+<a class="reference internal image-reference" href="../_images/Li2CO3_Example-O_K-edge-FCH_Only-Cropped.png"><img alt="../_images/Li2CO3_Example-O_K-edge-FCH_Only-Cropped.png" src="../_images/Li2CO3_Example-O_K-edge-FCH_Only-Cropped.png" style="width: 364.5px; height: 292.5px;" /></a>
+<figcaption>
+<p><span class="caption-text">O K-edge total electron yield (TEY)<a class="footnote-reference brackets" href="#id7" id="id4">3</a> XAS spectrum compared to the XANES dipole computed with the FCH approximation.
+Here, the broadening scheme used for carbon is modified such that <span class="math notranslate nohighlight">\(\Gamma_{hole} = 0.8\)</span> eV.
+Note that computed and experimental spectra are aligned according to the first peak of the signal in this case.</span><a class="headerlink" href="#id10" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+<p>In the plot window, you should be able to see three different plots: One for the full O K-edge and one for each of the two symmetrically-inequivalent oxygen atoms.
+The component spectra in each case are first normalised, then the intensities are scaled according to the site multiplicity.</p>
+<img alt="../_images/XAS_Plugin_Result_Panel-Oxygen.png" src="../_images/XAS_Plugin_Result_Panel-Oxygen.png" />
+<p>Click on a spectrum in the legend to show/hide it in the viewer.
+Click and drag a box over the plot area to zoom in to the selected region.
+Double-click to zoom out to the full spectrum.</p>
+<p>Finally, click on the “Download CSV” button to the upper left of the plot area to download a CSV file of the XAS plots for the selected element in order to export the spectrum for further analysis.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The CSV file will contain all component spectra for the selected element.
+Any broadening applied to the spectrum <em>via</em> the available tools will be applied to the data in the CSV file.
+If multiple inequivalent absorbing atoms are present, the CSV file will contain one column for the total and two for each component:</p>
+<ul class="simple">
+<li><p>The normalised &amp; weighted spectrum. (with respect to ratio of site multiplicity to total multiplicity)</p></li>
+<li><p>The normalised &amp; un-weighted spectrum.</p></li>
+</ul>
+</div>
+</section>
+</section>
+<section id="additional-note-on-charged-systems">
+<h2>Additional Note on Charged Systems<a class="headerlink" href="#additional-note-on-charged-systems" title="Permalink to this headline">#</a></h2>
+<p>Computing XANES spectra for systems where a charge has been applied (in this case using the <cite>Total charge</cite> advanced setting) is possible using the tools
+available in the QE App, however such workflows should always be tested by the user against experimental data if possible.</p>
+<p>When running XAS workflows for systems where a total charge has been applied, it is suggested to use the following settings for the total charge to ensure the corresponding
+core-hole treatment is applied correctly:</p>
+<ul class="simple">
+<li><p>“xch_fixed” or “xch_smear”: Set the total charge as required for the system’s charged ground-state.</p></li>
+<li><p>“full”: <strong>Increase</strong> the total charge by 1 <em>relative</em> to the system’s charged ground-state (e.g. set total charge = 2 in the advanced settings tab if the charge is normally 1).</p></li>
+</ul>
+<p>Note that for neutral systems (total charge = 0), the QE App will handle these settings automatically.</p>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">#</a></h2>
+<p>Here, you learned how to submit an XANES calculation on a remote machine using the Quantum ESPRESSO app and how to effectively use the post-processing tools.</p>
+<p class="rubric">References</p>
+<dl class="footnote brackets">
+<dt class="label" id="id5"><span class="brackets">1</span><span class="fn-backref">(<a href="#id1">1</a>,<a href="#id3">2</a>)</span></dt>
+<dd><p>O. Bunau and M. Calandra, <em>Phys. Rev. B</em>, <strong>87</strong>, 205105 (2013) <a class="reference external" href="https://dx.doi.org/10.1103/PhysRevB.87.205105">https://dx.doi.org/10.1103/PhysRevB.87.205105</a></p>
+</dd>
+<dt class="label" id="id6"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
+<dd><p>E. de Clermont Gallerande <em>et al</em>, <em>Phys. Rev. B</em>, <strong>98</strong>, 214104, (2018) <a class="reference external" href="https://dx.doi.org/10.1103/PhysRevB.98.214104">https://dx.doi.org/10.1103/PhysRevB.98.214104</a></p>
+</dd>
+<dt class="label" id="id7"><span class="brackets"><a class="fn-backref" href="#id4">3</a></span></dt>
+<dd><p>R. Qiao <em>et al</em>, <em>Plos ONE</em>, <strong>7</strong>, e49182 (2012) <a class="reference external" href="https://dx.doi.org/doi:10.1371/journal.pone.0049182">https://dx.doi.org/doi:10.1371/journal.pone.0049182</a></p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+                <footer class="bd-footer-article">
+                  
+<div class="footer-article-items footer-article__inner">
+  
+    <div class="footer-article-item"><!-- Previous / next buttons -->
+<div class="prev-next-area">
+</div></div>
+  
+</div>
+
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start">Start</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-1-select-a-structure">Step 1: Select a structure</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-2-configure-the-workflow">Step 2: Configure the workflow</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-3-choose-computational-resources">Step 3 - Choose computational resources</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-4-check-the-status">Step 4: Check the status</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-5-spectrum-view-and-post-processing">Step 5: Spectrum view and post-processing</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#additional-note-on-charged-systems">Additional Note on Charged Systems</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#summary">Summary</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright 2023-2025, The AiiDAlab Team. All rights reserved.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

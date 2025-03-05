@@ -1,0 +1,712 @@
+
+
+<!DOCTYPE html>
+
+
+<html >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>How to calculate XPS spectra &#8212; Quantum ESPRESSO App v24.10.0a8-dev documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/design-tabs.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto/xps';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Developer guide" href="../development/index.html" />
+    <link rel="prev" title="How to calculate XANES spectra" href="xas.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="None"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../_static/logo_dark.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../installation/index.html">
+                        Installation Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        How-to guides
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../development/index.html">
+                        Developer guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../blogs/index.html">
+                        Blogs
+                      </a>
+                    </li>
+                
+            <div class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    More
+                </button>
+                <div class="dropdown-menu">
+                    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../report_issue.html">
+                        Report an issue
+                      </a>
+                    </li>
+                
+                </div>
+            </div>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="http://aiidalab.net" title="AiiDAlab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-solid fa-globe"></i></span>
+            <label class="sr-only">AiiDAlab</label></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.github.com/aiidalab/aiidalab-qe" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../installation/index.html">
+                        Installation Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        How-to guides
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../development/index.html">
+                        Developer guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../blogs/index.html">
+                        Blogs
+                      </a>
+                    </li>
+                
+            <div class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    More
+                </button>
+                <div class="dropdown-menu">
+                    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../report_issue.html">
+                        Report an issue
+                      </a>
+                    </li>
+                
+                </div>
+            </div>
+            
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="http://aiidalab.net" title="AiiDAlab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-solid fa-globe"></i></span>
+            <label class="sr-only">AiiDAlab</label></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.github.com/aiidalab/aiidalab-qe" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="setup_computer_code.html">How to setup a remote computer/code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="import_structure.html">How to import a structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_uninstall.html">How to upgrade or uninstall the app</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xas.html">How to calculate XANES spectra</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">How to calculate XPS spectra</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">How-to guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">How to calculate XPS spectra</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="how-to-calculate-xps-spectra">
+<h1>How to calculate XPS spectra<a class="headerlink" href="#how-to-calculate-xps-spectra" title="Permalink to this headline">#</a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">#</a></h2>
+<p>This tutorial will guide you through the process of setting up and running an XPS calculation for Phenylacetylene molecule.</p>
+</section>
+<section id="steps">
+<h2>Steps<a class="headerlink" href="#steps" title="Permalink to this headline">#</a></h2>
+<p>To start, go ahead and <a class="reference internal" href="../installation/launch.html"><span class="doc">launch</span></a> the app, then follow the steps below.</p>
+<section id="step-1-select-a-structure">
+<h3>Step 1 Select a structure<a class="headerlink" href="#step-1-select-a-structure" title="Permalink to this headline">#</a></h3>
+<p>For this tutorial task, please use the <cite>From Examples</cite> tab, and select the Phenylacetylene molecule structure.</p>
+<p>Click the <cite>Confirm</cite> button to proceed.</p>
+<figure class="align-center">
+<img alt="../_images/xps_step_1.png" src="../_images/xps_step_1.png" />
+</figure>
+</section>
+<section id="step-2-configure-workflow">
+<h3>Step 2 Configure workflow<a class="headerlink" href="#step-2-configure-workflow" title="Permalink to this headline">#</a></h3>
+<p>In the <strong>Basic Settings</strong> tab, set the following parameters:</p>
+<ul class="simple">
+<li><p>In the <strong>Structure optimization</strong> section, select <code class="docutils literal notranslate"><span class="pre">Structure</span> <span class="pre">as</span> <span class="pre">is</span></code>.</p></li>
+<li><p>Set <strong>Electronic Type</strong> to <code class="docutils literal notranslate"><span class="pre">Insulator</span></code></p></li>
+<li><p>In the <strong>properties</strong> section, select <code class="docutils literal notranslate"><span class="pre">X-ray</span> <span class="pre">photoelectron</span> <span class="pre">spectroscopy</span> <span class="pre">(XPS)</span></code></p></li>
+</ul>
+<p>Then go to the <strong>Advanced settings</strong> tab, navigate to <cite>Accuracy and precision</cite>, tick the <cite>Override</cite> box on the right-hand-side and in the dropdown box under <cite>Exchange-correlation functional</cite> select <cite>PBE</cite>.</p>
+<img alt="../_images/XAS_Plugin-Set_Adv_Options-Alt-Annotated-Cropped.png" class="align-center" src="../_images/XAS_Plugin-Set_Adv_Options-Alt-Annotated-Cropped.png" />
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>At present, core-hole pseudopotentials for Si and O are only available for the PBE functional.</p>
+</div>
+<p>Then go to the <strong>XPS setting</strong> tab and, in the <strong>Select core-level</strong> section, select <code class="docutils literal notranslate"><span class="pre">C_1s</span></code> by ticking the appropriate box.</p>
+<img alt="../_images/xps_step_2_setting_tab.png" class="align-center" src="../_images/xps_step_2_setting_tab.png" />
+<p>Click the <strong>Confirm</strong> button to proceed.</p>
+</section>
+<section id="step-3-choose-computational-resources">
+<h3>Step 3 Choose computational resources<a class="headerlink" href="#step-3-choose-computational-resources" title="Permalink to this headline">#</a></h3>
+<p>We need to use a <cite>pw</cite> code on the high-performance computer to run XPS calculation for this system.
+Please read the relevant <a class="reference internal" href="setup_computer_code.html"><span class="doc">How-To</span></a> section to setup code on a remote machine.</p>
+<img alt="../_images/xps_step_3.png" class="align-center" src="../_images/xps_step_3.png" />
+<p>Then, click the <strong>Submit</strong> button.</p>
+</section>
+<section id="step-4-check-the-status-and-results">
+<h3>Step 4 Check the status and results<a class="headerlink" href="#step-4-check-the-status-and-results" title="Permalink to this headline">#</a></h3>
+<p>The job may take 5~10 minutes to finish if your jobs are running immediately without waiting in the queue.</p>
+<p>While the calculation is running, you can monitor its status as shown in the <a class="reference internal" href="../tutorials/basic.html#basic-status"><span class="std std-ref">basic tutorial</span></a>.
+When the job is finished, you can view result spectra in the <cite>XPS</cite> tab.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If the <cite>XPS</cite> tab is now shown when the jobs is finished.
+Click the <code class="docutils literal notranslate"><span class="pre">QeAppWorkChain&lt;pk&gt;</span></code> item on top of the nodetree to refresh the step.</p>
+</div>
+<p>Here is the result of the XPS calculation.
+You can click the <strong>Binding energy</strong> button to view the calculated binding energies.
+You can change which element to view XPS spectra for using the dropdown box in the top left.</p>
+<figure class="align-center">
+<img alt="../_images/xps_step_4_xps_tab.png" src="../_images/xps_step_4_xps_tab.png" />
+</figure>
+<p>One can upload the experimental XPS spectra, and compare to the calculated XPS spectra.
+There is a button on the bottom left of the XPS tab to upload the experimental data.
+Here is an example of the comparison between the calculated and experimental XPS spectra [1] for the C_1s core level of Phenylacetylene.</p>
+<figure class="align-center">
+<img alt="../_images/xps_step_4_pa_exp.png" src="../_images/xps_step_4_pa_exp.png" />
+</figure>
+<p>The calculated spectra agrees well with the experimental data, underscoring the reliability of DFT calculations.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>One can also read the exact binding energies from the the output of the calculation, by clicking the <cite>outputs</cite> tab on the node tree of the WorkChain, as shown below.</p>
+<figure class="align-center">
+<img alt="../_images/xps_step_4_output.png" src="../_images/xps_step_4_output.png" />
+</figure>
+<p>The DFT calculated binding energies do not include spin-orbit splitting of the core level state.
+We can include the spin-orbit splitting using its experimental value.
+Take <cite>f</cite> orbit as a example, we need subtracting <span class="math notranslate nohighlight">\(3/7\)</span> of the experimental spin-orbit splitting or adding <span class="math notranslate nohighlight">\(4/7\)</span> of the DFT calculated value, to get the position of the <span class="math notranslate nohighlight">\(4f_{7/2}\)</span> and <span class="math notranslate nohighlight">\(4f_{5/2}\)</span> peaks, respectively. Here is a table of the spin-orbit splitting for different orbitals.</p>
+<table class="table">
+<colgroup>
+<col style="width: 30%" />
+<col style="width: 35%" />
+<col style="width: 35%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Orbit</p></th>
+<th class="head"><p>Substracting</p></th>
+<th class="head"><p>Adding</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1s</p></td>
+<td><p>0</p></td>
+<td><p>0</p></td>
+</tr>
+<tr class="row-odd"><td><p>2p</p></td>
+<td><p><span class="math notranslate nohighlight">\(1/3\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(2/3\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>3d</p></td>
+<td><p><span class="math notranslate nohighlight">\(2/5\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(3/5\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>4f</p></td>
+<td><p><span class="math notranslate nohighlight">\(3/7\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(4/7\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Congratulations, you have finished this tutorial!</p>
+</section>
+</section>
+<section id="another-example">
+<h2>Another example<a class="headerlink" href="#another-example" title="Permalink to this headline">#</a></h2>
+<p>ETFA is commonly used as example for XPS measurements and calculations due to the extreme chemical shifts of its four different carbon atoms. [2]</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>One can select the ETFA molecule from the <cite>From Example</cite> tab, and follow the same steps as above to run the XPS calculation for this molecule.</p>
+</div>
+<p>Here is the result of the XPS calculation for the ETFA molecule.</p>
+<figure class="align-center">
+<img alt="../_images/xps_etfa_dft.png" src="../_images/xps_etfa_dft.png" />
+</figure>
+<p>Here is the chemical shift from experiment. [2]</p>
+<figure class="align-center">
+<img alt="../_images/xps_etfa_exp.jpg" src="../_images/xps_etfa_exp.jpg" />
+</figure>
+<p>The calculated relative shifts align well with the trends observed in experimental data, underscoring the reliability of DFT calculations.
+Although there are minor discrepancies in the absolute shift values, this is a recognized limitation stemming from the approximations in the exchange-correlation functional within DFT frameworks. [3]</p>
+</section>
+<section id="questions">
+<h2>Questions<a class="headerlink" href="#questions" title="Permalink to this headline">#</a></h2>
+<p>If you have any questions, please, do not hesitate to ask on the AiiDA discourse forum: <a class="reference external" href="https://aiida.discourse.group/">https://aiida.discourse.group/</a>.</p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">#</a></h2>
+<p>[1] V. Carravetta, <em>et al.</em>, <em>Chem. Phys.</em> 264, 175 (2001) <a class="reference external" href="https://doi.org/10.1016/S0301-0104(00)00396-7">https://doi.org/10.1016/S0301-0104(00)00396-7</a></p>
+<p>[2] O. Travnikova, <em>et al.</em>, , <em>Relat. Phenom.</em> 185, 191 (2012) <a class="reference external" href="https://doi.org/10.1016/j.elspec.2012.05.009">https://doi.org/10.1016/j.elspec.2012.05.009</a></p>
+<p>[3] B.P. Klein,  <em>et al.</em>, , <em>J. Phys. Condens. Matter</em> 33, 154005 (2021) <a class="reference external" href="https://doi.org/10.1088/1361-648X/abdf00">https://doi.org/10.1088/1361-648X/abdf00</a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+                <footer class="bd-footer-article">
+                  
+<div class="footer-article-items footer-article__inner">
+  
+    <div class="footer-article-item"><!-- Previous / next buttons -->
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="xas.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">How to calculate XANES spectra</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../development/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Developer guide</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div></div>
+  
+</div>
+
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#steps">Steps</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-1-select-a-structure">Step 1 Select a structure</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-2-configure-workflow">Step 2 Configure workflow</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-3-choose-computational-resources">Step 3 Choose computational resources</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-4-check-the-status-and-results">Step 4 Check the status and results</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#another-example">Another example</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#questions">Questions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright 2023-2025, The AiiDAlab Team. All rights reserved.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

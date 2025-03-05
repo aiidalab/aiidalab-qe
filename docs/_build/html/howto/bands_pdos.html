@@ -1,0 +1,639 @@
+
+
+<!DOCTYPE html>
+
+
+<html >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>How to calculate Electronic band structure and DOS &#8212; Quantum ESPRESSO App v24.10.0a8-dev documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/design-tabs.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto/bands_pdos';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="How to calculate XANES spectra" href="xas.html" />
+    <link rel="prev" title="How to upgrade or uninstall the app" href="upgrade_uninstall.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="None"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../_static/logo_dark.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../installation/index.html">
+                        Installation Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        How-to guides
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../development/index.html">
+                        Developer guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../blogs/index.html">
+                        Blogs
+                      </a>
+                    </li>
+                
+            <div class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    More
+                </button>
+                <div class="dropdown-menu">
+                    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../report_issue.html">
+                        Report an issue
+                      </a>
+                    </li>
+                
+                </div>
+            </div>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="http://aiidalab.net" title="AiiDAlab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-solid fa-globe"></i></span>
+            <label class="sr-only">AiiDAlab</label></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.github.com/aiidalab/aiidalab-qe" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../installation/index.html">
+                        Installation Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        How-to guides
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../development/index.html">
+                        Developer guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../blogs/index.html">
+                        Blogs
+                      </a>
+                    </li>
+                
+            <div class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    More
+                </button>
+                <div class="dropdown-menu">
+                    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../report_issue.html">
+                        Report an issue
+                      </a>
+                    </li>
+                
+                </div>
+            </div>
+            
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="http://aiidalab.net" title="AiiDAlab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-solid fa-globe"></i></span>
+            <label class="sr-only">AiiDAlab</label></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.github.com/aiidalab/aiidalab-qe" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="setup_computer_code.html">How to setup a remote computer/code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="import_structure.html">How to import a structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade_uninstall.html">How to upgrade or uninstall the app</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">How to calculate Electronic band structure and DOS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xas.html">How to calculate XANES spectra</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xps.html">How to calculate XPS spectra</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">How-to guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">How to calculate Electronic band structure and DOS</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="how-to-calculate-electronic-band-structure-and-dos">
+<h1>How to calculate Electronic band structure and DOS<a class="headerlink" href="#how-to-calculate-electronic-band-structure-and-dos" title="Permalink to this headline">#</a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">#</a></h2>
+<p>In the following, we show how to compute the electronic band structure and Projected Density of States (PDOS) of BaTiO3.</p>
+<p>Due to the number of calculation steps required, we will need to set up our environment to submit to a remote machine capable of handling the calculation.
+Please refer to the relevant <a class="reference internal" href="setup_computer_code.html"><span class="doc">How-To</span></a> section for this procedure.</p>
+<div class="admonition-goal admonition">
+<p class="admonition-title">Goal</p>
+<p>Obtain the electronic bands and PDOS of BaTiO3 using the Quantum ESPRESSO app.</p>
+</div>
+</section>
+<section id="start">
+<h2>Start<a class="headerlink" href="#start" title="Permalink to this headline">#</a></h2>
+<p>To start, go ahead and <a class="reference internal" href="../installation/launch.html"><span class="doc">launch</span></a> the app, then follow the steps below.</p>
+<section id="step-1-select-the-structure-from-the-optimade-database">
+<h3>Step 1: Select the structure from the OPTIMADE database<a class="headerlink" href="#step-1-select-the-structure-from-the-optimade-database" title="Permalink to this headline">#</a></h3>
+<p>Open the OPTIMADE tab and select <cite>Materials Cloud</cite> from the first dropdown menu,
+and <cite>MC3D</cite> from the second dropdown menu.</p>
+<p>Then, in the periodic table, select the elements <cite>Ba</cite>, <cite>Ti</cite>, and <cite>O</cite> to filter the results.
+Once done, click on the <cite>Search</cite> button to see the results.</p>
+<a class="reference internal image-reference" href="../_images/BaTiO3_step1_0.png"><img alt="../_images/BaTiO3_step1_0.png" class="align-center" src="../_images/BaTiO3_step1_0.png" style="width: 629.2px; height: 470.25000000000006px;" /></a>
+<p>You will see several results. Select the third entry, <code class="docutils literal notranslate"><span class="pre">BaO3Ti</span> <span class="pre">(id=69278)</span></code>, and click on the <cite>Confirm</cite> button.</p>
+<a class="reference internal image-reference" href="../_images/BaTiO3_step1_1.png"><img alt="../_images/BaTiO3_step1_1.png" class="align-center" src="../_images/BaTiO3_step1_1.png" style="width: 629.2px; height: 470.25000000000006px;" /></a>
+</section>
+<section id="step-2-configure-the-workflow">
+<h3>Step 2: Configure the workflow<a class="headerlink" href="#step-2-configure-the-workflow" title="Permalink to this headline">#</a></h3>
+<p>Select <cite>Full geometry</cite> to relax the structure and select <cite>Electronic band structure</cite> and <cite>Electronic projected density of states (PDOS)</cite> as the properties of interest.</p>
+<a class="reference internal image-reference" href="../_images/BaTiO3_step2_0.png"><img alt="../_images/BaTiO3_step2_0.png" class="align-center" src="../_images/BaTiO3_step2_0.png" style="width: 629.2px; height: 470.25000000000006px;" /></a>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>We will use the <cite>moderate</cite> protocol for this calculation, as it provides a good balance between accuracy and computational cost. If you have access to a remote machine,
+you can use the <cite>precise</cite> protocol for more accurate results. At variance, the <cite>fast</cite> protocol can be used for a quick (test) calculation.</p>
+</div>
+<p>Open the <cite>Band structure</cite> settings tab in <cite>Step 2.2</cite>, and select <cite>Fat bands calculation</cite> to enable the calculation of the band structure with projected atomic orbitals contributions.</p>
+<a class="reference internal image-reference" href="../_images/BaTiO3_step2_1.png"><img alt="../_images/BaTiO3_step2_1.png" class="align-center" src="../_images/BaTiO3_step2_1.png" style="width: 629.2px; height: 443.3px;" /></a>
+</section>
+<section id="step-3-choose-computational-resources">
+<h3>Step 3 - Choose computational resources<a class="headerlink" href="#step-3-choose-computational-resources" title="Permalink to this headline">#</a></h3>
+<p>In <cite>Step 3</cite>, you can select a given <cite>pw.x</cite> code and computer to run the simulations. As mentioned above, we will use <cite>moderate</cite> protocol for this calculation.
+If you have access to a remote machine, you can set it up and then use it. Please refer to the relevant <a class="reference internal" href="setup_computer_code.html"><span class="doc">How-To</span></a> section for this procedure.</p>
+<p>Then, click the <cite>Submit</cite> button to start the AiiDA workflow.</p>
+</section>
+<section id="step-4-check-the-status">
+<h3>Step 4: Check the status<a class="headerlink" href="#step-4-check-the-status" title="Permalink to this headline">#</a></h3>
+<p>While the calculation is running, you can monitor its status as shown in the <a class="reference internal" href="../tutorials/basic.html#basic-status"><span class="std std-ref">basic tutorial</span></a>.
+You can view the results once the calculation is finished.</p>
+</section>
+<section id="step-5-results">
+<h3>Step 5: Results<a class="headerlink" href="#step-5-results" title="Permalink to this headline">#</a></h3>
+<p>Once the calculation is finished, you can access the <cite>Electronic bands + PDOS</cite> tab to view the results.
+There are several parameters you can use to tune the plots, e.g. the atomic/orbital grouping to visualize the PDOS.</p>
+<a class="reference internal image-reference" href="../_images/BaTiO3_step4_1.png"><img alt="../_images/BaTiO3_step4_1.png" class="align-center" src="../_images/BaTiO3_step4_1.png" style="width: 629.2px; height: 502.15000000000003px;" /></a>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>All the data can be downloaded by means of the corresponding <cite>Download data</cite> button.</p>
+</div>
+<p>You can inspect the interactive plot, for example zooming on specific regions, or selecting specific orbitals to visualize their contributions to the band structure.</p>
+<a class="reference internal image-reference" href="../_images/BaTiO3_step4_2.png"><img alt="../_images/BaTiO3_step4_2.png" class="align-center" src="../_images/BaTiO3_step4_2.png" style="width: 629.2px; height: 502.15000000000003px;" /></a>
+</section>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">#</a></h2>
+<p>Here, you learned how to submit and visualize basic electronic properties of materials using the Quantum ESPRESSO app.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+                <footer class="bd-footer-article">
+                  
+<div class="footer-article-items footer-article__inner">
+  
+    <div class="footer-article-item"><!-- Previous / next buttons -->
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="upgrade_uninstall.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">How to upgrade or uninstall the app</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="xas.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">How to calculate XANES spectra</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div></div>
+  
+</div>
+
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start">Start</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-1-select-the-structure-from-the-optimade-database">Step 1: Select the structure from the OPTIMADE database</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-2-configure-the-workflow">Step 2: Configure the workflow</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-3-choose-computational-resources">Step 3 - Choose computational resources</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-4-check-the-status">Step 4: Check the status</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#step-5-results">Step 5: Results</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#summary">Summary</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright 2023-2025, The AiiDAlab Team. All rights reserved.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
