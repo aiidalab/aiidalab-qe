@@ -71,12 +71,11 @@ class ConfigureQeAppWorkChainStep(
         self.installed_property_children = []
         self.not_installed_property_children = []
 
-
     def _render(self):
         super()._render()
 
         self._fetch_plugin_calculation_settings()
-        
+
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
         ipw.dlink(
