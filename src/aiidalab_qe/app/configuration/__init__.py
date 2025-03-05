@@ -71,11 +71,12 @@ class ConfigureQeAppWorkChainStep(
         self.installed_property_children = []
         self.not_installed_property_children = []
 
-        self._fetch_plugin_calculation_settings()
 
     def _render(self):
         super()._render()
 
+        self._fetch_plugin_calculation_settings()
+        
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
         ipw.dlink(
@@ -210,9 +211,7 @@ class ConfigureQeAppWorkChainStep(
             is_package_installed,
         )
 
-        plugin_manager = PluginManager(
-            config_source="/home/wang_x3/repos/superstar54/aiidalab-qe/plugins.yaml"
-        )
+        plugin_manager = PluginManager()
         for plugin_name, plugin_data in plugin_manager.data.items():
             if (
                 plugin_data.get("category", "").lower() != "calculation"
