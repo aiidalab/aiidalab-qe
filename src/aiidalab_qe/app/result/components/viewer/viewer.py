@@ -4,6 +4,7 @@ import ipywidgets as ipw
 
 from aiidalab_qe.app.result.components import ResultsComponent
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
 
 from .model import WorkChainResultsViewerModel
@@ -39,7 +40,10 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
             self._on_tab_change,
             "selected_index",
         )
-        self.children = [self.tabs]
+        self.children = [
+            InAppGuide(identifier="results-panel"),
+            self.tabs,
+        ]
 
     def _post_render(self):
         self._set_tabs()
