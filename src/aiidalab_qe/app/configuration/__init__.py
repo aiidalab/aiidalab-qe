@@ -116,6 +116,7 @@ class ConfigureQeAppWorkChainStep(
                     children=[
                         InAppGuide(identifier="properties-selection"),
                         *self.installed_property_children,
+                        ipw.HTML("<hr>"),
                         ipw.HTML(
                             value="""
                             <p style="font-size:14px; line-height:1.6;">
