@@ -103,7 +103,7 @@ class ConfigureQeAppWorkChainStep(
         )
 
         self.install_new_plugin_button = LinkButton(
-            description="Open Plugin Store",
+            description="Plugin store",
             link="plugin_manager.ipynb",
             icon="puzzle-piece",  # More intuitive icon
             button_style="primary",  # Keeps it prominent
@@ -119,8 +119,11 @@ class ConfigureQeAppWorkChainStep(
                         ipw.HTML(
                             value="""
                             <p style="font-size:14px; line-height:1.6;">
-                                🔹 The following properties are currently unavailable.
-                                📦 To enable them, please visit the <b>Plugin Store</b> and install the required plugins.
+                                The following additional property calculations are available in the
+                                <b>Plugin registry</b> but are currently disabled because the required plugins are not installed.
+                            </p>
+                            <p style="font-size:14px; line-height:1.6;">
+                                To enable them, please visit the <b>Plugin store</b> and install the necessary plugins.
                             </p>
                             """,
                             layout=ipw.Layout(margin="10px 0px"),
@@ -217,7 +220,7 @@ class ConfigureQeAppWorkChainStep(
         plugin_manager = PluginManager(plugin_config_source)
         for plugin_name, plugin_data in plugin_manager.data.items():
             if (
-                plugin_data.get("category", "").lower() != "calculation"
+                plugin_data.get("category", "calculation").lower() != "calculation"
             ):  # Ignore non-property plugins
                 continue
 
