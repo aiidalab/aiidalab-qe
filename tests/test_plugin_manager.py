@@ -50,4 +50,6 @@ def test_plugin_manager_default_config_file():
     """
     manager = PluginManager()
     manager._build_ui()
-    assert len(manager.accordion.children) > 0, "Should build at least one accordion panels."
+    assert (
+        len(manager.accordion.children) > 0
+    ), "Should build at least one accordion panels."
