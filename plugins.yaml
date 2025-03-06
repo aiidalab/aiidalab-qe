@@ -36,6 +36,7 @@ aiida-bader:
     github: https://github.com/superstar54/aiida-bader
     documentation: https://aiida-bader.readthedocs.io/
     pip: aiida-bader
+    post_install: post-install
     status: stable
     category: calculation
     requires_aiidalab_qe: '>=24.10.0'
