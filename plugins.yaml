@@ -1,4 +1,34 @@
 ---
+aiidalab-qe-vibroscopy:
+    title: Phonons and IR/Raman (aiidalab-qe-vibroscopy)
+    description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials via finite displacement and finite field approach.
+    author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
+    pip: aiidalab-qe-vibroscopy~=1.1.3
+    post_install: setup-phonopy
+    status: stable
+    category: calculation
+    requires_aiidalab_qe: '>=24.10.0'
+
+aiidalab-qe-muon:
+    title: Muon spectroscopy (aiidalab-qe-muon)
+    description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties (local fields and polarization signals).
+    author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
+    github: https://github.com/mikibonacci/aiidalab-qe-muon
+    status: stable
+    category: calculation
+    requires_aiidalab_qe: '>=24.10.0'
+
+aiida-qe-xspec:
+    title: Core-level spectroscopy (aiida-qe-xspec)
+    description: Core-level spectroscopy calculations with Quantum ESPRESSO.
+    author: Peter Gillespie, Michael A. Hernandez-Bertran, Giovanni Pizzi, Deborah Prezzi, Xing Wang (ordered by last name alphabetically)
+    github: https://github.com/aiidaplugins/aiida-qe-xspec
+    documentation: https://aiida-qe-xspec.readthedocs.io/
+    pip: aiida-qe-xspec
+    status: stable
+    category: calculation
+    requires_aiidalab_qe: '>=24.10.0'
+
 aiida-bader:
     title: Bader charge analysis (aiida-bader)
     description: Perform Bader charge analysis of the electronic charge density
@@ -6,40 +36,29 @@ aiida-bader:
     github: https://github.com/superstar54/aiida-bader
     documentation: https://aiida-bader.readthedocs.io/
     pip: aiida-bader
-
-aiidalab-qe-vibroscopy:
-    title: Phonons and IR/Raman (aiidalab-qe-vibroscopy)
-    description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials via finite displacement and finite field approach.
-    author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
-    pip: aiidalab-qe-vibroscopy~=1.1.3
-    post_install: setup-phonopy
-
-aiidalab-qe-muon:
-    title: Muon spectroscopy (aiidalab-qe-muon)
-    description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties (local fields and polarization signals).
-    author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
-    github: https://github.com/mikibonacci/aiidalab-qe-muon
-
-aiida-qe-xspec:
-    title: Core-level spectroscopy (aiida-qe-xspec)
-    description: Core-level spectroscopy calculations with Quantum ESPRESSO.
-    author: Xing Wang, Peter Gillespie
-    github: https://github.com/aiidaplugins/aiida-qe-xspec
-    documentation: https://aiida-qe-xspec.readthedocs.io/
-    pip: aiida-qe-xspec
+    post_install: post-install
+    status: stable
+    category: calculation
+    requires_aiidalab_qe: '>=24.10.0'
 
 aiidalab-qe-wannier90:
     title: Wannier functions (aiidalab-qe-wannier90)
     description: A plugin to compute Wannier functions using Quantum ESPRESSO and the Wannier90 code.
-    author: Xing Wang, Junfeng Qiao and Giovanni Pizzi
+    author: Xing Wang, Junfeng Qiao, Nicola Marzari and Giovanni Pizzi
     github: https://github.com/superstar54/aiidalab-qe-wannier90
     documentation: https://aiidalab-qe-wannier90.readthedocs.io/
     pip: aiidalab-qe-wannier90
+    status: beta
+    category: calculation
+    requires_aiidalab_qe: '>=24.10.0'
 
 aiidalab-qe-hp:
-    title: Habbard parameter (aiidalab-qe-hp)
-    description: A plugin to compute Habbard parameter with Quantum ESPRESSO.
-    author: Xing Wang, Iurii Timrov and Giovanni Pizzi
+    title: Hubbard parameters (aiidalab-qe-hp)
+    description: A plugin to compute Hubbard parameters with Quantum ESPRESSO.
+    author: Xing Wang, Lorenzo Bastonero and Iurii Timrov
     github: https://github.com/superstar54/aiidalab-qe-hp
     documentation: https://aiidalab-qe-hp.readthedocs.io/
     pip: aiidalab-qe-hp
+    status: beta
+    category: calculation
+    requires_aiidalab_qe: '>=24.10.0'
