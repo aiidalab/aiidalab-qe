@@ -244,9 +244,9 @@ class AdvancedConfigurationSettingsPanel(
                     good starting point.
                 </div>
             """),
-            HBoxWithUnits(self.forc_conv_thr, "a.u."),
-            HBoxWithUnits(self.etot_conv_thr, "a.u."),
-            self.scf_conv_thr,
+            HBoxWithUnits(self.forc_conv_thr, "Ry/Bohr"),
+            HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
+            HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
             ipw.HTML("<h4>Maximum cycle steps</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">

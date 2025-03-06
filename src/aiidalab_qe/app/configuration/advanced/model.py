@@ -88,10 +88,12 @@ class AdvancedConfigurationSettingsModel(
             if not specific or specific != "mesh":
                 parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
                 self._update_kpoints_distance(parameters)
-                self._update_thresholds(parameters)
+                if specific == "protocol":
+                    self._update_thresholds(parameters)
             self._update_kpoints_mesh()
 
     def get_model_state(self):
+        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
         parameters = {
             "initial_magnetic_moments": None,
             "pw": {
@@ -101,10 +103,10 @@ class AdvancedConfigurationSettingsModel(
                     },
                     "CONTROL": {
                         "forc_conv_thr": self.forc_conv_thr,
-                        "etot_conv_thr": self.etot_conv_thr,
+                        "etot_conv_thr": self.etot_conv_thr * num_atoms,
                     },
                     "ELECTRONS": {
-                        "conv_thr": self.scf_conv_thr,
+                        "conv_thr": self.scf_conv_thr * num_atoms,
                         "electron_maxstep": self.electron_maxstep,
                     },
                 }
@@ -277,14 +279,12 @@ class AdvancedConfigurationSettingsModel(
         self.kpoints_distance = self._defaults["kpoints_distance"]
 
     def _update_thresholds(self, parameters):
-        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
-
-        etot_value = num_atoms * parameters["meta_parameters"]["etot_conv_thr_per_atom"]
+        etot_value = parameters["meta_parameters"]["etot_conv_thr_per_atom"]
         self._set_value_and_step("etot_conv_thr", etot_value)
         self.etot_conv_thr = self._defaults["etot_conv_thr"]
         self.etot_conv_thr_step = self._defaults["etot_conv_thr_step"]
 
-        scf_value = num_atoms * parameters["meta_parameters"]["conv_thr_per_atom"]
+        scf_value = parameters["meta_parameters"]["conv_thr_per_atom"]
         self._set_value_and_step("scf_conv_thr", scf_value)
         self.scf_conv_thr = self._defaults["scf_conv_thr"]
         self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
@@ -308,9 +308,11 @@ class AdvancedConfigurationSettingsModel(
         control_params = pw_parameters.get("CONTROL", {})
         electron_params = pw_parameters.get("ELECTRONS", {})
 
+        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
+
         self.forc_conv_thr = control_params.get("forc_conv_thr", 0.0)
-        self.etot_conv_thr = control_params.get("etot_conv_thr", 0.0)
-        self.scf_conv_thr = electron_params.get("conv_thr", 0.0)
+        self.etot_conv_thr = control_params.get("etot_conv_thr", 0.0) / num_atoms
+        self.scf_conv_thr = electron_params.get("conv_thr", 0.0) / num_atoms
         self.electron_maxstep = electron_params.get("electron_maxstep", 80)
 
         self.total_charge = system_params.get("tot_charge", 0)
@@ -333,3 +335,4 @@ class AdvancedConfigurationSettingsModel(
         )  # type: ignore
         if "tot_magnetization" in system_params:
             magnetization.type = "tot_magnetization"
+            magnetization.total = system_params["tot_magnetization"]

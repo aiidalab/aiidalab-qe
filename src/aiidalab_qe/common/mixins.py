@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing as t
 
 import traitlets as tl
@@ -107,9 +109,9 @@ class HasProcess(tl.HasTraits):
         process_node = self.fetch_process_node()
         return process_node.outputs if process_node else []
 
-    def fetch_process_node(self):
+    def fetch_process_node(self) -> orm.ProcessNode | None:
         try:
-            return orm.load_node(self.process_uuid) if self.process_uuid else None
+            return orm.load_node(self.process_uuid) if self.process_uuid else None  # type: ignore
         except NotExistent:
             return None
 
