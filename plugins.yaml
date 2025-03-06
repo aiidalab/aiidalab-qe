@@ -7,7 +7,7 @@ aiidalab-qe-vibroscopy:
     post_install: setup-phonopy
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>=24.10.0'
+    requires_aiidalab_qe: '>24.04.0'
 
 aiidalab-qe-muon:
     title: Muon spectroscopy (aiidalab-qe-muon)
@@ -16,7 +16,7 @@ aiidalab-qe-muon:
     github: https://github.com/mikibonacci/aiidalab-qe-muon
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>=24.10.0'
+    requires_aiidalab_qe: '>24.04.0'
 
 aiida-qe-xspec:
     title: Core-level spectroscopy (aiida-qe-xspec)
@@ -27,7 +27,7 @@ aiida-qe-xspec:
     pip: aiida-qe-xspec
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>=24.10.0'
+    requires_aiidalab_qe: '>24.04.0'
 
 aiida-bader:
     title: Bader charge analysis (aiida-bader)
@@ -39,7 +39,7 @@ aiida-bader:
     post_install: post-install
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>=24.10.0'
+    requires_aiidalab_qe: '>24.04.0'
 
 aiidalab-qe-wannier90:
     title: Wannier functions (aiidalab-qe-wannier90)
@@ -50,7 +50,7 @@ aiidalab-qe-wannier90:
     pip: aiidalab-qe-wannier90
     status: beta
     category: calculation
-    requires_aiidalab_qe: '>=24.10.0'
+    requires_aiidalab_qe: '>24.04.0'
 
 aiidalab-qe-hp:
     title: Hubbard parameters (aiidalab-qe-hp)
@@ -61,4 +61,4 @@ aiidalab-qe-hp:
     pip: aiidalab-qe-hp
     status: beta
     category: calculation
-    requires_aiidalab_qe: '>=24.10.0'
+    requires_aiidalab_qe: '>24.04.0'
