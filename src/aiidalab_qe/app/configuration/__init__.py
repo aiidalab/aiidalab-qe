@@ -14,6 +14,7 @@ from aiidalab_qe.common.panel import (
     ConfigurationSettingsModel,
     ConfigurationSettingsPanel,
 )
+from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
 
 from .advanced import (
@@ -67,12 +68,14 @@ class ConfigureQeAppWorkChainStep(
             "advanced": self.advanced_settings,
         }
 
-        self.property_children = []
-
+        self.installed_property_children = []
+        self.not_installed_property_children = []
         self._fetch_plugin_calculation_settings()
 
     def _render(self):
         super()._render()
+
+        self._fetch_not_installed_property()
 
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
@@ -99,12 +102,35 @@ class ConfigureQeAppWorkChainStep(
             "selected_index",
         )
 
+        self.install_new_plugin_button = LinkButton(
+            description="Plugin store",
+            link="plugin_manager.ipynb",
+            icon="puzzle-piece",  # More intuitive icon
+            button_style="primary",  # Keeps it prominent
+            tooltip="Browse and install additional plugins from the Plugin Store",
+        )
+
         self.sub_steps = ipw.Accordion(
             children=[
                 ipw.VBox(
                     children=[
                         InAppGuide(identifier="properties-selection"),
-                        *self.property_children,
+                        *self.installed_property_children,
+                        ipw.HTML("<hr>"),
+                        ipw.HTML(
+                            value="""
+                            <p style="font-size:14px; line-height:1.6;">
+                                The following additional property calculations are available in the
+                                <b>Plugin registry</b> but are currently disabled because the required plugins are not installed.
+                            </p>
+                            <p style="font-size:14px; line-height:1.6;">
+                                To enable them, please visit the <b>Plugin store</b> and install the necessary plugins.
+                            </p>
+                            """,
+                            layout=ipw.Layout(margin="10px 0px"),
+                        ),
+                        self.install_new_plugin_button,
+                        *self.not_installed_property_children,
                     ]
                 ),
                 ipw.VBox(
@@ -182,6 +208,34 @@ class ConfigureQeAppWorkChainStep(
         else:
             self.state = self.State.INIT
 
+    def _fetch_not_installed_property(self, plugin_config_source=None):
+        from aiidalab_qe.app.utils.plugin_manager import (
+            DEFAULT_PLUGIN_CONFIG_SOURCE,
+            PluginManager,
+            is_package_installed,
+        )
+
+        self.not_installed_property_children = []
+
+        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
+        plugin_manager = PluginManager(plugin_config_source)
+        for plugin_name, plugin_data in plugin_manager.data.items():
+            if (
+                plugin_data.get("category", "calculation").lower() != "calculation"
+            ):  # Ignore non-property plugins
+                continue
+
+            is_installed = is_package_installed(plugin_name)
+            if not is_installed:
+                checkbox = ipw.Checkbox(
+                    value=False,
+                    description=plugin_data["title"],
+                    disabled=True,
+                    indent=False,
+                    style={"description_width": "initial"},
+                )
+                self.not_installed_property_children.append(checkbox)
+
     def _fetch_plugin_calculation_settings(self):
         outlines = get_entry_items("aiidalab_qe.properties", "outline")
         entries = get_entry_items("aiidalab_qe.properties", "configuration")
@@ -222,7 +276,7 @@ class ConfigureQeAppWorkChainStep(
                 "include",
             )
 
-            self.property_children.append(
+            self.installed_property_children.append(
                 ipw.HBox(
                     children=[
                         outline,

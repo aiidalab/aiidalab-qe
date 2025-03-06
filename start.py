@@ -36,7 +36,7 @@ def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
                 </a>
                 <a
                     class="feature"
-                    href="{appbase}/plugin_list.ipynb"
+                    href="{appbase}/plugin_manager.ipynb"
                     target="_blank">
                     <img
                         class="feature-logo"
