@@ -119,9 +119,8 @@ class ConfigureQeAppWorkChainStep(
                         ipw.HTML(
                             value="""
                             <p style="font-size:14px; line-height:1.6;">
-                                🔹 <b>Additional property calculations are available but require missing plugins.</b><br>
-                                These properties are listed below but currently disabled.
-                                📦 To enable them, please visit the <b>Plugin store page</b> and install the required plugins.
+                                🔹 The following properties are currently unavailable.
+                                📦 To enable them, please visit the <b>Plugin Store</b> and install the required plugins.
                             </p>
                             """,
                             layout=ipw.Layout(margin="10px 0px"),
