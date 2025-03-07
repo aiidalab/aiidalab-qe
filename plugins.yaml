@@ -3,7 +3,7 @@ aiidalab-qe-vibroscopy:
     title: Phonons and IR/Raman (aiidalab-qe-vibroscopy)
     description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials via finite displacement and finite field approach.
     author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
-    pip: aiidalab-qe-vibroscopy~=1.1.3
+    github: https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0
     post_install: setup-phonopy
     status: stable
     category: calculation
@@ -13,7 +13,7 @@ aiidalab-qe-muon:
     title: Muon spectroscopy (aiidalab-qe-muon)
     description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties (local fields and polarization signals).
     author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
-    github: https://github.com/mikibonacci/aiidalab-qe-muon
+    github: https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
     status: stable
     category: calculation
     requires_aiidalab_qe: '>24.04.0'
