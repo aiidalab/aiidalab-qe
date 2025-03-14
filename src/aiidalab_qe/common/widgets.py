@@ -5,8 +5,8 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
-import subprocess
 import importlib
+import subprocess
 import typing as t
 from copy import deepcopy
 from queue import Queue
@@ -1343,7 +1343,7 @@ class ArchiveImporter(ipw.VBox):
         self.import_button.on_click(self.import_archives)
 
         self.info = ipw.HTML()
-        
+
         self.info_plugins = ipw.HTML()
         ipw.dlink(
             (self.info_plugins, "value"),
@@ -1388,7 +1388,7 @@ class ArchiveImporter(ipw.VBox):
         ]
 
         self.selector.options = self.get_options()
-        
+
     def get_options(self) -> list[tuple[str, str]]:
         response: req.Response = req.get(self.archive_list_url)
         if not response.ok:
@@ -1396,18 +1396,21 @@ class ArchiveImporter(ipw.VBox):
             return []
         if archives := response.content.decode("utf-8").strip().split("\n"):
             options = [(archive, archive.split("-")[0].strip()) for archive in archives]
-            self.required_plugins = required_plugins = {
+            self.required_plugins = {
                 archive.split("-")[0].strip(): [
-                    plugin.strip() 
-                    for plugin in archive.split("/")[-1].replace("plugins: ","").split(",")] 
-                for archive in archives 
+                    plugin.strip()
+                    for plugin in archive.split("/")[-1]
+                    .replace("plugins: ", "")
+                    .split(",")
+                ]
+                for archive in archives
                 if len(archive.split("/")) > 1
             }
             return options
         self.info.value = "No archives found"
         return []
-    
-    def check_plugins(self, plugins: list[str]) -> str:
+
+    def check_plugins(self) -> str:
         self.info_plugins.value = ""
         required_plugins_not_installed = set()
         for example in self.selector.value:
@@ -1416,7 +1419,7 @@ class ArchiveImporter(ipw.VBox):
                     importlib.import_module(plugin)
                 except ImportError:
                     required_plugins_not_installed.add(plugin)
-                
+
         if len(required_plugins_not_installed) > 0:
             self.info_plugins.value = """<div class="alert alert-warning">Required plugins not installed: <ul>"""
             for plugin in required_plugins_not_installed:
@@ -1424,9 +1427,9 @@ class ArchiveImporter(ipw.VBox):
             self.info_plugins.value += "</ul> Please install the required plugins using the <a href='./plugin_manager.ipynb' target='_blank'>plugin manager</a> and try again.</div>"
         else:
             self.info_plugins.value = ""
-            
+
         return required_plugins_not_installed
-    
+
     def import_archives(self, _):
         self.import_button.disabled = True
         if self.logger and self.clear_log_on_import:
