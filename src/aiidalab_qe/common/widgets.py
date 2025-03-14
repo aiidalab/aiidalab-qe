@@ -1410,7 +1410,7 @@ class ArchiveImporter(ipw.VBox):
         self.info.value = "No archives found"
         return []
 
-    def check_plugins(self) -> str:
+    def check_plugins(self, _) -> str:
         self.info_plugins.value = ""
         required_plugins_not_installed = set()
         for example in self.selector.value:
