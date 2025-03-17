@@ -90,7 +90,11 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
     # NOTE: The work folder is empty but if included clashes with the work folder in a Renku
     # session whose permissions cannot be changed.
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work .
+    # For the same permisssion reason, the .conda folder clashes with aiidalab-launch.
+    # It is usually safe (and preferable) to let .conda be recreated on the fly each time,
+    # because .conda typically just holds local environment information, caches, or references
+    # to available environments.
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work --exclude .conda .
 
 # STAGE 3 - Final stage
 # - Install python dependencies
