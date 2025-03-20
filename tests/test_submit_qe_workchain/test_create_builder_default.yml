@@ -7,10 +7,10 @@ advanced:
   pw:
     parameters:
       CONTROL:
-        etot_conv_thr: 2.0e-05
+        etot_conv_thr: 1.0e-05
         forc_conv_thr: 0.0001
       ELECTRONS:
-        conv_thr: 4.0e-10
+        conv_thr: 2.0e-10
         electron_maxstep: 80
       SYSTEM:
         degauss: 0.015
