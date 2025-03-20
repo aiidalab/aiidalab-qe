@@ -93,7 +93,6 @@ class AdvancedConfigurationSettingsModel(
             self._update_kpoints_mesh()
 
     def get_model_state(self):
-        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
         parameters = {
             "initial_magnetic_moments": None,
             "pw": {
@@ -103,10 +102,10 @@ class AdvancedConfigurationSettingsModel(
                     },
                     "CONTROL": {
                         "forc_conv_thr": self.forc_conv_thr,
-                        "etot_conv_thr": self.etot_conv_thr * num_atoms,
+                        "etot_conv_thr": self.etot_conv_thr,
                     },
                     "ELECTRONS": {
-                        "conv_thr": self.scf_conv_thr * num_atoms,
+                        "conv_thr": self.scf_conv_thr,
                         "electron_maxstep": self.electron_maxstep,
                     },
                 }
