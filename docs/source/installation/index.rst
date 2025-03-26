@@ -7,6 +7,6 @@ The following links will guide you through the necessary steps to access the Aii
 .. toctree::
    :maxdepth: 1
 
-   access_aiidalab/index
+   access/index
    install
    launch

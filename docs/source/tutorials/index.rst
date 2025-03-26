@@ -5,7 +5,7 @@ Tutorials
 
 .. important::
 
-    Before you get started, make sure you've :doc:`accessed </installation/access_aiidalab/index>` AiiDAlab and :doc:`installed </installation/install>` the Quantum ESPRESSO app.
+    Before you get started, make sure you've :doc:`accessed </installation/access/index>` AiiDAlab and :doc:`installed </installation/install>` the Quantum ESPRESSO app.
 
 .. grid:: 1 1 1 2
    :gutter: 3
