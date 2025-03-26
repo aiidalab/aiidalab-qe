@@ -63,3 +63,13 @@ aiidalab-qe-hp:
     status: beta
     category: calculation
     requires_aiidalab_qe: '>24.04.0'
+
+aiidalab-qe-pp:
+    title: Post-processing (aiidalab-qe-pp)
+    description: A plugin enabling analysis of charge density, spin density, molecular orbitals, STM images, and more.
+    author: Andres Ortega-Guerrero
+    github: https://github.com/AndresOrtegaGuerrero/aiidalab-qe-pp
+    post_install: post-install
+    status: beta
+    category: calculation
+    requires_aiidalab_qe: '>24.04.0'
