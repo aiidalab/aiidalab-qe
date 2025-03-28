@@ -154,7 +154,7 @@ class AdvancedConfigurationSettingsPanel(
         self.scf_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            description="SCF:",
+            description="Energy:",
             style={"description_width": "150px"},
         )
         ipw.link(
@@ -246,30 +246,20 @@ class AdvancedConfigurationSettingsPanel(
             self.total_charge,
             self.van_der_waals,
             ipw.HTML("<h2>Convergence</h2>"),
-            ipw.HTML("""
-                <div style="line-height: 1.4; margin-bottom: 5px;">
-                    Control the convergence criteria of the self-consistent field (SCF)
-                    geometry optimization cycles.
-                </div>
-            """),
-            ipw.HTML("<h4>Thresholds</h4>"),
-            ipw.HTML("""
-                <div style="line-height: 1.4; margin-bottom: 5px;">
-                    Setting thresholds for energy, force, and self-consistency ensures calculation accuracy and stability.
-                    <br>
-                    Lower values increase the accuracy but also the computational cost.
-                    <br>
-                    The default values set by the <b>protocol</b> are usually a
-                    good starting point.
-                </div>
-            """),
-            ipw.HTML("<h5><b>Energy thresholds</b></h5>"),
             ipw.HTML(f"""
-                <div style="line-height: 1.4; margin-bottom: 10px;">
-                    Actual value used (shown below widget) is given as:
-                    <code>threshold x {num_atoms}</code> (number of atoms)
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Setting the energy threshold for the self-consistent field (SCF)
+                    and energy and force thresholds for ionic convergence ensures
+                    calculation accuracy and stability. Lower values increase the
+                    accuracy but also the computational cost. The default values set by
+                    the <b>protocol</b> are usually a good starting point. For energy
+                    thresholds, the actual value used in the calculation (shown below
+                    widget) is given as:
+                    <code>threshold x num_atoms</code>
+                    (<code>num_atoms = {num_atoms}</code>)
                 </div>
             """),
+            ipw.HTML("<h4>Threshold for SCF cycles</h4>"),
             ipw.VBox(
                 children=[
                     HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
@@ -280,6 +270,7 @@ class AdvancedConfigurationSettingsPanel(
                     ),
                 ]
             ),
+            ipw.HTML("<h4>Thresholds for ionic convergence</h4>"),
             ipw.VBox(
                 children=[
                     HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
@@ -290,12 +281,11 @@ class AdvancedConfigurationSettingsPanel(
                     ),
                 ]
             ),
-            ipw.HTML("<h5><b>Interatomic force thresholds</b></h5>"),
             HBoxWithUnits(self.forc_conv_thr, "Ry/Bohr"),
             ipw.HTML("<h4>Maximum cycle steps</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
-                    Setting a maximum number of electronic and ionic optimization steps
+                    Setting a maximum number of electronic and ionic convergence steps
                     ensures that the calculation does not run indefinitely.
                 </div>
             """),
