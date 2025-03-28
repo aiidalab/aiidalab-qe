@@ -165,25 +165,21 @@ class AdvancedConfigurationSettingsPanel(
             (self._model, "scf_conv_thr_step"),
             (self.scf_conv_thr, "step"),
         )
-        self.forc_conv_thr = ipw.BoundedFloatText(
-            min=1e-15,
-            max=1.0,
-            format="0.0e",
-            description="Force:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "forc_conv_thr"),
-            (self.forc_conv_thr, "value"),
+        scf_conv_thr_abs = ipw.Label(
+            layout=ipw.Layout(
+                width="150px",
+                text_align="center",
+            )
         )
         ipw.dlink(
-            (self._model, "forc_conv_thr_step"),
-            (self.forc_conv_thr, "step"),
+            (self._model, "scf_conv_thr"),
+            (scf_conv_thr_abs, "value"),
+            lambda value: str(value * len(self._model.input_structure.sites)),
         )
+        scf_conv_thr_abs.add_class("convergence-label")
         self.etot_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            format="0.0e",
             description="Energy:",
             style={"description_width": "150px"},
         )
@@ -194,6 +190,27 @@ class AdvancedConfigurationSettingsPanel(
         ipw.dlink(
             (self._model, "etot_conv_thr_step"),
             (self.etot_conv_thr, "step"),
+        )
+        etot_conv_thr_abs = ipw.Label()
+        ipw.dlink(
+            (self._model, "etot_conv_thr"),
+            (etot_conv_thr_abs, "value"),
+            lambda value: str(value * len(self._model.input_structure.sites)),
+        )
+        etot_conv_thr_abs.add_class("convergence-label")
+        self.forc_conv_thr = ipw.BoundedFloatText(
+            min=1e-15,
+            max=1.0,
+            description="Force:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "forc_conv_thr"),
+            (self.forc_conv_thr, "value"),
+        )
+        ipw.dlink(
+            (self._model, "forc_conv_thr_step"),
+            (self.forc_conv_thr, "step"),
         )
         self.electron_maxstep = ipw.BoundedIntText(
             min=20,
@@ -220,6 +237,8 @@ class AdvancedConfigurationSettingsPanel(
         )
         self.pseudos.render()
 
+        num_atoms = len(self._model.input_structure.sites)
+
         self.children = [
             InAppGuide(identifier="advanced-settings"),
             self.reset_to_defaults_button,
@@ -240,13 +259,39 @@ class AdvancedConfigurationSettingsPanel(
                     <br>
                     Lower values increase the accuracy but also the computational cost.
                     <br>
-                    The default values are set by the <b>protocol</b> are usually a
+                    The default values set by the <b>protocol</b> are usually a
                     good starting point.
                 </div>
             """),
+            ipw.HTML("<h5><b>Energy thresholds</b></h5>"),
+            ipw.HTML(f"""
+                <div style="line-height: 1.4; margin-bottom: 10px;">
+                    Actual value used (shown below widget) is given as:
+                    <code>threshold x {num_atoms}</code> (number of atoms)
+                </div>
+            """),
+            ipw.VBox(
+                children=[
+                    HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
+                    HBoxWithUnits(
+                        widget=scf_conv_thr_abs,
+                        units="Ry",
+                        layout={"margin": "-8px 0 0 150px"},
+                    ),
+                ]
+            ),
+            ipw.VBox(
+                children=[
+                    HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
+                    HBoxWithUnits(
+                        widget=etot_conv_thr_abs,
+                        units="Ry",
+                        layout={"margin": "-8px 0 0 150px"},
+                    ),
+                ]
+            ),
+            ipw.HTML("<h5><b>Interatomic force thresholds</b></h5>"),
             HBoxWithUnits(self.forc_conv_thr, "Ry/Bohr"),
-            HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
-            HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
             ipw.HTML("<h4>Maximum cycle steps</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
