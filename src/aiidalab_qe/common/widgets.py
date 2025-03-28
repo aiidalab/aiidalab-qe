@@ -1291,12 +1291,14 @@ class HBoxWithUnits(ipw.HBox):
                 widget,
                 ipw.HTML(units),
             ],
-            layout=ipw.Layout(
-                align_items="center",
-                grid_gap="2px",
-            ),
+            layout={
+                "align_items": "center",
+                "grid_gap": "2px",
+            }
+            | kwargs.pop("layout", {}),
             **kwargs,
         )
+        self.add_class("hbox-with-units")
 
 
 class ArchiveImporter(ipw.VBox):
