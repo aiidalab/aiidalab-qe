@@ -11,7 +11,7 @@ workchain:
     electronic_type: metal
 
     ## Calculation settings
-    protocol: moderate
+    protocol: balanced
 
 ## Advanced pw settings
 advanced:

@@ -70,7 +70,7 @@ The Quantum ESPRESSO app provides several convenient protocols to set the accura
 
 .. note::
 
-   For any production calculation, you would ideally set up a remote computer (cluster, supercomputer, etc.) and set tighter convergence criteria, i.e. `moderate` or `precise` protocols. You can check the corresponding :doc:`How-To </howto/setup_computer_code>` section to learn how to setup a remote computer (and the corresponding Quantum ESPRESSO codes) to run a precise band structure calculation.
+   For any production calculation, you would ideally set up a remote computer (cluster, supercomputer, etc.) and set tighter convergence criteria, i.e. `balanced` or `stringent` protocols. You can check the corresponding :doc:`How-To </howto/setup_computer_code>` section to learn how to setup a remote computer (and the corresponding Quantum ESPRESSO codes) to run a precise band structure calculation.
 
 .. figure:: /_static/images/step2_configure.png
    :width: 12cm
