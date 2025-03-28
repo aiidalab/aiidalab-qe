@@ -10,7 +10,7 @@ def test_protocol():
     advanced_model = model.get_model("advanced")
     workchain_model.protocol = "fast"
     assert advanced_model.protocol == "fast"
-    assert advanced_model.kpoints_distance == 0.5
+    assert advanced_model.kpoints_distance == 0.3
 
 
 def test_get_configuration_parameters():

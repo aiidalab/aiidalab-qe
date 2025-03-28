@@ -21,8 +21,8 @@ def test_advanced_default():
     smearing_model.reset()
 
     assert smearing_model.type == "cold"
-    assert smearing_model.degauss == 0.01
-    assert model.kpoints_distance == 0.5
+    assert smearing_model.degauss == 0.0275
+    assert model.kpoints_distance == 0.3
 
 
 def test_advanced_smearing_settings():
@@ -40,7 +40,7 @@ def test_advanced_smearing_settings():
     model.protocol = "fast"
 
     assert smearing_model.type == "cold"
-    assert smearing_model.degauss == 0.01
+    assert smearing_model.degauss == 0.0275
 
     # Check reset
     smearing_model.type = "gaussian"
@@ -49,7 +49,7 @@ def test_advanced_smearing_settings():
     smearing_model.reset()
 
     assert smearing_model.type == "cold"
-    assert smearing_model.degauss == 0.01
+    assert smearing_model.degauss == 0.0275
 
 
 def test_advanced_kpoints_settings():
@@ -61,14 +61,14 @@ def test_advanced_kpoints_settings():
     assert model.kpoints_distance == 0.15
 
     model.protocol = "fast"
-    assert model.kpoints_distance == 0.5
+    assert model.kpoints_distance == 0.3
 
     # Check reset
     model.kpoints_distance = 0.1
     model.reset()
 
     assert model.protocol == "fast"  # reset does not apply to protocol
-    assert model.kpoints_distance == 0.5
+    assert model.kpoints_distance == 0.3
 
 
 def test_advanced_molecule_settings(generate_structure_data):
@@ -118,7 +118,7 @@ def test_advanced_kpoints_mesh(generate_structure_data):
 
     # change protocol
     model.protocol = "fast"
-    assert model.mesh_grid == "Mesh [5, 5, 5]"
+    assert model.mesh_grid == "Mesh [7, 7, 7]"
 
 
 def test_advanced_hubbard_settings(generate_structure_data):
