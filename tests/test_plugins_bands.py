@@ -42,7 +42,7 @@ def test_structure_1d(generate_qeapp_workchain, generate_structure_data):
     assert "bands_kpoints_distance" not in workchain.inputs.bands.bands
     assert "bands_kpoints" in workchain.inputs.bands.bands
     assert len(workchain.inputs.bands.bands.bands_kpoints.labels) == 2
-    assert workchain.inputs.bands.bands.bands_kpoints.labels == [(0, "Γ"), (9, "X")]
+    assert workchain.inputs.bands.bands.bands_kpoints.labels == [(0, "Γ"), (39, "X")]
 
 
 def test_structure_2d(generate_qeapp_workchain, generate_structure_data):
@@ -53,7 +53,7 @@ def test_structure_2d(generate_qeapp_workchain, generate_structure_data):
     assert len(workchain.inputs.bands.bands.bands_kpoints.labels) == 4
     assert workchain.inputs.bands.bands.bands_kpoints.labels == [
         (0, "Γ"),
-        (11, "M"),
-        (18, "K"),
-        (31, "Γ"),
+        (45, "M"),
+        (71, "K"),
+        (123, "Γ"),
     ]

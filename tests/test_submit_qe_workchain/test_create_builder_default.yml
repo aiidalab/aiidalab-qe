@@ -93,6 +93,6 @@ workchain:
   - bands
   - pdos
   - relax
-  protocol: moderate
+  protocol: balanced
   relax_type: positions_cell
   spin_type: none

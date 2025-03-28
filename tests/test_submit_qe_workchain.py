@@ -32,21 +32,21 @@ def test_create_process_label(submit_app_generator):
 
     assert (
         app.submit_model.process_label
-        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
+        == "Si2 [relax: atoms+cell, balanced protocol] → bands, pdos"
     )
     # suppose we change the label of the structure:
     app.submit_model.input_structure.label = "Si2, unit cell"
     app.submit_model.update_process_label()
     assert (
         app.submit_model.process_label
-        == "Si2, unit cell [relax: atoms+cell, moderate protocol] → bands, pdos"
+        == "Si2, unit cell [relax: atoms+cell, balanced protocol] → bands, pdos"
     )
     # suppose by mistake we provide an empty label, we then fallback to use the formula:
     app.submit_model.input_structure.label = ""
     app.submit_model.update_process_label()
     assert (
         app.submit_model.process_label
-        == "Si2 [relax: atoms+cell, moderate protocol] → bands, pdos"
+        == "Si2 [relax: atoms+cell, balanced protocol] → bands, pdos"
     )
 
 

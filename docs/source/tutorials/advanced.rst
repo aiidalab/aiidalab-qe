@@ -32,7 +32,7 @@ Select `Full geometry` to relax the structure. As we are looking at magnetic nic
 
 Select both `Band structure` and `Projected density of states` as the properties of interest.
 
-For the protocol, select `fast` to quickly produce results, or, if you have enough resources, you can select the `precise` protocol for increased accuracy.
+For the protocol, select `fast` to quickly produce results, or, if you have enough resources, you can select the `stringent` protocol for increased accuracy.
 
 Click `Confirm` to proceed.
 
