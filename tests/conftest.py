@@ -457,7 +457,7 @@ def submit_app_generator(
         spin_type="none",
         electronic_type="metal",
         properties=None,
-        workchain_protocol="moderate",
+        workchain_protocol="balanced",
         kpoints_distance=0.12,
         smearing="methfessel-paxton",
         degauss=0.015,

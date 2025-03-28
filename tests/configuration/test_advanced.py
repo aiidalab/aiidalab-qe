@@ -57,7 +57,7 @@ def test_advanced_kpoints_settings():
     model = AdvancedConfigurationSettingsModel()
     _ = AdvancedConfigurationSettingsPanel(model=model)
 
-    model.protocol = "moderate"
+    model.protocol = "balanced"
     assert model.kpoints_distance == 0.15
 
     model.protocol = "fast"

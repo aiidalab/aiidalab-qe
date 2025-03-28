@@ -90,9 +90,9 @@ pdos:
 workchain:
   electronic_type: metal
   properties:
-  - bands
-  - pdos
-  - relax
-  protocol: moderate
+    - bands
+    - pdos
+    - relax
+  protocol: balanced
   relax_type: positions_cell
   spin_type: none
