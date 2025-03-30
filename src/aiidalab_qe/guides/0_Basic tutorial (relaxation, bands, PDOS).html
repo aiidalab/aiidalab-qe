@@ -41,7 +41,7 @@
 </div>
 
 <div id="configuration-step">
-  In the configuration step, we define the workflow tasks, such as optimizing
+  In this second step (Configure workflow), we define the workflow tasks, such as optimizing
   the structure geometry and/or computing certain properties. We also select in
   this step the parameters for the workflow calculations.
   <div class="alert alert-success">
@@ -96,7 +96,7 @@
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Select the <b>fast</b> protocol</li>
+      <li>Select the <b>Fast</b> protocol</li>
       <li>
         <b>(Optional)</b> visit the <b>Advanced settings</b> panel (we will not
         customize them in this tutorial)
@@ -141,6 +141,19 @@
     label (pre-filled according to the settings of steps 1 & 2), as well as
     provide a detailed description of the workflow. Once we are ready, we can
     submit the workflow.
+
+    You first need to select which code (code executable + computer where this
+    will run) to use for each step of the workflow. The Quantum ESPRESSO app
+    should always install a local Quantum ESPRESSO executable that is sufficient
+    for this tutorial, but you can setup additional codes installed on remote
+    supercomputers. For more information on how to set up codes, please refer to the
+    corresponding
+    <a
+      href="https://aiidalab-qe.readthedocs.io/howto/setup_computer_code.html#"
+      target="_blank"
+    >
+      documentation</a
+    >.
   </p>
   <div class="alert alert-success">
     <h4>Tasks</h4>
@@ -157,8 +170,9 @@
 </div>
 
 <div id="results-step">
-  In the final step, we can monitor the calculation and view its results. A
-  summary of calculation parameters is also provided. Raw input and output files
+  Below you can monitor the status of the calculation, that might take
+  several minutes to conclude even if we are using the fast protocol.
+  A summary of calculation parameters is also provided. Raw input and output files
   may be downloaded upon workflow completion, as well as an AiiDA archive
   containing the full calculation provenance.
   <div class="alert alert-success">
@@ -248,7 +262,10 @@
       <li>Double click on the plot to zoom out</li>
       <li>Identify the Au semicore states</li>
       <li>
-        Feel free to explore further. When ready, you can continue to the
+        Feel free to zoom in and out and note how the DOS is synchronized with
+        the band structure panel. Note that to zoom out, you can hover on the plot and use the
+        little "Home" icon that appears on the top right of the plots (more tools are also
+        available there). When ready, you can continue to the
         post-guide exercises at the bottom of the app
       </li>
     </ol>
