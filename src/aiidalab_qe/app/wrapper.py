@@ -134,14 +134,14 @@ class AppWrapperContoller:
 class AppWrapperModel(tl.HasTraits):
     """An MVC model for `AppWrapper`."""
 
-    guide_category_options = tl.List(["none", *guide_manager.get_guide_categories()])
-    selected_guide_category = tl.Unicode("none")
+    guide_category_options = tl.List(["No guides", *guide_manager.get_guide_categories()])
+    selected_guide_category = tl.Unicode("No guides")
     guide_options = tl.List(tl.Unicode())
     selected_guide = tl.Unicode(None, allow_none=True)
 
     def update_active_guide(self, category, guide):
         """Sets the current active guide."""
-        active_guide = f"{category}/{guide}" if category != "none" else category
+        active_guide = f"{category}/{guide}" if category != "No guides" else category
         guide_manager.active_guide = active_guide
 
 
@@ -250,7 +250,7 @@ class AppWrapperView(ipw.VBox):
             description="Guides:",
             layout=ipw.Layout(width="max-content"),
         )
-        self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(margin="2px 20px"))
+        self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(width="max-content"))
 
         self.info_container = InfoBox(layout=ipw.Layout(margin="14px 2px 0"))
 
