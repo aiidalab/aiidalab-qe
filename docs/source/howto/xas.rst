@@ -36,10 +36,10 @@ Step 2: Configure the workflow
 
 Select `Full geometry` to relax the structure and set `ElectronicType` to `Insulator`, then select `X-ray absorption spectroscopy (XAS)` as the properties of interest.
 
-For the protocol, select `fast` to quickly produce results, or, if you have enough resources, you can select the `moderate` protocol for increased accuracy.
+For the protocol, select `fast` to quickly produce results, or, if you have enough resources, you can select the `balanced` protocol for increased accuracy.
 
 .. tip::
-    For this example of Li\ :sub:`2`\ CO\ :sub:`3` changing the **K-points distance** to 0.25 from 0.15 in the `advanced settings` tab while using the `moderate` protocol will speed up calculations without compromising accuracy.
+    For this example of Li\ :sub:`2`\ CO\ :sub:`3` changing the **K-points distance** to 0.25 from 0.15 in the `advanced settings` tab while using the `balanced` protocol will speed up calculations without compromising accuracy.
 
 .. note::
     At present the pseudopotential set available for XAS calculations only covers the PBE functional.
