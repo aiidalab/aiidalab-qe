@@ -9,22 +9,6 @@ Access AiiDAlab
 .. grid:: 1 1 1 2
    :gutter: 3
 
-   .. grid-item-card:: Materials Cloud AiiDAlab Server
-      :text-align: center
-      :shadow: md
-
-      For researchers affiliated with Materials Cloud partners, log into the open AiiDAlab server hosted on the Materials Cloud.
-
-      ++++
-
-      .. button-link:: https://aiidalab.materialscloud.org/hub/login
-         :click-parent:
-         :expand:
-         :color: primary
-         :outline:
-
-         Launch the server
-
    .. grid-item-card:: Local Docker Instance
       :text-align: center
       :shadow: md
@@ -58,6 +42,23 @@ Access AiiDAlab
          :outline:
 
          To the download page
+
+
+   .. grid-item-card:: Materials Cloud AiiDAlab Server
+      :text-align: center
+      :shadow: md
+
+      For researchers affiliated with Materials Cloud partners, log into the open AiiDAlab server hosted on the Materials Cloud.
+
+      ++++
+
+      .. button-link:: https://aiidalab.materialscloud.org/hub/login
+         :click-parent:
+         :expand:
+         :color: primary
+         :outline:
+
+         Launch the server
 
 .. div::
 
