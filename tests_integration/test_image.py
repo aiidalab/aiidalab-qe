@@ -28,5 +28,8 @@ def test_pseudos_families_are_installed(aiidalab_exec, nb_user):
     assert "SSSP" in output
     assert "PseudoDojo" in output
 
-    # Two lines of header, 8 pseudos
-    assert len(output.splitlines()) == 14
+    # Two lines of header,
+    # 4 sssp pseudos latest
+    # 8 pseudodojo pseudos latest
+    # 2 sssp pseudos 1.1
+    assert len(output.splitlines()) == 16
