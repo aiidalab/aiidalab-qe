@@ -6,6 +6,11 @@ from aiidalab_qe.common.panel import ConfigurationSettingsModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
+OLD_PROTOCOL_MAP = {
+    "moderate": "balanced",
+    "precise": "stringent",
+}
+
 
 class BasicConfigurationSettingsModel(
     ConfigurationSettingsModel,
@@ -22,8 +27,8 @@ class BasicConfigurationSettingsModel(
         trait=tl.Tuple(tl.Unicode(), tl.Unicode()),
         default_value=[
             ("Fast", "fast"),
-            ("Moderate", "moderate"),
-            ("Precise", "precise"),
+            ("Balanced", "balanced"),
+            ("Stringent", "stringent"),
         ],
     )
     protocol = tl.Unicode(DEFAULT["workchain"]["protocol"])
@@ -62,7 +67,8 @@ class BasicConfigurationSettingsModel(
         }
 
     def set_model_state(self, parameters):
-        self.protocol = parameters.get("protocol", self.protocol)
+        protocol = parameters.get("protocol", self.protocol)
+        self.protocol = OLD_PROTOCOL_MAP.get(protocol, protocol)
         self.spin_type = parameters.get("spin_type", self.spin_type)
         self.electronic_type = parameters.get("electronic_type", self.electronic_type)
 

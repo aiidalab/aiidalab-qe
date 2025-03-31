@@ -219,7 +219,7 @@ class PseudosConfigurationSettingsModel(
         if self.loaded_from_process:
             return
         if self.spin_orbit == "soc":
-            if self.protocol in ["fast", "moderate"]:
+            if self.protocol in ["fast", "balanced"]:
                 pseudo_family_string = "PseudoDojo/0.4/PBEsol/FR/standard/upf"
             else:
                 pseudo_family_string = "PseudoDojo/0.4/PBEsol/FR/stringent/upf"

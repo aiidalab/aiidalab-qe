@@ -186,9 +186,9 @@ class BasicConfigurationSettingsPanel(
             ),
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
-                    The "moderate" protocol represents a trade-off between accuracy and
+                    The "balanced" protocol represents a trade-off between accuracy and
                     speed. Choose the "fast" protocol for a faster calculation with
-                    less precision and the "precise" protocol to aim at best accuracy
+                    less precision and the "stringent" protocol to aim at best accuracy
                     (at the price of longer/costlier calculations).
                 </div>
             """),
