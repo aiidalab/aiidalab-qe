@@ -1,0 +1,142 @@
+<div id="guide-header">
+  You've activated the advanced in-app guide. In this guide, you will learn how 
+  to tune more advanced settings of the workflwos. Those settings will include k-points, 
+  pseudos, inclusion of Hubbard-U corrections as well as the initialization of 
+  ferromagnetic and anti-ferromagnetic systems. 
+  <br>Click on Step 1: Select structure</b> and follow the instructions to proceed.
+</div>
+
+<div id="structure-step">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Click on the <b>From examples</b> tab</li>
+      <li>Click on <b>Simple crystals</b></li>
+      <li>Select <b>Cobalt oxide</b> from the dropdown list</li>
+      <li>Click the <b>Confirm</b> button to proceed</li>
+    </ol>
+  </div>
+</div>
+
+<div id="configuration-step">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select <b>Structure as is</b> (we skip the relaxation here)</li>
+      <li>Open <b>step 2.1</b> for further instructions</li>
+    </ol>
+  </div>
+</div>
+
+<div id="properties-selection">
+  Here we select the properties to calculate. Each property is associated with a
+  workflow that will submit one or more calculations.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Check <b>Electronic projected density of states (PDOS)</b></li>
+      <li>Open <b>step 2.2</b> for further instructions</li>
+    </ol>
+  </div>
+</div>
+
+<div id="basic-settings">
+  <div class="alert alert-warning">
+    <b>Note:</b> If running locally (for example, on the AiiDAlab demo server),
+    we recommend selecting the <b>fast</b> protocol to reduce the computational
+    cost.
+  </div>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select the <b>fast</b> protocol</li>
+      <li>Set <b>Magnetism</b> to <b>On</b></li>
+      <li>
+        Open the <b>Advanced settings</b> panel to fine-tune the settings.
+      </li>
+      <!-- <li>Switch to the <b>Band structure</b> tab</li> -->
+    </ol>
+  </div>
+</div>
+
+<div id="advanced-settings">
+  Here, we will define the initial magnetic moments and set the Hubbard U values.
+  <div class="alert alert-warning">
+    <b>Note:</b> If running locally (for example, on the AiiDAlab demo server),
+    we recommend selecting the <b>fast</b> protocol to reduce the computational
+    cost.
+  </div>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <h5>Setup ferromagnetism</h5>
+    <ol>
+      <p>When <b>Magnetism</b> is activated, the <b>Magnetization</b> subsection appears below. 
+        In this tutorial, you will set the <b>Initial magnetic moments</b> of the different elements. 
+        <b>Note:</b> In general, it is also possible to set the <b>Total magnetization</b> instead.
+      </p>  
+      <li>
+        Set the initial magnetic moments of <b>Co</b> to <b>3 &mu;<sub>B</sub></b> and <b>O</b> 
+        to <b>0.6 &mu;<sub>B</sub></b>.
+      </li>
+    </ol>
+    <h5>Setup DFT+U</h5>
+    <ol>
+      <li>Enable Hubbard-U corrections by clicking the <b>Define U values</b> checkbox.</li>
+      <li>Define the U values for the different elements. Set U for <b>Cp - 3d</b> to <b>6 eV</b>.</li>
+    </ol>
+  </div>
+</div>
+
+<div id="submission-step">
+  <p>
+    In the submission step, we define the computational resources to be used in
+    the calculations. The global resources are used to define resources across
+    all workflow calculations. Optionally, you can override the resource
+    settings for specific calculations.
+  </p>
+  <div class="alert alert-warning">
+    <b>Warning:</b> If running locally (for example, on the AiiDAlab demo
+    server), we recommend keeping nodes and CPUs at the default minimum of 1
+    each.
+  </div>
+  <p>
+    Once the resources are defined, we can optionally customize the workflow
+    label (pre-filled according to the settings of steps 1 & 2), as well as
+    provide a detailed description of the workflow. Once we are ready, we can
+    submit the workflow.
+  </p>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select 1 node and 1 CPU for each of the codes below</li>
+      <li><b>(Optional)</b> customize the workflow label</li>
+      <li><b>(Optional)</b> add a workflow description</li>
+      <li>Click the <b>Submit</b> button to proceed</li>
+    </ol>
+    <div class="alert alert-warning">
+      <b>Warning:</b> The workflow may take a moment to submit.
+    </div>
+  </div>
+</div>
+
+<div id="results-panel">
+  Here in the results panel, each tab will open results pertaining to a specific
+  calculation submitted by the workflow.
+</div>
+
+<div id="post-guide">
+  
+<div id="post-guide">
+  <h4>Post-guide exercises</h4>
+  <ol>
+    <li>
+      Use the app to analyze the impact of different U values.
+      <ul>
+        <li>
+          Follow the same steps as before, but this time, choose a different U value.
+          Inspect the results and see how the U values influence the electronic structure.
+        </li>
+      </ul>
+    </li>
+  </ol>
+</div>

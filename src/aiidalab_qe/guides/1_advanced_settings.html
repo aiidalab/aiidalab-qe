@@ -1,0 +1,151 @@
+<div id="guide-header">
+  You've activated the advanced settings in-app guide. In this guide, you will learn how 
+  to tune more advanced settings of the workflows. Those settings include k-points, 
+  pseudopotentials and more. 
+  <br>Click on <b>Step 1: Select structure</b> and follow the instructions to proceed.
+</div>
+
+<div id="structure-step">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Click on the <b>From examples</b> tab</li>
+      <li>Click on <b>Simple crystals</b></li>
+      <li>Select <b>Gold</b> from the dropdown list</li>
+      <li>Click the <b>Confirm</b> button to proceed</li>
+    </ol>
+  </div>
+</div>
+
+<div id="configuration-step">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select <b>Structure as is</b> (we skip the relaxation here)</li>
+      <li>Open <b>step 2.1</b> for further instructions</li>
+    </ol>
+  </div>
+</div>
+
+<div id="properties-selection">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Check <b>Electronic projected density of states (PDOS)</b></li>
+      <li>Open <b>step 2.2</b> for further instructions</li>
+    </ol>
+  </div>
+</div>
+
+<div id="basic-settings">
+  <div class="alert alert-warning">
+    <b>Note:</b> If running locally (for example, on the AiiDAlab demo server),
+    we recommend selecting the <b>fast</b> protocol to reduce the computational
+    cost.
+  </div>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select the <b>fast</b> protocol</li>
+      <li>
+        Open the <b>Advanced settings</b> panel to fine-tune the settings.
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div id="advanced-settings">
+  The advanced settings panel can be used to fine-tune the calculation
+  parameters such as convergence thresholds, k-points, etc.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <h5>This is just an outline of potential parameters that you could tune to see their impact.
+      You do not need to change all of them.
+    </h5>
+    <ol>
+      <li>
+        Set the <b>SCF</b> threshold to <b>1e-05 Ry/atom</b>. You will realize that your
+        calculation is much faster but it will not be properly converged.
+        <br>You could calculate the electronic structure and compare it to a calculation 
+        with stricter convergence criteria.
+      </li>
+      <li>When changing the <b>K-points distance</b>, see definition below, you immediately 
+        see the resulting k-mesh. Similar to the convergence threshold before, increasing the 
+        distance will impact the convergence of your calculation.
+      </li>
+      <li>
+        In the <b>Accuracy and precision</b> section, you can select the pseudo potentials.
+        We recommended the SSSP ones, a library of tested pseudo potentials that we are maintaining. However,
+        spin-orbit calculations require fully relativistic pseudopotentials. In this case, you could use the
+        Pseudo-Dojo library.
+      </li>
+      <li>
+        You can choose between <b>PBE</b> and <b>PBEsol</b> functional.
+        You can switch between the two and do a structural relaxation and see the impact on
+        the lattice constant.
+      </li>
+      <li>
+        Finally, you can also change the cutoffs for the wavefunctions and the charge density 
+        in the <b>Pseudopotentials</b> subsection. Similar to the <b>K-points</b> above, this will affect 
+        computational cost and convergence.
+      </li>
+      <li>
+        Open the <b>PDOS</b> tab for further examples.
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div id="pdos-settings">
+  Here you can set property specific settings.
+  <div class="alert alert-success">
+    <ol>
+      <li>
+        Similar to the <b>K-points distance</b> of the <b>SCF</b> calculation, 
+        you can also adjust the <b>K-points distance</b> of the <b>NSCF</b> calculation, 
+        which should be denser (i.e., smaller distance value).
+      </li>
+      <li>
+        You can also tune the energy grid size for the <b>PDOS</b> and the broadening width.
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div id="submission-step">
+  <p>
+    In the submission step, we define the computational resources to be used in
+    the calculations. The global resources are used to define resources across
+    all workflow calculations. Optionally, you can override the resource
+    settings for specific calculations.
+  </p>
+  <div class="alert alert-warning">
+    <b>Warning:</b> If running locally (for example, on the AiiDAlab demo
+    server), we recommend keeping nodes and CPUs at the default minimum of 1
+    each.
+  </div>
+  <p>
+    Once the resources are defined, we can optionally customize the workflow
+    label (pre-filled according to the settings of steps 1 & 2), as well as
+    provide a detailed description of the workflow. Once we are ready, we can
+    submit the workflow.
+  </p>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select 1 node and 1 CPU for each of the codes below</li>
+      <li><b>(Optional)</b> customize the workflow label</li>
+      <li><b>(Optional)</b> add a workflow description</li>
+      <li>Click the <b>Submit</b> button to proceed</li>
+    </ol>
+    <div class="alert alert-warning">
+      <b>Warning:</b> The workflow may take a moment to submit.
+    </div>
+  </div>
+</div>
+
+
+<div id="post-guide">
+  <h3>TO BE DISCUSSED</h3>
+  <h4>Post-guide exercises</h4>
+</div>

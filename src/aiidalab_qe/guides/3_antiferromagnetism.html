@@ -1,0 +1,157 @@
+<div id="guide-header">
+  You've activated the antiferromagnetism in-app guide. In this guide, you will learn how 
+  to initialize you calculation to perform an anti-ferromagnetic PDOS calculation.
+  <br>Click on <b>Step 1: Select structure</b> and follow the instructions to proceed.
+</div>
+
+<div id="structure-step">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    Anti-ferromagnetic calculations require different types of a certain element,
+    to define the spin-up and spin-down initialization of a given chemical element. Depending
+    on the size of the unit cell (even number of sites of the element of interest), 
+    it might be necessary to create a supercell first.
+    <ol>
+      <li>Click on the <b>From examples</b> tab</li>
+      <li>Click on <b>Simple crystals</b></li>
+      <li>Select <b>Cobalt oxide</b> from the dropdown list</li>
+      <li>Click on the <b>Edit structure</b> panel and open the <b>Edit cell</b> tab. Set the matrix element (3, 3)
+        and click <b>Apply transformation</b> to <b>2</b> to double the unit cell.
+      </li>
+      <li>Switch to the <b>Edit atom tags</b> tab.</li>
+      <li>Select the site at the corner of the unit cell 
+        that we will define as spin-down in the structure visualizer above. 
+        In the <b>Edit atom tags</b> tab, press the <b>From Selection</b> button and select
+        the tag <b>1</b>. Press the <b>Update tags</b> button to apply the changes.
+      </li>
+      <li>Repeat the previous step for spin-up, but this time, select the other <b>Co</b> 
+        atom and set the tag to <b>2</b>.</li>
+      <li>Click on the <b>Confirm</b> button to proceed</li>
+    </ol>
+  </div>
+</div>
+
+
+<div id="configuration-step">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select <b>Structure as is</b> (we skip the relaxation here)</li>
+      <li>Open <b>step 2.1</b> for further instructions</li>
+    </ol>
+  </div>
+</div>
+
+<div id="properties-selection">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Check <b>Electronic projected density of states (PDOS)</b></li>
+      <li>Open <b>step 2.2</b> for further instructions</li>
+    </ol>
+  </div>
+</div>
+
+<div id="basic-settings">
+  <div class="alert alert-warning">
+    <b>Note:</b> If running locally (for example, on the AiiDAlab demo server),
+    we recommend selecting the <b>fast</b> protocol to reduce the computational
+    cost.
+  </div>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select the <b>fast</b> protocol</li>
+      <li>Set <b>Magnetism</b> to <b>On</b></li>
+      <li>
+        Open the <b>Advanced settings</b> panel to fine-tune the settings.
+      </li>
+      <!-- <li>Switch to the <b>Band structure</b> tab</li> -->
+    </ol>
+  </div>
+</div>
+
+<div id="advanced-settings">
+  Here, we will define the initial magnetic moments.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>
+        Set the initial magnetic moments in the <b>Magnetization</b> subsection.
+      </li>
+      <li>
+        Set the ones for <b>Co0</b> to <b>-3 &mu;<sub>B</sub></b>, <b>Co1</b> to <b>3 &mu;<sub>B</sub></b>
+        and <b>O</b> to <b>0.6 &mu;<sub>B</sub></b> 
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div id="submission-step">
+  <p>
+    In the submission step, we define the computational resources to be used in
+    the calculations. The global resources are used to define resources across
+    all workflow calculations. Optionally, you can override the resource
+    settings for specific calculations.
+  </p>
+  <div class="alert alert-warning">
+    <b>Warning:</b> If running locally (for example, on the AiiDAlab demo
+    server), we recommend keeping nodes and CPUs at the default minimum of 1
+    each.
+  </div>
+  <p>
+    Once the resources are defined, we can optionally customize the workflow
+    label (pre-filled according to the settings of steps 1 & 2), as well as
+    provide a detailed description of the workflow. Once we are ready, we can
+    submit the workflow.
+  </p>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select 1 node and 1 CPU for each of the codes below</li>
+      <li><b>(Optional)</b> customize the workflow label</li>
+      <li><b>(Optional)</b> add a workflow description</li>
+      <li>Click the <b>Submit</b> button to proceed</li>
+    </ol>
+    <div class="alert alert-warning">
+      <b>Warning:</b> The workflow may take a moment to submit.
+    </div>
+  </div>
+</div>
+
+
+<div id="results-panel">
+  Here in the results panel, each tab will open results pertaining to a specific
+  calculation submitted by the workflow.
+</div>
+
+
+<div id="post-guide">
+  <h4>Post-guide exercises</h4>
+  <ol>
+    <li>
+      Use the app to compute the anti-ferromagnetic band structure.
+      <ul>
+        <li>Follow the same steps as before, but this time, select the electronic
+          band structure in the <b>Configure workflow panel</b>.
+        </li>
+        <li>
+          You can also check both boxes, to calculate the PDOS and band structure.
+          This will allow you to plot so called fat-bands, showing the orbital character
+          of the bands.
+        </li>
+      </ul>
+    </li>
+    <li>
+      Compute the ferromagnetic PDOS.
+      <ul>
+        <li>
+          To have the same number of atoms per cell, you should consider to use the same
+          supercell as before. However, you do not need to set the tags.
+        </li>
+        <li>Set the initial magnetic moments to the same values as before.</li>
+        <li>Finally, compare your FM PDOS with the AFM one obtained before.</li>
+      </ul>
+    </li>
+  </ol>
+</div>

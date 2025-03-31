@@ -37,6 +37,7 @@ Examples = [
     ("Nickel", file_path / "examples" / "Ni.cif"),
     ("LiCoO₂", file_path / "examples" / "LiCoO2.cif"),
     ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
+    ("Cobalt oxide", file_path / "examples" / "CoO.cif"),
 ]
 
 
@@ -161,6 +162,7 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
                 </p>
             """),
             self.manager,
+            # InAppGuide(identifier="structure-edit"),
             self.structure_name_text,
         ]
 
