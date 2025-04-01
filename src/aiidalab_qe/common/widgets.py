@@ -1353,8 +1353,6 @@ class ArchiveImporter(ipw.VBox):
             description="Calculation history",
             link="./calculation_history.ipynb",
             icon="list",
-            class_="mod-primary",
-            style_="color: white;",
             layout=ipw.Layout(
                 width="fit-content",
                 margin="2px 0 2px auto",

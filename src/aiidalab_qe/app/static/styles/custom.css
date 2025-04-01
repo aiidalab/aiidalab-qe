@@ -21,9 +21,31 @@
 }
 
 .app-controls {
+  display: flex;
+  flex-direction: row;
   margin: 0 auto;
   align-items: center;
 }
+
+.app-toggles {
+  margin-right: 5px;
+  padding-right: 5px;
+  border-right: 2px solid var(--jp-border-color1);
+}
+
+@media (max-width: 768px) {
+  .app-controls {
+    flex-direction: column;
+  }
+  .app-toggles {
+    order: 1;
+    margin: 0;
+    margin-top: 10px;
+    padding: 0;
+    border-right: none;
+  }
+}
+
 .app-controls button,
 .app-controls .link-button {
   width: fit-content;
@@ -44,6 +66,8 @@
 .link-button {
   padding: 0;
   width: fit-content;
+  color: white;
+  background-color: var(--color-primary);
 }
 
 .link-button a {

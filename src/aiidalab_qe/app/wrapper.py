@@ -239,7 +239,7 @@ class AppWrapperView(ipw.VBox):
         )
         self.external_links.add_class("app-external-links")
 
-        self.controls = ipw.HBox(
+        self.controls = ipw.Box(
             children=[
                 self.toggles,
                 self.external_links,
