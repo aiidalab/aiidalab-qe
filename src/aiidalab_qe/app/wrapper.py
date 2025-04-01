@@ -181,26 +181,6 @@ class AppWrapperView(ipw.VBox):
 
         subtitle = ipw.HTML("<h3 id='subtitle'>🎉 Happy computing 🎉</h3>")
 
-        self.guide_toggle = ipw.ToggleButton(
-            layout=ipw.Layout(width="auto"),
-            button_style="",
-            icon="book",
-            value=False,
-            description="Tutorials",
-            tooltip="Learn how to use the app through dedicated in-app guides",
-            disabled=True,
-        )
-
-        self.about_toggle = ipw.ToggleButton(
-            layout=ipw.Layout(width="auto"),
-            button_style="",
-            icon="info",
-            value=False,
-            description="About",
-            tooltip="Learn about the app",
-            disabled=True,
-        )
-
         self.calculation_history_link = LinkButton(
             description="Calculation history",
             link="./calculation_history.ipynb",
@@ -225,6 +205,36 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
+        self.external_links = ipw.HBox(
+            children=[
+                self.calculation_history_link,
+                self.setup_resources_link,
+                self.new_workchain_link,
+            ],
+        )
+
+        self.guide_toggle = ipw.ToggleButton(
+            layout=ipw.Layout(width="auto"),
+            button_style="",
+            icon="book",
+            value=False,
+            description="Tutorials",
+            tooltip="Learn how to use the app through dedicated in-app guides",
+            disabled=True,
+        )
+
+        self.about_toggle = ipw.ToggleButton(
+            layout=ipw.Layout(width="auto"),
+            button_style="",
+            icon="info",
+            value=False,
+            description="About",
+            tooltip="Learn about the app",
+            disabled=True,
+        )
+
+        self.external_links.add_class("app-external-links")
+
         self.toggles = ipw.HBox(
             children=[
                 self.guide_toggle,
@@ -233,19 +243,10 @@ class AppWrapperView(ipw.VBox):
         )
         self.toggles.add_class("app-toggles")
 
-        self.external_links = ipw.HBox(
-            children=[
-                self.calculation_history_link,
-                self.setup_resources_link,
-                self.new_workchain_link,
-            ],
-        )
-        self.external_links.add_class("app-external-links")
-
         self.controls = ipw.Box(
             children=[
-                self.toggles,
                 self.external_links,
+                self.toggles,
             ],
         )
         self.controls.add_class("app-controls")
