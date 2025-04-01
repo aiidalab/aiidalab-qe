@@ -215,13 +215,6 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.download_examples_link = LinkButton(
-            description="Download examples",
-            link="./examples.ipynb",
-            icon="download",
-            disabled=True,
-        )
-
         self.new_workchain_link = LinkButton(
             description="New calculation",
             link="./qe.ipynb",
@@ -241,7 +234,6 @@ class AppWrapperView(ipw.VBox):
             children=[
                 self.calculation_history_link,
                 self.setup_resources_link,
-                self.download_examples_link,
                 self.new_workchain_link,
             ],
         )
