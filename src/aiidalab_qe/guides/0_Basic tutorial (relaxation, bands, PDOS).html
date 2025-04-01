@@ -7,22 +7,23 @@
 
 <div id="structure-step">
   In the structure selection step, we select a structure for the calculation in
-  one of a several ways:
+  one of several ways:
   <ul>
     <li><b>Upload file</b>: upload a structure file from your computer</li>
-    <li><b>OPTIMADE</b>: search for structures in the OPTIMADE database</li>
-    <li><b>AiiDA database</b>: search for structures in your AiiDA database</li>
+    <li><b>OPTIMADE</b>: search for structures in any <a href="https://optimade.org" target="_blank">OPTIMADE</a>-compliant online database</li>
+    <li><b>AiiDA database</b>: search for structures in your local AiiDA database</li>
     <li>
       <b>From Examples</b>: select a structure from a list of example structures
     </li>
   </ul>
   Once selected, we can view the structure in the viewer below. We can also edit
   the structure using the available structure editors. When done, we can choose
-  to modify the structure label and/or provide a description. These will be
-  attached to the input structure node in your AiiDA database.
+  to modify the structure label and/or provide a description.
+  These will be attached to the input structure in your AiiDA database.
   <br />
   <div class="alert alert-success">
     <h4>Tasks</h4>
+    In this first tutorial, we will compute use a gold structure, selecting it from the examples that we provide.
     <ol>
       <li>Click on the <b>From examples</b> tab</li>
       <li>Click on <b>Simple crystals</b></li>
@@ -41,7 +42,7 @@
 </div>
 
 <div id="configuration-step">
-  In the configuration step, we define the workflow tasks, such as optimizing
+  In this second step (Configure workflow), we define the workflow tasks, such as optimizing
   the structure geometry and/or computing certain properties. We also select in
   this step the parameters for the workflow calculations.
   <div class="alert alert-success">
@@ -59,24 +60,24 @@
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Check <b>Electronic band structure</b></li>
-      <li>Check <b>Electronic projected density of states (PDOS)</b></li>
+      <li>Check (activate) <b>Electronic band structure</b></li>
+      <li>Check (activate) <b>Electronic projected density of states (PDOS)</b></li>
       <li>Open <b>step 2.2</b> for further instructions</li>
     </ol>
   </div>
 </div>
 
 <div id="calculation-settings">
-  Here we can customize the calculation parameters. The settings are divided
-  into several tabs:
+  Here we can customize the calculation parameters.
+  The settings are divided into several tabs.
+  Two tabs are always present:
   <ul>
     <li><b>Basic settings</b>: top-level calculation settings</li>
     <li><b>Advanced settings</b>: fine-tune the calculations</li>
-    <li>
-      <b>Plugin settings</b>: parameters for plugin calculations including
-      electronic band structure or projected density of states
-    </li>
   </ul>
+  Additionally, each plugin activated in the previous step 2.1 can add additional tabs.
+  If we activated the two checkboxes in step 2.1, we should also see the two tabs "Band Structure" and "PDOS".
+
   Note that the app pre-configures defaults for most parameters.
   <div class="alert alert-success">
     See further instructions in the <b>Basic settings</b> panel below.
@@ -87,16 +88,16 @@
   The basic settings panel provides top-level calculation settings including the
   electronic and magnetic properties of the material, and if spin-orbit coupling
   is to be considered. It also provides a choice of three protocols that
-  pre-configure many calculation settings, balancing speed with accuracy.
+  pre-configure many calculation settings, balancing speed with precision.
   <div class="alert alert-warning">
     <b>Note:</b> If running locally (for example, on the AiiDAlab demo server),
     we recommend selecting the <b>fast</b> protocol to reduce the computational
-    cost.
+    cost and avoid crashes due to insufficient resources.
   </div>
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Select the <b>fast</b> protocol</li>
+      <li>Select the <b>Fast</b> protocol</li>
       <li>
         <b>(Optional)</b> visit the <b>Advanced settings</b> panel (we will not
         customize them in this tutorial)
@@ -111,10 +112,9 @@
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Check <b>Fat bands calculation</b></li>
+      <li>Check (activate) <b>Fat bands calculation</b></li>
       <li>
-        <b>(Optional)</b> visit the <b>PDOS</b> panel (we will not customize
-        them in this tutorial)
+        <b>(Optional)</b> visit the <b>PDOS</b> panel (we will not customize PDOS options in this tutorial)
       </li>
       <li>Click the <b>Confirm</b> button to proceed</li>
     </ol>
@@ -141,11 +141,27 @@
     label (pre-filled according to the settings of steps 1 & 2), as well as
     provide a detailed description of the workflow. Once we are ready, we can
     submit the workflow.
+
+    You first need to select which code (code executable + computer where this
+    will run) to use for each step of the workflow. The Quantum ESPRESSO app
+    should always install a local Quantum ESPRESSO executable that is sufficient
+    for this tutorial, but you can setup additional codes installed on remote
+    supercomputers. For more information on how to set up codes, please refer to the
+    corresponding
+    <a
+      href="https://aiidalab-qe.readthedocs.io/howto/setup_computer_code.html#"
+      target="_blank"
+    >
+      documentation</a
+    >.
   </p>
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Select 1 node and 1 CPU for each of the codes below</li>
+      <li>Check that the the default options in the "Global resources" panel are the expected ones.
+        Specifically: select 1 node and 1 CPU for each of the codes. Unless you want to run elsewhere,
+        use the default codes on the AiiDAlab server (ending with `@localhost`)
+        that are available from the dropdown menus.</li>
       <li><b>(Optional)</b> customize the workflow label</li>
       <li><b>(Optional)</b> add a workflow description</li>
       <li>Click the <b>Submit</b> button to proceed</li>
@@ -157,21 +173,24 @@
 </div>
 
 <div id="results-step">
-  In the final step, we can monitor the calculation and view its results. A
-  summary of calculation parameters is also provided. Raw input and output files
-  may be downloaded upon workflow completion, as well as an AiiDA archive
-  containing the full calculation provenance.
+  Below you can monitor the status of the calculation, that might take
+  several minutes to conclude even if we are using the fast protocol.
+  A summary of calculation parameters is also provided. Raw input and output files
+  may be downloaded upon workflow completion, as well as an AiiDA archive containing
+  the full calculation provenance (that can be reimported by other AiiDAlab users and
+  allows to reload the calculation).
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
       <li>If not already there, switch over to the <b>Status</b> panel</li>
       <li>
         In the process tree, follow (by clicking)
-        <code>QeAppWorkChain -> PwRelaxWorkChain -> PwBaseWorkChain</code>
+        <code>Quantum ESPRESSO app workflow -> Structure relaxation workflow manager ->
+          Structure relaxation workflow</code>
       </li>
       <li>
-        Click on <code>PwCalculation</code> to view a scrollable running log of
-        the calculation
+        Click on <code>Structure Geometry optimization (`pw.x`)</code> to view the output of the calculation
+        (if the calculation is still running, you will see a scrollable running log of its output)
       </li>
       <li>
         While the calculation is running, switch over to the
@@ -189,7 +208,7 @@
   Here in the results panel, each tab will open results pertaining to a specific
   calculation submitted by the workflow.
   <div class="alert alert-success">
-    See further instructions below in the <b>structure</b> tab.
+    See further instructions below in the <b>"Structure"</b> tab.
   </div>
 </div>
 
@@ -237,18 +256,23 @@
         <b>Apply selection</b>.
       </div>
       <li>
-        Several controls are at your disposal for adjusting the plot. For now,
-        group the orbitals by angular momentum
+        Several controls are at your disposal for adjusting the plot.
+        For now, check the "Orbital grouping" options, but keep the default
+        grouping by angular momentum
       </li>
       <li>
-        Identify the Au-5d states (you can also double click on Au-5d in the
-        legend)
+        Identify the Au-5d states (you can also double click on Au-5d in the legend
+        to only show it and hide all other curves)
       </li>
-      <li>If selected, deselect the Au-5d in the legend (double click)</li>
+      <li> If selected, deselect the Au-5d in the legend (double click until all states are reactivated)</li>
       <li>Double click on the plot to zoom out</li>
-      <li>Identify the Au semicore states</li>
+      <li>Identify the Au semicore states (drag to zoom; use the controls below the plot to change the
+        color of a state, if two colors are too similar to distinguish between them)</li>
       <li>
-        Feel free to explore further. When ready, you can continue to the
+        Feel free to zoom in and out and note how the DOS is synchronized with
+        the band structure panel. Note that to zoom out, you can hover on the plot and use the
+        little "Home" icon that appears on the top right of the plots (more tools are also
+        available there). When ready, you can continue to the
         post-guide exercises at the bottom of the app
       </li>
     </ol>
@@ -300,8 +324,7 @@
       Use the app to compute the band structure of Si
       <ul>
         <li>
-          See if you get a band gap (DFT is not expected to predict the correct
-          gap)
+          See if you get a band gap (Important note: DFT is not expected to predict the correct gap!)
         </li>
         <li>
           Verify that the valence bands are mostly of p character, while

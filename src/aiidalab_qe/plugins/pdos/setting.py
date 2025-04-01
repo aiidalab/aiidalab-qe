@@ -110,7 +110,7 @@ class PdosConfigurationSettingPanel(
             ipw.HTML("""
                 <div style="line-height: 140%; margin-bottom: 10px;">
                     <p style="margin-bottom: 10px;">
-                        By default, the <b>tetrahedron method</b> is used for partial
+                        By default, the <b>tetrahedron method</b> is used for the partial
                         density of states (PDOS) calculation. However, if you need more
                         control over the broadening, you can apply <b>Gaussian broadening</b>
                         by specifying a custom <b>degauss</b> value.
