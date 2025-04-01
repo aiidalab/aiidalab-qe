@@ -19,7 +19,7 @@ Developers have two options when using the ``InAppGuide`` widget:
    .. code:: python
 
        InAppGuide(
-           guide_id="general/basic",
+           guide_id="Relaxation and electronic structure/Basic tutorial (relaxation, bands, PDOS)",
            children=[
                ipw.HTML("Some basic information."),
            ],
@@ -60,11 +60,23 @@ To do so, add the following key/value entry in your plugin's ``__init__.py`` fil
 
     my_plugin = {
         ...
-        "guides": <path-to-guide>,
+        "guides": {
+            "title": <title>,
+            "path": <path-to-guide>,
+        },
     }
 
-where ``path-to-guide`` is the path (``Path`` object or absolute string path) to the directory containing the guide HTML files.
+where ``title`` is the title of the guide displayed in the app, and ``path-to-guide`` is the path (``Path`` object or absolute string path) to the directory containing the guide HTML files.
 On app start, the guide manager will scan the plugin entry points for the ``guides`` key and load the guides accordingly.
+
+It is possible also to provide just the path to the guide HTML files, in which case the title will be set to the plugin identifier. In this case, just provide:
+
+.. code:: python
+
+    my_plugin = {
+        ...
+        "guides": <path-to-guide>,
+    }
 
 Guide order
 -----------
