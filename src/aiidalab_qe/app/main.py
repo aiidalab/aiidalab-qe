@@ -74,7 +74,7 @@ class QeApp:
 
         # setup UI controls
         self.controller = AppWrapperContoller(self.model, self.view)
-        self.controller.enable_controls()
+        self.controller.enable_toggles()
 
     def _load_styles(self):
         """Load CSS styles from the static directory."""

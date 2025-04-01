@@ -112,7 +112,8 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         self.refresh_resources_button = ipw.Button(
             description="Refresh resources",
             icon="refresh",
-            button_style="primary",
+            tooltip="Refresh the list of available codes",
+            button_style="warning",
             layout=ipw.Layout(width="fit-content", margin="2px 2px 12px"),
         )
         self.refresh_resources_button.on_click(self._refresh_resources)

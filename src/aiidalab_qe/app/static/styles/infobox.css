@@ -11,10 +11,12 @@
 .info-box.in-app-guide.show {
   display: flex !important;
 }
-.guide ol {
+.about ol {
+  margin-top: 5px;
   list-style: none;
+  line-height: 2;
 }
-.guide p:last-of-type {
+.about p:last-of-type {
   margin-bottom: 0.5em;
 }
 .in-app-guide:has(#guide-header),

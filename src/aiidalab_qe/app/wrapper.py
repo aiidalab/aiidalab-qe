@@ -48,10 +48,10 @@ class AppWrapperContoller:
         self._view = view
         self._set_event_handlers()
 
-    def enable_controls(self) -> None:
-        """Enable the control buttons at the top of the app."""
-        for control in self._view.controls.children:
-            control.disabled = False
+    def enable_toggles(self) -> None:
+        """Enable the toggle buttons at the top of the app."""
+        for toggle in self._view.toggles.children:
+            toggle.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -181,13 +181,48 @@ class AppWrapperView(ipw.VBox):
 
         subtitle = ipw.HTML("<h3 id='subtitle'>🎉 Happy computing 🎉</h3>")
 
+        self.calculation_history_link = LinkButton(
+            description="Calculation history",
+            link="./calculation_history.ipynb",
+            icon="list",
+            tooltip="View a list of previous calculations",
+            style_="background-color: var(--color-aiida-orange)",
+            disabled=True,
+        )
+
+        self.setup_resources_link = LinkButton(
+            description="Setup resources",
+            link="../home/code_setup.ipynb",
+            icon="database",
+            tooltip="Setup computational resources for your calculations",
+            style_="background-color: var(--color-aiida-blue)",
+            disabled=True,
+        )
+
+        self.new_workchain_link = LinkButton(
+            description="New calculation",
+            link="./qe.ipynb",
+            icon="plus-circle",
+            tooltip="Open a new calculation in a separate tab",
+            style_="background-color: var(--color-aiida-green)",
+            disabled=True,
+        )
+
+        self.external_links = ipw.HBox(
+            children=[
+                self.calculation_history_link,
+                self.setup_resources_link,
+                self.new_workchain_link,
+            ],
+        )
+
         self.guide_toggle = ipw.ToggleButton(
             layout=ipw.Layout(width="auto"),
             button_style="",
             icon="book",
             value=False,
-            description="Getting started",
-            tooltip="Learn how to use the app",
+            description="Tutorials",
+            tooltip="Learn how to use the app through dedicated in-app guides",
             disabled=True,
         )
 
@@ -201,42 +236,20 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.calculation_history_link = LinkButton(
-            description="Calculation history",
-            link="./calculation_history.ipynb",
-            icon="list",
-            disabled=True,
-        )
+        self.external_links.add_class("app-external-links")
 
-        self.setup_resources_link = LinkButton(
-            description="Setup resources",
-            link="../home/code_setup.ipynb",
-            icon="database",
-            disabled=True,
-        )
-
-        self.download_examples_link = LinkButton(
-            description="Download examples",
-            link="./examples.ipynb",
-            icon="download",
-            disabled=True,
-        )
-
-        self.new_workchain_link = LinkButton(
-            description="New calculation",
-            link="./qe.ipynb",
-            icon="plus-circle",
-            disabled=True,
-        )
-
-        self.controls = ipw.HBox(
+        self.toggles = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
-                self.calculation_history_link,
-                self.setup_resources_link,
-                self.download_examples_link,
-                self.new_workchain_link,
+            ],
+        )
+        self.toggles.add_class("app-toggles")
+
+        self.controls = ipw.Box(
+            children=[
+                self.external_links,
+                self.toggles,
             ],
         )
         self.controls.add_class("app-controls")

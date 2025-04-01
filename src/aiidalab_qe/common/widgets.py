@@ -1151,6 +1151,7 @@ class LinkButton(ipw.HTML):
         class_="",
         style_="",
         icon="",
+        tooltip="",
         disabled=False,
         **kwargs,
     ):
@@ -1160,6 +1161,7 @@ class LinkButton(ipw.HTML):
             <a
                 role="button"
                 href="{link}"
+                title="{tooltip or description}"
                 target="{"_self" if in_place else "_blank"}"
                 style="cursor: default; {style_}"
             >
@@ -1353,8 +1355,6 @@ class ArchiveImporter(ipw.VBox):
             description="Calculation history",
             link="./calculation_history.ipynb",
             icon="list",
-            class_="mod-primary",
-            style_="color: white;",
             layout=ipw.Layout(
                 width="fit-content",
                 margin="2px 0 2px auto",

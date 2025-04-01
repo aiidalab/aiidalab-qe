@@ -7,14 +7,14 @@ class TestWrapper:
         self._instansiate_mvc_components()
         assert self.view.guide_toggle.disabled is True
         assert self.view.about_toggle.disabled is True
-        self.controller.enable_controls()
+        self.controller.enable_toggles()
         assert self.view.guide_toggle.disabled is False
         assert self.view.about_toggle.disabled is False
 
     def test_guide_toggle(self):
         """Test guide_toggle method."""
         self._instansiate_mvc_components()
-        self.controller.enable_controls()
+        self.controller.enable_toggles()
         self.controller._on_guide_toggle({"new": True})
         self._assert_guide_is_on()
         self.controller._on_guide_toggle({"new": False})
@@ -23,7 +23,7 @@ class TestWrapper:
     def test_about_toggle(self):
         """Test about_toggle method."""
         self._instansiate_mvc_components()
-        self.controller.enable_controls()
+        self.controller.enable_toggles()
         self.controller._on_about_toggle({"new": True})
         self._assert_about_is_on()
         self.controller._on_about_toggle({"new": False})
@@ -32,7 +32,7 @@ class TestWrapper:
     def test_toggle_switch(self):
         """Test toggle_switch method."""
         self._instansiate_mvc_components()
-        self.controller.enable_controls()
+        self.controller.enable_toggles()
         self._assert_no_info()
         self.controller._on_guide_toggle({"new": True})
         self._assert_guide_is_on()
