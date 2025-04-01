@@ -1,6 +1,6 @@
 advanced_settings:
   bands_kpoints_distance: 0.1 Å<sup>-1</sup>
-  degauss: 0.01 Ry
+  degauss: 0.0275 Ry
   energy_cutoff_rho: 240.0 Ry
   energy_cutoff_wfc: 30.0 Ry
   functional:
@@ -11,7 +11,7 @@ advanced_settings:
   pseudo_library:
     url: https://www.materialscloud.org/discover/sssp/table/efficiency
     value: SSSP efficiency v1.3
-  scf_kpoints_distance: 0.5 Å<sup>-1</sup>
+  scf_kpoints_distance: 0.3 Å<sup>-1</sup>
   smearing: cold
   spin_orbit: 'off'
   tot_charge: 0.0

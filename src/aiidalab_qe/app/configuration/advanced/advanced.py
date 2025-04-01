@@ -154,7 +154,7 @@ class AdvancedConfigurationSettingsPanel(
         self.scf_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            description="SCF:",
+            description="Energy:",
             style={"description_width": "150px"},
         )
         ipw.link(
@@ -165,25 +165,21 @@ class AdvancedConfigurationSettingsPanel(
             (self._model, "scf_conv_thr_step"),
             (self.scf_conv_thr, "step"),
         )
-        self.forc_conv_thr = ipw.BoundedFloatText(
-            min=1e-15,
-            max=1.0,
-            format="0.0e",
-            description="Force:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "forc_conv_thr"),
-            (self.forc_conv_thr, "value"),
+        scf_conv_thr_abs = ipw.Label(
+            layout=ipw.Layout(
+                width="150px",
+                text_align="center",
+            )
         )
         ipw.dlink(
-            (self._model, "forc_conv_thr_step"),
-            (self.forc_conv_thr, "step"),
+            (self._model, "scf_conv_thr"),
+            (scf_conv_thr_abs, "value"),
+            lambda value: str(value * len(self._model.input_structure.sites)),
         )
+        scf_conv_thr_abs.add_class("convergence-label")
         self.etot_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
             max=1.0,
-            format="0.0e",
             description="Energy:",
             style={"description_width": "150px"},
         )
@@ -194,6 +190,27 @@ class AdvancedConfigurationSettingsPanel(
         ipw.dlink(
             (self._model, "etot_conv_thr_step"),
             (self.etot_conv_thr, "step"),
+        )
+        etot_conv_thr_abs = ipw.Label()
+        ipw.dlink(
+            (self._model, "etot_conv_thr"),
+            (etot_conv_thr_abs, "value"),
+            lambda value: str(value * len(self._model.input_structure.sites)),
+        )
+        etot_conv_thr_abs.add_class("convergence-label")
+        self.forc_conv_thr = ipw.BoundedFloatText(
+            min=1e-15,
+            max=1.0,
+            description="Force:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "forc_conv_thr"),
+            (self.forc_conv_thr, "value"),
+        )
+        ipw.dlink(
+            (self._model, "forc_conv_thr_step"),
+            (self.forc_conv_thr, "step"),
         )
         self.electron_maxstep = ipw.BoundedIntText(
             min=20,
@@ -220,6 +237,8 @@ class AdvancedConfigurationSettingsPanel(
         )
         self.pseudos.render()
 
+        num_atoms = len(self._model.input_structure.sites)
+
         self.children = [
             InAppGuide(identifier="advanced-settings"),
             self.reset_to_defaults_button,
@@ -227,30 +246,46 @@ class AdvancedConfigurationSettingsPanel(
             self.total_charge,
             self.van_der_waals,
             ipw.HTML("<h2>Convergence</h2>"),
-            ipw.HTML("""
+            ipw.HTML(f"""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
-                    Control the convergence criteria of the self-consistent field (SCF)
-                    geometry optimization cycles.
+                    Setting the energy threshold for the self-consistent field (SCF)
+                    and energy and force thresholds for ionic convergence ensures
+                    calculation accuracy and stability. Lower values increase the
+                    accuracy but also the computational cost. The default values set by
+                    the <b>protocol</b> are usually a good starting point. For energy
+                    thresholds, the actual value used in the calculation (shown below
+                    widget) is given as:
+                    <code>threshold x num_atoms</code>
+                    (<code>num_atoms = {num_atoms}</code>)
                 </div>
             """),
-            ipw.HTML("<h4>Thresholds</h4>"),
-            ipw.HTML("""
-                <div style="line-height: 1.4; margin-bottom: 5px;">
-                    Setting thresholds for energy, force, and self-consistency ensures calculation accuracy and stability.
-                    <br>
-                    Lower values increase the accuracy but also the computational cost.
-                    <br>
-                    The default values are set by the <b>protocol</b> are usually a
-                    good starting point.
-                </div>
-            """),
+            ipw.HTML("<h4>Threshold for SCF cycles</h4>"),
+            ipw.VBox(
+                children=[
+                    HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
+                    HBoxWithUnits(
+                        widget=scf_conv_thr_abs,
+                        units="Ry",
+                        layout={"margin": "-8px 0 0 150px"},
+                    ),
+                ]
+            ),
+            ipw.HTML("<h4>Thresholds for ionic convergence</h4>"),
+            ipw.VBox(
+                children=[
+                    HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
+                    HBoxWithUnits(
+                        widget=etot_conv_thr_abs,
+                        units="Ry",
+                        layout={"margin": "-8px 0 0 150px"},
+                    ),
+                ]
+            ),
             HBoxWithUnits(self.forc_conv_thr, "Ry/Bohr"),
-            HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
-            HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
             ipw.HTML("<h4>Maximum cycle steps</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
-                    Setting a maximum number of electronic and ionic optimization steps
+                    Setting a maximum number of electronic and ionic convergence steps
                     ensures that the calculation does not run indefinitely.
                 </div>
             """),

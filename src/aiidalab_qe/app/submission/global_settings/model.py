@@ -149,7 +149,7 @@ class GlobalResourceSettingsModel(
 
         alert_message = ""
         if (
-            on_localhost and protocol == "precise" and machine_cpus < 4
+            on_localhost and protocol == "stringent" and machine_cpus < 4
         ):  # This means that we are in a small deployment.
             alert_message += (
                 f"Warning: The selected protocol is {protocol}, which is computationally demanding to run on localhost. "
@@ -272,7 +272,7 @@ class GlobalResourceSettingsModel(
             Reference number of SCF cycles in a relaxation. Default is 5.
 
         The default values n0, v0, num_cpus0, t0 and scf_cycles are taken from the simulation of SiO2 bulk
-        example structure present in the app, following a moderate protocol. We then used the formula
+        example structure present in the app, following a balanced protocol. We then used the formula
 
         num_cpus = num_cpus0 * (n/n0)^3 * (v/v0)^(3/2) * (scf_cycles * t0)/tmax
 

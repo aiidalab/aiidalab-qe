@@ -21,7 +21,7 @@ ARG QE_VER
 ARG QE_DIR
 
 USER ${NB_USER}
-RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} && \
+RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
     mamba clean --all -f -y
 
 # STAGE 2
@@ -59,11 +59,10 @@ RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/d
     tar xf hq.tar.gz -C /opt/conda/
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
-# temporary solution to install aiida-pseudos from repo to avoid downloading issues
+# Install plugin
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
-     "aiida-pseudo@git+https://github.com/aiidateam/aiida-pseudo"
+     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} aiida-bader
 
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
@@ -85,6 +84,15 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/42_setup-hq-computer.sh && \
     python -m aiidalab_qe install-qe --computer ${COMPUTER_LABEL} && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
+    # steup code: pythonjob, bader, wannier90 code
+    verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
+    verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
+    verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
+    # bader plugin install PSL pseudo
+    python -m aiida_bader post-install && \
+    # wannier90 plugin need SSSP 1.1
+    aiida-pseudo install sssp -v 1.1 -x PBE && \
+    aiida-pseudo install sssp -v 1.1 -x PBEsol && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
@@ -126,6 +134,22 @@ COPY --from=home_build /opt/conda/hq /usr/local/bin/
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
+# download and compile wannier90
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gfortran libblas-dev liblapack-dev git openmpi-bin && \
+    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90 && \
+    cd /tmp/wannier90 && \
+    cp config/make.inc.gfort make.inc && \
+    make wannier && \
+    cp wannier90.x /opt/conda/bin/wannier90.x && \
+    # Keep only runtime LAPACK (liblapack3), remove dev tools
+    apt-get remove --purge -y \
+        gfortran libblas-dev liblapack-dev && \
+    apt-get install -y --no-install-recommends liblapack3 && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/wannier90
 
 # We exclude 42_setup-hq-computer.sh file because the computer is already steup, thus it is not needed in the final image.
 COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /usr/local/bin/before-notebook.d/

@@ -84,6 +84,11 @@
   padding: 5px 0;
 }
 
+.convergence-label {
+  width: 150px;
+  text-align: right;
+}
+
 footer {
   text-align: right;
 }

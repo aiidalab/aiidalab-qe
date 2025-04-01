@@ -69,6 +69,13 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
         )
         self._install_sssp(auto_setup)
 
+    def render(self):
+        if self.rendered:
+            # Due to NGLView issues, we need to always "refresh" the widget
+            # See post render method for more details
+            self._post_render()
+        return super().render()
+
     def _render(self):
         super()._render()
 
@@ -167,7 +174,7 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
     def _post_render(self):
         # After rendering the widget, nglview needs to be resized
         # to properly display the structure
-        self.manager.viewer._viewer.handle_resize()
+        self.manager.viewer._viewer._set_size("100%", "300px")
 
     def confirm(self, _=None):
         self.manager.store_structure()
