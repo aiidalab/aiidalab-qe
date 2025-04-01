@@ -145,7 +145,7 @@ RUN apt-get update && \
     cp wannier90.x /opt/conda/bin/wannier90.x && \
     # Keep only runtime LAPACK (liblapack3), remove dev tools
     apt-get remove --purge -y \
-        gfortran libblas-dev liblapack-dev git && \
+        gfortran libblas-dev liblapack-dev && \
     apt-get install -y --no-install-recommends liblapack3 && \
     apt-get autoremove -y && \
     apt-get clean && \
