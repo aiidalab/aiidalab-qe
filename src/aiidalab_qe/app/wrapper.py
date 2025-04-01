@@ -134,7 +134,9 @@ class AppWrapperContoller:
 class AppWrapperModel(tl.HasTraits):
     """An MVC model for `AppWrapper`."""
 
-    guide_category_options = tl.List(["No guides", *guide_manager.get_guide_categories()])
+    guide_category_options = tl.List(
+        ["No guides", *guide_manager.get_guide_categories()]
+    )
     selected_guide_category = tl.Unicode("No guides")
     guide_options = tl.List(tl.Unicode())
     selected_guide = tl.Unicode(None, allow_none=True)
