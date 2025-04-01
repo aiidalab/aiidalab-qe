@@ -124,7 +124,8 @@ class ConfigureQeAppWorkChainStep(
                                 <b>Plugin registry</b> but are currently disabled because the required plugins are not installed.
                             </p>
                             <p style="font-size:14px; line-height:1.6;">
-                                To enable them, please visit the <b>Plugin store</b> and install the necessary plugins.
+                                To enable them, please visit the <b>Plugin store</b> and install the necessary plugins
+                                (you will then need to refresh this page and restart this new calculation from scratch).
                             </p>
                             """,
                             layout=ipw.Layout(margin="10px 0px"),
