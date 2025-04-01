@@ -13,12 +13,33 @@ def print_error(entry_point, e):
     print(f"\033[91mError message: {e}\033[0m\n")
 
 
-# load entry points
-def get_entries(entry_point_name="aiidalab_qe.properties"):
+# load entry points.
+# We give priority to built-in plugins, and then we sort alphabetically
+# the rest of the plugins
+def get_entries(
+    entry_point_name="aiidalab_qe.properties",
+    priority=None,  # Use None as the default value
+):
+    if priority is None:
+        priority = [
+            "electronic_structure",
+            "bands",
+            "pdos",
+        ]  # Initialize inside the function
     from importlib_metadata import entry_points
 
+    # sort the entry points: first we put the priority plugins by putting False in their
+    # sorted priority. The rest is sorted alphabetically.
+    sorted_entry_points = sorted(
+        entry_points(group=entry_point_name),
+        key=lambda x: (
+            x.name not in priority,
+            priority.index(x.name) if x.name in priority else x.name,
+        ),
+    )
+
     entries = {}
-    for entry_point in entry_points(group=entry_point_name):
+    for entry_point in sorted_entry_points:
         try:
             # Attempt to load the entry point
             if entry_point.name in entries:
