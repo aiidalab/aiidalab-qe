@@ -48,10 +48,10 @@ class AppWrapperContoller:
         self._view = view
         self._set_event_handlers()
 
-    def enable_controls(self) -> None:
-        """Enable the control buttons at the top of the app."""
-        for control in self._view.controls.children:
-            control.disabled = False
+    def enable_toggles(self) -> None:
+        """Enable the toggle buttons at the top of the app."""
+        for toggle in self._view.toggles.children:
+            toggle.disabled = False
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -186,8 +186,8 @@ class AppWrapperView(ipw.VBox):
             button_style="",
             icon="book",
             value=False,
-            description="Getting started",
-            tooltip="Learn how to use the app",
+            description="Tutorials",
+            tooltip="Learn how to use the app through dedicated in-app guides",
             disabled=True,
         )
 
@@ -229,14 +229,28 @@ class AppWrapperView(ipw.VBox):
             disabled=True,
         )
 
-        self.controls = ipw.HBox(
+        self.toggles = ipw.HBox(
             children=[
                 self.guide_toggle,
                 self.about_toggle,
+            ],
+        )
+        self.toggles.add_class("app-toggles")
+
+        self.external_links = ipw.HBox(
+            children=[
                 self.calculation_history_link,
                 self.setup_resources_link,
                 self.download_examples_link,
                 self.new_workchain_link,
+            ],
+        )
+        self.external_links.add_class("app-external-links")
+
+        self.controls = ipw.HBox(
+            children=[
+                self.toggles,
+                self.external_links,
             ],
         )
         self.controls.add_class("app-controls")
