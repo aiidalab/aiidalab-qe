@@ -1151,6 +1151,7 @@ class LinkButton(ipw.HTML):
         class_="",
         style_="",
         icon="",
+        tooltip="",
         disabled=False,
         **kwargs,
     ):
@@ -1160,6 +1161,7 @@ class LinkButton(ipw.HTML):
             <a
                 role="button"
                 href="{link}"
+                title="{tooltip or description}"
                 target="{"_self" if in_place else "_blank"}"
                 style="cursor: default; {style_}"
             >

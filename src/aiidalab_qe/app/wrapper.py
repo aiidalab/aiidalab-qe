@@ -185,6 +185,7 @@ class AppWrapperView(ipw.VBox):
             description="Calculation history",
             link="./calculation_history.ipynb",
             icon="list",
+            tooltip="View a list of previous calculations",
             style_="background-color: var(--color-aiida-orange)",
             disabled=True,
         )
@@ -193,6 +194,7 @@ class AppWrapperView(ipw.VBox):
             description="Setup resources",
             link="../home/code_setup.ipynb",
             icon="database",
+            tooltip="Setup computational resources for your calculations",
             style_="background-color: var(--color-aiida-blue)",
             disabled=True,
         )
@@ -201,6 +203,7 @@ class AppWrapperView(ipw.VBox):
             description="New calculation",
             link="./qe.ipynb",
             icon="plus-circle",
+            tooltip="Open a new calculation in a separate tab",
             style_="background-color: var(--color-aiida-green)",
             disabled=True,
         )
