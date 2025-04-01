@@ -37,9 +37,10 @@ class BandsConfigurationSettingsPanel(
                         >SeeK-path tool</a>.
                     </p>
                     <p>
-                        Fat Bands is a band structure plot that includes the angular
-                        momentum contributions from specific atoms or orbitals to each
-                        energy band. The thickness of the bands represents the strength
+                        "Fat bands" indicate a band structure plot that also visually represents the
+                        angular momentum contributions
+                        from specific atoms or orbitals to each
+                        energy band. The thickness of the each band represents the strength
                         of these contributions, providing insight into the electronic
                         structure.
                     </p>
