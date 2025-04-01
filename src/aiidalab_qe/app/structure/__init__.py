@@ -35,7 +35,7 @@ Examples = [
     ("Gallium arsenide", file_path / "examples" / "GaAs.cif"),
     ("Gold", file_path / "examples" / "Au.cif"),
     ("Nickel", file_path / "examples" / "Ni.cif"),
-    ("LiCoO2", file_path / "examples" / "LiCoO2.cif"),
+    ("LiCoO₂", file_path / "examples" / "LiCoO2.cif"),
     ("Silicon oxide (alpha quartz)", file_path / "examples" / "SiO2.cif"),
 ]
 
