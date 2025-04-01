@@ -19,17 +19,6 @@ aiidalab-qe-muon:
     category: calculation
     requires_aiidalab_qe: '>24.04.0'
 
-aiida-qe-xspec:
-    title: Core-level spectroscopy (aiida-qe-xspec)
-    description: Core-level spectroscopy calculations with Quantum ESPRESSO.
-    author: Peter Gillespie, Michael A. Hernandez-Bertran, Giovanni Pizzi, Deborah Prezzi, Xing Wang (ordered by last name alphabetically)
-    github: https://github.com/aiidaplugins/aiida-qe-xspec
-    documentation: https://aiida-qe-xspec.readthedocs.io/
-    pip: aiida-qe-xspec
-    status: stable
-    category: calculation
-    requires_aiidalab_qe: '>24.04.0'
-
 aiida-bader:
     title: Bader charge analysis (aiida-bader)
     description: Perform Bader charge analysis of the electronic charge density
@@ -39,6 +28,18 @@ aiida-bader:
     pip: aiida-bader
     post_install: post-install
     status: stable
+    category: calculation
+    requires_aiidalab_qe: '>24.04.0'
+
+
+aiida-qe-xspec:
+    title: Core-level spectroscopy (aiida-qe-xspec)
+    description: Core-level spectroscopy calculations with Quantum ESPRESSO.
+    author: Peter Gillespie, Michael A. Hernandez-Bertran, Giovanni Pizzi, Deborah Prezzi, Xing Wang (ordered by last name alphabetically)
+    github: https://github.com/aiidaplugins/aiida-qe-xspec
+    documentation: https://aiida-qe-xspec.readthedocs.io/
+    pip: aiida-qe-xspec
+    status: beta
     category: calculation
     requires_aiidalab_qe: '>24.04.0'
 
