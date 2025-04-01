@@ -19,7 +19,7 @@ Developers have two options when using the ``InAppGuide`` widget:
    .. code:: python
 
        InAppGuide(
-           guide_id="general/basic",
+           guide_id="Relaxation and electronic structure/Basic tutorial (relaxation, bands, PDOS)",
            children=[
                ipw.HTML("Some basic information."),
            ],
