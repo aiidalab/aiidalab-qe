@@ -115,7 +115,7 @@ class BandsPdosPlotly:
             return None
 
         bandyaxis = go.layout.YAxis(
-            title={"text": "Electronic Bands (eV)", "standoff": 1},
+            title={"text": "Energy - E<sub>Fermi</sub> (eV)", "standoff": 1},
             side="left",
             showgrid=True,
             showline=True,
@@ -152,7 +152,7 @@ class BandsPdosPlotly:
         }
 
         if self.plot_type != "combined":
-            axis_settings["title"] = "Energy (eV)"
+            axis_settings["title"] = "Energy - E<sub>Fermi</sub> (eV)"
             axis_settings["range"] = self.SETTINGS["horizontal_range_pdos"]
             axis_settings.pop("side")
             axis_settings.pop("automargin")
