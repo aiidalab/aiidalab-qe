@@ -176,7 +176,7 @@ class BandsPdosPlotly:
             "linecolor": self.SETTINGS["axis_linecolor"],
             "zerolinewidth": 2,
         }
-        
+
         if self.plot_type != "combined":
             axis_settings["title"] = "Density of states"
 
