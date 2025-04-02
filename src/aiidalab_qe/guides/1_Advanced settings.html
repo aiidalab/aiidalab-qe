@@ -1,7 +1,7 @@
 <div id="guide-header">
-  You've activated the advanced settings in-app guide. In this guide, you will learn how 
-  to tune more advanced settings of the workflows. Those settings include k-points, 
-  pseudopotentials and more. 
+  You've activated the advanced settings in-app guide. In this guide, you will learn how
+  to tune more advanced settings of the workflows. Those settings include k-points,
+  pseudopotentials and more.
   <br>Click on <b>Step 1: Select structure</b> and follow the instructions to proceed.
 </div>
 
@@ -31,7 +31,7 @@
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Check <b>Electronic projected density of states (PDOS)</b></li>
+      <li>Check (activate) <b>Electronic projected density of states (PDOS)</b></li>
       <li>Open <b>step 2.2</b> for further instructions</li>
     </ol>
   </div>
@@ -48,7 +48,8 @@
     <ol>
       <li>Select the <b>fast</b> protocol</li>
       <li>
-        Open the <b>Advanced settings</b> panel to fine-tune the settings.
+        In this guide, we will investigate in more detail the advanced settings that can be fine tuned.
+        Open the Advanced settings panel for more instructions.
       </li>
     </ol>
   </div>
@@ -58,36 +59,37 @@
   The advanced settings panel can be used to fine-tune the calculation
   parameters such as convergence thresholds, k-points, etc.
   <div class="alert alert-success">
-    <h4>Tasks</h4>
+    <h4>Possible tasks</h4>
     <h5>This is just an outline of potential parameters that you could tune to see their impact.
-      You do not need to change all of them.
+      You do not need to change all of them. Feel free to check also those that we do not mention.
     </h5>
     <ol>
       <li>
         Set the <b>SCF</b> threshold to <b>1e-05 Ry/atom</b>. You will realize that your
         calculation is much faster but it will not be properly converged.
-        <br>You could calculate the electronic structure and compare it to a calculation 
+        <br>You could calculate the electronic structure and compare it to a calculation
         with stricter convergence criteria.
       </li>
-      <li>When changing the <b>K-points distance</b>, see definition below, you immediately 
-        see the resulting k-mesh. Similar to the convergence threshold before, increasing the 
+      <li>When changing the <b>k-points distance</b>, see definition below, you immediately
+        see the resulting k-mesh. Similar to the convergence threshold before, increasing the
         distance will impact the convergence of your calculation.
       </li>
       <li>
-        In the <b>Accuracy and precision</b> section, you can select the pseudo potentials.
-        We recommended the SSSP ones, a library of tested pseudo potentials that we are maintaining. However,
+        In the <b>Accuracy and precision</b> section, you can select the pseudopotentials.
+        We recommended the SSSP ones, a library of tested pseudo potentials maintained on the Materials Cloud
+        (<a href="https://www.materialscloud.org/discover/sssp/table/efficiency" target="_blank">https://www.materialscloud.org/discover/sssp/table/efficiency</a>). However,
         spin-orbit calculations require fully relativistic pseudopotentials. In this case, you could use the
-        Pseudo-Dojo library.
+        Pseudo-Dojo library (<a>https://www.pseudo-dojo.org</a>).
       </li>
       <li>
-        You can choose between <b>PBE</b> and <b>PBEsol</b> functional.
+        You can choose between the <b>PBE</b> and <b>PBEsol</b> functional.
         You can switch between the two and do a structural relaxation and see the impact on
         the lattice constant.
       </li>
       <li>
-        Finally, you can also change the cutoffs for the wavefunctions and the charge density 
-        in the <b>Pseudopotentials</b> subsection. Similar to the <b>K-points</b> above, this will affect 
-        computational cost and convergence.
+        Finally, while SSSP and PseudoDojo already recommend converged plane-wave cutoffs, you can still change the cutoffs for
+        the wavefunctions and the charge density in the <b>Pseudopotentials</b> subsection. Similar to the <b>k-points</b> above,
+        this will affect computational cost and convergence.
       </li>
       <li>
         Open the <b>PDOS</b> tab for further examples.
@@ -101,8 +103,8 @@
   <div class="alert alert-success">
     <ol>
       <li>
-        Similar to the <b>K-points distance</b> of the <b>SCF</b> calculation, 
-        you can also adjust the <b>K-points distance</b> of the <b>NSCF</b> calculation, 
+        Similar to the <b>k-points distance</b> of the <b>SCF</b> calculation,
+        you can also adjust the <b>k-points distance</b> of the <b>NSCF</b> calculation,
         which should be denser (i.e., smaller distance value).
       </li>
       <li>
@@ -113,6 +115,11 @@
 </div>
 
 <div id="submission-step">
+  <div class="alert alert-warning">
+    <b>Note</b> that, depending on which advanced settings you changed, your calculations
+    might become quite expensive. You do not need to submit the workflows, unless
+    you want to. In this case, the guide ends here. If you do, be aware of the required simulation time!
+  </div>
   <p>
     In the submission step, we define the computational resources to be used in
     the calculations. The global resources are used to define resources across
@@ -146,6 +153,7 @@
 
 
 <div id="post-guide">
-  <h3>TO BE DISCUSSED</h3>
   <h4>Post-guide exercises</h4>
+  This guide does not contain any post-guide exercise. Feel free to go back into the Advanced
+    settings tab and try some of the tasks suggested there!
 </div>
