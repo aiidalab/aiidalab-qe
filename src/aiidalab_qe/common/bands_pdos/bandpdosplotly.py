@@ -152,7 +152,7 @@ class BandsPdosPlotly:
         }
 
         if self.plot_type != "combined":
-            axis_settings["title"] = "Density of states (eV)"
+            axis_settings["title"] = "Energy (eV)"
             axis_settings["range"] = self.SETTINGS["horizontal_range_pdos"]
             axis_settings.pop("side")
             axis_settings.pop("automargin")
@@ -176,6 +176,9 @@ class BandsPdosPlotly:
             "linecolor": self.SETTINGS["axis_linecolor"],
             "zerolinewidth": 2,
         }
+        
+        if self.plot_type != "combined":
+            axis_settings["title"] = "Density of states"
 
         return go.layout.YAxis(**axis_settings)
 
