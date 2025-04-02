@@ -41,10 +41,6 @@ class MagnetizationConfigurationSettingsPanel(
             self._on_magnetization_type_change,
             "type",
         )
-        self._model.observe(
-            self._on_family_change,
-            "family",
-        )
 
     def render(self):
         if self.rendered:
@@ -126,9 +122,6 @@ class MagnetizationConfigurationSettingsPanel(
     def _on_magnetization_type_change(self, _):
         self._toggle_widgets()
         self._model.update_type_help()
-
-    def _on_family_change(self, _):
-        self._model.update_default_starting_magnetization()
 
     def _update(self, specific=""):
         if self.updated:
