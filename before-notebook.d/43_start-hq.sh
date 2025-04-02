@@ -2,70 +2,107 @@
 
 set -x
 
-# NOTE: this cgroup folder hierachy is based on cgroupv2
-# if the container is open in system which has cgroupv1 the image build procedure will fail.
-# Since the image is mostly for demo server where we know the machine and OS I supposed
-# it should have cgroupv2 (> Kubernetes v1.25).
-# We only build the server for demo server so it does not require user to have new cgroup.
-# But for developers, please update your cgroup version to v2.
-# See: https://kubernetes.io/docs/concepts/architecture/cgroups/#using-cgroupv2
-
-# Default to cgroupv1 paths
-CPU_QUOTA_PATH="/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
-CPU_PERIOD_PATH="/sys/fs/cgroup/cpu/cpu.cfs_period_us"
-MEMORY_LIMIT_PATH="/sys/fs/cgroup/memory/memory.limit_in_bytes"
-
-# Fallback if cgroupv2 paths exist
-if [ -f /sys/fs/cgroup/cpu.max ]; then
-  CPU_QUOTA_PATH="/sys/fs/cgroup/cpu.max"
-  CPU_PERIOD_PATH="/sys/fs/cgroup/cpu.max"
+#############################################
+# Detect cgroup version
+#############################################
+IS_CGROUP_V2=0
+if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
+  IS_CGROUP_V2=1
 fi
 
-if [ -f /sys/fs/cgroup/memory.max ]; then
-  MEMORY_LIMIT_PATH="/sys/fs/cgroup/memory.max"
-fi
+#############################################
+# Generic limit parser
+#############################################
 
-# Compute memory limit
-if [ -f "$MEMORY_LIMIT_PATH" ]; then
-  MEMORY_LIMIT=$(cat "$MEMORY_LIMIT_PATH")
-  if [ "$MEMORY_LIMIT" = "max" ] || [ "$MEMORY_LIMIT" -eq -1 ]; then
-    MEMORY_LIMIT=4096
+# Converts bytes to MiB (returns -1 if input is "max" or too large)
+bytes_to_mib() {
+  local val=$1
+  if [[ "$val" == "max" ]] || [[ "$val" -ge 9223372036854770000 ]]; then
+    echo -1
   else
-    MEMORY_LIMIT=$(echo "scale=0; $MEMORY_LIMIT / (1024 * 1024)" | bc)
-    # Temporary fix for https://github.com/aiidalab/aiidalab-qe/issues/1193
-    if [ "$MEMORY_LIMIT" -gt 1024000 ]; then
-      MEMORY_LIMIT=4096
+    local mib
+    mib=$(awk "BEGIN {v = $val / 1024 / 1024; print (v > 1024000) ? -1 : int(v)}")
+    echo "$mib"
+  fi
+}
+
+# Calculates CPU count from quota and period (rounds down)
+calc_cpu_from_quota() {
+  local quota=$1
+  local period=$2
+  if [[ "$quota" == "max" ]] || [[ "$quota" -lt 0 ]] || [[ "$period" -le 0 ]]; then
+    echo -1
+  else
+    awk "BEGIN {printf \"%d\", int($quota / $period)}"
+  fi
+}
+
+#############################################
+# Memory limit
+#############################################
+read_memory_limit() {
+  local path
+  if [ "$IS_CGROUP_V2" -eq 1 ]; then
+    path="/sys/fs/cgroup/memory.max"
+  else
+    path="/sys/fs/cgroup/memory/memory.limit_in_bytes"
+  fi
+
+  if [ -f "$path" ]; then
+    local val
+    val=$(<"$path")
+    bytes_to_mib "$val"
+  else
+    echo -1
+  fi
+}
+
+#############################################
+# CPU limit
+#############################################
+read_cpu_limit() {
+  if [ "$IS_CGROUP_V2" -eq 1 ]; then
+    local cpu_file="/sys/fs/cgroup/cpu.max"
+    if [ -f "$cpu_file" ]; then
+      read -r quota period < "$cpu_file"
+      calc_cpu_from_quota "$quota" "$period"
+    else
+      echo -1
+    fi
+  else
+    local quota_file="/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
+    local period_file="/sys/fs/cgroup/cpu/cpu.cfs_period_us"
+    if [ -f "$quota_file" ] && [ -f "$period_file" ]; then
+      local quota period
+      quota=$(<"$quota_file")
+      period=$(<"$period_file")
+      calc_cpu_from_quota "$quota" "$period"
+    else
+      echo -1
     fi
   fi
-else
-  MEMORY_LIMIT=4096
+}
+
+#############################################
+# Main logic
+#############################################
+MEMORY_LIMIT=$(read_memory_limit)
+CPU_LIMIT=$(read_cpu_limit)
+
+# Fallback to system values if needed
+if [ "$MEMORY_LIMIT" -le 0 ]; then
+  MEMORY_LIMIT=$(python3 -c "import psutil; print(int(psutil.virtual_memory().total / 1024**2))")
 fi
-echo "Memory Limit: ${MEMORY_LIMIT} MiB"
-
-# Compute CPU limit
-if [ -f "$CPU_QUOTA_PATH" ] && [ -f "$CPU_PERIOD_PATH" ]; then
-  CPU_LIMIT=$(cat "$CPU_QUOTA_PATH")
-  CPU_PERIOD=$(cat "$CPU_PERIOD_PATH")
-
-  if [ "$CPU_LIMIT" != "max" ] && [ "$CPU_PERIOD" -ne 0 ]; then
-    CPU_NUMBER=$(echo "scale=2; $CPU_LIMIT / $CPU_PERIOD" | bc)
-    CPU_LIMIT=$(echo "$CPU_NUMBER / 1" | bc)  # Round down to integer
-  else
-    CPU_LIMIT=$(nproc)
-  fi
-else
-  CPU_LIMIT=$(nproc)
-fi
-
-# Temporary fix for https://github.com/aiidalab/aiidalab-qe/issues/1193
-# Ensure CPU_LIMIT is at least 1
 if [ "$CPU_LIMIT" -le 0 ]; then
-  CPU_LIMIT=4
+  CPU_LIMIT=$(python3 -c "import os; print(os.cpu_count())")
 fi
 
-echo "Number of CPUs allocated: $CPU_LIMIT"
+echo "Detected memory limit:  ${MEMORY_LIMIT} MiB"
+echo "Detected CPU limit:     ${CPU_LIMIT}"
 
+#############################################
 # Start HQ server and worker
+#############################################
 run-one-constantly hq server start 1>$HOME/.hq-stdout 2>$HOME/.hq-stderr &
 run-one-constantly hq worker start --cpus=${CPU_LIMIT} --resource "mem=sum(${MEMORY_LIMIT})" --no-detect-resources &
 
