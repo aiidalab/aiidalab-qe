@@ -4,6 +4,7 @@ ARG UV_VER=0.4.7
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
+ARG HQ_ARCH=linux-x64  # or linux-arm64-linux
 
 ARG UV_CACHE_DIR=/tmp/uv_cache
 ARG QE_APP_SRC=/tmp/quantum-espresso
@@ -52,11 +53,12 @@ FROM build_deps AS home_build
 ARG UV_CACHE_DIR
 ARG QE_DIR
 ARG HQ_VER
+ARG HQ_ARCH
 ARG COMPUTER_LABEL
 
-# Install hq binary
-RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz && \
-    tar xf hq.tar.gz -C /opt/conda/
+# Download the correct HQ binary for the current architecture
+RUN wget -c -O hq.tar.gz "https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-${HQ_ARCH}.tar.gz" \
+  && tar xf hq.tar.gz -C /opt/conda/
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 # Install plugin for post-install
