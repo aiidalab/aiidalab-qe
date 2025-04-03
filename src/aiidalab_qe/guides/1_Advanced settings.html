@@ -65,7 +65,7 @@
     </h5>
     <ol>
       <li>
-        Set the <b>SCF</b> threshold to <b>1e-05 Ry/atom</b>. You will realize that your
+        Set the <b>SCF Energy</b> threshold to <b>1e-05 Ry/atom</b>. You will realize that your
         calculation is much faster but it will not be properly converged.
         <br>You could calculate the electronic structure and compare it to a calculation
         with stricter convergence criteria.
@@ -136,11 +136,27 @@
     label (pre-filled according to the settings of steps 1 & 2), as well as
     provide a detailed description of the workflow. Once we are ready, we can
     submit the workflow.
+
+    You first need to select which code (code executable + computer where this
+    will run) to use for each step of the workflow. The Quantum ESPRESSO app
+    should always install a local Quantum ESPRESSO executable that is sufficient
+    for this tutorial, but you can setup additional codes installed on remote
+    supercomputers. For more information on how to set up codes, please refer to the
+    corresponding
+    <a
+      href="https://aiidalab-qe.readthedocs.io/howto/setup_computer_code.html#"
+      target="_blank"
+    >
+      documentation</a
+    >.
   </p>
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Select 1 node and 1 CPU for each of the codes below</li>
+      <li>Check that the the default options in the "Global resources" panel are the expected ones.
+        Specifically: select 1 node and 1 CPU for each of the codes. Unless you want to run elsewhere,
+        use the default codes on the AiiDAlab server (ending with `@localhost`)
+        that are available from the dropdown menus.</li>
       <li><b>(Optional)</b> customize the workflow label</li>
       <li><b>(Optional)</b> add a workflow description</li>
       <li>Click the <b>Submit</b> button to proceed</li>

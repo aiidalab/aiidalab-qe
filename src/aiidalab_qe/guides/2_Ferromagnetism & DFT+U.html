@@ -29,8 +29,7 @@
 <div id="properties-selection">
   Here we select the properties to calculate. Each property is associated with a
   workflow that will submit one or more calculations. In this guide, we will analyze the PDOS,
-  since this will enable an understanding of the impact of the Hubbard U and which electronic
-  states contribute to the magnetism.
+  since this will facilitate the understanding of the impact of the Hubbard U on the electronic structure.
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
@@ -56,7 +55,7 @@
       fix the total magnetization of the unit cell.).
     </li>
       <li>
-        Open the <b>Advanced settings</b> panel to fine-tune the settings.
+        Open the <b>Advanced settings</b> panel to set the initial magnetic moments and the Hubbard U values.
       </li>
       <!-- <li>Switch to the <b>Band structure</b> tab</li> -->
     </ol>
@@ -103,11 +102,27 @@
     label (pre-filled according to the settings of steps 1 & 2), as well as
     provide a detailed description of the workflow. Once we are ready, we can
     submit the workflow.
+
+    You first need to select which code (code executable + computer where this
+    will run) to use for each step of the workflow. The Quantum ESPRESSO app
+    should always install a local Quantum ESPRESSO executable that is sufficient
+    for this tutorial, but you can setup additional codes installed on remote
+    supercomputers. For more information on how to set up codes, please refer to the
+    corresponding
+    <a
+      href="https://aiidalab-qe.readthedocs.io/howto/setup_computer_code.html#"
+      target="_blank"
+    >
+      documentation</a
+    >.
   </p>
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
-      <li>Select 1 node and 1 CPU for each of the codes below</li>
+      <li>Check that the the default options in the "Global resources" panel are the expected ones.
+        Specifically: select 1 node and 1 CPU for each of the codes. Unless you want to run elsewhere,
+        use the default codes on the AiiDAlab server (ending with `@localhost`)
+        that are available from the dropdown menus.</li>
       <li><b>(Optional)</b> customize the workflow label</li>
       <li><b>(Optional)</b> add a workflow description</li>
       <li>Click the <b>Submit</b> button to proceed</li>
@@ -118,12 +133,40 @@
   </div>
 </div>
 
+
 <div id="results-panel">
   Here in the results panel, each tab will open results pertaining to a specific
   calculation submitted by the workflow.
+  <div class="alert alert-success">
+    See further instructions below in the <b>Electronice PDOS</b> tab.
+  </div>
 </div>
 
-<div id="post-guide">
+<div id="electronic-structure-results">
+  When results are available, the <b>Load results</b> button will become active allowing us to
+  load the results from AiiDA.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>
+        Once the calculation is complete, click on the
+        <b>Load results</b> button to load the available results
+      </li>
+      <li>
+        Select <b>Group by element (atomic species)</b> in <b>Atomic grouping</b> to get a top-level understanding of the
+        electronic structure.
+      </li>
+      <li>
+        Next, focus on the specific orbitals of Co in the spin-down channel. Select <b>Group by angular momentum</b> in <b>Orbital grouping</b>.
+        Understand where the Co-3d (spin-down) states are located. To do so, double click on the Co-3d (spin-down) states in the legend. This will
+        hide all the other states. To deselect, simply double click again.
+      </li>
+      <li> If you want to go in more detail, select <b>No grouping (each orbital separately) in <b>Orbital grouping</b>.
+        This will show you the contributions of all individual orbitals.
+      </li>
+    </ol>
+  </div>
+</div>
 
 <div id="post-guide">
   <h4>Post-guide exercises</h4>
