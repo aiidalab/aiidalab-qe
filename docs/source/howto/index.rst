@@ -7,6 +7,7 @@ How-to guides
    :maxdepth: 1
    :caption: Contents:
 
+   in_app_guides
    setup_computer_code
    import_structure
    upgrade_uninstall
