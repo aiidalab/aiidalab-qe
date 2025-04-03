@@ -60,10 +60,10 @@ RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/d
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 # Install plugin for post-install
-# RUN pip install --no-cache-dir \
-#       aiida-bader \
-#       git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-#       git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+RUN pip install --no-cache-dir \
+      aiida-bader \
+      git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+      git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
 
 RUN mkdir -p ${PSEUDO_FOLDER} && \
@@ -91,9 +91,9 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
     # run post_install for plugin
-    # python -m aiida_bader post-install && \
-    # python -m aiidalab_qe_vibroscopy setup-phonopy && \
-    # python -m aiidalab_qe_muon setup-python3 && \
+    python -m aiida_bader post-install && \
+    python -m aiidalab_qe_vibroscopy setup-phonopy && \
+    python -m aiidalab_qe_muon setup-python3 && \
     # wannier90 plugin need SSSP 1.1
     aiida-pseudo install sssp -v 1.1 -x PBE && \
     aiida-pseudo install sssp -v 1.1 -x PBEsol && \
@@ -133,10 +133,10 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} ${QE_APP_SRC} "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 # Install plugin in the final image
-# RUN pip install --no-cache-dir \
-#       aiida-bader \
-#       git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-#       git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+RUN pip install --no-cache-dir \
+      aiida-bader \
+      git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+      git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
