@@ -27,11 +27,11 @@ Tutorials
 
          Start
 
-   .. grid-item-card:: Advanced
+   .. grid-item-card:: Advanced (Hubbard U and magnetism)
       :text-align: center
       :shadow: md
 
-      Run a more computationally intensive band structure calculation on a magnetic system using a remote machine.
+      Learn how to simulate ferromagnetic systems with DFT+U and how to model antiferromagnetic systems
 
       ++++
 
