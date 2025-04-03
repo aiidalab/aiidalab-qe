@@ -60,11 +60,11 @@ RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/d
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 # Install plugin for post-install
-RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} aiida-bader \
-     git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-     git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+RUN pip install --no-cache-dir \
+      aiida-bader \
+      git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+      git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+
 
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
