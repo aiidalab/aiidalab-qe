@@ -3,9 +3,7 @@
 Tutorials
 =========
 
-.. important::
-
-    Before you get started, make sure you've :doc:`accessed </installation/access/index>` AiiDAlab and :doc:`installed </installation/install>` the Quantum ESPRESSO app.
+We provide dedicated :doc:`in-app guides </howto/in_app_guides>` to help you learn how to use the app and perform calculations. The following are overviews/snapshots highlighting these guides.
 
 .. grid:: 1 1 1 2
    :gutter: 3
@@ -44,9 +42,45 @@ Tutorials
 
          Start
 
+   .. grid-item-card:: Phonons
+      :text-align: center
+      :shadow: md
+
+      Learn how to setup and submit a phonon calculation
+
+      ++++
+
+      .. button-ref:: phonons
+         :ref-type: doc
+         :click-parent:
+         :expand:
+         :color: primary
+         :outline:
+
+         Start
+
+   .. grid-item-card:: Muons
+      :text-align: center
+      :shadow: md
+
+      Learn how to setup and submit a muon resting site search calculation
+
+      ++++
+
+      .. button-ref:: muons
+         :ref-type: doc
+         :click-parent:
+         :expand:
+         :color: primary
+         :outline:
+
+         Start
+
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    basic
    advanced
+   phonons
+   muons
