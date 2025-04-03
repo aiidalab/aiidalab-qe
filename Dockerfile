@@ -133,11 +133,11 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} ${QE_APP_SRC} "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 # Install plugin in the final image
-RUN --mount=from=uv,source=/uv,target=/bin/uv \
---mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
- uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} aiida-bader \
- git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
- git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+# RUN --mount=from=uv,source=/uv,target=/bin/uv \
+# --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+#  uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} aiida-bader \
+#  git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+#  git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
