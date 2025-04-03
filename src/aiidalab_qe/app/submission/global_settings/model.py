@@ -208,10 +208,21 @@ class GlobalResourceSettingsModel(
         return self.input_parameters.get("workchain", {}).get("properties", [])
 
     def _check_blockers(self):
+        
+        warning_in_blockers = """
+             <b>Please note</b> that, if this blocker is shown for an already finished workflow,
+            it can be due to the fact that the given code is not configured for this 
+            AiiDAlab user. This usually happens if the workflow has been imported from somewhere else (e.g. from
+            the Download examples page).
+            """ if self.loaded_from_process else ""
+            
+        blocker = False
+        
         # No pw code selected
         pw_code_model = self.get_model("quantumespresso__pw")
         if pw_code_model and not pw_code_model.selected:
-            yield ("No pw code selected")
+            blocker = True
+            yield (f"No pw code selected.")
 
         # Code related to the selected property is not installed
         properties = self._get_properties()
@@ -221,11 +232,17 @@ class GlobalResourceSettingsModel(
                 for name in code_names:
                     code_model = self.get_model(name)
                     if not code_model.is_ready:
+                        blocker = True
                         yield message.format(
                             property=name,
                             code=code_model.description,
                         )
 
+        # in the test, we need to consider one more blocker,
+        # even if empty:
+        if blocker:
+            yield (warning_in_blockers)
+        
         # Check if the QEAppComputationalResourcesWidget is used
         for identifier, code_model in self.get_models():
             # Skip if the code is not displayed, convenient for the plugin developer
