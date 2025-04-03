@@ -10,11 +10,11 @@ Tutorials
 .. grid:: 1 1 1 2
    :gutter: 3
 
-   .. grid-item-card:: Basic
+   .. grid-item-card:: Relaxation and electronic structure
       :text-align: center
       :shadow: md
 
-      Learn all the basics, including selecting a structure, setting up workflow parameters, and choosing computational resources for a band structure calculation executed locally on the AiiDAlab machine.
+      Learn all the basics, including selecting a structure, setting up workflow parameters, and choosing computational resources for a band structure calculation executed locally on the AiiDAlab machine
 
       ++++
 

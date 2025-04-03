@@ -77,7 +77,7 @@ When you're done, click `Submit` to submit the calculation.
 Step 4: Check the status
 ************************
 
-While the calculation is running, you can monitor its status as shown in the :ref:`basic tutorial <basic_status>`.
+While the calculation is running, you can monitor its status as shown in the :ref:`basic tutorial <basic:results>`.
 You can view the results once the calculation is finished.
 
 Step 5: Spectrum view and post-processing
