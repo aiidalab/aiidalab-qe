@@ -50,9 +50,8 @@ jobs:
 
             # For cross-building.
             - name: Set up QEMU
+              if: ${{ inputs.platforms != 'linux/amd64' }}
               uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: all
 
             - name: Docker meta (GHCR) 📝
               id: meta_ghcr
@@ -86,7 +85,8 @@ jobs:
                   load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
                   push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
                   context: .
-                  platforms: linux/amd64,linux/arm64
+                  # platforms: linux/amd64,linux/arm64
+                  platforms: linux/arm64
                   cache-to: |
                       type=gha,scope=${{ github.workflow }},mode=min
                   cache-from: |
