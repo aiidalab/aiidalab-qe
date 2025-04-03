@@ -183,3 +183,46 @@ def test_advanced_hubbard_settings(generate_structure_data):
         (3, 2, "Co", 1.0),
         (5, 2, "Co", 1.0),
     ]
+
+
+def test_advanced_magnetic_settings(generate_structure_data):
+    """Test Magnetization widget."""
+    from aiida.orm import StructureData
+    from aiidalab_qe.app.configuration.advanced.magnetization import (
+        MagnetizationConfigurationSettingsModel,
+        MagnetizationConfigurationSettingsPanel,
+    )
+
+    model = MagnetizationConfigurationSettingsModel()
+    magnetic = MagnetizationConfigurationSettingsPanel(model=model)
+    magnetic.render()
+
+    model.family = "SSSP/1.3/PBE/efficiency"
+
+    structure = generate_structure_data(name="LiCoO2")
+    model.input_structure = structure
+    model._update_default_moments()
+
+    # The sssp fixture sets the number of valence electrons to 4 for all electrons. Here, we are only
+    # testing that the correct logic is applied, i.e., 0.1 * number of electrons for elements with
+    # default magnetic moment 0.
+    assert model._defaults["moments"] == {"Li": 0.4, "Co": 5, "O": 0.4}
+
+    structure = StructureData(
+        cell=[
+            [3.84737, 0.0, 0.0],
+            [1.923685, 3.331920, 0.0],
+            [1.923685, 1.110640, 3.141364],
+        ]
+    )
+    structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Ni", name="Ni1")
+    structure.append_atom(
+        position=(1.923685, 1.110640, 0.785341), symbols="Ni", name="Ni2"
+    )
+    structure.append_atom(position=(1.923685, 0.0, 2.356204), symbols="O", name="O1")
+    structure.append_atom(position=(1.923685, 0.0, 0.785341), symbols="O", name="O2")
+
+    model.input_structure = structure
+    model._update_default_moments()
+
+    assert model._defaults["moments"] == {"O1": 0.4, "O2": 0.4, "Ni1": 5, "Ni2": 5}
