@@ -1,11 +1,13 @@
 from copy import deepcopy
 
 import traitlets as tl
+from aiida_pseudo.groups.family import PseudoPotentialFamily
 
 from aiida_quantumespresso.workflows.protocols.utils import (
     get_magnetization_parameters,
 )
 from aiidalab_qe.common.mixins import HasInputStructure
+from aiidalab_qe.utils import fetch_pseudo_family_by_label
 
 from ..subsettings import AdvancedCalculationSubSettingsModel
 
@@ -95,10 +97,27 @@ class MagnetizationConfigurationSettingsModel(
             self.moments = self._get_default_moments()
 
     def _update_default_moments(self):
+        if not self.has_structure:
+            # TODO this guard shouldn't be here! It IS here only because in the present
+            # implementation, an update is called on app start. This breaks lazy loading
+            # and should be carefully checked!
+            return
+
+        family = fetch_pseudo_family_by_label(self.family)
         self._defaults["moments"] = {
-            kind.name: self._DEFAULT_MOMENTS.get(kind.symbol, {}).get("magmom", 0.1)
+            kind.name: self._get_moment(kind.symbol, family)
             for kind in self.input_structure.kinds
         }
+
+    def _get_moment(self, symbol: str, family: PseudoPotentialFamily) -> float:
+        """Convert the default magnetization to an initial magnetic moment."""
+        moment = self._DEFAULT_MOMENTS.get(symbol, {}).get("magmom", 0)
+        if moment != 0:
+            return moment
+
+        # If no default moment is defined, or if it's 0, use 0.1 as default magnetization
+        # and convert it to moments.
+        return round(0.1 * family.get_pseudo(symbol).z_valence, 3)
 
     def _get_default_moments(self):
         return deepcopy(self._defaults.get("moments", {}))
