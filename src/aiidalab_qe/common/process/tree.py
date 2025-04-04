@@ -11,11 +11,38 @@ from aiida import orm
 from aiida.common.links import LinkType
 from aiida.engine import ProcessState
 from aiida.tools.graph.graph_traversers import traverse_graph
+from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import LoadingWidget
 
 from .state import STATE_ICONS
+
+TITLE_MAPPING = {
+    "QeAppWorkChain": "Quantum ESPRESSO app workflow",
+    "PwRelaxWorkChain": "Structure relaxation workflow manager",
+    "PwBaseWorkChain": {
+        "scf": "SCF workflow",
+        "nscf": "NSCF workflow",
+        "bands": "Bands workflow",
+        "relax": "Structure relaxation workflow",
+        "md": "Molecular dynamics workflow",
+    },
+    "PwCalculation": {
+        "scf": "SCF cycle",
+        "nscf": "NSCF cycle",
+        "bands": "Band structure calculation",
+        "relax": "Structure geometry optimization",
+        "md": "Molecular dynamics simulation",
+    },
+} | {
+    process: human_readable
+    for metadata in get_entry_items(
+        "aiidalab_qe.properties",
+        "metadata",
+    ).values()
+    for process, human_readable in metadata.get("process_labels", {}).items()
+}
 
 
 class SimplifiedProcessTreeModel(Model, HasProcess):
@@ -123,31 +150,6 @@ ProcessNodeType = t.TypeVar("ProcessNodeType", bound=orm.ProcessNode)
 
 
 class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
-    _TITLE_MAPPING = {
-        "QeAppWorkChain": "Quantum ESPRESSO app workflow",
-        "BandsWorkChain": "Electronic band structure workflow",
-        "PwBandsWorkChain": "Electronic band structure workflow",
-        "ProjwfcBandsWorkChain": "Electronic band structure workflow",
-        "PwRelaxWorkChain": "Structure relaxation workflow manager",
-        "PdosWorkChain": "Projected density of states workflow",
-        "PwBaseWorkChain": {
-            "scf": "SCF workflow",
-            "nscf": "NSCF workflow",
-            "bands": "Bands workflow",
-            "relax": "Structure relaxation workflow",
-            "md": "Molecular dynamics workflow",
-        },
-        "PwCalculation": {
-            "scf": "Run SCF cycle",
-            "nscf": "Run NSCF cycle",
-            "bands": "Compute bands",
-            "relax": "Optimize structure geometry",
-            "md": "Run molecular dynamics simulation",
-        },
-        "DosCalculation": "Compute density of states",
-        "ProjwfcCalculation": "Compute projections",
-    }
-
     def __init__(
         self,
         node: ProcessNodeType,
@@ -210,10 +212,11 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
             return "Unknown"
         if label in ("PwBaseWorkChain", "PwCalculation"):
             inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
-            calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
+            parameters = inputs.parameters.base.attributes.all
+            calculation: str = parameters["CONTROL"]["calculation"]
             calculation = calculation.replace("vc-", "")
-            return self._TITLE_MAPPING.get(label, {}).get(calculation, label)
-        return self._TITLE_MAPPING.get(label, label)
+            return TITLE_MAPPING.get(label, {}).get(calculation, label)
+        return TITLE_MAPPING.get(label, label)
 
 
 class ProcessTreeBranches(ipw.VBox):
@@ -251,7 +254,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
             inputs = {
                 key: value
                 for key, value in inputs.items()
-                if key in self.node.inputs.properties
+                if key in self.node.inputs.properties.base.attributes.get("list")
             }
         return inputs
 
