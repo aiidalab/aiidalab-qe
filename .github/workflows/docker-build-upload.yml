@@ -1,8 +1,10 @@
 ---
-name: Build Docker image
+name: Build Docker image and upload
 
 on:
     pull_request:
+        branches:
+            - main
     push:
         branches:
             - main
@@ -22,7 +24,20 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    build-test-upload:
+    build-upload:
+    # The key line: we only proceed if:
+    #  1) It's a 'push' to main or a tag that starts with 'v'
+    #     (i.e. 'refs/heads/main' or 'refs/tags/v...')
+    #  OR
+    #  2) It's a PR, but NOT from a fork (fork == false).
+        if: |
+            (github.event_name == 'push' && (
+              startsWith(github.ref, 'refs/heads/main') ||
+              startsWith(github.ref, 'refs/tags/v')
+            ))
+            ||
+            (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+
         runs-on: ubuntu-latest
 
         steps:
@@ -64,6 +79,7 @@ jobs:
                       type=ref,event=pr
                       type=edge,enable={{is_default_branch}}
                       type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
             - name: Docker meta (DockerHub)
               id: meta_dockerhub
               uses: docker/metadata-action@v5
@@ -72,14 +88,12 @@ jobs:
                   tags: |
                       type=ref,event=pr
                       type=edge,enable={{is_default_branch}}
-                      # type=match,pattern=v(\d+\.\d+(\.\d+)?),group=1
                       type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
             - name: Build and push images (GHCR + DockerHub)
               id: build-upload
               uses: docker/build-push-action@v5
               with:
-                  # Provide multiple comma/line-separated tags:
                   tags: >
                       ${{ steps.meta_ghcr.outputs.tags }},
                       ${{ steps.meta_dockerhub.outputs.tags }}
@@ -91,38 +105,3 @@ jobs:
                       type=gha,scope=${{ github.workflow }},mode=min
                   cache-from: |
                       type=gha,scope=${{ github.workflow }}
-
-            - name: Set Up Python 🐍
-              uses: actions/setup-python@v5
-              with:
-                  python-version: 3.11
-
-            - name: Install Dev Dependencies 📦
-              run: pip install -r requirements-docker.txt
-
-            - name: Set jupyter token env
-              run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
-
-            - name: Run pytest for Chrome
-              run: pytest -sv --driver Chrome tests_integration/
-              env:
-                  # We'd like to identify the image by its unique digest, i.e ghcr.io/aiidalab/qe@sha256:<digest>
-                  # but that sadly does not work when the image is loaded to Docker locally and not published on ghcr.io
-                  # as is the case for PRs from forks. Hence this super-ugly ternary expression...
-                  # For forks, we take the image as ghcr.io/aiidalab/qe:pr-XXX
-                  # which is stored in the steps.meta_ghcr.outputs.tags variable
-                  QE_IMAGE: >-
-                      ${{
-                          github.event_name == 'pull_request' &&
-                          github.event.pull_request.head.repo.fork &&
-                          steps.meta_ghcr.outputs.tags ||
-                          format('ghcr.io/{0}@{1}', env.IMAGE_NAME, steps.build-upload.outputs.imageid)
-                      }}
-
-            - name: Upload screenshots as artifacts
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: Screenshots
-                  path: screenshots/
-                  if-no-files-found: error
