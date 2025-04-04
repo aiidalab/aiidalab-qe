@@ -100,7 +100,8 @@ RUN set -ex; \
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
 # Additional plugins
-RUN pip install aiida-bader \
+RUN pip uninstall -y phonopy && \
+    pip install aiida-bader \
     git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
     git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
