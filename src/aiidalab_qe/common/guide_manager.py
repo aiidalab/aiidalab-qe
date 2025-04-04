@@ -18,7 +18,7 @@ class GuideManager(tl.HasTraits):
         """`GuideManager` constructor."""
 
         super().__init__(*args, **kwargs)
-        guides = Path(aiidalab_qe.__file__).parent.joinpath("guides").glob("*")
+        guides = Path(aiidalab_qe.__file__).parent.joinpath("guides").glob("*.html")
         self._guides = {
             "Relaxation and electronic structure": {
                 guide.stem.split("_", maxsplit=1)[1]: guide.absolute()
