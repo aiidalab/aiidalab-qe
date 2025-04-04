@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
+import importlib
 import subprocess
 import typing as t
 from copy import deepcopy
@@ -1335,6 +1336,7 @@ class ArchiveImporter(ipw.VBox):
             style={"description_width": "initial"},
             layout=ipw.Layout(width="auto"),
         )
+        self.selector.observe(self.check_plugins, "value")
 
         self.import_button = ipw.Button(
             description="Import",
@@ -1342,14 +1344,16 @@ class ArchiveImporter(ipw.VBox):
             layout=ipw.Layout(width="fit-content"),
             icon="download",
         )
-        ipw.dlink(
-            (self.selector, "value"),
-            (self.import_button, "disabled"),
-            lambda value: not value,
-        )
         self.import_button.on_click(self.import_archives)
 
         self.info = ipw.HTML()
+
+        self.info_plugins = ipw.HTML()
+        ipw.dlink(
+            (self.info_plugins, "value"),
+            (self.import_button, "disabled"),
+            lambda x: x != "",
+        )
 
         history_link = LinkButton(
             description="Calculation history",
@@ -1381,6 +1385,7 @@ class ArchiveImporter(ipw.VBox):
                     grid_gap="4px",
                 ),
             ),
+            self.info_plugins,
             accordion or ipw.Box,
         ]
 
@@ -1392,9 +1397,40 @@ class ArchiveImporter(ipw.VBox):
             self.info.value = "Failed to fetch archive list"
             return []
         if archives := response.content.decode("utf-8").strip().split("\n"):
-            return [(archive, archive.split("-")[0].strip()) for archive in archives]
+            options = [(archive, archive.split("-")[0].strip()) for archive in archives]
+            self.required_plugins = {
+                archive.split("-")[0].strip(): [
+                    plugin.strip()
+                    for plugin in archive.split("/")[-1]
+                    .replace("plugins: ", "")
+                    .split(",")
+                ]
+                for archive in archives
+                if len(archive.split("/")) > 1
+            }
+            return options
         self.info.value = "No archives found"
         return []
+
+    def check_plugins(self, _) -> str:
+        self.info_plugins.value = ""
+        required_plugins_not_installed = set()
+        for example in self.selector.value:
+            for plugin in self.required_plugins.get(example, []):
+                try:
+                    importlib.import_module(plugin)
+                except ImportError:
+                    required_plugins_not_installed.add(plugin)
+
+        if len(required_plugins_not_installed) > 0:
+            self.info_plugins.value = """<div class="alert alert-warning">Required plugins not installed: <ul>"""
+            for plugin in required_plugins_not_installed:
+                self.info_plugins.value += f"<li>{plugin}</li>"
+            self.info_plugins.value += "</ul> Please install the required plugins using the <a href='./plugin_manager.ipynb' target='_blank'>plugin manager</a> and try again.</div>"
+        else:
+            self.info_plugins.value = ""
+
+        return required_plugins_not_installed
 
     def import_archives(self, _):
         self.import_button.disabled = True
