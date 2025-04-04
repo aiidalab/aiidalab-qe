@@ -31,7 +31,7 @@ def test_result(generate_qeapp_workchain):
     assert model.bands_data["pathlabels"]
 
     assert widget.plot.layout.xaxis.title.text == "k-points"
-    assert widget.plot.layout.yaxis.title.text == "Electronic Bands (eV)"
+    assert widget.plot.layout.yaxis.title.text == "Energy - E<sub>Fermi</sub> (eV)"
     assert isinstance(widget.plot.layout.xaxis.rangeslider, go.layout.xaxis.Rangeslider)
     assert model.bands_data["pathlabels"][0] == list(widget.plot.layout.xaxis.ticktext)
 
