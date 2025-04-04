@@ -1,5 +1,5 @@
 ---
-name: Build Docker image and upload
+name: Build Docker image and upload for ARM64
 
 on:
     pull_request:
@@ -14,7 +14,7 @@ on:
 
 env:
     FORCE_COLOR: 1
-    IMAGE_NAME: aiidalab/qe
+    IMAGE_NAME: aiidalab/qe-arm
     BUILDKIT_PROGRESS: plain
 
 # https://docs.github.com/en/actions/using-jobs/using-concurrency
@@ -100,7 +100,7 @@ jobs:
                   load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
                   push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
                   context: .
-                  platforms: linux/amd64, linux/arm64
+                  platforms: linux/arm64
                   cache-to: |
                       type=gha,scope=${{ github.workflow }},mode=min
                   cache-from: |
