@@ -128,7 +128,7 @@ class MagnetizationConfigurationSettingsPanel(
         self._model.update_type_help()
 
     def _on_family_change(self, _):
-        self._model.update_default_starting_magnetization()
+        self._model._update_default_moments()
 
     def _update(self, specific=""):
         if self.updated:

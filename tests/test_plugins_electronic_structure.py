@@ -34,7 +34,7 @@ def test_electronic_structure(generate_qeapp_workchain):
     # Check Bands axis
     assert widget.plot.layout.xaxis.title.text == "k-points"
     assert widget.plot.layout.xaxis2.title.text == "Density of states"
-    assert widget.plot.layout.yaxis.title.text == "Electronic Bands (eV)"
+    assert widget.plot.layout.yaxis.title.text == "Energy - E<sub>Fermi</sub> (eV)"
     assert isinstance(
         widget.plot.layout.xaxis.rangeslider,
         go.layout.xaxis.Rangeslider,
