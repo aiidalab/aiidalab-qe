@@ -28,5 +28,5 @@ def test_result(generate_qeapp_workchain):
     assert not model.bands_data
     assert model.pdos_data
 
-    assert widget.plot.layout.xaxis.title.text == "Density of states (eV)"
-    assert widget.plot.layout.yaxis.title.text is None
+    assert widget.plot.layout.xaxis.title.text == "Energy - E<sub>Fermi</sub> (eV)"
+    assert widget.plot.layout.yaxis.title.text == "Density of states"

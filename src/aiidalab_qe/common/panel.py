@@ -84,6 +84,7 @@ class PluginOutline(ipw.HBox):
                     </div>
                 """),
             ],
+            layout=ipw.Layout(width="fit-content"),
             **kwargs,
         )
 

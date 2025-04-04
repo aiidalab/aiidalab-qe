@@ -21,4 +21,12 @@ bands = {
         "model": BandsResourceSettingsModel,
     },
     "workchain": workchain_and_builder,
+    "metadata": {
+        "process_labels": {
+            "BandsWorkChain": "Electronic band structure workflow",
+            "PwBandsWorkChain": "Electronic band structure workflow",
+            "ProjwfcBandsWorkChain": "Electronic band structure workflow",
+            "ProjwfcCalculation": "Orbital projection calculation",
+        }
+    },
 }

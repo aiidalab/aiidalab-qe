@@ -14,8 +14,8 @@ from aiidalab_qe.app.result.components.status import (
     WorkChainStatusPanel,
 )
 from aiidalab_qe.common.process.tree import (
+    TITLE_MAPPING,
     CalcJobTreeNode,
-    ProcessTreeNode,
     SimplifiedProcessTree,
     SimplifiedProcessTreeModel,
     WorkChainTreeNode,
@@ -147,7 +147,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
     def test_update_on_process_change(self, mock_qeapp_workchain):
         self.model.process_uuid = mock_qeapp_workchain.uuid
         assert self.tree.rendered
-        human_label = ProcessTreeNode._TITLE_MAPPING["QeAppWorkChain"]
+        human_label = TITLE_MAPPING["QeAppWorkChain"]
         assert self.tree.trunk.label.value == human_label
         assert not self.tree.trunk.collapsed
         assert len(self.tree.trunk.branches) == 1
@@ -157,7 +157,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         assert self.relax_workchain_node.level == 1
         assert self.relax_workchain_node.emoji.value == "✅"
         assert self.relax_workchain_node.state.value == "finished"
-        human_label = ProcessTreeNode._TITLE_MAPPING["PwRelaxWorkChain"]
+        human_label = TITLE_MAPPING["PwRelaxWorkChain"]
         assert self.relax_workchain_node.label.value == human_label
         assert isinstance(self.relax_workchain_node.label, ipw.HTML)
         assert self.relax_workchain_node.collapsed
@@ -190,7 +190,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         assert self.base_workchain_node.level == 2
         assert self.base_workchain_node.emoji.value == "✅"
         assert self.base_workchain_node.state.value == "finished"
-        human_label = ProcessTreeNode._TITLE_MAPPING["PwBaseWorkChain"]["relax"]
+        human_label = TITLE_MAPPING["PwBaseWorkChain"]["relax"]
         assert self.base_workchain_node.label.value == human_label
         assert isinstance(self.base_workchain_node.label, ipw.HTML)
         assert len(self.base_workchain_node.branches) == 1
@@ -217,7 +217,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         assert self.calcjob_node.level == 3
         assert self.calcjob_node.emoji.value == "✅"
         assert self.calcjob_node.state.value == "finished"
-        human_label = ProcessTreeNode._TITLE_MAPPING["PwCalculation"]["relax"]
+        human_label = TITLE_MAPPING["PwCalculation"]["relax"]
         assert isinstance(self.calcjob_node.label, ipw.Button)
         assert self.calcjob_node.label.description == human_label
 
