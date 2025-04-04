@@ -24,10 +24,6 @@ concurrency:
 
 jobs:
     build-amd:
-    # Only run on:
-    #  1) push events to main or tag events (v*),
-    #  OR
-    #  2) pull_request events coming from non-fork repos.
         if: |
             (github.event_name == 'push' && (
                startsWith(github.ref, 'refs/heads/main') ||
@@ -94,7 +90,6 @@ jobs:
               with:
                   context: .
                   platforms: linux/amd64
-          # For PRs from forks, only load the image locally.
                   push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
                   load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
           # Append "-amd" to the dynamically generated tags
@@ -205,16 +200,10 @@ jobs:
 
             - name: Create and push manifest for GHCR
               run: |
-                  # The base tag is taken from the AMD build’s metadata output.
-                  # This creates a manifest without the architecture suffix.
-                  docker manifest create ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.build-amd.outputs.base_tags_ghcr }} \
-                    ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.build-amd.outputs.base_tags_ghcr }}-amd \
-                    ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.build-amd.outputs.base_tags_ghcr }}-arm
-                  docker manifest push ghcr.io/${{ env.IMAGE_NAME }}:${{ needs.build-amd.outputs.base_tags_ghcr }}
+                  BASE_TAG="${{ needs.build-amd.outputs.base_tags_ghcr }}"
+                  docker buildx imagetools create -t ${BASE_TAG} ${BASE_TAG}-amd ${BASE_TAG}-arm
 
             - name: Create and push manifest for DockerHub
               run: |
-                  docker manifest create docker.io/${{ env.IMAGE_NAME }}:${{ needs.build-amd.outputs.base_tags_dockerhub }} \
-                    docker.io/${{ env.IMAGE_NAME }}:${{ needs.build-amd.outputs.base_tags_dockerhub }}-amd \
-                    docker.io/${{ env.IMAGE_NAME }}:${{ needs.build-amd.outputs.base_tags_dockerhub }}-arm
-                  docker manifest push docker.io/${{ env.IMAGE_NAME }}:${{ needs.build-amd.outputs.base_tags_dockerhub }}
+                  BASE_TAG="${{ needs.build-amd.outputs.base_tags_dockerhub }}"
+                  docker buildx imagetools create -t ${BASE_TAG} ${BASE_TAG}-amd ${BASE_TAG}-arm
