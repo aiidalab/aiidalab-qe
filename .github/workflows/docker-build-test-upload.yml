@@ -15,14 +15,12 @@ env:
     IMAGE_NAME: aiidalab/qe
     BUILDKIT_PROGRESS: plain
 
-# https://docs.github.com/en/actions/using-jobs/using-concurrency
 concurrency:
-    # only cancel in-progress jobs or runs for the current workflow - matches against branch & tags
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
 
 jobs:
-    build-amd64:
+    build-multiarch:
         runs-on: ubuntu-latest
 
         steps:
@@ -45,6 +43,11 @@ jobs:
                   username: ${{ secrets.DOCKER_USERNAME }}
                   password: ${{ secrets.DOCKER_PASSWORD }}
 
+            - name: Set up QEMU (for cross-building)
+              uses: docker/setup-qemu-action@v3
+              with:
+                  platforms: all
+
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
 
@@ -58,6 +61,7 @@ jobs:
                       type=ref,event=pr
                       type=edge,enable={{is_default_branch}}
                       type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
             - name: Docker meta (DockerHub)
               id: meta_dockerhub
               uses: docker/metadata-action@v5
@@ -69,95 +73,39 @@ jobs:
                       # type=match,pattern=v(\d+\.\d+(\.\d+)?),group=1
                       type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-            - name: Build and push images (GHCR + DockerHub)
-              id: build-upload
+      # --- BUILD for AMD64 (Dockerfile) ---
+            - name: Build & push amd64 image
               uses: docker/build-push-action@v5
               with:
-                  # "append: true" ensures we produce a manifest list in the registry,
-                  # letting a second build add more arches.
+          # "append: true" means we produce/extend a manifest list.
+          # We will append arm64 to the same manifest in the next step.
                   append: true
-                  # Provide multiple comma/line-separated tags:
-                  tags: >
-                      ${{ steps.meta_ghcr.outputs.tags }},
-                      ${{ steps.meta_dockerhub.outputs.tags }}
-                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
                   push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
+                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
                   context: .
                   file: Dockerfile
                   platforms: linux/amd64
+                  tags: >
+                      ${{ steps.meta_ghcr.outputs.tags }},
+                      ${{ steps.meta_dockerhub.outputs.tags }}
                   cache-to: |
                       type=gha,scope=${{ github.workflow }},mode=min
                   cache-from: |
                       type=gha,scope=${{ github.workflow }}
 
-    build-arm64:
-        runs-on: ubuntu-latest
-        needs: build-amd64
-
-        steps:
-            - name: Checkout Repo
-              uses: actions/checkout@v4
-
-            - name: Login to GitHub Container Registry 🔑
-              uses: docker/login-action@v2
-              if: ${{ !github.event.pull_request.head.repo.fork }}
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Login to DockerHub 🔑
-              uses: docker/login-action@v2
-              if: ${{ !github.event.pull_request.head.repo.fork }}
-              with:
-                  registry: docker.io
-                  username: ${{ secrets.DOCKER_USERNAME }}
-                  password: ${{ secrets.DOCKER_PASSWORD }}
-
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-
-            # For cross-building.
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: all
-
-            - name: Docker meta (GHCR) 📝
-              id: meta_ghcr
-              uses: docker/metadata-action@v5
-              with:
-                  images: |
-                      name=ghcr.io/${{ env.IMAGE_NAME }}
-                  tags: |
-                      type=ref,event=pr
-                      type=edge,enable={{is_default_branch}}
-                      type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            - name: Docker meta (DockerHub)
-              id: meta_dockerhub
-              uses: docker/metadata-action@v5
-              with:
-                  images: docker.io/${{ env.IMAGE_NAME }}
-                  tags: |
-                      type=ref,event=pr
-                      type=edge,enable={{is_default_branch}}
-                      # type=match,pattern=v(\d+\.\d+(\.\d+)?),group=1
-                      type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-
-            - name: Build and push images (GHCR + DockerHub)
-              id: build-upload
+      # --- BUILD for ARM64 (Dockerfile.arm) ---
+            - name: Build & push arm64 image
               uses: docker/build-push-action@v5
               with:
-                  append: true  # <--- This merges into the existing manifest
-                  # Provide multiple comma/line-separated tags:
+                  append: true # Merges into the existing manifest from previous step
+                  push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
+                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+                  context: .
+                  file: Dockerfile.arm
+                  platforms: linux/arm64
                   tags: >
                       ${{ steps.meta_ghcr.outputs.tags }},
                       ${{ steps.meta_dockerhub.outputs.tags }}
-                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
-                  push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
-                  file: Dockerfile.arm
-                  context: .
-                  platforms: linux/arm64
                   cache-to: |
                       type=gha,scope=${{ github.workflow }},mode=min
                   cache-from: |
