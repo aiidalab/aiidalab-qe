@@ -92,7 +92,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
-    python -m aiidalab_qe_vibroscopy setup-phonopy && \
+    # python -m aiidalab_qe_vibroscopy setup-phonopy && \
     python -m aiidalab_qe_muon setup-python3 && \
     # wannier90 plugin need SSSP 1.1
     aiida-pseudo install sssp -v 1.1 -x PBE && \
