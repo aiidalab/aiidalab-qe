@@ -1,0 +1,256 @@
+<div id="guide-header">
+  You've activated the antiferromagnetism in-app guide. In this guide, you will learn how
+  to model an antiferromagnetic configuration of CoO and analyze the corresponding PDOS. <b>Note</b>: You should follow the in-app guide
+  on ferromagnetism and DFT+U first.
+  <br>Click on <b>Step 1: Select structure</b> and follow the instructions to proceed.
+</div>
+
+<div id="structure-step">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    Antiferromagnetic calculations require to define a starting magnetization with opposite sign for atoms of the same chemical element.
+    In this example, we will consider cobalt oxide (CoO) and the antiferromagnetic moments are on cobalt. However,
+    the unit cell of CoO only has 2 atoms (1 Co and 1 O). Therefore, we need to perform two steps before submission:
+    <ul>
+      <li>
+        Create a supercell to contain at least 2 Co atoms (we will create a 1x1x2 supercell), so that there are
+        two Co atoms in the simulation cell
+      </li>
+      <li>
+        Assign different species (i.e., give a different “name”) to the two Co atoms.
+        Follow the steps below to achieve this goal.
+      </li>
+    </ul>
+    <br>
+    <ol>
+      <li>Click on the <b>From examples</b> tab</li>
+      <li>Click on <b>Simple crystals</b></li>
+      <li>Select <b>Cobalt oxide</b> from the dropdown list</li>
+      <li>Click on the <b>Edit structure</b> panel and open the <b>Edit cell</b> tab.
+        Set the matrix element (3, 3) to the value of 2 and click <b>Apply transformation</b> to double the unit cell
+        along the third periodic direction (1 x 1 x 2 supercell). <b>Note:</b> click the <b>Apply transformation</b> button only once!
+        Inspect the structure in the <b>View structure</b> panel and verify that you now have 4 atoms in the unit cell.
+      </li>
+      <li>Switch to the <b>Edit atom tags</b> tab.</li>
+      <li>
+        We now want to assign the two Co atoms to two new species <b>Co1</b> and <b>Co2</b> (rather than the same <b>Co</b> species).
+        This will allow us, later, to set different starting magnetization for them (e.g. spin down for <b>Co1</b> and up for <b>Co2</b>).
+        <ul>
+          <li>
+            In the 3D structure visualizer, click on the <b>Co</b> atom at the corner of the unit cell to select it: it will turn green.
+            In the <b>Edit atom tags</b> tab, press the <b>From Selection</b> button to automatically insert the index of that atom in
+            the text box.
+            Set the tag to the value 1 and press the <b>Update tags</b> button to apply the change: now atom will be assigned to species <b>Co1</b>.
+          </li>
+          <li>Repeat the previous step for spin-up, but this time, select the other <b>Co</b>
+            atom and set the tag to <b>2</b>.</li>
+        </ul>
+      </li>
+      <li>
+        In order to double check the tags that you assigned, you can type “1..4” in the “Index of atoms” textbox to show all four atoms.
+        You should verify that the two Co atoms have different tags, while oxygens have no tag.
+        (Note that the table is scrollable, by default you see only the first few rows).
+      </li>
+      <li>Click on the <b>Confirm</b> button to proceed</li>
+    </ol>
+  </div>
+</div>
+
+
+<div id="configuration-step">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select <b>Structure as is</b> (in the interest of time, we skip the relaxation here)</li>
+      <li>Open <b>step 2.1</b> for further instructions</li>
+    </ol>
+  </div>
+</div>
+
+<div id="properties-selection">
+  Here we select the properties to calculate. Each property is associated with a
+  workflow that will submit one or more calculations. In this guide, you will calculate and analyze the PDOS. In this way,
+  you can easily verify that you have indeed modeled an antiferromagnetic configuration.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Check (activate) <b>Electronic projected density of states (PDOS)</b></li>
+      <li>Open <b>step 2.2</b> for further instructions</li>
+    </ol>
+  </div>
+</div>
+
+<div id="basic-settings">
+  <div class="alert alert-warning">
+    <b>Note:</b> If running locally (for example, on the AiiDAlab demo server),
+    we recommend selecting the <b>fast</b> protocol to reduce the computational
+    cost.
+  </div>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Select the <b>fast</b> protocol</li>
+      <li>Set <b>Magnetism</b> to <b>On</b>. Keep the <b>Electronic type</b> as metal
+      (this is required since we want to determine the magnetization self-consistently. When setting to
+      insulator, the app will inform you that this is only possible for claculations for which you
+      fix the total magnetization of the unit cell.).
+    </li>
+      <li>
+        Open the <b>Advanced settings</b> panel to set the initial magnetic moments.
+      </li>
+      <!-- <li>Switch to the <b>Band structure</b> tab</li> -->
+    </ol>
+  </div>
+</div>
+
+<div id="advanced-settings">
+  Here, we will define the initial magnetic moments.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>
+        Similar to what has been done for the ferromagnetic case, we will
+        set the initial magnetic moments in the <b>Magnetization</b> subsection. However,
+        in this case we assign opposite starting magnetization to <b>Co1</b> and <b>Co2</b>.
+      </li>
+      <li>
+        Set the ones for <b>Co1</b> to <b>-3 &mu;<sub>B</sub></b>, <b>Co2</b> to <b>3 &mu;<sub>B</sub></b>
+        and <b>O</b> to <b>0.6 &mu;<sub>B</sub></b>
+      </li>
+      <li>
+        In this guide, we do not activate the Hubbard U. However, feel free to do it as another post-guide exercise
+        to investigate the effect of the Hubbard U on the antiferromagnetic electronic structure.
+      </li>
+      <li>Switch to the <b>PDOS</b> tab for some final fine-tuning</li>
+    </ol>
+  </div>
+</div>
+
+<div id="pdos-settings">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>
+        Set <b>Energy grid step (eV)</b> to <b>0.03 eV</b>. We change this parameter here to reduce the computational costs.
+      </li>
+      <li>Click the <b>Confirm</b> button to proceed</li>
+    </ol>
+  </div>
+</div>
+
+<div id="submission-step">
+  <p>
+    In the submission step, we define the computational resources to be used in
+    the calculations. The global resources are used to define resources across
+    all workflow calculations. Optionally, you can override the resource
+    settings for specific calculations.
+  </p>
+  <div class="alert alert-warning">
+    <b>Warning:</b> If running locally (for example, on the AiiDAlab demo
+    server), we recommend keeping nodes and CPUs at the default minimum of 1
+    each.
+  </div>
+  <p>
+    Once the resources are defined, we can optionally customize the workflow
+    label (pre-filled according to the settings of steps 1 & 2), as well as
+    provide a detailed description of the workflow. Once we are ready, we can
+    submit the workflow.
+
+    You first need to select which code (code executable + computer where this
+    will run) to use for each step of the workflow. The Quantum ESPRESSO app
+    should always install a local Quantum ESPRESSO executable that is sufficient
+    for this tutorial, but you can setup additional codes installed on remote
+    supercomputers. For more information on how to set up codes, please refer to the
+    corresponding
+    <a
+      href="https://aiidalab-qe.readthedocs.io/howto/setup_computer_code.html#"
+      target="_blank"
+    >
+      documentation</a
+    >.
+  </p>
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>Check that the the default options in the "Global resources" panel are the expected ones.
+        Specifically: select 1 node and 1 CPU for each of the codes. Unless you want to run elsewhere,
+        use the default codes on the AiiDAlab server (ending with `@localhost`)
+        that are available from the dropdown menus.</li>
+      <li><b>(Optional)</b> customize the workflow label</li>
+      <li><b>(Optional)</b> add a workflow description</li>
+      <li>Click the <b>Submit</b> button to proceed</li>
+    </ol>
+    <div class="alert alert-warning">
+      <b>Warning:</b> The workflow may take a moment to submit.
+    </div>
+  </div>
+</div>
+
+
+
+<div id="results-panel">
+  Here in the results panel, each tab will open results pertaining to a specific
+  calculation submitted by the workflow.
+  <div class="alert alert-success">
+    See further instructions below in the <b>Electronice PDOS</b> tab.
+  </div>
+</div>
+
+<div id="electronic-structure-results">
+  When results are available, the <b>Load results</b> button will become active allowing us to
+  load the results from AiiDA.
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>
+        Once the calculation is complete, click on the
+        <b>Load results</b> button to load the available results
+      </li>
+      <li>
+        Select <b>Group by angular momentum</b> in <b>Orbital grouping</b>.
+      </li>
+      <li>
+        Find the location of the <b>O-2s</b> states. You already learned how to select and focus on the different
+        contributions by double-clicking on the legend. If you do not immediately find these states, remember that you can also
+        click on the x-axis and drag it to change the displayed energy range.
+      </li>
+    </ol>
+  </div>
+</div>
+
+
+<div id="post-guide">
+  <h4>Post-guide exercises</h4>
+  <ol>
+    <li>
+      Use the app to compute the antiferromagnetic band structure.
+      <ul>
+        <li>Follow the same steps as before, but this time, select the electronic
+          band structure in the <b>Configure workflow panel</b>.
+        </li>
+        <li>
+          You can also check both boxes to calculate the PDOS and band structure (and, in the
+          advanced band structure options, turn on <b>Fat bands</b>).
+          This will allow you to plot so called fat-bands, showing the orbital character
+          of the bands.
+        </li>
+      </ul>
+    </li>
+    <li>
+      Compare the antiferromagnetic results with the ferromagnetic example discussed in the corresponding <b>Ferromagnetism & DFT+U</b> in-app guide.
+      <ul>
+        <li>
+          This time, you do not need to set the tags.
+        </li>
+        <li>Set the initial magnetic moments to the same values as before.</li>
+        <li>Finally, compare your FM PDOS with the AFM one obtained before.</li>
+      </ul>
+    </li>
+    <li>
+      As mentioned in the <b>Advanced settings</b>, consider to rerun the antiferromagnetic PDOS with a Hubbard U correction to see
+      how the electronic structure changes in case of the antiferromagnetic configuration.
+    </li>
+  </ol>
+  We already provide some of these results in our examples. Check the <b>Download examples</b> on the landing page of the app.
+  You can follow the instructions there to import the examples. Afterwards, you can inspect the results in your <b>Calculation history</b>.
+</div>
