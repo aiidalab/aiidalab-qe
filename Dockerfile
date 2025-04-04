@@ -1,4 +1,12 @@
-# syntax=docker/dockerfile:1
+##
+# Unified multi-arch Dockerfile for both AMD64 and ARM64 builds.
+# Conditionally installs 'bader' in conda (on x86_64) or compiles from source (on arm64),
+# and downloads the correct Hyperqueue (hq) binary for each architecture.
+##
+
+###############################################################################
+# 1) Global ARGs
+###############################################################################
 ARG FULL_STACK_VER=2025.1026
 ARG UV_VER=0.4.7
 ARG QE_VER=7.4
@@ -9,60 +17,92 @@ ARG UV_CACHE_DIR=/tmp/uv_cache
 ARG QE_APP_SRC=/tmp/quantum-espresso
 ARG COMPUTER_LABEL="localhost"
 
+#
+# We'll define the possible HQ download URLs (for x86_64 and ARM64).
+#
+ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
+ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
+
+###############################################################################
+# 2) uv stage (unchanged)
+###############################################################################
 FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
-# STAGE 1
-# Install QE into conda environment in /opt/conda
-# This step is largely independent from the others and can run in parallel.
-# However, it needs to be done before running `python -m aiidalab_qe install-qe`,
-# otherwise QE gets installed into ~/.conda folder.
+###############################################################################
+# 3) qe_conda_env stage
+#    - Creates the quantum-espresso conda environment in /opt/conda/envs/quantum-espresso-<QE_VER>
+#    - On x86_64, we install the 'bader' package from conda. On arm64, skip 'bader' because
+#      it’s unavailable and we'll build from source later.
+###############################################################################
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS qe_conda_env
 ARG QE_VER
 ARG QE_DIR
+# Docker sets TARGETARCH automatically (e.g. "amd64" or "arm64")
+ARG TARGETARCH
 
 USER ${NB_USER}
-RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
+RUN set -ex; \
+    if [ "${TARGETARCH}" = "amd64" ]; then \
+      echo "Installing QE plus Bader for x86_64..."; \
+      mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader; \
+    else \
+      echo "Installing QE (without bader) for ARM64..."; \
+      mamba create -p ${QE_DIR} --yes qe=${QE_VER}; \
+    fi && \
     mamba clean --all -f -y
 
-# STAGE 2
-# Install python dependencies needed to run aiidalab_qe CLI commands
-# uv package cache from this stage is reused in the final stage as well.
+###############################################################################
+# 4) build_deps stage
+#    - Installs Python dependencies using uv for caching
+###############################################################################
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS build_deps
 ARG QE_DIR
 ARG UV_CACHE_DIR
 ARG QE_APP_SRC
 
 WORKDIR ${QE_APP_SRC}
+
 COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
 COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
-# Use uv instead of pip to speed up installation, per docs:
-# https://github.com/astral-sh/uv/blob/main/docs/guides/docker.md#using-uv-temporarily
-# Use the same constraint file as pip
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --strict --system --cache-dir=${UV_CACHE_DIR} .
 
-# STAGE 3
-# - Prepare AiiDA profile and localhost computer
-# - Prepare hq computer using hyperqueue as scheduler
-# - Install QE codes and pseudopotentials
-# - Archive home folder
+###############################################################################
+# 5) home_build stage
+#    - Prepares AiiDA profile, sets up hyperqueue, installs QE codes/pseudos,
+#      and archives the home folder (home.tar).
+###############################################################################
 FROM build_deps AS home_build
 ARG UV_CACHE_DIR
 ARG QE_DIR
 ARG HQ_VER
 ARG COMPUTER_LABEL
+# We'll use these to pick the correct HQ binary
+ARG TARGETARCH
+ARG HQ_URL_AMD64
+ARG HQ_URL_ARM64
 
-# Install hq binary
-RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz && \
+#
+# Download and unpack the correct hq binary for the architecture:
+#
+RUN set -ex; \
+    if [ "${TARGETARCH}" = "arm64" ]; then \
+      echo "Downloading hyperqueue for ARM64..."; \
+      wget -c -O hq.tar.gz "${HQ_URL_ARM64}"; \
+    else \
+      echo "Downloading hyperqueue for x86_64..."; \
+      wget -c -O hq.tar.gz "${HQ_URL_AMD64}"; \
+    fi && \
     tar xf hq.tar.gz -C /opt/conda/
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
-# Install plugin for post-install
+
+# Additional plugins
 RUN pip install aiida-bader \
-     git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-     git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+    git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+    git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
@@ -72,8 +112,8 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 # XXX: fix me after release aiida-hyperqueue
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
-     "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
+    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
+    "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -106,19 +146,19 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # to available environments.
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work --exclude .conda .
 
-# STAGE 3 - Final stage
-# - Install python dependencies
-# - Copy QE env environment
-# - Remove all content of home folder
-# - Copy the whole repo content into the container
-# - Copy home folder archive
+###############################################################################
+# 6) Final stage
+#    - Installs python dependencies again, copies QE env, compiles wannier90,
+#      (conditionally) compiles bader on ARM64, and sets up the final environment.
+###############################################################################
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
 ARG QE_DIR
 ARG QE_APP_SRC
 ARG UV_CACHE_DIR
 ARG COMPUTER_LABEL
-USER ${NB_USER}
+ARG TARGETARCH
 
+USER ${NB_USER}
 WORKDIR /tmp
 # Install python dependencies
 # Use uv cache from the previous build step
@@ -129,42 +169,51 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} ${QE_APP_SRC} "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
-
-# Install plugin in the final image
+# Install plugins in the final image
 RUN pip install aiida-bader \
- git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
- git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+    git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+    git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
-
+# Copy the QE conda environment
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
-# download and compile wannier90
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        gfortran libblas-dev liblapack-dev git openmpi-bin && \
-    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90 && \
-    cd /tmp/wannier90 && \
-    cp config/make.inc.gfort make.inc && \
-    make wannier && \
-    cp wannier90.x /opt/conda/bin/wannier90.x && \
-    # Keep only runtime LAPACK (liblapack3), remove dev tools
-    apt-get remove --purge -y \
-        gfortran libblas-dev liblapack-dev && \
+      gfortran libblas-dev liblapack-dev git openmpi-bin
+
+# Build wannier90 for all arches, and build bader from source ONLY on arm64
+RUN set -ex; \
+    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
+    cd /tmp/wannier90; \
+    cp config/make.inc.gfort make.inc; \
+    make wannier; \
+    cp wannier90.x /opt/conda/bin/wannier90.x; \
+    \
+    if [ "${TARGETARCH}" = "arm64" ]; then \
+      echo "Building bader from source for ARM64..."; \
+      git clone --depth=1 https://gitlab.com/jameskermode/bader.git /tmp/bader; \
+      cd /tmp/bader; \
+      cp makefile.osx_gfortran Makefile; \
+      make; \
+      cp bader ${QE_DIR}/bin/bader; \
+    else \
+      echo "Skipping Bader build on AMD64 (installed via conda)."; \
+    fi; \
+    \
+    apt-get remove --purge -y gfortran libblas-dev liblapack-dev && \
     apt-get install -y --no-install-recommends liblapack3 && \
     apt-get autoremove -y && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/wannier90
+    rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
 
 # We exclude 42_setup-hq-computer.sh file because the computer is already steup, thus it is not needed in the final image.
 COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /usr/local/bin/before-notebook.d/
-
 ENV COMPUTER_LABEL=$COMPUTER_LABEL
 
-# Remove content of $HOME
-# '-mindepth=1' ensures that we do not remove the home directory itself.
+# Remove the content of /home/<user>, but keep the folder itself
 RUN find /home/${NB_USER}/ -mindepth 1 -delete
 
 ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
