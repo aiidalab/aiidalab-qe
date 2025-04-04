@@ -21,7 +21,7 @@ ARG QE_VER
 ARG QE_DIR
 
 USER ${NB_USER}
-RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
+RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} && \
     mamba clean --all -f -y
 
 # STAGE 2
@@ -55,7 +55,7 @@ ARG HQ_VER
 ARG COMPUTER_LABEL
 
 # Install hq binary
-RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz && \
+RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz && \
     tar xf hq.tar.gz -C /opt/conda/
 
 ENV PSEUDO_FOLDER=/tmp/pseudo

@@ -48,12 +48,6 @@ jobs:
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
 
-            # For cross-building.
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: all
-
             - name: Docker meta (GHCR) 📝
               id: meta_ghcr
               uses: docker/metadata-action@v5
@@ -86,9 +80,8 @@ jobs:
                   load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
                   push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
                   context: .
-                  platforms: linux/amd64,linux/arm64
-                  build-args: |
-                      HQ_ARCH=$([ "$(uname -m)" = "x86_64" ] && echo "linux-x64" || echo "linux-arm64-linux")
+                  file: Dockerfile
+                  platforms: linux/amd64
                   cache-to: |
                       type=gha,scope=${{ github.workflow }},mode=min
                   cache-from: |
@@ -112,13 +105,13 @@ jobs:
                   # but that sadly does not work when the image is loaded to Docker locally and not published on ghcr.io
                   # as is the case for PRs from forks. Hence this super-ugly ternary expression...
                   # For forks, we take the image as ghcr.io/aiidalab/qe:pr-XXX
-                  # which is stored in the steps.meta.outputs.tags variable
+                  # which is stored in the steps.meta_ghcr.outputs.tags variable
                   QE_IMAGE: >-
                       ${{
                           github.event_name == 'pull_request' &&
                           github.event.pull_request.head.repo.fork &&
-                          steps.meta.outputs.tags ||
-                          format('{0}@{1}', env.IMAGE, steps.build-upload.outputs.imageid)
+                          steps.meta_ghcr.outputs.tags ||
+                          format('ghcr.io/{0}@{1}', env.IMAGE_NAME, steps.build-upload.outputs.imageid)
                       }}
 
             - name: Upload screenshots as artifacts
@@ -128,3 +121,75 @@ jobs:
                   name: Screenshots
                   path: screenshots/
                   if-no-files-found: error
+
+    build-arm64:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout Repo
+              uses: actions/checkout@v4
+
+            - name: Login to GitHub Container Registry 🔑
+              uses: docker/login-action@v2
+              if: ${{ !github.event.pull_request.head.repo.fork }}
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Login to DockerHub 🔑
+              uses: docker/login-action@v2
+              if: ${{ !github.event.pull_request.head.repo.fork }}
+              with:
+                  registry: docker.io
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            # For cross-building.
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+              with:
+                  platforms: all
+
+            - name: Docker meta (GHCR) 📝
+              id: meta_ghcr
+              uses: docker/metadata-action@v5
+              with:
+                  images: |
+                      name=ghcr.io/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=pr
+                      type=edge,enable={{is_default_branch}}
+                      type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            - name: Docker meta (DockerHub)
+              id: meta_dockerhub
+              uses: docker/metadata-action@v5
+              with:
+                  images: docker.io/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=pr
+                      type=edge,enable={{is_default_branch}}
+                      # type=match,pattern=v(\d+\.\d+(\.\d+)?),group=1
+                      type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+            - name: Build and push images (GHCR + DockerHub)
+              id: build-upload
+              uses: docker/build-push-action@v5
+              with:
+                  append: true  # <--- This merges into the existing manifest
+                  # Provide multiple comma/line-separated tags:
+                  tags: >
+                      ${{ steps.meta_ghcr.outputs.tags }},
+                      ${{ steps.meta_dockerhub.outputs.tags }}
+                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+                  push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
+                  file: Dockerfile.arm
+                  context: .
+                  platforms: linux/arm64
+                  cache-to: |
+                      type=gha,scope=${{ github.workflow }},mode=min
+                  cache-from: |
+                      type=gha,scope=${{ github.workflow }}
