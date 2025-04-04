@@ -1,6 +1,6 @@
 <div id="guide-header">
   You've activated the antiferromagnetism in-app guide. In this guide, you will learn how
-  to model an antiferromagnetic configuration of CoO. <b>Note</b>: You should follow the in-app guide
+  to model an antiferromagnetic configuration of CoO and analyze the corresponding PDOS. <b>Note</b>: You should follow the in-app guide
   on ferromagnetism and DFT+U first.
   <br>Click on <b>Step 1: Select structure</b> and follow the instructions to proceed.
 </div>
@@ -17,7 +17,7 @@
         two Co atoms in the simulation cell
       </li>
       <li>
-        Assign different species (i.e., give a different “names”) to the two Co atoms.
+        Assign different species (i.e., give a different “name”) to the two Co atoms.
         Follow the steps below to achieve this goal.
       </li>
     </ul>
@@ -47,7 +47,7 @@
         </ul>
       </li>
       <li>
-        In order to double check the tags that you assigned, you can type “1..4” in the “Index of atoms” texbox to show all four atoms.
+        In order to double check the tags that you assigned, you can type “1..4” in the “Index of atoms” textbox to show all four atoms.
         You should verify that the two Co atoms have different tags, while oxygens have no tag.
         (Note that the table is scrollable, by default you see only the first few rows).
       </li>
@@ -117,7 +117,10 @@
         Set the ones for <b>Co1</b> to <b>-3 &mu;<sub>B</sub></b>, <b>Co2</b> to <b>3 &mu;<sub>B</sub></b>
         and <b>O</b> to <b>0.6 &mu;<sub>B</sub></b>
       </li>
-      <li>In this guide, we do not activate the Hubbard U. However, feel free to do it as another post-guide exercise.</li>
+      <li>
+        In this guide, we do not activate the Hubbard U. However, feel free to do it as another post-guide exercise
+        to investigate the effect of the Hubbard U on the antiferromagnetic electronic structure.
+      </li>
       <li>Switch to the <b>PDOS</b> tab for some final fine-tuning</li>
     </ol>
   </div>
@@ -133,7 +136,6 @@
       <li>Click the <b>Confirm</b> button to proceed</li>
     </ol>
   </div>
-
 </div>
 
 <div id="submission-step">
@@ -221,21 +223,21 @@
   <h4>Post-guide exercises</h4>
   <ol>
     <li>
-      Use the app to compute the anti-ferromagnetic band structure.
+      Use the app to compute the antiferromagnetic band structure.
       <ul>
         <li>Follow the same steps as before, but this time, select the electronic
           band structure in the <b>Configure workflow panel</b>.
         </li>
         <li>
           You can also check both boxes to calculate the PDOS and band structure (and, in the
-          advanced band structure options, turn on “Fat bands”).
+          advanced band structure options, turn on <b>Fat bands</b>).
           This will allow you to plot so called fat-bands, showing the orbital character
           of the bands.
         </li>
       </ul>
     </li>
     <li>
-      Compare with the ferromagnetic example discussed in the corresponding <b>Ferromagnetism & DFT+U</b> in-app guide.
+      Compare the antiferromagnetic results with the ferromagnetic example discussed in the corresponding <b>Ferromagnetism & DFT+U</b> in-app guide.
       <ul>
         <li>
           This time, you do not need to set the tags.
@@ -244,5 +246,11 @@
         <li>Finally, compare your FM PDOS with the AFM one obtained before.</li>
       </ul>
     </li>
+    <li>
+      As mentioned in the <b>Advanced settings</b>, consider to rerun the antiferromagnetic PDOS with a Hubbard U correction to see
+      how the electronic structure changes in case of the antiferromagnetic configuration.
+    </li>
   </ol>
+  We already provide some of these results in our examples. Check the <b>Download examples</b> on the landing page of the app.
+  You can follow the instructions there to import the examples. Afterwards, you can inspect the results in your <b>Calculation history</b>.
 </div>

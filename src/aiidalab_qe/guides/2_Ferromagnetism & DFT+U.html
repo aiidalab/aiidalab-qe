@@ -1,6 +1,7 @@
 <div id="guide-header">
   In this guide, you will learn how to model ferromagnetic materials and how to
-  include Hubbard U corrections in your calculations. In this example, you will investigate the CoO structure.
+  include Hubbard U corrections in your calculations. In this example, you will investigate the PDOS of CoO and analyze
+  how the Hubbard U influences the electronic structure.
   <br>Click on <b>Step 1: Select structure</b> and follow the instructions to proceed.
 </div>
 
@@ -80,6 +81,18 @@
     <ol>
       <li>Enable Hubbard-U corrections by activating the <b>Define U values</b> checkbox.</li>
       <li>Define the U values for the different elements. Set U for <b>Co - 3d</b> to <b>6 eV</b> (we do not apply a U correction to O).</li>
+      <li>Switch to the <b>PDOS</b> tab for some final fine-tuning</li>
+    </ol>
+  </div>
+</div>
+
+<div id="pdos-settings">
+  <div class="alert alert-success">
+    <h4>Tasks</h4>
+    <ol>
+      <li>
+        Set <b>Energy grid step (eV)</b> to <b>0.03 eV</b>. We change this parameter here to reduce the computational costs.
+      </li>
       <li>Click the <b>Confirm</b> button to proceed</li>
     </ol>
   </div>
@@ -161,7 +174,7 @@
         Understand where the Co-3d (spin-down) states are located. To do so, double click on the Co-3d (spin-down) states in the legend. This will
         hide all the other states. To deselect, simply double click again.
       </li>
-      <li> If you want to go in more detail, select <b>No grouping (each orbital separately) in <b>Orbital grouping</b>.
+      <li> If you want to go in more detail, select <b>No grouping (each orbital separately)</b> in <b>Orbital grouping</b>.
         This will show you the contributions of all individual orbitals.
       </li>
     </ol>
@@ -171,12 +184,17 @@
 <div id="post-guide">
   <h4>Post-guide exercises</h4>
   <ol>
-        <li>Follow the steps in the guide again, but this time, unset the Hubbard U or set it to 0. What do you notice?
-          What happens to the electronic states around the Fermi level?
+        <li>Follow the steps in the guide again, but this time, unset the Hubbard U or set it to 0.
+          <ul>
+            <li>What do you notice?</li>
+            <li>What happens to the electronic states around the Fermi level?</li>
+          </ul>
         </li>
         <li>
         <b>Optionally:</b> Follow the same steps as before, but this time, choose a different U value.
         Inspect the results and see how the U values influence the electronic structure.
       </li>
   </ol>
+  We already provide some of these results in our examples. Check the <b>Download examples</b> on the landing page of the app.
+  You can follow the instructions there to import the examples. Afterwards, you can inspect the results in your <b>Calculation history</b>.
 </div>

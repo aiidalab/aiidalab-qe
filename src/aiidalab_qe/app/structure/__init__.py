@@ -162,7 +162,6 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
                 </p>
             """),
             self.manager,
-            # InAppGuide(identifier="structure-edit"),
             self.structure_name_text,
         ]
 
