@@ -99,11 +99,6 @@ RUN set -ex; \
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
-# Additional plugins
-RUN pip install aiida-bader \
-    git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-    git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
-
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
@@ -128,6 +123,11 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
     verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
+    # Additional plugins
+    pip uninstall -y phonopy && \
+    pip install aiida-bader \
+    git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+    git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0 && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
