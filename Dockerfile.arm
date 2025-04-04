@@ -60,9 +60,9 @@ RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/d
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 # Install plugin for post-install
-RUN pip install aiida-bader \
-     git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-     git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+RUN pip install aiida-bader
+    #  git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+    #  git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
@@ -85,16 +85,16 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     python -m aiidalab_qe install-qe --computer ${COMPUTER_LABEL} && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     # steup code: pythonjob, bader, wannier90 code
-    verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
+    # verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
     verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=/opt/conda/bin/bader -n && \
-    verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
+    # verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
-    python -m aiidalab_qe_vibroscopy setup-phonopy && \
-    python -m aiidalab_qe_muon setup-python3 && \
+    # python -m aiidalab_qe_vibroscopy setup-phonopy && \
+    # python -m aiidalab_qe_muon setup-python3 && \
     # wannier90 plugin need SSSP 1.1
-    aiida-pseudo install sssp -v 1.1 -x PBE && \
-    aiida-pseudo install sssp -v 1.1 -x PBEsol && \
+    # aiida-pseudo install sssp -v 1.1 -x PBE && \
+    # aiida-pseudo install sssp -v 1.1 -x PBEsol && \
     verdi daemon stop && \
     mamba run -n aiida-core-services pg_ctl stop && \
     touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
@@ -131,9 +131,9 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} ${QE_APP_SRC} "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 # Install plugin in the final image
-RUN pip install aiida-bader \
- git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
- git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+RUN pip install aiida-bader
+#  git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
+#  git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
@@ -145,11 +145,11 @@ USER root
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         gfortran libblas-dev liblapack-dev git openmpi-bin && \
-    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90 && \
-    cd /tmp/wannier90 && \
-    cp config/make.inc.gfort make.inc && \
-    make wannier && \
-    cp wannier90.x /opt/conda/bin/wannier90.x && \
+    # git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90 && \
+    # cd /tmp/wannier90 && \
+    # cp config/make.inc.gfort make.inc && \
+    # make wannier && \
+    # cp wannier90.x /opt/conda/bin/wannier90.x && \
     git clone --depth=1 https://gitlab.com/jameskermode/bader.git /tmp/bader && \
     cd /tmp/bader && \
     cp makefile.osx_gfortran Makefile && \
