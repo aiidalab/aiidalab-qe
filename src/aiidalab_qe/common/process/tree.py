@@ -210,7 +210,8 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
             return "Unknown"
         if label in ("PwBaseWorkChain", "PwCalculation"):
             inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
-            calculation: str = inputs.parameters.get_dict()["CONTROL"]["calculation"]
+            parameters = inputs.parameters.base.attributes.all
+            calculation: str = parameters["CONTROL"]["calculation"]
             calculation = calculation.replace("vc-", "")
             return self._TITLE_MAPPING.get(label, {}).get(calculation, label)
         return self._TITLE_MAPPING.get(label, label)
@@ -251,7 +252,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
             inputs = {
                 key: value
                 for key, value in inputs.items()
-                if key in self.node.inputs.properties
+                if key in self.node.inputs.properties.base.attributes.get("list")
             }
         return inputs
 
