@@ -68,7 +68,7 @@ Step 4 Check the status and results
 -----------------------------------------
 The job may take 5~10 minutes to finish if your jobs are running immediately without waiting in the queue.
 
-While the calculation is running, you can monitor its status as shown in the :ref:`basic tutorial <basic_status>`.
+While the calculation is running, you can monitor its status as shown in the :ref:`basic tutorial <basic:results>`.
 When the job is finished, you can view result spectra in the `XPS` tab.
 
 .. tip::

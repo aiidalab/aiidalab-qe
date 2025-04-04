@@ -2,134 +2,106 @@
 Basic Tutorial
 ==============
 
-Overview
---------
+In this tutorial, we will show how to use the basic features of the Quantum ESPRESSO app to run a geometry optimization of bulk Silicon and obtain its band structure.
 
-Submitting a Quantum ESPRESSO calculation from the Quantum ESPRESSO app involves the following steps:
+----
 
-#. Selecting a structure
-#. Configuring the workflow
-#. Choosing computational resources
-#. Submitting the job
+The Quantum ESPRESSO app involves the following steps:
 
-Once submitted, the app will compile your input into a payload for the AiiDA workflow management system backend, which will take care of submission and provenance tracking. While AiiDA manages your calculation, you can monitor the status of the calculation in the app. Once your calculation is finished, AiiDA will retrieve the results, which you can then view from the app.
+#. :ref:`Selecting a structure <basic:structure>`
+#. :ref:`Configuring the workflow <basic:config>`
+#. :ref:`Choosing computational resources and submitting the job <basic:resources>`
+#. :ref:`Monitoring the status and retrieving results <basic:results>`
 
-In the following tutorial, we will guide you through each of these steps.
+The sections below provide a brief overview of each step, along with screenshots from the app.
 
-Start
------
+----
 
-.. admonition:: Goal
+.. _basic:structure:
 
-   To run a band structure calculation on silicon using the Quantum ESPRESSO app (running directly on the AiiDAlab machine) and obtain a band structure and projected density of states (PDOS).
+Structure selection
+*******************
 
-To start, go ahead and :doc:`launch </installation/launch>` the app, then follow the steps below.
+You can select a structure from the AiiDA database, upload a custom structure, use the OPTIMADE service to search for a structure across registered databases, or choose from a list of examples.
+Once uploaded, you can visualize and modify the structure using the built-in visualization tool.
 
-Step 1: Select a structure
-**************************
+.. figure:: ../_static/images/in_app_guides/structure_selection.png
+   :width: 100%
+   :align: center
+   :class: img-responsive
 
-Switch over to the `From Examples` tab and select `Silicon (diamond)` from the dropdown menu.
+   Selecting an initial structure
 
-.. figure:: /_static/images/step1_select_structure.png
-   :width: 12cm
+.. _basic:config:
 
-Click the `Confirm` button to finalize your selection.
+Workflow configuration
+**********************
 
-.. tip::
+In the configuration step, you define the workflow by including relaxation (optional) and selecting the desired properties to compute (e.g., band structure, density of states, etc.), as well as specifying parameters for the selected calculations (e.g., protocol, k-point grid, cutoffs, etc.).
 
-   The app allows you to select a structure from various sources. For more information, check out the corresponding :doc:`How-To </howto/import_structure>` page.
+.. figure:: ../_static/images/in_app_guides/plugin_selection.png
+   :width: 100%
+   :align: center
+   :class: img-responsive
 
-Step 2: Configure the workflow
-******************************
+   Selecting the properties of interest to compute
 
-Structure
-^^^^^^^^^
+.. figure:: ../_static/images/in_app_guides/workflow_configuration.png
+   :width: 100%
+   :align: center
+   :class: img-responsive
 
-We should first relax the structure to obtain a better charge density, improving the quality of our results. There are three types of structure relaxation you can perform:
+   Configuring the calculation parameters
 
-- No relaxation, leaving the structure as is
-- Relax only the atomic positions, leaving the cell geometry as is
-- Full geometry relaxation, also allowing the cell geometry to change to minimize the energy
+.. _basic:resources:
 
-For our silicon (diamond) unit cell, either `Atomic positions` or `Full geometry` may be chosen, as both will yield reasonable results and should run quickly on the AiiDAlab machine.
+Resources and submission
+************************
 
-Properties
-^^^^^^^^^^
+In this step, you select the computer and code to use for the calculation, as well as specify the number of nodes and CPUs. When you are ready, you can submit the job.
 
-There are two properties that can be computed:
+.. figure:: ../_static/images/in_app_guides/computational_resources.png
+   :width: 100%
+   :align: center
+   :class: img-responsive
 
-- Band structure
-- Projected density of states (PDOS)
+   Selecting the computational resources and submitting the job
 
-As the goal stated, we need to select both.
+.. _basic:results:
 
-Protocol
-^^^^^^^^
+Monitoring and results
+**********************
 
-The Quantum ESPRESSO app provides several convenient protocols to set the accuracy of the calculation through tuning convergence criteria and cutoffs. In order to quickly get the result, please select the `fast` protocol.
+Once submitted, the app redirects you to the last step, from where you can view a summary of parameters, monitor the status of the workflow, and visualize the results of each calculation as they become available.
 
-.. note::
+.. figure:: ../_static/images/in_app_guides/summary.png
+   :width: 100%
+   :align: center
+   :class: img-responsive
 
-   For any production calculation, you would ideally set up a remote computer (cluster, supercomputer, etc.) and set tighter convergence criteria, i.e. `balanced` or `stringent` protocols. You can check the corresponding :doc:`How-To </howto/setup_computer_code>` section to learn how to setup a remote computer (and the corresponding Quantum ESPRESSO codes) to run a precise band structure calculation.
+   A summary of the workflow parameters.
+   You can also download the workflow provenance to explore and/or share your work.
 
-.. figure:: /_static/images/step2_configure.png
-   :width: 12cm
+.. figure:: ../_static/images/in_app_guides/process_status.png
+   :width: 100%
+   :align: center
+   :class: img-responsive
 
-Again, click the `Confirm` button to finalize your selection.
+   A live-monitoring tree view of the workflow.
+   You can click the calculation nodes (in blue) to view the running job.
 
-Step 3: Choose computational resources
-**************************************
+.. figure:: ../_static/images/in_app_guides/structure_results.png
+   :width: 100%
+   :align: center
+   :class: img-responsive
 
-Codes
-^^^^^
+   The results of the geometry optimization.
+   You can visualize the optimized structure and compare it with the initial one.
 
-The AiiDAlab image comes pre-configured with a default computer (localhost) and the following codes:
+.. figure:: ../_static/images/in_app_guides/electronic_results.png
+   :width: 100%
+   :align: center
+   :class: img-responsive
 
-- pw-7.0@localhost
-- dos-7.0@localhost
-- projwfc-7.0@localhost
-
-We will use the default codes for the tutorial.
-
-Resources & Parallelization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Enter 1 for `Nodes`, `CPUs`, and `Number of k-points`. This is sufficient for the purpose of this tutorial.
-
-.. figure:: /_static/images/step3_resources.png
-   :width: 12cm
-
-Click the `Submit` button to launch the calculation.
-
-Step 4: Check the status and results
-************************************
-
-.. _basic_status:
-
-Status
-^^^^^^
-
-The calculation may take about 3 minutes to complete. While waiting, you can view information regarding the calculation by clicking the `QeAppWorkchain` item in the status tree view and checking out the `Workflow Summary`.
-
-.. figure:: /_static/images/process_status.png
-   :width: 12cm
-
-You can also check out the status of the submitted calculation above `Step 1` in the **Select computed workflow or start a new one** dropdown menu.
-
-.. figure:: /_static/images/workchain_selector.png
-   :width: 12cm
-
-Results
-^^^^^^^
-
-When the calculation is finished (you may need to refresh the window), you can switch over to the `Final Geometry` and `Electronic Structure` tabs to view the results.
-
-.. figure:: /_static/images/step4_results.png
-   :width: 12cm
-
-Summary
--------
-
-In this tutorial, you learned how to submit a band structure calculation using the Quantum ESPRESSO app by selecting a structure, the properties to compute, the level of accuracy, and the computational resources. You then monitored the status of your submitted calculation and viewed the results once the it finished.
-
-In the next section, we will show you how to submit calculations to obtain more advanced properties. These calculations will require more computational resources, so we will need to run them on a remote machine. No worries, we will guide you through the necessary setup.
+   The results of the electronic structure calculations.
+   You can visualize the band structure and density of states, as well as download the data for further analysis.
