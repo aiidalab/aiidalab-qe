@@ -22,6 +22,7 @@ ARG QE_DIR
 
 USER ${NB_USER}
 RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
+    mamba install -y h5py && \
     mamba clean --all -f -y
 
 # STAGE 2
