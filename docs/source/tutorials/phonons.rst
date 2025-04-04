@@ -3,7 +3,8 @@ Phonons Tutorial
 ================
 
 In this tutorial we will show how to setup a calculation for vibrational properties.
-We will show the main components of the phonon plugin. For further details, have a look at the corresponding in-app guides of the app.
+We will show the main components of the phonon plugin.
+For further details, have a look at the corresponding in-app guides of the app.
 
 ----
 

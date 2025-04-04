@@ -76,6 +76,23 @@ We provide dedicated :doc:`in-app guides </howto/in_app_guides>` to help you lea
 
          Start
 
+   .. grid-item-card:: Bader charge analysis
+      :text-align: center
+      :shadow: md
+
+      Learn how to setup and submit a Bader charge calculation
+
+      ++++
+
+      .. button-ref:: bader
+         :ref-type: doc
+         :click-parent:
+         :expand:
+         :color: primary
+         :outline:
+
+         Start
+
 .. toctree::
    :maxdepth: 1
    :hidden:
@@ -84,3 +101,4 @@ We provide dedicated :doc:`in-app guides </howto/in_app_guides>` to help you lea
    advanced
    phonons
    muons
+   bader
