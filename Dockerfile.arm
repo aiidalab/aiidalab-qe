@@ -86,7 +86,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
     # steup code: pythonjob, bader, wannier90 code
     verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
-    verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
+    verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=/opt/conda/bin/bader -n && \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
@@ -150,6 +150,11 @@ RUN apt-get update && \
     cp config/make.inc.gfort make.inc && \
     make wannier && \
     cp wannier90.x /opt/conda/bin/wannier90.x && \
+    git clone --depth=1 https://gitlab.com/jameskermode/bader.git /tmp/bader && \
+    cd /tmp/bader && \
+    cp makefile.osx_gfortran Makefile && \
+    make && \
+    cp bader /opt/conda/bin/bader && \
     # Keep only runtime LAPACK (liblapack3), remove dev tools
     apt-get remove --purge -y \
         gfortran libblas-dev liblapack-dev && \
