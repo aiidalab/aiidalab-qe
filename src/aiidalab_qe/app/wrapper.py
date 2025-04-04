@@ -64,7 +64,7 @@ class AppWrapperContoller:
                         self._view.guide_category_selection,
                         self._view.guide_selection,
                     ],
-                    layout=ipw.Layout(align_items="baseline"),
+                    layout=ipw.Layout(align_items="baseline", grid_gap="10px"),
                 ),
             ]
             self._view.info_container.layout.display = "flex"
