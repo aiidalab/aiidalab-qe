@@ -104,13 +104,13 @@ jobs:
                   # but that sadly does not work when the image is loaded to Docker locally and not published on ghcr.io
                   # as is the case for PRs from forks. Hence this super-ugly ternary expression...
                   # For forks, we take the image as ghcr.io/aiidalab/qe:pr-XXX
-                  # which is stored in the steps.meta.outputs.tags variable
+                  # which is stored in the steps.meta_ghcr.outputs.tags variable
                   QE_IMAGE: >-
                       ${{
                           github.event_name == 'pull_request' &&
                           github.event.pull_request.head.repo.fork &&
-                          steps.meta.outputs.tags ||
-                          format('{0}@{1}', env.IMAGE, steps.build-upload.outputs.imageid)
+                          steps.meta_ghcr.outputs.tags ||
+                          format('ghcr.io/{0}@{1}', env.IMAGE_NAME, steps.build-upload.outputs.imageid)
                       }}
 
             - name: Upload screenshots as artifacts
