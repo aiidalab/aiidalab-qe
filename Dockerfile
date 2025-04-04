@@ -5,10 +5,6 @@ ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
 
-ARG UV_CACHE_DIR=/tmp/uv_cache
-ARG QE_APP_SRC=/tmp/quantum-espresso
-ARG COMPUTER_LABEL="localhost"
-
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
 ARG QE_DIR
 ARG QE_APP_SRC
