@@ -22,7 +22,6 @@ ARG QE_DIR
 
 USER ${NB_USER}
 RUN mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
-    mamba install -y h5py && \
     mamba clean --all -f -y
 
 # STAGE 2
@@ -61,7 +60,9 @@ RUN wget -c -O hq.tar.gz https://github.com/It4innovations/hyperqueue/releases/d
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 # Install plugin for post-install
-RUN pip install aiida-bader \
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+     uv pip install --system --cache-dir=${UV_CACHE_DIR} aiida-bader \
      git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
      git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
@@ -132,7 +133,9 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} ${QE_APP_SRC} "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 # Install plugin in the final image
-RUN pip install aiida-bader \
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+--mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+ uv pip install --system --cache-dir=${UV_CACHE_DIR} aiida-bader \
  git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
  git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
 
