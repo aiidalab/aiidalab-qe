@@ -536,14 +536,11 @@ class AddingTagsEditor(ipw.VBox):
         When given a list of atom in selection it will display a HTML table with Index, Element and Tag
         """
         selection = string_range_to_list(self.atom_selection.value)[0]
+        selection = [s for s in selection if s < len(self.structure)]
         current_tags = self.structure.get_tags()
         chemichal_symbols = self.structure.get_chemical_symbols()
 
-        if (
-            selection
-            and (min(selection) >= 0)
-            and (max(selection) <= (len(self.structure) - 1))
-        ):
+        if selection and (min(selection) >= 0):
             table_data = []
             for index in selection:
                 tag = current_tags[index]
