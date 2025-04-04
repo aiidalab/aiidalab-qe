@@ -21,4 +21,11 @@ pdos = {
         "model": PdosResourceSettingsModel,
     },
     "workchain": workchain_and_builder,
+    "metadata": {
+        "process_labels": {
+            "PdosWorkChain": "Projected density of states workflow",
+            "DosCalculation": "Density of states calculation",
+            "ProjwfcCalculation": "Orbital projection calculation",
+        }
+    },
 }
