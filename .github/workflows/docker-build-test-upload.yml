@@ -73,6 +73,9 @@ jobs:
               id: build-upload
               uses: docker/build-push-action@v5
               with:
+                  # "append: true" ensures we produce a manifest list in the registry,
+                  # letting a second build add more arches.
+                  append: true
                   # Provide multiple comma/line-separated tags:
                   tags: >
                       ${{ steps.meta_ghcr.outputs.tags }},
