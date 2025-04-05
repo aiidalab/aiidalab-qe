@@ -129,7 +129,6 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
     git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0 && \
     # run post_install for plugin
-    python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
     python -m aiidalab_qe_muon setup-python3 && \
     # wannier90 plugin need SSSP 1.1
@@ -144,7 +143,8 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # It is usually safe (and preferable) to let .conda be recreated on the fly each time,
     # because .conda typically just holds local environment information, caches, or references
     # to available environments.
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work --exclude .conda .
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work --exclude .conda . && \
+    python -m aiida_bader post-install
 
 ###############################################################################
 # 6) Final stage
