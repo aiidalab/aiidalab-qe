@@ -58,11 +58,6 @@ jobs:
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
 
-            - name: Set up QEMU for cross-building
-              uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: all
-
             - name: Docker meta (GHCR) 📝
               id: meta_ghcr
               uses: docker/metadata-action@v5
@@ -107,7 +102,7 @@ jobs:
             ))
             ||
             (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04-arm
         needs: build-amd
         steps:
             - name: Checkout Repo
@@ -131,11 +126,6 @@ jobs:
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
-
-            - name: Set up QEMU for cross-building
-              uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: all
 
             - name: Docker meta (GHCR) 📝
               id: meta_ghcr
