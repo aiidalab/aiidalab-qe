@@ -129,12 +129,15 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
     git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0 && \
     # run post_install for plugin
+    python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
     python -m aiidalab_qe_muon setup-python3 && \
     # wannier90 plugin need SSSP 1.1
     aiida-pseudo install sssp -v 1.1 -x PBE && \
     aiida-pseudo install sssp -v 1.1 -x PBEsol && \
     verdi daemon stop && \
+    conda install scipy==1.13.1 --y && \
+    pip install spglib==2.5.0 && \
     mamba run -n aiida-core-services pg_ctl stop && \
     touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
     # NOTE: The work folder is empty but if included clashes with the work folder in a Renku
@@ -143,8 +146,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # It is usually safe (and preferable) to let .conda be recreated on the fly each time,
     # because .conda typically just holds local environment information, caches, or references
     # to available environments.
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work --exclude .conda . && \
-    python -m aiida_bader post-install
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work --exclude .conda .
 
 ###############################################################################
 # 6) Final stage
