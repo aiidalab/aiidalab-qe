@@ -185,13 +185,22 @@
       <li>If not already there, switch over to the <b>Status</b> panel</li>
       <li>
         In the process tree, follow (by clicking)
-        <code>Quantum ESPRESSO app workflow -> Structure relaxation workflow manager ->
-          Structure relaxation workflow</code>
+        <code>Quantum ESPRESSO app workflow</code> ->
+        <code>Structure relaxation workflow manager</code> ->
+        <code>Structure relaxation workflow</code>
       </li>
       <li>
-        Click on <code>Structure Geometry optimization (`pw.x`)</code> to view the output of the calculation
-        (if the calculation is still running, you will see a scrollable running log of its output)
+        Click on <code>Structure Geometry optimization (`pw.x`)</code> to view
+        the output of the calculation (if the calculation is still running, you
+        will see a scrollable running log of its output)
       </li>
+      <div class="alert alert-warning">
+        <b>Note:</b> You may see more than one structure relaxation workflows,
+        with the first one(s) possibly marked with ❌. This is expected. Due to
+        the fast protocol, convergence may not be reached in the first attempt,
+        prompting the workflow to run a final relaxation step. The final step
+        should be marked with a ✅.
+      </div>
       <li>
         While the calculation is running, switch over to the
         <b>Summary</b> panel to view the submitted parameters
@@ -238,9 +247,6 @@
 </div>
 
 <div id="electronic-structure-results">
-  When partial results are available (when one of the bands and PDOS workflows
-  finishes), the <b>Load results</b> button will become active allowing us to
-  load the results from AiiDA.
   <div class="alert alert-success">
     <h4>Tasks</h4>
     <ol>
