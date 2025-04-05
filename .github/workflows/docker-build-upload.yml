@@ -17,44 +17,39 @@ env:
     IMAGE_NAME: aiidalab/qe
     BUILDKIT_PROGRESS: plain
 
-# https://docs.github.com/en/actions/using-jobs/using-concurrency
+# Only cancel in-progress jobs for the same ref
 concurrency:
-    # only cancel in-progress jobs or runs for the current workflow - matches against branch & tags
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
 
 jobs:
-    build-upload:
-    # The key line: we only proceed if:
-    #  1) It's a 'push' to main or a tag that starts with 'v'
-    #     (i.e. 'refs/heads/main' or 'refs/tags/v...')
-    #  OR
-    #  2) It's a PR, but NOT from a fork (fork == false).
+    build-amd:
         if: |
             (github.event_name == 'push' && (
-              startsWith(github.ref, 'refs/heads/main') ||
-              startsWith(github.ref, 'refs/tags/v')
+               startsWith(github.ref, 'refs/heads/main') ||
+               startsWith(github.ref, 'refs/tags/v')
             ))
             ||
             (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
-
         runs-on: ubuntu-latest
-
+        outputs:
+            base_tags_ghcr: ${{ steps.meta_ghcr.outputs.tags }}
+            base_tags_dockerhub: ${{ steps.meta_dockerhub.outputs.tags }}
         steps:
             - name: Checkout Repo
               uses: actions/checkout@v4
 
             - name: Login to GitHub Container Registry 🔑
-              uses: docker/login-action@v2
               if: ${{ !github.event.pull_request.head.repo.fork }}
+              uses: docker/login-action@v2
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Login to DockerHub 🔑
-              uses: docker/login-action@v2
               if: ${{ !github.event.pull_request.head.repo.fork }}
+              uses: docker/login-action@v2
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_USERNAME }}
@@ -62,12 +57,6 @@ jobs:
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
-
-            # For cross-building.
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: all
 
             - name: Docker meta (GHCR) 📝
               id: meta_ghcr
@@ -80,7 +69,7 @@ jobs:
                       type=edge,enable={{is_default_branch}}
                       type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-            - name: Docker meta (DockerHub)
+            - name: Docker meta (DockerHub) 📝
               id: meta_dockerhub
               uses: docker/metadata-action@v5
               with:
@@ -90,18 +79,121 @@ jobs:
                       type=edge,enable={{is_default_branch}}
                       type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-            - name: Build and push images (GHCR + DockerHub)
-              id: build-upload
+            - name: Build and push AMD image
+              id: build_upload_amd
               uses: docker/build-push-action@v5
               with:
-                  tags: >
-                      ${{ steps.meta_ghcr.outputs.tags }},
-                      ${{ steps.meta_dockerhub.outputs.tags }}
-                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
-                  push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
                   context: .
-                  platforms: linux/amd64, linux/arm64
-                  cache-to: |
-                      type=gha,scope=${{ github.workflow }},mode=min
-                  cache-from: |
-                      type=gha,scope=${{ github.workflow }}
+                  platforms: linux/amd64
+                  push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
+                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+          # Append "-amd" to the dynamically generated tags
+                  tags: |
+                      ${{ steps.meta_ghcr.outputs.tags }}-amd,
+                      ${{ steps.meta_dockerhub.outputs.tags }}-amd
+                  cache-to: type=gha,scope=${{ github.workflow }},mode=min
+                  cache-from: type=gha,scope=${{ github.workflow }}
+
+    build-arm:
+        if: |
+            (github.event_name == 'push' && (
+               startsWith(github.ref, 'refs/heads/main') ||
+               startsWith(github.ref, 'refs/tags/v')
+            ))
+            ||
+            (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        runs-on: ubuntu-24.04-arm
+        needs: build-amd
+        steps:
+            - name: Checkout Repo
+              uses: actions/checkout@v4
+
+            - name: Login to GitHub Container Registry 🔑
+              if: ${{ !github.event.pull_request.head.repo.fork }}
+              uses: docker/login-action@v2
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Login to DockerHub 🔑
+              if: ${{ !github.event.pull_request.head.repo.fork }}
+              uses: docker/login-action@v2
+              with:
+                  registry: docker.io
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Docker meta (GHCR) 📝
+              id: meta_ghcr
+              uses: docker/metadata-action@v5
+              with:
+                  images: |
+                      name=ghcr.io/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=pr
+                      type=edge,enable={{is_default_branch}}
+                      type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            - name: Docker meta (DockerHub) 📝
+              id: meta_dockerhub
+              uses: docker/metadata-action@v5
+              with:
+                  images: docker.io/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=pr
+                      type=edge,enable={{is_default_branch}}
+                      type=raw,value={{tag}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+            - name: Build and push ARM image
+              id: build_upload_arm
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  platforms: linux/arm64
+                  push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
+                  load: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+                  tags: |
+                      ${{ steps.meta_ghcr.outputs.tags }}-arm,
+                      ${{ steps.meta_dockerhub.outputs.tags }}-arm
+                  cache-to: type=gha,scope=${{ github.workflow }},mode=min
+                  cache-from: type=gha,scope=${{ github.workflow }}
+
+    create-manifest:
+        if: |
+            (github.event_name == 'push' && (
+               startsWith(github.ref, 'refs/heads/main') ||
+               startsWith(github.ref, 'refs/tags/v')
+            ))
+            ||
+            (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        runs-on: ubuntu-latest
+        needs: [build-amd, build-arm]
+        steps:
+            - name: Login to GitHub Container Registry 🔑
+              if: ${{ !github.event.pull_request.head.repo.fork }}
+              uses: docker/login-action@v2
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Login to DockerHub 🔑
+              if: ${{ !github.event.pull_request.head.repo.fork }}
+              uses: docker/login-action@v2
+              with:
+                  registry: docker.io
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Create and push manifest for GHCR
+              run: |
+                  BASE_TAG="${{ needs.build-amd.outputs.base_tags_ghcr }}"
+                  docker buildx imagetools create -t ${BASE_TAG} ${BASE_TAG}-amd ${BASE_TAG}-arm
+
+            - name: Create and push manifest for DockerHub
+              run: |
+                  BASE_TAG="${{ needs.build-amd.outputs.base_tags_dockerhub }}"
+                  docker buildx imagetools create -t ${BASE_TAG} ${BASE_TAG}-amd ${BASE_TAG}-arm
