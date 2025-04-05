@@ -6,10 +6,18 @@ Local Docker Instance
 
    If you used another method to access AiiDAlab, you may proceed to :doc:`install the app </installation/install>`.
 
-We provide an AiiDAlab Docker image extension with the Quantum ESPRESSO app pre-installed and ready for use. The installation instructions are mostly identical to the general instructions available on the `AiiDAlab documentation <https://aiidalab.readthedocs.io/en/latest/usage/access/index.html>`_ page. You only need to **replace** ``aiidalab/full-stack`` **with** ``ghcr.io/aiidalab/qe`` **when referencing the image** to use.
-
-When complete (AiiDAlab is running in your browser), return here and proceed to :doc:`launch the app </installation/launch>`.
-
 .. note::
 
-   When using this method to access AiiDAlab, the app will be pre-installed in the container and ready for use. No need to visit the *install the app* page.
+   When using this method to access AiiDAlab, the app will be pre-installed in the container and ready for use. No need to visit the *install the app* page after.
+
+We provide an AiiDAlab Docker image extension with the Quantum ESPRESSO app pre-installed and ready for use. To access AiiDAlab using the image:
+
+.. raw:: html
+
+   <ol style="margin: 0px;">
+      <li>
+         Follow the general instructions on the <a href="https://aiidalab.readthedocs.io/en/latest/usage/access/local.html" target="_blank">AiiDAlab documentation</a> choosing the <b>aiidalab/qe</b> image (<b>recommended</b>)
+      </li>
+   </ol>
+
+2. When complete (AiiDAlab is running in your browser), proceed to :doc:`launch the app </installation/launch>`
