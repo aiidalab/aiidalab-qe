@@ -125,6 +125,14 @@ jobs:
             - name: Set jupyter token env
               run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
+            - name: Install Chromium and Chromedriver
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y chromium-browser chromium-chromedriver
+
+            - name: Set Selenium Manager path for Chromedriver
+              run: echo "SE_MANAGER_PATH=/usr/lib/chromium-browser/chromedriver" >> $GITHUB_ENV
+
             - name: Run pytest for Chrome
               run: pytest -sv --driver Chrome tests_integration/
               env:
