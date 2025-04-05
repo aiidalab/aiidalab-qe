@@ -136,6 +136,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     aiida-pseudo install sssp -v 1.1 -x PBE && \
     aiida-pseudo install sssp -v 1.1 -x PBEsol && \
     verdi daemon stop && \
+    pip install spglib==2.5.0 && \
     mamba run -n aiida-core-services pg_ctl stop && \
     touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
     # NOTE: The work folder is empty but if included clashes with the work folder in a Renku
@@ -172,7 +173,8 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 # Install plugins in the final image
 RUN pip install aiida-bader \
     git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-    git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0
+    git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0 && \
+    conda install scipy==1.13.1 --y
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
