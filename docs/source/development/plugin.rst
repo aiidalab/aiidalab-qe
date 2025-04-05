@@ -255,7 +255,33 @@ feed the `metadata` of each Calcjob which is submitted in the workchain. For exa
         set_component_resources(builder.pw, codes.get("pw"))
 
 This function can and should be adapted for each plugin specific case.
-Then add the workchain and builder into the `workchain_and_builder` dict, so that the QuantumESPRESSO app can load them.
+
+
+The `update_inputs` function is used to update the inputs of the builder using the context.
+In most of the cases, you will need to update the structure of the builder to used the relaxed structure from the previous calculation.
+
+.. code-block:: python
+
+    def update_inputs(inputs, ctx):
+    """Update the inputs using context."""
+    inputs.structure = ctx.current_structure
+
+Additionaly, you could provide a ``get_workchain_metadata`` function to tell the app how many calcjobs (estimation) will be submitted in the workchain.
+This is useful to show the progress in the workflow.
+
+
+.. code-block:: python
+
+    def get_workchain_metadata(codes: dict | None = None,
+                           structure: orm.StructureData | None = None,
+                           parameters: dict | None = None,
+                           **kwargs):
+    """Return the metadata for the workchain."""
+    return {"dynamic": False,
+            "number_of_calcjob": 4,
+            }
+
+Then add the above function into the `workchain_and_builder` dict, so that the QuantumESPRESSO app can load them.
 
 .. code-block:: python
 
@@ -263,6 +289,8 @@ Then add the workchain and builder into the `workchain_and_builder` dict, so tha
     workchain_and_builder = {
         "workchain": EOSWorkChain,
         "get_builder": get_builder,
+        "update_inputs": update_inputs,
+        "get_workchain_metadata": get_workchain_metadata,
     }
 
 Entry point
