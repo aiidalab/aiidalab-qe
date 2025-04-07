@@ -39,6 +39,7 @@ aiida-qe-xspec:
     github: https://github.com/aiidaplugins/aiida-qe-xspec
     documentation: https://aiida-qe-xspec.readthedocs.io/
     pip: aiida-qe-xspec
+    post_install: post-install
     status: beta
     category: calculation
     requires_aiidalab_qe: '>24.04.0'
