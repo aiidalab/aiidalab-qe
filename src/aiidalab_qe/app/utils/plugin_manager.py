@@ -396,8 +396,8 @@ class PluginManager:
 
             # Build plugin description details
             details = f"""
-                <b>Author:</b> {plugin_data.get('author', 'N/A')}<br>
-                <b>Description:</b> {plugin_data.get('description', 'No description available')}<br>
+                <b>Author:</b> {plugin_data.get("author", "N/A")}<br>
+                <b>Description:</b> {plugin_data.get("description", "No description available")}<br>
                 <b>Status:</b> {badge_html}<br>
                 {version_message}
             """
