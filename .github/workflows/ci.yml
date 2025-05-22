@@ -44,18 +44,16 @@ jobs:
                   python-version: ${{ matrix.python-version }}
 
             - name: Install uv
-              uses: astral-sh/setup-uv@v1
+              uses: astral-sh/setup-uv@v6
               with:
-                  version: 0.4.7
+                  activate-environment: true
+                  python-version: ${{ matrix.python-version }}
 
             - name: Install package
-              run: uv pip install --system -e .[dev] aiida-core==${{ matrix.aiida-core-version }}
+              run: uv pip install -e .[dev] aiida-core==${{ matrix.aiida-core-version }}
 
             - name: Run pytest
-              # Only collect code coverage with aiida-core=2.3, to speed up tests
-              # with higher aiida versions that for some reason run slower, see:
-              # https://github.com/aiidalab/aiidalab-qe/issues/766
-              run: pytest -v tests ${{ matrix.aiida-core-version == '2.3' && '--cov=aiidalab_qe' || '' }} --skip-slow
+              run: pytest -v tests --cov=aiidalab_qe --skip-slow
 
             - name: Upload coverage reports to Codecov
               uses: codecov/codecov-action@v4
