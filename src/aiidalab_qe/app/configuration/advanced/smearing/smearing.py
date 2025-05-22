@@ -36,6 +36,7 @@ class SmearingConfigurationSettingsPanel(
 
         self.degauss = ipw.FloatText(
             step=0.005,
+            min=0.0,
             description="Width:",
             style={"description_width": "150px"},
         )
