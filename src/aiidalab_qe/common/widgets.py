@@ -26,6 +26,7 @@ from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
+from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_widgets_base import (
     ComputationalResourcesWidget,
     StructureExamplesWidget,
@@ -1153,8 +1154,6 @@ class LinkButton(ipw.HTML):
         disabled=False,
         **kwargs,
     ):
-        super().__init__(**kwargs)
-
         html = f"""
             <a
                 role="button"
@@ -1169,12 +1168,13 @@ class LinkButton(ipw.HTML):
 
         html += f"{description}</a>"
 
-        self.value = html
+        super().__init__(value=html, **kwargs)
 
         self.add_class("jupyter-button")
         self.add_class("widget-button")
         self.add_class("link-button")
-        self.add_class(class_)
+        if class_:
+            self.add_class(class_)
 
         self.disabled = disabled
 
@@ -1308,21 +1308,18 @@ class ArchiveImporter(ipw.VBox):
     def __init__(
         self,
         repo: str,
-        tag: str,
-        archive_list: str,
-        archives_dir: str,
-        logger: t.Optional[dict] = None,
+        archive_list_url: str,
+        archives_url: str,
         **kwargs,
     ):
-        refs = "refs/tags"
-        raw = f"https://raw.githubusercontent.com/{repo}/{refs}/{tag}"
-        self.archive_list_url = f"{raw}/{archive_list}"
-        self.archives_url = f"{self.GITHUB}/{repo}/raw/{refs}/{tag}/{archives_dir}"
-        if logger:
-            self.logger_placeholder = logger.get("placeholder", "")
-            self.clear_log_on_import = logger.get("clear_on_import", False)
-            self.logger = RollingOutput()
-            self.logger.value = self.logger_placeholder
+        self.repo = repo
+        self.archive_list_url = archive_list_url
+        self.archives_url = archives_url
+
+        self.logger_placeholder = "Archive import output will be shown here."
+        self.logger = RollingOutput()  # TODO use streaming output
+        self.logger.value = self.logger_placeholder
+
         super().__init__(children=[LoadingWidget()], **kwargs)
 
     def render(self):
@@ -1333,7 +1330,6 @@ class ArchiveImporter(ipw.VBox):
             style={"description_width": "initial"},
             layout=ipw.Layout(width="auto"),
         )
-        self.selector.observe(self.check_plugins, "value")
 
         self.import_button = ipw.Button(
             description="Import",
@@ -1342,25 +1338,13 @@ class ArchiveImporter(ipw.VBox):
             icon="download",
         )
         self.import_button.on_click(self.import_archives)
+        ipw.dlink(
+            (self.selector, "value"),
+            (self.import_button, "disabled"),
+            lambda selected: not selected,
+        )
 
         self.info = ipw.HTML()
-
-        self.info_plugins = ipw.HTML()
-        ipw.dlink(
-            (self.info_plugins, "value"),
-            (self.import_button, "disabled"),
-            lambda x: x != "",
-        )
-
-        history_link = LinkButton(
-            description="Calculation history",
-            link="./calculation_history.ipynb",
-            icon="list",
-            layout=ipw.Layout(
-                width="fit-content",
-                margin="2px 0 2px auto",
-            ),
-        )
 
         accordion = None
         if self.logger:
@@ -1369,77 +1353,57 @@ class ArchiveImporter(ipw.VBox):
             accordion.selected_index = None
 
         self.children = [
+            ipw.HTML(f"""
+                For questions regarding the examples, please open an issue in the
+                <a href="{self.GITHUB}/{self.repo}" target="_blank">{self.repo}</a>
+                repository.
+            """),
             self.selector,
             ipw.HBox(
-                [
+                children=[
                     self.import_button,
                     self.info,
-                    history_link,
                 ],
-                layout=ipw.Layout(
-                    margin="2px 2px 4px 68px",
-                    align_items="center",
-                    grid_gap="4px",
-                ),
+                layout=ipw.Layout(margin="2px 0 4px 68px", grid_gap="4px"),
             ),
-            self.info_plugins,
-            accordion or ipw.Box,
+            accordion or ipw.Box(),
         ]
 
         self.selector.options = self.get_options()
 
     def get_options(self) -> list[tuple[str, str]]:
-        response: req.Response = req.get(self.archive_list_url)
-        if not response.ok:
-            self.info.value = "Failed to fetch archive list"
+        try:
+            response: req.Response = req.get(self.archive_list_url)
+            if not response.ok:
+                self.info.value = "Failed to fetch archive list"
+                return []
+            archives: dict = response.json()
+            return [
+                (
+                    metadata["title"],
+                    archive,
+                )
+                for (archive, metadata) in archives.items()
+            ]
+        except req.RequestException as e:
+            self.info.value = f"Failed to fetch archive list: {e}"
             return []
-        if archives := response.content.decode("utf-8").strip().split("\n"):
-            options = [(archive, archive.split("-")[0].strip()) for archive in archives]
-            self.required_plugins = {
-                archive.split("-")[0].strip(): [
-                    plugin.strip()
-                    for plugin in archive.split("/")[-1]
-                    .replace("plugins: ", "")
-                    .split(",")
-                ]
-                for archive in archives
-                if len(archive.split("/")) > 1
-            }
-            return options
-        self.info.value = "No archives found"
-        return []
-
-    def check_plugins(self, _) -> str:
-        self.info_plugins.value = ""
-        required_plugins_not_installed = set()
-        for example in self.selector.value:
-            for plugin in self.required_plugins.get(example, []):
-                try:
-                    importlib.import_module(plugin)
-                except ImportError:
-                    required_plugins_not_installed.add(plugin)
-
-        if len(required_plugins_not_installed) > 0:
-            self.info_plugins.value = """<div class="alert alert-warning">Required plugins not installed: <ul>"""
-            for plugin in required_plugins_not_installed:
-                self.info_plugins.value += f"<li>{plugin}</li>"
-            self.info_plugins.value += "</ul> Please install the required plugins using the <a href='./plugin_manager.ipynb' target='_blank'>plugin manager</a> and try again.</div>"
-        else:
-            self.info_plugins.value = ""
-
-        return required_plugins_not_installed
 
     def import_archives(self, _):
         self.import_button.disabled = True
-        if self.logger and self.clear_log_on_import:
-            self.logger.value = ""
+        self.logger.value = ""
+        encountered_an_error = False
         for filename in self.selector.value:
-            self.import_archive(filename)
+            encountered_an_error = self.import_archive(filename)
         self.import_button.disabled = False
+        if encountered_an_error:
+            self.info.value = (
+                "ERROR: some archives failed to import. See log for details"
+            )
 
-    def import_archive(self, filename: str):
+    def import_archive(self, filename: str) -> bool:
         self.info.value = self.INFO_TEMPLATE.format(f"Importing {filename}")
-        file_url = f"{self.archives_url}/{filename}"
+        file_url = f"{self.archives_url}/{filename}/f"
         process = subprocess.Popen(
             ["verdi", "archive", "import", "-v", "critical", file_url],
             stdout=subprocess.PIPE,
@@ -1448,19 +1412,70 @@ class ArchiveImporter(ipw.VBox):
         )
         stdout, stderr = process.communicate()
         self._report(filename, stdout, stderr)
+        return bool(stderr)
 
     def _report(self, filename: str, stdout: str, stderr: str):
         if stderr and "Success" not in stdout:
-            self.info.value = f"Failed to import {filename}"
-        if self.logger:
-            self.logger.value += stdout
-            if stderr:
-                if "Success" not in stdout:
-                    self.logger.value += "\n[ERROR]"
-                    self.info.value = "Error -> see log for details"
-                else:
-                    self.info.value = ""
-                self.logger.value += f"\n{stderr}"
+            self.logger.value += f"[ERROR] - importing {filename} failed\n\n{stderr}"
+        else:
+            self.info.value = ""
+            self.logger.value += f"{stdout}"
+        self.logger.value += f"\n{'#' * 80}\n\n"
+
+
+class ExamplesImporter(ipw.Tab):
+    def __init__(self, repo: str, tag: str):
+        super().__init__()
+        self.core_repo = repo
+        self.core_tag = tag
+        self.children = []
+        self.titles = []
+        self._load_tabs()
+
+    def _archive_urls(self, repo: str, tag: str, path: str = "") -> tuple[str, str]:
+        path = f"refs/heads/testing/{path}"
+        return (
+            f"https://raw.githubusercontent.com/{repo}/{path}/metadata.json",
+            f"https://github.com/{repo}/raw/{path}",
+        )
+
+    def _load_tabs(self):
+        list_url, archives_url = self._archive_urls(
+            repo=self.core_repo,
+            tag=self.core_tag,
+            path="core",
+        )
+        core_widget = ArchiveImporter(
+            repo=self.core_repo,
+            archive_list_url=list_url,
+            archives_url=archives_url,
+        )
+        core_widget.render()
+        self.children = [core_widget]
+        self.set_title(0, "Core")
+
+        entries: dict[str, dict] = get_entry_items(
+            "aiidalab_qe.properties",
+            "examples",
+        )
+        for i, (name, items) in enumerate(entries.items(), start=1):
+            if not items:
+                continue
+            repo = items.get("repo", "")
+            list_url, archives_url = self._archive_urls(
+                repo=repo,
+                tag=items.get("tag", ""),
+                path=items.get("path", ""),
+            )
+
+            plugin_widget = ArchiveImporter(
+                repo=repo,
+                archive_list_url=list_url,
+                archives_url=archives_url,
+            )
+            plugin_widget.render()
+            self.children += (plugin_widget,)
+            self.set_title(i, items.get("title", name.capitalize().replace("_", " ")))
 
 
 class ShakeNBreakEditor(ipw.VBox):
