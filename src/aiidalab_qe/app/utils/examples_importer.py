@@ -97,7 +97,7 @@ class ArchiveImporter(ipw.VBox):
         if len(selected) > 1:
             description = self.DESCRIPTION_TEMPLATE.format(
                 header="Multiple examples selected",
-                content="To see example descriptions, select one example at a time.",
+                content="To see a description, select only one example.",
             )
         else:
             archive = selected[0]
@@ -172,19 +172,18 @@ class ExamplesImporter(ipw.Tab):
         self.titles = []
         self._load_tabs()
 
-    def _archive_urls(self, repo: str, tag: str, path: str = "") -> tuple[str, str]:
-        # path = f"refs/tags/{tag}/{path}"
-        path = f"refs/heads/refactor/{path}"
+    def _archive_urls(self, repo: str, tag: str) -> tuple[str, str]:
+        refs = f"refs/tags/{tag}"
+        refs = "refs/heads/refactor"
         return (
-            f"https://raw.githubusercontent.com/{repo}/{path}/metadata.json",
-            f"https://github.com/{repo}/raw/{path}",
+            f"https://raw.githubusercontent.com/{repo}/{refs}/examples.json",
+            f"https://github.com/{repo}/raw/{refs}/examples",
         )
 
     def _load_tabs(self):
         list_url, archives_url = self._archive_urls(
             repo=self.core_repo,
             tag=self.core_tag,
-            path="core",
         )
         core_widget = ArchiveImporter(
             repo=self.core_repo,
@@ -206,7 +205,6 @@ class ExamplesImporter(ipw.Tab):
             list_url, archives_url = self._archive_urls(
                 repo=repo,
                 tag=items.get("tag", ""),
-                path=items.get("path", ""),
             )
 
             plugin_widget = ArchiveImporter(
