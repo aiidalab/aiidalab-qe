@@ -112,11 +112,11 @@ class ArchiveImporter(ipw.VBox):
     def _on_import_click(self, _):
         self.import_button.disabled = True
         self.logger.value = ""
-        encountered_an_error = False
+        successful = False
         for filename in self.selector.value:
-            encountered_an_error = self._import_archive(filename)
+            successful = self._import_archive(filename)
         self.import_button.disabled = False
-        if encountered_an_error:
+        if not successful:
             self.info.value = (
                 "ERROR: some archives failed to import. See log for details"
             )
@@ -132,7 +132,7 @@ class ArchiveImporter(ipw.VBox):
         )
         stdout, stderr = process.communicate()
         self._report(filename, stdout, stderr)
-        return bool(stderr)
+        return "Success" in stdout
 
     def _report(self, filename: str, stdout: str, stderr: str):
         if stderr and "Success" not in stdout:
@@ -177,7 +177,7 @@ class ExamplesImporter(ipw.Tab):
         refs = "refs/heads/refactor"
         return (
             f"https://raw.githubusercontent.com/{repo}/{refs}/examples.json",
-            f"https://github.com/{repo}/raw/{refs}/examples",
+            f"https://github.com/{repo}/raw/{refs}/archives",
         )
 
     def _load_tabs(self):
