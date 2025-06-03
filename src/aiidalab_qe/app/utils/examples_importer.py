@@ -174,7 +174,6 @@ class ExamplesImporter(ipw.Tab):
 
     def _archive_urls(self, repo: str, tag: str) -> tuple[str, str]:
         refs = f"refs/tags/{tag}"
-        refs = "refs/heads/refactor"
         return (
             f"https://raw.githubusercontent.com/{repo}/{refs}/examples.json",
             f"https://github.com/{repo}/raw/{refs}/archives",
