@@ -187,7 +187,6 @@ class AppWrapperView(ipw.VBox):
             icon="list",
             tooltip="View a list of previous calculations",
             style_="background-color: var(--color-aiida-orange)",
-            disabled=True,
         )
 
         self.setup_resources_link = LinkButton(
@@ -196,7 +195,6 @@ class AppWrapperView(ipw.VBox):
             icon="database",
             tooltip="Setup computational resources for your calculations",
             style_="background-color: var(--color-aiida-blue)",
-            disabled=True,
         )
 
         self.new_workchain_link = LinkButton(
@@ -205,7 +203,6 @@ class AppWrapperView(ipw.VBox):
             icon="plus-circle",
             tooltip="Open a new calculation in a separate tab",
             style_="background-color: var(--color-aiida-green)",
-            disabled=True,
         )
 
         self.external_links = ipw.HBox(
