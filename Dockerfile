@@ -147,7 +147,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # It is usually safe (and preferable) to let .conda be recreated on the fly each time,
     # because .conda typically just holds local environment information, caches, or references
     # to available environments.
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work --exclude .conda .
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude .cache --exclude work --exclude .conda .
 
 ###############################################################################
 # 6) Final stage
