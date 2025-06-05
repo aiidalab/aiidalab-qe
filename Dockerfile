@@ -23,8 +23,8 @@ ARG COMPUTER_LABEL="localhost"
 # # XXX: fix me after release aiida-hyperqueue
 ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
-ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0"
-ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0"
+ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/aiidalab/aiidalab-qe-vibroscopy@v1.2.0"
+ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.0.0"
 ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
 ###############################################################################
