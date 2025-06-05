@@ -130,7 +130,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
     # Additional plugins
     pip uninstall -y phonopy && \
-    pip install aiida-bader ${VIBROSCOPY_PKG} ${MUON_PKG} \
+    pip install aiida-bader ${VIBROSCOPY_PKG} ${MUON_PKG} && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
