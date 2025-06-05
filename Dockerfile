@@ -8,7 +8,7 @@
 # 1) Global ARGs
 ###############################################################################
 ARG FULL_STACK_VER=2025.1026
-ARG UV_VER=0.4.7
+ARG UV_VER=0.7.5
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
@@ -214,7 +214,7 @@ RUN set -ex; \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
 
-# We exclude 42_setup-hq-computer.sh file because the computer is already steup, thus it is not needed in the final image.
+# We exclude 42_setup-hq-computer.sh file because the computer is already setup, thus it is not needed in the final image.
 COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /usr/local/bin/before-notebook.d/
 ENV COMPUTER_LABEL=$COMPUTER_LABEL
 
