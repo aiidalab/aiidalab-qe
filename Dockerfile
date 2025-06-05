@@ -186,7 +186,7 @@ USER root
 # Build wannier90 for all arches, and build bader from source ONLY on arm64
 RUN set -ex; \
     apt-get update && apt-get install -y --no-install-recommends \
-    gfortran libblas-dev liblapack-dev git openmpi-bin liblapack3; \
+    gfortran libblas-dev liblapack-dev liblapack3; \
     git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
     cd /tmp/wannier90; \
     cp config/make.inc.gfort make.inc; \
