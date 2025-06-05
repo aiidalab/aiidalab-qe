@@ -182,12 +182,11 @@ COPY --from=home_build /opt/conda/hq /usr/local/bin/
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      gfortran libblas-dev liblapack-dev git openmpi-bin
 
 # Build wannier90 for all arches, and build bader from source ONLY on arm64
 RUN set -ex; \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gfortran libblas-dev liblapack-dev git openmpi-bin liblapack3; \
     git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
     cd /tmp/wannier90; \
     cp config/make.inc.gfort make.inc; \
@@ -204,9 +203,7 @@ RUN set -ex; \
     else \
       echo "Skipping Bader build on AMD64 (installed via conda)."; \
     fi; \
-    \
     apt-get remove --purge -y gfortran libblas-dev liblapack-dev && \
-    apt-get install -y --no-install-recommends liblapack3 && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
