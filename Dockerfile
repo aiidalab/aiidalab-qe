@@ -22,6 +22,9 @@ ARG COMPUTER_LABEL="localhost"
 #
 ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
+ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0"
+ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0"
+ARG AIIDA_HQ_PKG="aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
 
 ###############################################################################
 # 2) uv stage (unchanged)
@@ -83,6 +86,9 @@ ARG COMPUTER_LABEL
 ARG TARGETARCH
 ARG HQ_URL_AMD64
 ARG HQ_URL_ARM64
+ARG AIIDA_HQ_PKG
+ARG VIBROSCOPY_PKG
+ARG MUON_PKG
 
 #
 # Download and unpack the correct hq binary for the architecture:
@@ -107,8 +113,7 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 # XXX: fix me after release aiida-hyperqueue
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
-    "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
+    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} ${AIIDA_HQ_PKG}
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -125,9 +130,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
     # Additional plugins
     pip uninstall -y phonopy && \
-    pip install aiida-bader \
-    git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-    git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0 && \
+    pip install aiida-bader ${VIBROSCOPY_PKG} ${MUON_PKG} && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
@@ -158,6 +161,9 @@ ARG QE_APP_SRC
 ARG UV_CACHE_DIR
 ARG COMPUTER_LABEL
 ARG TARGETARCH
+ARG AIIDA_HQ_PKG
+ARG VIBROSCOPY_PKG
+ARG MUON_PKG
 
 USER ${NB_USER}
 WORKDIR /tmp
@@ -169,12 +175,12 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
-    uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} ${QE_APP_SRC} "aiida-hyperqueue@git+https://github.com/aiidateam/aiida-hyperqueue"
+    uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
+      ${QE_APP_SRC} ${AIIDA_HQ_PKG}
 # Install plugins in the final image
-RUN pip install aiida-bader \
-    git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
-    git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0 && \
-    conda install scipy==1.13.1 --y
+RUN pip install aiida-bader ${VIBROSCOPY_PKG} ${MUON_PKG} && \
+    mamba install scipy==1.13.1 --y && \
+    mamba clean --all -f -y
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
@@ -182,12 +188,11 @@ COPY --from=home_build /opt/conda/hq /usr/local/bin/
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      gfortran libblas-dev liblapack-dev git openmpi-bin
 
 # Build wannier90 for all arches, and build bader from source ONLY on arm64
 RUN set -ex; \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin; \
     git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
     cd /tmp/wannier90; \
     cp config/make.inc.gfort make.inc; \
@@ -204,9 +209,7 @@ RUN set -ex; \
     else \
       echo "Skipping Bader build on AMD64 (installed via conda)."; \
     fi; \
-    \
     apt-get remove --purge -y gfortran libblas-dev liblapack-dev && \
-    apt-get install -y --no-install-recommends liblapack3 && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
