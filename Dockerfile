@@ -174,7 +174,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 RUN pip install aiida-bader \
     git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0 \
     git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0 && \
-    conda install scipy==1.13.1 --y
+    mamba install scipy==1.13.1 --y
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
