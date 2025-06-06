@@ -290,6 +290,10 @@ class BandsWorkChain(WorkChain):
 
         builder = cls.get_builder()
 
+        # Update protocol names, This should be removed once ProjwfcBandsWorkChain is updated.
+        protocol_map = {"balanced": "moderate", "stringent": "precise"}
+        protocol = protocol_map.get(protocol, protocol)
+
         if simulation_mode == "normal":
             builder_bands = PwBandsWorkChain.get_builder_from_protocol(
                 pw_code, structure, protocol, overrides=overrides, **kwargs
