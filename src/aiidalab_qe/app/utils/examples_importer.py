@@ -3,7 +3,7 @@ import subprocess
 import ipywidgets as ipw
 import requests as req
 
-from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.app.utils import get_entries
 from aiidalab_qe.common.widgets import RollingOutput
 from aiidalab_widgets_base import LoadingWidget
 
@@ -172,15 +172,21 @@ class ExamplesImporter(ipw.Tab):
         self.titles = []
         self._load_tabs()
 
-    def _archive_urls(self, repo: str, tag: str) -> tuple[str, str]:
+    def _get_urls(
+        self,
+        repo: str,
+        tag: str,
+        path: str = "archives",
+        metadata_path: str = "examples.json",
+    ) -> tuple[str, str]:
         refs = f"refs/tags/{tag}"
         return (
-            f"https://raw.githubusercontent.com/{repo}/{refs}/examples.json",
-            f"https://github.com/{repo}/raw/{refs}/archives",
+            f"https://raw.githubusercontent.com/{repo}/{refs}/{metadata_path}",
+            f"https://github.com/{repo}/raw/{refs}/{path}",
         )
 
     def _load_tabs(self):
-        list_url, archives_url = self._archive_urls(
+        list_url, archives_url = self._get_urls(
             repo=self.core_repo,
             tag=self.core_tag,
         )
@@ -193,19 +199,27 @@ class ExamplesImporter(ipw.Tab):
         self.children = [core_widget]
         self.set_title(0, "Core")
 
-        entries: dict[str, dict] = get_entry_items(
-            "aiidalab_qe.properties",
-            "examples",
-        )
-        for i, (name, items) in enumerate(entries.items(), start=1):
-            if not items:
-                continue
-            repo = items.get("repo", "")
-            list_url, archives_url = self._archive_urls(
-                repo=repo,
-                tag=items.get("tag", ""),
+        entries: dict[str, dict] = {
+            plugin: entry.get(
+                "examples",
+                {
+                    "repo": self.core_repo,
+                    "tag": self.core_tag,
+                    "path": plugin,
+                    "metadata_path": f"{plugin}/metadata.json",
+                },
             )
+            for plugin, entry in get_entries("aiidalab_qe.properties").items()
+            if plugin not in ("bands", "pdos", "electronic_structure")
+        }
 
+        for i, (name, items) in enumerate(entries.items(), start=1):
+            list_url, archives_url = self._get_urls(
+                repo=(repo := items.get("repo", self.core_repo)),
+                tag=items.get("tag", self.core_tag),
+                path=items.get("path", name),
+                metadata_path=items.get("metadata_path", "examples.json"),
+            )
             plugin_widget = ArchiveImporter(
                 repo=repo,
                 archive_list_url=list_url,
