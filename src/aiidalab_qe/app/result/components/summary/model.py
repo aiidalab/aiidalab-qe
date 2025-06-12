@@ -87,17 +87,17 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "All calculations are performed within the density-functional "
             "theory formalism as implemented in the Quantum ESPRESSO code. "
             "The pseudopotential for each element is extracted from the "
-            f'{report_dict["Pseudopotential library"][0]} '
+            f"{report_dict['Pseudopotential library'][0]} "
             "library. The wave functions "
             "of the valence electrons are expanded in a plane wave basis set, using an "
             "energy cutoff equal to "
-            f'{round(report_dict["Plane wave energy cutoff (wave functions)"][0])} Ry '
+            f"{round(report_dict['Plane wave energy cutoff (wave functions)'][0])} Ry "
             "for the wave functions and "
-            f'{round(report_dict["Plane wave energy cutoff (charge density)"][0])} Ry '
+            f"{round(report_dict['Plane wave energy cutoff (charge density)'][0])} Ry "
             "for the charge density and potential. "
             "The exchange-correlation energy is "
             "calculated using the "
-            f'{FUNCTIONAL_REPORT_MAP[report_dict["Functional"][0]]}. '
+            f"{FUNCTIONAL_REPORT_MAP[report_dict['Functional'][0]]}. "
             "A Monkhorst-Pack mesh is used for sampling the Brillouin zone, where the "
             "distance between the k-points is set to "
         )
