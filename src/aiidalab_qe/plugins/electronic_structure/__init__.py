@@ -4,5 +4,5 @@ electronic_structure = {
     "result": {
         "panel": ElectronicStructureResultsPanel,
         "model": ElectronicStructureResultsModel,
-    },
+    }
 }
