@@ -397,7 +397,7 @@ class BandsPdosPlotly:
                     "y": np.array(proj_bands["y"]) - fermi_energy,
                     "color": proj_bands["color"],
                     "label": proj_bands["label"],
-                    "marker_sizes": proj_bands['marker_sizes'],
+                    "marker_sizes": proj_bands["marker_sizes"],
                 }
             )
         return prepared_data
@@ -411,15 +411,15 @@ class BandsPdosPlotly:
                 x=data["x"],
                 y=data["y"],
                 legendgroup=data["label"],
-                mode='markers',
+                mode="markers",
                 line={"width": 0, "color": data["color"]},
                 name=data["label"],
                 marker=dict(
-                    size=np.array(data['marker_sizes']) * projections_width,
-                    sizemode='diameter',
+                    size=np.array(data["marker_sizes"]) * projections_width,
+                    sizemode="diameter",
                     color=data["color"],
                     opacity=0.7,
-                    line=dict(width=0)  
+                    line=dict(width=0),
                 ),
                 showlegend=True if self.plot_type == "bands" else False,
             )
@@ -431,7 +431,10 @@ class BandsPdosPlotly:
     def update_projected_bands_thickness(self, fig, width):
         """Update the projected bands thickness."""
         # Create a mapping from labels to y-data for efficient updates
-        marker_sizes_by_label = {data["label"]: np.array(data["marker_sizes"]) * width  for data in self.project_bands}
+        marker_sizes_by_label = {
+            data["label"]: np.array(data["marker_sizes"]) * width
+            for data in self.project_bands
+        }
 
         with fig.batch_update():
             for trace in fig.data:

@@ -184,7 +184,9 @@ class BandsPdosModel(Model):
     def update_bands_projections_thickness(self):
         """Update the bands projections thickness."""
         if self.project_bands_box:
-            self.helper.update_projected_bands_thickness(self.plot, self.proj_bands_width)
+            self.helper.update_projected_bands_thickness(
+                self.plot, self.proj_bands_width
+            )
 
     def _remove_bands_traces(self):
         """Remove the bands traces."""

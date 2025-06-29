@@ -404,7 +404,9 @@ def _prepare_projections_to_plot(bands_data, projections):
                     "y": y_bands.flatten().tolist(),
                     "label": proj["label"],
                     "color": proj["color"],
-                    "marker_sizes": (np.array(proj["projections"]).T * 10).flatten().tolist()
+                    "marker_sizes": (np.array(proj["projections"]).T * 10)
+                    .flatten()
+                    .tolist(),
                 }
             )
 
