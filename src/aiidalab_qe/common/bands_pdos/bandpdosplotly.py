@@ -414,13 +414,13 @@ class BandsPdosPlotly:
                 mode="markers",
                 line={"width": 0, "color": data["color"]},
                 name=data["label"],
-                marker=dict(
-                    size=np.array(data["marker_sizes"]) * projections_width,
-                    sizemode="diameter",
-                    color=data["color"],
-                    opacity=0.7,
-                    line=dict(width=0),
-                ),
+                marker={
+                    "size": np.array(data["marker_sizes"]) * projections_width,
+                    "sizemode": "diameter",
+                    "color": data["color"],
+                    "opacity": 0.7,
+                    "line": {"width": 0},
+                },
                 showlegend=True if self.plot_type == "bands" else False,
             )
             for data in prepared_data
