@@ -119,7 +119,6 @@ def get_bands_projections_data(
     group_tag,
     plot_tag,
     selected_atoms,
-    bands_width,
 ):
     if "projwfc" not in outputs:
         return None
@@ -158,7 +157,7 @@ def get_bands_projections_data(
             )
 
     bands_projection["projected_bands"] = _prepare_projections_to_plot(
-        bands_data, projections, bands_width
+        bands_data, projections
     )
     if plot_tag != "total":
         band_parameters: dict = outputs.band_parameters.get_dict()
@@ -382,12 +381,11 @@ def _curate_orbitals(orbital):
     return orbital_name_plotly, orbital_angular_momentum, kind_name, atom_position
 
 
-def _prepare_projections_to_plot(bands_data, projections, bands_width):
+def _prepare_projections_to_plot(bands_data, projections):
     """Prepare the projected bands to be plotted.
 
     This function transforms the projected bands into a format that can be plotted
-    in a single trace. To use the fill option `toself`,
-    a band needs to be concatenated with its mirror image, first.
+    in a single trace.
     """
     projected_bands = []
     for spin in [0, 1]:
@@ -400,28 +398,16 @@ def _prepare_projections_to_plot(bands_data, projections, bands_width):
         y_bands = bands_data["y"][:, bands_data["band_type_idx"] == spin].T
 
         for proj in projections[spin]:
-            # Create the upper and lower boundary of the fat bands based on the orbital projections
-            y_bands_proj_upper = y_bands + bands_width / 2 * proj["projections"].T
-            y_bands_proj_lower = y_bands - bands_width / 2 * proj["projections"].T
-            # As mentioned above, the bands need to be concatenated with their mirror image
-            # to create the filled areas properly
-            y_bands_mirror = np.hstack(
-                [y_bands_proj_upper, y_bands_proj_lower[:, ::-1]]
-            )
-            # Same logic for the energy axis
-            x_bands_mirror = np.concatenate([x_bands, x_bands[::-1]]).reshape(1, -1)
-            x_bands_comb, y_bands_proj_comb = prepare_combined_plotly_traces(
-                x_bands_mirror, y_bands_mirror
-            )
-
             projected_bands.append(
                 {
-                    "x": x_bands_comb.tolist(),
-                    "y": y_bands_proj_comb.tolist(),
+                    "x": np.array([x_bands] * y_bands.shape[0]).flatten().tolist(),
+                    "y": y_bands.flatten().tolist(),
                     "label": proj["label"],
                     "color": proj["color"],
+                    "marker_sizes": (np.array(proj["projections"]).T * 10).flatten().tolist()
                 }
             )
+
     return projected_bands
 
 

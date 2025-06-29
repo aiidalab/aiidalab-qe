@@ -176,7 +176,7 @@ class BandsPdosModel(Model):
                 self._remove_bands_traces()
             self.bands_projections_data = self._get_bands_projections_data()
             self.helper.project_bands = self.bands_projections_data
-            self.helper.adding_projected_bands(self.plot)
+            self.helper.adding_projected_bands(self.plot, self.proj_bands_width)
         else:
             self._remove_bands_traces()
         self._get_traces_selector_options()
@@ -184,9 +184,7 @@ class BandsPdosModel(Model):
     def update_bands_projections_thickness(self):
         """Update the bands projections thickness."""
         if self.project_bands_box:
-            self.bands_projections_data = self._get_bands_projections_data()
-            self.helper.project_bands = self.bands_projections_data
-            self.helper.update_projected_bands_thickness(self.plot)
+            self.helper.update_projected_bands_thickness(self.plot, self.proj_bands_width)
 
     def _remove_bands_traces(self):
         """Remove the bands traces."""
@@ -265,7 +263,6 @@ class BandsPdosModel(Model):
                 group_tag=self.dos_atoms_group,
                 plot_tag=self.dos_plot_group,
                 selected_atoms=expanded_selection,
-                bands_width=self.proj_bands_width,
             )
             return bands_projections
         return None
