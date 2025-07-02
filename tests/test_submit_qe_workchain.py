@@ -100,6 +100,16 @@ def test_create_builder_advanced_settings(
     parameters = app.submit_model.get_model_state()
     builder = app.submit_model._create_builder(parameters)
 
+    # check if the AiiDA nodes are passed to the plugins instead of copied, take psuedos as an example
+    assert (
+        builder.relax.base.pw.pseudos["Si"].uuid
+        == builder.bands.bands.scf.pw.pseudos["Si"].uuid
+    )
+    assert (
+        builder.relax.base.pw.pseudos["Si"].uuid
+        == builder.pdos.scf.pw.pseudos["Si"].uuid
+    )
+
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
