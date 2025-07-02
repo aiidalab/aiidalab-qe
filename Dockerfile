@@ -23,8 +23,8 @@ ARG COMPUTER_LABEL="localhost"
 # # XXX: fix me after release aiida-hyperqueue
 ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
-ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/aiidalab/aiidalab-qe-vibroscopy@v1.2.0"
-ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.0.0"
+ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/aiidalab/aiidalab-qe-vibroscopy@v1.2.1"
+ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.0.1"
 ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
 ###############################################################################
@@ -114,8 +114,7 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
-      ${AIIDA_HQ_PKG} aiida-bader ${MUON_PKG} && \
-    pip install --no-user ${VIBROSCOPY_PKG}
+      ${AIIDA_HQ_PKG} aiida-bader ${MUON_PKG} ${VIBROSCOPY_PKG}
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -183,8 +182,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-      ${QE_APP_SRC} spglib==2.5.0 aiida-bader ${AIIDA_HQ_PKG} ${MUON_PKG} && \
-    pip install --no-user ${VIBROSCOPY_PKG}
+      ${QE_APP_SRC} spglib==2.5.0 aiida-bader ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG}
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
