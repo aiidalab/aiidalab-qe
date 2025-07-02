@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
-
 import ipywidgets as ipw
 import traitlets as tl
 from IPython.display import Javascript, display
@@ -13,6 +11,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
 from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.utils import shallow_copy_nested_dict
 from aiidalab_qe.workflows import QeAppWorkChain
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -137,7 +136,7 @@ class SubmissionStepModel(
         self.warning_messages = warning_messages
 
     def get_model_state(self) -> dict[str, dict[str, dict]]:
-        parameters: dict = deepcopy(self.input_parameters)  # type: ignore
+        parameters: dict = shallow_copy_nested_dict(self.input_parameters)  # type: ignore
         parameters["codes"] = {
             identifier: model.get_model_state()
             for identifier, model in self.get_models()
@@ -231,7 +230,9 @@ class SubmissionStepModel(
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            parameters=deepcopy(parameters),  # TODO why deepcopy again?
+            parameters=shallow_copy_nested_dict(
+                parameters
+            ),  # use shallow copy to avoid workflow mute these parameters.
         )
 
         codes = parameters["codes"]["global"]["codes"]

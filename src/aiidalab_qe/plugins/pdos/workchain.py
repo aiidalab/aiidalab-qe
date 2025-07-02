@@ -50,7 +50,7 @@ def update_resources(builder, codes):
 
 
 def get_builder(codes, structure, parameters, **kwargs):
-    from copy import deepcopy
+    from aiidalab_qe.utils import shallow_copy_nested_dict
 
     pw_code = codes.get("pw")["code"]
     dos_code = codes.get("dos")["code"]
@@ -58,8 +58,8 @@ def get_builder(codes, structure, parameters, **kwargs):
     check_codes(pw_code, dos_code, projwfc_code)
     protocol = parameters["workchain"]["protocol"]
 
-    scf_overrides = deepcopy(parameters["advanced"])
-    nscf_overrides = deepcopy(parameters["advanced"])
+    scf_overrides = shallow_copy_nested_dict(parameters["advanced"])
+    nscf_overrides = shallow_copy_nested_dict(parameters["advanced"])
 
     # Dos Projwfc overrides
     dos_overrides = {
