@@ -115,7 +115,7 @@ class QeAppWorkChain(WorkChain):
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
-        import copy
+        from aiidalab_qe.utils import shallow_copy_nested_dict
 
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
@@ -220,7 +220,7 @@ class QeAppWorkChain(WorkChain):
                 plugin_builder = entry_point["get_builder"](
                     codes[name]["codes"],
                     builder.structure,
-                    copy.deepcopy(parameters),
+                    shallow_copy_nested_dict(parameters),
                     **kwargs,
                 )
                 plugin_workchain = entry_point["workchain"]
