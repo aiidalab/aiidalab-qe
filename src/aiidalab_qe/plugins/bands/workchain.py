@@ -50,16 +50,16 @@ def update_resources(builder, codes):
 
 def get_builder(codes, structure, parameters, **kwargs):
     """Get a builder for the BandsWorkChain."""
-    from copy import deepcopy
+    from aiidalab_qe.utils import shallow_copy_nested_dict
 
     pw_code = codes.get("pw")["code"]
     protocol = parameters["workchain"]["protocol"]
-    scf_overrides = deepcopy(parameters["advanced"])
+    scf_overrides = shallow_copy_nested_dict(parameters["advanced"])
     relax_overrides = {
-        "base": deepcopy(parameters["advanced"]),
-        "base_final_scf": deepcopy(parameters["advanced"]),
+        "base": shallow_copy_nested_dict(parameters["advanced"]),
+        "base_final_scf": shallow_copy_nested_dict(parameters["advanced"]),
     }
-    bands_overrides = deepcopy(parameters["advanced"])
+    bands_overrides = shallow_copy_nested_dict(parameters["advanced"])
     bands_overrides.pop("kpoints_distance", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)

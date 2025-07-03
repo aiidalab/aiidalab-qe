@@ -37,3 +37,10 @@ def enable_pencil_decomposition(component):
 def fetch_pseudo_family_by_label(label) -> PseudoPotentialFamily:
     """Fetch the pseudo family by label."""
     return orm.Group.collection.get(label=label)  # type: ignore
+
+
+def shallow_copy_nested_dict(d):
+    """Recursively copies only the dictionary structure but keeps value references."""
+    if isinstance(d, dict):
+        return {key: shallow_copy_nested_dict(value) for key, value in d.items()}
+    return d
