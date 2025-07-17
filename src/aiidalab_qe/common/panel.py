@@ -507,7 +507,7 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             )
 
 
-class ResultsModel(PanelModel, HasProcess):
+class ResultsModel(SettingsModel, HasProcess):
     process_status_notification = tl.Unicode("")
 
     _this_process_label = ""
@@ -592,6 +592,20 @@ class ResultsModel(PanelModel, HasProcess):
             return getattr(outputs, child) if child in outputs else AttributeDict({})
         return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
 
+    def save_state(self):
+        """Saves the current state of the model to the AiiDA database."""
+        node = self.fetch_process_node()
+        results = node.base.extras.get("results", {})
+        results[self.identifier] = self.get_model_state()
+        node.base.extras.set("results", results)
+
+    def load_state(self):
+        """Loads the state of the model from the AiiDA database."""
+        node = self.fetch_process_node()
+        results = node.base.extras.get("results", {})
+        if self.identifier in results:
+            self.set_model_state(results[self.identifier])
+
 
 RM = t.TypeVar("RM", bound=ResultsModel)
 
@@ -646,6 +660,11 @@ class ResultsPanel(Panel[RM]):
                 or "relax" in self._model.properties
             ):
                 children.append(self._get_controls_section())
+            children.append(
+                ipw.HBox(
+                    children=[self.save_state_button, self.load_state_button],
+                )
+            )
             children.append(self.results_container)
             self.children = children
             if self._model.identifier == "structure":
@@ -687,6 +706,18 @@ class ResultsPanel(Panel[RM]):
             lambda _: not self._model.has_results,
         )
         self.load_results_button.on_click(self._on_load_results_click)
+        self.save_state_button = ipw.Button(
+            description="Save state",
+            button_style="primary",
+            icon="save",
+        )
+        self.save_state_button.on_click(self._save_state)
+        self.load_state_button = ipw.Button(
+            description="Load state",
+            button_style="primary",
+            icon="upload",
+        )
+        self.load_state_button.on_click(self._load_state)
 
         self.load_controls = ipw.HBox(
             children=[]
@@ -714,3 +745,11 @@ class ResultsPanel(Panel[RM]):
 
     def _post_render(self):
         pass
+
+    def _save_state(self, _=None):
+        """Save the current state of the results panel."""
+        self._model.save_state()
+
+    def _load_state(self, _=None):
+        """Load a previously saved state of the results panel."""
+        self._model.load_state()
