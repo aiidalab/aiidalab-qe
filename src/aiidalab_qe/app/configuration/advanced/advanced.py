@@ -152,7 +152,7 @@ class AdvancedConfigurationSettingsPanel(
 
         # Convergence Threshold settings
         self.scf_conv_thr = ipw.BoundedFloatText(
-            min=1e-15,
+            min=1e-18,
             max=1.0,
             description="Energy:",
             style={"description_width": "150px"},
@@ -174,7 +174,7 @@ class AdvancedConfigurationSettingsPanel(
         ipw.dlink(
             (self._model, "scf_conv_thr"),
             (scf_conv_thr_abs, "value"),
-            lambda value: str(value * len(self._model.input_structure.sites)),
+            lambda value: f"{value * len(self._model.input_structure.sites):.5e}",
         )
         scf_conv_thr_abs.add_class("convergence-label")
         self.etot_conv_thr = ipw.BoundedFloatText(
@@ -195,7 +195,7 @@ class AdvancedConfigurationSettingsPanel(
         ipw.dlink(
             (self._model, "etot_conv_thr"),
             (etot_conv_thr_abs, "value"),
-            lambda value: str(value * len(self._model.input_structure.sites)),
+            lambda value: f"{value * len(self._model.input_structure.sites):.5e}",
         )
         etot_conv_thr_abs.add_class("convergence-label")
         self.forc_conv_thr = ipw.BoundedFloatText(
