@@ -30,7 +30,7 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
         with self.hold_trait_notifications():
             if not specific or specific != "mesh":
                 parameters = PdosWorkChain.get_protocol_inputs(self.protocol)
-                self._update_kpoints_distance(parameters)
+                self._update_nscf_kpoints_distance(parameters)
 
             self._update_kpoints_mesh()
 
@@ -76,7 +76,7 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
         self._defaults["mesh_grid"] = mesh_grid
         self.mesh_grid = mesh_grid
 
-    def _update_kpoints_distance(self, parameters):
+    def _update_nscf_kpoints_distance(self, parameters):
         if self.has_pbc:
             nscf_kpoints_distance = parameters["nscf"]["kpoints_distance"]
         else:
