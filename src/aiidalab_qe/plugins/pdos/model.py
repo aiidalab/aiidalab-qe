@@ -43,8 +43,8 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
         }
 
     def set_model_state(self, parameters: dict):
-        self.kpoints_distance = parameters.get("nscf", {}).get(
-            "kpoints_distance",
+        self.kpoints_distance = parameters.get(
+            "nscf_kpoints_distance",
             self.traits()["kpoints_distance"].default_value,
         )
         self.use_pdos_degauss = parameters.get("use_pdos_degauss", False)
