@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import traitlets as tl
+
 from aiidalab_qe.common.panel import ResultsModel
 
 
@@ -19,6 +21,27 @@ class ElectronicStructureResultsModel(ResultsModel):
         "bands": "bands",
         "pdos": "PDOS",
     }
+
+    dos_atoms_group_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ("Group by element (atomic species)", "kinds"),
+            ("No grouping (each site separately)", "atoms"),
+        ],
+    )
+    dos_atoms_group = tl.Unicode("kinds")
+    dos_plot_group_options = tl.List(
+        trait=tl.List(tl.Unicode()),
+        default_value=[
+            ("Group all orbitals per atom", "total"),
+            ("Group by angular momentum ", "angular_momentum"),
+            ("No grouping (each orbital separately)", "orbital"),
+        ],
+    )
+    dos_plot_group = tl.Unicode("angular_momentum")
+    selected_atoms = tl.Unicode("")
+    project_bands_box = tl.Bool(False)
+    proj_bands_width = tl.Float(0.5)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -74,3 +97,15 @@ class ElectronicStructureResultsModel(ResultsModel):
     def _has_pdos(self):
         outputs = self._get_child_outputs("pdos")
         return all(output in outputs for output in ("dos", "projwfc"))
+
+    def get_model_state(self):
+        return {
+            "dos_atoms_group": self.dos_atoms_group,
+            "dos_plot_group": self.dos_plot_group,
+            "selected_atoms": self.selected_atoms,
+        }
+
+    def set_model_state(self, parameters):
+        self.dos_atoms_group = parameters.get("dos_atoms_group", "kinds")
+        self.dos_plot_group = parameters.get("dos_plot_group", "angular_momentum")
+        self.selected_atoms = parameters.get("selected_atoms", "")

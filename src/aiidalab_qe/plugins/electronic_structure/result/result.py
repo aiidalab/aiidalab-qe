@@ -102,3 +102,16 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
         widget = BandsPdosWidget(model=model)
         widget.render()
         self.bands_pdos_container.children = [widget]
+
+        ipw.link(
+            (self._model, "dos_atoms_group"),
+            (model, "dos_atoms_group"),
+        )
+        ipw.link(
+            (self._model, "dos_plot_group"),
+            (model, "dos_plot_group"),
+        )
+        ipw.link(
+            (self._model, "selected_atoms"),
+            (model, "selected_atoms"),
+        )
