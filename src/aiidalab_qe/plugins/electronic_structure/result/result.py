@@ -14,7 +14,11 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
 
     def _render(self):
         self.bands_pdos_container = ipw.VBox()
-        children = []
+        # If the model implements `get_model_state` and `set_model_state`
+        # we can add the `state_buttons` to the results container.
+        # If we force all models to implement these methods, we can
+        # move this logic to the base class.
+        children = [self.state_buttons]
         if self._model.needs_property_selector:
             children.append(self._render_property_selector())
             self.has_property_selector = True

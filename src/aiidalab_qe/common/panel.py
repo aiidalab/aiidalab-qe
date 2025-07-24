@@ -667,12 +667,11 @@ class ResultsPanel(Panel[RM]):
         if self._model.auto_render:
             self.children = [
                 self.guide,
-                self.state_buttons,
                 self.results_container,
             ]
             self._load_results()
         else:
-            children = [self.guide, self.state_buttons]
+            children = [self.guide]
             if (
                 self._model.identifier != "structure"
                 or "relax" in self._model.properties
