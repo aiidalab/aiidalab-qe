@@ -57,7 +57,7 @@ class SmearingConfigurationSettingsPanel(
                     The smearing type and width are set by the chosen <b>protocol</b>.
                     <br>
                     Changes are not advised unless you've mastered
-                    <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
+                    <a href="https://theos-wiki.epfl.ch/Main/ElectronicTemperature.md"
                     target="_blank"><b>smearing effects</b></a>.
                 </div>
             """),
