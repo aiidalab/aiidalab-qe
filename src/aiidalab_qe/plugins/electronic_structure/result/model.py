@@ -43,6 +43,9 @@ class ElectronicStructureResultsModel(ResultsModel):
     project_bands_box = tl.Bool(False)
     proj_bands_width = tl.Float(0.5)
 
+    horizontal_width_percentage = tl.Int(100)
+    bands_width_percentage = tl.Int(70)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._completed_processes = set()
@@ -103,9 +106,15 @@ class ElectronicStructureResultsModel(ResultsModel):
             "dos_atoms_group": self.dos_atoms_group,
             "dos_plot_group": self.dos_plot_group,
             "selected_atoms": self.selected_atoms,
+            "horizontal_width_percentage": self.horizontal_width_percentage,
+            "bands_width_percentage": self.bands_width_percentage,
         }
 
     def set_model_state(self, parameters):
         self.dos_atoms_group = parameters.get("dos_atoms_group", "kinds")
         self.dos_plot_group = parameters.get("dos_plot_group", "angular_momentum")
         self.selected_atoms = parameters.get("selected_atoms", "")
+        self.horizontal_width_percentage = parameters.get(
+            "horizontal_width_percentage", 100
+        )
+        self.bands_width_percentage = parameters.get("bands_width_percentage", 70)

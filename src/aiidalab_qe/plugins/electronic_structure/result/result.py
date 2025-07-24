@@ -115,3 +115,11 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
             (self._model, "selected_atoms"),
             (model, "selected_atoms"),
         )
+        ipw.link(
+            (self._model, "horizontal_width_percentage"),
+            (model, "horizontal_width_percentage"),
+        )
+        ipw.link(
+            (self._model, "bands_width_percentage"),
+            (model, "bands_width_percentage"),
+        )
