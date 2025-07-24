@@ -17,7 +17,8 @@ def test_electronic_structure(generate_qeapp_workchain):
 
     panel.render()
 
-    assert len(panel.results_container.children) == 2  # has controls
+    # only state buttons container and bands, so no controls
+    assert len(panel.results_container.children) == 3
 
     widget = panel.bands_pdos_container.children[0]  # type: ignore
     model = widget._model
