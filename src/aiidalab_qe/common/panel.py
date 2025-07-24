@@ -644,27 +644,40 @@ class ResultsPanel(Panel[RM]):
             identifier=f"{self._model.identifier}-results",
             classes=["results-panel-guide"],
         )
+        self.save_state_button = ipw.Button(
+            description="Save state",
+            tooltip="Save the current visualization settings",
+            button_style="primary",
+            icon="save",
+        )
+        self.save_state_button.on_click(self._save_state)
+        self.load_state_button = ipw.Button(
+            description="Load state",
+            tooltip="Load previously saved visualization settings",
+            button_style="primary",
+            icon="download",
+        )
+        self.load_state_button.on_click(self._load_state)
+        self.state_buttons = ipw.HBox(
+            children=[self.save_state_button, self.load_state_button],
+        )
 
         self.results_container = ipw.VBox()
 
         if self._model.auto_render:
             self.children = [
                 self.guide,
+                self.state_buttons,
                 self.results_container,
             ]
             self._load_results()
         else:
-            children = [self.guide]
+            children = [self.guide, self.state_buttons]
             if (
                 self._model.identifier != "structure"
                 or "relax" in self._model.properties
             ):
                 children.append(self._get_controls_section())
-            children.append(
-                ipw.HBox(
-                    children=[self.save_state_button, self.load_state_button],
-                )
-            )
             children.append(self.results_container)
             self.children = children
             if self._model.identifier == "structure":
@@ -706,18 +719,6 @@ class ResultsPanel(Panel[RM]):
             lambda _: not self._model.has_results,
         )
         self.load_results_button.on_click(self._on_load_results_click)
-        self.save_state_button = ipw.Button(
-            description="Save state",
-            button_style="primary",
-            icon="save",
-        )
-        self.save_state_button.on_click(self._save_state)
-        self.load_state_button = ipw.Button(
-            description="Load state",
-            button_style="primary",
-            icon="upload",
-        )
-        self.load_state_button.on_click(self._load_state)
 
         self.load_controls = ipw.HBox(
             children=[]

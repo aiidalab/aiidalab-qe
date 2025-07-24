@@ -97,3 +97,11 @@ class StructureResultsModel(ResultsModel):
             data.append([index, symbol, tag, *formatted_position])
 
         return data
+
+    def get_model_state(self):
+        return {
+            "selected_view": self.selected_view,
+        }
+
+    def set_model_state(self, parameters):
+        self.selected_view = parameters.get("selected_view", "initial")
