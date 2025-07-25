@@ -45,10 +45,6 @@ class PseudosConfigurationSettingsPanel(
             self._on_family_change,
             "family",
         )
-        self._model.observe(
-            self._on_reset_trigger_change,
-            "pseudo_filename_reset_trigger",
-        )
 
         ipw.dlink(
             (self._model, "cutoffs"),
@@ -207,13 +203,6 @@ class PseudosConfigurationSettingsPanel(
         self._model.update_default_pseudos()
         self._model.update_default_cutoffs()
 
-    def _on_reset_trigger_change(self, _):
-        if not self.rendered:
-            return
-        upload_widget: PseudoUploadWidget
-        for upload_widget in self.setter_widget.children:
-            upload_widget.reset_pseudo_filename_widget()
-
     def _update(self, specific=""):
         if self.updated:
             return
@@ -365,9 +354,6 @@ class PseudoUploadWidget(ipw.HBox):
         ]
 
         self.rendered = True
-
-    def reset_pseudo_filename_widget(self):
-        self.pseudo_text.value = self.pseudo.filename if self.pseudo else ""
 
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""

@@ -111,8 +111,6 @@ class PseudosConfigurationSettingsModel(
 
     family_help_message = tl.Unicode(PSEUDO_HELP_WO_SOC)
 
-    pseudo_filename_reset_trigger = tl.Int(0)
-
     def update(self, specific=""):  # noqa: ARG002
         with self.hold_trait_notifications():
             if not self.has_structure:
@@ -276,7 +274,6 @@ class PseudosConfigurationSettingsModel(
             self.family = self._get_default("family")
             self.family_help_message = self._get_default("family_help_message")
             self.status_message = self._get_default("status_message")
-            self.pseudo_filename_reset_trigger += 1
 
     def _get_default(self, trait):
         if trait == "dictionary":
