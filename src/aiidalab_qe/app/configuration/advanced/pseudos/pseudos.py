@@ -45,16 +45,9 @@ class PseudosConfigurationSettingsPanel(
             self._on_family_change,
             "family",
         )
-
-        ipw.dlink(
-            (self._model, "cutoffs"),
-            (self._model, "ecutwfc"),
-            lambda cutoffs: max(cutoffs[0]),
-        )
-        ipw.dlink(
-            (self._model, "cutoffs"),
-            (self._model, "ecutrho"),
-            lambda cutoffs: max(cutoffs[1]),
+        self._model.observe(
+            self._on_cutoffs_change,
+            "cutoffs",
         )
 
     def render(self):
@@ -202,6 +195,11 @@ class PseudosConfigurationSettingsPanel(
         self._update_family_link()
         self._model.update_default_pseudos()
         self._model.update_default_cutoffs()
+
+    def _on_cutoffs_change(self, change):
+        cutoffs = change["new"]  # [[ecutwfc...], [ecutrho...]]
+        self._model.ecutwfc = max(cutoffs[0])
+        self._model.ecutrho = max(cutoffs[1])
 
     def _update(self, specific=""):
         if self.updated:
