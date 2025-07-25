@@ -27,7 +27,7 @@ class MagnetizationConfigurationSettingsModel(
 
     electronic_type = tl.Unicode()
     spin_type = tl.Unicode()
-    family = tl.Unicode()
+    family = tl.Unicode("", allow_none=True)
 
     type_options = tl.List(
         trait=tl.List(tl.Unicode()),
@@ -101,6 +101,11 @@ class MagnetizationConfigurationSettingsModel(
             # TODO this guard shouldn't be here! It IS here only because in the present
             # implementation, an update is called on app start. This breaks lazy loading
             # and should be carefully checked!
+            return
+
+        if not self.family:
+            # If no family is selected, we cannot determine the default moments.
+            self._defaults["moments"] = {}
             return
 
         family = fetch_pseudo_family_by_label(self.family)

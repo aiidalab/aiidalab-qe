@@ -50,9 +50,13 @@ class PseudosConfigurationSettingsModel(
                 DEFAULT["advanced"]["pseudo_family"]["functional"],
                 DEFAULT["advanced"]["pseudo_family"]["accuracy"],
             ]
-        )
+        ),
+        allow_none=True,
     )
-    functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
+    functional = tl.Unicode(
+        DEFAULT["advanced"]["pseudo_family"]["functional"],
+        allow_none=True,
+    )
     functional_options = tl.List(
         trait=tl.Unicode(),
         default_value=[
@@ -66,7 +70,8 @@ class PseudosConfigurationSettingsModel(
                 DEFAULT["advanced"]["pseudo_family"]["library"],
                 DEFAULT["advanced"]["pseudo_family"]["accuracy"],
             ]
-        )
+        ),
+        allow_none=True,
     )
     library_options = tl.List(
         trait=tl.Unicode(),
@@ -83,7 +88,8 @@ class PseudosConfigurationSettingsModel(
     )
     ecutwfc = tl.Float()
     ecutrho = tl.Float()
-    status_message = tl.Unicode("")
+    status_message = tl.Unicode("", allow_none=True)
+    show_upload_warning = tl.Bool(False)
 
     PSEUDO_HELP_SOC = """
         <div class="pseudo-text">
