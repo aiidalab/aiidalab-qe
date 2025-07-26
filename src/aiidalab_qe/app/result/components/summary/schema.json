@@ -104,10 +104,10 @@
     "type": "link",
     "description": "The pseudopotential library used for the calculation"
   },
-  "pseudo_protocol": {
-    "title": "Pseudopotential protocol",
+  "pseudos": {
+    "title": "Pseudopotentials",
     "type": "text",
-    "description": "The pseudopotential protocol used for the calculation"
+    "description": "The pseudopotentials used for the calculation"
   },
   "energy_cutoff_wfc": {
     "title": "Energy cutoff (wave functions)",

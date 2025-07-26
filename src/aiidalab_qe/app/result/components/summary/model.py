@@ -225,6 +225,10 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "value": f"{pseudo_library} {pseudo_protocol} v{pseudo_version}",
             },
         }
+        report["advanced_settings"]["pseudos"] = "<br>".join(
+            f"<b>{kind}:</b> {(pp := orm.load_node(pp_uuid)).filename} (PK={pp.pk})"
+            for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
+        )
 
         # Extract the pw calculation parameters from the ui_parameters
         pw_parameters = ui_parameters["advanced"].get("pw", {}).get("parameters", {})
