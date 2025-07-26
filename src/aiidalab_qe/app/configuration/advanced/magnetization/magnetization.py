@@ -42,8 +42,8 @@ class MagnetizationConfigurationSettingsPanel(
             "type",
         )
         self._model.observe(
-            self._on_family_change,
-            "family",
+            self._on_pseudos_dictionary_change,
+            "dictionary",
         )
 
     def render(self):
@@ -127,7 +127,7 @@ class MagnetizationConfigurationSettingsPanel(
         self._toggle_widgets()
         self._model.update_type_help()
 
-    def _on_family_change(self, _):
+    def _on_pseudos_dictionary_change(self, _):
         self._model._update_default_moments()
 
     def _update(self, specific=""):
