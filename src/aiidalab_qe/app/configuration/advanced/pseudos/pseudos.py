@@ -141,7 +141,9 @@ class PseudosConfigurationSettingsPanel(
                         To reset to the protocol-derived pseudopotentials, please select a functional and a family.
                     """,
             ),
-            layout=ipw.Layout(display="none"),
+            layout=ipw.Layout(
+                display="block" if self._model.show_upload_warning else "none",
+            ),
         )
 
         self.children = [
