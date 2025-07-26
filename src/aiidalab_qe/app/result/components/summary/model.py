@@ -193,11 +193,15 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
         }
 
+        relax_value_mapping = {
+            "none": "off",
+            "positions": "atomic positions",
+            "positions_cell": "full geometry",
+        }
+
         report |= {
             "basic_settings": {
-                "relaxed": "off"
-                if basic["relax_type"] == "none"
-                else basic["relax_type"],
+                "relaxed": relax_value_mapping.get(basic["relax_type"], "off"),
                 "protocol": basic["protocol"],
                 "spin_type": "off" if basic["spin_type"] == "none" else "on",
                 "electronic_type": basic["electronic_type"],
@@ -225,6 +229,10 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "value": f"{pseudo_library} {pseudo_protocol} v{pseudo_version}",
             },
         }
+        report["advanced_settings"]["pseudos"] = "<br>".join(
+            f"<b>{kind}:</b> {(pp := orm.load_node(pp_uuid)).filename} (PK={pp.pk})"
+            for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
+        )
 
         # Extract the pw calculation parameters from the ui_parameters
         pw_parameters = ui_parameters["advanced"].get("pw", {}).get("parameters", {})
