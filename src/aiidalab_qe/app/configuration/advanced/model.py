@@ -183,13 +183,18 @@ class AdvancedConfigurationSettingsModel(
 
     def set_model_state(self, parameters):
         pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
-        if "pseudo_family" in parameters:
-            pseudo_family = PseudoFamily.from_string(parameters["pseudo_family"])
+        if pseudo_family_string := parameters.get("pseudo_family"):
+            pseudo_family = PseudoFamily.from_string(pseudo_family_string)
             library = pseudo_family.library
             accuracy = pseudo_family.accuracy
             pseudos.library = f"{library} {accuracy}"
             pseudos.functional = pseudo_family.functional
-            pseudos.family = parameters["pseudo_family"]
+            pseudos.family = pseudo_family_string
+        else:
+            pseudos.library = None
+            pseudos.functional = None
+            pseudos.family = None
+            pseudos.show_upload_warning = True
 
         if "pseudos" in parameters["pw"]:
             pseudos.dictionary = parameters["pw"]["pseudos"]

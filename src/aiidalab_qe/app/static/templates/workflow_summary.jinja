@@ -12,9 +12,13 @@
           </td>
           <td class="value">
             {% if schema[key].type == "link" %}
-            <a class="link" href="{{ value.url }}" target="_blank">
+              {% if value.url %}
+              <a class="link" href="{{ value.url }}" target="_blank">
+                {{ value.value }}
+              </a>
+              {% else %}
               {{ value.value }}
-            </a>
+              {% endif %}
             {% else %}
             {{ value }}
             {% endif %}
