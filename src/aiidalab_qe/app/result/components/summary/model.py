@@ -193,11 +193,15 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
         }
 
+        relax_value_mapping = {
+            "none": "off",
+            "positions": "atomic positions",
+            "positions_cell": "full geometry",
+        }
+
         report |= {
             "basic_settings": {
-                "relaxed": "off"
-                if basic["relax_type"] == "none"
-                else basic["relax_type"],
+                "relaxed": relax_value_mapping.get(basic["relax_type"], "off"),
                 "protocol": basic["protocol"],
                 "spin_type": "off" if basic["spin_type"] == "none" else "on",
                 "electronic_type": basic["electronic_type"],
