@@ -528,17 +528,31 @@ class PseudoUploadWidget(ipw.VBox):
                 cutoff.get("cutoff_rho", 0.0),
             ]
         else:
-            with uploaded_pseudo.as_path() as pseudo_path:
-                upf_dict = UPFDict.from_upf(pseudo_path.as_posix())
-            cutoffs = [
-                float(int(upf_dict["header"].get("wfc_cutoff", 0))),
-                float(int(upf_dict["header"].get("rho_cutoff", 0))),
-            ]
+            try:
+                with uploaded_pseudo.as_path() as pseudo_path:
+                    upf_dict = UPFDict.from_upf(pseudo_path.as_posix())
+                cutoffs = [
+                    float(int(upf_dict.get("header", {}).get("wfc_cutoff", 0))),
+                    float(int(upf_dict.get("header", {}).get("rho_cutoff", 0))),
+                ]
+            except ValueError:
+                self.message = _PSEUDO_ALERT_TEMPLATE.format(
+                    alert_type="danger",
+                    message="Failed to parse cutoffs from UPF file",
+                )
+                self._reset_uploader()
+                return
+            except Exception:
+                self.message = _PSEUDO_ALERT_TEMPLATE.format(
+                    alert_type="danger",
+                    message="Failed to read/parse UPF file",
+                )
+                self._reset_uploader()
+                return
 
         self.cutoffs = cutoffs
-
-        self.message = message
         self.pseudo = uploaded_pseudo
+        self.message = message
         self.uploaded = True
         self._reset_uploader()
 
