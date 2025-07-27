@@ -291,7 +291,7 @@ class PseudosConfigurationSettingsPanel(
         kinds = self._model.input_structure.kinds if self._model.input_structure else []
 
         for index, kind in enumerate(kinds):
-            upload_widget = PseudoUploadWidget(kind)
+            upload_widget = PseudoUploadWidget(kind.name, kind.symbol)
 
             def on_default_pseudo(
                 _=None,
@@ -370,13 +370,14 @@ class PseudoUploadWidget(ipw.VBox):
     cutoffs = tl.List(tl.Float(), [])
     uploaded = tl.Bool(False)
 
-    def __init__(self, kind, **kwargs):
+    def __init__(self, kind_name, kind_symbol, **kwargs):
         super().__init__(
             children=[LoadingWidget("Loading pseudopotential uploader")],
             **kwargs,
         )
 
-        self.kind = kind
+        self.kind_name = kind_name
+        self.kind_symbol = kind_symbol
 
         self.rendered = False
 
@@ -385,7 +386,7 @@ class PseudoUploadWidget(ipw.VBox):
             return
 
         self.pseudo_text = ipw.Text(
-            description=self.kind.name,
+            description=self.kind_name,
             style={"description_width": "50px"},
         )
         pseudo_link = ipw.dlink(
@@ -458,10 +459,10 @@ class PseudoUploadWidget(ipw.VBox):
             return
 
         # Wrong element
-        if uploaded_pseudo.element != self.kind.symbol:
+        if uploaded_pseudo.element != self.kind_symbol:
             self.message_box.message = _PSEUDO_ALERT_TEMPLATE.format(
                 alert_type="danger",
-                message=f"Pseudo element {uploaded_pseudo.element} does not match {self.kind.symbol}",
+                message=f"Pseudo element {uploaded_pseudo.element} does not match {self.kind_symbol}",
             )
             self._reset_uploader()
             return
@@ -514,7 +515,7 @@ class PseudoUploadWidget(ipw.VBox):
             cutoff_dict = pseudo_family.get_cutoffs()
             cutoff = {
                 key: U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
-                for key, v in cutoff_dict.get(self.kind.symbol, {}).items()
+                for key, v in cutoff_dict.get(self.kind_symbol, {}).items()
             }
             cutoffs = [
                 cutoff.get("cutoff_wfc", 0.0),
