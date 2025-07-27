@@ -369,6 +369,7 @@ class PseudoUploadWidget(ipw.VBox):
     pseudo = tl.Instance(UpfData, allow_none=True)
     cutoffs = tl.List(tl.Float(), [])
     uploaded = tl.Bool(False)
+    message = tl.Unicode(allow_none=True)
 
     def __init__(self, kind_name, kind_symbol, **kwargs):
         super().__init__(
@@ -426,6 +427,10 @@ class PseudoUploadWidget(ipw.VBox):
         ]
 
         self.message_box = StatusHTML(clear_after=5)
+        ipw.link(
+            (self, "message"),
+            (self.message_box, "message"),
+        )
 
         self.pseudo_row = ipw.HBox(
             children=[
@@ -452,15 +457,16 @@ class PseudoUploadWidget(ipw.VBox):
         try:
             uploaded_pseudo = UpfData(io.BytesIO(content), filename=filename)
         except Exception:
-            self.message_box.message = _PSEUDO_ALERT_TEMPLATE.format(
+            self.message = _PSEUDO_ALERT_TEMPLATE.format(
                 alert_type="danger",
                 message=f"{filename} is not a valid UPF file",
             )
+            self._reset_uploader()
             return
 
         # Wrong element
         if uploaded_pseudo.element != self.kind_symbol:
-            self.message_box.message = _PSEUDO_ALERT_TEMPLATE.format(
+            self.message = _PSEUDO_ALERT_TEMPLATE.format(
                 alert_type="danger",
                 message=f"Pseudo element {uploaded_pseudo.element} does not match {self.kind_symbol}",
             )
@@ -491,7 +497,7 @@ class PseudoUploadWidget(ipw.VBox):
             )
             .count()
         ):
-            self.message_box.message = _PSEUDO_ALERT_TEMPLATE.format(
+            self.message = _PSEUDO_ALERT_TEMPLATE.format(
                 alert_type="warning",
                 message=f"""
                     {filename} found in database with different content.
@@ -531,7 +537,7 @@ class PseudoUploadWidget(ipw.VBox):
 
         self.cutoffs = cutoffs
 
-        self.message_box.message = message
+        self.message = message
         self.pseudo = uploaded_pseudo
         self.uploaded = True
         self._reset_uploader()
