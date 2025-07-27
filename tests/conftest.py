@@ -20,6 +20,7 @@ ELEMENTS = [
     "Si",
     "Co",
     "Mo",
+    "Ni",
 ]
 
 
@@ -308,11 +309,11 @@ def pseudodojo(generate_upf_data_for_session):
 def generate_upf_data():
     """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
 
-    def _generate_upf_data(element, filename=None, perturb=False):
+    def _generate_upf_data(element, filename=None, z_valence=4):
         """Return `UpfData` node."""
         from aiida_pseudo.data.pseudo import UpfData
 
-        z_valence = 5.0 if perturb else 4.0
+        z_valence = str(float(z_valence))
         content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="{z_valence}"\n/></UPF>\n'
         stream = io.BytesIO(content.encode("utf-8"))
 

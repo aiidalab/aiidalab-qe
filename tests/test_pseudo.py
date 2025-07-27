@@ -211,7 +211,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
 
     # Test reset from uploaded state
     uploader: PseudoUploadWidget = pseudos.setter_widget.children[1]
-    new_O_pseudo = generate_upf_data("O", "O_new.upf", perturb=True)
+    new_O_pseudo = generate_upf_data("O", "O_new.upf", z_valence=5)
     uploader._on_file_upload(
         {
             "new": {
@@ -290,7 +290,7 @@ def test_pseudo_upload_widget(generate_upf_data):
     assert "Identical pseudo" in w.message
 
     # Check different content but same filename is rejected
-    different_content_same_filename = generate_upf_data("O", "O.upf", perturb=True)
+    different_content_same_filename = generate_upf_data("O", "O.upf", z_valence=6)
     w._on_file_upload(
         {
             "new": {
@@ -319,11 +319,11 @@ def test_pseudo_upload_widget(generate_upf_data):
     assert "not a valid UPF file" in w.message
 
     # Check valid pseudo is accepted
-    valid = generate_upf_data("O", "O_new.upf", perturb=True)
+    valid = generate_upf_data("O", "O_valid.upf", z_valence=7)
     w._on_file_upload(
         {
             "new": {
-                "O_new.upf": {
+                "O_valid.upf": {
                     "content": bytes(
                         valid.get_content(),
                         encoding="utf-8",
@@ -332,5 +332,5 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O_new.upf"
+    assert w.pseudo.filename == "O_valid.upf"
     assert "uploaded successfully" in w.message
