@@ -188,36 +188,52 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert "Si" in model.dictionary.keys()
     assert "O" in model.dictionary.keys()
 
-    # Test pseudo upload
     pseudos.render()
 
-    uploader: PseudoUploadWidget = pseudos.setter_widget.children[1]  # type: ignore
-    new_O_pseudo = generate_upf_data("O", "O_new.upf")
+    # Check uploaders
+    assert len(pseudos.setter_widget.children) == 2
+
+    # Check Si uploader (Si.upf)
+    assert pseudos.setter_widget.children[0].kind_name == "Si"
+    assert pseudos.setter_widget.children[0].kind_symbol == "Si"
+    pseudo = orm.load_node(model.dictionary["Si"])
+    assert pseudos.setter_widget.children[0].pseudo == pseudo
+    assert pseudos.setter_widget.children[0].pseudo_text.value == pseudo.filename
+    assert pseudos.setter_widget.children[0].cutoffs == [30, 240]
+
+    # Check O uploader (O.upf)
+    assert pseudos.setter_widget.children[1].kind_name == "O"
+    assert pseudos.setter_widget.children[1].kind_symbol == "O"
+    pseudo = orm.load_node(model.dictionary["O"])
+    assert pseudos.setter_widget.children[1].pseudo == pseudo
+    assert pseudos.setter_widget.children[1].pseudo_text.value == pseudo.filename
+    assert pseudos.setter_widget.children[1].cutoffs == [30, 240]
+
+    # Test reset from uploaded state
+    uploader: PseudoUploadWidget = pseudos.setter_widget.children[1]
+    new_O_pseudo = generate_upf_data("O", "O_new.upf", perturb=True)
     uploader._on_file_upload(
         {
             "new": {
                 "O_new.upf": {
-                    "content": bytes(new_O_pseudo.get_content(), encoding="utf-8"),
+                    "content": bytes(
+                        new_O_pseudo.get_content(),
+                        encoding="utf-8",
+                    ),
                 },
             },
         }
     )
-    pseudo = model.dictionary["O"]  # type: ignore
+    pseudo = model.dictionary["O"]
     assert orm.load_node(pseudo).filename == "O_new.upf"
-
-    # TODO necessary for final test - see comment below
-    # cutoffs = [model.ecutwfc, model.ecutrho]
+    assert pseudos.setter_widget.children[1].pseudo_text.value == "O_new.upf"
 
     model.reset()
-    pseudo = model.dictionary["O"]  # type: ignore
+    pseudo = model.dictionary["O"]
     assert orm.load_node(pseudo).filename != "O_new.upf"
-
-    # TODO what is this about?
-    # model.set_pseudos(pseudos, cutoffs)
-    # assert orm.load_node(pseudo).filename == "O_new.upf"
+    assert pseudos.setter_widget.children[1].pseudo_text.value != "O_new.upf"
 
 
-# TODO test against model, not against widget
 def test_pseudo_upload_widget(generate_upf_data):
     """Test the pseudo upload widget."""
 
@@ -225,7 +241,8 @@ def test_pseudo_upload_widget(generate_upf_data):
     # the widget initialize with the pseudo as input to mock how it will
     # be used in PseudoSetter when the pseudo family is set.
     old_pseudo = generate_upf_data("O", "O_old.upf")
-    w = PseudoUploadWidget(kind_name="O1")
+
+    w = PseudoUploadWidget(kind_name="O1", kind_symbol="O")
     w.pseudo = old_pseudo
     w.cutoffs = [30, 240]
     w.render()
@@ -235,34 +252,85 @@ def test_pseudo_upload_widget(generate_upf_data):
     assert w.pseudo.filename == "O_old.upf"
     assert w.kind_name == "O1"
     assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.cutoff_message.value
-    assert w.error_message is None
+    assert not w.message
 
-    # mimic upload a new pseudo and set cutoffs
-    new_pseudo = generate_upf_data("O", "O_new.upf")
+    # Check different element is rejected
+    different_element = generate_upf_data("Si", "Si.upf")
+    w._on_file_upload(
+        {
+            "new": {
+                "Si.upf": {
+                    "content": bytes(
+                        different_element.get_content(),
+                        encoding="utf-8",
+                    )
+                },
+            },
+        }
+    )
+    assert w.pseudo.filename == "O_old.upf"
+    assert "does not match" in w.message
+
+    # Check identical content is rejected in favor of existing one
+    same_content_different_name = generate_upf_data("O", "O_copy.upf")
+    w._on_file_upload(
+        {
+            "new": {
+                "O_copy.upf": {
+                    "content": bytes(
+                        same_content_different_name.get_content(),
+                        encoding="utf-8",
+                    ),
+                },
+            },
+        }
+    )
+
+    assert w.pseudo.filename == "O.upf"
+    assert "Identical pseudo" in w.message
+
+    # Check different content but same filename is rejected
+    different_content_same_filename = generate_upf_data("O", "O.upf", perturb=True)
+    w._on_file_upload(
+        {
+            "new": {
+                "O.upf": {
+                    "content": bytes(
+                        different_content_same_filename.get_content(),
+                        encoding="utf-8",
+                    ),
+                },
+            },
+        }
+    )
+    assert w.pseudo.filename == "O.upf"
+    assert "rename your file" in w.message
+
+    # Check invalid pseudo content is rejected
+    w._on_file_upload(
+        {
+            "new": {
+                "O_invalid.upf": {
+                    "content": b"<UPF version='...'>...</UPF>",
+                },
+            },
+        }
+    )
+    assert "not a valid UPF file" in w.message
+
+    # Check valid pseudo is accepted
+    valid = generate_upf_data("O", "O_new.upf", perturb=True)
     w._on_file_upload(
         {
             "new": {
                 "O_new.upf": {
-                    "content": bytes(new_pseudo.get_content(), encoding="utf-8")
-                }
-            }
+                    "content": bytes(
+                        valid.get_content(),
+                        encoding="utf-8",
+                    ),
+                },
+            },
         }
     )
-
     assert w.pseudo.filename == "O_new.upf"
-    assert w.kind_name == "O1"
-    assert w.error_message is None
-
-    # test upload a invalid pseudo of other element
-    invalid_pseudo = generate_upf_data("Ba", "Ba.upf")
-    w._on_file_upload(
-        {
-            "new": {
-                "Ba_upf.upf": {
-                    "content": bytes(invalid_pseudo.get_content(), encoding="utf-8")
-                }
-            }
-        }
-    )
-    assert w.error_message is not None
-    assert w.pseudo is None
+    assert "uploaded successfully" in w.message
