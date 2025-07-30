@@ -156,3 +156,22 @@ footer {
   margin-bottom: 0;
   padding: 10px;
 }
+
+.list-no-bullets {
+  margin-bottom: 0;
+  line-height: 1.8;
+}
+
+.list-no-bullets.list-format {
+  padding-left: 16px;
+}
+
+.list-no-bullets.table-format {
+  padding: 2px 0;
+}
+
+.list-no-bullets li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}

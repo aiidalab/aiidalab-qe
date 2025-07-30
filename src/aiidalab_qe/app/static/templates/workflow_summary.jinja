@@ -11,7 +11,13 @@
             {{ schema[key].title }}
           </td>
           <td class="value">
-            {% if schema[key].type == "link" %}
+            {% if schema[key].type == "list" %}
+            <ul class="list-no-bullets {{format}}-format">
+              {% for item in value %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+            {% elif schema[key].type == "link" %}
               {% if value.url %}
               <a class="link" href="{{ value.url }}" target="_blank">
                 {{ value.value }}
