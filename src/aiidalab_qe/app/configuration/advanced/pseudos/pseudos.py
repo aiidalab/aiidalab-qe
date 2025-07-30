@@ -134,12 +134,22 @@ class PseudosConfigurationSettingsPanel(
             value=_PSEUDO_ALERT_TEMPLATE.format(
                 alert_type="warning",
                 message="""
-                        You have uploaded a custom pseudopotential.
-                        <br>
-                        <b>Please make sure to use the same functional for all pseudopotentials.</b>
-                        <br>
-                        To reset to the protocol-derived pseudopotentials, please select a functional and a family.
-                    """,
+                    ⚠️ You have uploaded a pseudopotential ⚠️
+                    <br>
+                    <br>
+                    <b>Please make sure to use the same Quantum ESPRESSO supported
+                    exchange-correlation functional for all pseudopotentials.</b>
+                    <br>
+                    <b>If including spin-orbit coupling (SOC) effects, make sure to
+                    upload a fully relativistic pseudopotential.</b>
+                    <br>
+                    <b>Finally, remember to adjust the plane-wave cutoff energy to
+                    ensure convergence.</b>
+                    <br>
+                    <br>
+                    To reset to the protocol-derived pseudopotentials, please select
+                    an exchange-correlation functional and a pseudopotential family.
+                """,
             ),
             layout=ipw.Layout(
                 display="block" if self._model.show_upload_warning else "none",
