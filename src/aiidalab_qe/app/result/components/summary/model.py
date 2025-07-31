@@ -87,17 +87,17 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "All calculations are performed within the density-functional "
             "theory formalism as implemented in the Quantum ESPRESSO code. "
             "The pseudopotential for each element is extracted from the "
-            f'{report_dict["Pseudopotential library"][0]} '
+            f"{report_dict['Pseudopotential library'][0]} "
             "library. The wave functions "
             "of the valence electrons are expanded in a plane wave basis set, using an "
             "energy cutoff equal to "
-            f'{round(report_dict["Plane wave energy cutoff (wave functions)"][0])} Ry '
+            f"{round(report_dict['Plane wave energy cutoff (wave functions)'][0])} Ry "
             "for the wave functions and "
-            f'{round(report_dict["Plane wave energy cutoff (charge density)"][0])} Ry '
+            f"{round(report_dict['Plane wave energy cutoff (charge density)'][0])} Ry "
             "for the charge density and potential. "
             "The exchange-correlation energy is "
             "calculated using the "
-            f'{FUNCTIONAL_REPORT_MAP[report_dict["Functional"][0]]}. '
+            f"{FUNCTIONAL_REPORT_MAP[report_dict['Functional'][0]]}. "
             "A Monkhorst-Pack mesh is used for sampling the Brillouin zone, where the "
             "distance between the k-points is set to "
         )
@@ -210,29 +210,38 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "advanced_settings": {},
         }
 
-        pseudo_family = advanced.get("pseudo_family")
-        pseudo_family_info = pseudo_family.split("/")
-        pseudo_library = pseudo_family_info[0]
-        pseudo_version = pseudo_family_info[1]
-        functional = pseudo_family_info[2]
-        if pseudo_library == "SSSP":
-            pseudo_protocol = pseudo_family_info[3]
-        elif pseudo_library == "PseudoDojo":
-            pseudo_protocol = pseudo_family_info[4]
-        report["advanced_settings"] |= {
-            "functional": {
-                "url": FUNCTIONAL_LINK_MAP[functional],
-                "value": functional,
-            },
-            "pseudo_library": {
-                "url": PSEUDO_LINK_MAP[pseudo_library],
-                "value": f"{pseudo_library} {pseudo_protocol} v{pseudo_version}",
-            },
-        }
-        report["advanced_settings"]["pseudos"] = "<br>".join(
+        if pseudo_family := advanced.get("pseudo_family"):
+            pseudo_family_info = pseudo_family.split("/")
+            pseudo_library = pseudo_family_info[0]
+            pseudo_version = pseudo_family_info[1]
+            functional = pseudo_family_info[2]
+            if pseudo_library == "SSSP":
+                pseudo_protocol = pseudo_family_info[3]
+            elif pseudo_library == "PseudoDojo":
+                pseudo_protocol = pseudo_family_info[4]
+            report["advanced_settings"] |= {
+                "functional": {
+                    "url": FUNCTIONAL_LINK_MAP[functional],
+                    "value": functional,
+                },
+                "pseudo_library": {
+                    "url": PSEUDO_LINK_MAP[pseudo_library],
+                    "value": f"{pseudo_library} {pseudo_protocol} v{pseudo_version}",
+                },
+            }
+        else:
+            report["advanced_settings"]["functional"] = {
+                "url": None,
+                "value": "custom",
+            }
+            report["advanced_settings"]["pseudo_library"] = {
+                "url": None,
+                "value": "custom",
+            }
+        report["advanced_settings"]["pseudos"] = [
             f"<b>{kind}:</b> {(pp := orm.load_node(pp_uuid)).filename} (PK={pp.pk})"
             for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
-        )
+        ]
 
         # Extract the pw calculation parameters from the ui_parameters
         pw_parameters = ui_parameters["advanced"].get("pw", {}).get("parameters", {})

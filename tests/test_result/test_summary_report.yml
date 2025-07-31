@@ -11,7 +11,8 @@ advanced_settings:
   pseudo_library:
     url: https://www.materialscloud.org/discover/sssp/table/efficiency
     value: SSSP efficiency v1.3
-  pseudos: <b>Si:</b> Si.upf (PK=3)
+  pseudos:
+  - <b>Si:</b> Si.upf (PK=4)
   scf_kpoints_distance: 0.3 Å<sup>-1</sup>
   smearing: cold
   spin_orbit: 'off'

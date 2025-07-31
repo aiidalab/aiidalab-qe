@@ -38,12 +38,12 @@ class MagnetizationConfigurationSettingsPanel(
             "spin_type",
         )
         self._model.observe(
-            self._on_magnetization_type_change,
-            "type",
+            self._on_pseudos_dictionary_change,
+            "dictionary",
         )
         self._model.observe(
-            self._on_family_change,
-            "family",
+            self._on_magnetization_type_change,
+            "type",
         )
 
     def render(self):
@@ -123,12 +123,12 @@ class MagnetizationConfigurationSettingsPanel(
     def _on_spin_type_change(self, _):
         self.refresh(specific="spin")
 
+    def _on_pseudos_dictionary_change(self, _):
+        self.refresh(specific="dictionary")
+
     def _on_magnetization_type_change(self, _):
         self._toggle_widgets()
         self._model.update_type_help()
-
-    def _on_family_change(self, _):
-        self._model._update_default_moments()
 
     def _update(self, specific=""):
         if self.updated:

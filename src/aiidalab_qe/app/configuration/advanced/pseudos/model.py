@@ -50,9 +50,13 @@ class PseudosConfigurationSettingsModel(
                 DEFAULT["advanced"]["pseudo_family"]["functional"],
                 DEFAULT["advanced"]["pseudo_family"]["accuracy"],
             ]
-        )
+        ),
+        allow_none=True,
     )
-    functional = tl.Unicode(DEFAULT["advanced"]["pseudo_family"]["functional"])
+    functional = tl.Unicode(
+        DEFAULT["advanced"]["pseudo_family"]["functional"],
+        allow_none=True,
+    )
     functional_options = tl.List(
         trait=tl.Unicode(),
         default_value=[
@@ -66,7 +70,8 @@ class PseudosConfigurationSettingsModel(
                 DEFAULT["advanced"]["pseudo_family"]["library"],
                 DEFAULT["advanced"]["pseudo_family"]["accuracy"],
             ]
-        )
+        ),
+        allow_none=True,
     )
     library_options = tl.List(
         trait=tl.Unicode(),
@@ -83,7 +88,8 @@ class PseudosConfigurationSettingsModel(
     )
     ecutwfc = tl.Float()
     ecutrho = tl.Float()
-    status_message = tl.Unicode("")
+    status_message = tl.Unicode("", allow_none=True)
+    show_upload_warning = tl.Bool(False)
 
     PSEUDO_HELP_SOC = """
         <div class="pseudo-text">
@@ -110,8 +116,6 @@ class PseudosConfigurationSettingsModel(
     """
 
     family_help_message = tl.Unicode(PSEUDO_HELP_WO_SOC)
-
-    pseudo_filename_reset_trigger = tl.Int(0)
 
     def update(self, specific=""):  # noqa: ARG002
         with self.hold_trait_notifications():
@@ -276,7 +280,6 @@ class PseudosConfigurationSettingsModel(
             self.family = self._get_default("family")
             self.family_help_message = self._get_default("family_help_message")
             self.status_message = self._get_default("status_message")
-            self.pseudo_filename_reset_trigger += 1
 
     def _get_default(self, trait):
         if trait == "dictionary":

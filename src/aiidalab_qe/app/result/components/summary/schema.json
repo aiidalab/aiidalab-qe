@@ -106,7 +106,7 @@
   },
   "pseudos": {
     "title": "Pseudopotentials",
-    "type": "text",
+    "type": "list",
     "description": "The pseudopotentials used for the calculation"
   },
   "energy_cutoff_wfc": {

@@ -1,13 +1,12 @@
 from copy import deepcopy
 
 import traitlets as tl
-from aiida_pseudo.groups.family import PseudoPotentialFamily
 
+from aiida import orm
 from aiida_quantumespresso.workflows.protocols.utils import (
     get_magnetization_parameters,
 )
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.utils import fetch_pseudo_family_by_label
 
 from ..subsettings import AdvancedCalculationSubSettingsModel
 
@@ -22,12 +21,16 @@ class MagnetizationConfigurationSettingsModel(
         "input_structure",
         "electronic_type",
         "spin_type",
-        "pseudos.family",
+        "pseudos.dictionary",
     ]
 
     electronic_type = tl.Unicode()
     spin_type = tl.Unicode()
-    family = tl.Unicode()
+    dictionary = tl.Dict(
+        key_trait=tl.Unicode(),  # kind name
+        value_trait=tl.Unicode(),  # pseudopotential node uuid
+        default_value={},
+    )
 
     type_options = tl.List(
         trait=tl.List(tl.Unicode()),
@@ -103,21 +106,25 @@ class MagnetizationConfigurationSettingsModel(
             # and should be carefully checked!
             return
 
-        family = fetch_pseudo_family_by_label(self.family)
         self._defaults["moments"] = {
-            kind.name: self._get_moment(kind.symbol, family)
-            for kind in self.input_structure.kinds
+            kind.name: self._get_moment(kind) for kind in self.input_structure.kinds
         }
 
-    def _get_moment(self, symbol: str, family: PseudoPotentialFamily) -> float:
+    def _get_moment(self, kind) -> float:
         """Convert the default magnetization to an initial magnetic moment."""
-        moment = self._DEFAULT_MOMENTS.get(symbol, {}).get("magmom", 0)
+        moment = self._DEFAULT_MOMENTS.get(kind.symbol, {}).get("magmom", 0)
         if moment != 0:
             return moment
 
+        try:
+            pseudo_uuid = self.dictionary.get(kind.name)
+            z_valence = orm.load_node(pseudo_uuid).z_valence
+        except Exception:
+            z_valence = 0
+
         # If no default moment is defined, or if it's 0, use 0.1 as default magnetization
         # and convert it to moments.
-        return round(0.1 * family.get_pseudo(symbol).z_valence, 3)
+        return round(0.1 * z_valence, 3)
 
     def _get_default_moments(self):
         return deepcopy(self._defaults.get("moments", {}))
