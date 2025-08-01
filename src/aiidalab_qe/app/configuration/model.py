@@ -154,3 +154,8 @@ class ConfigurationStepModel(
             if relax_type in [option[1] for option in options]
             else options[-1][-1]
         )
+
+    def _check_blockers(self):
+        for _, model in self.get_models():
+            if model.is_blocked:
+                yield from model.blockers

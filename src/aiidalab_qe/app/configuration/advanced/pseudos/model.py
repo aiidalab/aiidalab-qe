@@ -64,6 +64,7 @@ class PseudosConfigurationSettingsModel(
             "PBEsol",
         ],
     )
+    functionals = tl.List(trait=tl.Unicode(allow_none=True))
     library = tl.Unicode(
         " ".join(
             [
@@ -152,6 +153,7 @@ class PseudosConfigurationSettingsModel(
             kind: pseudo.uuid for kind, pseudo in pseudos.items()
         }
         self.dictionary = self._get_default_dictionary()
+        self.functionals = [self.functional for _ in pseudos.values()]
 
     def update_default_cutoffs(self):
         """Update wavefunction and density cutoffs from pseudo family."""
@@ -311,3 +313,7 @@ class PseudosConfigurationSettingsModel(
 
     def _get_default_cutoffs(self):
         return deepcopy(self._defaults["cutoffs"])
+
+    def _check_blockers(self):
+        if not len(set(self.functionals)) == 1:
+            yield "All pseudopotentials must have the same functional"

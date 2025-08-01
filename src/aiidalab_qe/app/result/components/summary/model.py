@@ -14,6 +14,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponentModel
 from aiidalab_qe.app.static import styles, templates
 from aiidalab_qe.common.time import format_time, relative_time
+from aiidalab_qe.utils import get_pseudo_info
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -230,10 +231,14 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 },
             }
         else:
+            pp_uuid = next(iter(advanced["pw"]["pseudos"].values()))
+            pseudo_info = get_pseudo_info(pp_uuid)
+            functional = pseudo_info["functional"]
             report["advanced_settings"]["functional"] = {
-                "url": None,
-                "value": "custom",
+                "url": FUNCTIONAL_LINK_MAP.get(functional),
+                "value": functional,
             }
+            report["advanced_settings"]["relativistic"] = pseudo_info["relativistic"]
             report["advanced_settings"]["pseudo_library"] = {
                 "url": None,
                 "value": "custom",

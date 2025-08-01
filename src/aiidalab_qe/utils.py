@@ -1,4 +1,7 @@
+import contextlib
+
 from aiida_pseudo.groups.family import PseudoPotentialFamily
+from upf_tools import UPFDict
 
 from aiida import orm
 
@@ -44,3 +47,49 @@ def shallow_copy_nested_dict(d):
     if isinstance(d, dict):
         return {key: shallow_copy_nested_dict(value) for key, value in d.items()}
     return d
+
+
+FUNCTIONAL_MAPPING = {
+    "pbe": "PBE",
+    "sla+pw+pbx+pbc": "PBE",
+    "pbesol": "PBEsol",
+    "sla+pw+psx+psc": "PBEsol",
+}
+
+
+def get_upf_dict(pseudo):
+    with pseudo.as_path() as pseudo_path:
+        upf_dict = UPFDict.from_upf(pseudo_path.as_posix())
+    return upf_dict
+
+
+def get_pseudo_info(pp_uuid):
+    functional = "unknown"
+    relativistic = "unknown"
+    ecutwfc = 0.0
+    ecutrho = 0.0
+    with contextlib.suppress(Exception):
+        pp_node = orm.load_node(pp_uuid)
+        keys = ("functional", "relativistic", "ecutwfc", "ecutrho")
+        if all(key in pp_node.base.extras for key in keys):
+            functional = pp_node.base.extras.get("functional")
+            relativistic = pp_node.base.extras.get("relativistic")
+            ecutwfc = pp_node.base.extras.get("ecutwfc")
+            ecutrho = pp_node.base.extras.get("ecutrho")
+        else:
+            upf_dict = get_upf_dict(pp_node)
+            functional = FUNCTIONAL_MAPPING.get(
+                functional := "+".join(
+                    upf_dict["header"]["functional"].lower().split()
+                ),
+                functional,
+            )
+            relativistic = upf_dict["header"]["relativistic"]
+            ecutwfc = float(int(upf_dict["header"]["wfc_cutoff"]))
+            ecutrho = float(int(upf_dict["header"]["rho_cutoff"]))
+    return {
+        "functional": functional,
+        "relativistic": relativistic,
+        "ecutwfc": ecutwfc,
+        "ecutrho": ecutrho,
+    }

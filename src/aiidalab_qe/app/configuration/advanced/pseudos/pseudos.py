@@ -6,11 +6,11 @@ from copy import deepcopy
 import ipywidgets as ipw
 import traitlets as tl
 from aiida_pseudo.common.units import U
-from upf_tools import UPFDict
 
 from aiida import orm
 from aiida.plugins import DataFactory, GroupFactory
 from aiidalab_qe.common.widgets import HBoxWithUnits, LoadingWidget
+from aiidalab_qe.utils import get_pseudo_info
 from aiidalab_widgets_base.utils import StatusHTML
 
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
@@ -50,6 +50,10 @@ class PseudosConfigurationSettingsPanel(
         self._model.observe(
             self._on_family_parameters_change,
             ["library", "functional"],
+        )
+        self._model.observe(
+            self._on_functionals_change,
+            "functionals",
         )
         self._model.observe(
             self._on_family_change,
@@ -136,9 +140,6 @@ class PseudosConfigurationSettingsPanel(
                 message="""
                     ⚠️ You have uploaded a pseudopotential ⚠️
                     <br>
-                    <br>
-                    <b>Please make sure to use the same Quantum ESPRESSO supported
-                    exchange-correlation functional for all pseudopotentials.</b>
                     <br>
                     <b>If including spin-orbit coupling (SOC) effects, make sure to
                     upload a fully relativistic pseudopotential.</b>
@@ -236,6 +237,12 @@ class PseudosConfigurationSettingsPanel(
         self._model.show_upload_warning = False
         self._model.update_family()
 
+    def _on_functionals_change(self, _):
+        self._model.update_blockers()
+        self._model.functional = (
+            None if self._model.is_blocked else self._model.functionals[0]
+        )
+
     def _on_family_change(self, _):
         if not self._model.family:
             return
@@ -326,10 +333,13 @@ class PseudosConfigurationSettingsPanel(
                 index=index,
                 widget=upload_widget,
             ):
-                if not change["new"]:
+                if not (change["new"] and widget.pseudo):
                     return
 
-                self._model.functional = None
+                functional = widget.pseudo.base.extras.get("functional", None)
+                functionals = [*self._model.functionals]
+                functionals[index] = functional
+                self._model.functionals = functionals
                 self._model.library = None
                 self._model.family = None
                 self._model.show_upload_warning = True
@@ -377,9 +387,18 @@ class PseudoUploadWidget(ipw.VBox):
     """Class that allows to upload pseudopotential from user's computer."""
 
     pseudo = tl.Instance(UpfData, allow_none=True)
+    filename = tl.Unicode(allow_none=True)
+    info = tl.Unicode(allow_none=True)
+    functional = tl.Unicode(allow_none=True)
     cutoffs = tl.List(tl.Float(), [])
     uploaded = tl.Bool(False)
     message = tl.Unicode(allow_none=True)
+
+    _PSEUDO_INFO_TEMPLATE = """
+        <div class="pseudo-text">
+            ψ: <b>{ecutwfc} Ry</b> | ρ: <b>{ecutrho} Ry</b> | XC: <b>{functional}</b>
+        </div>
+    """  # noqa: RUF001
 
     def __init__(self, kind_name, kind_symbol, **kwargs):
         super().__init__(
@@ -396,15 +415,16 @@ class PseudoUploadWidget(ipw.VBox):
         if self.rendered:
             return
 
-        self.pseudo_text = ipw.Text(
+        self.pseudo_filename = ipw.Text(
             description=self.kind_name,
             style={"description_width": "50px"},
         )
-        pseudo_link = ipw.dlink(
+        filename_link = ipw.dlink(
             (self, "pseudo"),
-            (self.pseudo_text, "value"),
+            (self.pseudo_filename, "value"),
             lambda pseudo: pseudo.filename if pseudo else "",
         )
+
         self.file_upload = ipw.FileUpload(
             description="Upload",
             multiple=False,
@@ -421,32 +441,33 @@ class PseudoUploadWidget(ipw.VBox):
             </div>
         """  # noqa: RUF001
 
-        self.cutoff_message = ipw.HTML()
+        self.pseudo_info = ipw.HTML()
         cutoff_link = ipw.dlink(
             (self, "cutoffs"),
-            (self.cutoff_message, "value"),
+            (self.pseudo_info, "value"),
             lambda cutoffs: cutoffs_message_template.format(
                 ecutwfc=cutoffs[0] if len(cutoffs) else "not set",
                 ecutrho=cutoffs[1] if len(cutoffs) else "not set",
             ),
         )
 
-        self.links = [
-            pseudo_link,
-            cutoff_link,
-        ]
-
         self.message_box = StatusHTML(clear_after=5)
-        ipw.link(
+        message_link = ipw.link(
             (self, "message"),
             (self.message_box, "message"),
         )
 
+        self.links = [
+            filename_link,
+            cutoff_link,
+            message_link,
+        ]
+
         self.pseudo_row = ipw.HBox(
             children=[
-                self.pseudo_text,
+                self.pseudo_filename,
                 self.file_upload,
-                self.cutoff_message,
+                self.pseudo_info,
             ]
         )
 
@@ -456,6 +477,19 @@ class PseudoUploadWidget(ipw.VBox):
         ]
 
         self.rendered = True
+
+    @tl.observe("pseudo")
+    def _on_pseudo_change(self, _):
+        if not self.pseudo:
+            return
+        self._set_pseudo_extras()
+
+    def _set_pseudo_extras(self):
+        keys = ("functional", "relativistic", "ecutwfc", "ecutrho")
+        if all(extra in self.pseudo.base.extras.all for extra in keys):
+            return
+        pseudo_info = get_pseudo_info(self.pseudo.uuid)
+        self.pseudo.base.extras.set_many(pseudo_info)
 
     def _on_file_upload(self, change=None):
         if not change or not change["new"]:
@@ -538,27 +572,11 @@ class PseudoUploadWidget(ipw.VBox):
                 cutoff.get("cutoff_rho", 0.0),
             ]
         else:
-            try:
-                with uploaded_pseudo.as_path() as pseudo_path:
-                    upf_dict = UPFDict.from_upf(pseudo_path.as_posix())
-                cutoffs = [
-                    float(int(upf_dict.get("header", {}).get("wfc_cutoff", 0))),
-                    float(int(upf_dict.get("header", {}).get("rho_cutoff", 0))),
-                ]
-            except ValueError:
-                self.message = _PSEUDO_ALERT_TEMPLATE.format(
-                    alert_type="danger",
-                    message="Failed to parse cutoffs from UPF file",
-                )
-                self._reset_uploader()
-                return
-            except Exception:
-                self.message = _PSEUDO_ALERT_TEMPLATE.format(
-                    alert_type="danger",
-                    message="Failed to read/parse UPF file",
-                )
-                self._reset_uploader()
-                return
+            pseudo_info = get_pseudo_info(uploaded_pseudo.uuid)
+            cutoffs = [
+                pseudo_info["ecutwfc"],
+                pseudo_info["ecutrho"],
+            ]
 
         self.cutoffs = cutoffs
         self.pseudo = uploaded_pseudo

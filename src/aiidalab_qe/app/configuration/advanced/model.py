@@ -15,6 +15,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
 from aiidalab_qe.setup.pseudos import PseudoFamily
+from aiidalab_qe.utils import get_pseudo_info
 
 from .subsettings import AdvancedCalculationSubSettingsModel
 
@@ -200,16 +201,20 @@ class AdvancedConfigurationSettingsModel(
 
     def set_model_state(self, parameters):
         pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
+        num_kinds = len(self.input_structure.kinds)
         if pseudo_family_string := parameters.get("pseudo_family"):
             pseudo_family = PseudoFamily.from_string(pseudo_family_string)
             library = pseudo_family.library
             accuracy = pseudo_family.accuracy
             pseudos.library = f"{library} {accuracy}"
-            pseudos.functional = pseudo_family.functional
             pseudos.family = pseudo_family_string
+            pseudos.functionals = [pseudo_family.functional] * num_kinds
         else:
             pseudos.library = None
-            pseudos.functional = None
+            pp_uuid = next(iter(parameters["pw"]["pseudos"].values()))
+            pseudo_info = get_pseudo_info(pp_uuid)
+            functional = pseudo_info["functional"]
+            pseudos.functionals = [functional] * num_kinds
             pseudos.family = None
             pseudos.show_upload_warning = True
 

@@ -66,6 +66,11 @@ class HasModels(t.Generic[T]):
     def _link_model(self, model: T):
         if not hasattr(model, "dependencies"):
             return
+        if isinstance(model, HasBlockers):
+            tl.dlink(
+                (model, "blockers"),
+                (self, "blockers"),
+            )
         for dependency in model.dependencies:
             dependency_parts = dependency.rsplit(".", 1)
             if len(dependency_parts) == 1:  # from parent
