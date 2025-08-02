@@ -198,7 +198,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert pseudos.setter_widget.children[0].kind_symbol == "Si"
     pseudo = orm.load_node(model.dictionary["Si"])
     assert pseudos.setter_widget.children[0].pseudo == pseudo
-    assert pseudos.setter_widget.children[0].pseudo_text.value == pseudo.filename
+    assert pseudos.setter_widget.children[0].pseudo_filename.value == pseudo.filename
     assert pseudos.setter_widget.children[0].cutoffs == [30, 240]
 
     # Check O uploader (O.upf)
@@ -206,7 +206,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert pseudos.setter_widget.children[1].kind_symbol == "O"
     pseudo = orm.load_node(model.dictionary["O"])
     assert pseudos.setter_widget.children[1].pseudo == pseudo
-    assert pseudos.setter_widget.children[1].pseudo_text.value == pseudo.filename
+    assert pseudos.setter_widget.children[1].pseudo_filename.value == pseudo.filename
     assert pseudos.setter_widget.children[1].cutoffs == [30, 240]
 
     # Test reset from uploaded state
@@ -226,12 +226,12 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     )
     pseudo = model.dictionary["O"]
     assert orm.load_node(pseudo).filename == "O_new.upf"
-    assert pseudos.setter_widget.children[1].pseudo_text.value == "O_new.upf"
+    assert pseudos.setter_widget.children[1].pseudo_filename.value == "O_new.upf"
 
     model.reset()
     pseudo = model.dictionary["O"]
     assert orm.load_node(pseudo).filename != "O_new.upf"
-    assert pseudos.setter_widget.children[1].pseudo_text.value != "O_new.upf"
+    assert pseudos.setter_widget.children[1].pseudo_filename.value != "O_new.upf"
 
 
 def test_pseudo_upload_widget(generate_upf_data):
@@ -251,7 +251,7 @@ def test_pseudo_upload_widget(generate_upf_data):
 
     assert w.pseudo.filename == "O_old.upf"
     assert w.kind_name == "O1"
-    assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.cutoff_message.value
+    assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.pseudo_info.value
     assert not w.message
 
     # Check different element is rejected
