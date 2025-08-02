@@ -323,7 +323,7 @@ class PseudosConfigurationSettingsModel(
             return
 
         if not len({pp.base.extras.get("functional", None) for pp in pseudos}) == 1:
-            yield "All pseudopotentials must have the same functional"
+            yield "All pseudopotentials must have the same exchange-correlation (XC) functional"
 
         if self.spin_orbit == "soc" and not all(
             pp.base.extras.get("relativistic", None) == "full" for pp in pseudos

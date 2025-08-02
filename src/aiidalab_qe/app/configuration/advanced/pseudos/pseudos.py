@@ -22,11 +22,12 @@ PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
 CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
 
 
-_PSEUDO_ALERT_TEMPLATE = """
-    <div class="alert alert-{alert_type} pseudo-warning">
-        {message}
-    </div>
-"""
+def generate_alert(alert_type: str, message: str, class_: str = "", style_: str = ""):
+    return f"""
+        <div class="alert alert-{alert_type} pseudo-warning {class_}" style="{style_}">
+            {message}
+        </div>
+    """
 
 
 class PseudosConfigurationSettingsPanel(
@@ -139,22 +140,17 @@ class PseudosConfigurationSettingsPanel(
         )
 
         self._warning_message = ipw.HTML(
-            value=_PSEUDO_ALERT_TEMPLATE.format(
+            value=generate_alert(
                 alert_type="warning",
                 message="""
-                    ⚠️ You have uploaded a pseudopotential ⚠️
+                    <h4><b>⚠️ Pseudopotential upload detected ⚠️</b></h4>
+                    Adjust plane-wave cutoff energies below to ensure convergence
                     <br>
-                    <br>
-                    <b>If including spin-orbit coupling (SOC) effects, make sure to
-                    upload a fully relativistic pseudopotential.</b>
-                    <br>
-                    <b>Finally, remember to adjust the plane-wave cutoff energy to
-                    ensure convergence.</b>
-                    <br>
-                    <br>
-                    To reset to the protocol-derived pseudopotentials, please select
-                    an exchange-correlation functional and a pseudopotential family.
+                    To reset to protocol-derived pseudopotentials, select both an
+                    exchange-correlation functional and a pseudopotential family above
                 """,
+                class_="text-center",
+                style_="line-height: 2;",
             ),
             layout=ipw.Layout(
                 display="block" if self._model.show_upload_warning else "none",
@@ -509,7 +505,7 @@ class PseudoUploadWidget(ipw.VBox):
         try:
             uploaded_pseudo = UpfData(io.BytesIO(content), filename=filename)
         except Exception:
-            self.message = _PSEUDO_ALERT_TEMPLATE.format(
+            self.message = generate_alert(
                 alert_type="danger",
                 message=f"{filename} is not a valid UPF file",
             )
@@ -518,7 +514,7 @@ class PseudoUploadWidget(ipw.VBox):
 
         # Wrong element
         if uploaded_pseudo.element != self.kind_symbol:
-            self.message = _PSEUDO_ALERT_TEMPLATE.format(
+            self.message = generate_alert(
                 alert_type="danger",
                 message=f"Pseudo element {uploaded_pseudo.element} does not match {self.kind_symbol}",
             )
@@ -535,7 +531,7 @@ class PseudoUploadWidget(ipw.VBox):
             .first(flat=True)
         ):
             uploaded_pseudo = existing_pseudo
-            message = _PSEUDO_ALERT_TEMPLATE.format(
+            message = generate_alert(
                 alert_type="info",
                 message=f"Identical pseudo detected. Loading pseudo (UUID={uploaded_pseudo.uuid})",
             )
@@ -549,7 +545,7 @@ class PseudoUploadWidget(ipw.VBox):
             )
             .count()
         ):
-            self.message = _PSEUDO_ALERT_TEMPLATE.format(
+            self.message = generate_alert(
                 alert_type="warning",
                 message=f"""
                     {filename} found in database with different content.
@@ -563,7 +559,7 @@ class PseudoUploadWidget(ipw.VBox):
         # Valid new pseudo
         else:
             uploaded_pseudo.store()
-            message = _PSEUDO_ALERT_TEMPLATE.format(
+            message = generate_alert(
                 alert_type="success",
                 message=f"{filename} uploaded successfully",
             )
