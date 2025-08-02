@@ -5,6 +5,7 @@ from copy import deepcopy
 import traitlets as tl
 from aiida_pseudo.common.units import U
 
+from aiida import orm
 from aiida.common import exceptions
 from aiida.plugins import GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
@@ -315,5 +316,16 @@ class PseudosConfigurationSettingsModel(
         return deepcopy(self._defaults["cutoffs"])
 
     def _check_blockers(self):
-        if not len(set(self.functionals)) == 1:
+        try:
+            pseudos = [orm.load_node(uuid) for uuid in self.dictionary.values()]
+        except exceptions.NotExistent:
+            yield "Some pseudopotentials could not be fetched"
+            return
+
+        if not len({pp.base.extras.get("functional", None) for pp in pseudos}) == 1:
             yield "All pseudopotentials must have the same functional"
+
+        if self.spin_orbit == "soc" and not all(
+            pp.base.extras.get("relativistic", None) == "full" for pp in pseudos
+        ):
+            yield "For spin-orbit coupling (SOC) calculations, all pseudopotentials must be fully relativistic (FR)"

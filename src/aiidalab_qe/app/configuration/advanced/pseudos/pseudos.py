@@ -60,6 +60,10 @@ class PseudosConfigurationSettingsPanel(
             "family",
         )
         self._model.observe(
+            self._on_dictionary_change,
+            "dictionary",
+        )
+        self._model.observe(
             self._on_cutoffs_change,
             "cutoffs",
         )
@@ -238,9 +242,10 @@ class PseudosConfigurationSettingsPanel(
         self._model.update_family()
 
     def _on_functionals_change(self, _):
-        self._model.update_blockers()
         self._model.functional = (
-            None if self._model.is_blocked else self._model.functionals[0]
+            self._model.functionals[0]
+            if len(set(self._model.functionals)) == 1
+            else None
         )
 
     def _on_family_change(self, _):
@@ -248,6 +253,9 @@ class PseudosConfigurationSettingsPanel(
             return
         self._model.update_default_pseudos()
         self._model.update_default_cutoffs()
+
+    def _on_dictionary_change(self, _):
+        self._model.update_blockers()
 
     def _on_cutoffs_change(self, change):
         cutoffs = change["new"]  # [[ecutwfc...], [ecutrho...]]
@@ -336,13 +344,14 @@ class PseudosConfigurationSettingsPanel(
                 if not (change["new"] and widget.pseudo):
                     return
 
+                self._model.library = None
+                self._model.family = None
+                self._model.show_upload_warning = True
+
                 functional = widget.pseudo.base.extras.get("functional", None)
                 functionals = [*self._model.functionals]
                 functionals[index] = functional
                 self._model.functionals = functionals
-                self._model.library = None
-                self._model.family = None
-                self._model.show_upload_warning = True
 
                 self._model.dictionary = {
                     **self._model.dictionary,
@@ -389,7 +398,6 @@ class PseudoUploadWidget(ipw.VBox):
     pseudo = tl.Instance(UpfData, allow_none=True)
     filename = tl.Unicode(allow_none=True)
     info = tl.Unicode(allow_none=True)
-    functional = tl.Unicode(allow_none=True)
     cutoffs = tl.List(tl.Float(), [])
     uploaded = tl.Bool(False)
     message = tl.Unicode(allow_none=True)
