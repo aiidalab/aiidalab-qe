@@ -232,7 +232,6 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert pseudos.setter_widget.children[1].pseudo_filename.value != "O_new.upf"
 
 
-@pytest.mark.usefixtures("aiida_profile_clean")
 def test_pseudo_upload_widget(generate_upf_data):
     """Test the pseudo upload widget."""
 
