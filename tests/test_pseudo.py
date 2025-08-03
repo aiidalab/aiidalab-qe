@@ -238,7 +238,7 @@ def test_pseudo_upload_widget(generate_upf_data):
     # Test that the kind can be not the element symbol
     # the widget initialize with the pseudo as input to mock how it will
     # be used in PseudoSetter when the pseudo family is set.
-    old_pseudo = generate_upf_data("O", "O_old.upf")
+    old_pseudo = generate_upf_data("O", "O.upf")
     old_pseudo.store()
 
     w = PseudoUploadWidget(kind_name="O1", kind_symbol="O")
@@ -249,7 +249,7 @@ def test_pseudo_upload_widget(generate_upf_data):
 
     message = "{ecutwfc} | {ecutrho}"
 
-    assert w.pseudo.filename == "O_old.upf"
+    assert w.pseudo.filename == "O.upf"
     assert w.kind_name == "O1"
     assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.pseudo_info.value
     assert not w.message
@@ -268,7 +268,7 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O_old.upf"
+    assert w.pseudo.filename == "O.upf"
     assert "does not match" in w.message
 
     # Check identical content is rejected in favor of existing one
@@ -285,16 +285,15 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-
-    assert w.pseudo.filename == "O_old.upf"
+    assert w.pseudo.filename == "O.upf"
     assert "Identical pseudo" in w.message
 
     # Check different content but same filename is rejected
-    different_content_same_filename = generate_upf_data("O", "O_old.upf", z_valence=6)
+    different_content_same_filename = generate_upf_data("O", "O.upf", z_valence=6)
     w._on_file_upload(
         {
             "new": {
-                "O_old.upf": {
+                "O.upf": {
                     "content": bytes(
                         different_content_same_filename.get_content(),
                         encoding="utf-8",
@@ -303,7 +302,7 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O_old.upf"
+    assert w.pseudo.filename == "O.upf"
     assert "rename your file" in w.message
 
     # Check invalid pseudo content is rejected
