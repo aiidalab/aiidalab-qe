@@ -201,20 +201,17 @@ class AdvancedConfigurationSettingsModel(
 
     def set_model_state(self, parameters):
         pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
-        num_kinds = len(self.input_structure.kinds)
         if pseudo_family_string := parameters.get("pseudo_family"):
             pseudo_family = PseudoFamily.from_string(pseudo_family_string)
             library = pseudo_family.library
             accuracy = pseudo_family.accuracy
             pseudos.library = f"{library} {accuracy}"
             pseudos.family = pseudo_family_string
-            pseudos.functionals = [pseudo_family.functional] * num_kinds
         else:
             pseudos.library = None
             pp_uuid = next(iter(parameters["pw"]["pseudos"].values()))
             pseudo_info = get_pseudo_info(pp_uuid)
-            functional = pseudo_info["functional"]
-            pseudos.functionals = [functional] * num_kinds
+            pseudos.functional = pseudo_info["functional"]
             pseudos.family = None
             pseudos.show_upload_warning = True
 
@@ -222,6 +219,7 @@ class AdvancedConfigurationSettingsModel(
             pseudos.dictionary = parameters["pw"]["pseudos"]
             pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
             pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+            pseudos.functionals = [pseudos.functional] * len(pseudos.dictionary)
 
         self.kpoints_distance = parameters.get("kpoints_distance", 0.15)
         self.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)
