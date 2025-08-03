@@ -235,8 +235,9 @@ class PseudosConfigurationSettingsPanel(
         self._model.update_library_options()
 
     def _on_family_parameters_change(self, _):
-        self._update_family_link()
         self._model.update_family()
+        self._model.update_functionals()
+        self._model.update_blockers()
 
     def _on_functionals_change(self, _):
         self._model.functional = (
@@ -244,14 +245,15 @@ class PseudosConfigurationSettingsPanel(
             if len(set(self._model.functionals)) == 1
             else None
         )
+        self._model.update_blockers()
 
     def _on_family_change(self, _):
         self._model.show_upload_warning = not self._model.family
+        self._update_family_link()  # TODO move to model trait
         self._model.update_dictionary()
 
     def _on_dictionary_change(self, _):
         self._model.update_cutoffs()
-        self._model.update_blockers()
 
     def _on_cutoffs_change(self, change):
         cutoffs = change["new"]  # [[ecutwfc...], [ecutrho...]]
@@ -345,26 +347,26 @@ class PseudosConfigurationSettingsPanel(
 
             def on_pseudo_upload(
                 change,
+                widget: PseudoUploadWidget = upload_widget,
                 kind_name=kind.name,
                 index=index,
-                widget=upload_widget,
             ):
                 if not (change["new"] and widget.pseudo):
                     return
 
-                self._model.library = None
                 self._model.family = None
-                self._model.show_upload_warning = True
-
-                functional = widget.pseudo.base.extras.get("functional", None)
-                functionals = [*self._model.functionals]
-                functionals[index] = functional
-                self._model.functionals = functionals
+                self._model.library = None
+                self._model.functional = None
 
                 self._model.dictionary = {
                     **self._model.dictionary,
                     kind_name: widget.pseudo.uuid,
                 }
+
+                functional = widget.pseudo.base.extras.get("functional", None)
+                functionals = [*self._model.functionals]
+                functionals[index] = functional
+                self._model.functionals = functionals
 
                 cutoffs: list = deepcopy(self._model.cutoffs)  # type: ignore
                 cutoffs[0][index] = widget.cutoffs[0]
@@ -422,6 +424,7 @@ class PseudoUploadWidget(ipw.VBox):
         self.pseudo_filename = ipw.Text(
             description=self.kind_name,
             style={"description_width": "50px"},
+            disabled=True,
         )
         filename_link = ipw.dlink(
             (self, "pseudo"),

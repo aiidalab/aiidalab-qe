@@ -125,11 +125,15 @@ class PseudosConfigurationSettingsModel(
         with self.hold_trait_notifications():
             self.library = self._defaults["library"]
             self.functional = self._defaults["functional"]
-            self.functionals = (
-                [self.functional for _ in self.input_structure.kinds]
-                if self.input_structure
-                else []
-            )
+
+    def update_functionals(self):
+        if self.loaded_from_process or not (self.functional and self.family):
+            return
+        self.functionals = (
+            [self.functional for _ in self.input_structure.kinds]
+            if self.has_structure
+            else []
+        )
 
     def update_family(self):
         if self.loaded_from_process or not (self.library and self.functional):
@@ -329,14 +333,19 @@ class PseudosConfigurationSettingsModel(
     def _check_blockers(self):
         if not self.dictionary:
             return
-        try:
-            pseudos = [orm.load_node(uuid) for uuid in self.dictionary.values()]
-        except exceptions.NotExistent:
-            yield "Some pseudopotentials could not be fetched"
-            return
 
-        if not len({pp.base.extras.get("functional", None) for pp in pseudos}) == 1:
+        pseudos = []
+        for uuid in self.dictionary.values():
+            try:
+                pseudos.append(orm.load_node(uuid))
+            except exceptions.NotExistent:
+                yield f"Pseudopotential with UUID {uuid} does not exist"
+                return
+
+        if len({pp.base.extras.get("functional", None) for pp in pseudos}) > 1:
             yield "All pseudopotentials must have the same exchange-correlation (XC) functional"
+        elif self.functional and self.functionals[0] != self.functional:
+            yield "Selected exchange-correlation (XC) functional is not consistent with the pseudopotentials"
 
         if self.spin_orbit == "soc" and not all(
             pp.base.extras.get("relativistic", None) == "full" for pp in pseudos
