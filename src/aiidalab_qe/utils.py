@@ -157,19 +157,16 @@ def get_pseudo_info(pp_uuid) -> dict[str, t.Any]:
     }
 
 
-def populate_extras(pp_uuid):
-    try:
-        pp_node = orm.load_node(pp_uuid)
-    except NotExistent as err:
-        raise ValueError(
-            f"Pseudo potential with UUID {pp_uuid} does not exist"
-        ) from err
+def populate_extras(pp_node):
+    keys = ("functional", "relativistic")
+    if all(key in pp_node.base.extras.all for key in keys):
+        return
 
     try:
         upf_dict = get_upf_dict(pp_node)
     except Exception as err:
         raise ValueError(
-            f"Failed to read UPF data from pseudo potential with UUID {pp_uuid}"
+            f"Failed to read UPF data from pseudo potential with UUID {pp_node.uuid}"
         ) from err
 
     if pseudo_family := get_pseudo_family(pp_node.md5):

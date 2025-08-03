@@ -469,7 +469,7 @@ class PseudoUploadWidget(ipw.VBox):
     def _on_pseudo_change(self, _):
         if not self.pseudo:
             return
-        populate_extras(self.pseudo.uuid)
+        populate_extras(self.pseudo)
 
     def _on_file_upload(self, change=None):
         if not change or not change["new"]:
