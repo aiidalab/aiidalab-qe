@@ -244,7 +244,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "value": "custom",
             }
         report["advanced_settings"]["pseudos"] = [
-            f"<b>{kind}:</b> {(pp := orm.load_node(pp_uuid)).filename} (PK={pp.pk})"
+            f"<b>{kind}:</b> {orm.load_node(pp_uuid).filename}"
             for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
         ]
 
