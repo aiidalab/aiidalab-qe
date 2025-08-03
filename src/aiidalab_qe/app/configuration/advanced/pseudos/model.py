@@ -99,10 +99,19 @@ class PseudosConfigurationSettingsModel(
 
     family_help_message = tl.Unicode(PSEUDO_HELP_WO_SOC)
 
-    def update(self, specific=""):  # noqa: ARG002
+    def update(self, specific=""):
         if not self.has_structure:
             return
+        family = self.family
         self.update_family_parameters()
+        # When the app starts, the family is not yet set. `update_family_parameters`
+        # will set the family, which will set the functionals and dictionary.
+        # However, when the structure is changed, the family may already be set to
+        # the default, in which case, the functionals and dictionary will not be
+        # updated. Therefore, we need to force the update.
+        if specific == "structure" and self.family == family:
+            self.update_functionals()
+            self.update_dictionary()
 
     def update_family_parameters(self):
         if self.loaded_from_process:
@@ -213,7 +222,12 @@ class PseudosConfigurationSettingsModel(
         self._defaults["dictionary"] = {
             kind: pseudo.uuid for kind, pseudo in pseudos.items()
         }
-        self.dictionary = {}  # HACK to force the event even if no change
+        # Some pseudos may exist in more than one family (e.g., efficiency, precision).
+        # This means that a change in the dictionary may not trigger an event due to
+        # identical UUIDs. Therefore, we always reset the dictionary before updating it.
+        # Note that dictionary observers bail if the dictionary is empty to avoid
+        # unnecessary updates.
+        self.dictionary = {}
         self.dictionary = self._get_default_dictionary()
 
     def update_cutoffs(self):
