@@ -63,6 +63,7 @@ class PseudosConfigurationSettingsModel(
         ],
     )
     family = tl.Unicode(allow_none=True)
+    family_header = tl.Unicode(allow_none=True)
     cutoffs = tl.List(
         trait=tl.List(tl.Float()),  # [[ecutwfc values], [ecutrho values]]
         default_value=[[0.0], [0.0]],
@@ -161,6 +162,27 @@ class PseudosConfigurationSettingsModel(
 
         self._defaults["family"] = pseudo_family_string
         self.family = self._defaults["family"]
+
+    def update_family_header(self):
+        if not self.library:
+            self.family_header = "<h4>Pseudopotential family</h4>"
+            return
+
+        library, accuracy = self.library.split()
+        if library == "SSSP":
+            pseudo_family_link = (
+                f"https://www.materialscloud.org/discover/sssp/table/{accuracy}"
+            )
+        else:
+            pseudo_family_link = "http://www.pseudo-dojo.org/"
+
+        self.family_header = f"""
+            <h4>
+                <a href="{pseudo_family_link}" target="_blank">
+                    Pseudopotential family
+                </a>
+            </h4>
+        """
 
     def update_dictionary(self):
         if self.loaded_from_process or not self.family:

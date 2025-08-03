@@ -68,7 +68,11 @@ class PseudosConfigurationSettingsPanel(
         if self.rendered:
             return
 
-        self.family_prompt = ipw.HTML()
+        self.family_header = ipw.HTML()
+        ipw.dlink(
+            (self._model, "family_header"),
+            (self.family_header, "value"),
+        )
 
         self.family_help = ipw.HTML()
         ipw.dlink(
@@ -168,7 +172,7 @@ class PseudosConfigurationSettingsPanel(
             ),
             ipw.VBox(
                 children=[
-                    self.family_prompt,
+                    self.family_header,
                     self.library,
                     self.family_help,
                 ],
@@ -236,6 +240,7 @@ class PseudosConfigurationSettingsPanel(
 
     def _on_family_parameters_change(self, _):
         self._model.update_family()
+        self._model.update_family_header()
         self._model.update_functionals()
         self._model.update_blockers()
 
@@ -249,7 +254,6 @@ class PseudosConfigurationSettingsPanel(
 
     def _on_family_change(self, _):
         self._model.show_upload_warning = not self._model.family
-        self._update_family_link()  # TODO move to model trait
         self._model.update_dictionary()
 
     def _on_dictionary_change(self, _):
@@ -273,33 +277,8 @@ class PseudosConfigurationSettingsPanel(
             self._model.update(specific)
         self._build_setter_widgets()
         self._model.update_library_options()
-        self._update_family_link()
+        self._model.update_family_header()
         self.updated = True
-
-    def _update_family_link(self):
-        if not self.rendered:
-            return
-
-        # Remove link if library is unset
-        if not self._model.library:
-            self.family_prompt.value = "<h4>Pseudopotential family</h4>"
-            return
-
-        library, accuracy = self._model.library.split()
-        if library == "SSSP":
-            pseudo_family_link = (
-                f"https://www.materialscloud.org/discover/sssp/table/{accuracy}"
-            )
-        else:
-            pseudo_family_link = "http://www.pseudo-dojo.org/"
-
-        self.family_prompt.value = f"""
-            <h4>
-                <a href="{pseudo_family_link}" target="_blank">
-                    Pseudopotential family
-                </a>
-            </h4>
-        """
 
     def _show_loading(self):
         if self.rendered:
