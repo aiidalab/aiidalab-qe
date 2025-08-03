@@ -189,7 +189,3 @@ def populate_extras(pp_uuid):
             "relativistic": relativistic,
         }
     )
-
-    for key in ("ecutrho", "ecutwfc"):
-        if key in pp_node.base.extras.all:
-            pp_node.base.extras.delete(key)
