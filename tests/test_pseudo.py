@@ -151,9 +151,14 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     model = PseudosConfigurationSettingsModel()
     pseudos = PseudosConfigurationSettingsPanel(model=model)
 
+    silicon = generate_structure_data("silicon")
+    model.input_structure = silicon
+
     # Test the default family
-    model.spin_orbit = "wo_soc"
     assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+    assert "Si" in model.dictionary.keys()
+    assert model.ecutwfc == 30
+    assert model.ecutrho == 240
 
     # Test protocol-dependent family change
     model.protocol = "stringent"
@@ -169,18 +174,11 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
 
     # Test spin-orbit-dependent family change
     model.spin_orbit = "soc"
-    model.protocol = "balanced"
-    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/standard/upf"
+    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/stringent/upf"
 
     # Reset the external dependencies of the model
     model.spin_orbit = "wo_soc"
-
-    # Test structure-dependent family change
-    silicon = generate_structure_data("silicon")
-    model.input_structure = silicon
-    assert "Si" in model.dictionary.keys()
-    assert model.ecutwfc == 30
-    assert model.ecutrho == 240
+    model.protocol = "balanced"
 
     # Test that changing the structure triggers a reset
     silica = generate_structure_data("silica")
@@ -234,6 +232,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert pseudos.setter_widget.children[1].pseudo_filename.value != "O_new.upf"
 
 
+@pytest.mark.usefixtures("aiida_profile_clean")
 def test_pseudo_upload_widget(generate_upf_data):
     """Test the pseudo upload widget."""
 
@@ -241,13 +240,15 @@ def test_pseudo_upload_widget(generate_upf_data):
     # the widget initialize with the pseudo as input to mock how it will
     # be used in PseudoSetter when the pseudo family is set.
     old_pseudo = generate_upf_data("O", "O_old.upf")
+    old_pseudo.store()
 
     w = PseudoUploadWidget(kind_name="O1", kind_symbol="O")
     w.pseudo = old_pseudo
     w.cutoffs = [30, 240]
+    w.update_pseudo_info()
     w.render()
 
-    message = "ψ: <b>{ecutwfc} Ry</b> | ρ: <b>{ecutrho} Ry</b>"  # noqa: RUF001
+    message = "{ecutwfc} | {ecutrho}"
 
     assert w.pseudo.filename == "O_old.upf"
     assert w.kind_name == "O1"
@@ -286,15 +287,15 @@ def test_pseudo_upload_widget(generate_upf_data):
         }
     )
 
-    assert w.pseudo.filename == "O.upf"
+    assert w.pseudo.filename == "O_old.upf"
     assert "Identical pseudo" in w.message
 
     # Check different content but same filename is rejected
-    different_content_same_filename = generate_upf_data("O", "O.upf", z_valence=6)
+    different_content_same_filename = generate_upf_data("O", "O_old.upf", z_valence=6)
     w._on_file_upload(
         {
             "new": {
-                "O.upf": {
+                "O_old.upf": {
                     "content": bytes(
                         different_content_same_filename.get_content(),
                         encoding="utf-8",
@@ -303,7 +304,7 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O.upf"
+    assert w.pseudo.filename == "O_old.upf"
     assert "rename your file" in w.message
 
     # Check invalid pseudo content is rejected
