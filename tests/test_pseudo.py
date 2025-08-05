@@ -1,7 +1,11 @@
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.configuration.advanced.pseudos import PseudoUploadWidget
+from aiidalab_qe.app.configuration.advanced.pseudos import (
+    PseudosConfigurationSettingsModel,
+    PseudosConfigurationSettingsPanel,
+    PseudoUploadWidget,
+)
 from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
@@ -143,11 +147,6 @@ def test_download_and_install_pseudo_from_file(tmp_path):
 
 
 def test_pseudos_settings(generate_structure_data, generate_upf_data):
-    from aiidalab_qe.app.configuration.advanced.pseudos import (
-        PseudosConfigurationSettingsModel,
-        PseudosConfigurationSettingsPanel,
-    )
-
     model = PseudosConfigurationSettingsModel()
     pseudos = PseudosConfigurationSettingsPanel(model=model)
 
@@ -333,3 +332,53 @@ def test_pseudo_upload_widget(generate_upf_data):
     )
     assert w.pseudo.filename == "O_valid.upf"
     assert "uploaded successfully" in w.message
+
+
+def test_missing_pseudos(generate_structure_data):
+    """Test that the model handles missing pseudos correctly."""
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.input_structure = generate_structure_data("CeO")
+    model.functional = "PBEsol"
+    model.library = "PseudoDojo standard"
+    assert model.family == "PseudoDojo/0.4/PBEsol/SR/standard/upf"
+    assert model.dictionary["Ce"] is None
+    assert model.dictionary["O"] is not None
+    assert len(model.blockers) == 1
+    assert "does not contain a pseudopotential for Ce" in model.blockers[0]
+
+
+def test_functional_mismatch_blocker(generate_structure_data):
+    """Test blocker for inconsistent functional across selected pseudopotentials."""
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.input_structure = generate_structure_data("silica")
+    model.functionals = ["PBE", "PBEsol"]
+    assert len(model.blockers) == 1
+    assert "must have the same exchange-correlation" in model.blockers[0]
+
+
+def test_relativistic_mismatch_blocker(generate_structure_data):
+    """Test blocker for inconsistent relativistic treatment across selected
+    pseudopotentials with and without SOC.
+    """
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.input_structure = generate_structure_data("silica")
+
+    # Check with SOC
+    model.spin_orbit = "soc"
+    model.family = "SSSP/1.3/PBEsol/efficiency"
+    assert len(model.blockers) == 1
+    assert "pseudopotentials must be fully relativistic" in model.blockers[0]
+
+    # Check without SOC
+    # This would only happen if the user loads a fully relativistic pseudopotential.
+    # Here we simulate it by setting the relativistic extra and triggering the blocker
+    # check manually
+    model.spin_orbit = "wo_soc"
+    pseudo = orm.load_node(model.dictionary["Si"])
+    pseudo.base.extras.set("relativistic", "full")
+    model.update_blockers()
+    assert len(model.blockers) == 1
+    assert "no pseudopotential should be fully relativistic" in model.blockers[0]

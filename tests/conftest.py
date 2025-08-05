@@ -88,6 +88,7 @@ def generate_structure_data():
             )
             structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Si")
             structure.append_atom(position=(1.923685, 1.110640, 0.785341), symbols="Si")
+
         elif name == "silica":
             structure = orm.StructureData(
                 cell=[
@@ -142,6 +143,12 @@ def generate_structure_data():
             structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
             structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
             structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
+
+        elif name == "CeO":
+            cell = [[3.04, 0.0, 1.76], [1.01, 2.87, 1.76], [0.0, 0.0, 3.51]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Ce")
+            structure.append_atom(position=(3.51, 2.03, 1.43), symbols="O")
 
         structure.pbc = pbc
 
