@@ -28,7 +28,7 @@ class MagnetizationConfigurationSettingsModel(
     spin_type = tl.Unicode()
     dictionary = tl.Dict(
         key_trait=tl.Unicode(),  # kind name
-        value_trait=tl.Unicode(),  # pseudopotential node uuid
+        value_trait=tl.Unicode(allow_none=True),  # pseudopotential node uuid
         default_value={},
     )
 

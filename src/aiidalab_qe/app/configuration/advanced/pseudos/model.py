@@ -38,9 +38,11 @@ class PseudosConfigurationSettingsModel(
     protocol = tl.Unicode()
     spin_orbit = tl.Unicode()
 
+    # We allow `None` for the uuid in case the family does not contain a pseudo for a
+    # given element, in which case, we block the app and notify the user.
     dictionary = tl.Dict(
         key_trait=tl.Unicode(),  # kind name
-        value_trait=tl.Unicode(),  # pseudopotential node uuid
+        value_trait=tl.Unicode(allow_none=True),  # pseudopotential node uuid
         default_value={},
     )
     functional = tl.Unicode(allow_none=True)
@@ -210,17 +212,23 @@ class PseudosConfigurationSettingsModel(
 
         try:
             pseudo_family = fetch_pseudo_family_by_label(self.family)
-            pseudos = pseudo_family.get_pseudos(structure=self.input_structure)
-        except ValueError as exception:
-            self.status_message = f"""
-                <div class='alert alert-danger'>
-                    ERROR: {exception!s}
-                </div>
-            """
-            return
+        except Exception as err:
+            raise ValueError(
+                f"Failed to fetch pseudo family using the '{self.family}' string"
+            ) from err
+
+        pseudos = {}
+        for kind in self.input_structure.kinds:
+            # If the kind is not in the family, we set it to None.
+            # This will block the app and notify the user of the missing pseudo.
+            try:
+                pseudo = pseudo_family.get_pseudo(kind.symbol)
+            except ValueError:
+                pseudo = None
+            pseudos[kind.name] = pseudo
 
         self._defaults["dictionary"] = {
-            kind: pseudo.uuid for kind, pseudo in pseudos.items()
+            kind: pseudo.uuid if pseudo else None for kind, pseudo in pseudos.items()
         }
         # Some pseudos may exist in more than one family (e.g., efficiency, precision).
         # This means that a change in the dictionary may not trigger an event due to
@@ -371,11 +379,17 @@ class PseudosConfigurationSettingsModel(
             return
 
         pseudos = []
-        for uuid in self.dictionary.values():
+        for kind_name, uuid in self.dictionary.items():
+            kind = self.input_structure.get_kind(kind_name)
             try:
-                pseudos.append(orm.load_node(uuid))
+                assert uuid is not None
+                pseudo = orm.load_node(uuid)
+                pseudos.append(pseudo)
+            except AssertionError:
+                yield f"The selected pseudopotential family does not contain a pseudopotential for {kind.symbol}. Consider changing the family or uploading a custom pseudopotential."
+                return
             except exceptions.NotExistent:
-                yield f"Pseudopotential with UUID {uuid} does not exist"
+                yield f"Pseudopotential with UUID {uuid} does not exist for {kind.symbol}."
                 return
 
         if len({pp.base.extras.get("functional", None) for pp in pseudos}) > 1:
