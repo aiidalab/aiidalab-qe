@@ -383,7 +383,10 @@ class PseudosConfigurationSettingsModel(
         elif self.functional and self.functionals[0] != self.functional:
             yield "Selected exchange-correlation (XC) functional is not consistent with the pseudopotentials"
 
-        if self.spin_orbit == "soc" and not all(
-            pp.base.extras.get("relativistic", None) == "full" for pp in pseudos
-        ):
-            yield "For spin-orbit coupling (SOC) calculations, all pseudopotentials must be fully relativistic (FR)"
+        relativistic = {pp.base.extras.get("relativistic", None) for pp in pseudos}
+        if self.spin_orbit == "soc":
+            if relativistic != {"full"}:
+                yield "For spin-orbit coupling (SOC) calculations, all pseudopotentials must be fully relativistic."
+        else:
+            if any(relativistic):
+                yield "For non-spin-orbit coupling (non-SOC) calculations, no pseudopotential should be relativistic."
