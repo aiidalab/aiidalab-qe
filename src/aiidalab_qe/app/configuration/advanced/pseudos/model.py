@@ -392,15 +392,15 @@ class PseudosConfigurationSettingsModel(
                 yield f"Pseudopotential with UUID {uuid} does not exist for {kind.symbol}."
                 return
 
-        if len({pp.base.extras.get("functional", None) for pp in pseudos}) > 1:
+        functional_set = set(self.functionals)
+        if len(functional_set) != 1:
             yield "All pseudopotentials must have the same exchange-correlation (XC) functional."
-        elif self.functional and self.functionals[0] != self.functional:
+        elif self.functional and self.functional not in functional_set:
             yield "Selected exchange-correlation (XC) functional is not consistent with the pseudopotentials."
 
-        relativistic = {pp.base.extras.get("relativistic", None) for pp in pseudos}
+        relativistic_set = {pp.base.extras.get("relativistic", None) for pp in pseudos}
         if self.spin_orbit == "soc":
-            if relativistic != {"full"}:
+            if relativistic_set != {"full"}:
                 yield "For spin-orbit coupling (SOC) calculations, all pseudopotentials must be fully relativistic."
-        else:
-            if "full" in relativistic:
-                yield "For non-spin-orbit coupling (non-SOC) calculations, no pseudopotential should be fully relativistic."
+        elif "full" in relativistic_set:
+            yield "For non-spin-orbit coupling (non-SOC) calculations, no pseudopotential should be fully relativistic."
