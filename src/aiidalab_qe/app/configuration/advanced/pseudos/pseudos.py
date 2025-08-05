@@ -345,6 +345,9 @@ class PseudosConfigurationSettingsPanel(
                 functional = widget.pseudo.base.extras.get("functional", None)
                 functionals = [*self._model.functionals]
                 functionals[index] = functional
+                # The following double-setting is done to force the blockers check,
+                # which now also bail early if the functionals are empty.
+                self._model.functionals = []
                 self._model.functionals = functionals
 
                 cutoffs: list = deepcopy(self._model.cutoffs)  # type: ignore

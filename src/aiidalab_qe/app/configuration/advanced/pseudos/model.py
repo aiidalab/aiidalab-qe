@@ -375,7 +375,7 @@ class PseudosConfigurationSettingsModel(
         return deepcopy(self._defaults["cutoffs"])
 
     def _check_blockers(self):
-        if not self.dictionary:
+        if not (self.dictionary and self.functionals):
             return
 
         pseudos = []
