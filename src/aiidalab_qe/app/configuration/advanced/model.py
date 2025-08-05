@@ -130,7 +130,9 @@ class AdvancedConfigurationSettingsModel(
 
         # Only modify if mixing mode is different than default
         if self.mixing_mode != "plain":
-            parameters["pw"]["parameters"]["SYSTEM"]["mixing_mode"] = self.mixing_mode
+            parameters["pw"]["parameters"]["ELECTRONS"]["mixing_mode"] = (
+                self.mixing_mode
+            )
         hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
         if hubbard.is_active:
             parameters["hubbard_parameters"] = {
@@ -337,7 +339,7 @@ class AdvancedConfigurationSettingsModel(
         self.scf_conv_thr = electron_params.get("conv_thr", 0.0) / num_atoms
         self.electron_maxstep = electron_params.get("electron_maxstep", 80)
 
-        self.mixing_mode = system_params.get("mixing_mode", "plain")
+        self.mixing_mode = electron_params.get("mixing_mode", "plain")
         self.mixing_beta = electron_params.get("mixing_beta", 0.4)
 
         self.total_charge = system_params.get("tot_charge", 0)
