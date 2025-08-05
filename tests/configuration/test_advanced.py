@@ -192,12 +192,14 @@ def test_advanced_magnetic_settings(generate_structure_data):
         MagnetizationConfigurationSettingsModel,
         MagnetizationConfigurationSettingsPanel,
     )
-    from aiidalab_qe.utils import fetch_pseudo_family_by_label
+    from aiidalab_qe.app.configuration.advanced.pseudos.utils import (
+        get_pseudo_family_by_label,
+    )
 
     model = MagnetizationConfigurationSettingsModel()
     magnetic = MagnetizationConfigurationSettingsPanel(model=model)
 
-    pseudo_family = fetch_pseudo_family_by_label("SSSP/1.3/PBE/efficiency")
+    pseudo_family = get_pseudo_family_by_label("SSSP/1.3/PBE/efficiency")
 
     structure = generate_structure_data(name="LiCoO2")
     model.input_structure = structure

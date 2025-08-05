@@ -204,14 +204,12 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert Si_uploader._model.pseudo == pseudo
     assert Si_uploader._model.cutoffs == [30, 240]
     assert Si_uploader.pseudo_filename.value == pseudo.filename
-    # Relativistic should be N/A for SSSP. However, we're not modeling pseudo families
-    # very well in tests, so there is a mixing of pseudos across families.
     assert (
         message.format(
             ecutwfc=30.0,
             ecutrho=240.0,
-            functional="PBEsol",
-            relativistic="full",
+            functional="PBE",
+            relativistic="N/A",
         )
         in Si_uploader._model.info
     )
@@ -229,7 +227,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
             ecutwfc=30.0,
             ecutrho=240.0,
             functional="PBEsol",
-            relativistic="full",
+            relativistic="scalar",
         )
         in O_uploader._model.info
     )
