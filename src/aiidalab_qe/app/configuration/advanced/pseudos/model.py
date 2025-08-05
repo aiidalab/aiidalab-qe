@@ -112,8 +112,8 @@ class PseudosConfigurationSettingsModel(
         # the default, in which case, the functionals and dictionary will not be
         # updated. Therefore, we need to force the update.
         if specific == "structure" and self.family == family:
-            self.update_functionals()
             self.update_dictionary()
+            self.update_functionals()
 
     def update_family_parameters(self):
         if self.loaded_from_process:
