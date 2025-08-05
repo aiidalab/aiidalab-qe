@@ -83,6 +83,17 @@ class AdvancedConfigurationSettingsModel(
         "dft-d3mbj": 6,
     }
 
+    mixing_mode_options = tl.List(
+        trait=tl.Unicode(),
+        default_value=[
+            "plain",
+            "TF",
+            "local-TF",
+        ],
+    )
+    mixing_mode = tl.Unicode("plain")
+    mixing_beta = tl.Float(0.4)
+
     def update(self, specific=""):
         with self.hold_trait_notifications():
             if not specific or specific != "mesh":
@@ -108,6 +119,7 @@ class AdvancedConfigurationSettingsModel(
                     "ELECTRONS": {
                         "conv_thr": self.scf_conv_thr * num_atoms,
                         "electron_maxstep": self.electron_maxstep,
+                        "mixing_beta": self.mixing_beta,
                     },
                 }
             },
@@ -116,6 +128,11 @@ class AdvancedConfigurationSettingsModel(
             "optimization_maxsteps": self.optimization_maxsteps,
         }
 
+        # Only modify if mixing mode is different than default
+        if self.mixing_mode != "plain":
+            parameters["pw"]["parameters"]["ELECTRONS"]["mixing_mode"] = (
+                self.mixing_mode
+            )
         hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
         if hubbard.is_active:
             parameters["hubbard_parameters"] = {
@@ -248,6 +265,8 @@ class AdvancedConfigurationSettingsModel(
             self.electron_maxstep = self._get_default("electron_maxstep")
             self.kpoints_distance = self._get_default("kpoints_distance")
             self.optimization_maxsteps = self._get_default("optimization_maxsteps")
+            self.mixing_mode = self._get_default("mixing_mode")
+            self.mixing_beta = self._get_default("mixing_beta")
 
     def _get_default(self, trait):
         return self._defaults.get(trait, self.traits()[trait].default_value)
@@ -319,6 +338,9 @@ class AdvancedConfigurationSettingsModel(
         self.etot_conv_thr = control_params.get("etot_conv_thr", 0.0) / num_atoms
         self.scf_conv_thr = electron_params.get("conv_thr", 0.0) / num_atoms
         self.electron_maxstep = electron_params.get("electron_maxstep", 80)
+
+        self.mixing_mode = electron_params.get("mixing_mode", "plain")
+        self.mixing_beta = electron_params.get("mixing_beta", 0.4)
 
         self.total_charge = system_params.get("tot_charge", 0)
         self.spin_orbit = "soc" if "lspinorb" in system_params else "wo_soc"

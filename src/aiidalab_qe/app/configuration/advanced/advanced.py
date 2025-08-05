@@ -235,6 +235,31 @@ class AdvancedConfigurationSettingsPanel(
             (self._model, "optimization_maxsteps"),
             (self.optimization_maxsteps, "value"),
         )
+
+        self.mixing_mode = ipw.Dropdown(
+            description="Mixing mode:",
+            style={"description_width": "150px"},
+        )
+        ipw.dlink(
+            (self._model, "mixing_mode_options"),
+            (self.mixing_mode, "options"),
+        )
+        ipw.link(
+            (self._model, "mixing_mode"),
+            (self.mixing_mode, "value"),
+        )
+
+        self.mixing_beta = ipw.BoundedFloatText(
+            min=0.1,
+            max=1.0,
+            step=0.01,
+            description="Mixing beta:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "mixing_beta"),
+            (self.mixing_beta, "value"),
+        )
         self.pseudos.render()
 
         num_atoms = len(self._model.input_structure.sites)
@@ -291,6 +316,15 @@ class AdvancedConfigurationSettingsPanel(
             """),
             self.electron_maxstep,
             self.optimization_maxsteps,
+            ipw.HTML("<h4>Mixing mode</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    The mixing mode determines how the charge density is updated during
+                    the SCF cycles.
+                </div>
+            """),
+            self.mixing_mode,
+            self.mixing_beta,
             self.smearing,
             ipw.HTML("<h2>K-points</h2>"),
             ipw.HTML("""

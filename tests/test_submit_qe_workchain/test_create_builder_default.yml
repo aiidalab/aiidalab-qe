@@ -12,6 +12,7 @@ advanced:
       ELECTRONS:
         conv_thr: 4.0e-10
         electron_maxstep: 80
+        mixing_beta: 0.4
       SYSTEM:
         degauss: 0.015
         ecutrho: 240.0
