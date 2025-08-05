@@ -4,10 +4,14 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
+from aiidalab_qe.common.mixins import HasBlockers
 from aiidalab_qe.common.mvc import Model
 
 
-class AdvancedCalculationSubSettingsModel(Model):
+class AdvancedCalculationSubSettingsModel(
+    Model,
+    HasBlockers,
+):
     identifier = "sub"
     dependencies = []
 

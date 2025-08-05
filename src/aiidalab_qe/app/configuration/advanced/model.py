@@ -15,6 +15,7 @@ from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
 from aiidalab_qe.setup.pseudos import PseudoFamily
+from aiidalab_qe.utils import get_pseudo_info
 
 from .subsettings import AdvancedCalculationSubSettingsModel
 
@@ -205,11 +206,12 @@ class AdvancedConfigurationSettingsModel(
             library = pseudo_family.library
             accuracy = pseudo_family.accuracy
             pseudos.library = f"{library} {accuracy}"
-            pseudos.functional = pseudo_family.functional
             pseudos.family = pseudo_family_string
         else:
             pseudos.library = None
-            pseudos.functional = None
+            pp_uuid = next(iter(parameters["pw"]["pseudos"].values()))
+            pseudo_info = get_pseudo_info(pp_uuid)
+            pseudos.functional = pseudo_info["functional"]
             pseudos.family = None
             pseudos.show_upload_warning = True
 
@@ -217,6 +219,7 @@ class AdvancedConfigurationSettingsModel(
             pseudos.dictionary = parameters["pw"]["pseudos"]
             pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
             pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+            pseudos.functionals = [pseudos.functional] * len(pseudos.dictionary)
 
         self.kpoints_distance = parameters.get("kpoints_distance", 0.15)
         self.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)

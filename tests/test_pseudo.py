@@ -1,7 +1,11 @@
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.configuration.advanced.pseudos import PseudoUploadWidget
+from aiidalab_qe.app.configuration.advanced.pseudos import (
+    PseudosConfigurationSettingsModel,
+    PseudosConfigurationSettingsPanel,
+    PseudoUploadWidget,
+)
 from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
@@ -143,17 +147,17 @@ def test_download_and_install_pseudo_from_file(tmp_path):
 
 
 def test_pseudos_settings(generate_structure_data, generate_upf_data):
-    from aiidalab_qe.app.configuration.advanced.pseudos import (
-        PseudosConfigurationSettingsModel,
-        PseudosConfigurationSettingsPanel,
-    )
-
     model = PseudosConfigurationSettingsModel()
     pseudos = PseudosConfigurationSettingsPanel(model=model)
 
+    silicon = generate_structure_data("silicon")
+    model.input_structure = silicon
+
     # Test the default family
-    model.spin_orbit = "wo_soc"
     assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+    assert "Si" in model.dictionary.keys()
+    assert model.ecutwfc == 30
+    assert model.ecutrho == 240
 
     # Test protocol-dependent family change
     model.protocol = "stringent"
@@ -169,18 +173,11 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
 
     # Test spin-orbit-dependent family change
     model.spin_orbit = "soc"
-    model.protocol = "balanced"
-    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/standard/upf"
+    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/stringent/upf"
 
     # Reset the external dependencies of the model
     model.spin_orbit = "wo_soc"
-
-    # Test structure-dependent family change
-    silicon = generate_structure_data("silicon")
-    model.input_structure = silicon
-    assert "Si" in model.dictionary.keys()
-    assert model.ecutwfc == 30
-    assert model.ecutrho == 240
+    model.protocol = "balanced"
 
     # Test that changing the structure triggers a reset
     silica = generate_structure_data("silica")
@@ -198,7 +195,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert pseudos.setter_widget.children[0].kind_symbol == "Si"
     pseudo = orm.load_node(model.dictionary["Si"])
     assert pseudos.setter_widget.children[0].pseudo == pseudo
-    assert pseudos.setter_widget.children[0].pseudo_text.value == pseudo.filename
+    assert pseudos.setter_widget.children[0].pseudo_filename.value == pseudo.filename
     assert pseudos.setter_widget.children[0].cutoffs == [30, 240]
 
     # Check O uploader (O.upf)
@@ -206,7 +203,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert pseudos.setter_widget.children[1].kind_symbol == "O"
     pseudo = orm.load_node(model.dictionary["O"])
     assert pseudos.setter_widget.children[1].pseudo == pseudo
-    assert pseudos.setter_widget.children[1].pseudo_text.value == pseudo.filename
+    assert pseudos.setter_widget.children[1].pseudo_filename.value == pseudo.filename
     assert pseudos.setter_widget.children[1].cutoffs == [30, 240]
 
     # Test reset from uploaded state
@@ -226,12 +223,12 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     )
     pseudo = model.dictionary["O"]
     assert orm.load_node(pseudo).filename == "O_new.upf"
-    assert pseudos.setter_widget.children[1].pseudo_text.value == "O_new.upf"
+    assert pseudos.setter_widget.children[1].pseudo_filename.value == "O_new.upf"
 
     model.reset()
     pseudo = model.dictionary["O"]
     assert orm.load_node(pseudo).filename != "O_new.upf"
-    assert pseudos.setter_widget.children[1].pseudo_text.value != "O_new.upf"
+    assert pseudos.setter_widget.children[1].pseudo_filename.value != "O_new.upf"
 
 
 def test_pseudo_upload_widget(generate_upf_data):
@@ -240,18 +237,20 @@ def test_pseudo_upload_widget(generate_upf_data):
     # Test that the kind can be not the element symbol
     # the widget initialize with the pseudo as input to mock how it will
     # be used in PseudoSetter when the pseudo family is set.
-    old_pseudo = generate_upf_data("O", "O_old.upf")
+    old_pseudo = generate_upf_data("O", "O.upf")
+    old_pseudo.store()
 
     w = PseudoUploadWidget(kind_name="O1", kind_symbol="O")
     w.pseudo = old_pseudo
     w.cutoffs = [30, 240]
+    w.update_pseudo_info()
     w.render()
 
-    message = "ψ: <b>{ecutwfc} Ry</b> | ρ: <b>{ecutrho} Ry</b>"  # noqa: RUF001
+    message = "{ecutwfc} | {ecutrho}"
 
-    assert w.pseudo.filename == "O_old.upf"
+    assert w.pseudo.filename == "O.upf"
     assert w.kind_name == "O1"
-    assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.cutoff_message.value
+    assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.pseudo_info.value
     assert not w.message
 
     # Check different element is rejected
@@ -268,7 +267,7 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O_old.upf"
+    assert w.pseudo.filename == "O.upf"
     assert "does not match" in w.message
 
     # Check identical content is rejected in favor of existing one
@@ -285,7 +284,6 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-
     assert w.pseudo.filename == "O.upf"
     assert "Identical pseudo" in w.message
 
@@ -334,3 +332,53 @@ def test_pseudo_upload_widget(generate_upf_data):
     )
     assert w.pseudo.filename == "O_valid.upf"
     assert "uploaded successfully" in w.message
+
+
+def test_missing_pseudos(generate_structure_data):
+    """Test that the model handles missing pseudos correctly."""
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.input_structure = generate_structure_data("CeO")
+    model.functional = "PBEsol"
+    model.library = "PseudoDojo standard"
+    assert model.family == "PseudoDojo/0.4/PBEsol/SR/standard/upf"
+    assert model.dictionary["Ce"] is None
+    assert model.dictionary["O"] is not None
+    assert len(model.blockers) == 1
+    assert "does not contain a pseudopotential for Ce" in model.blockers[0]
+
+
+def test_functional_mismatch_blocker(generate_structure_data):
+    """Test blocker for inconsistent functional across selected pseudopotentials."""
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.input_structure = generate_structure_data("silica")
+    model.functionals = ["PBE", "PBEsol"]
+    assert len(model.blockers) == 1
+    assert "must have the same exchange-correlation" in model.blockers[0]
+
+
+def test_relativistic_mismatch_blocker(generate_structure_data):
+    """Test blocker for inconsistent relativistic treatment across selected
+    pseudopotentials with and without SOC.
+    """
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.input_structure = generate_structure_data("silica")
+
+    # Check with SOC
+    model.spin_orbit = "soc"
+    model.family = "SSSP/1.3/PBEsol/efficiency"
+    assert len(model.blockers) == 1
+    assert "pseudopotentials must be fully relativistic" in model.blockers[0]
+
+    # Check without SOC
+    # This would only happen if the user loads a fully relativistic pseudopotential.
+    # Here we simulate it by setting the relativistic extra and triggering the blocker
+    # check manually
+    model.spin_orbit = "wo_soc"
+    pseudo = orm.load_node(model.dictionary["Si"])
+    pseudo.base.extras.set("relativistic", "full")
+    model.update_blockers()
+    assert len(model.blockers) == 1
+    assert "no pseudopotential should be fully relativistic" in model.blockers[0]

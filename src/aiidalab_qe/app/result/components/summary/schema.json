@@ -99,6 +99,11 @@
     "type": "link",
     "description": "The DFT functional used for the calculation"
   },
+  "relativistic": {
+    "title": "Relativistic treatment",
+    "type": "text",
+    "description": "The relativistic treatment used for the calculation"
+  },
   "pseudo_library": {
     "title": "Pseudopotential library",
     "type": "link",

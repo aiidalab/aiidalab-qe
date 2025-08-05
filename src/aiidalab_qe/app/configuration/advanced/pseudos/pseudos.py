@@ -5,28 +5,20 @@ from copy import deepcopy
 
 import ipywidgets as ipw
 import traitlets as tl
-from aiida_pseudo.common.units import U
-from upf_tools import UPFDict
 
 from aiida import orm
-from aiida.plugins import DataFactory, GroupFactory
 from aiidalab_qe.common.widgets import HBoxWithUnits, LoadingWidget
+from aiidalab_qe.utils import (
+    UpfData,
+    generate_alert,
+    get_pseudo_by_filename,
+    get_pseudo_by_md5,
+    populate_extras,
+)
 from aiidalab_widgets_base.utils import StatusHTML
 
 from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import PseudosConfigurationSettingsModel
-
-UpfData = DataFactory("pseudo.upf")
-SsspFamily = GroupFactory("pseudo.family.sssp")
-PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
-CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
-
-
-_PSEUDO_ALERT_TEMPLATE = """
-    <div class="alert alert-{alert_type} pseudo-warning">
-        {message}
-    </div>
-"""
 
 
 class PseudosConfigurationSettingsPanel(
@@ -52,8 +44,16 @@ class PseudosConfigurationSettingsPanel(
             ["library", "functional"],
         )
         self._model.observe(
+            self._on_functionals_change,
+            "functionals",
+        )
+        self._model.observe(
             self._on_family_change,
             "family",
+        )
+        self._model.observe(
+            self._on_dictionary_change,
+            "dictionary",
         )
         self._model.observe(
             self._on_cutoffs_change,
@@ -68,7 +68,11 @@ class PseudosConfigurationSettingsPanel(
         if self.rendered:
             return
 
-        self.family_prompt = ipw.HTML()
+        self.family_header = ipw.HTML()
+        ipw.dlink(
+            (self._model, "family_header"),
+            (self.family_header, "value"),
+        )
 
         self.family_help = ipw.HTML()
         ipw.dlink(
@@ -131,25 +135,17 @@ class PseudosConfigurationSettingsPanel(
         )
 
         self._warning_message = ipw.HTML(
-            value=_PSEUDO_ALERT_TEMPLATE.format(
+            value=generate_alert(
                 alert_type="warning",
                 message="""
-                    ⚠️ You have uploaded a pseudopotential ⚠️
+                    <h4><b>⚠️ Pseudopotential upload detected ⚠️</b></h4>
+                    Adjust plane-wave cutoff energies below to ensure convergence
                     <br>
-                    <br>
-                    <b>Please make sure to use the same Quantum ESPRESSO supported
-                    exchange-correlation functional for all pseudopotentials.</b>
-                    <br>
-                    <b>If including spin-orbit coupling (SOC) effects, make sure to
-                    upload a fully relativistic pseudopotential.</b>
-                    <br>
-                    <b>Finally, remember to adjust the plane-wave cutoff energy to
-                    ensure convergence.</b>
-                    <br>
-                    <br>
-                    To reset to the protocol-derived pseudopotentials, please select
-                    an exchange-correlation functional and a pseudopotential family.
+                    To reset to protocol-derived pseudopotentials, select both an
+                    exchange-correlation functional and a pseudopotential family above
                 """,
+                class_="text-center",
+                style_="line-height: 2;",
             ),
             layout=ipw.Layout(
                 display="block" if self._model.show_upload_warning else "none",
@@ -176,7 +172,7 @@ class PseudosConfigurationSettingsPanel(
             ),
             ipw.VBox(
                 children=[
-                    self.family_prompt,
+                    self.family_header,
                     self.library,
                     self.family_help,
                 ],
@@ -191,10 +187,23 @@ class PseudosConfigurationSettingsPanel(
                     The default pseudopotential and cutoffs are taken from the
                     pseudopotential family.
                     <br>
-                    Recommended wavefunction (ψ) and charge density (ρ) cutoffs are
-                    given to the right of each pseudopotential.
+                    Pseudopotential information is shown (if provided) in the following order:
+                    <ul>
+                        <li>
+                            Recommended wavefunction cutoff energy (Ry)
+                        </li>
+                        <li>
+                            Recommended charge density cutoff energy (Ry)
+                        </li>
+                        <li>
+                            Exchange-correlation functional
+                        </li>
+                        <li>
+                            Relativistic treatment
+                        </li>
+                    </ul>
                 </div>
-            """),  # noqa: RUF001
+            """),
             self.setter_widget,
             ipw.HTML("<h4>Cutoffs</h4>"),
             ipw.HTML("""
@@ -230,17 +239,25 @@ class PseudosConfigurationSettingsPanel(
         self._model.update_library_options()
 
     def _on_family_parameters_change(self, _):
-        self._update_family_link()
-        if not (self._model.library and self._model.functional):
-            return
-        self._model.show_upload_warning = False
         self._model.update_family()
+        self._model.update_family_header()
+        self._model.update_functionals()
+        self._model.update_blockers()
+
+    def _on_functionals_change(self, _):
+        self._model.functional = (
+            self._model.functionals[0]
+            if len(set(self._model.functionals)) == 1
+            else None
+        )
+        self._model.update_blockers()
 
     def _on_family_change(self, _):
-        if not self._model.family:
-            return
-        self._model.update_default_pseudos()
-        self._model.update_default_cutoffs()
+        self._model.show_upload_warning = not self._model.family
+        self._model.update_dictionary()
+
+    def _on_dictionary_change(self, _):
+        self._model.update_cutoffs()
 
     def _on_cutoffs_change(self, change):
         cutoffs = change["new"]  # [[ecutwfc...], [ecutrho...]]
@@ -260,33 +277,8 @@ class PseudosConfigurationSettingsPanel(
             self._model.update(specific)
         self._build_setter_widgets()
         self._model.update_library_options()
-        self._update_family_link()
+        self._model.update_family_header()
         self.updated = True
-
-    def _update_family_link(self):
-        if not self.rendered:
-            return
-
-        # Remove link if library is unset
-        if not self._model.library:
-            self.family_prompt.value = "<h4>Pseudopotential family</h4>"
-            return
-
-        library, accuracy = self._model.library.split()
-        if library == "SSSP":
-            pseudo_family_link = (
-                f"https://www.materialscloud.org/discover/sssp/table/{accuracy}"
-            )
-        else:
-            pseudo_family_link = "http://www.pseudo-dojo.org/"
-
-        self.family_prompt.value = f"""
-            <h4>
-                <a href="{pseudo_family_link}" target="_blank">
-                    Pseudopotential family
-                </a>
-            </h4>
-        """
 
     def _show_loading(self):
         if self.rendered:
@@ -298,21 +290,33 @@ class PseudosConfigurationSettingsPanel(
 
         children = []
 
-        kinds = self._model.input_structure.kinds if self._model.input_structure else []
+        kinds = self._model.input_structure.kinds if self._model.has_structure else []
 
         for index, kind in enumerate(kinds):
             upload_widget = PseudoUploadWidget(kind.name, kind.symbol)
 
             def on_default_pseudo(
                 _=None,
+                widget: PseudoUploadWidget = upload_widget,
                 kind_name=kind.name,
-                widget=upload_widget,
+                index=index,
             ):
+                if not self._model.dictionary:
+                    return
                 try:
                     pseudo = orm.load_node(self._model.dictionary.get(kind_name))
                 except Exception:
                     pseudo = None
                 widget.pseudo = pseudo
+                widget.cutoffs = (
+                    [
+                        self._model.cutoffs[0][index],
+                        self._model.cutoffs[1][index],
+                    ]
+                    if len(self._model.cutoffs[0]) > index
+                    else [0.0, 0.0]
+                )
+                widget.update_pseudo_info()
                 widget.uploaded = False
 
             self._model.observe(
@@ -322,22 +326,29 @@ class PseudosConfigurationSettingsPanel(
 
             def on_pseudo_upload(
                 change,
+                widget: PseudoUploadWidget = upload_widget,
                 kind_name=kind.name,
                 index=index,
-                widget=upload_widget,
             ):
-                if not change["new"]:
+                if not (change["new"] and widget.pseudo):
                     return
 
-                self._model.functional = None
-                self._model.library = None
                 self._model.family = None
-                self._model.show_upload_warning = True
+                self._model.library = None
+                self._model.functional = None
 
                 self._model.dictionary = {
                     **self._model.dictionary,
                     kind_name: widget.pseudo.uuid,
                 }
+
+                functional = widget.pseudo.base.extras.get("functional", None)
+                functionals = [*self._model.functionals]
+                functionals[index] = functional
+                # The following double-setting is done to force the blockers check,
+                # which now also bail early if the functionals are empty.
+                self._model.functionals = []
+                self._model.functionals = functionals
 
                 cutoffs: list = deepcopy(self._model.cutoffs)  # type: ignore
                 cutoffs[0][index] = widget.cutoffs[0]
@@ -349,37 +360,33 @@ class PseudosConfigurationSettingsPanel(
                 "uploaded",
             )
 
-            cutoffs_link = ipw.dlink(
-                (self._model, "cutoffs"),
-                (upload_widget, "cutoffs"),
-                lambda cutoffs, index=index: [cutoffs[0][index], cutoffs[1][index]]
-                if len(cutoffs[0]) > index
-                else [0.0, 0.0],
-            )
-
             upload_widget.render()
 
             on_default_pseudo()
 
-            self.links.extend(
-                [
-                    cutoffs_link,
-                    *upload_widget.links,
-                ]
-            )
+            self.links.extend(upload_widget.links)
 
             children.append(upload_widget)
 
         self.setter_widget.children = children
 
 
+# TODO refactor as MVC
 class PseudoUploadWidget(ipw.VBox):
     """Class that allows to upload pseudopotential from user's computer."""
 
     pseudo = tl.Instance(UpfData, allow_none=True)
+    filename = tl.Unicode(allow_none=True)
+    info = tl.Unicode(allow_none=True)
     cutoffs = tl.List(tl.Float(), [])
     uploaded = tl.Bool(False)
     message = tl.Unicode(allow_none=True)
+
+    PSEUDO_INFO_MESSAGE = """
+        <div class="pseudo-text">
+            {ecutwfc} | {ecutrho} | {functional} | {relativistic}
+        </div>
+    """
 
     def __init__(self, kind_name, kind_symbol, **kwargs):
         super().__init__(
@@ -396,15 +403,17 @@ class PseudoUploadWidget(ipw.VBox):
         if self.rendered:
             return
 
-        self.pseudo_text = ipw.Text(
+        self.pseudo_filename = ipw.Text(
             description=self.kind_name,
             style={"description_width": "50px"},
+            disabled=True,
         )
-        pseudo_link = ipw.dlink(
+        filename_link = ipw.dlink(
             (self, "pseudo"),
-            (self.pseudo_text, "value"),
+            (self.pseudo_filename, "value"),
             lambda pseudo: pseudo.filename if pseudo else "",
         )
+
         self.file_upload = ipw.FileUpload(
             description="Upload",
             multiple=False,
@@ -415,38 +424,29 @@ class PseudoUploadWidget(ipw.VBox):
         )
         self.file_upload.observe(self._on_file_upload, "value")
 
-        cutoffs_message_template = """
-            <div class="pseudo-text">
-                ψ: <b>{ecutwfc} Ry</b> | ρ: <b>{ecutrho} Ry</b>
-            </div>
-        """  # noqa: RUF001
-
-        self.cutoff_message = ipw.HTML()
-        cutoff_link = ipw.dlink(
-            (self, "cutoffs"),
-            (self.cutoff_message, "value"),
-            lambda cutoffs: cutoffs_message_template.format(
-                ecutwfc=cutoffs[0] if len(cutoffs) else "not set",
-                ecutrho=cutoffs[1] if len(cutoffs) else "not set",
-            ),
+        self.pseudo_info = ipw.HTML()
+        info_link = ipw.dlink(
+            (self, "info"),
+            (self.pseudo_info, "value"),
         )
 
-        self.links = [
-            pseudo_link,
-            cutoff_link,
-        ]
-
         self.message_box = StatusHTML(clear_after=5)
-        ipw.link(
+        message_link = ipw.link(
             (self, "message"),
             (self.message_box, "message"),
         )
 
+        self.links = [
+            filename_link,
+            info_link,
+            message_link,
+        ]
+
         self.pseudo_row = ipw.HBox(
             children=[
-                self.pseudo_text,
+                self.pseudo_filename,
                 self.file_upload,
-                self.cutoff_message,
+                self.pseudo_info,
             ]
         )
 
@@ -456,6 +456,23 @@ class PseudoUploadWidget(ipw.VBox):
         ]
 
         self.rendered = True
+
+    def update_pseudo_info(self):
+        if not self.pseudo:
+            self.info = ""
+            return
+        self.info = self.PSEUDO_INFO_MESSAGE.format(
+            ecutwfc=self.cutoffs[0] or "?",
+            ecutrho=self.cutoffs[1] or "?",
+            functional=self.pseudo.base.extras.get("functional", None) or "?",
+            relativistic=self.pseudo.base.extras.get("relativistic", None) or "N/A",
+        )
+
+    @tl.observe("pseudo")
+    def _on_pseudo_change(self, _):
+        if not self.pseudo:
+            return
+        populate_extras(self.pseudo)
 
     def _on_file_upload(self, change=None):
         if not change or not change["new"]:
@@ -467,7 +484,7 @@ class PseudoUploadWidget(ipw.VBox):
         try:
             uploaded_pseudo = UpfData(io.BytesIO(content), filename=filename)
         except Exception:
-            self.message = _PSEUDO_ALERT_TEMPLATE.format(
+            self.message = generate_alert(
                 alert_type="danger",
                 message=f"{filename} is not a valid UPF file",
             )
@@ -476,7 +493,7 @@ class PseudoUploadWidget(ipw.VBox):
 
         # Wrong element
         if uploaded_pseudo.element != self.kind_symbol:
-            self.message = _PSEUDO_ALERT_TEMPLATE.format(
+            self.message = generate_alert(
                 alert_type="danger",
                 message=f"Pseudo element {uploaded_pseudo.element} does not match {self.kind_symbol}",
             )
@@ -484,30 +501,16 @@ class PseudoUploadWidget(ipw.VBox):
             return
 
         # Existing pseudo
-        if existing_pseudo := (
-            orm.QueryBuilder()
-            .append(
-                UpfData,
-                filters={"attributes.md5": uploaded_pseudo.md5},
-            )
-            .first(flat=True)
-        ):
+        if existing_pseudo := get_pseudo_by_md5(uploaded_pseudo.md5):
             uploaded_pseudo = existing_pseudo
-            message = _PSEUDO_ALERT_TEMPLATE.format(
+            message = generate_alert(
                 alert_type="info",
                 message=f"Identical pseudo detected. Loading pseudo (UUID={uploaded_pseudo.uuid})",
             )
 
         # New pseudo but existing filename
-        elif (
-            orm.QueryBuilder()
-            .append(
-                UpfData,
-                filters={"attributes.filename": filename},
-            )
-            .count()
-        ):
-            self.message = _PSEUDO_ALERT_TEMPLATE.format(
+        elif get_pseudo_by_filename(filename):
+            self.message = generate_alert(
                 alert_type="warning",
                 message=f"""
                     {filename} found in database with different content.
@@ -521,68 +524,15 @@ class PseudoUploadWidget(ipw.VBox):
         # Valid new pseudo
         else:
             uploaded_pseudo.store()
-            message = _PSEUDO_ALERT_TEMPLATE.format(
+            message = generate_alert(
                 alert_type="success",
                 message=f"{filename} uploaded successfully",
             )
 
-        if pseudo_family := self._get_pseudo_family(uploaded_pseudo.md5):
-            current_unit = pseudo_family.get_cutoffs_unit()
-            cutoff_dict = pseudo_family.get_cutoffs()
-            cutoff = {
-                key: U.Quantity(v, current_unit).to("Ry").to_tuple()[0]
-                for key, v in cutoff_dict.get(self.kind_symbol, {}).items()
-            }
-            cutoffs = [
-                cutoff.get("cutoff_wfc", 0.0),
-                cutoff.get("cutoff_rho", 0.0),
-            ]
-        else:
-            try:
-                with uploaded_pseudo.as_path() as pseudo_path:
-                    upf_dict = UPFDict.from_upf(pseudo_path.as_posix())
-                cutoffs = [
-                    float(int(upf_dict.get("header", {}).get("wfc_cutoff", 0))),
-                    float(int(upf_dict.get("header", {}).get("rho_cutoff", 0))),
-                ]
-            except ValueError:
-                self.message = _PSEUDO_ALERT_TEMPLATE.format(
-                    alert_type="danger",
-                    message="Failed to parse cutoffs from UPF file",
-                )
-                self._reset_uploader()
-                return
-            except Exception:
-                self.message = _PSEUDO_ALERT_TEMPLATE.format(
-                    alert_type="danger",
-                    message="Failed to read/parse UPF file",
-                )
-                self._reset_uploader()
-                return
-
-        self.cutoffs = cutoffs
         self.pseudo = uploaded_pseudo
         self.message = message
         self.uploaded = True
         self._reset_uploader()
-
-    def _get_pseudo_family(self, pseudo_md5):
-        return (
-            orm.QueryBuilder()
-            .append(
-                UpfData,
-                filters={"attributes.md5": pseudo_md5},
-                tag="pseudo",
-            )
-            .append(
-                (
-                    SsspFamily,
-                    PseudoDojoFamily,
-                ),
-                with_node="pseudo",
-            )
-            .first(flat=True)
-        )
 
     def _reset_uploader(self):
         self.file_upload.metadata = []
