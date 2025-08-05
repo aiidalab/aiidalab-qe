@@ -7,8 +7,8 @@
 ###############################################################################
 # 1) Global ARGs
 ###############################################################################
-ARG FULL_STACK_VER=2025.1026
-ARG UV_VER=0.7.5
+ARG FULL_STACK_VER=2025.1027
+ARG UV_VER=0.8.4
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
@@ -24,8 +24,7 @@ ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
 ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0"
 ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0"
-# aiida-hyperqueue 0.3.0 need aiida-core >=2.7, so we pin it to 0.2.1
-ARG AIIDA_HQ_PKG="aiida-hyperqueue==0.2.1"
+ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
 ###############################################################################
 # 2) uv stage (unchanged)
