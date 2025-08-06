@@ -12,9 +12,9 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
-from aiidalab_qe.utils import fetch_pseudo_family_by_label, get_upf_dict
 
 from ..subsettings import AdvancedCalculationSubSettingsModel
+from .utils import get_pseudo_family_by_label, get_upf_dict
 
 SsspFamily = GroupFactory("pseudo.family.sssp")
 PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
@@ -211,7 +211,7 @@ class PseudosConfigurationSettingsModel(
         self.status_message = ""
 
         try:
-            pseudo_family = fetch_pseudo_family_by_label(self.family)
+            pseudo_family = get_pseudo_family_by_label(self.family)
         except Exception as err:
             raise ValueError(
                 f"Failed to fetch pseudo family using the '{self.family}' string"
@@ -247,7 +247,7 @@ class PseudosConfigurationSettingsModel(
 
         if self.family:
             try:
-                pseudo_family = fetch_pseudo_family_by_label(self.family)
+                pseudo_family = get_pseudo_family_by_label(self.family)
                 current_unit = pseudo_family.get_cutoffs_unit()
                 cutoff_dict = pseudo_family.get_cutoffs()
             except exceptions.NotExistent:

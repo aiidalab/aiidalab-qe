@@ -4,7 +4,10 @@ from aiida import orm
 from aiidalab_qe.app.configuration.advanced.pseudos import (
     PseudosConfigurationSettingsModel,
     PseudosConfigurationSettingsPanel,
-    PseudoUploadWidget,
+)
+from aiidalab_qe.app.configuration.advanced.pseudos.uploader import (
+    PseudoPotentialUploader,
+    PseudoPotentialUploaderModel,
 )
 from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
@@ -182,6 +185,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     # Test that changing the structure triggers a reset
     silica = generate_structure_data("silica")
     model.input_structure = silica
+    assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
     assert "Si" in model.dictionary.keys()
     assert "O" in model.dictionary.keys()
 
@@ -190,26 +194,47 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     # Check uploaders
     assert len(pseudos.setter_widget.children) == 2
 
+    message = "{ecutwfc} | {ecutrho} | {functional} | {relativistic}"
+
     # Check Si uploader (Si.upf)
-    assert pseudos.setter_widget.children[0].kind_name == "Si"
-    assert pseudos.setter_widget.children[0].kind_symbol == "Si"
+    Si_uploader: PseudoPotentialUploader = pseudos.setter_widget.children[0]
+    assert Si_uploader._model.kind_name == "Si"
+    assert Si_uploader._model.kind_symbol == "Si"
     pseudo = orm.load_node(model.dictionary["Si"])
-    assert pseudos.setter_widget.children[0].pseudo == pseudo
-    assert pseudos.setter_widget.children[0].pseudo_filename.value == pseudo.filename
-    assert pseudos.setter_widget.children[0].cutoffs == [30, 240]
+    assert Si_uploader._model.pseudo == pseudo
+    assert Si_uploader._model.cutoffs == [30, 240]
+    assert Si_uploader.pseudo_filename.value == pseudo.filename
+    assert (
+        message.format(
+            ecutwfc=30.0,
+            ecutrho=240.0,
+            functional="PBE",
+            relativistic="N/A",
+        )
+        in Si_uploader._model.info
+    )
 
     # Check O uploader (O.upf)
-    assert pseudos.setter_widget.children[1].kind_name == "O"
-    assert pseudos.setter_widget.children[1].kind_symbol == "O"
+    O_uploader: PseudoPotentialUploader = pseudos.setter_widget.children[1]
+    assert O_uploader._model.kind_name == "O"
+    assert O_uploader._model.kind_symbol == "O"
     pseudo = orm.load_node(model.dictionary["O"])
-    assert pseudos.setter_widget.children[1].pseudo == pseudo
-    assert pseudos.setter_widget.children[1].pseudo_filename.value == pseudo.filename
-    assert pseudos.setter_widget.children[1].cutoffs == [30, 240]
+    assert O_uploader._model.pseudo == pseudo
+    assert O_uploader._model.cutoffs == [30, 240]
+    assert O_uploader.pseudo_filename.value == pseudo.filename
+    assert (
+        message.format(
+            ecutwfc=30.0,
+            ecutrho=240.0,
+            functional="PBEsol",
+            relativistic="scalar",
+        )
+        in O_uploader._model.info
+    )
 
     # Test reset from uploaded state
-    uploader: PseudoUploadWidget = pseudos.setter_widget.children[1]
     new_O_pseudo = generate_upf_data("O", "O_new.upf", z_valence=5)
-    uploader._on_file_upload(
+    O_uploader._on_file_upload(
         {
             "new": {
                 "O_new.upf": {
@@ -221,14 +246,13 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
             },
         }
     )
-    pseudo = model.dictionary["O"]
-    assert orm.load_node(pseudo).filename == "O_new.upf"
-    assert pseudos.setter_widget.children[1].pseudo_filename.value == "O_new.upf"
+    assert O_uploader._model.pseudo.filename == "O_new.upf"
+    assert O_uploader.pseudo_filename.value == "O_new.upf"
 
     model.reset()
-    pseudo = model.dictionary["O"]
-    assert orm.load_node(pseudo).filename != "O_new.upf"
-    assert pseudos.setter_widget.children[1].pseudo_filename.value != "O_new.upf"
+
+    assert O_uploader._model.pseudo.filename != "O_new.upf"
+    assert O_uploader.pseudo_filename.value != "O_new.upf"
 
 
 def test_pseudo_upload_widget(generate_upf_data):
@@ -240,22 +264,24 @@ def test_pseudo_upload_widget(generate_upf_data):
     old_pseudo = generate_upf_data("O", "O.upf")
     old_pseudo.store()
 
-    w = PseudoUploadWidget(kind_name="O1", kind_symbol="O")
-    w.pseudo = old_pseudo
-    w.cutoffs = [30, 240]
-    w.update_pseudo_info()
-    w.render()
+    model = PseudoPotentialUploaderModel(kind_name="O1", kind_symbol="O")
+    uploader = PseudoPotentialUploader(model=model)
+
+    model.pseudo = old_pseudo
+    model.cutoffs = [30, 240]
+    model.update_pseudo_info()
 
     message = "{ecutwfc} | {ecutrho}"
 
-    assert w.pseudo.filename == "O.upf"
-    assert w.kind_name == "O1"
-    assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.pseudo_info.value
-    assert not w.message
+    assert model.pseudo.filename == "O.upf"
+    assert message.format(ecutwfc=30.0, ecutrho=240.0) in model.info
+    assert not model.message
+
+    uploader.render()
 
     # Check different element is rejected
     different_element = generate_upf_data("Si", "Si.upf")
-    w._on_file_upload(
+    uploader._on_file_upload(
         {
             "new": {
                 "Si.upf": {
@@ -267,12 +293,12 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O.upf"
-    assert "does not match" in w.message
+    assert model.pseudo.filename == "O.upf"
+    assert "does not match" in model.message
 
     # Check identical content is rejected in favor of existing one
     same_content_different_name = generate_upf_data("O", "O_copy.upf")
-    w._on_file_upload(
+    uploader._on_file_upload(
         {
             "new": {
                 "O_copy.upf": {
@@ -284,12 +310,12 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O.upf"
-    assert "Identical pseudo" in w.message
+    assert model.pseudo.filename == "O.upf"
+    assert "Identical pseudo" in model.message
 
     # Check different content but same filename is rejected
     different_content_same_filename = generate_upf_data("O", "O.upf", z_valence=6)
-    w._on_file_upload(
+    uploader._on_file_upload(
         {
             "new": {
                 "O.upf": {
@@ -301,11 +327,11 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O.upf"
-    assert "rename your file" in w.message
+    assert model.pseudo.filename == "O.upf"
+    assert "rename your file" in model.message
 
     # Check invalid pseudo content is rejected
-    w._on_file_upload(
+    uploader._on_file_upload(
         {
             "new": {
                 "O_invalid.upf": {
@@ -314,11 +340,11 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert "not a valid UPF file" in w.message
+    assert "not a valid UPF file" in model.message
 
     # Check valid pseudo is accepted
     valid = generate_upf_data("O", "O_valid.upf", z_valence=7)
-    w._on_file_upload(
+    uploader._on_file_upload(
         {
             "new": {
                 "O_valid.upf": {
@@ -330,8 +356,8 @@ def test_pseudo_upload_widget(generate_upf_data):
             },
         }
     )
-    assert w.pseudo.filename == "O_valid.upf"
-    assert "uploaded successfully" in w.message
+    assert model.pseudo.filename == "O_valid.upf"
+    assert "uploaded successfully" in model.message
 
 
 def test_missing_pseudos(generate_structure_data):
