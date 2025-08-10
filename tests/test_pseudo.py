@@ -208,7 +208,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
         message.format(
             ecutwfc=30.0,
             ecutrho=240.0,
-            functional="PBE",
+            functional="PBEsol",
             relativistic="N/A",
         )
         in Si_uploader._model.info
@@ -227,13 +227,17 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
             ecutwfc=30.0,
             ecutrho=240.0,
             functional="PBEsol",
-            relativistic="scalar",
+            relativistic="N/A",
         )
         in O_uploader._model.info
     )
 
     # Test reset from uploaded state
-    new_O_pseudo = generate_upf_data("O", "O_new.upf", z_valence=5)
+    new_O_pseudo = generate_upf_data(
+        "O",
+        "O_new.upf",
+        params={"accuracy": "high"},
+    )
     O_uploader._on_file_upload(
         {
             "new": {
@@ -314,7 +318,11 @@ def test_pseudo_upload_widget(generate_upf_data):
     assert "Identical pseudo" in model.message
 
     # Check different content but same filename is rejected
-    different_content_same_filename = generate_upf_data("O", "O.upf", z_valence=6)
+    different_content_same_filename = generate_upf_data(
+        "O",
+        "O.upf",
+        params={"accuracy": "low"},
+    )
     uploader._on_file_upload(
         {
             "new": {
@@ -343,7 +351,11 @@ def test_pseudo_upload_widget(generate_upf_data):
     assert "not a valid UPF file" in model.message
 
     # Check valid pseudo is accepted
-    valid = generate_upf_data("O", "O_valid.upf", z_valence=7)
+    valid = generate_upf_data(
+        "O",
+        "O_valid.upf",
+        params={"accuracy": "normal"},
+    )
     uploader._on_file_upload(
         {
             "new": {
@@ -408,3 +420,5 @@ def test_relativistic_mismatch_blocker(generate_structure_data):
     model.update_blockers()
     assert len(model.blockers) == 1
     assert "no pseudopotential should be fully relativistic" in model.blockers[0]
+    # Restore extras entry to correct value
+    pseudo.base.extras.set("relativistic", "N/A")

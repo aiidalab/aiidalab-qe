@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import io
-import pathlib
-import tempfile
 
 import pytest
+from aiida_pseudo.data.pseudo import UpfData
+from aiida_pseudo.groups.family import PseudoDojoFamily, SsspFamily
 
 from aiida import orm
 from aiidalab_qe.app.wizard_app import WizardApp
@@ -22,6 +22,14 @@ ELEMENTS = [
     "Mo",
     "Ni",
 ]
+
+CUTOFFS = {
+    element: {
+        "cutoff_wfc": 30.0,
+        "cutoff_rho": 240.0,
+    }
+    for element in ELEMENTS
+}
 
 
 def pytest_addoption(parser):
@@ -242,93 +250,34 @@ def generate_projection_data(generate_bands_data):
     return _generate_projection_data
 
 
-@pytest.fixture(scope="session", autouse=True)
-def sssp(generate_upf_data_for_session):
-    """Create SSSP pseudopotentials from scratch."""
-    from aiida_pseudo.groups.family import SsspFamily
+def _generate_upf_data(element, filename=None, params=None):
+    """Return `UpfData` node.
 
-    cutoffs = {}
-    stringency = "standard"
+    NOTE: `params` is used to render the generated UPF unique per pseudo
+    """
+    extras = "\n\t\t".join(f'{key}="{value}"' for key, value in (params or {}).items())
+    content = f"""
+        <UPF version="2.0.1">
+            <PP_HEADER
+                element="{element}"
+                z_valence="4.0"
+                {extras}
+            />
+        </UPF>
+    """
+    stream = io.BytesIO(content.encode("utf-8"))
 
-    with tempfile.TemporaryDirectory() as d:
-        dirpath = pathlib.Path(d)
+    filename = element
+    if params:
+        filename += f"_{'_'.join(params.values())}"
+    filename += ".upf"
 
-        for element in ELEMENTS:
-            upf = generate_upf_data_for_session(element)
-            filename = dirpath / f"{element}.upf"
-
-            with open(filename, "w+b") as handle:
-                with upf.open(mode="rb") as source:
-                    handle.write(source.read())
-                    handle.flush()
-
-            cutoffs[element] = {
-                "cutoff_wfc": 30.0,
-                "cutoff_rho": 240.0,
-            }
-
-        for functional in ("PBE", "PBEsol"):
-            for accuracy in ("efficiency", "precision"):
-                label = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
-                family = SsspFamily.create_from_folder(dirpath, label)
-                family.set_cutoffs(cutoffs, stringency, unit="Ry")
-
-
-@pytest.fixture(scope="session", autouse=True)
-def pseudodojo(generate_upf_data_for_session):
-    """Create pseudodojo pseudopotentials from scratch."""
-    from aiida_pseudo.data.pseudo import UpfData
-    from aiida_pseudo.groups.family import PseudoDojoFamily
-
-    cutoffs = {}
-
-    with tempfile.TemporaryDirectory() as d:
-        dirpath = pathlib.Path(d)
-
-        for element in ELEMENTS:
-            upf = generate_upf_data_for_session(element)
-            filename = dirpath / f"{element}.upf"
-
-            with open(filename, "w+b") as handle:
-                with upf.open(mode="rb") as source:
-                    handle.write(source.read())
-                    handle.flush()
-
-            cutoffs[element] = {
-                "cutoff_wfc": 36.0,
-                "cutoff_rho": 144.0,
-            }
-
-        ROOT = f"PseudoDojo/{PSEUDODOJO_VERSION}"
-        for stringency in ("standard", "stringent"):
-            for functional in ("PBE", "PBEsol"):
-                for spin_orbit in ("SR", "FR"):
-                    label = f"{ROOT}/{functional}/{spin_orbit}/{stringency}/upf"
-                    family = PseudoDojoFamily.create_from_folder(
-                        dirpath,
-                        label,
-                        pseudo_type=UpfData,
-                    )
-                    family.set_cutoffs(cutoffs, stringency, unit="Ry")
+    return UpfData(stream, filename=filename)
 
 
 @pytest.fixture(scope="function")
 def generate_upf_data():
     """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
-
-    def _generate_upf_data(element, filename=None, z_valence=4):
-        """Return `UpfData` node."""
-        from aiida_pseudo.data.pseudo import UpfData
-
-        z_valence = str(float(z_valence))
-        content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="{z_valence}"\n/></UPF>\n'
-        stream = io.BytesIO(content.encode("utf-8"))
-
-        if filename is None:
-            filename = f"{element}.upf"
-
-        return UpfData(stream, filename=filename)
-
     return _generate_upf_data
 
 
@@ -338,20 +287,56 @@ def generate_upf_data_for_session():
 
     NOTE: Duplicated fixture for use in the session-scoped pseudos fixtures
     """
-
-    def _generate_upf_data(element, filename=None):
-        """Return `UpfData` node."""
-        from aiida_pseudo.data.pseudo import UpfData
-
-        content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="4.0"\n/></UPF>\n'
-        stream = io.BytesIO(content.encode("utf-8"))
-
-        if filename is None:
-            filename = f"{element}.upf"
-
-        return UpfData(stream, filename=filename)
-
     return _generate_upf_data
+
+
+@pytest.fixture(scope="session", autouse=True)
+def sssp(generate_upf_data_for_session):
+    """Create SSSP pseudopotentials from scratch."""
+
+    for functional in ("PBE", "PBEsol"):
+        for accuracy in ("efficiency", "precision"):
+            label = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
+            family = SsspFamily(label)
+            family.store()
+            nodes = []
+            for element in ELEMENTS:
+                params = {
+                    "functional": functional,
+                    "accuracy": accuracy,
+                }
+                filename = f"{element}_{'_'.join(params.values())}.upf"
+                upf = generate_upf_data_for_session(element, filename, params)
+                upf.store()
+                nodes.append(upf)
+            family.add_nodes(nodes)
+            family.set_cutoffs(CUTOFFS, accuracy, unit="Ry")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def pseudodojo(generate_upf_data_for_session):
+    """Create pseudodojo pseudopotentials from scratch."""
+
+    ROOT = f"PseudoDojo/{PSEUDODOJO_VERSION}"
+    for stringency in ("standard", "stringent"):
+        for functional in ("PBE", "PBEsol"):
+            for relativistic in ("SR", "FR"):
+                label = f"{ROOT}/{functional}/{relativistic}/{stringency}/upf"
+                family = PseudoDojoFamily(label)
+                family.store()
+                nodes = []
+                for element in ELEMENTS:
+                    params = {
+                        "functional": functional,
+                        "stringency": stringency,
+                        "relativistic": relativistic,
+                    }
+                    filename = f"{element}_{'_'.join(params.values())}.upf"
+                    upf = generate_upf_data_for_session(element, filename, params)
+                    upf.store()
+                    nodes.append(upf)
+                family.add_nodes(nodes)
+                family.set_cutoffs(CUTOFFS, stringency, unit="Ry")
 
 
 @pytest.fixture
