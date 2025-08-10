@@ -13,6 +13,7 @@ class ConvergenceConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
+    title = "Convergence"
     identifier = "convergence"
 
     dependencies = [

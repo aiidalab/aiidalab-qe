@@ -147,7 +147,6 @@ class ConvergenceConfigurationSettingsPanel(
         )
 
         self.children = [
-            ipw.HTML("<h2>Convergence</h2>"),
             self.help_message,
             ipw.HTML("<h4>Threshold for SCF cycles</h4>"),
             ipw.VBox(

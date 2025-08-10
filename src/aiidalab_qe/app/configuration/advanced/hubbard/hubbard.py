@@ -69,7 +69,6 @@ class HubbardConfigurationSettingsPanel(
         self.container = ipw.VBox()
 
         self.children = [
-            ipw.HTML("<h2>Hubbard (DFT+U)</h2>"),
             self.activate_hubbard_checkbox,
             self.container,
         ]

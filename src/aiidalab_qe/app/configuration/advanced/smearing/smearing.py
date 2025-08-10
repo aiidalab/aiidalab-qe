@@ -46,7 +46,6 @@ class SmearingConfigurationSettingsPanel(
         )
 
         self.children = [
-            ipw.HTML("<h2>Smearing</h2>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
                     Smear electronic state occupations near the Fermi level to

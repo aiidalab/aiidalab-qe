@@ -51,14 +51,13 @@ class AdvancedConfigurationSettingsPanel(
             "protocol",
         )
         self._model.observe(
+            self._on_spin_type_change,
+            "spin_type",
+        )
+        self._model.observe(
             self._on_kpoints_distance_change,
             "kpoints_distance",
         )
-
-        # NOTE connect pseudos first, as some settings depend on it
-        pseudos_model = PseudosConfigurationSettingsModel()
-        self.pseudos = PseudosConfigurationSettingsPanel(model=pseudos_model)
-        model.add_model("pseudos", pseudos_model)
 
         convergence_model = ConvergenceConfigurationSettingsModel()
         self.convergence = ConvergenceConfigurationSettingsPanel(
@@ -70,6 +69,10 @@ class AdvancedConfigurationSettingsPanel(
         self.smearing = SmearingConfigurationSettingsPanel(model=smearing_model)
         model.add_model("smearing", smearing_model)
 
+        pseudos_model = PseudosConfigurationSettingsModel()
+        self.pseudos = PseudosConfigurationSettingsPanel(model=pseudos_model)
+        model.add_model("pseudos", pseudos_model)
+
         magnetization_model = MagnetizationConfigurationSettingsModel()
         self.magnetization = MagnetizationConfigurationSettingsPanel(
             model=magnetization_model,
@@ -79,6 +82,14 @@ class AdvancedConfigurationSettingsPanel(
         hubbard_model = HubbardConfigurationSettingsModel()
         self.hubbard = HubbardConfigurationSettingsPanel(model=hubbard_model)
         model.add_model("hubbard", hubbard_model)
+
+        self.sub_settings = {
+            "convergence": self.convergence,
+            "smearing": self.smearing,
+            "magnetization": self.magnetization,
+            "hubbard": self.hubbard,
+            "pseudos": self.pseudos,
+        }
 
     def render(self):
         if self.rendered:
@@ -150,12 +161,19 @@ class AdvancedConfigurationSettingsPanel(
             (self._model, "mesh_grid"),
             (self.mesh_grid, "value"),
         )
+        kpoint_row = ipw.HBox(
+            children=[
+                HBoxWithUnits(self.kpoints_distance, "Å<sup>-1</sup>"),
+                self.mesh_grid,
+            ],
+            layout=ipw.Layout(align_items="center"),
+        )
 
-        self.convergence.render()
-        self.smearing.render()
-        self.hubbard.render()
-        self.magnetization.render()
-        self.pseudos.render()
+        self.advanced_tabs = ipw.Tab()
+        self.advanced_tabs.observe(
+            self._on_advanced_tab_change,
+            "selected_index",
+        )
 
         self.children = [
             InAppGuide(identifier="advanced-settings"),
@@ -163,9 +181,7 @@ class AdvancedConfigurationSettingsPanel(
             self.clean_workdir,
             self.total_charge,
             self.van_der_waals,
-            self.convergence,
-            self.smearing,
-            ipw.HTML("<h2>K-points</h2>"),
+            kpoint_row,
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
                     The k-points mesh density of the SCF calculation is set by the
@@ -177,21 +193,14 @@ class AdvancedConfigurationSettingsPanel(
                     Smaller is more accurate and costly.
                 </div>
             """),
-            ipw.HBox(
-                children=[
-                    HBoxWithUnits(self.kpoints_distance, "Å<sup>-1</sup>"),
-                    self.mesh_grid,
-                ],
-                layout=ipw.Layout(align_items="center"),
-            ),
-            self.magnetization,
-            self.hubbard,
-            self.pseudos,
+            self.advanced_tabs,
         ]
 
         self.rendered = True
 
         self.refresh()
+
+        self._update_tabs()
 
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
@@ -199,8 +208,33 @@ class AdvancedConfigurationSettingsPanel(
     def _on_protocol_change(self, _):
         self.refresh(specific="protocol")
 
+    def _on_spin_type_change(self, _):
+        self._update_tabs()
+
+    def _update_tabs(self):
+        if not self.rendered:
+            return
+        children = []
+        titles = []
+        for identifier, model in self._model.get_models():
+            subsetting = self.sub_settings[identifier]
+            if identifier == "convergence":
+                subsetting.render()
+            if identifier == "magnetization":
+                if self._model.spin_type != "collinear":
+                    continue
+                subsetting.render()
+            titles.append(model.title)
+            children.append(subsetting)
+        self.advanced_tabs.children = children
+        for i, title in enumerate(titles):
+            self.advanced_tabs.set_title(i, title)
+
     def _on_kpoints_distance_change(self, _):
         self.refresh(specific="mesh")
+
+    def _on_advanced_tab_change(self, change):
+        self.advanced_tabs.children[change["new"]].render()
 
     def _on_reset_to_defaults_button_click(self, _):
         self._reset()

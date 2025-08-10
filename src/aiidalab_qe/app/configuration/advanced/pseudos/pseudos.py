@@ -146,7 +146,6 @@ class PseudosConfigurationSettingsPanel(
         )
 
         self.children = [
-            ipw.HTML("<h2>Accuracy and precision</h2>"),
             ipw.HTML("""
                 <div class="pseudo-text">
                     The exchange-correlation functional and pseudopotential library is
