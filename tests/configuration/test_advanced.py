@@ -25,6 +25,38 @@ def test_advanced_default():
     assert model.kpoints_distance == 0.3
 
 
+def test_advanced_convergence_settings(generate_structure_data):
+    """Test Convergence Settings."""
+    from aiidalab_qe.app.configuration.advanced.convergence import (
+        ConvergenceConfigurationSettingsModel,
+        ConvergenceConfigurationSettingsPanel,
+    )
+
+    model = ConvergenceConfigurationSettingsModel()
+    _ = ConvergenceConfigurationSettingsPanel(model=model)
+
+    # Test structure-dependent convergence change
+    model.input_structure = generate_structure_data("silica")
+
+    assert "num_atoms = 6" in model.help_message
+
+    model.protocol = "fast"
+
+    assert model.scf_conv_thr == 4e-10
+    assert model.scf_conv_thr_step == 1e-11
+    assert model.etot_conv_thr == 1e-4
+    assert model.etot_conv_thr_step == 1e-5
+    assert model.forc_conv_thr == 1e-3
+    assert model.forc_conv_thr_step == 1e-4
+    assert model.electron_maxstep == 80
+    assert model.optimization_maxsteps == 50
+
+    # Check reset
+    model.scf_conv_thr = 0.1
+    model.reset()
+    assert model.scf_conv_thr == 4e-10
+
+
 def test_advanced_smearing_settings():
     """Test Smearing Settings."""
 

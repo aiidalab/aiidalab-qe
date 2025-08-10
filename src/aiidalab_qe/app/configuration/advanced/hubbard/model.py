@@ -121,7 +121,7 @@ class HubbardConfigurationSettingsModel(
         ]
 
     def _define_default_parameters(self):
-        return {label: 0.0 for label in self.orbital_labels}
+        return dict.fromkeys(self.orbital_labels, 0.0)
 
     def _define_applicable_kind_names(self):
         applicable_kind_names = []
