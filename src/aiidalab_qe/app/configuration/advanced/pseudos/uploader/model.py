@@ -35,8 +35,8 @@ class PseudoPotentialUploaderModel(Model):
             self.info = ""
             return
         self.info = self.PSEUDO_INFO_MESSAGE.format(
-            ecutwfc=self.cutoffs[0] or "?",
-            ecutrho=self.cutoffs[1] or "?",
+            ecutwfc=self.cutoffs[0] or "?",  # type: ignore
+            ecutrho=self.cutoffs[1] or "?",  # type: ignore
             functional=self.pseudo.base.extras.get("functional", None) or "?",
             relativistic=self.pseudo.base.extras.get("relativistic", None) or "N/A",
         )

@@ -239,7 +239,7 @@ class PseudosConfigurationSettingsPanel(
 
     def _on_functionals_change(self, _):
         self._model.functional = (
-            self._model.functionals[0]
+            self._model.functionals[0]  # type: ignore
             if len(set(self._model.functionals)) == 1
             else None
         )
@@ -304,10 +304,10 @@ class PseudosConfigurationSettingsPanel(
                 model.pseudo = pseudo
                 model.cutoffs = (
                     [
-                        self._model.cutoffs[0][index],
-                        self._model.cutoffs[1][index],
+                        self._model.cutoffs[0][index],  # type: ignore
+                        self._model.cutoffs[1][index],  # type: ignore
                     ]
-                    if len(self._model.cutoffs[0]) > index
+                    if len(self._model.cutoffs[0]) > index  # type: ignore
                     else [0.0, 0.0]
                 )
                 model.update_pseudo_info()
@@ -345,8 +345,8 @@ class PseudosConfigurationSettingsPanel(
                 self._model.functionals = functionals
 
                 cutoffs: list = deepcopy(self._model.cutoffs)  # type: ignore
-                cutoffs[0][index] = model.cutoffs[0]
-                cutoffs[1][index] = model.cutoffs[1]
+                cutoffs[0][index] = model.cutoffs[0]  # type: ignore
+                cutoffs[1][index] = model.cutoffs[1]  # type: ignore
                 self._model.cutoffs = cutoffs
 
             uploader_model.observe(
