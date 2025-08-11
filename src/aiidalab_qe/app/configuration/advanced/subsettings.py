@@ -6,6 +6,7 @@ import traitlets as tl
 
 from aiidalab_qe.common.mixins import HasBlockers
 from aiidalab_qe.common.mvc import Model
+from aiidalab_widgets_base import LoadingWidget
 
 
 class AdvancedCalculationSubSettingsModel(
@@ -41,8 +42,6 @@ M = t.TypeVar("M", bound=AdvancedCalculationSubSettingsModel)
 
 class AdvancedConfigurationSubSettingsPanel(ipw.VBox, t.Generic[M]):
     def __init__(self, model: M, **kwargs):
-        from aiidalab_qe.common.widgets import LoadingWidget
-
         self.loading_message = LoadingWidget(f"Loading {model.identifier} settings")
 
         super().__init__(

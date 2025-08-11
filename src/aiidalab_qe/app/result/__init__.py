@@ -4,9 +4,8 @@ import traitlets as tl
 from aiida.engine import ProcessState
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.process import STATE_ICONS
-from aiidalab_qe.common.widgets import LoadingWidget
 from aiidalab_qe.common.wizard import QeDependentWizardStep
-from aiidalab_widgets_base import ProcessMonitor, WizardAppWidgetStep
+from aiidalab_widgets_base import LoadingWidget, ProcessMonitor, WizardAppWidgetStep
 
 from .components import ResultsComponent
 from .components.status import WorkChainStatusModel, WorkChainStatusPanel

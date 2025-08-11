@@ -4,7 +4,7 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_widgets_base import LoadingWidget
 
 
 class ResultsComponentModel(Model, HasProcess):
