@@ -3,7 +3,6 @@ from __future__ import annotations
 import typing as t
 
 import ipywidgets as ipw
-import numpy as np
 import traitlets as tl
 
 from aiida import orm
@@ -17,15 +16,14 @@ from aiidalab_qe.common.panel import ConfigurationSettingsModel
 from aiidalab_qe.setup.pseudos import PseudoFamily
 from aiidalab_qe.utils import get_pseudo_info
 
+from .convergence import ConvergenceConfigurationSettingsModel
+from .hubbard import HubbardConfigurationSettingsModel
+from .magnetization import MagnetizationConfigurationSettingsModel
+from .pseudos import PseudosConfigurationSettingsModel
+from .smearing import SmearingConfigurationSettingsModel
 from .subsettings import AdvancedCalculationSubSettingsModel
 
-if t.TYPE_CHECKING:
-    from .hubbard.hubbard import HubbardConfigurationSettingsModel
-    from .magnetization import MagnetizationConfigurationSettingsModel
-    from .pseudos.pseudos import PseudosConfigurationSettingsModel
-    from .smearing import SmearingConfigurationSettingsModel
-
-DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
+DEFAULT = t.cast(dict, DEFAULT_PARAMETERS)
 
 
 class AdvancedConfigurationSettingsModel(
@@ -63,14 +61,6 @@ class AdvancedConfigurationSettingsModel(
         ],
     )
     van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
-    forc_conv_thr = tl.Float(0.0)
-    forc_conv_thr_step = tl.Float(1e-4)
-    etot_conv_thr = tl.Float(0.0)
-    etot_conv_thr_step = tl.Float(1e-5)
-    scf_conv_thr = tl.Float(0.0)
-    scf_conv_thr_step = tl.Float(1e-10)
-    electron_maxstep = tl.Int(80)
-    optimization_maxsteps = tl.Int(50)
 
     kpoints_distance = tl.Float(0.0)
     mesh_grid = tl.Unicode("")
@@ -84,28 +74,20 @@ class AdvancedConfigurationSettingsModel(
         "dft-d3mbj": 6,
     }
 
-    mixing_mode_options = tl.List(
-        trait=tl.Unicode(),
-        default_value=[
-            "plain",
-            "TF",
-            "local-TF",
-        ],
-    )
-    mixing_mode = tl.Unicode("plain")
-    mixing_beta = tl.Float(0.4)
-
     def update(self, specific=""):
         with self.hold_trait_notifications():
             if not specific or specific != "mesh":
                 parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
                 self._update_kpoints_distance(parameters)
-                if specific == "protocol":
-                    self._update_thresholds(parameters)
             self._update_kpoints_mesh()
 
     def get_model_state(self):
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
+
+        convergence = t.cast(
+            ConvergenceConfigurationSettingsModel,
+            self.get_model("convergence"),
+        )
         parameters = {
             "initial_magnetic_moments": None,
             "pw": {
@@ -114,27 +96,31 @@ class AdvancedConfigurationSettingsModel(
                         "tot_charge": self.total_charge,
                     },
                     "CONTROL": {
-                        "forc_conv_thr": self.forc_conv_thr,
-                        "etot_conv_thr": self.etot_conv_thr * num_atoms,
+                        "forc_conv_thr": convergence.forc_conv_thr,
+                        "etot_conv_thr": convergence.etot_conv_thr * num_atoms,
                     },
                     "ELECTRONS": {
-                        "conv_thr": self.scf_conv_thr * num_atoms,
-                        "electron_maxstep": self.electron_maxstep,
-                        "mixing_beta": self.mixing_beta,
+                        "conv_thr": convergence.scf_conv_thr * num_atoms,
+                        "electron_maxstep": convergence.electron_maxstep,
+                        "mixing_beta": convergence.mixing_beta,
                     },
                 }
             },
             "clean_workdir": self.clean_workdir,
             "kpoints_distance": self.kpoints_distance,
-            "optimization_maxsteps": self.optimization_maxsteps,
+            "optimization_maxsteps": convergence.optimization_maxsteps,
         }
 
         # Only modify if mixing mode is different than default
-        if self.mixing_mode != "plain":
+        if convergence.mixing_mode != "plain":
             parameters["pw"]["parameters"]["ELECTRONS"]["mixing_mode"] = (
-                self.mixing_mode
+                convergence.mixing_mode
             )
-        hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
+
+        hubbard = t.cast(
+            HubbardConfigurationSettingsModel,
+            self.get_model("hubbard"),
+        )
         if hubbard.is_active:
             parameters["hubbard_parameters"] = {
                 "hubbard_u": {
@@ -146,7 +132,10 @@ class AdvancedConfigurationSettingsModel(
                     "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()
                 }
 
-        pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
+        pseudos = t.cast(
+            PseudosConfigurationSettingsModel,
+            self.get_model("pseudos"),
+        )
         parameters["pseudo_family"] = pseudos.family
         if pseudos.dictionary:
             parameters["pw"]["pseudos"] = pseudos.dictionary
@@ -161,16 +150,20 @@ class AdvancedConfigurationSettingsModel(
                 self.dftd3_version[self.van_der_waals]
             )
 
-        smearing: SmearingConfigurationSettingsModel = self.get_model("smearing")  # type: ignore
+        smearing = t.cast(
+            SmearingConfigurationSettingsModel,
+            self.get_model("smearing"),
+        )
         if self.electronic_type == "metal":
             # smearing type setting
             parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = smearing.type
             # smearing degauss setting
             parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = smearing.degauss
 
-        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
-            "magnetization"
-        )  # type: ignore
+        magnetization = t.cast(
+            MagnetizationConfigurationSettingsModel,
+            self.get_model("magnetization"),
+        )
         if self.spin_type == "collinear":
             parameters["initial_magnetic_moments"] = magnetization.moments
 
@@ -200,7 +193,10 @@ class AdvancedConfigurationSettingsModel(
         return parameters
 
     def set_model_state(self, parameters):
-        pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
+        pseudos = t.cast(
+            PseudosConfigurationSettingsModel,
+            self.get_model("pseudos"),
+        )
         if pseudo_family_string := parameters.get("pseudo_family"):
             pseudo_family = PseudoFamily.from_string(pseudo_family_string)
             library = pseudo_family.library
@@ -221,8 +217,12 @@ class AdvancedConfigurationSettingsModel(
             pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
             pseudos.functionals = [pseudos.functional] * len(pseudos.dictionary)
 
+        convergence = t.cast(
+            ConvergenceConfigurationSettingsModel,
+            self.get_model("convergence"),
+        )
+        convergence.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)
         self.kpoints_distance = parameters.get("kpoints_distance", 0.15)
-        self.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)
 
         if (pw_parameters := parameters.get("pw", {}).get("parameters")) is not None:
             self._set_pw_parameters(pw_parameters)
@@ -259,17 +259,7 @@ class AdvancedConfigurationSettingsModel(
         with self.hold_trait_notifications():
             self.total_charge = self._get_default("total_charge")
             self.van_der_waals = self._get_default("van_der_waals")
-            self.forc_conv_thr = self._get_default("forc_conv_thr")
-            self.forc_conv_thr_step = self._get_default("forc_conv_thr_step")
-            self.etot_conv_thr = self._get_default("etot_conv_thr")
-            self.etot_conv_thr_step = self._get_default("etot_conv_thr_step")
-            self.scf_conv_thr = self._get_default("scf_conv_thr")
-            self.scf_conv_thr_step = self._get_default("scf_conv_thr_step")
-            self.electron_maxstep = self._get_default("electron_maxstep")
             self.kpoints_distance = self._get_default("kpoints_distance")
-            self.optimization_maxsteps = self._get_default("optimization_maxsteps")
-            self.mixing_mode = self._get_default("mixing_mode")
-            self.mixing_beta = self._get_default("mixing_beta")
 
     def _get_default(self, trait):
         return self._defaults.get(trait, self.traits()[trait].default_value)
@@ -305,51 +295,29 @@ class AdvancedConfigurationSettingsModel(
         self._defaults["kpoints_distance"] = kpoints_distance
         self.kpoints_distance = self._defaults["kpoints_distance"]
 
-    def _update_thresholds(self, parameters):
-        etot_value = parameters["meta_parameters"]["etot_conv_thr_per_atom"]
-        self._set_value_and_step("etot_conv_thr", etot_value)
-        self.etot_conv_thr = self._defaults["etot_conv_thr"]
-        self.etot_conv_thr_step = self._defaults["etot_conv_thr_step"]
-
-        scf_value = parameters["meta_parameters"]["conv_thr_per_atom"]
-        self._set_value_and_step("scf_conv_thr", scf_value)
-        self.scf_conv_thr = self._defaults["scf_conv_thr"]
-        self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
-
-        forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
-        self._set_value_and_step("forc_conv_thr", forc_value)
-        self.forc_conv_thr = self._defaults["forc_conv_thr"]
-        self.forc_conv_thr_step = self._defaults["forc_conv_thr_step"]
-
-    def _set_value_and_step(self, attribute, value):
-        self._defaults[attribute] = value
-        if value != 0:
-            order_of_magnitude = np.floor(np.log10(abs(value)))
-            step = 10 ** (order_of_magnitude - 1)
-        else:
-            step = 0.1
-        self._defaults[f"{attribute}_step"] = step
-
     def _set_pw_parameters(self, pw_parameters):
-        system_params = pw_parameters.get("SYSTEM", {})
-        control_params = pw_parameters.get("CONTROL", {})
-        electron_params = pw_parameters.get("ELECTRONS", {})
+        system_params: dict = pw_parameters.get("SYSTEM", {})
+        control_params: dict = pw_parameters.get("CONTROL", {})
+        electron_params: dict = pw_parameters.get("ELECTRONS", {})
 
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
-        self.forc_conv_thr = control_params.get("forc_conv_thr", 0.0)
-        self.etot_conv_thr = control_params.get("etot_conv_thr", 0.0) / num_atoms
-        self.scf_conv_thr = electron_params.get("conv_thr", 0.0) / num_atoms
-        self.electron_maxstep = electron_params.get("electron_maxstep", 80)
-
-        self.mixing_mode = electron_params.get("mixing_mode", "plain")
-        self.mixing_beta = electron_params.get("mixing_beta", 0.4)
+        convergence = t.cast(
+            ConvergenceConfigurationSettingsModel,
+            self.get_model("convergence"),
+        )
+        convergence.forc_conv_thr = control_params.get("forc_conv_thr", 0.0)
+        convergence.etot_conv_thr = control_params.get("etot_conv_thr", 0.0) / num_atoms
+        convergence.scf_conv_thr = electron_params.get("conv_thr", 0.0) / num_atoms
+        convergence.electron_maxstep = electron_params.get("electron_maxstep", 80)
+        convergence.mixing_mode = electron_params.get("mixing_mode", "plain")
+        convergence.mixing_beta = electron_params.get("mixing_beta", 0.4)
 
         self.total_charge = system_params.get("tot_charge", 0)
         self.spin_orbit = "soc" if "lspinorb" in system_params else "wo_soc"
 
         self.van_der_waals = self.dftd3_version.get(
-            system_params.get("dftd3_version"),
+            system_params.get("dftd3_version", ""),
             system_params.get("vdw_corr", "none"),
         )
 

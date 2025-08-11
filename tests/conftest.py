@@ -479,10 +479,15 @@ def submit_app_generator(
         advanced_model.total_charge = tot_charge
         advanced_model.van_der_waals = vdw_corr
         advanced_model.kpoints_distance = kpoints_distance
-        advanced_model.electron_maxstep = electron_maxstep
+
+        convergence_model = advanced_model.get_model("convergence")
+        convergence_model.electron_maxstep = electron_maxstep
+
         if isinstance(initial_magnetic_moments, (int, float)):
             initial_magnetic_moments = [initial_magnetic_moments]
-        advanced_model.get_model("magnetization").moments = dict(
+
+        magnetization_model = advanced_model.get_model("magnetization")
+        magnetization_model.moments = dict(
             zip(
                 app.configure_model.input_structure.get_kind_names(),
                 initial_magnetic_moments,
@@ -492,6 +497,7 @@ def submit_app_generator(
         smearing_model = advanced_model.get_model("smearing")
         smearing_model.type = smearing
         smearing_model.degauss = degauss
+
         app.configure_model.confirm()
 
         app.submit_model.input_structure = generate_structure_data()

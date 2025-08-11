@@ -9,6 +9,10 @@ from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.common.widgets import HBoxWithUnits
 
+from .convergence import (
+    ConvergenceConfigurationSettingsModel,
+    ConvergenceConfigurationSettingsPanel,
+)
 from .hubbard import (
     HubbardConfigurationSettingsModel,
     HubbardConfigurationSettingsPanel,
@@ -56,6 +60,12 @@ class AdvancedConfigurationSettingsPanel(
         self.pseudos = PseudosConfigurationSettingsPanel(model=pseudos_model)
         model.add_model("pseudos", pseudos_model)
 
+        convergence_model = ConvergenceConfigurationSettingsModel()
+        self.convergence = ConvergenceConfigurationSettingsPanel(
+            model=convergence_model
+        )
+        model.add_model("convergence", convergence_model)
+
         smearing_model = SmearingConfigurationSettingsModel()
         self.smearing = SmearingConfigurationSettingsPanel(model=smearing_model)
         model.add_model("smearing", smearing_model)
@@ -92,10 +102,34 @@ class AdvancedConfigurationSettingsPanel(
             (self.clean_workdir, "value"),
         )
 
-        # Smearing setting widget
-        self.smearing.render()
+        # Total change setting
+        self.total_charge = ipw.BoundedFloatText(
+            min=-3,
+            max=3,
+            step=0.01,
+            description="Total charge:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "total_charge"),
+            (self.total_charge, "value"),
+        )
 
-        # Kpoints setting widget
+        # Van der Waals setting
+        self.van_der_waals = ipw.Dropdown(
+            description="Van der Waals correction:",
+            style={"description_width": "150px"},
+        )
+        ipw.dlink(
+            (self._model, "van_der_waals_options"),
+            (self.van_der_waals, "options"),
+        )
+        ipw.link(
+            (self._model, "van_der_waals"),
+            (self.van_der_waals, "value"),
+        )
+
+        # Kpoints setting
         self.kpoints_distance = ipw.BoundedFloatText(
             min=0.0,
             step=0.05,
@@ -117,152 +151,11 @@ class AdvancedConfigurationSettingsPanel(
             (self.mesh_grid, "value"),
         )
 
-        # Hubbard setting widget
+        self.convergence.render()
+        self.smearing.render()
         self.hubbard.render()
-
-        # Total change setting widget
-        self.total_charge = ipw.BoundedFloatText(
-            min=-3,
-            max=3,
-            step=0.01,
-            description="Total charge:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "total_charge"),
-            (self.total_charge, "value"),
-        )
-
-        # Van der Waals setting widget
-        self.van_der_waals = ipw.Dropdown(
-            description="Van der Waals correction:",
-            style={"description_width": "150px"},
-        )
-        ipw.dlink(
-            (self._model, "van_der_waals_options"),
-            (self.van_der_waals, "options"),
-        )
-        ipw.link(
-            (self._model, "van_der_waals"),
-            (self.van_der_waals, "value"),
-        )
-
-        # Magnetization settings
         self.magnetization.render()
-
-        # Convergence Threshold settings
-        self.scf_conv_thr = ipw.BoundedFloatText(
-            min=1e-18,
-            max=1.0,
-            description="Energy:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "scf_conv_thr"),
-            (self.scf_conv_thr, "value"),
-        )
-        ipw.dlink(
-            (self._model, "scf_conv_thr_step"),
-            (self.scf_conv_thr, "step"),
-        )
-        scf_conv_thr_abs = ipw.Label(
-            layout=ipw.Layout(
-                width="150px",
-                text_align="center",
-            )
-        )
-        ipw.dlink(
-            (self._model, "scf_conv_thr"),
-            (scf_conv_thr_abs, "value"),
-            lambda value: f"{value * len(self._model.input_structure.sites):.5e}",
-        )
-        scf_conv_thr_abs.add_class("convergence-label")
-        self.etot_conv_thr = ipw.BoundedFloatText(
-            min=1e-15,
-            max=1.0,
-            description="Energy:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "etot_conv_thr"),
-            (self.etot_conv_thr, "value"),
-        )
-        ipw.dlink(
-            (self._model, "etot_conv_thr_step"),
-            (self.etot_conv_thr, "step"),
-        )
-        etot_conv_thr_abs = ipw.Label()
-        ipw.dlink(
-            (self._model, "etot_conv_thr"),
-            (etot_conv_thr_abs, "value"),
-            lambda value: f"{value * len(self._model.input_structure.sites):.5e}",
-        )
-        etot_conv_thr_abs.add_class("convergence-label")
-        self.forc_conv_thr = ipw.BoundedFloatText(
-            min=1e-15,
-            max=1.0,
-            description="Force:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "forc_conv_thr"),
-            (self.forc_conv_thr, "value"),
-        )
-        ipw.dlink(
-            (self._model, "forc_conv_thr_step"),
-            (self.forc_conv_thr, "step"),
-        )
-        self.electron_maxstep = ipw.BoundedIntText(
-            min=20,
-            max=1000,
-            step=1,
-            description="Electronic:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "electron_maxstep"),
-            (self.electron_maxstep, "value"),
-        )
-
-        self.optimization_maxsteps = ipw.BoundedIntText(
-            min=50,
-            max=1000,
-            step=1,
-            description="Ionic:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "optimization_maxsteps"),
-            (self.optimization_maxsteps, "value"),
-        )
-
-        self.mixing_mode = ipw.Dropdown(
-            description="Mixing mode:",
-            style={"description_width": "150px"},
-        )
-        ipw.dlink(
-            (self._model, "mixing_mode_options"),
-            (self.mixing_mode, "options"),
-        )
-        ipw.link(
-            (self._model, "mixing_mode"),
-            (self.mixing_mode, "value"),
-        )
-
-        self.mixing_beta = ipw.BoundedFloatText(
-            min=0.1,
-            max=1.0,
-            step=0.01,
-            description="Mixing beta:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "mixing_beta"),
-            (self.mixing_beta, "value"),
-        )
         self.pseudos.render()
-
-        num_atoms = len(self._model.input_structure.sites)
 
         self.children = [
             InAppGuide(identifier="advanced-settings"),
@@ -270,61 +163,7 @@ class AdvancedConfigurationSettingsPanel(
             self.clean_workdir,
             self.total_charge,
             self.van_der_waals,
-            ipw.HTML("<h2>Convergence</h2>"),
-            ipw.HTML(f"""
-                <div style="line-height: 1.4; margin-bottom: 5px;">
-                    Setting the energy threshold for the self-consistent field (SCF)
-                    and energy and force thresholds for ionic convergence ensures
-                    calculation accuracy and stability. Lower values increase the
-                    accuracy but also the computational cost. The default values set by
-                    the <b>protocol</b> are usually a good starting point. For energy
-                    thresholds, the actual value used in the calculation (shown below
-                    widget) is given as:
-                    <code>threshold x num_atoms</code>
-                    (<code>num_atoms = {num_atoms}</code>)
-                </div>
-            """),
-            ipw.HTML("<h4>Threshold for SCF cycles</h4>"),
-            ipw.VBox(
-                children=[
-                    HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
-                    HBoxWithUnits(
-                        widget=scf_conv_thr_abs,
-                        units="Ry",
-                        layout={"margin": "-8px 0 0 150px"},
-                    ),
-                ]
-            ),
-            ipw.HTML("<h4>Thresholds for ionic convergence</h4>"),
-            ipw.VBox(
-                children=[
-                    HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
-                    HBoxWithUnits(
-                        widget=etot_conv_thr_abs,
-                        units="Ry",
-                        layout={"margin": "-8px 0 0 150px"},
-                    ),
-                ]
-            ),
-            HBoxWithUnits(self.forc_conv_thr, "Ry/Bohr"),
-            ipw.HTML("<h4>Maximum cycle steps</h4>"),
-            ipw.HTML("""
-                <div style="line-height: 1.4; margin-bottom: 5px;">
-                    Setting a maximum number of electronic and ionic convergence steps
-                    ensures that the calculation does not run indefinitely.
-                </div>
-            """),
-            self.electron_maxstep,
-            self.optimization_maxsteps,
-            ipw.HTML("<h4>Mixing mode</h4>"),
-            ipw.HTML("""
-                <div style="line-height: 1.4; margin-bottom: 5px;">
-                    The mixing mode determines how the charge density is updated during
-                    the SCF cycles.
-                </div>
-            """),
-            self.mixing_mode,
-            self.mixing_beta,
+            self.convergence,
             self.smearing,
             ipw.HTML("<h2>K-points</h2>"),
             ipw.HTML("""
