@@ -4,7 +4,7 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.bands_pdos import BandsPdosModel, BandsPdosWidget
 from aiidalab_qe.common.panel import ResultsPanel
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_widgets_base import LoadingWidget
 
 from .model import ElectronicStructureResultsModel
 

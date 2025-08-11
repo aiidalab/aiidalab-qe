@@ -1,6 +1,6 @@
 import ipywidgets as ipw
 
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_widgets_base import LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML, string_range_to_list
 
 from .model import BandsPdosModel

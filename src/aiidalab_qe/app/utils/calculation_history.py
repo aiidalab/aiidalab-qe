@@ -5,7 +5,7 @@ from table_widget import TableWidget
 
 from aiida.orm import QueryBuilder, load_node
 from aiidalab_qe.common.process import STATE_ICONS
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_widgets_base import LoadingWidget
 
 
 def determine_state_icon(row):

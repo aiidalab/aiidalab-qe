@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
+import warnings
 from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
@@ -22,10 +23,8 @@ from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiidalab_widgets_base import (
-    ComputationalResourcesWidget,
-    StructureExamplesWidget,
-)
+from aiidalab_widgets_base import ComputationalResourcesWidget, StructureExamplesWidget
+from aiidalab_widgets_base import LoadingWidget as _LoadingWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
@@ -967,27 +966,15 @@ class PwCodeResourceSetupWidget(QEAppComputationalResourcesWidget):
             self.set_parallelization(parameters["parallelization"])
 
 
-class LoadingWidget(ipw.HBox):
-    """Widget for displaying a loading spinner."""
-
-    def __init__(self, message="Loading", **kwargs):
-        self.message = ipw.Label(message)
-        super().__init__(
-            children=[
-                ipw.Label(message),
-                ipw.HTML(
-                    value="<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>",
-                    layout=ipw.Layout(margin="12px 0 6px"),
-                ),
-            ],
-            layout=ipw.Layout(
-                justify_content="center",
-                align_items="center",
-                **kwargs.pop("layout", {}),
-            ),
-            **kwargs,
+class LoadingWidget(_LoadingWidget):
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "`LoadingWidget` has moved to `aiidalab-widgets-base` and will be "
+            "deprecated here in the next major release. Please update your imports.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        self.add_class("loading")
+        super().__init__(*args, **kwargs)
 
 
 class LazyLoader(ipw.VBox):
