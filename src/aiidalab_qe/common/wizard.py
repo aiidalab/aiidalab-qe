@@ -8,9 +8,7 @@ import traitlets as tl
 
 from aiidalab_qe.common.mixins import Confirmable, HasBlockers, HasModels
 from aiidalab_qe.common.mvc import Model
-from aiidalab_widgets_base import WizardAppWidgetStep
-
-from .widgets import LoadingWidget
+from aiidalab_widgets_base import LoadingWidget, WizardAppWidgetStep
 
 
 class QeWizardStepModel(Model):

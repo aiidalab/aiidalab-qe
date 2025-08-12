@@ -21,10 +21,10 @@ from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.mixins import Confirmable, HasBlockers, HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
-    LoadingWidget,
     PwCodeResourceSetupWidget,
     QEAppComputationalResourcesWidget,
 )
+from aiidalab_widgets_base import LoadingWidget
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
