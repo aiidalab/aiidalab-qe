@@ -5,7 +5,8 @@ import traitlets as tl
 from IPython.display import display
 
 from aiidalab_qe.common.guide_manager import guide_manager
-from aiidalab_qe.common.widgets import LinkButton, LoadingWidget
+from aiidalab_qe.common.widgets import LinkButton
+from aiidalab_widgets_base import LoadingWidget
 
 
 def without_triggering(toggle: str):
