@@ -52,7 +52,9 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
             "input_parameters",
         )
 
-        global_resources_model = GlobalResourceSettingsModel()
+        global_resources_model = GlobalResourceSettingsModel(
+            default_codes=DEFAULT["codes"]
+        )
         self.global_resources = GlobalResourceSettingsPanel(
             model=global_resources_model
         )
@@ -272,7 +274,9 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
                 if key not in resources:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
 
-            model: PluginResourceSettingsModel = resources["model"]()
+            model: PluginResourceSettingsModel = resources["model"](
+                default_codes=DEFAULT["codes"]
+            )
             model.observe(
                 self._on_plugin_overrides_change,
                 "override",

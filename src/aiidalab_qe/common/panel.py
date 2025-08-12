@@ -213,6 +213,8 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
     warning_messages = tl.Unicode("")
 
     def __init__(self, *args, **kwargs):
+        self.default_codes: dict[str, dict] = kwargs.pop("default_codes", {})
+
         super().__init__(*args, **kwargs)
 
         # Used by the code-setup thread to fetch code options
@@ -223,8 +225,13 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         model.update(self.DEFAULT_USER_EMAIL)
 
     def refresh_codes(self):
-        for _, code_model in self.get_models():
-            code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
+        for identifier, code_model in self.get_models():
+            code_identifier = identifier.replace("quantumespresso__", "")
+            code_model.update(
+                self.DEFAULT_USER_EMAIL,
+                default_code=self.default_codes.get(code_identifier, {}).get("code"),
+                refresh=True,
+            )
 
     def get_model_state(self):
         return {

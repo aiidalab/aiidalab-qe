@@ -59,10 +59,16 @@ class CodeModel(Model):
     def deactivate(self):
         self.is_active = False
 
-    def update(self, user_email="", refresh=False):
+    def update(self, user_email="", default_code=None, refresh=False):
         if not self.options or refresh:
             self.options = self._get_codes(user_email)
-            self.selected = self.first_option
+            if default_code:
+                try:
+                    default_code = orm.load_code(default_code).uuid
+                except NotExistent:
+                    # TODO block app with user warning
+                    default_code = None
+            self.selected = default_code or self.first_option
 
     def get_model_state(self) -> dict:
         return {
