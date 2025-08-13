@@ -35,16 +35,13 @@ class WizardApp(ipw.VBox):
         # Create the application steps
         self.structure_step = StructureSelectionStep(
             model=self.structure_model,
-            auto_advance=True,
             auto_setup=auto_setup,
         )
         self.configure_step = ConfigureQeAppWorkChainStep(
             model=self.configure_model,
-            auto_advance=True,
         )
         self.submit_step = SubmitQeAppWorkChainStep(
             model=self.submit_model,
-            auto_advance=True,
             auto_setup=auto_setup,
         )
         self.results_step = ViewQeAppWorkChainStatusAndResultsStep(
@@ -131,12 +128,17 @@ class WizardApp(ipw.VBox):
 
     def _on_structure_confirmation_change(self, _):
         self._update_configuration_step()
+        if not self.process:
+            self._wizard_app_widget.selected_index = 1
 
     def _on_configuration_confirmation_change(self, _):
         self._update_submission_step()
+        if not self.process:
+            self._wizard_app_widget.selected_index = 2
 
     def _on_submission(self, _):
         self._update_results_step()
+        self._wizard_app_widget.selected_index = 3
         self._lock_app()
 
     def _render_step(self, step_index):
