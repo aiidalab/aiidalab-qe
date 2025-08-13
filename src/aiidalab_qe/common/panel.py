@@ -222,14 +222,18 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
 
     def add_model(self, identifier, model):
         super().add_model(identifier, model)
-        model.update(self.DEFAULT_USER_EMAIL)
+        code_key = model.default_calc_job_plugin.split(".")[-1]
+        model.update(
+            self.DEFAULT_USER_EMAIL,
+            default_code=self.default_codes.get(code_key, {}).get("code"),
+        )
 
     def refresh_codes(self):
-        for identifier, code_model in self.get_models():
-            code_identifier = identifier.replace("quantumespresso__", "")
+        for _, code_model in self.get_models():
+            code_key = code_model.default_calc_job_plugin.split(".")[-1]
             code_model.update(
                 self.DEFAULT_USER_EMAIL,
-                default_code=self.default_codes.get(code_identifier, {}).get("code"),
+                default_code=self.default_codes.get(code_key, {}).get("code"),
                 refresh=True,
             )
 

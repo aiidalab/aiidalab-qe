@@ -60,7 +60,7 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
             if code_model.is_active:
                 self._toggle_code(code_model)
 
-    def set_up_codes(self, codes: PluginCodes):
+    def build_global_codes(self, codes: PluginCodes):
         for identifier, code_models in codes.items():
             for _, code_model in code_models.items():
                 base_code_model = self._model.add_global_model(identifier, code_model)
@@ -80,6 +80,8 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
 
     def _on_input_parameters_change(self, _):
         self._model.update_active_codes()
+        if self._model.input_parameters:
+            self._model.update_blockers()
 
     def _on_input_structure_change(self, _):
         self._model.check_resources()

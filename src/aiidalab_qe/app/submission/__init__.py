@@ -207,7 +207,6 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         self._toggle_qe_installation_widget()
         if self._model.qe_installed:
             self._model.update()
-            self._refresh_resources()
 
     def _set_up_qe(self, auto_setup):
         self.qe_setup = QESetupWidget(auto_start=False)
@@ -296,4 +295,4 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
 
             codes[identifier] = dict(model.get_models())
 
-        self.global_resources.set_up_codes(codes)
+        self.global_resources.build_global_codes(codes)
