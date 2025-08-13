@@ -128,22 +128,27 @@ class WizardApp(ipw.VBox):
 
     def _on_structure_confirmation_change(self, _):
         self._update_configuration_step()
-        if not self.process:
-            self._wizard_app_widget.selected_index = 1
+        if self.structure_model.confirmed:
+            self._advance()
 
     def _on_configuration_confirmation_change(self, _):
         self._update_submission_step()
-        if not self.process:
-            self._wizard_app_widget.selected_index = 2
+        if self.configure_model.confirmed:
+            self._advance()
 
     def _on_submission(self, _):
         self._update_results_step()
-        self._wizard_app_widget.selected_index = 3
-        self._lock_app()
+        if self.submit_model.confirmed:
+            self._advance()
+            self._lock_app()
 
     def _render_step(self, step_index):
         step: QeWizardStep = self.steps[step_index][1]
         step.render()
+
+    def _advance(self):
+        if not self.process:
+            self._wizard_app_widget.selected_index += 1
 
     def _update_configuration_step(self):
         if self.structure_model.confirmed:
