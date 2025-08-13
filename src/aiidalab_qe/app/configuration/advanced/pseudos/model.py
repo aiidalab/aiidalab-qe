@@ -27,7 +27,7 @@ class PseudosConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
-    title = "Accuracy/presicion"
+    title = "Pseudopotentials"
     identifier = "pseudos"
 
     dependencies = [
