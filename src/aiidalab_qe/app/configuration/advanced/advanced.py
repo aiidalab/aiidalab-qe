@@ -7,7 +7,6 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
-from aiidalab_qe.common.widgets import HBoxWithUnits
 
 from .convergence import (
     ConvergenceConfigurationSettingsModel,
@@ -43,20 +42,8 @@ class AdvancedConfigurationSettingsPanel(
         )
 
         self._model.observe(
-            self._on_input_structure_change,
-            "input_structure",
-        )
-        self._model.observe(
-            self._on_protocol_change,
-            "protocol",
-        )
-        self._model.observe(
             self._on_spin_type_change,
             "spin_type",
-        )
-        self._model.observe(
-            self._on_kpoints_distance_change,
-            "kpoints_distance",
         )
 
         convergence_model = ConvergenceConfigurationSettingsModel()
@@ -140,35 +127,6 @@ class AdvancedConfigurationSettingsPanel(
             (self.van_der_waals, "value"),
         )
 
-        # Kpoints setting
-        self.kpoints_distance = ipw.BoundedFloatText(
-            min=0.0,
-            step=0.05,
-            description="K-points distance:",
-            style={"description_width": "150px"},
-        )
-        ipw.link(
-            (self._model, "kpoints_distance"),
-            (self.kpoints_distance, "value"),
-        )
-        ipw.dlink(
-            (self._model, "input_structure"),
-            (self.kpoints_distance, "disabled"),
-            lambda _: not self._model.has_pbc,
-        )
-        self.mesh_grid = ipw.HTML(layout=ipw.Layout(margin="0 0 0 10px"))
-        ipw.dlink(
-            (self._model, "mesh_grid"),
-            (self.mesh_grid, "value"),
-        )
-        kpoint_row = ipw.HBox(
-            children=[
-                HBoxWithUnits(self.kpoints_distance, "Å<sup>-1</sup>"),
-                self.mesh_grid,
-            ],
-            layout=ipw.Layout(align_items="center"),
-        )
-
         self.advanced_tabs = ipw.Tab()
         self.advanced_tabs.observe(
             self._on_advanced_tab_change,
@@ -181,18 +139,7 @@ class AdvancedConfigurationSettingsPanel(
             self.clean_workdir,
             self.total_charge,
             self.van_der_waals,
-            kpoint_row,
-            ipw.HTML("""
-                <div style="line-height: 1.4; margin-bottom: 5px;">
-                    The k-points mesh density of the SCF calculation is set by the
-                    <b>protocol</b>.
-                    <br>
-                    The value below represents the maximum distance between k-points
-                    in each direction of reciprocal space.
-                    <br>
-                    Smaller is more accurate and costly.
-                </div>
-            """),
+            ipw.HTML("<hr>"),
             self.advanced_tabs,
         ]
 
@@ -201,12 +148,6 @@ class AdvancedConfigurationSettingsPanel(
         self.refresh()
 
         self._update_tabs()
-
-    def _on_input_structure_change(self, _):
-        self.refresh(specific="structure")
-
-    def _on_protocol_change(self, _):
-        self.refresh(specific="protocol")
 
     def _on_spin_type_change(self, _):
         self._update_tabs()
@@ -229,9 +170,6 @@ class AdvancedConfigurationSettingsPanel(
         self.advanced_tabs.children = children
         for i, title in enumerate(titles):
             self.advanced_tabs.set_title(i, title)
-
-    def _on_kpoints_distance_change(self, _):
-        self.refresh(specific="mesh")
 
     def _on_advanced_tab_change(self, change):
         self.advanced_tabs.children[change["new"]].render()

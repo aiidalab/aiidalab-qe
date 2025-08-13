@@ -5,11 +5,6 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiida import orm
-from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
-    create_kpoints_from_distance,
-)
-from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
@@ -62,9 +57,6 @@ class AdvancedConfigurationSettingsModel(
     )
     van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
 
-    kpoints_distance = tl.Float(0.0)
-    mesh_grid = tl.Unicode("")
-
     include = True
 
     dftd3_version = {
@@ -73,13 +65,6 @@ class AdvancedConfigurationSettingsModel(
         "dft-d3m": 5,
         "dft-d3mbj": 6,
     }
-
-    def update(self, specific=""):
-        with self.hold_trait_notifications():
-            if not specific or specific != "mesh":
-                parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
-                self._update_kpoints_distance(parameters)
-            self._update_kpoints_mesh()
 
     def get_model_state(self):
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
@@ -107,7 +92,7 @@ class AdvancedConfigurationSettingsModel(
                 }
             },
             "clean_workdir": self.clean_workdir,
-            "kpoints_distance": self.kpoints_distance,
+            "kpoints_distance": convergence.kpoints_distance,
             "optimization_maxsteps": convergence.optimization_maxsteps,
         }
 
@@ -222,7 +207,7 @@ class AdvancedConfigurationSettingsModel(
             self.get_model("convergence"),
         )
         convergence.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)
-        self.kpoints_distance = parameters.get("kpoints_distance", 0.15)
+        convergence.kpoints_distance = parameters.get("kpoints_distance", 0.15)
 
         if (pw_parameters := parameters.get("pw", {}).get("parameters")) is not None:
             self._set_pw_parameters(pw_parameters)
@@ -259,7 +244,6 @@ class AdvancedConfigurationSettingsModel(
         with self.hold_trait_notifications():
             self.total_charge = self._get_default("total_charge")
             self.van_der_waals = self._get_default("van_der_waals")
-            self.kpoints_distance = self._get_default("kpoints_distance")
 
     def _get_default(self, trait):
         return self._defaults.get(trait, self.traits()[trait].default_value)
@@ -274,26 +258,6 @@ class AdvancedConfigurationSettingsModel(
             tl.All,
         )
         super()._link_model(model)
-
-    def _update_kpoints_mesh(self, _=None):
-        if not self.has_structure:
-            mesh_grid = ""
-        elif self.kpoints_distance > 0:
-            mesh = create_kpoints_from_distance.process_class._func(
-                self.input_structure,
-                orm.Float(self.kpoints_distance),
-                orm.Bool(False),
-            )
-            mesh_grid = f"Mesh {mesh.get_kpoints_mesh()[0]!s}"
-        else:
-            mesh_grid = "Please select a number higher than 0.0"
-        self._defaults["mesh_grid"] = mesh_grid
-        self.mesh_grid = mesh_grid
-
-    def _update_kpoints_distance(self, parameters):
-        kpoints_distance = parameters["kpoints_distance"] if self.has_pbc else 100.0
-        self._defaults["kpoints_distance"] = kpoints_distance
-        self.kpoints_distance = self._defaults["kpoints_distance"]
 
     def _set_pw_parameters(self, pw_parameters):
         system_params: dict = pw_parameters.get("SYSTEM", {})
