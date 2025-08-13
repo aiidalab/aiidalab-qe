@@ -243,7 +243,7 @@ class GlobalResourceSettingsModel(
 
         # in the test, we need to consider one more blocker,
         # even if empty:
-        if blocker:
+        if blocker and warning_in_blockers:
             yield (warning_in_blockers)
 
         # Check if the QEAppComputationalResourcesWidget is used

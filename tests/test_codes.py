@@ -58,7 +58,7 @@ def test_check_blockers(app: WizardApp):
     dos_value = dos_code.selected
     dos_code.selected = None
     model.update_blockers()
-    assert len(model.blockers) == 2
+    assert len(model.blockers) == 1
 
     # set dos code back will remove the blocker
     dos_code.selected = dos_value
