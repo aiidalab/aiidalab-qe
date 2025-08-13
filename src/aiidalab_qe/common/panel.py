@@ -309,6 +309,10 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
             (code_widget.code_selection.code_select_dropdown, "options"),
         )
         ipw.link(
+            (code_model, "warning"),
+            (code_widget.code_selection.output, "value"),
+        )
+        ipw.link(
             (code_model, "selected"),
             (code_widget, "value"),
         )

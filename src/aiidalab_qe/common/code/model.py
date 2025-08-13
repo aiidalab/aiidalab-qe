@@ -25,6 +25,9 @@ class CodeModel(Model):
     allow_hidden_codes = tl.Bool(False)
     allow_disabled_computers = tl.Bool(False)
     override = tl.Bool(False)
+    warning = tl.Unicode(allow_none=True)
+
+    _WARNING_TEMPLATE = "<span style='color: red;'>{warning}</span>"
 
     def __init__(
         self,
@@ -64,11 +67,15 @@ class CodeModel(Model):
             self.options = self._get_codes(user_email)
             if default_code:
                 try:
-                    default_code = orm.load_code(default_code).uuid
+                    selected = orm.load_code(default_code).uuid
                 except NotExistent:
-                    # TODO block app with user warning
-                    default_code = None
-            self.selected = default_code or self.first_option
+                    selected = None
+                    self.warning = self._WARNING_TEMPLATE.format(
+                        warning=f"Code '{default_code}' not found"
+                    )
+            else:
+                selected = self.first_option
+            self.selected = selected
 
     def get_model_state(self) -> dict:
         return {
