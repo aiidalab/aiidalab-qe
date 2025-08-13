@@ -237,7 +237,7 @@ class GlobalResourceSettingsModel(
                     if not code_model.is_ready:
                         blocker = True
                         yield message.format(
-                            property=name,
+                            property=identifier,
                             code=code_model.description,
                         )
 
