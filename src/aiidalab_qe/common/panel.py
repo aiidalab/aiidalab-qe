@@ -256,9 +256,9 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
             if code_model.is_ready
         }
 
-    def set_selected_codes(self, code_data=DEFAULT["codes"]):
+    def set_selected_codes(self, code_data=None):
         for identifier, code_model in self.get_models():
-            if identifier in code_data:
+            if identifier in (code_data or self.default_codes):
                 code_model.set_model_state(code_data[identifier])
 
     def _check_blockers(self):
