@@ -275,7 +275,8 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
         super().__init__(model, **kwargs)
         self.code_widgets = {}
 
-    def register_code(self, code_model: CodeModel):
+    def register_code_trait_callbacks(self, code_model: CodeModel):
+        """Registers event handlers on code model traits."""
         if code_model.default_calc_job_plugin == "quantumespresso.pw":
             code_model.observe(
                 self._on_code_resource_change,

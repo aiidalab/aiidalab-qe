@@ -63,7 +63,7 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
     def build_global_codes(self, codes: PluginCodes):
         for identifier, code_models in codes.items():
             for _, code_model in code_models.items():
-                self.register_code(code_model)
+                self.register_code_trait_callbacks(code_model)
                 base_code_model = self._model.add_global_model(identifier, code_model)
                 if base_code_model is not None:
                     base_code_model.observe(
@@ -74,7 +74,7 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
                         self._on_code_selection_change,
                         "selected",
                     )
-                    self.register_code(base_code_model)
+                    self.register_code_trait_callbacks(base_code_model)
                     if base_code_model.default_calc_job_plugin == "quantumespresso.pw":
                         base_code_model.observe(
                             self._on_pw_code_resource_change,
