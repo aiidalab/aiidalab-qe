@@ -6,6 +6,10 @@ from aiidalab_qe.app.configuration.advanced.convergence import (
     ConvergenceConfigurationSettingsModel,
     ConvergenceConfigurationSettingsPanel,
 )
+from aiidalab_qe.app.configuration.advanced.general import (
+    GeneralConfigurationSettingsModel,
+    GeneralConfigurationSettingsPanel,
+)
 
 
 def test_advanced_default():
@@ -29,6 +33,24 @@ def test_advanced_default():
     assert smearing_model.type == "cold"
     assert smearing_model.degauss == 0.0275
     assert convergence_model.kpoints_distance == 0.3
+
+
+def test_advanced_general_settings():
+    """Test General settings."""
+    model = GeneralConfigurationSettingsModel()
+    _ = GeneralConfigurationSettingsPanel(model=model)
+
+    assert model.total_charge == 0.0
+    assert model.van_der_waals == "none"
+
+    # Check reset
+    model.total_charge = 1.0
+    model.van_der_waals = "dft-d3"
+
+    model.reset()
+
+    assert model.total_charge == 0.0
+    assert model.van_der_waals == "none"
 
 
 def test_advanced_convergence_settings(generate_structure_data):
@@ -139,20 +161,6 @@ def test_advanced_smearing_settings():
 
     assert smearing_model.type == "cold"
     assert smearing_model.degauss == 0.0275
-
-
-def test_advanced_tot_charge_settings():
-    """Test TotCharge widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    assert model.total_charge == 0.0
-
-    # Check reset
-    model.total_charge = 1.0
-    model.reset()
-
-    assert model.total_charge == 0.0
 
 
 def test_advanced_hubbard_settings(generate_structure_data):

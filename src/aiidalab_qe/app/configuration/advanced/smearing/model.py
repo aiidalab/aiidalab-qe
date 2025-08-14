@@ -48,6 +48,3 @@ class SmearingConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
         with self.hold_trait_notifications():
             self.type = self._get_default("type")
             self.degauss = self._get_default("degauss")
-
-    def _get_default(self, trait):
-        return self._defaults.get(trait, self.traits()[trait].default_value)

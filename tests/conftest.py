@@ -476,8 +476,9 @@ def submit_app_generator(
         # Advanced settings
         advanced_model = app.configure_model.get_model("advanced")
 
-        advanced_model.total_charge = tot_charge
-        advanced_model.van_der_waals = vdw_corr
+        general_model = advanced_model.get_model("general")
+        general_model.total_charge = tot_charge
+        general_model.van_der_waals = vdw_corr
 
         convergence_model = advanced_model.get_model("convergence")
         convergence_model.electron_maxstep = electron_maxstep

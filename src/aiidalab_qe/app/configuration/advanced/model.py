@@ -5,20 +5,18 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
 from aiidalab_qe.common.panel import ConfigurationSettingsModel
 from aiidalab_qe.setup.pseudos import PseudoFamily
 from aiidalab_qe.utils import get_pseudo_info
 
 from .convergence import ConvergenceConfigurationSettingsModel
+from .general import GeneralConfigurationSettingsModel
 from .hubbard import HubbardConfigurationSettingsModel
 from .magnetization import MagnetizationConfigurationSettingsModel
 from .pseudos import PseudosConfigurationSettingsModel
 from .smearing import SmearingConfigurationSettingsModel
 from .subsettings import AdvancedCalculationSubSettingsModel
-
-DEFAULT = t.cast(dict, DEFAULT_PARAMETERS)
 
 
 class AdvancedConfigurationSettingsModel(
@@ -42,33 +40,15 @@ class AdvancedConfigurationSettingsModel(
     electronic_type = tl.Unicode()
     spin_orbit = tl.Unicode()
 
-    clean_workdir = tl.Bool(DEFAULT["advanced"]["clean_workdir"])
-    total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
-    van_der_waals_options = tl.List(
-        trait=tl.List(tl.Unicode()),
-        default_value=[
-            ["None", "none"],
-            ["Grimme-D3", "dft-d3"],
-            ["Grimme-D3BJ", "dft-d3bj"],
-            ["Grimme-D3M", "dft-d3m"],
-            ["Grimme-D3MBJ", "dft-d3mbj"],
-            ["Tkatchenko-Scheffler", "ts-vdw"],
-        ],
-    )
-    van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
-
     include = True
-
-    dftd3_version = {
-        "dft-d3": 3,
-        "dft-d3bj": 4,
-        "dft-d3m": 5,
-        "dft-d3mbj": 6,
-    }
 
     def get_model_state(self):
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
+        general = t.cast(
+            GeneralConfigurationSettingsModel,
+            self.get_model("general"),
+        )
         convergence = t.cast(
             ConvergenceConfigurationSettingsModel,
             self.get_model("convergence"),
@@ -78,7 +58,7 @@ class AdvancedConfigurationSettingsModel(
             "pw": {
                 "parameters": {
                     "SYSTEM": {
-                        "tot_charge": self.total_charge,
+                        "tot_charge": general.total_charge,
                     },
                     "CONTROL": {
                         "forc_conv_thr": convergence.forc_conv_thr,
@@ -91,7 +71,7 @@ class AdvancedConfigurationSettingsModel(
                     },
                 }
             },
-            "clean_workdir": self.clean_workdir,
+            "clean_workdir": general.clean_workdir,
             "kpoints_distance": convergence.kpoints_distance,
             "optimization_maxsteps": convergence.optimization_maxsteps,
         }
@@ -127,12 +107,12 @@ class AdvancedConfigurationSettingsModel(
             parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = pseudos.ecutwfc
             parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = pseudos.ecutrho
 
-        if self.van_der_waals in ["none", "ts-vdw"]:
-            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = self.van_der_waals
+        if general.van_der_waals in ["none", "ts-vdw"]:
+            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = general.van_der_waals
         else:
             parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
             parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] = (
-                self.dftd3_version[self.van_der_waals]
+                general.dftd3_version[general.van_der_waals]
             )
 
         smearing = t.cast(
@@ -240,14 +220,6 @@ class AdvancedConfigurationSettingsModel(
             if starting_ns_eigenvalue is not None:
                 hubbard.set_active_eigenvalues(starting_ns_eigenvalue)
 
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.total_charge = self._get_default("total_charge")
-            self.van_der_waals = self._get_default("van_der_waals")
-
-    def _get_default(self, trait):
-        return self._defaults.get(trait, self.traits()[trait].default_value)
-
     def _link_model(self, model: AdvancedCalculationSubSettingsModel):
         ipw.dlink(
             (self, "loaded_from_process"),
@@ -266,6 +238,10 @@ class AdvancedConfigurationSettingsModel(
 
         num_atoms = len(self.input_structure.sites) if self.input_structure else 1
 
+        general = t.cast(
+            GeneralConfigurationSettingsModel,
+            self.get_model("general"),
+        )
         convergence = t.cast(
             ConvergenceConfigurationSettingsModel,
             self.get_model("convergence"),
@@ -277,10 +253,13 @@ class AdvancedConfigurationSettingsModel(
         convergence.mixing_mode = electron_params.get("mixing_mode", "plain")
         convergence.mixing_beta = electron_params.get("mixing_beta", 0.4)
 
-        self.total_charge = system_params.get("tot_charge", 0)
+        general.total_charge = system_params.get("tot_charge", 0)
+
+        # NOTE: this is here for backwards compatability, as SYSTEM parameters
+        # are part of the advanced input namespace.
         self.spin_orbit = "soc" if "lspinorb" in system_params else "wo_soc"
 
-        self.van_der_waals = self.dftd3_version.get(
+        general.van_der_waals = general.dftd3_version.get(
             system_params.get("dftd3_version", ""),
             system_params.get("vdw_corr", "none"),
         )

@@ -139,6 +139,3 @@ class ConvergenceConfigurationSettingsModel(
             mesh_grid = "Please select a number higher than 0.0"
         self._defaults["mesh_grid"] = mesh_grid
         self.mesh_grid = self._get_default("mesh_grid")
-
-    def _get_default(self, trait):
-        return self._defaults.get(trait, self.traits()[trait].default_value)

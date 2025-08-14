@@ -58,9 +58,6 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
             self.pdos_degauss = self._get_default("pdos_degauss")
             self.energy_grid_step = self._get_default("energy_grid_step")
 
-    def _get_default(self, trait):
-        return self._defaults.get(trait, self.traits()[trait].default_value)
-
     def _update_kpoints_mesh(self, _=None):
         if not self.has_structure:
             mesh_grid = ""

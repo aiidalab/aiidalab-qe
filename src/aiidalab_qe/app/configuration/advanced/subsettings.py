@@ -36,6 +36,9 @@ class AdvancedCalculationSubSettingsModel(
         """Resets the model to present defaults."""
         raise NotImplementedError()
 
+    def _get_default(self, trait):
+        return self._defaults.get(trait, self.traits()[trait].default_value)
+
 
 M = t.TypeVar("M", bound=AdvancedCalculationSubSettingsModel)
 
