@@ -92,7 +92,4 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
             panel = entry["panel"]
             model = entry["model"]()
             viewer_model.add_model(identifier, model)
-            self.panels[identifier] = panel(
-                identifier=identifier,
-                model=model,
-            )
+            self.panels[identifier] = panel(model=model)

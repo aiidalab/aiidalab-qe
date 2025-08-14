@@ -83,8 +83,8 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         super()._render()
 
         self.process_label = ipw.Text(
-            description="Label:",
-            layout=ipw.Layout(width="auto", indent="0px"),
+            description="Label",
+            layout=ipw.Layout(width="auto"),
         )
         ipw.link(
             (self._model, "process_label"),
@@ -92,7 +92,7 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         )
         self.process_description = ipw.Textarea(
             description="Description",
-            layout=ipw.Layout(width="auto", indent="0px"),
+            layout=ipw.Layout(width="auto"),
         )
         ipw.link(
             (self._model, "process_description"),

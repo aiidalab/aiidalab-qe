@@ -33,11 +33,11 @@ codes:
         nodes: 1
         ntasks_per_node: 1
       pw:
-        cpus: 1
+        cpus: 2
         cpus_per_task: 1
         max_wallclock_seconds: 43200
         nodes: 1
-        ntasks_per_node: 1
+        ntasks_per_node: 2
         parallelization: {}
     override: false
   global:
@@ -76,11 +76,11 @@ codes:
         nodes: 1
         ntasks_per_node: 1
       pw:
-        cpus: 1
+        cpus: 2
         cpus_per_task: 1
         max_wallclock_seconds: 43200
         nodes: 1
-        ntasks_per_node: 1
+        ntasks_per_node: 2
         parallelization: {}
     override: false
 pdos:

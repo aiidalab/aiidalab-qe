@@ -275,6 +275,27 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
         super().__init__(model, **kwargs)
         self.code_widgets = {}
 
+    def register_code(self, code_model: CodeModel):
+        if code_model.default_calc_job_plugin == "quantumespresso.pw":
+            code_model.observe(
+                self._on_code_resource_change,
+                [
+                    "parallelization_override",
+                    "npool",
+                ],
+            )
+        code_model.observe(
+            self._on_code_resource_change,
+            [
+                "selected",
+                "num_cpus",
+                "num_nodes",
+                "ntasks_per_node",
+                "cpus_per_task",
+                "max_wallclock_seconds",
+            ],
+        )
+
     def _on_code_resource_change(self, _):
         pass
 
@@ -349,24 +370,6 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
                 (code_model, "npool"),
                 (code_widget.parallelization.npool, "value"),
             )
-            code_model.observe(
-                self._on_code_resource_change,
-                [
-                    "parallelization_override",
-                    "npool",
-                ],
-            )
-        code_model.observe(
-            self._on_code_resource_change,
-            [
-                "selected",
-                "num_cpus",
-                "num_nodes",
-                "ntasks_per_node",
-                "cpus_per_task",
-                "max_wallclock_seconds",
-            ],
-        )
         code_widget.code_selection.code_select_dropdown.observe(
             self._on_code_options_change,
             "options",

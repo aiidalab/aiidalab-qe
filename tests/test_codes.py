@@ -26,20 +26,22 @@ def test_set_selected_codes(submit_app_generator):
     assert model.get_selected_codes() == app.submit_model.get_selected_codes()
 
 
-def test_update_codes_display(app: WizardApp):
-    """Test update_codes_display method.
-    If the workchain property is not selected, the related code should be hidden.
-    """
-    app.submit_step.render()
-    model = app.submit_model
-    global_model = model.get_model("global")
-    global_model.update_active_codes()
+def test_global_code_toggle(app: WizardApp):
+    """Test that global codes toggle on/off based on their activity."""
+    global_resources_model = app.submit_model.get_model("global")
     global_resources = app.submit_step.global_resources
-    assert global_resources.code_widgets["dos"].layout.display == "none"
-    model.input_parameters = {"workchain": {"properties": ["pdos"]}}
-    global_model.update_active_codes()
-    assert global_model.get_model("quantumespresso__dos").is_active is True
+    global_resources.render()
+
+    dos_code_model = global_resources_model.get_model("quantumespresso__dos")
+    assert dos_code_model.is_active is False
+
+    global_resources_model.input_parameters = {"workchain": {"properties": ["pdos"]}}
+    assert dos_code_model.is_active is True
     assert global_resources.code_widgets["dos"].layout.display == "block"
+
+    global_resources_model.input_parameters = {"workchain": {"properties": []}}
+    assert dos_code_model.is_active is False
+    assert global_resources.code_widgets["dos"].layout.display == "none"
 
 
 def test_check_blockers(app: WizardApp):

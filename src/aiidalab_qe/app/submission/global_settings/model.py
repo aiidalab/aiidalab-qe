@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import traitlets as tl
 
 from aiida import orm
@@ -208,6 +209,9 @@ class GlobalResourceSettingsModel(
         return self.input_parameters.get("workchain", {}).get("properties", [])
 
     def _check_blockers(self):
+        if not self.input_parameters:
+            return
+
         warning_in_blockers = (
             """
              <b>Please note</b> that, if this blocker is shown for an already finished workflow,
@@ -252,7 +256,8 @@ class GlobalResourceSettingsModel(
             if not code_model.is_ready:
                 continue
             if not issubclass(
-                code_model.code_widget_class, QEAppComputationalResourcesWidget
+                code_model.code_widget_class,
+                QEAppComputationalResourcesWidget,
             ):
                 yield (
                     f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {identifier}."
@@ -306,8 +311,6 @@ class GlobalResourceSettingsModel(
         `int`
             The estimated minimum number of CPUs required.
         """
-        import numpy as np
-
         return int(
             np.ceil(
                 num_cpus0

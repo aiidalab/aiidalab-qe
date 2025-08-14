@@ -230,9 +230,8 @@ class SubmissionStepModel(
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            parameters=shallow_copy_nested_dict(
-                parameters
-            ),  # use shallow copy to avoid workflow mute these parameters.
+            # Use shallow copy to avoid parameter mutation by the workflow
+            parameters=shallow_copy_nested_dict(parameters),
         )
 
         codes = parameters["codes"]["global"]["codes"]
