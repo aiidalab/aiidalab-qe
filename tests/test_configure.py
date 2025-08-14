@@ -3,16 +3,6 @@ from aiidalab_qe.app.configuration.model import ConfigurationStepModel
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 
-def test_protocol():
-    model = ConfigurationStepModel()
-    _ = ConfigureQeAppWorkChainStep(model=model)
-    workchain_model = model.get_model("workchain")
-    advanced_model = model.get_model("advanced")
-    workchain_model.protocol = "fast"
-    assert advanced_model.protocol == "fast"
-    assert advanced_model.kpoints_distance == 0.3
-
-
 def test_get_configuration_parameters():
     model = ConfigurationStepModel()
     _ = ConfigureQeAppWorkChainStep(model=model)

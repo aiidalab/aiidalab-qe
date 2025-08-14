@@ -20,6 +20,10 @@ class ConvergenceConfigurationSettingsPanel(
             self._on_protocol_change,
             "protocol",
         )
+        self._model.observe(
+            self._on_kpoints_distance_change,
+            "kpoints_distance",
+        )
 
     def render(self):
         if self.rendered:
@@ -91,6 +95,35 @@ class ConvergenceConfigurationSettingsPanel(
             (self.forc_conv_thr, "step"),
         )
 
+        # Kpoints setting
+        self.kpoints_distance = ipw.BoundedFloatText(
+            min=0.0,
+            step=0.05,
+            description="K-points distance:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "kpoints_distance"),
+            (self.kpoints_distance, "value"),
+        )
+        ipw.dlink(
+            (self._model, "input_structure"),
+            (self.kpoints_distance, "disabled"),
+            lambda _: not self._model.has_pbc,
+        )
+        self.mesh_grid = ipw.HTML(layout=ipw.Layout(margin="0 0 0 10px"))
+        ipw.dlink(
+            (self._model, "mesh_grid"),
+            (self.mesh_grid, "value"),
+        )
+        kpoint_row = ipw.HBox(
+            children=[
+                HBoxWithUnits(self.kpoints_distance, "Å<sup>-1</sup>"),
+                self.mesh_grid,
+            ],
+            layout=ipw.Layout(align_items="center"),
+        )
+
         self.electron_maxstep = ipw.BoundedIntText(
             min=20,
             max=1000,
@@ -147,7 +180,6 @@ class ConvergenceConfigurationSettingsPanel(
         )
 
         self.children = [
-            ipw.HTML("<h2>Convergence</h2>"),
             self.help_message,
             ipw.HTML("<h4>Threshold for SCF cycles</h4>"),
             ipw.VBox(
@@ -172,6 +204,19 @@ class ConvergenceConfigurationSettingsPanel(
                 ]
             ),
             HBoxWithUnits(self.forc_conv_thr, "Ry/Bohr"),
+            ipw.HTML("<h4>K-points</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    The k-points mesh density of the SCF calculation is set by the
+                    <b>protocol</b>.
+                    <br>
+                    The value below represents the maximum distance between k-points
+                    in each direction of reciprocal space.
+                    <br>
+                    Smaller is more accurate and costly.
+                </div>
+            """),
+            kpoint_row,
             ipw.HTML("<h4>Maximum cycle steps</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
@@ -199,3 +244,6 @@ class ConvergenceConfigurationSettingsPanel(
 
     def _on_protocol_change(self, _):
         self.refresh(specific="protocol")
+
+    def _on_kpoints_distance_change(self, _):
+        self.refresh(specific="mesh")

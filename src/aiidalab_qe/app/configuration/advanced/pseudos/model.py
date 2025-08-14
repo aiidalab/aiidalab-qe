@@ -27,6 +27,7 @@ class PseudosConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
+    title = "Pseudopotentials"
     identifier = "pseudos"
 
     dependencies = [
@@ -366,7 +367,7 @@ class PseudosConfigurationSettingsModel(
                     "PseudoDojo stringent",
                 ],
             )
-        return self._defaults.get(trait, self.traits()[trait].default_value)
+        return super()._get_default(trait)
 
     def _get_default_dictionary(self):
         return deepcopy(self._defaults["dictionary"])

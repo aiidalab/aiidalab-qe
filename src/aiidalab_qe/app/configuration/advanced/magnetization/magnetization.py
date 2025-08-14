@@ -50,8 +50,6 @@ class MagnetizationConfigurationSettingsPanel(
         if self.rendered:
             return
 
-        self.header = ipw.HTML("<h2>Magnetization</h2>")
-
         self.unit = "µ<sub>B</sub>"
 
         self.insulator_help = ipw.HTML("""
@@ -187,23 +185,19 @@ class MagnetizationConfigurationSettingsPanel(
         if self._model.spin_type == "none":
             children = []
         else:
-            children = [self.header]
             if self._model.electronic_type == "metal":
-                children.extend(
-                    [
-                        self.magnetization_type,
-                        self.magnetization_type_help,
-                        self.container,
-                    ]
-                )
+                children = [
+                    self.magnetization_type,
+                    self.magnetization_type_help,
+                    self.container,
+                ]
+
             else:
-                children.extend(
-                    [
-                        self.insulator_help,
-                        self.magnetization_type_help,
-                        self.tot_magnetization_with_unit,
-                    ],
-                )
+                children = [
+                    self.insulator_help,
+                    self.magnetization_type_help,
+                    self.tot_magnetization_with_unit,
+                ]
         self.children = children
 
     def _toggle_widgets(self):

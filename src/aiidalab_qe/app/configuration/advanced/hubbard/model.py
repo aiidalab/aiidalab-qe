@@ -16,6 +16,7 @@ class HubbardConfigurationSettingsModel(
     AdvancedCalculationSubSettingsModel,
     HasInputStructure,
 ):
+    title = "Hubbard (DFT+U)"
     identifier = "hubbard"
 
     dependencies = [

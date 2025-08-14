@@ -2,6 +2,14 @@ from aiidalab_qe.app.configuration.advanced import (
     AdvancedConfigurationSettingsModel,
     AdvancedConfigurationSettingsPanel,
 )
+from aiidalab_qe.app.configuration.advanced.convergence import (
+    ConvergenceConfigurationSettingsModel,
+    ConvergenceConfigurationSettingsPanel,
+)
+from aiidalab_qe.app.configuration.advanced.general import (
+    GeneralConfigurationSettingsModel,
+    GeneralConfigurationSettingsPanel,
+)
 
 
 def test_advanced_default():
@@ -10,28 +18,43 @@ def test_advanced_default():
     _ = AdvancedConfigurationSettingsPanel(model=model)
 
     smearing_model = model.get_model("smearing")
+    convergence_model = model.get_model("convergence")
 
     model.protocol = "fast"
     smearing_model.type = "methfessel-paxton"
     smearing_model.degauss = 0.03
-    model.kpoints_distance = 0.22
+    convergence_model.kpoints_distance = 0.22
 
     # Reset values to default w.r.t protocol
     model.reset()
     smearing_model.reset()
+    convergence_model.reset()
 
     assert smearing_model.type == "cold"
     assert smearing_model.degauss == 0.0275
-    assert model.kpoints_distance == 0.3
+    assert convergence_model.kpoints_distance == 0.3
+
+
+def test_advanced_general_settings():
+    """Test General settings."""
+    model = GeneralConfigurationSettingsModel()
+    _ = GeneralConfigurationSettingsPanel(model=model)
+
+    assert model.total_charge == 0.0
+    assert model.van_der_waals == "none"
+
+    # Check reset
+    model.total_charge = 1.0
+    model.van_der_waals = "dft-d3"
+
+    model.reset()
+
+    assert model.total_charge == 0.0
+    assert model.van_der_waals == "none"
 
 
 def test_advanced_convergence_settings(generate_structure_data):
     """Test Convergence Settings."""
-    from aiidalab_qe.app.configuration.advanced.convergence import (
-        ConvergenceConfigurationSettingsModel,
-        ConvergenceConfigurationSettingsPanel,
-    )
-
     model = ConvergenceConfigurationSettingsModel()
     _ = ConvergenceConfigurationSettingsPanel(model=model)
 
@@ -48,6 +71,7 @@ def test_advanced_convergence_settings(generate_structure_data):
     assert model.etot_conv_thr_step == 1e-5
     assert model.forc_conv_thr == 1e-3
     assert model.forc_conv_thr_step == 1e-4
+    assert model.kpoints_distance == 0.3
     assert model.electron_maxstep == 80
     assert model.optimization_maxsteps == 50
 
@@ -55,6 +79,61 @@ def test_advanced_convergence_settings(generate_structure_data):
     model.scf_conv_thr = 0.1
     model.reset()
     assert model.scf_conv_thr == 4e-10
+
+
+def test_advanced_kpoints_settings():
+    """Test kpoints setting of advanced setting widget."""
+    model = ConvergenceConfigurationSettingsModel()
+    _ = ConvergenceConfigurationSettingsPanel(model=model)
+
+    model.protocol = "balanced"
+    assert model.kpoints_distance == 0.15
+
+    model.protocol = "fast"
+    assert model.kpoints_distance == 0.3
+
+    # Check reset
+    model.kpoints_distance = 0.1
+    model.reset()
+
+    assert model.protocol == "fast"  # reset does not apply to protocol
+    assert model.kpoints_distance == 0.3
+
+
+def test_advanced_kpoints_mesh(generate_structure_data):
+    """Test Mesh Grid HTML widget."""
+    model = ConvergenceConfigurationSettingsModel()
+    _ = ConvergenceConfigurationSettingsPanel(model=model)
+
+    structure = generate_structure_data(name="silicon")
+    model.input_structure = structure
+
+    assert model.mesh_grid == "Mesh [14, 14, 14]"
+
+    # change protocol
+    model.protocol = "fast"
+    assert model.mesh_grid == "Mesh [7, 7, 7]"
+
+
+def test_advanced_molecule_settings(generate_structure_data):
+    """Test kpoints setting of advanced setting widget."""
+    model = ConvergenceConfigurationSettingsModel()
+    _ = ConvergenceConfigurationSettingsPanel(model=model)
+
+    # Create molecule
+    structure = generate_structure_data(name="H2O", pbc=(False, False, False))
+    model.input_structure = structure
+
+    # Confirm the value of kpoints_distance is fixed
+    assert model.kpoints_distance == 100.0
+
+    model.protocol = "fast"
+    assert model.kpoints_distance == 100.0
+
+    # Check that reset is done w.r.t the molecule structure
+    model.reset()
+    assert model.protocol == "fast"  # reset does not apply to protocol
+    assert model.kpoints_distance == 100
 
 
 def test_advanced_smearing_settings():
@@ -82,75 +161,6 @@ def test_advanced_smearing_settings():
 
     assert smearing_model.type == "cold"
     assert smearing_model.degauss == 0.0275
-
-
-def test_advanced_kpoints_settings():
-    """Test kpoints setting of advanced setting widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    model.protocol = "balanced"
-    assert model.kpoints_distance == 0.15
-
-    model.protocol = "fast"
-    assert model.kpoints_distance == 0.3
-
-    # Check reset
-    model.kpoints_distance = 0.1
-    model.reset()
-
-    assert model.protocol == "fast"  # reset does not apply to protocol
-    assert model.kpoints_distance == 0.3
-
-
-def test_advanced_molecule_settings(generate_structure_data):
-    """Test kpoints setting of advanced setting widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    # Create molecule
-    structure = generate_structure_data(name="H2O", pbc=(False, False, False))
-    model.input_structure = structure
-
-    # Confirm the value of kpoints_distance is fixed
-    assert model.kpoints_distance == 100.0
-
-    model.protocol = "fast"
-    assert model.kpoints_distance == 100.0
-
-    # Check that reset is done w.r.t the molecule structure
-    model.reset()
-    assert model.protocol == "fast"  # reset does not apply to protocol
-    assert model.kpoints_distance == 100
-
-
-def test_advanced_tot_charge_settings():
-    """Test TotCharge widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    assert model.total_charge == 0.0
-
-    # Check reset
-    model.total_charge = 1.0
-    model.reset()
-
-    assert model.total_charge == 0.0
-
-
-def test_advanced_kpoints_mesh(generate_structure_data):
-    """Test Mesh Grid HTML widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    structure = generate_structure_data(name="silicon")
-    model.input_structure = structure
-
-    assert model.mesh_grid == "Mesh [14, 14, 14]"
-
-    # change protocol
-    model.protocol = "fast"
-    assert model.mesh_grid == "Mesh [7, 7, 7]"
 
 
 def test_advanced_hubbard_settings(generate_structure_data):
