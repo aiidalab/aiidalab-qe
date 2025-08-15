@@ -166,6 +166,7 @@ class AdvancedConfigurationSettingsModel(
             pseudo_family = PseudoFamily.from_string(pseudo_family_string)
             library = pseudo_family.library
             accuracy = pseudo_family.accuracy
+            pseudos.functional = pseudo_family.functional
             pseudos.library = f"{library} {accuracy}"
             pseudos.family = pseudo_family_string
         else:
@@ -176,11 +177,12 @@ class AdvancedConfigurationSettingsModel(
             pseudos.family = None
             pseudos.show_upload_warning = True
 
+        pseudos.functionals = [pseudos.functional] * len(pseudos.dictionary)
+
         if "pseudos" in parameters["pw"]:
             pseudos.dictionary = parameters["pw"]["pseudos"]
             pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
             pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
-            pseudos.functionals = [pseudos.functional] * len(pseudos.dictionary)
 
         convergence = t.cast(
             ConvergenceConfigurationSettingsModel,

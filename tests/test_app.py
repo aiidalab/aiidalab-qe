@@ -8,6 +8,7 @@ def test_reload_and_reset(generate_qeapp_workchain):
         spin_type="collinear",
         run_bands=True,
         run_pdos=False,
+        functional="PBE",
     )
 
     # Test if the app can be loaded from process
@@ -16,9 +17,11 @@ def test_reload_and_reset(generate_qeapp_workchain):
     assert app.configure_model.get_model("workchain").spin_type == "collinear"
     assert app.configure_model.get_model("bands").include is True
     assert app.configure_model.get_model("pdos").include is False
-    advanced_model = app.configure_model.get_model("advanced")
-    assert len(advanced_model.get_model("pseudos").dictionary) > 0
     assert app.configure_step.state == app.configure_step.State.SUCCESS
+    advanced_model = app.configure_model.get_model("advanced")
+    pseudos_model = advanced_model.get_model("pseudos")
+    assert len(pseudos_model.dictionary) > 0
+    assert pseudos_model.functional == "PBE"
 
 
 def test_selecting_new_structure_unconfirms_model(generate_structure_data):
