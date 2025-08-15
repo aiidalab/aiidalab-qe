@@ -756,6 +756,7 @@ def generate_qeapp_workchain(
         magnetization_type="starting_magnetization",  # Options: "starting_magnetization", "tot_magnetization"
         initial_magnetic_moments=0.0,
         tot_magnetization=0.0,
+        functional="PBEsol",
     ):
         from copy import deepcopy
 
@@ -808,6 +809,9 @@ def generate_qeapp_workchain(
                 )
             else:
                 magnetization_model.total = tot_magnetization
+
+        pseudos = advanced_model.get_model("pseudos")
+        pseudos.functional = functional
 
         app.configure_model.confirm()
 
