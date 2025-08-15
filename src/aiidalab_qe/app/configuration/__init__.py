@@ -9,6 +9,11 @@ import ipywidgets as ipw
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.app.utils.plugin_manager import (
+    DEFAULT_PLUGIN_CONFIG_SOURCE,
+    PluginManager,
+    is_package_installed,
+)
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import (
     ConfigurationSettingsModel,
@@ -106,7 +111,6 @@ class ConfigureQeAppWorkChainStep(
             description="Plugin store",
             link="plugin_manager.ipynb",
             icon="puzzle-piece",  # More intuitive icon
-            button_style="primary",  # Keeps it prominent
             tooltip="Browse and install additional plugins from the Plugin Store",
         )
 
@@ -211,12 +215,6 @@ class ConfigureQeAppWorkChainStep(
             self.state = self.State.INIT
 
     def _fetch_not_installed_property(self, plugin_config_source=None):
-        from aiidalab_qe.app.utils.plugin_manager import (
-            DEFAULT_PLUGIN_CONFIG_SOURCE,
-            PluginManager,
-            is_package_installed,
-        )
-
         self.not_installed_property_children = []
 
         plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE

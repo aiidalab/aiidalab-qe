@@ -213,6 +213,8 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
     warning_messages = tl.Unicode("")
 
     def __init__(self, *args, **kwargs):
+        self.default_codes: dict[str, dict] = kwargs.pop("default_codes", {})
+
         super().__init__(*args, **kwargs)
 
         # Used by the code-setup thread to fetch code options
@@ -220,11 +222,20 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
 
     def add_model(self, identifier, model):
         super().add_model(identifier, model)
-        model.update(self.DEFAULT_USER_EMAIL)
+        code_key = model.default_calc_job_plugin.split(".")[-1]
+        model.update(
+            self.DEFAULT_USER_EMAIL,
+            default_code=self.default_codes.get(code_key, {}).get("code"),
+        )
 
     def refresh_codes(self):
         for _, code_model in self.get_models():
-            code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
+            code_key = code_model.default_calc_job_plugin.split(".")[-1]
+            code_model.update(
+                self.DEFAULT_USER_EMAIL,
+                default_code=self.default_codes.get(code_key, {}).get("code"),
+                refresh=True,
+            )
 
     def get_model_state(self):
         return {
@@ -245,9 +256,9 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
             if code_model.is_ready
         }
 
-    def set_selected_codes(self, code_data=DEFAULT["codes"]):
+    def set_selected_codes(self, code_data=None):
         for identifier, code_model in self.get_models():
-            if identifier in code_data:
+            if identifier in (code_data or self.default_codes):
                 code_model.set_model_state(code_data[identifier])
 
     def _check_blockers(self):
@@ -263,6 +274,28 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs)
         self.code_widgets = {}
+
+    def register_code_trait_callbacks(self, code_model: CodeModel):
+        """Registers event handlers on code model traits."""
+        if code_model.default_calc_job_plugin == "quantumespresso.pw":
+            code_model.observe(
+                self._on_code_resource_change,
+                [
+                    "parallelization_override",
+                    "npool",
+                ],
+            )
+        code_model.observe(
+            self._on_code_resource_change,
+            [
+                "selected",
+                "num_cpus",
+                "num_nodes",
+                "ntasks_per_node",
+                "cpus_per_task",
+                "max_wallclock_seconds",
+            ],
+        )
 
     def _on_code_resource_change(self, _):
         pass
@@ -302,6 +335,10 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
             (code_widget.code_selection.code_select_dropdown, "options"),
         )
         ipw.link(
+            (code_model, "warning"),
+            (code_widget.code_selection.output, "value"),
+        )
+        ipw.link(
             (code_model, "selected"),
             (code_widget, "value"),
         )
@@ -334,24 +371,6 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
                 (code_model, "npool"),
                 (code_widget.parallelization.npool, "value"),
             )
-            code_model.observe(
-                self._on_code_resource_change,
-                [
-                    "parallelization_override",
-                    "npool",
-                ],
-            )
-        code_model.observe(
-            self._on_code_resource_change,
-            [
-                "selected",
-                "num_cpus",
-                "num_nodes",
-                "ntasks_per_node",
-                "cpus_per_task",
-                "max_wallclock_seconds",
-            ],
-        )
         code_widget.code_selection.code_select_dropdown.observe(
             self._on_code_options_change,
             "options",

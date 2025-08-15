@@ -60,9 +60,10 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
             if code_model.is_active:
                 self._toggle_code(code_model)
 
-    def set_up_codes(self, codes: PluginCodes):
+    def build_global_codes(self, codes: PluginCodes):
         for identifier, code_models in codes.items():
             for _, code_model in code_models.items():
+                self.register_code_trait_callbacks(code_model)
                 base_code_model = self._model.add_global_model(identifier, code_model)
                 if base_code_model is not None:
                     base_code_model.observe(
@@ -73,6 +74,18 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
                         self._on_code_selection_change,
                         "selected",
                     )
+                    self.register_code_trait_callbacks(base_code_model)
+                    if base_code_model.default_calc_job_plugin == "quantumespresso.pw":
+                        base_code_model.observe(
+                            self._on_pw_code_resource_change,
+                            [
+                                "num_cpus",
+                                "num_nodes",
+                                "ntasks_per_node",
+                                "cpus_per_task",
+                                "max_wallclock_seconds",
+                            ],
+                        )
         self._model.update_global_codes()
 
     def reset(self):
@@ -80,6 +93,7 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
 
     def _on_input_parameters_change(self, _):
         self._model.update_active_codes()
+        self._model.update_blockers()
 
     def _on_input_structure_change(self, _):
         self._model.check_resources()
@@ -105,17 +119,6 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
         code_widget: QEAppComputationalResourcesWidget,
     ):
         super()._render_code_widget(code_model, code_widget)
-        if code_model.default_calc_job_plugin == "quantumespresso.pw":
-            code_model.observe(
-                self._on_pw_code_resource_change,
-                [
-                    "num_cpus",
-                    "num_nodes",
-                    "ntasks_per_node",
-                    "cpus_per_task",
-                    "max_wallclock_seconds",
-                ],
-            )
 
         def toggle_widget(_=None, model=code_model, widget=code_widget):
             widget = self.code_widgets[model.name]

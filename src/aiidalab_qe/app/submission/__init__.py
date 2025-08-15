@@ -52,7 +52,9 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
             "input_parameters",
         )
 
-        global_resources_model = GlobalResourceSettingsModel()
+        global_resources_model = GlobalResourceSettingsModel(
+            default_codes=DEFAULT["codes"]
+        )
         self.global_resources = GlobalResourceSettingsPanel(
             model=global_resources_model
         )
@@ -81,8 +83,8 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         super()._render()
 
         self.process_label = ipw.Text(
-            description="Label:",
-            layout=ipw.Layout(width="auto", indent="0px"),
+            description="Label",
+            layout=ipw.Layout(width="auto"),
         )
         ipw.link(
             (self._model, "process_label"),
@@ -90,7 +92,7 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         )
         self.process_description = ipw.Textarea(
             description="Description",
-            layout=ipw.Layout(width="auto", indent="0px"),
+            layout=ipw.Layout(width="auto"),
         )
         ipw.link(
             (self._model, "process_description"),
@@ -205,7 +207,6 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         self._toggle_qe_installation_widget()
         if self._model.qe_installed:
             self._model.update()
-            self._refresh_resources()
 
     def _set_up_qe(self, auto_setup):
         self.qe_setup = QESetupWidget(auto_start=False)
@@ -272,7 +273,9 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
                 if key not in resources:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
 
-            model: PluginResourceSettingsModel = resources["model"]()
+            model: PluginResourceSettingsModel = resources["model"](
+                default_codes=DEFAULT["codes"]
+            )
             model.observe(
                 self._on_plugin_overrides_change,
                 "override",
@@ -292,4 +295,4 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
 
             codes[identifier] = dict(model.get_models())
 
-        self.global_resources.set_up_codes(codes)
+        self.global_resources.build_global_codes(codes)

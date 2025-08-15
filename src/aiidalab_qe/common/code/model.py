@@ -25,6 +25,9 @@ class CodeModel(Model):
     allow_hidden_codes = tl.Bool(False)
     allow_disabled_computers = tl.Bool(False)
     override = tl.Bool(False)
+    warning = tl.Unicode(allow_none=True)
+
+    _WARNING_TEMPLATE = "<span style='color: red;'>{warning}</span>"
 
     def __init__(
         self,
@@ -59,10 +62,20 @@ class CodeModel(Model):
     def deactivate(self):
         self.is_active = False
 
-    def update(self, user_email="", refresh=False):
+    def update(self, user_email="", default_code=None, refresh=False):
         if not self.options or refresh:
             self.options = self._get_codes(user_email)
-            self.selected = self.first_option
+            if default_code:
+                try:
+                    selected = orm.load_code(default_code).uuid
+                except NotExistent:
+                    selected = None
+                    self.warning = self._WARNING_TEMPLATE.format(
+                        warning=f"Code '{default_code}' not found"
+                    )
+            else:
+                selected = self.first_option
+            self.selected = selected
 
     def get_model_state(self) -> dict:
         return {

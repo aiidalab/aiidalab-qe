@@ -262,7 +262,7 @@ class LogOutputWidget(ipw.VBox):
 class CalcJobOutputFollower(traitlets.HasTraits):
     calcjob_uuid = traitlets.Unicode(allow_none=True)
     filename = traitlets.Unicode(allow_none=True)
-    output = traitlets.List(trait=traitlets.Unicode)
+    output = traitlets.List(trait=traitlets.Unicode())
     lineno = traitlets.Int()
 
     def __init__(self, **kwargs):
@@ -447,8 +447,8 @@ class AddingTagsEditor(ipw.VBox):
     """Editor for adding tags to atoms."""
 
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
-    selection = traitlets.List(traitlets.Int, allow_none=True)
-    input_selection = traitlets.List(traitlets.Int, allow_none=True)
+    selection = traitlets.List(traitlets.Int(), allow_none=True)
+    input_selection = traitlets.List(traitlets.Int(), allow_none=True)
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
     def __init__(self, title="", **kwargs):
@@ -693,6 +693,8 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         the number of nodes and the number of cpus.
         """
         self.code_selection = ComputationalResourcesWidget(
+            description=kwargs.pop("description", None),
+            default_calc_job_plugin=kwargs.pop("default_calc_job_plugin", None),
             include_setup_widget=False,
             fetch_codes=True,  # TODO resolve testing issues when set to `False`
             **kwargs,
@@ -700,11 +702,20 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         self.code_selection.layout.width = "80%"
 
         self.num_nodes = ipw.BoundedIntText(
-            value=1, step=1, min=1, max=1000, description="Nodes", width="10%"
+            value=1,
+            step=1,
+            min=1,
+            max=1000,
+            description="Nodes",
         )
+
         self.num_cpus = ipw.BoundedIntText(
-            value=1, step=1, min=1, description="CPUs", width="10%"
+            value=1,
+            step=1,
+            min=1,
+            description="CPUs",
         )
+
         self.btn_setup_resource_detail = ipw.ToggleButton(description="More")
         self.btn_setup_resource_detail.observe(self._setup_resource_detail, "value")
         self._setup_resource_detail_output = ipw.Output(layout={"width": "500px"})
@@ -896,7 +907,7 @@ class ParallelizationSettings(ipw.VBox):
             value=1, step=1, min=1, max=128, description="Number of k-pools", **extra
         )
         self.override = ipw.Checkbox(
-            escription="",
+            description="",
             indent=False,
             value=False,
             layout=ipw.Layout(max_width="20px"),
@@ -1285,7 +1296,7 @@ class HBoxWithUnits(ipw.HBox):
 
 class ShakeNBreakEditor(ipw.VBox):
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
-    selection = traitlets.List(traitlets.Int)
+    selection = traitlets.List(traitlets.Int())
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
     def __init__(self, title="Editor ShakeNbreak"):
