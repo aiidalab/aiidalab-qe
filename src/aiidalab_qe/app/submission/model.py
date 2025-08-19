@@ -168,13 +168,6 @@ class SubmissionStepModel(
             self.process_description = self.process_node.description
             self.loaded_from_process = True
 
-    def get_selected_codes(self) -> dict[str, dict]:
-        return {
-            identifier: code_model.get_model_state()
-            for identifier, code_model in self.get_model("global").get_models()
-            if code_model.is_ready
-        }
-
     def reset(self):
         with self.hold_trait_notifications():
             self.input_structure = None
