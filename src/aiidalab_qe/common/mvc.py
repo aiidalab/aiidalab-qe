@@ -24,3 +24,5 @@ class Model(HasTraits, metaclass=MetaHasTraitsLast):
     be extended by other bases (mixins), is pushed to the end of the
     MRO to avoid conflicts - see C3 linearization.
     """
+
+    dependencies: list[str] = []

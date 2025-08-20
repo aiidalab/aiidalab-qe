@@ -7,6 +7,7 @@ import traitlets as tl
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.utils import HasTraits
 
 T = t.TypeVar("T")
@@ -72,18 +73,19 @@ class HasModels(t.Generic[T]):
                 (model, "blockers"),
                 (self, "blockers"),
             )
-        for dependency in model.dependencies:
-            dependency_parts = dependency.rsplit(".", 1)
-            if len(dependency_parts) == 1:  # from parent
-                target_model = self
-                trait = dependency
-            else:  # from sibling
-                sibling, trait = dependency_parts
-                target_model = self.get_model(sibling)
-            tl.dlink(
-                (target_model, trait),
-                (model, trait),
-            )
+        if isinstance(model, Model):
+            for dependency in model.dependencies:
+                dependency_parts = dependency.rsplit(".", 1)
+                if len(dependency_parts) == 1:  # from parent
+                    target_model = self
+                    trait = dependency
+                else:  # from sibling
+                    sibling, trait = dependency_parts
+                    target_model = self.get_model(sibling)
+                tl.dlink(
+                    (target_model, trait),
+                    (model, trait),
+                )
 
 
 class HasProcess(HasTraits):
