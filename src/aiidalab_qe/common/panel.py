@@ -247,18 +247,9 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         }
 
     def set_model_state(self, parameters: dict):
-        self.set_selected_codes(parameters.get("codes", {}))
-
-    def get_selected_codes(self) -> dict[str, dict]:
-        return {
-            identifier: code_model.get_model_state()
-            for identifier, code_model in self.get_models()
-            if code_model.is_ready
-        }
-
-    def set_selected_codes(self, code_data=None):
+        code_data = parameters.get("codes", {}) or self.default_codes
         for identifier, code_model in self.get_models():
-            if identifier in (code_data or self.default_codes):
+            if identifier in code_data:
                 code_model.set_model_state(code_data[identifier])
 
     def _check_blockers(self):

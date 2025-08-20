@@ -89,7 +89,7 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
         self._model.update_global_codes()
 
     def reset(self):
-        self._model.set_selected_codes()
+        self._model.set_model_state({})
 
     def _on_input_parameters_change(self, _):
         self._model.update_active_codes()

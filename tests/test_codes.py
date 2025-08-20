@@ -13,8 +13,8 @@ def test_code_not_selected(submit_app_generator):
     model._create_builder(parameters)
 
 
-def test_set_selected_codes(submit_app_generator):
-    """Test set_selected_codes method."""
+def test_set_codes(submit_app_generator):
+    """Test setting codes (in practice, from a loaded process)."""
     app: WizardApp = submit_app_generator()
     parameters = app.submit_model.get_model_state()
     model = SubmissionStepModel()
@@ -22,8 +22,10 @@ def test_set_selected_codes(submit_app_generator):
     for identifier, code_model in app.submit_model.get_model("global").get_models():
         model.get_model("global").get_model(identifier).is_active = code_model.is_active
     model.qe_installed = True
-    model.get_model("global").set_selected_codes(parameters["codes"]["global"]["codes"])
-    assert model.get_selected_codes() == app.submit_model.get_selected_codes()
+    model.get_model("global").set_model_state(parameters["codes"]["global"])
+    assert (
+        model.get_model_state()["codes"] == app.submit_model.get_model_state()["codes"]
+    )
 
 
 def test_global_code_toggle(app: WizardApp):
