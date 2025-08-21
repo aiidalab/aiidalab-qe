@@ -1,5 +1,7 @@
 import traitlets as tl
 
+from aiidalab_qe.utils import HasTraits
+
 
 class MetaHasTraitsLast(tl.MetaHasTraits):
     """A metaclass that ensures that `HasTraits` is pushed to the end of the MRO.
@@ -14,7 +16,7 @@ class MetaHasTraitsLast(tl.MetaHasTraits):
         return super().__new__(cls, name, bases, classdict)
 
 
-class Model(tl.HasTraits, metaclass=MetaHasTraitsLast):
+class Model(HasTraits, metaclass=MetaHasTraitsLast):
     """A parent class for all MVC models.
 
     The class extends `traitlet`'s `HasTraits` and uses a metaclass to

@@ -1,7 +1,25 @@
+import sys
 import typing as t
+
+import traitlets as tl
 
 from aiida import orm
 from aiida.common.exceptions import NotExistent
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
+
+class HasTraits(tl.HasTraits):
+    """Wrapper on `tl.HasTraits` for improved static type checking."""
+
+    # For IDE type checking
+    # Type checking struggles with `traitlets.HasTraits`, which inherits
+    # `traitlets.HasDescriptors`, which in turn defines `__new__(...) -> t.Any`
+    def __new__(cls, *args: t.Any, **kwargs: t.Any) -> Self:
+        return super().__new__(cls, *args, **kwargs)
 
 
 def generate_alert(alert_type: str, message: str, class_: str = "", style_: str = ""):

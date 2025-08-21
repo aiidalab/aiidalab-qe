@@ -7,11 +7,12 @@ import traitlets as tl
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.utils import HasTraits
 
 T = t.TypeVar("T")
 
 
-class HasInputStructure(tl.HasTraits):
+class HasInputStructure(HasTraits):
     input_structure = tl.Union(
         [
             tl.Instance(orm.StructureData),
@@ -85,7 +86,7 @@ class HasModels(t.Generic[T]):
             )
 
 
-class HasProcess(tl.HasTraits):
+class HasProcess(HasTraits):
     process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
 
@@ -121,7 +122,7 @@ class HasProcess(tl.HasTraits):
             return None
 
 
-class Confirmable(tl.HasTraits):
+class Confirmable(HasTraits):
     confirmed = tl.Bool(False)
 
     confirmation_exceptions = [
@@ -140,7 +141,7 @@ class Confirmable(tl.HasTraits):
         self.confirmed = False
 
 
-class HasBlockers(tl.HasTraits):
+class HasBlockers(HasTraits):
     blockers = tl.List(tl.Unicode())
     blocker_messages = tl.Unicode("")
 
