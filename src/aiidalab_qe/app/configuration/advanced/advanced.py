@@ -50,6 +50,10 @@ class AdvancedConfigurationSettingsPanel(
         )
 
         self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
+        self._model.observe(
             self._on_spin_type_change,
             "spin_type",
         )
@@ -118,6 +122,9 @@ class AdvancedConfigurationSettingsPanel(
         self.rendered = True
 
         self._update_tabs()
+
+    def _on_input_structure_change(self, _):
+        self.refresh(specific="structure")
 
     def _on_spin_type_change(self, _):
         self._update_tabs()
