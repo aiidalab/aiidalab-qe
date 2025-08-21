@@ -104,8 +104,6 @@ class PluginOutline(ipw.HBox):
 class SettingsModel(PanelModel, HasBlockers):
     """Base model for settings models."""
 
-    dependencies: list[str] = []
-
     include = tl.Bool(False)
     loaded_from_process = tl.Bool(False)
 

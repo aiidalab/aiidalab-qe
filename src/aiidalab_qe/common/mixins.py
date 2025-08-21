@@ -7,9 +7,8 @@ import traitlets as tl
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.utils import HasTraits
-
-T = t.TypeVar("T")
 
 
 class HasInputStructure(HasTraits):
@@ -37,36 +36,43 @@ class HasInputStructure(HasTraits):
         )
 
 
-class HasModels(t.Generic[T]):
-    def __init__(self):
-        self._models: dict[str, T] = {}
+M = t.TypeVar("M", bound=Model)
 
-    def has_model(self, identifier):
+
+class HasModels(t.Generic[M]):
+    def __init__(self):
+        self._models: dict[str, M] = {}
+
+    def has_model(self, identifier: str):
         return identifier in self._models
 
-    def add_model(self, identifier, model: T):
+    def add_model(self, identifier: str, model: M):
         self._models[identifier] = model
         self._link_model(model)
 
-    def add_models(self, models: dict[str, T]):
+    def add_models(self, models: dict[str, M]):
         for identifier, model in models.items():
             self.add_model(identifier, model)
 
-    def get_model(self, identifier) -> T:
+    def get_model(self, identifier: str) -> M:
         keys = identifier.split(".", 1)
         if self.has_model(keys[0]):
             if len(keys) == 1:
                 return self._models[identifier]
             else:
-                return self._models[keys[0]].get_model(keys[1])
+                sub_model = self._models[keys[0]]
+                if isinstance(sub_model, HasModels):
+                    return sub_model.get_model(keys[1])
+                raise TypeError(
+                    f"Model with identifier '{identifier}' does not have sub-models."
+                )
         raise ValueError(f"Model with identifier '{identifier}' not found.")
 
-    def get_models(self) -> t.Iterable[tuple[str, T]]:
+    def get_models(self) -> t.Iterable[tuple[str, M]]:
         return self._models.items()
 
-    def _link_model(self, model: T):
-        if not hasattr(model, "dependencies"):
-            return
+    def _link_model(self, model: M):
+        assert isinstance(model, Model), "HasModels only works with Model instances"
         if isinstance(model, HasBlockers):
             tl.dlink(
                 (model, "blockers"),
