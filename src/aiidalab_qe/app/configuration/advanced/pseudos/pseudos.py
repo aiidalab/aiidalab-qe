@@ -136,6 +136,9 @@ class PseudosConfigurationSettingsPanel(
                     <br>
                     To reset to protocol-derived pseudopotentials, select both an
                     exchange-correlation functional and a pseudopotential family above
+                    <br>
+                    Switching the protocol in <b>Basic settings</b> will also reset the
+                    pseudopotentials to the defaults for the selected protocol
                 """,
                 class_="text-center",
                 style_="line-height: 2;",
