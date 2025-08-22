@@ -409,16 +409,3 @@ def test_relativistic_mismatch_blocker(generate_structure_data):
     model.family = "SSSP/1.3/PBEsol/efficiency"
     assert len(model.blockers) == 1
     assert "pseudopotentials must be fully relativistic" in model.blockers[0]
-
-    # Check without SOC
-    # This would only happen if the user loads a fully relativistic pseudopotential.
-    # Here we simulate it by setting the relativistic extra and triggering the blocker
-    # check manually
-    model.spin_orbit = "wo_soc"
-    pseudo = orm.load_node(model.dictionary["Si"])
-    pseudo.base.extras.set("relativistic", "full")
-    model.update_blockers()
-    assert len(model.blockers) == 1
-    assert "no pseudopotential should be fully relativistic" in model.blockers[0]
-    # Restore extras entry to correct value
-    pseudo.base.extras.set("relativistic", "N/A")

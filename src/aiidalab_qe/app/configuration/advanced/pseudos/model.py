@@ -403,5 +403,3 @@ class PseudosConfigurationSettingsModel(
         if self.spin_orbit == "soc":
             if relativistic_set != {"full"}:
                 yield "For spin-orbit coupling (SOC) calculations, all pseudopotentials must be fully relativistic."
-        elif "full" in relativistic_set:
-            yield "For non-spin-orbit coupling (non-SOC) calculations, no pseudopotential should be fully relativistic."
