@@ -8,11 +8,7 @@ from aiidalab_qe.utils import generate_alert
 from aiidalab_widgets_base import LoadingWidget
 from aiidalab_widgets_base.utils import StatusHTML
 
-from ..utils import (
-    UpfData,
-    get_pseudo_by_filename,
-    get_pseudo_by_md5,
-)
+from ..utils import UpfData, get_pseudo_by_md5
 from .model import PseudoPotentialUploaderModel
 
 
@@ -133,19 +129,6 @@ class PseudoPotentialUploader(ipw.VBox):
                 alert_type="info",
                 message=f"Identical pseudo detected. Loading pseudo (UUID={uploaded_pseudo.uuid})",
             )
-
-        # New pseudo but existing filename
-        elif get_pseudo_by_filename(filename):
-            self._model.message = generate_alert(
-                alert_type="warning",
-                message=f"""
-                    {filename} found in database with different content.
-                    <br>
-                    Please rename your file before uploading.
-                """,
-            )
-            self._reset_uploader()
-            return
 
         # Valid new pseudo
         else:

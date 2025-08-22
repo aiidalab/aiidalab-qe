@@ -317,27 +317,6 @@ def test_pseudo_upload_widget(generate_upf_data):
     assert model.pseudo.filename == "O.upf"
     assert "Identical pseudo" in model.message
 
-    # Check different content but same filename is rejected
-    different_content_same_filename = generate_upf_data(
-        "O",
-        "O.upf",
-        params={"accuracy": "low"},
-    )
-    uploader._on_file_upload(
-        {
-            "new": {
-                "O.upf": {
-                    "content": bytes(
-                        different_content_same_filename.get_content(),
-                        encoding="utf-8",
-                    ),
-                },
-            },
-        }
-    )
-    assert model.pseudo.filename == "O.upf"
-    assert "rename your file" in model.message
-
     # Check invalid pseudo content is rejected
     uploader._on_file_upload(
         {
