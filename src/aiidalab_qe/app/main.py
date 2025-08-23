@@ -11,9 +11,6 @@ from IPython.display import display
 from aiidalab_qe.app.static import styles
 from aiidalab_qe.app.wizard_app import WizardApp
 from aiidalab_qe.app.wrapper import AppWrapperContoller, AppWrapperModel, AppWrapperView
-from aiidalab_widgets_base.bug_report import (
-    install_create_github_issue_exception_handler,
-)
 from aiidalab_widgets_base.utils.loaders import load_css
 
 DEFAULT_BUG_REPORT_URL = "https://github.com/aiidalab/aiidalab-qe/issues/new"
@@ -62,14 +59,6 @@ class QeApp:
                         self.log_widget,
                     ],
                 )
-            )
-
-        # Set up bug report handling (if a URL is provided)
-        if bug_report_url:
-            install_create_github_issue_exception_handler(
-                self.log_widget if show_log else self.view.output,
-                url=bug_report_url,
-                labels=("bug", "automated-report"),
             )
 
         # setup UI controls
