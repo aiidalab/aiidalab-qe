@@ -61,8 +61,10 @@ class PseudosConfigurationSettingsModel(
         default_value=[
             "SSSP efficiency",
             "SSSP precision",
-            "PseudoDojo standard",
-            "PseudoDojo stringent",
+            "PseudoDojo standard (SR)",
+            "PseudoDojo stringent (SR)",
+            "PseudoDojo standard (FR)",
+            "PseudoDojo stringent (FR)",
         ],
     )
     family = tl.Unicode(allow_none=True)
@@ -88,15 +90,15 @@ class PseudosConfigurationSettingsModel(
 
     PSEUDO_HELP_WO_SOC = """
         <div class="pseudo-text">
+            SSSP provides standard solid-state pseudopotentials, while PseudoDojo
+            provides both scalar (SR) and full (FR) relativistic types.
+            <br>
             If you are unsure, select 'SSSP efficiency', which for most calculations
             will produce sufficiently accurate results at comparatively small
             computational costs.
             <br>
-            If your calculations require a higher accuracy, select 'SSSP accuracy' or
-            'PseudoDojo stringent', which will be computationally more expensive.
-            <br>
-            SSSP is the standard solid-state pseudopotentials.
-            The PseudoDojo version used here is the SR relativistic type.
+            For higher accuracy, select 'SSSP precision' or 'PseudoDojo stringent'
+            (computationally more expensive).
         </div>
     """
 
@@ -131,8 +133,14 @@ class PseudosConfigurationSettingsModel(
             ]
 
         pseudo_family = PseudoFamily.from_string(pseudo_family_string)
+        library = f"{pseudo_family.library} {pseudo_family.accuracy}"
 
-        self._defaults["library"] = f"{pseudo_family.library} {pseudo_family.accuracy}"
+        if "FR" in pseudo_family_string:
+            library += " (FR)"
+        elif "SR" in pseudo_family_string:
+            library += " (SR)"
+
+        self._defaults["library"] = library
         self._defaults["functional"] = pseudo_family.functional
 
         with self.hold_trait_notifications():
@@ -152,19 +160,15 @@ class PseudosConfigurationSettingsModel(
         if self.loaded_from_process or not (self.library and self.functional):
             return
 
-        library, accuracy = self.library.split()
+        parts = self.library.split()
+        library, accuracy = parts[:2]
+        if len(parts) == 3:
+            relativistic = parts[2].strip("()")
         functional = self.functional
         # XXX (jusong.yu): a validator is needed to check the family string is
         # consistent with the list of pseudo families defined in the setup_pseudos.py
         if library == "PseudoDojo":
-            if self.spin_orbit == "soc":
-                pseudo_family_string = (
-                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/FR/{accuracy}/upf"
-                )
-            else:
-                pseudo_family_string = (
-                    f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/SR/{accuracy}/upf"
-                )
+            pseudo_family_string = f"PseudoDojo/{PSEUDODOJO_VERSION}/{functional}/{relativistic}/{accuracy}/upf"
         elif library == "SSSP":
             pseudo_family_string = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
         else:
@@ -180,7 +184,7 @@ class PseudosConfigurationSettingsModel(
             self.family_header = "<h4>Pseudopotential family</h4>"
             return
 
-        library, accuracy = self.library.split()
+        library, accuracy = self.library.split()[:2]
         if library == "SSSP":
             pseudo_family_link = (
                 f"https://www.materialscloud.org/discover/sssp/table/{accuracy}"
@@ -310,18 +314,20 @@ class PseudosConfigurationSettingsModel(
         if self.loaded_from_process or not self.has_structure:
             return
 
+        relativistic_options = [
+            "PseudoDojo standard (FR)",
+            "PseudoDojo stringent (FR)",
+        ]
         if self.spin_orbit == "soc":
-            library_options = [
-                "PseudoDojo standard",
-                "PseudoDojo stringent",
-            ]
+            library_options = relativistic_options
             self.family_help_message = self.PSEUDO_HELP_SOC
         else:
             library_options = [
                 "SSSP efficiency",
                 "SSSP precision",
-                "PseudoDojo standard",
-                "PseudoDojo stringent",
+                "PseudoDojo standard (SR)",
+                "PseudoDojo stringent (SR)",
+                *relativistic_options,
             ]
             self.family_help_message = self.PSEUDO_HELP_WO_SOC
 
@@ -363,8 +369,10 @@ class PseudosConfigurationSettingsModel(
                 [
                     "SSSP efficiency",
                     "SSSP precision",
-                    "PseudoDojo standard",
-                    "PseudoDojo stringent",
+                    "PseudoDojo standard (SR)",
+                    "PseudoDojo stringent (SR)",
+                    "PseudoDojo standard (FR)",
+                    "PseudoDojo stringent (FR)",
                 ],
             )
         return super()._get_default(trait)

@@ -171,7 +171,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert model.family == f"SSSP/{SSSP_VERSION}/PBE/precision"
 
     # Test library-dependent family change
-    model.library = "PseudoDojo stringent"
+    model.library = "PseudoDojo stringent (SR)"
     assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
 
     # Test spin-orbit-dependent family change
@@ -357,7 +357,7 @@ def test_missing_pseudos(generate_structure_data):
     _ = PseudosConfigurationSettingsPanel(model=model)
     model.input_structure = generate_structure_data("CeO")
     model.functional = "PBEsol"
-    model.library = "PseudoDojo standard"
+    model.library = "PseudoDojo standard (SR)"
     assert model.family == "PseudoDojo/0.4/PBEsol/SR/standard/upf"
     assert model.dictionary["Ce"] is None
     assert model.dictionary["O"] is not None
@@ -377,13 +377,11 @@ def test_functional_mismatch_blocker(generate_structure_data):
 
 def test_relativistic_mismatch_blocker(generate_structure_data):
     """Test blocker for inconsistent relativistic treatment across selected
-    pseudopotentials with and without SOC.
+    pseudopotentials with SOC.
     """
     model = PseudosConfigurationSettingsModel()
     _ = PseudosConfigurationSettingsPanel(model=model)
     model.input_structure = generate_structure_data("silica")
-
-    # Check with SOC
     model.spin_orbit = "soc"
     model.family = "SSSP/1.3/PBEsol/efficiency"
     assert len(model.blockers) == 1
