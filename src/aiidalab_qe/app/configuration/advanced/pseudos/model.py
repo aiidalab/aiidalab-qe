@@ -90,8 +90,8 @@ class PseudosConfigurationSettingsModel(
 
     PSEUDO_HELP_WO_SOC = """
         <div class="pseudo-text">
-            SSSP provides standard solid-state pseudopotentials, while PseudoDojo
-            provides both scalar (SR) and full (FR) relativistic types.
+            SSSP (v1.3) provides standard solid-state pseudopotentials, while PseudoDojo
+            (v0.4) provides both scalar (SR) and full (FR) relativistic types.
             <br>
             If you are unsure, select 'SSSP efficiency', which for most calculations
             will produce sufficiently accurate results at comparatively small
@@ -124,13 +124,16 @@ class PseudosConfigurationSettingsModel(
 
         if self.spin_orbit == "soc":
             if self.protocol in ["fast", "balanced"]:
-                pseudo_family_string = "PseudoDojo/0.4/PBEsol/FR/standard/upf"
+                pseudo_family_string = (
+                    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/standard/upf"
+                )
             else:
-                pseudo_family_string = "PseudoDojo/0.4/PBEsol/FR/stringent/upf"
+                pseudo_family_string = (
+                    f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/stringent/upf"
+                )
         else:
-            pseudo_family_string = PwBaseWorkChain.get_protocol_inputs(self.protocol)[
-                "pseudo_family"
-            ]
+            protocol_inputs = PwBaseWorkChain.get_protocol_inputs(self.protocol)
+            pseudo_family_string = protocol_inputs["pseudo_family"]
 
         pseudo_family = PseudoFamily.from_string(pseudo_family_string)
         library = f"{pseudo_family.library} {pseudo_family.accuracy}"
