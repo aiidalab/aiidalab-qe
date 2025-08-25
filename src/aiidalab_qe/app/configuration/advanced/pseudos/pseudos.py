@@ -73,15 +73,6 @@ class PseudosConfigurationSettingsPanel(
             (self.family_help, "value"),
         )
 
-        self.functional_help = ipw.HTML("""
-            <div class="pseudo-text">
-                The exchange-correlation energy is calculated using this functional.
-                <br>
-                We currently provide support for two well-established generalized
-                gradient approximation (GGA) functionals: PBE and PBEsol.
-            </div>
-        """)
-
         self.functional = ipw.ToggleButtons()
         ipw.dlink(
             (self._model, "functional_options"),
@@ -92,7 +83,7 @@ class PseudosConfigurationSettingsPanel(
             (self.functional, "value"),
         )
 
-        self.library = ipw.ToggleButtons()
+        self.library = ipw.ToggleButtons(style={"button_width": "fit-content"})
         ipw.dlink(
             (self._model, "library_options"),
             (self.library, "options"),
@@ -134,8 +125,11 @@ class PseudosConfigurationSettingsPanel(
                     <h4><b>⚠️ Pseudopotential upload detected ⚠️</b></h4>
                     Adjust plane-wave cutoff energies below to ensure convergence
                     <br>
-                    To reset to protocol-derived pseudopotentials, select both an
-                    exchange-correlation functional and a pseudopotential family above
+                    To reset to protocol defaults, select both an exchange-correlation
+                    functional and a pseudopotential family above.
+                    <br>
+                    Switching the protocol in <b>Basic settings</b> will also reset the
+                    pseudopotentials to the defaults of the selected protocol.
                 """,
                 class_="text-center",
                 style_="line-height: 2;",
@@ -148,27 +142,27 @@ class PseudosConfigurationSettingsPanel(
         self.children = [
             ipw.HTML("""
                 <div class="pseudo-text">
-                    The exchange-correlation functional and pseudopotential library is
+                    The exchange-correlation functional and pseudopotential library are
                     set by the <b>protocol</b> configured in the <b>Basic settings</b>
                     tab.
                     <br>
                     Here you can override the defaults if desired.
                 </div>
             """),
-            ipw.VBox(
-                children=[
-                    ipw.HTML("<h4>Exchange-correlation functional</h4>"),
-                    self.functional,
-                    self.functional_help,
-                ],
-            ),
-            ipw.VBox(
-                children=[
-                    self.family_header,
-                    self.library,
-                    self.family_help,
-                ],
-            ),
+            ipw.HTML("<h4>Exchange-correlation functional</h4>"),
+            ipw.HTML("""
+                <div class="pseudo-text">
+                    The exchange-correlation energy is described using the selected
+                    functional.
+                    <br>
+                    We currently provide support for two well-established generalized
+                    gradient approximation (GGA) functionals: PBE and PBEsol.
+                </div>
+            """),
+            self.functional,
+            self.family_header,
+            self.family_help,
+            self.library,
             ipw.HTML("<h4>Pseudopotentials</h4>"),
             self._warning_message,
             ipw.HTML("""
