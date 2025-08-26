@@ -164,16 +164,17 @@ class AdvancedConfigurationSettingsModel(
         )
         if pseudo_family_string := parameters.get("pseudo_family"):
             pseudo_family = PseudoFamily.from_string(pseudo_family_string)
-            library = pseudo_family.library
-            accuracy = pseudo_family.accuracy
+            library = f"{pseudo_family.library} {pseudo_family.accuracy}"
+            if relativistic := pseudo_family.relativistic:
+                library += f" ({relativistic})"
             pseudos.functional = pseudo_family.functional
-            pseudos.library = f"{library} {accuracy}"
+            pseudos.library = library
             pseudos.family = pseudo_family_string
         else:
-            pseudos.library = None
             pp_uuid = next(iter(parameters["pw"]["pseudos"].values()))
             pseudo_info = get_pseudo_info(pp_uuid)
             pseudos.functional = pseudo_info["functional"]
+            pseudos.library = None
             pseudos.family = None
             pseudos.show_upload_warning = True
 

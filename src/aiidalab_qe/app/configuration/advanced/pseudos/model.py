@@ -137,18 +137,15 @@ class PseudosConfigurationSettingsModel(
 
         pseudo_family = PseudoFamily.from_string(pseudo_family_string)
         library = f"{pseudo_family.library} {pseudo_family.accuracy}"
+        if relativistic := pseudo_family.relativistic:
+            library += f" ({relativistic})"
 
-        if "FR" in pseudo_family_string:
-            library += " (FR)"
-        elif "SR" in pseudo_family_string:
-            library += " (SR)"
-
-        self._defaults["library"] = library
         self._defaults["functional"] = pseudo_family.functional
+        self._defaults["library"] = library
 
         with self.hold_trait_notifications():
-            self.library = self._defaults["library"]
             self.functional = self._defaults["functional"]
+            self.library = self._defaults["library"]
 
     def update_functionals(self):
         if self.loaded_from_process or not (self.functional and self.family):
