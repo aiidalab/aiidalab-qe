@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import typing as t
 
-import ipywidgets as ipw
 import traitlets as tl
 
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
-from aiidalab_qe.common.panel import ConfigurationSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 from aiidalab_qe.setup.pseudos import PseudoFamily
 from aiidalab_qe.utils import get_pseudo_info
 
@@ -16,12 +15,11 @@ from .hubbard import HubbardConfigurationSettingsModel
 from .magnetization import MagnetizationConfigurationSettingsModel
 from .pseudos import PseudosConfigurationSettingsModel
 from .smearing import SmearingConfigurationSettingsModel
-from .subsettings import AdvancedCalculationSubSettingsModel
 
 
 class AdvancedConfigurationSettingsModel(
-    ConfigurationSettingsModel,
-    HasModels[AdvancedCalculationSubSettingsModel],
+    PanelModel,
+    HasModels[PanelModel],
     HasInputStructure,
 ):
     title = "Advanced settings"
@@ -42,8 +40,8 @@ class AdvancedConfigurationSettingsModel(
 
     include = True
 
-    def get_model_state(self):
-        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
+    def get_model_state(self) -> dict:
+        num_atoms = len(self.input_structure.sites) if self.has_structure else 1
 
         general = t.cast(
             GeneralConfigurationSettingsModel,
@@ -53,7 +51,7 @@ class AdvancedConfigurationSettingsModel(
             ConvergenceConfigurationSettingsModel,
             self.get_model("convergence"),
         )
-        parameters = {
+        state = {
             "initial_magnetic_moments": None,
             "pw": {
                 "parameters": {
@@ -78,7 +76,7 @@ class AdvancedConfigurationSettingsModel(
 
         # Only modify if mixing mode is different than default
         if convergence.mixing_mode != "plain":
-            parameters["pw"]["parameters"]["ELECTRONS"]["mixing_mode"] = (
+            state["pw"]["parameters"]["ELECTRONS"]["mixing_mode"] = (
                 convergence.mixing_mode
             )
 
@@ -87,13 +85,13 @@ class AdvancedConfigurationSettingsModel(
             self.get_model("hubbard"),
         )
         if hubbard.is_active:
-            parameters["hubbard_parameters"] = {
+            state["hubbard_parameters"] = {
                 "hubbard_u": {
                     label: value for label, value in hubbard.parameters.items() if value
                 }
             }
             if hubbard.has_eigenvalues:
-                parameters["pw"]["parameters"]["SYSTEM"] |= {
+                state["pw"]["parameters"]["SYSTEM"] |= {
                     "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()
                 }
 
@@ -101,17 +99,17 @@ class AdvancedConfigurationSettingsModel(
             PseudosConfigurationSettingsModel,
             self.get_model("pseudos"),
         )
-        parameters["pseudo_family"] = pseudos.family
+        state["pseudo_family"] = pseudos.family
         if pseudos.dictionary:
-            parameters["pw"]["pseudos"] = pseudos.dictionary
-            parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = pseudos.ecutwfc
-            parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = pseudos.ecutrho
+            state["pw"]["pseudos"] = pseudos.dictionary
+            state["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = pseudos.ecutwfc
+            state["pw"]["parameters"]["SYSTEM"]["ecutrho"] = pseudos.ecutrho
 
         if general.van_der_waals in ["none", "ts-vdw"]:
-            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = general.van_der_waals
+            state["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = general.van_der_waals
         else:
-            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
-            parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] = (
+            state["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
+            state["pw"]["parameters"]["SYSTEM"]["dftd3_version"] = (
                 general.dftd3_version[general.van_der_waals]
             )
 
@@ -121,16 +119,16 @@ class AdvancedConfigurationSettingsModel(
         )
         if self.electronic_type == "metal":
             # smearing type setting
-            parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = smearing.type
+            state["pw"]["parameters"]["SYSTEM"]["smearing"] = smearing.type
             # smearing degauss setting
-            parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = smearing.degauss
+            state["pw"]["parameters"]["SYSTEM"]["degauss"] = smearing.degauss
 
         magnetization = t.cast(
             MagnetizationConfigurationSettingsModel,
             self.get_model("magnetization"),
         )
         if self.spin_type == "collinear":
-            parameters["initial_magnetic_moments"] = magnetization.moments
+            state["initial_magnetic_moments"] = magnetization.moments
 
         # Set tot_magnetization for collinear simulations.
         if self.spin_type == "collinear":
@@ -138,31 +136,31 @@ class AdvancedConfigurationSettingsModel(
             # Select the magnetization type and set the value
             if self.electronic_type == "metal":
                 if magnetization.type == "tot_magnetization":
-                    parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+                    state["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
                         magnetization.total
                     )
                 else:
-                    parameters["initial_magnetic_moments"] = magnetization.moments
+                    state["initial_magnetic_moments"] = magnetization.moments
             # Conditions for insulator systems. Default value is 0.0
             elif self.electronic_type == "insulator":
-                parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+                state["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
                     magnetization.total
                 )
 
         # Spin-Orbit calculation
         if self.spin_orbit == "soc":
-            parameters["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
-            parameters["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
-            parameters["pw"]["parameters"]["SYSTEM"]["nspin"] = 4
+            state["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
+            state["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
+            state["pw"]["parameters"]["SYSTEM"]["nspin"] = 4
 
-        return parameters
+        return state
 
-    def set_model_state(self, parameters):
+    def set_model_state(self, state: dict):
         pseudos = t.cast(
             PseudosConfigurationSettingsModel,
             self.get_model("pseudos"),
         )
-        if pseudo_family_string := parameters.get("pseudo_family"):
+        if pseudo_family_string := state.get("pseudo_family"):
             pseudo_family = PseudoFamily.from_string(pseudo_family_string)
             library = f"{pseudo_family.library} {pseudo_family.accuracy}"
             if relativistic := pseudo_family.relativistic:
@@ -171,7 +169,7 @@ class AdvancedConfigurationSettingsModel(
             pseudos.library = library
             pseudos.family = pseudo_family_string
         else:
-            pp_uuid = next(iter(parameters["pw"]["pseudos"].values()))
+            pp_uuid = next(iter(state["pw"]["pseudos"].values()))
             pseudo_info = get_pseudo_info(pp_uuid)
             pseudos.functional = pseudo_info["functional"]
             pseudos.library = None
@@ -180,25 +178,25 @@ class AdvancedConfigurationSettingsModel(
 
         pseudos.functionals = [pseudos.functional] * len(pseudos.dictionary)
 
-        if "pseudos" in parameters["pw"]:
-            pseudos.dictionary = parameters["pw"]["pseudos"]
-            pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
-            pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+        if "pseudos" in state["pw"]:
+            pseudos.dictionary = state["pw"]["pseudos"]
+            pseudos.ecutwfc = state["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
+            pseudos.ecutrho = state["pw"]["parameters"]["SYSTEM"]["ecutrho"]
 
         convergence = t.cast(
             ConvergenceConfigurationSettingsModel,
             self.get_model("convergence"),
         )
-        convergence.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)
-        convergence.kpoints_distance = parameters.get("kpoints_distance", 0.15)
+        convergence.optimization_maxsteps = state.get("optimization_maxsteps", 50)
+        convergence.kpoints_distance = state.get("kpoints_distance", 0.15)
 
-        if (pw_parameters := parameters.get("pw", {}).get("parameters")) is not None:
+        if (pw_parameters := state.get("pw", {}).get("parameters")) is not None:
             self._set_pw_parameters(pw_parameters)
 
         magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
             "magnetization"
         )  # type: ignore
-        if magnetic_moments := parameters.get("initial_magnetic_moments"):
+        if magnetic_moments := state.get("initial_magnetic_moments"):
             if isinstance(magnetic_moments, (int, float)):
                 magnetic_moments = [magnetic_moments]
             if isinstance(magnetic_moments, list):
@@ -211,11 +209,11 @@ class AdvancedConfigurationSettingsModel(
             magnetization.moments = magnetic_moments
 
         hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
-        if parameters.get("hubbard_parameters"):
+        if state.get("hubbard_parameters"):
             hubbard.is_active = True
-            hubbard.parameters = parameters["hubbard_parameters"]["hubbard_u"]
+            hubbard.parameters = state["hubbard_parameters"]["hubbard_u"]
             starting_ns_eigenvalue = (
-                parameters.get("pw", {})
+                state.get("pw", {})
                 .get("parameters", {})
                 .get("SYSTEM", {})
                 .get("starting_ns_eigenvalue")
@@ -223,14 +221,10 @@ class AdvancedConfigurationSettingsModel(
             if starting_ns_eigenvalue is not None:
                 hubbard.set_active_eigenvalues(starting_ns_eigenvalue)
 
-    def _link_model(self, model: AdvancedCalculationSubSettingsModel):
-        ipw.dlink(
-            (self, "loaded_from_process"),
-            (model, "loaded_from_process"),
-        )
-        model.observe(
-            self._on_any_change,
-            tl.All,
+    def _link_model(self, model: PanelModel):
+        tl.link(
+            (self, "confirmed"),
+            (model, "confirmed"),
         )
         super()._link_model(model)
 

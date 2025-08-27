@@ -9,12 +9,11 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
 )
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.common.mixins import HasInputStructure
-
-from ..subsettings import AdvancedCalculationSubSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 
 
 class ConvergenceConfigurationSettingsModel(
-    AdvancedCalculationSubSettingsModel,
+    PanelModel,
     HasInputStructure,
 ):
     title = "Convergence/Accuracy"
@@ -48,6 +47,8 @@ class ConvergenceConfigurationSettingsModel(
     )
     mixing_mode = tl.Unicode("plain")
     mixing_beta = tl.Float(0.4)
+
+    include = True
 
     def update(self, specific=""):
         with self.hold_trait_notifications():

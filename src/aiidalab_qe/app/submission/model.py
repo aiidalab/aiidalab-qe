@@ -135,7 +135,7 @@ class SubmissionStepModel(
             warning_messages += model.warning_messages
         self.warning_messages = warning_messages
 
-    def get_model_state(self) -> dict[str, dict[str, dict]]:
+    def get_model_state(self) -> dict:
         parameters: dict = shallow_copy_nested_dict(self.input_parameters)  # type: ignore
         parameters["codes"] = {
             identifier: model.get_model_state()
@@ -144,29 +144,29 @@ class SubmissionStepModel(
         }
         return parameters
 
-    def set_model_state(self, parameters):
-        codes: dict = parameters.get("codes", {})
+    def set_model_state(self, state: dict):
+        codes: dict = state.get("codes", {})
 
-        if "resources" in parameters:
-            resources = parameters["resources"]
+        if "resources" in state:
+            resources = state["resources"]
             codes |= {key: {"code": value} for key, value in codes.items()}
             codes["pw"]["nodes"] = resources["num_machines"]
             codes["pw"]["cpus"] = resources["num_mpiprocs_per_machine"]
             codes["pw"]["parallelization"] = {"npool": resources["npools"]}
 
-        workchain_parameters: dict = parameters.get("workchain", {})
+        workchain_parameters: dict = state.get("workchain", {})
         properties = set(workchain_parameters.get("properties", []))
         included = self._default_models | properties
         for identifier, model in self.get_models():
             model.include = identifier in included
             if codes.get(identifier):
                 model.set_model_state(codes[identifier])
-                model.loaded_from_process = True
+                model.locked = True
 
         if self.process_node:
             self.process_label = self.process_node.label
             self.process_description = self.process_node.description
-            self.loaded_from_process = True
+            self.locked = True
 
     def reset(self):
         with self.hold_trait_notifications():

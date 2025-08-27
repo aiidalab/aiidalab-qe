@@ -11,9 +11,9 @@ from aiida.plugins import GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure
+from aiidalab_qe.common.panel import PanelModel
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 
-from ..subsettings import AdvancedCalculationSubSettingsModel
 from .utils import get_pseudo_family_by_label, get_upf_dict
 
 SsspFamily = GroupFactory("pseudo.family.sssp")
@@ -24,7 +24,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class PseudosConfigurationSettingsModel(
-    AdvancedCalculationSubSettingsModel,
+    PanelModel,
     HasInputStructure,
 ):
     title = "Pseudopotentials"
@@ -104,6 +104,8 @@ class PseudosConfigurationSettingsModel(
 
     family_help_message = tl.Unicode(PSEUDO_HELP_WO_SOC)
 
+    include = True
+
     def update(self, specific=""):
         if not self.has_structure:
             return
@@ -119,7 +121,7 @@ class PseudosConfigurationSettingsModel(
             self.update_functionals()
 
     def update_family_parameters(self):
-        if self.loaded_from_process:
+        if self.locked:
             return
 
         if self.spin_orbit == "soc":
@@ -148,7 +150,7 @@ class PseudosConfigurationSettingsModel(
             self.library = self._defaults["library"]
 
     def update_functionals(self):
-        if self.loaded_from_process or not (self.functional and self.family):
+        if self.locked or not (self.functional and self.family):
             return
         self.functionals = (
             [self.functional for _ in self.input_structure.kinds]
@@ -157,7 +159,7 @@ class PseudosConfigurationSettingsModel(
         )
 
     def update_family(self):
-        if self.loaded_from_process or not (self.library and self.functional):
+        if self.locked or not (self.library and self.functional):
             return
 
         parts = self.library.split()
@@ -201,7 +203,7 @@ class PseudosConfigurationSettingsModel(
         """
 
     def update_dictionary(self):
-        if self.loaded_from_process or not self.family:
+        if self.locked or not self.family:
             return
 
         if not self.has_structure:
@@ -244,7 +246,7 @@ class PseudosConfigurationSettingsModel(
         self.dictionary = self._get_default_dictionary()
 
     def update_cutoffs(self):
-        if self.loaded_from_process or not self.dictionary:
+        if self.locked or not self.dictionary:
             return
 
         kinds = self.input_structure.kinds if self.input_structure else []
@@ -311,7 +313,7 @@ class PseudosConfigurationSettingsModel(
         self.cutoffs = self._get_default_cutoffs()
 
     def update_library_options(self):
-        if self.loaded_from_process or not self.has_structure:
+        if self.locked or not self.has_structure:
             return
 
         relativistic_options = [

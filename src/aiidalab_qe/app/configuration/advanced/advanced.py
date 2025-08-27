@@ -49,15 +49,6 @@ class AdvancedConfigurationSettingsPanel(
             **kwargs,
         )
 
-        self._model.observe(
-            self._on_input_structure_change,
-            "input_structure",
-        )
-        self._model.observe(
-            self._on_spin_type_change,
-            "spin_type",
-        )
-
         general_model = GeneralConfigurationSettingsModel()
         self.general = GeneralConfigurationSettingsPanel(model=general_model)
         model.add_model("general", general_model)
@@ -86,7 +77,16 @@ class AdvancedConfigurationSettingsPanel(
         self.hubbard = HubbardConfigurationSettingsPanel(model=hubbard_model)
         model.add_model("hubbard", hubbard_model)
 
-        self.sub_settings = {
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
+        )
+        self._model.observe(
+            self._on_spin_type_change,
+            "spin_type",
+        )
+
+        self.sub_settings: dict[str, ConfigurationSettingsPanel] = {
             "general": self.general,
             "convergence": self.convergence,
             "smearing": self.smearing,
@@ -138,18 +138,18 @@ class AdvancedConfigurationSettingsPanel(
             subsetting = self.sub_settings[identifier]
             if identifier == "general":
                 subsetting.render()
-            if identifier == "magnetization":
-                if self._model.spin_type != "collinear":
-                    continue
-                subsetting.render()
+            if not model.include:
+                continue
             titles.append(model.title)
             children.append(subsetting)
         self.advanced_tabs.children = children
         for i, title in enumerate(titles):
             self.advanced_tabs.set_title(i, title)
+        self.advanced_tabs.selected_index = 0
 
     def _on_advanced_tab_change(self, change):
-        self.advanced_tabs.children[change["new"]].render()
+        tab: ConfigurationSettingsPanel = self.advanced_tabs.children[change["new"]]
+        tab.render()
 
     def _on_reset_to_defaults_button_click(self, _):
         self._reset()

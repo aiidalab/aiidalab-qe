@@ -5,17 +5,17 @@ from copy import deepcopy
 import ipywidgets as ipw
 
 from aiida import orm
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.common.widgets import HBoxWithUnits
 from aiidalab_qe.utils import generate_alert
 from aiidalab_widgets_base.utils import StatusHTML
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import PseudosConfigurationSettingsModel
 from .uploader import PseudoPotentialUploader, PseudoPotentialUploaderModel
 
 
 class PseudosConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[PseudosConfigurationSettingsModel],
+    ConfigurationSettingsPanel[PseudosConfigurationSettingsModel],
 ):
     def __init__(self, model: PseudosConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
@@ -255,16 +255,16 @@ class PseudosConfigurationSettingsPanel(
             return
         self._warning_message.layout.display = "block" if change["new"] else "none"
 
-    def _update(self, specific=""):
-        if self.updated:
+    def update(self, specific=""):
+        if self._model.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process or (specific and specific != "widgets"):
+        if not self._model.locked or (specific and specific != "widgets"):
             self._model.update(specific)
         self._build_setter_widgets()
         self._model.update_library_options()
         self._model.update_family_header()
-        self.updated = True
+        self._model.updated = True
 
     def _show_loading(self):
         if self.rendered:
@@ -351,7 +351,7 @@ class PseudosConfigurationSettingsPanel(
 
             on_default_pseudo()
 
-            self.links.extend(uploader.links)
+            self._links.extend(uploader.links)
 
             children.append(uploader)
 

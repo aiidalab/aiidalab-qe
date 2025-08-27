@@ -24,6 +24,25 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
     def __init__(self, model: ResultsStepModel, **kwargs):
         self.log_widget = kwargs.pop("log_widget", None)
         super().__init__(model=model, **kwargs)
+
+        summary_model = WorkChainSummaryModel()
+        self.summary_panel = WorkChainSummary(model=summary_model)
+        self._model.add_model("summary", summary_model)
+
+        results_model = WorkChainResultsViewerModel()
+        self.results_panel = WorkChainResultsViewer(model=results_model)
+        self._model.add_model("results", results_model)
+
+        status_model = WorkChainStatusModel()
+        self.status_panel = WorkChainStatusPanel(model=status_model)
+        self._model.add_model("status", status_model)
+
+        self.panels = {
+            "Summary": self.summary_panel,
+            "Status": self.status_panel,
+            "Results": self.results_panel,
+        }
+
         self.observe(
             self._on_previous_step_state_change,
             "previous_step_state",
@@ -66,24 +85,6 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
             (self._model, "process_info"),
             (self.process_info, "value"),
         )
-
-        summary_model = WorkChainSummaryModel()
-        self.summary_panel = WorkChainSummary(model=summary_model)
-        self._model.add_model("summary", summary_model)
-
-        results_model = WorkChainResultsViewerModel()
-        self.results_panel = WorkChainResultsViewer(model=results_model)
-        self._model.add_model("results", results_model)
-
-        status_model = WorkChainStatusModel()
-        self.status_panel = WorkChainStatusPanel(model=status_model)
-        self._model.add_model("status", status_model)
-
-        self.panels = {
-            "Summary": self.summary_panel,
-            "Status": self.status_panel,
-            "Results": self.results_panel,
-        }
 
         self.toggle_controls = ipw.ToggleButtons(
             options=[*self.panels.keys()],

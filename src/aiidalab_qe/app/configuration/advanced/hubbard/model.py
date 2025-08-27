@@ -8,12 +8,11 @@ from pymatgen.core.periodic_table import Element
 
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.common.mixins import HasInputStructure
-
-from ..subsettings import AdvancedCalculationSubSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 
 
 class HubbardConfigurationSettingsModel(
-    AdvancedCalculationSubSettingsModel,
+    PanelModel,
     HasInputStructure,
 ):
     title = "Hubbard (DFT+U)"
@@ -41,6 +40,8 @@ class HubbardConfigurationSettingsModel(
 
     applicable_kind_names = []
     orbital_labels = []
+
+    include = True
 
     def update(self, specific=""):  # noqa: ARG002
         if not self.has_structure:

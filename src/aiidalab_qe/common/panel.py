@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import typing as t
+import warnings
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -18,7 +19,13 @@ from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code.model import CodeModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import Confirmable, HasBlockers, HasModels, HasProcess
+from aiidalab_qe.common.mixins import (
+    Confirmable,
+    HasBlockers,
+    HasInputStructure,
+    HasModels,
+    HasProcess,
+)
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
     PwCodeResourceSetupWidget,
@@ -29,19 +36,20 @@ from aiidalab_widgets_base import LoadingWidget
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class PanelModel(Model):
+class PanelModel(Model, Confirmable, HasBlockers):
     """Base class for all panel models.
 
     Attributes
     ----------
     `title` : `str`
         The title to be shown in the GUI.
-    `identifier` : `str`
-        Which plugin this panel belong to.
+    `include` : `bool`
+        Whether this panel is included in the current workflow.
     """
 
     title = ""
-    identifier = ""
+
+    include = tl.Bool(False)
 
 
 PM = t.TypeVar("PM", bound=PanelModel)
@@ -59,6 +67,7 @@ class Panel(ipw.VBox, t.Generic[PM]):
         self.loading_message = LoadingWidget(loading_message)
         super().__init__(children=[self.loading_message], **kwargs)
         self._model = model
+        self._links: list[tl.directional_link | tl.link] = []
 
     def render(self):
         raise NotImplementedError()
@@ -89,67 +98,22 @@ class PluginOutline(ipw.HBox):
         )
 
 
-class SettingsModel(PanelModel, HasBlockers):
-    """Base model for settings models."""
-
-    include = tl.Bool(False)
-    loaded_from_process = tl.Bool(False)
-
-    def update(self):
-        """Updates the model."""
-        pass
-
-    def get_model_state(self) -> dict:
-        """Retrieves the current state of the model as a dictionary."""
-        raise NotImplementedError()
-
-    def set_model_state(self, parameters: dict):
-        """Distributes the parameters of a loaded calculation to the model."""
-        raise NotImplementedError()
-
-    def reset(self):
-        """Resets the model to present defaults."""
-        pass
-
-
-SM = t.TypeVar("SM", bound=SettingsModel)
-
-
-class SettingsPanel(Panel[SM]):
-    """Base model for settings panels."""
-
-    updated = False
-
-    def __init__(self, model: SM, **kwargs):
-        super().__init__(model=model, **kwargs)
-        self.links = []
-
-
-class ConfigurationSettingsModel(SettingsModel, Confirmable):
+class ConfigurationSettingsModel(PanelModel):
     """Base model for configuration settings models."""
 
     def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "`ConfigurationSettingsModel` is deprecated. Please extend `PanelModel` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(*args, **kwargs)
-        self._defaults = {}
-
-    def update(self, specific=""):
-        """Updates the model.
-
-        Parameters
-        ----------
-        `specific` : `str`, optional
-            If provided, specifies the level of update.
-        """
-        pass
-
-    def _get_default(self, trait):
-        return self._defaults.get(trait, self.traits()[trait].default_value)
 
 
 CSM = t.TypeVar("CSM", bound=ConfigurationSettingsModel)
 
 
-class ConfigurationSettingsPanel(SettingsPanel[CSM]):
+class ConfigurationSettingsPanel(Panel[PM]):
     """Base class for configuration settings panels."""
 
     def refresh(self, specific=""):
@@ -164,14 +128,14 @@ class ConfigurationSettingsPanel(SettingsPanel[CSM]):
         `specific` : `str`, optional
             If provided, specifies the level of refresh.
         """
-        self.updated = False
+        self._model.updated = False
         self._unsubscribe()
         if self._model.include:
             self.update(specific)
         if "PYTEST_CURRENT_TEST" in os.environ:
             # Skip resetting to avoid having to inject a structure when testing
             return
-        if hasattr(self._model, "input_structure") and not self._model.input_structure:
+        if isinstance(self._model, HasInputStructure) and not self._model.has_structure:
             self._reset()
 
     def update(self, specific=""):
@@ -182,25 +146,25 @@ class ConfigurationSettingsPanel(SettingsPanel[CSM]):
         `specific` : `str`, optional
             If provided, specifies the level of update.
         """
-        if self.updated:
+        if self._model.updated:
             return
-        if not self._model.loaded_from_process:
+        if not self._model.locked:
             self._model.update(specific)
-        self.updated = True
+        self._model.updated = True
 
     def _unsubscribe(self):
         """Unlinks any linked widgets."""
-        for link in self.links:
+        for link in self._links:
             link.unlink()
-        self.links.clear()
+        self._links.clear()
 
     def _reset(self):
         """Resets the model to present defaults."""
-        self.updated = False
+        self._model.updated = False
         self._model.reset()
 
 
-class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
+class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
     """Base model for resource setting models."""
 
     global_codes = tl.Dict(
@@ -257,7 +221,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
 RSM = t.TypeVar("RSM", bound=ResourceSettingsModel)
 
 
-class ResourceSettingsPanel(SettingsPanel[RSM]):
+class ResourceSettingsPanel(Panel[RSM]):
     """Base class for resource setting panels."""
 
     def __init__(self, model, **kwargs):
@@ -518,7 +482,7 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             )
 
 
-class ResultsModel(SettingsModel, HasProcess):
+class ResultsModel(PanelModel, HasProcess):
     process_status_notification = tl.Unicode("")
 
     _this_process_label = ""

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ipywidgets as ipw
 import traitlets as tl
 
 from aiida_quantumespresso.common.types import RelaxType
@@ -9,7 +8,7 @@ from aiidalab_qe.common.mixins import (
     HasInputStructure,
     HasModels,
 )
-from aiidalab_qe.common.panel import ConfigurationSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
@@ -19,7 +18,7 @@ NO_RELAXATION_OPTION = ("Structure as is", "none")
 
 class ConfigurationStepModel(
     QeConfirmableWizardStepModel,
-    HasModels[ConfigurationSettingsModel],
+    HasModels[PanelModel],
     HasInputStructure,
 ):
     identifier = "configuration"
@@ -90,28 +89,28 @@ class ConfigurationStepModel(
         self.relax_type_options = self._get_default_relax_type_options()
         self.relax_type = self._get_default_relax_type()
 
-    def get_model_state(self):
-        parameters = {
+    def get_model_state(self) -> dict:
+        state = {
             identifier: model.get_model_state()
             for identifier, model in self.get_models()
             if model.include
         }
-        parameters["workchain"] |= {
+        state["workchain"] |= {
             "relax_type": self.relax_type,
             "properties": self._get_properties(),
         }
-        return parameters
+        return state
 
-    def set_model_state(self, parameters):
+    def set_model_state(self, state: dict):
         with self.hold_trait_notifications():
-            workchain_parameters: dict = parameters.get("workchain", {})
+            workchain_parameters: dict = state.get("workchain", {})
             self.relax_type = workchain_parameters.get("relax_type")
             properties = set(workchain_parameters.get("properties", []))
             for identifier, model in self.get_models():
                 model.include = identifier in self._default_models | properties
-                if parameters.get(identifier):
-                    model.set_model_state(parameters[identifier])
-                    model.loaded_from_process = True
+                if state.get(identifier):
+                    model.set_model_state(state[identifier])
+                    model.locked = True
 
     def reset(self):
         self.confirmed = False
@@ -122,8 +121,8 @@ class ConfigurationStepModel(
             if identifier not in self._default_models:
                 model.include = False
 
-    def _link_model(self, model: ConfigurationSettingsModel):
-        ipw.link(
+    def _link_model(self, model: PanelModel):
+        tl.link(
             (self, "confirmed"),
             (model, "confirmed"),
         )

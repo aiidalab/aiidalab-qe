@@ -1,11 +1,12 @@
 import ipywidgets as ipw
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
+
 from .model import GeneralConfigurationSettingsModel
 
 
 class GeneralConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[GeneralConfigurationSettingsModel],
+    ConfigurationSettingsPanel[GeneralConfigurationSettingsModel],
 ):
     def render(self):
         if self.rendered:

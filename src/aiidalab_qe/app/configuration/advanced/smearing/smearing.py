@@ -1,13 +1,13 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.common.widgets import HBoxWithUnits
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import SmearingConfigurationSettingsModel
 
 
 class SmearingConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[SmearingConfigurationSettingsModel],
+    ConfigurationSettingsPanel[SmearingConfigurationSettingsModel],
 ):
     def __init__(self, model: SmearingConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)

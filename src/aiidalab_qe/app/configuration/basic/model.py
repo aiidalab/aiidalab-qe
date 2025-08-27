@@ -2,7 +2,7 @@ import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.common.panel import ConfigurationSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -13,7 +13,7 @@ OLD_PROTOCOL_MAP = {
 
 
 class BasicConfigurationSettingsModel(
-    ConfigurationSettingsModel,
+    PanelModel,
     HasInputStructure,
 ):
     title = "Basic settings"
@@ -59,22 +59,22 @@ class BasicConfigurationSettingsModel(
 
     include = True
 
-    def get_model_state(self):
+    def get_model_state(self) -> dict:
         return {
             "protocol": self.protocol,
             "spin_type": self.spin_type,
             "electronic_type": self.electronic_type,
         }
 
-    def set_model_state(self, parameters):
-        protocol = parameters.get("protocol", self.protocol)
+    def set_model_state(self, state: dict):
+        protocol = state.get("protocol", self.protocol)
         self.protocol = OLD_PROTOCOL_MAP.get(protocol, protocol)
-        self.spin_type = parameters.get("spin_type", self.spin_type)
-        self.electronic_type = parameters.get("electronic_type", self.electronic_type)
+        self.spin_type = state.get("spin_type", self.spin_type)
+        self.electronic_type = state.get("electronic_type", self.electronic_type)
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.protocol = self.traits()["protocol"].default_value
-            self.spin_type = self.traits()["spin_type"].default_value
-            self.electronic_type = self.traits()["electronic_type"].default_value
-            self.spin_orbit = self.traits()["spin_orbit"].default_value
+            self.protocol = self._get_default("protocol")
+            self.spin_type = self._get_default("spin_type")
+            self.electronic_type = self._get_default("electronic_type")
+            self.spin_orbit = self._get_default("spin_orbit")

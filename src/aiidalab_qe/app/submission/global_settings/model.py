@@ -219,7 +219,7 @@ class GlobalResourceSettingsModel(
             AiiDAlab user. This usually happens if the workflow has been imported from somewhere else (e.g. from
             the Download examples page).
             """
-            if self.loaded_from_process
+            if self.locked
             else ""
         )
 
