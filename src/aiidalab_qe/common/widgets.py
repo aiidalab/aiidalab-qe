@@ -31,8 +31,11 @@ from aiidalab_widgets_base.utils import (
     string_range_to_list,
 )
 
+from .link_button import LinkButton
+
 __all__ = [
     "CalcJobOutputFollower",
+    "LinkButton",
     "LogOutputWidget",
 ]
 
@@ -1130,53 +1133,6 @@ class CategorizedStructureExamplesWidget(StructureExamplesWidget):
         new_category = change["new"]
         new_examples = self.examples_by_category.get(new_category, [])
         self._select_structure.options = self.get_example_structures(new_examples)
-
-
-class LinkButton(ipw.HTML):
-    disabled = traitlets.Bool(False)
-
-    def __init__(
-        self,
-        description=None,
-        link="",
-        in_place=False,
-        class_="",
-        style_="",
-        icon="",
-        tooltip="",
-        disabled=False,
-        **kwargs,
-    ):
-        html = f"""
-            <a
-                role="button"
-                href="{link}"
-                title="{tooltip or description}"
-                target="{"_self" if in_place else "_blank"}"
-                style="cursor: default; {style_}"
-            >
-        """
-        if icon:
-            html += f"<i class='fa fa-{icon}'></i>"
-
-        html += f"{description}</a>"
-
-        super().__init__(value=html, **kwargs)
-
-        self.add_class("jupyter-button")
-        self.add_class("widget-button")
-        self.add_class("link-button")
-        if class_:
-            self.add_class(class_)
-
-        self.disabled = disabled
-
-    @traitlets.observe("disabled")
-    def _on_disabled(self, change):
-        if change["new"]:
-            self.add_class("disabled")
-        else:
-            self.remove_class("disabled")
 
 
 class TableWidget(anywidget.AnyWidget):
