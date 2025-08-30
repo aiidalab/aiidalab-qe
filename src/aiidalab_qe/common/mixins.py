@@ -8,10 +8,9 @@ from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.utils import HasTraits
 
 
-class HasInputStructure(HasTraits):
+class HasInputStructure(tl.HasTraits):
     input_structure = tl.Union(
         [
             tl.Instance(orm.StructureData),
@@ -92,7 +91,7 @@ class HasModels(t.Generic[M]):
             )
 
 
-class HasProcess(HasTraits):
+class HasProcess(tl.HasTraits):
     process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
 
@@ -128,7 +127,7 @@ class HasProcess(HasTraits):
             return None
 
 
-class Confirmable(HasTraits):
+class Confirmable(tl.HasTraits):
     confirmed = tl.Bool(False)
 
     confirmation_exceptions = [
@@ -147,7 +146,7 @@ class Confirmable(HasTraits):
         self.confirmed = False
 
 
-class HasBlockers(HasTraits):
+class HasBlockers(tl.HasTraits):
     blockers = tl.List(tl.Unicode())
     blocker_messages = tl.Unicode("")
 
