@@ -82,7 +82,7 @@ def fixture_localhost(aiida_localhost):
 def generate_structure_data():
     """generate a `StructureData` object."""
 
-    def _generate_structure_data(name="silicon", pbc=(True, True, True)):
+    def _generate_structure_data(name="silicon", pbc=(True, True, True), store=True):
         if name == "silicon":
             structure = orm.StructureData(
                 cell=[
@@ -156,6 +156,9 @@ def generate_structure_data():
             structure.append_atom(position=(3.51, 2.03, 1.43), symbols="O")
 
         structure.pbc = pbc
+
+        if store:
+            structure.store()
 
         return structure
 
@@ -420,7 +423,7 @@ def submit_app_generator(
         initial_magnetic_moments=0.0,
         electron_maxstep=80,
     ):
-        app.structure_model.input_structure = generate_structure_data()
+        app.structure_model.structure_uuid = generate_structure_data().uuid
         app.structure_model.confirm()
 
         parameters = {
@@ -472,7 +475,7 @@ def submit_app_generator(
 @pytest.fixture
 def app_to_submit(app: WizardApp, generate_structure_data):
     # Step 1: select structure from example
-    app.structure_model.input_structure = generate_structure_data()
+    app.structure_model.structure_uuid = generate_structure_data().uuid
     app.structure_model.confirm()
     # Step 2: configure calculation
     # TODO do we need to include bands and pdos here?
@@ -711,14 +714,8 @@ def generate_qeapp_workchain(
             structure = generate_structure_data()
         else:
             structure.store()
-            # TODO is this necessary?
-            # aiida_database_wrapper = app.structure_step.manager.children[0].children[2]  # type: ignore
-            # aiida_database_wrapper.render()
-            # aiida_database = aiida_database_wrapper.children[0]  # type: ignore
-            # aiida_database.search()
-            # aiida_database.results.value = structure
 
-        app.structure_model.input_structure = structure
+        app.structure_model.structure_uuid = structure.uuid
         app.structure_model.confirm()
 
         # step 2 configure

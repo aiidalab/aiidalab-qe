@@ -7,17 +7,24 @@ import traitlets as tl
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.common.decorators import cache_per_thread
 from aiidalab_qe.common.mvc import Model
+
+StructureType = t.Union[orm.StructureData, HubbardStructureData]
 
 
 class HasInputStructure(tl.HasTraits):
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(HubbardStructureData),
-        ],
-        allow_none=True,
-    )
+    structure_uuid = tl.Unicode(None, allow_none=True)
+
+    @cache_per_thread(invalidator="structure_uuid")
+    @property
+    def input_structure(self) -> StructureType | None:
+        if not self.structure_uuid:
+            return None
+        try:
+            return t.cast(StructureType, orm.load_node(self.structure_uuid))
+        except NotExistent:
+            return None
 
     @property
     def has_structure(self):
@@ -29,7 +36,7 @@ class HasInputStructure(tl.HasTraits):
 
     @property
     def has_tags(self):
-        return any(
+        return self.has_structure and any(
             not kind_name.isalpha()
             for kind_name in self.input_structure.get_kind_names()
         )

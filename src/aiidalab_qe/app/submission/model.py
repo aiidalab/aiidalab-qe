@@ -70,7 +70,7 @@ class SubmissionStepModel(
             model.update()
 
     def update_process_label(self):
-        if not self.input_structure:
+        if not self.has_structure:
             self.process_label = ""
             return
         structure_label = (
@@ -172,7 +172,6 @@ class SubmissionStepModel(
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.input_structure = None
             self.input_parameters = {}
             self.process_node = None
             for identifier, model in self.get_models():

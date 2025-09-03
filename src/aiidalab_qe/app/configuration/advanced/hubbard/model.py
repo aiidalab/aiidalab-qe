@@ -19,7 +19,7 @@ class HubbardConfigurationSettingsModel(
     identifier = "hubbard"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
     ]
 
     is_active = tl.Bool(False)
@@ -95,7 +95,7 @@ class HubbardConfigurationSettingsModel(
         self.has_eigenvalues = True
 
     def get_parameters_from_hubbard_structure(self):
-        hubbard_parameters = self.input_structure.hubbard.dict()["parameters"]
+        hubbard_parameters = self.input_structure.hubbard.model_dump()["parameters"]
         sites = self.input_structure.sites
         return {
             f"{sites[hp['atom_index']].kind_name} - {hp['atom_manifold']}": hp["value"]

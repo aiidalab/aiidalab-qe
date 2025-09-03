@@ -14,7 +14,7 @@ class PdosConfigurationSettingsModel(PanelModel, HasInputStructure):
     identifier = "pdos"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
         "workchain.protocol",
     ]
 

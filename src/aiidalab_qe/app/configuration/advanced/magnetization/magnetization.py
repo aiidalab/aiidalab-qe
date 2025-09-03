@@ -27,7 +27,7 @@ class MagnetizationConfigurationSettingsPanel(
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._model.observe(
             self._on_electronic_type_change,
@@ -151,7 +151,7 @@ class MagnetizationConfigurationSettingsPanel(
 
         kind_names = (
             self._model.input_structure.get_kind_names()
-            if self._model.input_structure
+            if self._model.has_structure
             else []
         )
 

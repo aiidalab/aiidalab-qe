@@ -145,16 +145,16 @@ class WizardApp(ipw.VBox):
 
     def _update_configuration_step(self):
         if self.structure_model.confirmed:
-            self.configure_model.input_structure = self.structure_model.input_structure
+            self.configure_model.structure_uuid = self.structure_model.structure_uuid
         else:
-            self.configure_model.input_structure = None
+            self.configure_model.structure_uuid = None
 
     def _update_submission_step(self):
         if self.configure_model.confirmed:
-            self.submit_model.input_structure = self.structure_model.input_structure
+            self.submit_model.structure_uuid = self.structure_model.structure_uuid
             self.submit_model.input_parameters = self.configure_model.get_model_state()
         else:
-            self.submit_model.input_structure = None
+            self.submit_model.structure_uuid = None
             self.submit_model.input_parameters = {}
 
     def _update_results_step(self):
@@ -179,7 +179,7 @@ class WizardApp(ipw.VBox):
         else:
             self._show_process_loading_message()
             process_node = load_node(pk)
-            self.structure_model.input_structure = process_node.inputs.structure
+            self.structure_model.structure_uuid = process_node.inputs.structure.uuid
             self.structure_model.confirm()
             parameters = process_node.base.extras.get("ui_parameters", {})
             if parameters and isinstance(parameters, str):

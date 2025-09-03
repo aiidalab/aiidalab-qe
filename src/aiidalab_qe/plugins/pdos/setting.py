@@ -18,7 +18,7 @@ class PdosConfigurationSettingPanel(
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._model.observe(
             self._on_protocol_change,
@@ -44,7 +44,7 @@ class PdosConfigurationSettingPanel(
             (self.nscf_kpoints_distance, "value"),
         )
         ipw.dlink(
-            (self._model, "input_structure"),
+            (self._model, "structure_uuid"),
             (self.nscf_kpoints_distance, "disabled"),
             lambda _: not self._model.has_pbc,
         )
@@ -65,7 +65,7 @@ class PdosConfigurationSettingPanel(
             (self.use_pdos_degauss, "value"),
         )
         ipw.dlink(
-            (self._model, "input_structure"),
+            (self._model, "structure_uuid"),
             (self.use_pdos_degauss, "disabled"),
             lambda _: not self._model.has_pbc,
         )
