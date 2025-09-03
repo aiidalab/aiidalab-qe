@@ -8,7 +8,6 @@ Authors:
 from __future__ import annotations
 
 import os
-import sys
 import typing as t
 
 import ipywidgets as ipw
@@ -26,11 +25,6 @@ from aiidalab_qe.common.widgets import (
     QEAppComputationalResourcesWidget,
 )
 from aiidalab_widgets_base import LoadingWidget
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -58,12 +52,6 @@ class Panel(ipw.VBox, t.Generic[PM]):
 
     rendered = False
     loading_message = "Loading {identifier} panel"
-
-    # For IDE type checking
-    # Type checking struggles with `traitlets.HasTraits`, which inherits
-    # `traitlets.HasDescriptors`, which in turn defines `__new__(...) -> t.Any`
-    def __new__(cls, *args: t.Any, **kwargs: t.Any) -> Self:
-        return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, model: PM, **kwargs):
         loading_message = self.loading_message.format(identifier=model.identifier)
