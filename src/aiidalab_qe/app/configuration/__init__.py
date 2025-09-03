@@ -15,10 +15,7 @@ from aiidalab_qe.app.utils.plugin_manager import (
     is_package_installed,
 )
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.panel import (
-    ConfigurationSettingsModel,
-    ConfigurationSettingsPanel,
-)
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
 
@@ -45,10 +42,6 @@ class ConfigureQeAppWorkChainStep(
             },
             **kwargs,
         )
-        self._model.observe(
-            self._on_input_structure_change,
-            "input_structure",
-        )
 
         workchain_model = BasicConfigurationSettingsModel()
         self.workchain_settings = BasicConfigurationSettingsPanel(model=workchain_model)
@@ -62,10 +55,15 @@ class ConfigureQeAppWorkChainStep(
 
         # HACK due to spin orbit moving to basic settings (#984), we need to
         # sync the basic model's spin orbit when the advanced model's spin
-        # orbit is set from loaded process
+        # orbit is preloaded
         ipw.dlink(
-            (self._model.get_model("advanced"), "spin_orbit"),
-            (self._model.get_model("workchain"), "spin_orbit"),
+            (advanced_model, "spin_orbit"),
+            (workchain_model, "spin_orbit"),
+        )
+
+        self._model.observe(
+            self._on_input_structure_change,
+            "input_structure",
         )
 
         self.settings = {
@@ -244,7 +242,7 @@ class ConfigureQeAppWorkChainStep(
                 if key not in configuration:
                     raise ValueError(f"Entry {identifier} is missing the '{key}' key")
 
-            model: ConfigurationSettingsModel = configuration["model"]()
+            model: PanelModel = configuration["model"]()
             self._model.add_model(identifier, model)
 
             outline = outlines[identifier]()

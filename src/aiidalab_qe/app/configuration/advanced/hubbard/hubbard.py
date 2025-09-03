@@ -1,13 +1,13 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.common.widgets import HBoxWithUnits
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import HubbardConfigurationSettingsModel
 
 
 class HubbardConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[HubbardConfigurationSettingsModel],
+    ConfigurationSettingsPanel[HubbardConfigurationSettingsModel],
 ):
     def __init__(self, model: HubbardConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
@@ -86,16 +86,16 @@ class HubbardConfigurationSettingsPanel(
     def _on_eigenvalues_definition(self, _):
         self._toggle_eigenvalues_widget()
 
-    def _update(self, specific=""):
-        if self.updated:
+    def update(self, specific=""):
+        if self._model.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process or (specific and specific != "widgets"):
+        if not self._model.locked or (specific and specific != "widgets"):
             self._model.update(specific)
         self._build_hubbard_widget()
         self._toggle_hubbard_widget()
         self._toggle_eigenvalues_widget()
-        self.updated = True
+        self._model.updated = True
 
     def _show_loading(self):
         if self.rendered:
@@ -126,7 +126,7 @@ class HubbardConfigurationSettingsPanel(
                     },
                 ],
             )
-            self.links.append(link)
+            self._links.append(link)
             children.append(HBoxWithUnits(float_widget, "eV"))
 
         if self._model.needs_eigenvalues_widget:
@@ -191,7 +191,7 @@ class HubbardConfigurationSettingsPanel(
                         ),
                     ],
                 )
-                self.links.extend([options_link, value_link])
+                self._links.extend([options_link, value_link])
                 spin_up_row.children += (eigenvalues_up,)
 
                 eigenvalues_down = ipw.Dropdown(
@@ -224,7 +224,7 @@ class HubbardConfigurationSettingsPanel(
                         ),
                     ],
                 )
-                self.links.extend([options_link, value_link])
+                self._links.extend([options_link, value_link])
                 spin_down_row.children += (eigenvalues_down,)
 
             children.append(

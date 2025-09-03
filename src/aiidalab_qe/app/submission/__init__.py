@@ -39,18 +39,6 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
             },
             **kwargs,
         )
-        self._model.observe(
-            self._on_installation_change,
-            ["installing_qe", "qe_installed"],
-        )
-        self._model.observe(
-            self._on_qe_installed,
-            "qe_installed",
-        )
-        self._model.observe(
-            self._on_input_parameters_change,
-            "input_parameters",
-        )
 
         global_resources_model = GlobalResourceSettingsModel(
             default_codes=DEFAULT["codes"]
@@ -70,6 +58,19 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         global_resources_model.observe(
             self._on_plugin_warning_messages_change,
             ["warning_messages"],
+        )
+
+        self._model.observe(
+            self._on_installation_change,
+            ["installing_qe", "qe_installed"],
+        )
+        self._model.observe(
+            self._on_qe_installed,
+            "qe_installed",
+        )
+        self._model.observe(
+            self._on_input_parameters_change,
+            "input_parameters",
         )
 
         self.settings = {

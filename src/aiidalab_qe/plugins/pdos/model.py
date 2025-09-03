@@ -6,10 +6,10 @@ from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance i
 )
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.common.panel import ConfigurationSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 
 
-class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructure):
+class PdosConfigurationSettingsModel(PanelModel, HasInputStructure):
     title = "PDOS"
     identifier = "pdos"
 
@@ -34,7 +34,7 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
 
             self._update_kpoints_mesh()
 
-    def get_model_state(self):
+    def get_model_state(self) -> dict:
         return {
             "nscf_kpoints_distance": self.nscf_kpoints_distance,
             "use_pdos_degauss": self.use_pdos_degauss,
@@ -42,14 +42,14 @@ class PdosConfigurationSettingsModel(ConfigurationSettingsModel, HasInputStructu
             "energy_grid_step": self.energy_grid_step,
         }
 
-    def set_model_state(self, parameters: dict):
-        self.nscf_kpoints_distance = parameters.get(
+    def set_model_state(self, state: dict):
+        self.nscf_kpoints_distance = state.get(
             "nscf_kpoints_distance",
-            self.traits()["nscf_kpoints_distance"].default_value,
+            self._get_default("nscf_kpoints_distance"),
         )
-        self.use_pdos_degauss = parameters.get("use_pdos_degauss", False)
-        self.pdos_degauss = parameters.get("pdos_degauss", 0.005)
-        self.energy_grid_step = parameters.get("energy_grid_step", 0.01)
+        self.use_pdos_degauss = state.get("use_pdos_degauss", False)
+        self.pdos_degauss = state.get("pdos_degauss", 0.005)
+        self.energy_grid_step = state.get("energy_grid_step", 0.01)
 
     def reset(self):
         with self.hold_trait_notifications():

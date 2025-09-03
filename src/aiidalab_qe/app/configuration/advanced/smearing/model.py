@@ -3,11 +3,10 @@ from __future__ import annotations
 import traitlets as tl
 
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
+from aiidalab_qe.common.panel import PanelModel
 
-from ..subsettings import AdvancedCalculationSubSettingsModel
 
-
-class SmearingConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
+class SmearingConfigurationSettingsModel(PanelModel):
     title = "Smearing"
     identifier = "smearing"
 
@@ -28,6 +27,8 @@ class SmearingConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
     )
     type = tl.Unicode("cold")
     degauss = tl.Float(0.01)
+
+    include = True  # build-in panel
 
     def update(self, specific=""):  # noqa: ARG002
         parameters = (

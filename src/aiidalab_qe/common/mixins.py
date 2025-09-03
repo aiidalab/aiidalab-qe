@@ -72,7 +72,11 @@ class HasModels(t.Generic[M]):
 
     def _link_model(self, model: M):
         assert isinstance(model, Model), "HasModels only works with Model instances"
-        if isinstance(model, HasBlockers):
+        tl.dlink(
+            (self, "locked"),
+            (model, "locked"),
+        )
+        if isinstance(self, HasBlockers) and isinstance(model, HasBlockers):
             tl.dlink(
                 (model, "blockers"),
                 (self, "blockers"),

@@ -1,13 +1,13 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.common.widgets import HBoxWithUnits
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import MagnetizationConfigurationSettingsModel
 
 
 class MagnetizationConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[MagnetizationConfigurationSettingsModel],
+    ConfigurationSettingsPanel[MagnetizationConfigurationSettingsModel],
 ):
     """Widget to set the type of magnetization used in the calculation:
     1) Total magnetization: Total majority spin charge - minority spin charge.
@@ -128,16 +128,16 @@ class MagnetizationConfigurationSettingsPanel(
         self._toggle_widgets()
         self._model.update_type_help()
 
-    def _update(self, specific=""):
-        if self.updated:
+    def update(self, specific=""):
+        if self._model.updated:
             return
         self._show_loading()
-        if not self._model.loaded_from_process or (specific and specific != "widgets"):
+        if not self._model.locked or (specific and specific != "widgets"):
             self._model.update(specific)
         self._build_kinds_widget()
         self._switch_widgets()
         self._toggle_widgets()
-        self.updated = True
+        self._model.updated = True
 
     def _show_loading(self):
         if self.rendered:
@@ -174,7 +174,7 @@ class MagnetizationConfigurationSettingsPanel(
                     },
                 ],
             )
-            self.links.append(link)
+            self._links.append(link)
             children.append(HBoxWithUnits(kind_moment_widget, "µ<sub>B</sub>"))
 
         self.kind_moment_widgets.children = children

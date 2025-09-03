@@ -5,13 +5,12 @@ import typing as t
 import traitlets as tl
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-
-from ..subsettings import AdvancedCalculationSubSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 
 DEFAULT = t.cast(dict, DEFAULT_PARAMETERS)
 
 
-class GeneralConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
+class GeneralConfigurationSettingsModel(PanelModel):
     title = "General"
     identifier = "general"
 
@@ -36,6 +35,8 @@ class GeneralConfigurationSettingsModel(AdvancedCalculationSubSettingsModel):
         "dft-d3m": 5,
         "dft-d3mbj": 6,
     }
+
+    include = True  # build-in panel
 
     def reset(self):
         with self.hold_trait_notifications():

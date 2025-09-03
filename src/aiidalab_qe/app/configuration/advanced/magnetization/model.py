@@ -7,12 +7,11 @@ from aiida_quantumespresso.workflows.protocols.utils import (
     get_magnetization_parameters,
 )
 from aiidalab_qe.common.mixins import HasInputStructure
-
-from ..subsettings import AdvancedCalculationSubSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 
 
 class MagnetizationConfigurationSettingsModel(
-    AdvancedCalculationSubSettingsModel,
+    PanelModel,
     HasInputStructure,
 ):
     title = "Magnetization"
@@ -59,6 +58,11 @@ class MagnetizationConfigurationSettingsModel(
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        tl.dlink(
+            (self, "spin_type"),
+            (self, "include"),
+            lambda spin_type: spin_type == "collinear",
+        )
 
     def update(self, specific=""):  # noqa: ARG002
         if self.spin_type == "none" or not self.has_structure:
@@ -96,8 +100,8 @@ class MagnetizationConfigurationSettingsModel(
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.type = self.traits()["type"].default_value
-            self.total = self.traits()["total"].default_value
+            self.type = self._get_default("type")
+            self.total = self._get_default("total")
             self.moments = self._get_default_moments()
 
     def _update_default_moments(self):
