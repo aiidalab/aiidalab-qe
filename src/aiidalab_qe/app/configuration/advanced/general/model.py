@@ -36,7 +36,7 @@ class GeneralConfigurationSettingsModel(PanelModel):
         "dft-d3mbj": 6,
     }
 
-    include = True
+    include = True  # build-in panel
 
     def reset(self):
         with self.hold_trait_notifications():

@@ -28,7 +28,7 @@ class SmearingConfigurationSettingsModel(PanelModel):
     type = tl.Unicode("cold")
     degauss = tl.Float(0.01)
 
-    include = True
+    include = True  # build-in panel
 
     def update(self, specific=""):  # noqa: ARG002
         parameters = (

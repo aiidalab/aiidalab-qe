@@ -104,7 +104,7 @@ class PseudosConfigurationSettingsModel(
 
     family_help_message = tl.Unicode(PSEUDO_HELP_WO_SOC)
 
-    include = True
+    include = True  # build-in panel
 
     def update(self, specific=""):
         if not self.has_structure:

@@ -145,6 +145,8 @@ class AdvancedConfigurationSettingsPanel(
         self.advanced_tabs.children = children
         for i, title in enumerate(titles):
             self.advanced_tabs.set_title(i, title)
+        # Reset tab selection to the first tab (rendered by default) to avoid
+        # possible redirection to an un-rendered tab
         self.advanced_tabs.selected_index = 0
 
     def _on_advanced_tab_change(self, change):

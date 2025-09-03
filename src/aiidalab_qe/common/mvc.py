@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing as t
+
 import traitlets as tl
 
 
@@ -70,5 +72,5 @@ class Model(tl.HasTraits, metaclass=MetaHasTraitsLast):
         """Reset the model to present defaults."""
         pass
 
-    def _get_default(self, trait):
+    def _get_default(self, trait: dict) -> t.Any:
         return self._defaults.get(trait, self.trait_defaults()[trait])

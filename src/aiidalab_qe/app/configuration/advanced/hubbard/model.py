@@ -41,7 +41,7 @@ class HubbardConfigurationSettingsModel(
     applicable_kind_names = []
     orbital_labels = []
 
-    include = True
+    include = True  # build-in panel
 
     def update(self, specific=""):  # noqa: ARG002
         if not self.has_structure:

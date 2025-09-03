@@ -48,7 +48,7 @@ class ConvergenceConfigurationSettingsModel(
     mixing_mode = tl.Unicode("plain")
     mixing_beta = tl.Float(0.4)
 
-    include = True
+    include = True  # build-in panel
 
     def update(self, specific=""):
         with self.hold_trait_notifications():
