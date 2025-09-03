@@ -159,9 +159,8 @@ class WizardApp(ipw.VBox):
 
     def _update_results_step(self):
         ipw.dlink(
-            (self.submit_model, "process_node"),
+            (self.submit_model, "process_uuid"),
             (self.results_model, "process_uuid"),
-            lambda node: node.uuid if node is not None else None,
         )
 
     def _lock_app(self):
@@ -186,7 +185,7 @@ class WizardApp(ipw.VBox):
                 parameters = deserialize_unsafe(parameters)
             self.configure_model.set_model_state(parameters)
             self.configure_model.confirm()
-            self.submit_model.process_node = process_node
+            self.submit_model.process_uuid = process_node.uuid
             self.submit_model.set_model_state(parameters)
             self.submit_model.confirm()
             self._wizard_app_widget.selected_index = 3

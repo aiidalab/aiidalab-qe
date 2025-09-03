@@ -121,7 +121,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
 
         self.toggle_controls.value = (
             "Results"
-            if (process := self._model.fetch_process_node()) and process.is_finished_ok
+            if self._model.has_process and self._model.process.is_finished_ok
             else "Status"
         )
 
@@ -152,10 +152,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
 
     def _on_previous_step_state_change(self, _):
         if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
-            process_node = self._model.fetch_process_node()
             message = (
                 "Loading results"
-                if process_node and process_node.is_finished
+                if self._model.has_process and self._model.process.is_finished
                 else "Submitting calculation"
             )
             self.children = [LoadingWidget(message)]
@@ -203,11 +202,10 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
     def _update_kill_button_layout(self):
         if not self.rendered:
             return
-        process_node = self._model.fetch_process_node()
         if (
-            not process_node
-            or process_node.is_finished
-            or process_node.is_excepted
+            not self._model.has_process
+            or self._model.process.is_finished
+            or self._model.process.is_excepted
             or self.state
             in (
                 self.State.SUCCESS,
@@ -221,8 +219,7 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
     def _update_clean_scratch_button_layout(self):
         if not self.rendered:
             return
-        process_node = self._model.fetch_process_node()
-        if process_node and process_node.is_terminated:
+        if self._model.has_process and self._model.process.is_terminated:
             self.clean_scratch_button.layout.display = "block"
         else:
             self.clean_scratch_button.layout.display = "none"
@@ -231,12 +228,12 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
         self._model.monitor_counter += 1
 
     def _update_state(self):
-        if not (process_node := self._model.fetch_process_node()):
+        if not self._model.has_process:
             self.state = self.State.INIT
             self._update_controls()
             return
 
-        if process_state := process_node.process_state:
+        if process_state := self._model.process.process_state:
             status = self._get_process_status(process_state.value)
         else:
             status = "Unknown"
@@ -254,9 +251,9 @@ class ViewQeAppWorkChainStatusAndResultsStep(QeDependentWizardStep[ResultsStepMo
             ProcessState.KILLED,
         ):
             self.state = self.State.FAIL
-        elif process_node.is_failed:
+        elif self._model.process.is_failed:
             self.state = self.State.FAIL
-        elif process_node.is_finished_ok:
+        elif self._model.process.is_finished_ok:
             self.state = self.State.SUCCESS
 
         self._model.process_info = self.STATUS_TEMPLATE.format(status)
