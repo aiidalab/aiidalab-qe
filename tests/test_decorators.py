@@ -8,21 +8,32 @@ class DummyClass:
         self.value = value
 
     @cache_per_thread("value")
-    def compute(self, x):
+    @property
+    def double_the_value(self):
+        return self.value * 2
+
+    @cache_per_thread("value")
+    def add_to_value(self, x):
         return self.value + x
+
+
+def test_cache_per_thread_property():
+    obj = DummyClass(10)
+    assert obj.double_the_value == 20  # First call, computes the result
+    assert obj.double_the_value == 20  # Cached result, no recomputation
 
 
 def test_cache_per_thread_single_thread():
     obj = DummyClass(10)
-    assert obj.compute(5) == 15  # First call, computes the result
-    assert obj.compute(5) == 15  # Cached result, no recomputation
+    assert obj.add_to_value(5) == 15  # First call, computes the result
+    assert obj.add_to_value(5) == 15  # Cached result, no recomputation
 
 
 def test_cache_per_thread_different_args():
     obj = DummyClass(10)
-    assert obj.compute(5) == 15  # First call with x=5
-    assert obj.compute(3) == 13  # First call with x=3
-    assert obj.compute(5) == 15  # Cached result for x=5
+    assert obj.add_to_value(5) == 15  # First call with x=5
+    assert obj.add_to_value(3) == 13  # First call with x=3
+    assert obj.add_to_value(5) == 15  # Cached result for x=5
 
 
 def test_cache_per_thread_different_threads():
@@ -30,7 +41,7 @@ def test_cache_per_thread_different_threads():
     results = []
 
     def thread_func(x):
-        results.append(obj.compute(x))
+        results.append(obj.add_to_value(x))
 
     thread1 = Thread(target=thread_func, args=(5,))
     thread2 = Thread(target=thread_func, args=(5,))
@@ -50,7 +61,16 @@ def test_cache_per_thread_different_threads():
 
 def test_cache_invalidation():
     obj = DummyClass(10)
-    assert obj.compute(5) == 15  # First call, computes the result
-    assert obj.compute(5) == 15  # Cached result, no recomputation
+    assert obj.add_to_value(5) == 15  # First call, computes the result
+    assert obj.add_to_value(5) == 15  # Cached result, no recomputation
     obj.value = 20  # Invalidate cache by changing the invalidator attribute
-    assert obj.compute(5) == 25  # Recomputes the result
+    assert obj.add_to_value(5) == 25  # Recomputes the result
+
+
+def test_cache_per_thread_on_plain_function():
+    @cache_per_thread()
+    def compute(x):
+        return 42 + x
+
+    assert compute(5) == 47  # First call, computes the result
+    assert compute(5) == 47  # Cached result, no recomputation
