@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from time import sleep
+
 import traitlets as tl
 
 from aiida_quantumespresso.common.types import RelaxType
@@ -26,6 +28,9 @@ class ConfigurationStepModel(
     relax_type_help = tl.Unicode()
     relax_type_options = tl.List([NO_RELAXATION_OPTION])
     relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
+
+    installed_properties_fetched = tl.Bool(False)
+    available_properties_fetched = tl.Bool(False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -102,15 +107,27 @@ class ConfigurationStepModel(
         return state
 
     def set_model_state(self, state: dict):
-        with self.hold_trait_notifications():
-            workchain_parameters: dict = state.get("workchain", {})
-            self.relax_type = workchain_parameters.get("relax_type")
-            properties = set(workchain_parameters.get("properties", []))
-            for identifier, model in self.get_models():
-                model.include = identifier in self._default_models | properties
-                if state.get(identifier):
-                    model.set_model_state(state[identifier])
-                    model.locked = True
+        self.await_properties()
+        workchain_parameters: dict = state.get("workchain", {})
+        self.relax_type = workchain_parameters.get("relax_type")
+        properties = set(workchain_parameters.get("properties", []))
+        for identifier, model in self.get_models():
+            model.include = identifier in self._default_models | properties
+            if state.get(identifier):
+                model.set_model_state(state[identifier])
+                model.locked = True
+
+    def await_properties(self):
+        """Wait until installed properties are fetched, or timeout after 5 seconds."""
+        i = 0
+        while not self.installed_properties_fetched and i <= 50:
+            sleep(0.1)
+            i += 1
+
+        if not self.installed_properties_fetched:
+            raise RuntimeError(
+                "Timed out waiting for installed properties to be fetched."
+            )
 
     def reset(self):
         self.confirmed = False

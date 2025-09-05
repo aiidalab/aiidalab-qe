@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from time import sleep
+
 import ipywidgets as ipw
 import traitlets as tl
 from IPython.display import Javascript, display
@@ -36,6 +38,8 @@ class SubmissionStepModel(
     qe_installed = tl.Bool(allow_none=True)
 
     plugin_overrides = tl.List(tl.Unicode())
+
+    fetched_resources = tl.Bool(False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -159,6 +163,8 @@ class SubmissionStepModel(
         workchain_parameters: dict = state.get("workchain", {})
         properties = set(workchain_parameters.get("properties", []))
         included = self._default_models | properties
+
+        self.await_resources()
         for identifier, model in self.get_models():
             model.include = identifier in included
             if codes.get(identifier):
@@ -171,6 +177,16 @@ class SubmissionStepModel(
         self.process_label = self.process.label
         self.process_description = self.process.description
         self.locked = True
+
+    def await_resources(self):
+        """Wait until resources are fetched, or timeout after 5 seconds."""
+        i = 0
+        while not self.fetched_resources and i <= 50:
+            sleep(0.1)
+            i += 1
+
+        if not self.fetched_resources:
+            raise RuntimeError("Timed out waiting for resources to be fetched.")
 
     def reset(self):
         with self.hold_trait_notifications():

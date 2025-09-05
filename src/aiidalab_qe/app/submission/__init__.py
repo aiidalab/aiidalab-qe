@@ -5,6 +5,8 @@ Authors: AiiDAlab team
 
 from __future__ import annotations
 
+from threading import Thread
+
 import ipywidgets as ipw
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
@@ -77,11 +79,16 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
             self._on_process_change,
             "process_uuid",
         )
+        self._model.observe(
+            self._on_fetched_resources_change,
+            "fetched_resources",
+        )
 
         self.settings = {
             "global": self.global_resources,
         }
-        self._fetch_plugin_resource_settings()
+
+        Thread(target=self._fetch_plugin_resource_settings).start()
 
         self._set_up_qe(auto_setup)
 
@@ -217,6 +224,9 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
     def _on_process_change(self, _):
         self._model.update_process_metadata()
 
+    def _on_fetched_resources_change(self, _):
+        self._update_tabs()
+
     def _set_up_qe(self, auto_setup):
         self.qe_setup = QESetupWidget(auto_start=False)
         ipw.dlink(
@@ -306,3 +316,5 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
             codes[identifier] = dict(model.get_models())
 
         self.global_resources.build_global_codes(codes)
+
+        self._model.fetched_resources = True

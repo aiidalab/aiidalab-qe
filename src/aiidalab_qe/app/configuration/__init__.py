@@ -5,6 +5,8 @@ Authors: AiiDAlab team
 
 from __future__ import annotations
 
+from threading import Thread
+
 import ipywidgets as ipw
 
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
@@ -65,20 +67,28 @@ class ConfigureQeAppWorkChainStep(
             self._on_input_structure_change,
             "structure_uuid",
         )
+        self._model.observe(
+            self._on_installed_properties_fetched,
+            "installed_properties_fetched",
+        )
+        self._model.observe(
+            self._on_available_properties_fetched,
+            "available_properties_fetched",
+        )
 
         self.settings = {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
 
-        self.installed_property_children = []
-        self.not_installed_property_children = []
-        self._fetch_plugin_calculation_settings()
+        self.installed_properties_list = []
+        self.available_properties_list = []
+
+        Thread(target=self._fetch_plugin_calculation_settings).start()
+        Thread(target=self._fetch_available_properties).start()
 
     def _render(self):
         super()._render()
-
-        self._fetch_not_installed_property()
 
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
@@ -112,12 +122,21 @@ class ConfigureQeAppWorkChainStep(
             tooltip="Browse and install additional plugins from the Plugin Store",
         )
 
+        self.installed_properties = ipw.VBox(children=self.installed_properties_list)
+
+        self.available_properties = ipw.HTML("""
+            <div class="loading" style="display: flex; align-items: center; font-size: unset;">
+                Loading available properties
+                <i class="fa fa-spinner fa-spin fa-2x fa-fw"></i>
+            </div>
+        """)
+
         self.sub_steps = ipw.Accordion(
             children=[
                 ipw.VBox(
                     children=[
                         InAppGuide(identifier="properties-selection"),
-                        *self.installed_property_children,
+                        self.installed_properties,
                         ipw.HTML("<hr>"),
                         ipw.HTML(
                             value="""
@@ -134,7 +153,7 @@ class ConfigureQeAppWorkChainStep(
                             layout=ipw.Layout(margin="10px 0px"),
                         ),
                         self.install_new_plugin_button,
-                        *self.not_installed_property_children,
+                        self.available_properties,
                     ]
                 ),
                 ipw.VBox(
@@ -168,6 +187,7 @@ class ConfigureQeAppWorkChainStep(
         ]
 
     def _post_render(self):
+        self._set_available_properties()
         self._update_tabs()
 
     def reset(self):
@@ -186,6 +206,23 @@ class ConfigureQeAppWorkChainStep(
     def _on_input_structure_change(self, _):
         self._model.update()
         self.reset()
+
+    def _on_installed_properties_fetched(self, _):
+        if not self.rendered:
+            return
+        self.installed_properties.children = self.installed_properties_list
+
+    def _on_available_properties_fetched(self, _):
+        if not self.rendered:
+            return
+        self._set_available_properties()
+
+    def _set_available_properties(self):
+        self.available_properties.value = f"""
+            <ul style="margin-top: 8px">
+                {"".join(f"<li>{title}</li>" for title in self.available_properties_list)}
+            </ul>
+        """
 
     def _update_tabs(self):
         children = []
@@ -211,28 +248,6 @@ class ConfigureQeAppWorkChainStep(
             self.state = self.State.FAIL
         else:
             self.state = self.State.INIT
-
-    def _fetch_not_installed_property(self, plugin_config_source=None):
-        self.not_installed_property_children = []
-
-        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
-        plugin_manager = PluginManager(plugin_config_source)
-        for plugin_name, plugin_data in plugin_manager.data.items():
-            if (
-                plugin_data.get("category", "calculation").lower() != "calculation"
-            ):  # Ignore non-property plugins
-                continue
-
-            is_installed = is_package_installed(plugin_name)
-            if not is_installed:
-                checkbox = ipw.Checkbox(
-                    value=False,
-                    description=plugin_data["title"],
-                    disabled=True,
-                    indent=False,
-                    style={"description_width": "initial"},
-                )
-                self.not_installed_property_children.append(checkbox)
 
     def _fetch_plugin_calculation_settings(self):
         outlines = get_entry_items("aiidalab_qe.properties", "outline")
@@ -274,7 +289,7 @@ class ConfigureQeAppWorkChainStep(
                 "include",
             )
 
-            self.installed_property_children.append(
+            self.installed_properties_list.append(
                 ipw.HBox(
                     children=[
                         outline,
@@ -285,3 +300,21 @@ class ConfigureQeAppWorkChainStep(
 
             panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
             self.settings[identifier] = panel
+
+        self._model.installed_properties_fetched = True
+
+    def _fetch_available_properties(self, plugin_config_source=None):
+        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
+        plugin_manager = PluginManager(plugin_config_source)
+
+        for plugin_name, plugin_data in plugin_manager.data.items():
+            if (
+                plugin_data.get("category", "calculation").lower() != "calculation"
+            ):  # Ignore non-property plugins
+                continue
+
+            is_installed = is_package_installed(plugin_name)
+            if not is_installed:
+                self.available_properties_list.append(plugin_data["title"])
+
+        self._model.available_properties_fetched = True

@@ -19,6 +19,7 @@ def test_set_codes(submit_app_generator):
     parameters = app.submit_model.get_model_state()
     model = SubmissionStepModel()
     _ = SubmitQeAppWorkChainStep(model=model, auto_setup=False)
+    model.await_resources()
     for identifier, code_model in app.submit_model.get_model("global").get_models():
         model.get_model("global").get_model(identifier).is_active = code_model.is_active
     model.qe_installed = True
@@ -30,6 +31,8 @@ def test_set_codes(submit_app_generator):
 
 def test_global_code_toggle(app: WizardApp):
     """Test that global codes toggle on/off based on their activity."""
+    app.submit_model.await_resources()
+
     global_resources_model = app.submit_model.get_model("global")
     global_resources = app.submit_step.global_resources
     global_resources.render()
@@ -49,6 +52,7 @@ def test_global_code_toggle(app: WizardApp):
 def test_check_blockers(app: WizardApp):
     """Test check_submission_blockers method."""
     model = app.submit_model
+    model.await_resources()
 
     model.update_blockers()
     assert len(model.blockers) == 0
@@ -72,6 +76,7 @@ def test_check_blockers(app: WizardApp):
 
 def test_qeapp_computational_resources_widget(app: WizardApp):
     """Test QEAppComputationalResourcesWidget."""
+    app.submit_model.await_resources()
     app.submit_step.render()
     global_model = app.submit_model.get_model("global")
     global_resources = app.submit_step.global_resources

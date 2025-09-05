@@ -145,12 +145,14 @@ class WizardApp(ipw.VBox):
 
     def _update_configuration_step(self):
         if self.structure_model.confirmed:
+            self.configure_model.await_properties()
             self.configure_model.structure_uuid = self.structure_model.structure_uuid
         else:
             self.configure_model.structure_uuid = None
 
     def _update_submission_step(self):
         if self.configure_model.confirmed:
+            self.submit_model.await_resources()
             self.submit_model.structure_uuid = self.structure_model.structure_uuid
             self.submit_model.input_parameters = self.configure_model.get_model_state()
         else:
