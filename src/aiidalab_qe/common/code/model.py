@@ -62,7 +62,7 @@ class CodeModel(Model):
     def deactivate(self):
         self.is_active = False
 
-    def update(self, user_email="", default_code=None, refresh=False):
+    def update(self, user_email: str, default_code=None, refresh=False):
         if not self.options or refresh:
             self.options = self._get_codes(user_email)
             if default_code:
@@ -109,7 +109,7 @@ class CodeModel(Model):
         # in the app and thus will not be considered as an option!
         return uuid if uuid in [opt[1] for opt in self.options] else None
 
-    def _get_codes(self, user_email: str = ""):
+    def _get_codes(self, user_email: str):
         user = orm.User.collection.get(email=user_email)
 
         filters = (
