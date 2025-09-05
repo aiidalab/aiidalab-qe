@@ -45,6 +45,8 @@ class SubmissionStepModel(
             "qe_installed",
         ]
 
+        self.default_user_email = orm.User.collection.get_default().email
+
         self._default_models = {
             "global",
         }

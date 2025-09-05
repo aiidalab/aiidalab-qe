@@ -174,19 +174,16 @@ class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
 
     warning_messages = tl.Unicode("")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, default_user_email: str, *args, **kwargs):
         self.default_codes: dict[str, dict] = kwargs.pop("default_codes", {})
-
+        self.default_user_email = default_user_email
         super().__init__(*args, **kwargs)
-
-        # Used by the code-setup thread to fetch code options
-        self.DEFAULT_USER_EMAIL = orm.User.collection.get_default().email
 
     def add_model(self, identifier, model):
         super().add_model(identifier, model)
         code_key = model.default_calc_job_plugin.split(".")[-1]
         model.update(
-            self.DEFAULT_USER_EMAIL,
+            user_email=self.default_user_email,
             default_code=self.default_codes.get(code_key, {}).get("code"),
         )
 
@@ -194,7 +191,7 @@ class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
         for _, code_model in self.get_models():
             code_key = code_model.default_calc_job_plugin.split(".")[-1]
             code_model.update(
-                self.DEFAULT_USER_EMAIL,
+                user_email=self.default_user_email,
                 default_code=self.default_codes.get(code_key, {}).get("code"),
                 refresh=True,
             )
