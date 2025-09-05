@@ -31,7 +31,7 @@ class StructureStepModel(
             self.structure_name = str(self.input_structure.get_formula())
 
     def reset(self):
-        self.input_structure = None
+        self.structure_uuid = None
         self.structure_name = ""
         self.manager_output = ""
 

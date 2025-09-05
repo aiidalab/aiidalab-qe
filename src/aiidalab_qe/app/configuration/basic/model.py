@@ -20,7 +20,7 @@ class BasicConfigurationSettingsModel(
     identifier = "workchain"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
     ]
 
     protocol_options = tl.List(

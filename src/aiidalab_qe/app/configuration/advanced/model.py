@@ -26,7 +26,7 @@ class AdvancedConfigurationSettingsModel(
     identifier = "advanced"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
         "workchain.protocol",
         "workchain.spin_type",
         "workchain.electronic_type",
@@ -233,7 +233,7 @@ class AdvancedConfigurationSettingsModel(
         control_params: dict = pw_parameters.get("CONTROL", {})
         electron_params: dict = pw_parameters.get("ELECTRONS", {})
 
-        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
+        num_atoms = len(self.input_structure.sites) if self.has_structure else 1
 
         general = t.cast(
             GeneralConfigurationSettingsModel,

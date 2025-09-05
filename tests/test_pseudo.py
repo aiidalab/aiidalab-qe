@@ -154,7 +154,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     pseudos = PseudosConfigurationSettingsPanel(model=model)
 
     silicon = generate_structure_data("silicon")
-    model.input_structure = silicon
+    model.structure_uuid = silicon.uuid
 
     # Test the default family
     assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
@@ -184,7 +184,7 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
 
     # Test that changing the structure triggers a reset
     silica = generate_structure_data("silica")
-    model.input_structure = silica
+    model.structure_uuid = silica.uuid
     assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
     assert "Si" in model.dictionary.keys()
     assert "O" in model.dictionary.keys()
@@ -355,7 +355,7 @@ def test_missing_pseudos(generate_structure_data):
     """Test that the model handles missing pseudos correctly."""
     model = PseudosConfigurationSettingsModel()
     _ = PseudosConfigurationSettingsPanel(model=model)
-    model.input_structure = generate_structure_data("CeO")
+    model.structure_uuid = generate_structure_data("CeO").uuid
     model.functional = "PBEsol"
     model.library = "PseudoDojo standard (SR)"
     assert model.family == "PseudoDojo/0.4/PBEsol/SR/standard/upf"
@@ -369,7 +369,7 @@ def test_functional_mismatch_blocker(generate_structure_data):
     """Test blocker for inconsistent functional across selected pseudopotentials."""
     model = PseudosConfigurationSettingsModel()
     _ = PseudosConfigurationSettingsPanel(model=model)
-    model.input_structure = generate_structure_data("silica")
+    model.structure_uuid = generate_structure_data("silica").uuid
     model.functionals = ["PBE", "PBEsol"]
     assert len(model.blockers) == 1
     assert "must have the same exchange-correlation" in model.blockers[0]
@@ -381,7 +381,7 @@ def test_relativistic_mismatch_blocker(generate_structure_data):
     """
     model = PseudosConfigurationSettingsModel()
     _ = PseudosConfigurationSettingsPanel(model=model)
-    model.input_structure = generate_structure_data("silica")
+    model.structure_uuid = generate_structure_data("silica").uuid
     model.spin_orbit = "soc"
     model.family = "SSSP/1.3/PBEsol/efficiency"
     assert len(model.blockers) == 1

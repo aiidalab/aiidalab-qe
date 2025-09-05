@@ -145,23 +145,22 @@ class WizardApp(ipw.VBox):
 
     def _update_configuration_step(self):
         if self.structure_model.confirmed:
-            self.configure_model.input_structure = self.structure_model.input_structure
+            self.configure_model.structure_uuid = self.structure_model.structure_uuid
         else:
-            self.configure_model.input_structure = None
+            self.configure_model.structure_uuid = None
 
     def _update_submission_step(self):
         if self.configure_model.confirmed:
-            self.submit_model.input_structure = self.structure_model.input_structure
+            self.submit_model.structure_uuid = self.structure_model.structure_uuid
             self.submit_model.input_parameters = self.configure_model.get_model_state()
         else:
-            self.submit_model.input_structure = None
+            self.submit_model.structure_uuid = None
             self.submit_model.input_parameters = {}
 
     def _update_results_step(self):
         ipw.dlink(
-            (self.submit_model, "process_node"),
+            (self.submit_model, "process_uuid"),
             (self.results_model, "process_uuid"),
-            lambda node: node.uuid if node is not None else None,
         )
 
     def _lock_app(self):
@@ -179,14 +178,14 @@ class WizardApp(ipw.VBox):
         else:
             self._show_process_loading_message()
             process_node = load_node(pk)
-            self.structure_model.input_structure = process_node.inputs.structure
+            self.structure_model.structure_uuid = process_node.inputs.structure.uuid
             self.structure_model.confirm()
             parameters = process_node.base.extras.get("ui_parameters", {})
             if parameters and isinstance(parameters, str):
                 parameters = deserialize_unsafe(parameters)
             self.configure_model.set_model_state(parameters)
             self.configure_model.confirm()
-            self.submit_model.process_node = process_node
+            self.submit_model.process_uuid = process_node.uuid
             self.submit_model.set_model_state(parameters)
             self.submit_model.confirm()
             self._wizard_app_widget.selected_index = 3

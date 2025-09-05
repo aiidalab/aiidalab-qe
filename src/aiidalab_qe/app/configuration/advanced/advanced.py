@@ -79,7 +79,7 @@ class AdvancedConfigurationSettingsPanel(
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._model.observe(
             self._on_spin_type_change,
@@ -150,7 +150,7 @@ class AdvancedConfigurationSettingsPanel(
         self.advanced_tabs.selected_index = 0
 
     def _on_advanced_tab_change(self, change):
-        tab: ConfigurationSettingsPanel = self.advanced_tabs.children[change["new"]]
+        tab: ConfigurationSettingsPanel = self.advanced_tabs.children[change["new"]]  # type: ignore
         tab.render()
 
     def _on_reset_to_defaults_button_click(self, _):

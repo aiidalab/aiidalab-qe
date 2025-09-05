@@ -22,7 +22,7 @@ class PseudosConfigurationSettingsPanel(
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._model.observe(
             self._on_protocol_change,

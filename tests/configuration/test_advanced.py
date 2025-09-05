@@ -59,7 +59,7 @@ def test_advanced_convergence_settings(generate_structure_data):
     _ = ConvergenceConfigurationSettingsPanel(model=model)
 
     # Test structure-dependent convergence change
-    model.input_structure = generate_structure_data("silica")
+    model.structure_uuid = generate_structure_data("silica").uuid
 
     assert "num_atoms = 6" in model.help_message
 
@@ -106,7 +106,7 @@ def test_advanced_kpoints_mesh(generate_structure_data):
     _ = ConvergenceConfigurationSettingsPanel(model=model)
 
     structure = generate_structure_data(name="silicon")
-    model.input_structure = structure
+    model.structure_uuid = structure.uuid
 
     assert model.mesh_grid == "Mesh [14, 14, 14]"
 
@@ -122,7 +122,7 @@ def test_advanced_molecule_settings(generate_structure_data):
 
     # Create molecule
     structure = generate_structure_data(name="H2O", pbc=(False, False, False))
-    model.input_structure = structure
+    model.structure_uuid = structure.uuid
 
     # Confirm the value of kpoints_distance is fixed
     assert model.kpoints_distance == 100.0
@@ -175,7 +175,7 @@ def test_advanced_hubbard_settings(generate_structure_data):
     hubbard.render()
 
     structure = generate_structure_data(name="LiCoO2")
-    model.input_structure = structure
+    model.structure_uuid = structure.uuid
 
     # Activate Hubbard U widget
     model.is_active = True
@@ -244,7 +244,7 @@ def test_advanced_magnetic_settings(generate_structure_data):
     pseudo_family = get_pseudo_family_by_label("SSSP/1.3/PBE/efficiency")
 
     structure = generate_structure_data(name="LiCoO2")
-    model.input_structure = structure
+    model.structure_uuid = structure.uuid
     model.spin_type = "collinear"
     model.dictionary = {
         kind.name: pseudo_family.get_pseudo(kind.symbol).uuid
@@ -282,8 +282,9 @@ def test_advanced_magnetic_settings(generate_structure_data):
         symbols="O",
         name="O2",
     )
+    structure.store()
 
-    model.input_structure = structure
+    model.structure_uuid = structure.uuid
     model.dictionary = {
         kind.name: pseudo_family.get_pseudo(kind.symbol).uuid
         for kind in structure.kinds

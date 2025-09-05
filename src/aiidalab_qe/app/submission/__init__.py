@@ -73,6 +73,10 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
             self._on_input_parameters_change,
             "input_parameters",
         )
+        self._model.observe(
+            self._on_process_change,
+            "process_uuid",
+        )
 
         self.settings = {
             "global": self.global_resources,
@@ -209,6 +213,9 @@ class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepMo
         self._toggle_qe_installation_widget()
         if self._model.qe_installed:
             self._model.update()
+
+    def _on_process_change(self, _):
+        self._model.update_process_metadata()
 
     def _set_up_qe(self, auto_setup):
         self.qe_setup = QESetupWidget(auto_start=False)

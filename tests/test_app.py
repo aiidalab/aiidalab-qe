@@ -28,8 +28,8 @@ def test_selecting_new_structure_unconfirms_model(generate_structure_data):
     from aiidalab_qe.app.structure.model import StructureStepModel
 
     model = StructureStepModel()
-    model.input_structure = generate_structure_data()
+    model.structure_uuid = generate_structure_data().uuid
     assert model.has_structure
     model.confirm()
-    model.input_structure = generate_structure_data()
+    model.structure_uuid = generate_structure_data().uuid
     assert not model.confirmed

@@ -63,7 +63,7 @@ class ConfigureQeAppWorkChainStep(
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
 
         self.settings = {
@@ -254,7 +254,7 @@ class ConfigureQeAppWorkChainStep(
 
             if identifier == "bands":
                 ipw.dlink(
-                    (self._model, "input_structure"),
+                    (self._model, "structure_uuid"),
                     (outline.include, "disabled"),
                     lambda _: not self._model.has_pbc,
                 )

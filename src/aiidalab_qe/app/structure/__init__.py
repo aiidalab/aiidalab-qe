@@ -17,6 +17,7 @@ from aiidalab_qe.common import (
     ShakeNBreakEditor,
 )
 from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget
 from aiidalab_qe.common.wizard import QeConfirmableWizardStep
 from aiidalab_widgets_base import (
@@ -66,7 +67,7 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
         )
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._install_sssp(auto_setup)
 
@@ -133,7 +134,8 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
 
         ipw.dlink(
             (self.manager, "structure_node"),
-            (self._model, "input_structure"),
+            (self._model, "structure_uuid"),
+            lambda node: node.uuid if node else None,
         )
         ipw.link(
             (self._model, "manager_output"),
@@ -198,8 +200,6 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
         self._update_state()
 
     def _install_sssp(self, auto_setup):
-        from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
-
         self.sssp_installation = PseudosInstallWidget(auto_start=False)
         ipw.dlink(
             (self.sssp_installation, "busy"),
@@ -224,7 +224,7 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
     def _update_state(self):
         if self._model.confirmed:
             self.state = self.State.SUCCESS
-        elif self._model.input_structure is None:
+        elif not self._model.has_structure:
             self.state = self.State.READY
         else:
             self.state = self.State.CONFIGURED

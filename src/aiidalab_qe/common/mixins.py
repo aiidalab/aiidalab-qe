@@ -7,17 +7,24 @@ import traitlets as tl
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+from aiidalab_qe.common.decorators import cache_per_thread
 from aiidalab_qe.common.mvc import Model
+
+StructureType = t.Union[orm.StructureData, HubbardStructureData]
 
 
 class HasInputStructure(tl.HasTraits):
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(HubbardStructureData),
-        ],
-        allow_none=True,
-    )
+    structure_uuid = tl.Unicode(None, allow_none=True)
+
+    @cache_per_thread(invalidator="structure_uuid")
+    @property
+    def input_structure(self) -> StructureType | None:
+        if not self.structure_uuid:
+            return None
+        try:
+            return t.cast(StructureType, orm.load_node(self.structure_uuid))
+        except NotExistent:
+            return None
 
     @property
     def has_structure(self):
@@ -29,7 +36,7 @@ class HasInputStructure(tl.HasTraits):
 
     @property
     def has_tags(self):
-        return any(
+        return self.has_structure and any(
             not kind_name.isalpha()
             for kind_name in self.input_structure.get_kind_names()
         )
@@ -99,36 +106,37 @@ class HasProcess(tl.HasTraits):
     process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
 
+    @cache_per_thread(invalidator="process_uuid")
+    @property
+    def process(self) -> orm.WorkChainNode | None:
+        if not self.process_uuid:
+            return None
+        try:
+            return t.cast(orm.WorkChainNode, orm.load_node(self.process_uuid))
+        except NotExistent:
+            return None
+
     @property
     def has_process(self):
-        return self.fetch_process_node() is not None
+        return self.process is not None
 
     @property
-    def inputs(self):
-        process_node = self.fetch_process_node()
-        return process_node.inputs if process_node else []
+    def inputs(self) -> orm.NodeLinksManager | list:
+        return self.process.inputs if self.has_process else []
 
     @property
-    def properties(self):
-        process_node = self.fetch_process_node()
+    def properties(self) -> list:
         # read the attributes directly instead of using the `get_list` method
         # to avoid error in case of the orm.List object being converted to a orm.Data object
         return (
-            process_node.inputs.properties.base.attributes.get("list")
-            if process_node
+            self.inputs.properties.base.attributes.get("list")
+            if self.has_process
             else []
         )
 
     @property
     def outputs(self):
-        process_node = self.fetch_process_node()
-        return process_node.outputs if process_node else []
-
-    def fetch_process_node(self) -> orm.ProcessNode | None:
-        try:
-            return orm.load_node(self.process_uuid) if self.process_uuid else None  # type: ignore
-        except NotExistent:
-            return None
+        return self.process.outputs if self.has_process else []
 
 
 class Confirmable(tl.HasTraits):

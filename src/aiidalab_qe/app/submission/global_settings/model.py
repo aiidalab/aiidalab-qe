@@ -20,7 +20,7 @@ class GlobalResourceSettingsModel(
     identifier = "global"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
         "input_parameters",
     ]
 

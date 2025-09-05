@@ -18,7 +18,7 @@ class MagnetizationConfigurationSettingsModel(
     identifier = "magnetization"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
         "electronic_type",
         "spin_type",
         "pseudos.dictionary",
