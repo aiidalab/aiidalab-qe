@@ -696,7 +696,7 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             description=kwargs.pop("description", None),
             default_calc_job_plugin=kwargs.pop("default_calc_job_plugin", None),
             include_setup_widget=False,
-            fetch_codes=True,  # TODO resolve testing issues when set to `False`
+            fetch_codes=False,
             **kwargs,
         )
         self.code_selection.layout.width = "80%"
