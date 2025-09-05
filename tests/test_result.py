@@ -1,7 +1,7 @@
 import pytest
 from bs4 import BeautifulSoup
 
-from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
+from aiidalab_qe.app.result import ResultsStep
 from aiidalab_qe.app.result.components.summary import WorkChainSummaryModel
 from aiidalab_qe.app.result.components.viewer import (
     WorkChainResultsViewer,
@@ -18,7 +18,7 @@ def test_result_step(app_to_submit, generate_qeapp_workchain):
     """Test the result step is properly updated when the process
     is running."""
     app: WizardApp = app_to_submit
-    step: ViewQeAppWorkChainStatusAndResultsStep = app.results_step
+    step: ResultsStep = app.results_step
     model = app.results_model
     model.process_uuid = generate_qeapp_workchain().node.uuid
     assert step.state == step.State.ACTIVE

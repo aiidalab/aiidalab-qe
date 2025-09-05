@@ -1,5 +1,4 @@
-from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.app.submission.model import SubmissionStepModel
+from aiidalab_qe.app.submission import SubmissionStep, SubmissionStepModel
 from aiidalab_qe.app.wizard_app import WizardApp
 
 
@@ -18,7 +17,7 @@ def test_set_codes(submit_app_generator):
     app: WizardApp = submit_app_generator()
     parameters = app.submit_model.get_model_state()
     model = SubmissionStepModel()
-    _ = SubmitQeAppWorkChainStep(model=model, auto_setup=False)
+    _ = SubmissionStep(model=model, auto_setup=False)
     model.await_resources()
     for identifier, code_model in app.submit_model.get_model("global").get_models():
         model.get_model("global").get_model(identifier).is_active = code_model.is_active
