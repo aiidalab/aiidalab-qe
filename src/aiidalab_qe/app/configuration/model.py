@@ -11,7 +11,7 @@ from aiidalab_qe.common.mixins import (
     HasModels,
 )
 from aiidalab_qe.common.panel import PanelModel
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStepModel, State
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -19,14 +19,14 @@ NO_RELAXATION_OPTION = ("Structure as is", "none")
 
 
 class ConfigurationStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableDependentWizardStepModel,
     HasModels[PanelModel],
     HasInputStructure,
 ):
     identifier = "configuration"
 
     relax_type_help = tl.Unicode()
-    relax_type_options = tl.List([NO_RELAXATION_OPTION])
+    relax_type_options = tl.List(default_value=[NO_RELAXATION_OPTION])
     relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
 
     installed_properties_fetched = tl.Bool(False)
@@ -90,11 +90,15 @@ class ConfigurationStepModel(
             "relax_type": relax_type,
         }
 
-        self.relax_type_help = self._get_default_relax_type_help()
-        self.relax_type_options = self._get_default_relax_type_options()
+        self.relax_type_help = self._get_default("relax_type_help")
+        self.relax_type_options = self._get_default("relax_type_options")
         self.relax_type = self._get_default_relax_type()
 
+        self.update_blockers()
+
     def get_model_state(self) -> dict:
+        if not self.is_ready:
+            return {}
         state = {
             identifier: model.get_model_state()
             for identifier, model in self.get_models()
@@ -117,6 +121,17 @@ class ConfigurationStepModel(
                 model.set_model_state(state[identifier])
                 model.locked = True
 
+    def update_state(self):
+        super().update_state()
+        if self.confirmed:
+            self.state = State.SUCCESS
+        elif self.is_ready:
+            self.state = State.CONFIGURED
+        elif self.previous_step_state is State.FAIL:  # TODO why?
+            self.state = State.FAIL
+        else:
+            self.state = State.INIT
+
     def await_properties(self):
         """Wait until installed properties are fetched, or timeout after 5 seconds."""
         i = 0
@@ -131,8 +146,8 @@ class ConfigurationStepModel(
 
     def reset(self):
         self.confirmed = False
-        self.relax_type_help = self._get_default_relax_type_help()
-        self.relax_type_options = self._get_default_relax_type_options()
+        self.relax_type_help = self._get_default("relax_type_help")
+        self.relax_type_options = self._get_default("relax_type_options")
         self.relax_type = self._get_default_relax_type()
         for identifier, model in self.get_models():
             if identifier not in self._default_models:
@@ -156,15 +171,9 @@ class ConfigurationStepModel(
             properties.append("relax")
         return properties
 
-    def _get_default_relax_type_help(self):
-        return self._defaults.get("relax_type_help", "")
-
-    def _get_default_relax_type_options(self):
-        return self._defaults.get("relax_type_options", [NO_RELAXATION_OPTION])
-
     def _get_default_relax_type(self):
-        options = self._get_default_relax_type_options()
-        relax_type = self._defaults.get("relax_type", NO_RELAXATION_OPTION[-1])
+        options = self._get_default("relax_type_options")
+        relax_type = self._get_default("relax_type")
         return (
             relax_type
             if relax_type in [option[1] for option in options]

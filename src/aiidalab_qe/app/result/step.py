@@ -1,36 +1,39 @@
-import ipywidgets as ipw
-import traitlets as tl
+from __future__ import annotations
 
-from aiida.engine import ProcessState
+import ipywidgets as ipw
+
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.process import STATE_ICONS
-from aiidalab_qe.common.wizard import QeDependentWizardStep
-from aiidalab_widgets_base import LoadingWidget, ProcessMonitor, WizardAppWidgetStep
+from aiidalab_qe.common.wizard import DependentWizardStep, State
+from aiidalab_widgets_base import LoadingWidget, ProcessMonitor
 
 from .components import ResultsComponent
 from .components.status import WorkChainStatusModel, WorkChainStatusPanel
-from .components.summary import WorkChainSummary, WorkChainSummaryModel
-from .components.viewer import WorkChainResultsViewer, WorkChainResultsViewerModel
+from .components.summary import WorkflowSummary, WorkflowSummaryModel
+from .components.viewer import ResultsViewer, ResultsViewerModel
 from .model import ResultsStepModel
 
 
-class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
+class ResultsStep(DependentWizardStep[ResultsStepModel]):
     missing_information_warning = (
         "No available results. Did you submit or load a calculation?"
     )
 
-    STATUS_TEMPLATE = "<h4>Workflow status: {}</h4"
-
-    def __init__(self, model: ResultsStepModel, **kwargs):
-        self.log_widget = kwargs.pop("log_widget", None)
+    def __init__(
+        self,
+        model: ResultsStepModel,
+        log_widget: ipw.Output | None,
+        **kwargs,
+    ):
         super().__init__(model=model, **kwargs)
 
-        summary_model = WorkChainSummaryModel()
-        self.summary_panel = WorkChainSummary(model=summary_model)
+        self.log_widget = log_widget
+
+        summary_model = WorkflowSummaryModel()
+        self.summary_panel = WorkflowSummary(model=summary_model)
         self._model.add_model("summary", summary_model)
 
-        results_model = WorkChainResultsViewerModel()
-        self.results_panel = WorkChainResultsViewer(model=results_model)
+        results_model = ResultsViewerModel()
+        self.results_panel = ResultsViewer(model=results_model)
         self._model.add_model("results", results_model)
 
         status_model = WorkChainStatusModel()
@@ -43,7 +46,7 @@ class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
             "Results": self.results_panel,
         }
 
-        self.observe(
+        self._model.observe(
             self._on_previous_step_state_change,
             "previous_step_state",
         )
@@ -51,6 +54,13 @@ class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
             self._on_process_change,
             "process_uuid",
         )
+        self._model.observe(
+            self._on_state_change,
+            "state",
+        )
+
+    def reset(self):
+        self._model.reset()
 
     def _render(self):
         self.kill_button = ipw.Button(
@@ -61,9 +71,9 @@ class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
             layout=ipw.Layout(width="auto", display="none"),
         )
         ipw.dlink(
-            (self, "state"),
+            (self._model, "state"),
             (self.kill_button, "disabled"),
-            lambda state: state is not self.State.ACTIVE,
+            lambda state: state is not State.ACTIVE,
         )
         self.kill_button.on_click(self._on_kill_button_click)
 
@@ -129,7 +139,7 @@ class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
             timeout=0.5,
             callbacks=[
                 self._update_status,
-                self._update_state,
+                lambda _: self._model.update_state(),
             ],
             log_widget=self.log_widget,
         )
@@ -138,20 +148,12 @@ class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
             (self.process_monitor, "value"),
         )
 
-    def can_reset(self):
-        "Checks if process is running (active), which disallows a reset."
-        return self.state is not self.State.ACTIVE
-
-    def reset(self):
-        self._model.reset()
-
-    @tl.observe("state")
     def _on_state_change(self, change):
         super()._on_state_change(change)
-        self._update_kill_button_layout()
+        self._update_controls()
 
     def _on_previous_step_state_change(self, _):
-        if self.previous_step_state is WizardAppWidgetStep.State.SUCCESS:
+        if self._model.is_ready:
             message = (
                 "Loading results"
                 if self._model.has_process and self._model.process.is_finished
@@ -167,7 +169,7 @@ class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
         if self.rendered:
             self._update_children()
         self._model.update()
-        self._update_state()
+        self._model.update_state()
         self._update_kill_button_layout()
         self._update_clean_scratch_button_layout()
 
@@ -206,11 +208,7 @@ class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
             not self._model.has_process
             or self._model.process.is_finished
             or self._model.process.is_excepted
-            or self.state
-            in (
-                self.State.SUCCESS,
-                self.State.FAIL,
-            )
+            or self._model.is_finished
         ):
             self.kill_button.layout.display = "none"
         else:
@@ -227,43 +225,7 @@ class ResultsStep(QeDependentWizardStep[ResultsStepModel]):
     def _update_status(self):
         self._model.monitor_counter += 1
 
-    def _update_state(self):
-        if not self._model.has_process:
-            self.state = self.State.INIT
-            self._update_controls()
-            return
-
-        if process_state := self._model.process.process_state:
-            status = self._get_process_status(process_state.value)
-        else:
-            status = "Unknown"
-
-        if process_state is ProcessState.CREATED:
-            self.state = self.State.ACTIVE
-        elif process_state in (
-            ProcessState.RUNNING,
-            ProcessState.WAITING,
-        ):
-            self.state = self.State.ACTIVE
-            status = self._get_process_status("running")  # overwrite status
-        elif process_state in (
-            ProcessState.EXCEPTED,
-            ProcessState.KILLED,
-        ):
-            self.state = self.State.FAIL
-        elif self._model.process.is_failed:
-            self.state = self.State.FAIL
-        elif self._model.process.is_finished_ok:
-            self.state = self.State.SUCCESS
-
-        self._model.process_info = self.STATUS_TEMPLATE.format(status)
-
-        self._update_controls()
-
     def _update_controls(self):
-        if self.state in (self.State.SUCCESS, self.State.FAIL):
+        if self._model.is_finished:
             self._update_kill_button_layout()
             self._update_clean_scratch_button_layout()
-
-    def _get_process_status(self, state: str):
-        return f"{state.capitalize()} {STATE_ICONS[state]}"

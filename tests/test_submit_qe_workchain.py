@@ -1,4 +1,7 @@
-from aiidalab_qe.app.wizard_app import WizardApp
+import typing as t
+
+from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsModel
+from aiidalab_qe.app.wizard import Wizard
 
 
 def test_create_builder_default(
@@ -10,7 +13,7 @@ def test_create_builder_default(
     metal, non-magnetic
     """
 
-    app: WizardApp = submit_app_generator(properties=["bands", "pdos"])
+    app: Wizard = submit_app_generator(properties=["bands", "pdos"])
 
     parameters = app.submit_model.get_model_state()
     app.submit_model._create_builder(parameters)
@@ -27,7 +30,7 @@ def test_create_builder_default(
 
 def test_create_process_label(submit_app_generator):
     """Test the creation of the correct process label."""
-    app: WizardApp = submit_app_generator(properties=["bands", "pdos"])
+    app: Wizard = submit_app_generator(properties=["bands", "pdos"])
     app.submit_model.update_process_label()
 
     assert (
@@ -58,7 +61,7 @@ def test_create_builder_insulator(
     insulator, non-magnetic, no smearing
     the occupation type is set to fixed, smearing and degauss should not be set"""
 
-    app: WizardApp = submit_app_generator(
+    app: Wizard = submit_app_generator(
         electronic_type="insulator", properties=["bands", "pdos"]
     )
     parameters = app.submit_model.get_model_state()
@@ -88,7 +91,7 @@ def test_create_builder_advanced_settings(
     -properties: bands, pdos
     """
 
-    app: WizardApp = submit_app_generator(
+    app: Wizard = submit_app_generator(
         electronic_type="metal",
         spin_type="collinear",
         tot_charge=1.0,
@@ -153,9 +156,12 @@ def test_warning_messages(
         "avoid_overloading": "Reduce the number of CPUs to avoid the overloading of the local machine",
     }
 
-    app: WizardApp = submit_app_generator(properties=["bands", "pdos"])
+    app: Wizard = submit_app_generator(properties=["bands", "pdos"])
     submit_model = app.submit_model
-    global_model = submit_model.get_model("global")
+    global_model = t.cast(
+        GlobalResourceSettingsModel,
+        submit_model.get_model("global"),
+    )
 
     pw_code = global_model.get_model("quantumespresso__pw")
 

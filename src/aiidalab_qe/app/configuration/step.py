@@ -19,7 +19,7 @@ from aiidalab_qe.app.utils.plugin_manager import (
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
 from aiidalab_qe.common.widgets import LinkButton
-from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 
 from .advanced import (
     AdvancedConfigurationSettingsModel,
@@ -31,7 +31,7 @@ from .model import ConfigurationStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class ConfigurationStep(QeConfirmableDependentWizardStep[ConfigurationStepModel]):
+class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
     missing_information_warning = "Missing input structure. Please set it first."
 
     def __init__(self, model: ConfigurationStepModel, **kwargs):
@@ -236,16 +236,6 @@ class ConfigurationStep(QeConfirmableDependentWizardStep[ConfigurationStepModel]
             for i, title in enumerate(titles):
                 self.tabs.set_title(i, title)
             self.tabs.selected_index = 0
-
-    def _update_state(self, _=None):
-        if self._model.confirmed:
-            self.state = self.State.SUCCESS
-        elif self.previous_step_state is self.State.SUCCESS:
-            self.state = self.State.CONFIGURED
-        elif self.previous_step_state is self.State.FAIL:
-            self.state = self.State.FAIL
-        else:
-            self.state = self.State.INIT
 
     def _fetch_plugin_calculation_settings(self):
         outlines = get_entry_items("aiidalab_qe.properties", "outline")

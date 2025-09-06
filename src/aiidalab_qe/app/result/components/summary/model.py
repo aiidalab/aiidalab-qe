@@ -9,6 +9,7 @@ from jinja2 import Environment
 
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
+from aiida.orm.utils.serialize import deserialize_unsafe
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponentModel
@@ -53,7 +54,7 @@ VDW_CORRECTION_VERSION = {
 }
 
 
-class WorkChainSummaryModel(ResultsComponentModel):
+class WorkflowSummaryModel(ResultsComponentModel):
     identifier = "workflow summary"
 
     failed_calculation_report = tl.Unicode("")
@@ -148,8 +149,6 @@ class WorkChainSummaryModel(ResultsComponentModel):
 
         Return a dictionary of the parameters.
         """
-        from aiida.orm.utils.serialize import deserialize_unsafe
-
         ui_parameters = self.process.base.extras.get("ui_parameters", {})
         if isinstance(ui_parameters, str):
             ui_parameters = deserialize_unsafe(ui_parameters)

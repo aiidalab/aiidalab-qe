@@ -1,11 +1,24 @@
 from __future__ import annotations
 
+import typing as t
+from datetime import datetime
+
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import display
+from importlib_resources import files
+from IPython.display import Image, display
+from jinja2 import Environment
 
+from aiida import orm
+from aiida.orm.utils.serialize import deserialize_unsafe
+from aiidalab_qe.app.static import images as images_folder
+from aiidalab_qe.app.static import templates
+from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.app.wizard.model import WizardModel
 from aiidalab_qe.common.guide_manager import guide_manager
+from aiidalab_qe.common.infobox import InAppGuide, InfoBox
 from aiidalab_qe.common.widgets import LinkButton
+from aiidalab_qe.version import __version__
 from aiidalab_widgets_base import LoadingWidget
 
 
@@ -15,7 +28,7 @@ def without_triggering(toggle: str):
     def decorator(func):
         def wrapper(self, change: dict):
             """Toggle off other button without triggering its callback."""
-            view: AppWrapperView = self._view
+            view: AppView = self._view
             button: ipw.ToggleButton = getattr(view, toggle)
             callback = getattr(self, f"_on_{toggle}")
             button.unobserve(callback, "value")
@@ -28,31 +41,48 @@ def without_triggering(toggle: str):
     return decorator
 
 
-class AppWrapperContoller:
-    """An MVC controller for `AppWrapper`."""
+class AppController:
+    """An MVC controller for the app."""
 
     def __init__(
         self,
-        model: AppWrapperModel,
-        view: AppWrapperView,
+        model: AppModel,
+        view: AppView,
     ) -> None:
-        """`AppWrapperController` constructor.
+        """`AppController` constructor.
 
         Parameters
         ----------
-        `model` : `AppWrapperModel`
+        `model` : `AppModel`
             The associated model.
-        `view` : `AppWrapperView`
+        `view` : `AppView`
             The associated view.
         """
         self._model = model
         self._view = view
+        self._wizard_model = WizardModel()
         self._set_event_handlers()
 
     def enable_toggles(self) -> None:
         """Enable the toggle buttons at the top of the app."""
+        toggle: ipw.ToggleButton
         for toggle in self._view.toggles.children:
             toggle.disabled = False
+
+    def load_app(
+        self,
+        auto_setup: bool = True,
+        log_widget: ipw.Output | None = None,
+    ) -> None:
+        """Initialize the WizardApp and integrate the app into the main view."""
+        _ = orm.User.collection.get_default().email  # HACK
+        self.wizard = Wizard(self._wizard_model, auto_setup, log_widget)
+        self._view.app_container.children = [self.wizard]
+        state = {"process_uuid": self._model.process_uuid}
+        if self._model.process_uuid:
+            state |= self._model.get_state_from_process()
+        self._wizard_model.preloaded_state = state
+        self._model.loaded = True
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -130,10 +160,15 @@ class AppWrapperContoller:
             (self._model, "selected_guide"),
             (self._view.guide_selection, "value"),
         )
+        ipw.dlink(
+            (self._wizard_model, "loading_process"),
+            (self._view.process_loading_message.layout, "display"),
+            lambda loading_process: "flex" if loading_process else "none",
+        )
 
 
-class AppWrapperModel(tl.HasTraits):
-    """An MVC model for `AppWrapper`."""
+class AppModel(tl.HasTraits):
+    """An MVC model for the app."""
 
     guide_category_options = tl.List(
         ["No guides", *guide_manager.get_guide_categories()]
@@ -142,32 +177,59 @@ class AppWrapperModel(tl.HasTraits):
     guide_options = tl.List(tl.Unicode())
     selected_guide = tl.Unicode(None, allow_none=True)
 
+    process_uuid: str | None = None
+    loaded = False
+
+    @property
+    def process(self) -> orm.WorkChainNode:
+        return t.cast(orm.WorkChainNode, orm.load_node(self.process_uuid))
+
+    def validate_process(self, process_identifier: str | None = None) -> bool:
+        """Validate the process identifier."""
+        if process_identifier:
+            try:
+                process = orm.load_node(process_identifier)
+                assert isinstance(process, orm.WorkChainNode)
+                self.process_uuid = process.uuid
+            except Exception:
+                return False
+        return True
+
     def update_active_guide(self, category, guide):
         """Sets the current active guide."""
         active_guide = f"{category}/{guide}" if category != "No guides" else category
         guide_manager.active_guide = active_guide
 
+    def get_state_from_process(self) -> dict:
+        if not self.process_uuid:
+            return {}
+        parameters: dict = self.process.base.extras.get("ui_parameters", {})
+        if parameters and isinstance(parameters, str):
+            parameters = deserialize_unsafe(parameters)
+        codes = parameters.pop("codes", {})
 
-class AppWrapperView(ipw.VBox):
-    """An MVC view for `AppWrapper`."""
+        # BACKWARDS COMPATIBILITY
+        # We used to store the codes under "resources"
+        if "resources" in parameters:
+            resources = parameters["resources"]
+            codes |= {key: {"code": value} for key, value in codes.items()}
+            codes["pw"]["nodes"] = resources["num_machines"]
+            codes["pw"]["cpus"] = resources["num_mpiprocs_per_machine"]
+            codes["pw"]["parallelization"] = {"npool": resources["npools"]}
+        # END BACKWARDS COMPATIBILITY
+
+        return {
+            "structure_state": {"uuid": self.process.inputs.structure.uuid},
+            "configuration_state": parameters,
+            "resources_state": codes,
+        }
+
+
+class AppView(ipw.VBox):
+    """An MVC view for the app."""
 
     def __init__(self) -> None:
-        """`AppWrapperView` constructor."""
-
-        ################# LAZY LOADING #################
-
-        from datetime import datetime
-
-        from importlib_resources import files
-        from IPython.display import Image
-        from jinja2 import Environment
-
-        from aiidalab_qe.app.static import images as images_folder
-        from aiidalab_qe.app.static import templates
-        from aiidalab_qe.common.infobox import InfoBox
-        from aiidalab_qe.version import __version__
-
-        #################################################
+        """`AppView` constructor."""
 
         self.output = ipw.Output()
 
@@ -277,7 +339,12 @@ class AppWrapperView(ipw.VBox):
         )
         header.add_class("app-header")
 
-        self.main = ipw.VBox(children=[LoadingWidget("Loading the app")])
+        self.process_loading_message = LoadingWidget(
+            message="Loading process",
+            layout={"display": "none"},
+        )
+
+        self.app_container = ipw.VBox(children=[LoadingWidget("Loading the app")])
 
         current_year = datetime.now().year
         footer = ipw.HTML(f"""
@@ -292,7 +359,10 @@ class AppWrapperView(ipw.VBox):
             children=[
                 self.output,
                 header,
-                self.main,
+                InAppGuide(identifier="guide-header"),
+                self.process_loading_message,
+                self.app_container,
+                InAppGuide(identifier="post-guide"),
                 footer,
             ],
         )

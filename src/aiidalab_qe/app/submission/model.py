@@ -12,7 +12,7 @@ from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels, HasProcess
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStepModel, State
 from aiidalab_qe.utils import shallow_copy_nested_dict
 from aiidalab_qe.workflows import QeAppWorkChain
 
@@ -20,7 +20,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableDependentWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
     HasProcess,
@@ -42,27 +42,20 @@ class SubmissionStepModel(
     fetched_resources = tl.Bool(False)
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.confirmation_exceptions += [
-            "warning_messages",
-            "installing_qe",
-            "qe_installed",
-        ]
-
-        self.default_user_email = orm.User.collection.get_default().email
-
         self._default_models = {
             "global",
         }
 
-        self._ALERT_MESSAGE = """
-            <div class="alert alert-{alert_class} alert-dismissible">
-                <a href="#" class="close" data-dismiss="alert" aria-label="close">
-                    &times;
-                </a>
-                <strong>{message}</strong>
-            </div>
-        """
+        super().__init__(*args, **kwargs)
+
+        self.confirmation_exceptions += [
+            "warning_messages",
+            "installing_qe",
+            "qe_installed",
+            "fetched_resources",
+        ]
+
+        self.default_user_email = orm.User.collection.get_default().email
 
     def confirm(self):
         super().confirm()
@@ -70,6 +63,7 @@ class SubmissionStepModel(
             self._submit()
 
     def update(self):
+        self.update_blockers()
         for _, model in self.get_models():
             model.update()
 
@@ -141,6 +135,13 @@ class SubmissionStepModel(
             warning_messages += model.warning_messages
         self.warning_messages = warning_messages
 
+    def update_process_metadata(self):
+        if not self.has_process:
+            return
+        self.process_label = self.process.label
+        self.process_description = self.process.description
+        self.locked = True
+
     def get_model_state(self) -> dict:
         parameters: dict = shallow_copy_nested_dict(self.input_parameters)  # type: ignore
         parameters["codes"] = {
@@ -151,32 +152,23 @@ class SubmissionStepModel(
         return parameters
 
     def set_model_state(self, state: dict):
-        codes: dict = state.get("codes", {})
-
-        if "resources" in state:
-            resources = state["resources"]
-            codes |= {key: {"code": value} for key, value in codes.items()}
-            codes["pw"]["nodes"] = resources["num_machines"]
-            codes["pw"]["cpus"] = resources["num_mpiprocs_per_machine"]
-            codes["pw"]["parallelization"] = {"npool": resources["npools"]}
-
-        workchain_parameters: dict = state.get("workchain", {})
-        properties = set(workchain_parameters.get("properties", []))
-        included = self._default_models | properties
-
-        self.await_resources()
         for identifier, model in self.get_models():
-            model.include = identifier in included
-            if codes.get(identifier):
-                model.set_model_state(codes[identifier])
-                model.locked = True
+            if state.get(identifier):
+                model.include = True
+                model.set_model_state(state[identifier])
 
-    def update_process_metadata(self):
-        if not self.has_process:
-            return
-        self.process_label = self.process.label
-        self.process_description = self.process.description
-        self.locked = True
+    def update_state(self):
+        super().update_state()
+        if self.previous_step_state is State.FAIL:  # TODO why?
+            self.state = State.FAIL
+        elif not self.is_ready:
+            self.state = State.INIT
+        elif self.confirmed:
+            self.state = State.SUCCESS
+        elif self.is_blocked:
+            self.state = State.READY
+        else:
+            self.state = State.CONFIGURED
 
     def await_resources(self):
         """Wait until resources are fetched, or timeout after 5 seconds."""

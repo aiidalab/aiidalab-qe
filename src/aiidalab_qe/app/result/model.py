@@ -5,15 +5,17 @@ import contextlib
 import traitlets as tl
 
 from aiida import orm
+from aiida.engine import ProcessState
 from aiida.engine.processes import control
 from aiidalab_qe.common.mixins import HasModels, HasProcess
-from aiidalab_qe.common.wizard import QeWizardStepModel
+from aiidalab_qe.common.process import STATE_ICONS
+from aiidalab_qe.common.wizard import DependentWizardStepModel, State
 
 from .components import ResultsComponentModel
 
 
 class ResultsStepModel(
-    QeWizardStepModel,
+    DependentWizardStepModel,
     HasModels[ResultsComponentModel],
     HasProcess,
 ):
@@ -21,6 +23,8 @@ class ResultsStepModel(
 
     process_info = tl.Unicode("")
     process_remote_folder_is_clean = tl.Bool(False)
+
+    STATUS_TEMPLATE = "<h4>Workflow status: {}</h4"
 
     def update(self):
         self._update_process_remote_folder_state()
@@ -37,6 +41,37 @@ class ResultsStepModel(
                 with contextlib.suppress(Exception):
                     called_descendant.outputs.remote_folder._clean()
         self.process_remote_folder_is_clean = True
+
+    def update_state(self):
+        super().update_state()
+        if not self.process:
+            self.state = State.INIT
+            return
+
+        if process_state := self.process.process_state:
+            status = self._get_process_status(process_state.value)
+        else:
+            status = "Unknown"
+
+        if process_state is ProcessState.CREATED:
+            self.state = State.ACTIVE
+        elif process_state in (
+            ProcessState.RUNNING,
+            ProcessState.WAITING,
+        ):
+            self.state = State.ACTIVE
+            status = self._get_process_status("running")  # overwrite status
+        elif process_state in (
+            ProcessState.EXCEPTED,
+            ProcessState.KILLED,
+        ):
+            self.state = State.FAIL
+        elif self.process.is_failed:
+            self.state = State.FAIL
+        elif self.process.is_finished_ok:
+            self.state = State.SUCCESS
+
+        self.process_info = self.STATUS_TEMPLATE.format(status)
 
     def reset(self):
         self.process_uuid = None
@@ -61,3 +96,6 @@ class ResultsStepModel(
             (self, "monitor_counter"),
             (model, "monitor_counter"),
         )
+
+    def _get_process_status(self, state: str):
+        return f"{state.capitalize()} {STATE_ICONS[state]}"

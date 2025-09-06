@@ -20,7 +20,7 @@ from aiidalab_qe.common.panel import (
 )
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.widgets import LinkButton
-from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -28,7 +28,7 @@ from .model import SubmissionStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmissionStep(QeConfirmableDependentWizardStep[SubmissionStepModel]):
+class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
     missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
 
     def __init__(self, model: SubmissionStepModel, auto_setup=True, **kwargs):
@@ -267,18 +267,6 @@ class SubmissionStep(QeConfirmableDependentWizardStep[SubmissionStepModel]):
             for i, title in enumerate(titles):
                 self.tabs.set_title(i, title)
             self.tabs.selected_index = 0
-
-    def _update_state(self, _=None):
-        if self.previous_step_state is self.State.FAIL:
-            self.state = self.State.FAIL
-        elif self.previous_step_state is not self.State.SUCCESS:
-            self.state = self.State.INIT
-        elif self._model.confirmed:
-            self.state = self.State.SUCCESS
-        elif self._model.is_blocked:
-            self.state = self.State.READY
-        else:
-            self.state = self.state.CONFIGURED
 
     def _fetch_plugin_resource_settings(self):
         entries = get_entry_items("aiidalab_qe.properties", "resources")

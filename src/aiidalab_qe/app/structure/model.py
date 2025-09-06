@@ -1,11 +1,11 @@
 import traitlets as tl
 
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.wizard import ConfirmableWizardStepModel, State
 
 
 class StructureStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableWizardStepModel,
     HasInputStructure,
 ):
     identifier = "structure"
@@ -29,6 +29,21 @@ class StructureStepModel(
         else:
             self.manager_output = ""
             self.structure_name = str(self.input_structure.get_formula())
+
+    def get_model_state(self) -> dict:
+        return {"uuid": self.structure_uuid} if self.has_structure else {}
+
+    def set_model_state(self, state: dict):
+        self.structure_uuid = state.get("uuid")
+
+    def update_state(self):
+        super().update_state()
+        if self.confirmed:
+            self.state = State.SUCCESS
+        elif self.structure_uuid:
+            self.state = State.CONFIGURED
+        else:
+            self.state = State.READY
 
     def reset(self):
         self.structure_uuid = None

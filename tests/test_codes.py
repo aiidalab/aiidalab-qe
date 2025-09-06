@@ -1,10 +1,15 @@
+import typing as t
+
 from aiidalab_qe.app.submission import SubmissionStep, SubmissionStepModel
-from aiidalab_qe.app.wizard_app import WizardApp
+from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsModel
+from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.common.code import PwCodeModel
+from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget
 
 
 def test_code_not_selected(submit_app_generator):
     """Test if there is an error when the code is not selected."""
-    app: WizardApp = submit_app_generator(properties=["dos"])
+    app: Wizard = submit_app_generator(properties=["dos"])
     model = app.submit_model
     model.get_model("global").get_model("quantumespresso__dos").selected = None
     # Check builder construction passes without an error
@@ -14,7 +19,7 @@ def test_code_not_selected(submit_app_generator):
 
 def test_set_codes(submit_app_generator):
     """Test setting codes (in practice, from a loaded process)."""
-    app: WizardApp = submit_app_generator()
+    app: Wizard = submit_app_generator()
     parameters = app.submit_model.get_model_state()
     model = SubmissionStepModel()
     _ = SubmissionStep(model=model, auto_setup=False)
@@ -28,11 +33,14 @@ def test_set_codes(submit_app_generator):
     )
 
 
-def test_global_code_toggle(app: WizardApp):
+def test_global_code_toggle(app: Wizard):
     """Test that global codes toggle on/off based on their activity."""
     app.submit_model.await_resources()
 
-    global_resources_model = app.submit_model.get_model("global")
+    global_resources_model = t.cast(
+        GlobalResourceSettingsModel,
+        app.submit_model.get_model("global"),
+    )
     global_resources = app.submit_step.global_resources
     global_resources.render()
 
@@ -48,7 +56,7 @@ def test_global_code_toggle(app: WizardApp):
     assert global_resources.code_widgets["dos"].layout.display == "none"
 
 
-def test_check_blockers(app: WizardApp):
+def test_check_blockers(app: Wizard):
     """Test check_submission_blockers method."""
     model = app.submit_model
     model.await_resources()
@@ -73,14 +81,20 @@ def test_check_blockers(app: WizardApp):
     assert len(model.blockers) == 0
 
 
-def test_qeapp_computational_resources_widget(app: WizardApp):
+def test_qeapp_computational_resources_widget(app: Wizard):
     """Test QEAppComputationalResourcesWidget."""
     app.submit_model.await_resources()
     app.submit_step.render()
     global_model = app.submit_model.get_model("global")
     global_resources = app.submit_step.global_resources
-    pw_code_model = global_model.get_model("quantumespresso__pw")
-    pw_code_widget = global_resources.code_widgets["pw"]
+    pw_code_model = t.cast(
+        PwCodeModel,
+        global_model.get_model("quantumespresso__pw"),
+    )
+    pw_code_widget = t.cast(
+        PwCodeResourceSetupWidget,
+        global_resources.code_widgets["pw"],
+    )
     assert pw_code_widget.parallelization.npool.layout.display == "none"
     pw_code_model.parallelization_override = True
     pw_code_model.npool = 2

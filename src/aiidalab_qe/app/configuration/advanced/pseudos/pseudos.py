@@ -215,6 +215,17 @@ class PseudosConfigurationSettingsPanel(
 
         self.refresh(specific="widgets")
 
+    def update(self, specific=""):
+        if self._model.updated:
+            return
+        self._show_loading()
+        if not self._model.locked or (specific and specific != "widgets"):
+            self._model.update(specific)
+        self._build_setter_widgets()
+        self._model.update_library_options()
+        self._model.update_family_header()
+        self._model.updated = True
+
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
 
@@ -254,17 +265,6 @@ class PseudosConfigurationSettingsPanel(
         if not self.rendered:
             return
         self._warning_message.layout.display = "block" if change["new"] else "none"
-
-    def update(self, specific=""):
-        if self._model.updated:
-            return
-        self._show_loading()
-        if not self._model.locked or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_setter_widgets()
-        self._model.update_library_options()
-        self._model.update_family_header()
-        self._model.updated = True
 
     def _show_loading(self):
         if self.rendered:
