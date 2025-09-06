@@ -25,6 +25,17 @@ class HubbardConfigurationSettingsPanel(
             "has_eigenvalues",
         )
 
+    def update(self, specific=""):
+        if self._model.updated:
+            return
+        self._show_loading()
+        if not self._model.locked or (specific and specific != "widgets"):
+            self._model.update(specific)
+        self._build_hubbard_widget()
+        self._toggle_hubbard_widget()
+        self._toggle_eigenvalues_widget()
+        self._model.updated = True
+
     def render(self):
         if self.rendered:
             return
@@ -68,10 +79,16 @@ class HubbardConfigurationSettingsPanel(
 
         self.container = ipw.VBox()
 
-        self.children = [
-            self.activate_hubbard_checkbox,
-            self.container,
-        ]
+        ipw.dlink(
+            (self._model, "structure_uuid"),
+            (self, "children"),
+            lambda _: [
+                self.activate_hubbard_checkbox,
+                self.container,
+            ]
+            if self._model.has_structure
+            else [self._model.missing_structure_warning],
+        )
 
         self.rendered = True
 
@@ -85,17 +102,6 @@ class HubbardConfigurationSettingsPanel(
 
     def _on_eigenvalues_definition(self, _):
         self._toggle_eigenvalues_widget()
-
-    def update(self, specific=""):
-        if self._model.updated:
-            return
-        self._show_loading()
-        if not self._model.locked or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_hubbard_widget()
-        self._toggle_hubbard_widget()
-        self._toggle_eigenvalues_widget()
-        self._model.updated = True
 
     def _show_loading(self):
         if self.rendered:

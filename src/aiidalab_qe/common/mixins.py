@@ -9,12 +9,17 @@ from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.common.mvc import Model
+from aiidalab_qe.common.widgets import MissingInfoWidget
 
 StructureType = t.Union[orm.StructureData, HubbardStructureData]
 
 
 class HasInputStructure(tl.HasTraits):
     structure_uuid = tl.Unicode(None, allow_none=True)
+
+    missing_structure_warning = MissingInfoWidget(
+        message="Please select and confirm an input structure"
+    )
 
     @property
     def input_structure(self) -> StructureType | None:
@@ -119,6 +124,10 @@ class HasProcess(tl.HasTraits):
     process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
 
+    missing_process_warning = MissingInfoWidget(
+        message="Please submit or load a calculation"
+    )
+
     @property
     def process(self) -> orm.WorkChainNode | None:
         if not self.process_uuid:
@@ -190,7 +199,7 @@ class HasBlockers(tl.HasTraits):
         if self.is_blocked:
             formatted = "\n".join(f"<li>{item}</li>" for item in self.blockers)
             self.blocker_messages = f"""
-                <div class="alert alert-danger">
+                <div class="alert alert-danger" style="margin-top: 8px;">
                     <b>The step is blocked due to the following reason(s):</b>
                     <ul>
                         {formatted}

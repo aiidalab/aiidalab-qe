@@ -14,10 +14,6 @@ from .model import ResultsStepModel
 
 
 class ResultsStep(DependentWizardStep[ResultsStepModel]):
-    missing_information_warning = (
-        "No available results. Did you submit or load a calculation?"
-    )
-
     def __init__(
         self,
         model: ResultsStepModel,
@@ -54,10 +50,6 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             self._on_process_change,
             "process_uuid",
         )
-        self._model.observe(
-            self._on_state_change,
-            "state",
-        )
 
     def reset(self):
         self._model.reset()
@@ -75,6 +67,16 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             (self.kill_button, "disabled"),
             lambda state: state is not State.ACTIVE,
         )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.kill_button.layout, "display"),
+            lambda _: "none"
+            if not self._model.has_process
+            or self._model.process.is_finished
+            or self._model.process.is_excepted
+            or self._model.is_finished
+            else "block",
+        )
         self.kill_button.on_click(self._on_kill_button_click)
 
         self.clean_scratch_button = ipw.Button(
@@ -87,6 +89,13 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         ipw.dlink(
             (self._model, "process_remote_folder_is_clean"),
             (self.clean_scratch_button, "disabled"),
+        )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.clean_scratch_button.layout, "display"),
+            lambda _: "block"
+            if self._model.has_process and self._model.process.is_terminated
+            else "none",
         )
         self.clean_scratch_button.on_click(self._on_clean_scratch_button_click)
 
@@ -122,13 +131,33 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             ],
         )
 
-        if self._model.has_process:
-            self._update_children()
+        loading_message = LoadingWidget(message="Loading results")
+
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self, "children"),
+            lambda _: (
+                [
+                    InAppGuide(identifier="results-step"),
+                    self.process_info,
+                    ipw.HBox(
+                        children=[
+                            self.kill_button,
+                            self.clean_scratch_button,
+                        ],
+                        layout=ipw.Layout(margin="0 3px"),
+                    ),
+                    self.toggle_controls,
+                    self.container,
+                ]
+                if self._model.has_process
+                else [loading_message]
+            )
+            if self._model.is_ready
+            else [self._model.missing_process_warning],
+        )
 
     def _post_render(self):
-        self._update_kill_button_layout()
-        self._update_clean_scratch_button_layout()
-
         self.toggle_controls.value = (
             "Results"
             if self._model.has_process and self._model.process.is_finished_ok
@@ -148,10 +177,6 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             (self.process_monitor, "value"),
         )
 
-    def _on_state_change(self, change):
-        super()._on_state_change(change)
-        self._update_controls()
-
     def _on_previous_step_state_change(self, _):
         if self._model.is_ready:
             message = (
@@ -166,66 +191,18 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         self._toggle_view(panel)
 
     def _on_process_change(self, _):
-        if self.rendered:
-            self._update_children()
         self._model.update()
         self._model.update_state()
-        self._update_kill_button_layout()
-        self._update_clean_scratch_button_layout()
 
     def _on_kill_button_click(self, _):
         self._model.kill_process()
-        self._update_kill_button_layout()
 
     def _on_clean_scratch_button_click(self, _):
         self._model.clean_remote_data()
-        self._update_clean_scratch_button_layout()
-
-    def _update_children(self):
-        self.children = [
-            InAppGuide(identifier="results-step"),
-            self.process_info,
-            ipw.HBox(
-                children=[
-                    self.kill_button,
-                    self.clean_scratch_button,
-                ],
-                layout=ipw.Layout(margin="0 3px"),
-            ),
-            self.toggle_controls,
-            self.container,
-        ]
-        self.previous_children = list(self.children)
 
     def _toggle_view(self, panel: ResultsComponent):
         self.container.children = [panel]
         panel.render()
 
-    def _update_kill_button_layout(self):
-        if not self.rendered:
-            return
-        if (
-            not self._model.has_process
-            or self._model.process.is_finished
-            or self._model.process.is_excepted
-            or self._model.is_finished
-        ):
-            self.kill_button.layout.display = "none"
-        else:
-            self.kill_button.layout.display = "block"
-
-    def _update_clean_scratch_button_layout(self):
-        if not self.rendered:
-            return
-        if self._model.has_process and self._model.process.is_terminated:
-            self.clean_scratch_button.layout.display = "block"
-        else:
-            self.clean_scratch_button.layout.display = "none"
-
     def _update_status(self):
         self._model.monitor_counter += 1
-
-    def _update_controls(self):
-        if self._model.is_finished:
-            self._update_kill_button_layout()
-            self._update_clean_scratch_button_layout()

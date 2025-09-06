@@ -25,7 +25,12 @@ class ConfigurationStepModel(
 ):
     identifier = "configuration"
 
-    relax_type_help = tl.Unicode()
+    relax_type_help = tl.Unicode("""
+        <div style="display: flex; margin: 4px 2px">
+            Loading help text
+            <i class="fa fa-spinner fa-spin fa-2x fa-fw"></i>
+        </div>
+    """)
     relax_type_options = tl.List(default_value=[NO_RELAXATION_OPTION])
     relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
 
@@ -181,6 +186,9 @@ class ConfigurationStepModel(
         )
 
     def _check_blockers(self):
+        if not self.has_structure:
+            yield "No selected input structure"
+            return
         for _, model in self.get_models():
             if model.is_blocked:
                 yield from model.blockers

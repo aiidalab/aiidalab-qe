@@ -68,7 +68,7 @@ class SubmissionStepModel(
             model.update()
 
     def update_process_label(self):
-        if not self.has_structure:
+        if not self.has_structure or not self.input_parameters:
             self.process_label = ""
             return
         structure_label = (
@@ -254,6 +254,12 @@ class SubmissionStepModel(
         return builder
 
     def _check_blockers(self):
+        if not self.structure_uuid:
+            yield "No selected input structure"
+
+        if not self.input_parameters:
+            yield "No selected input parameters"
+
         if self.installing_qe:
             yield "Installing Quantum ESPRESSO codes..."
 

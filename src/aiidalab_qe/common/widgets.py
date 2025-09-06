@@ -1577,3 +1577,13 @@ class ShakeNBreakEditor(ipw.VBox):
             atoms = pymatgen_ase.get_atoms(struc_distorted)
         atoms.set_pbc(periodicity)
         self.structure = atoms
+
+
+class MissingInfoWidget(ipw.HTML):
+    def __init__(self, message: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.value = f"""
+            <div class="alert alert-danger" style="text-align: center; margin-bottom: 0;">
+                <b>{message}</b>
+            </div>
+        """

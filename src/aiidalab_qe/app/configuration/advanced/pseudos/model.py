@@ -46,7 +46,10 @@ class PseudosConfigurationSettingsModel(
         value_trait=tl.Unicode(allow_none=True),  # pseudopotential node uuid
         default_value={},
     )
-    functional = tl.Unicode(allow_none=True)
+    functional = tl.Unicode(
+        DEFAULT["advanced"]["pseudo_family"]["functional"],
+        allow_none=True,
+    )
     functional_options = tl.List(
         trait=tl.Unicode(),
         default_value=[
@@ -55,7 +58,15 @@ class PseudosConfigurationSettingsModel(
         ],
     )
     functionals = tl.List(trait=tl.Unicode(allow_none=True))
-    library = tl.Unicode(allow_none=True)
+    library = tl.Unicode(
+        " ".join(
+            [
+                DEFAULT["advanced"]["pseudo_family"]["library"],
+                DEFAULT["advanced"]["pseudo_family"]["accuracy"],
+            ]
+        ),
+        allow_none=True,
+    )
     library_options = tl.List(
         trait=tl.Unicode(),
         default_value=[
@@ -67,7 +78,17 @@ class PseudosConfigurationSettingsModel(
             "PseudoDojo stringent (FR)",
         ],
     )
-    family = tl.Unicode(allow_none=True)
+    family = tl.Unicode(
+        "/".join(
+            [
+                DEFAULT["advanced"]["pseudo_family"]["library"],
+                str(DEFAULT["advanced"]["pseudo_family"]["version"]),
+                DEFAULT["advanced"]["pseudo_family"]["functional"],
+                DEFAULT["advanced"]["pseudo_family"]["accuracy"],
+            ]
+        ),
+        allow_none=True,
+    )
     family_header = tl.Unicode(allow_none=True)
     cutoffs = tl.List(
         trait=tl.List(tl.Float()),  # [[ecutwfc values], [ecutrho values]]
@@ -109,8 +130,12 @@ class PseudosConfigurationSettingsModel(
     def update(self, specific=""):
         if not self.has_structure:
             return
+
         family = self.family
-        self.update_family_parameters()
+
+        if specific == "protocol":
+            self.update_family_parameters()
+
         # When the app starts, the family is not yet set. `update_family_parameters`
         # will set the family, which will set the functionals and dictionary.
         # However, when the structure is changed, the family may already be set to
@@ -244,6 +269,8 @@ class PseudosConfigurationSettingsModel(
         # unnecessary updates.
         self.dictionary = {}
         self.dictionary = self._get_default_dictionary()
+
+        self.update_blockers()
 
     def update_cutoffs(self):
         if self.locked or not self.dictionary:

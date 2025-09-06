@@ -7,7 +7,6 @@ Authors:
 
 from __future__ import annotations
 
-import os
 import typing as t
 import warnings
 
@@ -22,7 +21,6 @@ from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.mixins import (
     Confirmable,
     HasBlockers,
-    HasInputStructure,
     HasModels,
     HasProcess,
 )
@@ -132,11 +130,6 @@ class ConfigurationSettingsPanel(Panel[PM]):
         self._unsubscribe()
         if self._model.include:
             self.update(specific)
-        if "PYTEST_CURRENT_TEST" in os.environ:
-            # Skip resetting to avoid having to inject a structure when testing
-            return
-        if isinstance(self._model, HasInputStructure) and not self._model.has_structure:
-            self._reset()
 
     def update(self, specific=""):
         """Updates the model if not yet updated.
@@ -157,11 +150,6 @@ class ConfigurationSettingsPanel(Panel[PM]):
         for link in self._links:
             link.unlink()
         self._links.clear()
-
-    def _reset(self):
-        """Resets the model to present defaults."""
-        self._model.updated = False
-        self._model.reset()
 
 
 class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):

@@ -56,29 +56,31 @@ def test_global_code_toggle(app: Wizard):
     assert global_resources.code_widgets["dos"].layout.display == "none"
 
 
-def test_check_blockers(app: Wizard):
+def test_check_blockers(app_to_submit: Wizard):
     """Test check_submission_blockers method."""
-    model = app.submit_model
+    model = app_to_submit.submit_model
     model.await_resources()
 
-    model.update_blockers()
-    assert len(model.blockers) == 0
-
-    model.input_parameters = {"workchain": {"properties": ["pdos"]}}
-    model.update_blockers()
     assert len(model.blockers) == 0
 
     # set dos code to None, will introduce another blocker
     dos_code = model.get_model("global").get_model("quantumespresso__dos")
     dos_value = dos_code.selected
     dos_code.selected = None
-    model.update_blockers()
     assert len(model.blockers) == 1
 
     # set dos code back will remove the blocker
     dos_code.selected = dos_value
-    model.update_blockers()
     assert len(model.blockers) == 0
+
+    model.input_parameters = {}
+    assert len(model.blockers) == 1
+    assert "input parameters" in model.blockers[0]  # type: ignore
+
+    model.structure_uuid = None
+    assert len(model.blockers) == 2
+    assert "input structure" in model.blockers[0]  # type: ignore
+    assert "input parameters" in model.blockers[1]  # type: ignore
 
 
 def test_qeapp_computational_resources_widget(app: Wizard):

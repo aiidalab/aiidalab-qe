@@ -71,6 +71,13 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
         )
         self._install_sssp(auto_setup)
 
+    def confirm(self, _=None):
+        self.manager.store_structure()
+        super().confirm()
+
+    def reset(self):
+        self._model.reset()
+
     def render(self):
         if self.rendered:
             # Due to NGLView issues, we need to always "refresh" the widget
@@ -178,13 +185,6 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
         # After rendering the widget, nglview needs to be resized
         # to properly display the structure
         self.manager.viewer._viewer._set_size("100%", "300px")
-
-    def confirm(self, _=None):
-        self.manager.store_structure()
-        super().confirm()
-
-    def reset(self):
-        self._model.reset()
 
     def _on_installation_change(self, _):
         self._model.update_blockers()

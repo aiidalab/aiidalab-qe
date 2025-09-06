@@ -21,6 +21,7 @@ from aiidalab_qe.common.panel import (
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
+from aiidalab_widgets_base import LoadingWidget
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -29,8 +30,6 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
-    missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
-
     def __init__(self, model: SubmissionStepModel, auto_setup=True, **kwargs):
         super().__init__(
             model=model,
@@ -72,6 +71,10 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             "qe_installed",
         )
         self._model.observe(
+            self._on_input_structure_change,
+            "structure_uuid",
+        )
+        self._model.observe(
             self._on_input_parameters_change,
             "input_parameters",
         )
@@ -91,6 +94,9 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
         Thread(target=self._fetch_plugin_resource_settings).start()
 
         self._set_up_qe(auto_setup)
+
+    def reset(self):
+        self._model.reset()
 
     def _render(self):
         super()._render()
@@ -142,6 +148,12 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             "selected_index",
         )
 
+        self.tab_container = ipw.VBox(
+            children=[
+                LoadingWidget(message="Loading resource panels"),
+            ]
+        )
+
         self.content.children = [
             InAppGuide(identifier="submission-step"),
             ipw.HTML("""
@@ -162,7 +174,7 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
                 ],
                 layout=ipw.Layout(grid_gap="5px"),
             ),
-            self.tabs,
+            self.tab_container,
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
                     <h4 style="margin-bottom: 5px;">Workflow label and description</h4>
@@ -186,16 +198,19 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
         ]
 
     def _post_render(self):
+        self._model.update()
         self._update_tabs()
-
-    def reset(self):
-        self._model.reset()
+        self.tab_container.children = [self.tabs]
 
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
         tab: ResourceSettingsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
+
+    def _on_input_structure_change(self, _):
+        self._model.update_process_label()
+        self._model.update_blockers()
 
     def _on_input_parameters_change(self, _):
         self._model.update_process_label()

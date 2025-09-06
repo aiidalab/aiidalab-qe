@@ -32,8 +32,6 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
-    missing_information_warning = "Missing input structure. Please set it first."
-
     def __init__(self, model: ConfigurationStepModel, **kwargs):
         super().__init__(
             model=model,
@@ -85,6 +83,12 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         Thread(target=self._fetch_plugin_calculation_settings).start()
         Thread(target=self._fetch_available_properties).start()
 
+    def reset(self):
+        self._model.reset()
+        if self.rendered:
+            self.sub_steps.selected_index = None
+            self.tabs.selected_index = 0
+
     def _render(self):
         super()._render()
 
@@ -102,6 +106,15 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         ipw.link(
             (self._model, "relax_type"),
             (self.relax_type, "value"),
+        )
+
+        self.relax_type_container = ipw.VBox()
+        ipw.dlink(
+            (self._model, "structure_uuid"),
+            (self.relax_type_container, "children"),
+            lambda _: [self.relax_type_help, self.relax_type]
+            if self._model.has_structure
+            else [self._model.missing_structure_warning],
         )
 
         self.tabs = ipw.Tab(
@@ -174,8 +187,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                     <h4>Structure relaxation</h4>
                 </div>
             """),
-            self.relax_type_help,
-            self.relax_type,
+            self.relax_type_container,
             self.sub_steps,
         ]
 
@@ -185,14 +197,9 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         ]
 
     def _post_render(self):
+        self._model.update()
         self._set_available_properties()
         self._update_tabs()
-
-    def reset(self):
-        self._model.reset()
-        if self.rendered:
-            self.sub_steps.selected_index = None
-            self.tabs.selected_index = 0
 
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
@@ -203,7 +210,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
     def _on_input_structure_change(self, _):
         self._model.update()
-        self.reset()
 
     def _on_installed_properties_fetched(self, _):
         if not self.rendered:
