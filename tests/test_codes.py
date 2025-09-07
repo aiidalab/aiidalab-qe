@@ -5,6 +5,8 @@ from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsMod
 from aiidalab_qe.app.wizard import Wizard
 from aiidalab_qe.common.code import PwCodeModel
 from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget
+from aiidalab_qe.common.wizard import State
+from aiidalab_qe.utils import shallow_copy_nested_dict
 
 
 def test_code_not_selected(submit_app_generator):
@@ -13,24 +15,23 @@ def test_code_not_selected(submit_app_generator):
     model = app.submit_model
     model.get_model("global").get_model("quantumespresso__dos").selected = None
     # Check builder construction passes without an error
-    parameters = model.get_model_state()
+    parameters = shallow_copy_nested_dict(app.submit_model.input_parameters)
+    parameters |= {"codes": app.submit_model.get_model_state()}
     model._create_builder(parameters)
 
 
 def test_set_codes(submit_app_generator):
     """Test setting codes (in practice, from a loaded process)."""
     app: Wizard = submit_app_generator()
-    parameters = app.submit_model.get_model_state()
+    resources = app.submit_model.get_model_state()
     model = SubmissionStepModel()
     _ = SubmissionStep(model=model, auto_setup=False)
     model.await_resources()
     for identifier, code_model in app.submit_model.get_model("global").get_models():
         model.get_model("global").get_model(identifier).is_active = code_model.is_active
-    model.qe_installed = True
-    model.get_model("global").set_model_state(parameters["codes"]["global"])
-    assert (
-        model.get_model_state()["codes"] == app.submit_model.get_model_state()["codes"]
-    )
+    model.get_model("global").set_model_state(resources["global"])  # type: ignore
+    model.previous_step_state = State.SUCCESS
+    assert model.get_model_state() == app.submit_model.get_model_state()
 
 
 def test_global_code_toggle(app: Wizard):

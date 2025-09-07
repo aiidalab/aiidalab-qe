@@ -2,6 +2,7 @@ import typing as t
 
 from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsModel
 from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.utils import shallow_copy_nested_dict
 
 
 def test_create_builder_default(
@@ -15,7 +16,8 @@ def test_create_builder_default(
 
     app: Wizard = submit_app_generator(properties=["bands", "pdos"])
 
-    parameters = app.submit_model.get_model_state()
+    parameters = shallow_copy_nested_dict(app.submit_model.input_parameters)
+    parameters |= {"codes": app.submit_model.get_model_state()}
     app.submit_model._create_builder(parameters)
     # since uuid is specific to each run, we remove it from the output
     ui_parameters = remove_uuid_fields(parameters)
@@ -64,7 +66,8 @@ def test_create_builder_insulator(
     app: Wizard = submit_app_generator(
         electronic_type="insulator", properties=["bands", "pdos"]
     )
-    parameters = app.submit_model.get_model_state()
+    parameters = shallow_copy_nested_dict(app.submit_model.input_parameters)
+    parameters |= {"codes": app.submit_model.get_model_state()}
     builder = app.submit_model._create_builder(parameters)
 
     # check and validate the builder
@@ -100,7 +103,8 @@ def test_create_builder_advanced_settings(
         electron_maxstep=100,
         properties=["bands", "pdos"],
     )
-    parameters = app.submit_model.get_model_state()
+    parameters = shallow_copy_nested_dict(app.submit_model.input_parameters)
+    parameters |= {"codes": app.submit_model.get_model_state()}
     builder = app.submit_model._create_builder(parameters)
 
     # check if the AiiDA nodes are passed to the plugins instead of copied, take psuedos as an example

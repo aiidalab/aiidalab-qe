@@ -761,7 +761,8 @@ def generate_qeapp_workchain(
         # step 3 setup code and resources
         global_resources_model = app.submit_model.get_model("global")
         global_resources_model.get_model("quantumespresso__pw").num_cpus = 4
-        parameters = app.submit_model.get_model_state()
+        parameters = shallow_copy_nested_dict(app.submit_model.input_parameters)
+        parameters |= {"codes": app.submit_model.get_model_state()}
         builder = app.submit_model._create_builder(parameters)
 
         inputs = builder._inputs()

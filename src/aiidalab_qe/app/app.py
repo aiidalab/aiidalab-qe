@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import typing as t
 from datetime import datetime
+from pathlib import Path
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -20,6 +22,8 @@ from aiidalab_qe.common.infobox import InAppGuide, InfoBox
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.version import __version__
 from aiidalab_widgets_base import LoadingWidget
+
+CURRENT_STATE_PATH = Path("/tmp/current_state.json")
 
 
 def without_triggering(toggle: str):
@@ -81,6 +85,10 @@ class AppController:
         state = {"process_uuid": self._model.process_uuid}
         if self._model.process_uuid:
             state |= self._model.get_state_from_process()
+        if CURRENT_STATE_PATH.exists():
+            # TODO how to best guarantee the state was already written by this point?
+            state |= json.loads(CURRENT_STATE_PATH.read_text())
+            CURRENT_STATE_PATH.unlink(missing_ok=True)
         self._wizard_model.preloaded_state = state
         self._model.loaded = True
 
@@ -121,6 +129,17 @@ class AppController:
         guide = self._view.guide_selection.value
         self._model.update_active_guide(category, guide)
 
+    def _on_duplicate_workflow_click(self, _):
+        if not self._model.loaded:
+            return
+        app: Wizard = self._view.app_container.children[0]  # type: ignore
+        payload = {
+            "structure_state": app.structure_model.get_model_state(),
+            "configuration_state": app.configure_model.get_model_state(),
+            "resources_state": app.submit_model.get_model_state(),
+        }
+        CURRENT_STATE_PATH.write_text(json.dumps(payload))
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._model.observe(
@@ -143,6 +162,8 @@ class AppController:
             self._on_about_toggle,
             "value",
         )
+
+        self._view.duplicate_workflow_link.on_click(self._on_duplicate_workflow_click)
 
         ipw.dlink(
             (self._model, "guide_category_options"),
@@ -249,7 +270,6 @@ class AppView(ipw.VBox):
             link="./calculation_history.ipynb",
             icon="list",
             tooltip="View a list of previous calculations",
-            style_="background-color: var(--color-aiida-orange)",
         )
 
         self.setup_resources_link = LinkButton(
@@ -257,22 +277,28 @@ class AppView(ipw.VBox):
             link="../home/code_setup.ipynb",
             icon="database",
             tooltip="Setup computational resources for your calculations",
-            style_="background-color: var(--color-aiida-blue)",
         )
 
-        self.new_workchain_link = LinkButton(
+        self.new_workflow_link = LinkButton(
             description="New calculation",
             link="./qe.ipynb",
             icon="plus-circle",
             tooltip="Open a new calculation in a separate tab",
-            style_="background-color: var(--color-aiida-green)",
+        )
+
+        self.duplicate_workflow_link = LinkButton(
+            description="Duplicate",
+            link="./qe.ipynb",
+            icon="clone",
+            tooltip="Duplicate calculation paramters in a separate tab",
         )
 
         self.external_links = ipw.HBox(
             children=[
                 self.calculation_history_link,
                 self.setup_resources_link,
-                self.new_workchain_link,
+                self.new_workflow_link,
+                self.duplicate_workflow_link,
             ],
         )
 

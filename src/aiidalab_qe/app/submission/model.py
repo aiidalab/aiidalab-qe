@@ -143,13 +143,15 @@ class SubmissionStepModel(
         self.locked = True
 
     def get_model_state(self) -> dict:
-        parameters: dict = shallow_copy_nested_dict(self.input_parameters)  # type: ignore
-        parameters["codes"] = {
-            identifier: model.get_model_state()
-            for identifier, model in self.get_models()
-            if model.include
-        }
-        return parameters
+        return (
+            {
+                identifier: model.get_model_state()
+                for identifier, model in self.get_models()
+                if model.include
+            }
+            if self.is_ready
+            else {}
+        )
 
     def set_model_state(self, state: dict):
         for identifier, model in self.get_models():
@@ -189,7 +191,8 @@ class SubmissionStepModel(
                     model.include = False
 
     def _submit(self):
-        parameters = self.get_model_state()
+        parameters = shallow_copy_nested_dict(self.input_parameters)
+        parameters |= {"codes": self.get_model_state()}
         builder = self._create_builder(parameters)
 
         with self.hold_trait_notifications():
