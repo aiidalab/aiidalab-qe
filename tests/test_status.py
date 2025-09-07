@@ -237,7 +237,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
             def delayed_add_branches_recursive(
                 node: orm.ProcessNode | None = None,
             ):
-                node = node or self.tree.trunk.node
+                node = node or self.tree.trunk.process
                 for child in sorted(node.called, key=lambda child: child.ctime):
                     if isinstance(child, orm.CalcFunctionNode):
                         continue
@@ -306,8 +306,8 @@ class TestWorkChainStatusPanel(TreeTestingMixin):
         trunk = self.tree.trunk
         trunk.expand(recursive=True)
         self.calcjob_node.label.click()
-        assert self.panel.process_tree.value == self.calcjob_node.uuid
-        assert self.panel.process_tree._tree.nodes == (self.calcjob_node.node,)
+        assert self.panel.process_tree.value == self.calcjob_node.process_uuid
+        assert self.panel.process_tree._tree.nodes == (self.calcjob_node.process,)
         # TODO understand why the following does not trigger automatically as in the app
         # TODO understand why the following triggers a thread
         # self.panel.process_tree.set_trait("selected_nodes", [self.calcjob_node.node])
