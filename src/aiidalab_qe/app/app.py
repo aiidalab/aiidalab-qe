@@ -134,7 +134,7 @@ class AppController:
             return
         app: Wizard = self._view.app_container.children[0]  # type: ignore
         payload = {
-            "step": app.current_step,
+            "step": min(app.current_step, 3),
             "structure_state": app.structure_model.get_model_state(),
             "configuration_state": app.configure_model.get_model_state(),
             "resources_state": app.submit_model.get_model_state(),
@@ -183,9 +183,9 @@ class AppController:
             (self._view.guide_selection, "value"),
         )
         ipw.dlink(
-            (self._wizard_model, "loading_process"),
-            (self._view.process_loading_message.layout, "display"),
-            lambda loading_process: "flex" if loading_process else "none",
+            (self._wizard_model, "loading"),
+            (self._view.wizard_loading_message.layout, "display"),
+            lambda loading: "flex" if loading else "none",
         )
 
 
@@ -367,8 +367,8 @@ class AppView(ipw.VBox):
         )
         header.add_class("app-header")
 
-        self.process_loading_message = LoadingWidget(
-            message="Loading process",
+        self.wizard_loading_message = LoadingWidget(
+            message="Populating the wizard",
             layout={"display": "none"},
         )
 
@@ -388,7 +388,7 @@ class AppView(ipw.VBox):
                 self.output,
                 header,
                 InAppGuide(identifier="guide-header"),
-                self.process_loading_message,
+                self.wizard_loading_message,
                 self.app_container,
                 InAppGuide(identifier="post-guide"),
                 footer,

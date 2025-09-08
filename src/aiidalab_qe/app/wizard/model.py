@@ -14,7 +14,7 @@ from aiidalab_qe.common.wizard import State, WizardStepModel
 class WizardModel(Model, HasModels[WizardStepModel]):
     state = tl.Dict(None, allow_none=True)
     selected_index = tl.Int(None, allow_none=True)
-    loading_process = tl.Bool(False)
+    loading = tl.Bool(False)
 
     def load_from_state(self, state: dict):
         step_index = state.get("step", 0) - 1
@@ -24,7 +24,7 @@ class WizardModel(Model, HasModels[WizardStepModel]):
         process_uuid = state.get("process_uuid")
 
         if step_index >= 0:
-            self.loading_process = True
+            self.loading = True
             structure_model = t.cast(
                 StructureStepModel,
                 self.get_model("structure"),
@@ -54,7 +54,7 @@ class WizardModel(Model, HasModels[WizardStepModel]):
                         configuration_model.lock()
                         submission_model.lock()
 
-            self.loading_process = False
+            self.loading = False
 
             self.selected_index = step_index
 
