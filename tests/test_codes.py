@@ -5,7 +5,6 @@ from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsMod
 from aiidalab_qe.app.wizard import Wizard
 from aiidalab_qe.common.code import PwCodeModel
 from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget
-from aiidalab_qe.common.wizard import State
 from aiidalab_qe.utils import shallow_copy_nested_dict
 
 
@@ -30,7 +29,6 @@ def test_set_codes(submit_app_generator):
     for identifier, code_model in app.submit_model.get_model("global").get_models():
         model.get_model("global").get_model(identifier).is_active = code_model.is_active
     model.get_model("global").set_model_state(resources["global"])  # type: ignore
-    model.previous_step_state = State.SUCCESS
     assert model.get_model_state() == app.submit_model.get_model_state()
 
 

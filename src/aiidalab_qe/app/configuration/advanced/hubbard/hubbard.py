@@ -25,17 +25,6 @@ class HubbardConfigurationSettingsPanel(
             "has_eigenvalues",
         )
 
-    def update(self, specific=""):
-        if self._model.updated:
-            return
-        self._show_loading()
-        if not self._model.locked or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_hubbard_widget()
-        self._toggle_hubbard_widget()
-        self._toggle_eigenvalues_widget()
-        self._model.updated = True
-
     def render(self):
         if self.rendered:
             return
@@ -101,6 +90,12 @@ class HubbardConfigurationSettingsPanel(
         self._toggle_hubbard_widget()
 
     def _on_eigenvalues_definition(self, _):
+        self._toggle_eigenvalues_widget()
+
+    def _update(self):
+        self._show_loading()
+        self._build_hubbard_widget()
+        self._toggle_hubbard_widget()
         self._toggle_eigenvalues_widget()
 
     def _show_loading(self):

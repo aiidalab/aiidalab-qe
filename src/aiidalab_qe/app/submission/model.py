@@ -143,15 +143,11 @@ class SubmissionStepModel(
         self.locked = True
 
     def get_model_state(self) -> dict:
-        return (
-            {
-                identifier: model.get_model_state()
-                for identifier, model in self.get_models()
-                if model.include
-            }
-            if self.is_ready
-            else {}
-        )
+        return {
+            identifier: model.get_model_state()
+            for identifier, model in self.get_models()
+            if model.include
+        }
 
     def set_model_state(self, state: dict):
         for identifier, model in self.get_models():
@@ -160,15 +156,14 @@ class SubmissionStepModel(
                 model.set_model_state(state[identifier])
 
     def update_state(self):
-        super().update_state()
         if self.previous_step_state is State.FAIL:  # TODO why?
             self.state = State.FAIL
-        elif not self.is_ready:
+        elif self.previous_step_state is not State.SUCCESS:
             self.state = State.INIT
-        elif self.confirmed:
-            self.state = State.SUCCESS
         elif self.is_blocked:
             self.state = State.READY
+        elif self.confirmed:
+            self.state = State.SUCCESS
         else:
             self.state = State.CONFIGURED
 

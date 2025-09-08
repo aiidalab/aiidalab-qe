@@ -73,12 +73,12 @@ class AppController:
         for toggle in self._view.toggles.children:
             toggle.disabled = False
 
-    def load_app(
+    def load_wizard(
         self,
         auto_setup: bool = True,
         log_widget: ipw.Output | None = None,
     ) -> None:
-        """Initialize the WizardApp and integrate the app into the main view."""
+        """Load and initialize the wizard."""
         _ = orm.User.collection.get_default().email  # HACK
         self.wizard = Wizard(self._wizard_model, auto_setup, log_widget)
         self._view.app_container.children = [self.wizard]
@@ -89,7 +89,7 @@ class AppController:
             # TODO how to best guarantee the state was already written by this point?
             state |= json.loads(CURRENT_STATE_PATH.read_text())
             CURRENT_STATE_PATH.unlink(missing_ok=True)
-        self._wizard_model.preloaded_state = state
+        self._wizard_model.state = state
         self._model.loaded = True
 
     @without_triggering("about_toggle")
@@ -134,6 +134,7 @@ class AppController:
             return
         app: Wizard = self._view.app_container.children[0]  # type: ignore
         payload = {
+            "step": app.current_step,
             "structure_state": app.structure_model.get_model_state(),
             "configuration_state": app.configure_model.get_model_state(),
             "resources_state": app.submit_model.get_model_state(),
@@ -240,6 +241,7 @@ class AppModel(tl.HasTraits):
         # END BACKWARDS COMPATIBILITY
 
         return {
+            "step": 4,  # completed all steps
             "structure_state": {"uuid": self.process.inputs.structure.uuid},
             "configuration_state": parameters,
             "resources_state": codes,

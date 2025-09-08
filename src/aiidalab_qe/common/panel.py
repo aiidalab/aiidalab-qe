@@ -141,9 +141,14 @@ class ConfigurationSettingsPanel(Panel[PM]):
         """
         if self._model.updated:
             return
-        if not self._model.locked:
+        if not self._model.locked and specific != "widgets":
             self._model.update(specific)
+        self._update()
         self._model.updated = True
+
+    def _update(self):
+        """Updates the panel UI."""
+        pass
 
     def _unsubscribe(self):
         """Unlinks any linked widgets."""

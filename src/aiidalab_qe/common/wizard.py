@@ -32,6 +32,10 @@ class WizardStepModel(Model):
         self.auto_advance = auto_advance
 
     @property
+    def is_configured(self) -> bool:
+        return self.state is State.CONFIGURED
+
+    @property
     def is_finished(self) -> bool:
         return self.state in {State.SUCCESS, State.FAIL}
 
@@ -191,10 +195,6 @@ class DependentWizardStepModel(
     WizardStepModel,
 ):
     previous_step_state = tl.UseEnum(State, default_value=State.INIT)
-
-    @property
-    def is_ready(self) -> bool:
-        return self.previous_step_state is State.SUCCESS
 
 
 DWSM = t.TypeVar("DWSM", bound=DependentWizardStepModel)

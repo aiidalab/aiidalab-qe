@@ -89,7 +89,7 @@ class Wizard(ipw.Accordion):
             self.results_model,
         ):
             step_model.observe(
-                self._on_state_change,
+                self._on_step_state_change,
                 "state",
             )
 
@@ -107,8 +107,8 @@ class Wizard(ipw.Accordion):
         )
 
         self._model.observe(
-            self._on_preloaded_state_change,
-            "preloaded_state",
+            self._on_state_change,
+            "state",
         )
         self._model.observe(
             self._on_step_change,
@@ -118,6 +118,14 @@ class Wizard(ipw.Accordion):
         self.rendered = False
 
         self.render()
+
+    @property
+    def current_step(self) -> int:
+        return sum(
+            1
+            for _, model in self._model.get_models()
+            if model.is_configured or model.is_finished
+        )
 
     def render(self):
         if self.rendered:
@@ -133,10 +141,10 @@ class Wizard(ipw.Accordion):
 
         self.rendered = True
 
-    def _on_preloaded_state_change(self, change: dict):
-        self._model.preload_from_state(change["new"] or {})
+    def _on_state_change(self, change: dict):
+        self._model.load_from_state(change["new"] or {})
 
-    def _on_state_change(self, _=None):
+    def _on_step_state_change(self, _=None):
         self._update_titles()
 
     def _on_step_change(self, change: dict):

@@ -43,7 +43,6 @@ class ResultsStepModel(
         self.process_remote_folder_is_clean = True
 
     def update_state(self):
-        super().update_state()
         if not self.process:
             self.state = State.INIT
             return

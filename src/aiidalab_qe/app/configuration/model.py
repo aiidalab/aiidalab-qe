@@ -102,8 +102,6 @@ class ConfigurationStepModel(
         self.update_blockers()
 
     def get_model_state(self) -> dict:
-        if not self.is_ready:
-            return {}
         state = {
             identifier: model.get_model_state()
             for identifier, model in self.get_models()
@@ -124,13 +122,11 @@ class ConfigurationStepModel(
             model.include = identifier in self._default_models | properties
             if state.get(identifier):
                 model.set_model_state(state[identifier])
-                model.locked = True
 
     def update_state(self):
-        super().update_state()
         if self.confirmed:
             self.state = State.SUCCESS
-        elif self.is_ready:
+        elif self.previous_step_state is State.SUCCESS:
             self.state = State.CONFIGURED
         elif self.previous_step_state is State.FAIL:  # TODO why?
             self.state = State.FAIL

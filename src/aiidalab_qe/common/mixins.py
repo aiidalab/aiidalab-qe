@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import typing as t
 import warnings
 
@@ -25,10 +26,8 @@ class HasInputStructure(tl.HasTraits):
     def input_structure(self) -> StructureType | None:
         if not self.structure_uuid:
             return None
-        try:
+        with contextlib.suppress(NotExistent):
             return t.cast(StructureType, orm.load_node(self.structure_uuid))
-        except NotExistent:
-            return None
 
     @property
     def has_structure(self):
@@ -132,10 +131,8 @@ class HasProcess(tl.HasTraits):
     def process(self) -> orm.WorkChainNode | None:
         if not self.process_uuid:
             return None
-        try:
+        with contextlib.suppress(NotExistent):
             return t.cast(orm.WorkChainNode, orm.load_node(self.process_uuid))
-        except NotExistent:
-            return None
 
     @property
     def has_process(self):

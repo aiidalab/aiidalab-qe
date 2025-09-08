@@ -33,8 +33,12 @@ class PseudosConfigurationSettingsPanel(
             "spin_orbit",
         )
         self._model.observe(
-            self._on_family_parameters_change,
-            ["library", "functional"],
+            self._on_functional_change,
+            "functional",
+        )
+        self._model.observe(
+            self._on_library_change,
+            "library",
         )
         self._model.observe(
             self._on_functionals_change,
@@ -52,21 +56,6 @@ class PseudosConfigurationSettingsPanel(
             self._on_cutoffs_change,
             "cutoffs",
         )
-        self._model.observe(
-            self._on_show_upload_warning_change,
-            "show_upload_warning",
-        )
-
-    def update(self, specific=""):
-        if self._model.updated:
-            return
-        self._show_loading()
-        if not self._model.locked or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_pseudos_list()
-        self._model.update_library_options()
-        self._model.update_family_header()
-        self._model.updated = True
 
     def render(self):
         if self.rendered:
@@ -77,7 +66,6 @@ class PseudosConfigurationSettingsPanel(
             (self._model, "family_header"),
             (self.family_header, "value"),
         )
-        self._model.update_family_header()
 
         self.family_help = ipw.HTML()
         ipw.dlink(
@@ -93,6 +81,18 @@ class PseudosConfigurationSettingsPanel(
         ipw.link(
             (self._model, "functional"),
             (self.functional, "value"),
+        )
+        ipw.link(
+            (self._model, "functional"),
+            (self._model, "functionals"),
+            [
+                lambda functional: [functional] * len(self._model.input_structure.kinds)
+                if self._model.has_structure
+                else [],
+                lambda functionals: functionals[0]
+                if len(set(functionals)) == 1
+                else None,
+            ],
         )
 
         self.library = ipw.ToggleButtons(style={"button_width": "fit-content"})
@@ -158,6 +158,11 @@ class PseudosConfigurationSettingsPanel(
             layout=ipw.Layout(
                 display="block" if self._model.show_upload_warning else "none",
             ),
+        )
+        ipw.dlink(
+            (self._model, "show_upload_warning"),
+            (self._warning_message.layout, "display"),
+            lambda show: "block" if show else "none",
         )
 
         self.children = [
@@ -245,20 +250,14 @@ class PseudosConfigurationSettingsPanel(
     def _on_spin_orbit_change(self, _):
         self._model.update_library_options()
 
-    def _on_family_parameters_change(self, _):
+    def _on_functional_change(self, _):
         self._model.update_family()
+
+    def _on_library_change(self, _):
         self._model.update_family_header()
-        self._model.update_functionals()
-        self._model.update_blockers()
+        self._model.update_family()
 
     def _on_functionals_change(self, _):
-        if not self._model.has_structure:
-            return
-        self._model.functional = (
-            self._model.functionals[0]  # type: ignore
-            if len(set(self._model.functionals)) == 1
-            else None
-        )
         self._model.update_blockers()
 
     def _on_family_change(self, _):
@@ -273,18 +272,15 @@ class PseudosConfigurationSettingsPanel(
         self._model.ecutwfc = max(cutoffs[0])
         self._model.ecutrho = max(cutoffs[1])
 
-    def _on_show_upload_warning_change(self, change):
-        if not self.rendered:
-            return
-        self._warning_message.layout.display = "block" if change["new"] else "none"
-
-    def _show_loading(self):
-        if self.rendered:
-            self.pseudos_list.children = [self.loading_message]
+    def _update(self):
+        self._build_pseudos_list()
+        self._model.update_family_header()
 
     def _build_pseudos_list(self):
         if not self.rendered:
             return
+
+        self.pseudos_list.children = [self.loading_message]
 
         children = []
 

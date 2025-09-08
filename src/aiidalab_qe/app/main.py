@@ -85,7 +85,7 @@ class QeApp:
                 """)
             ]
         else:
-            self.controller.load_app()
+            self.controller.load_wizard()
 
     def _load_styles(self):
         """Load CSS styles from the static directory."""

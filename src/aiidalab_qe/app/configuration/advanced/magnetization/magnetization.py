@@ -46,17 +46,6 @@ class MagnetizationConfigurationSettingsPanel(
             "type",
         )
 
-    def update(self, specific=""):
-        if self._model.updated:
-            return
-        self._show_loading()
-        if not self._model.locked or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_moments_list()
-        self._switch_widgets()
-        self._toggle_widgets()
-        self._model.updated = True
-
     def render(self):
         if self.rendered:
             return
@@ -138,6 +127,12 @@ class MagnetizationConfigurationSettingsPanel(
     def _on_magnetization_type_change(self, _):
         self._toggle_widgets()
         self._model.update_type_help()
+
+    def _update(self):
+        self._show_loading()
+        self._build_moments_list()
+        self._switch_widgets()
+        self._toggle_widgets()
 
     def _show_loading(self):
         if self.rendered:

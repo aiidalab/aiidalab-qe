@@ -1,12 +1,10 @@
 from aiidalab_qe.app.configuration import ConfigurationStep, ConfigurationStepModel
-from aiidalab_qe.common.wizard import State
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 
 def test_get_configuration_parameters():
     model = ConfigurationStepModel()
     _ = ConfigurationStep(model=model)
-    model.previous_step_state = State.SUCCESS
     parameters = model.get_model_state()
     parameters_ref = {
         "workchain": {
@@ -22,7 +20,6 @@ def test_get_configuration_parameters():
 def test_set_configuration_parameters():
     model = ConfigurationStepModel()
     _ = ConfigurationStep(model=model)
-    model.previous_step_state = State.SUCCESS
     parameters = model.get_model_state()
     parameters["workchain"]["relax_type"] = "positions"
     parameters["advanced"]["pseudo_family"] = f"SSSP/{SSSP_VERSION}/PBE/efficiency"
@@ -41,7 +38,6 @@ def test_panel():
     """Dynamic add/remove the panel based on the workchain settings."""
     model = ConfigurationStepModel()
     config = ConfigurationStep(model=model)
-    model.previous_step_state = State.SUCCESS
     model.await_properties()
     config.render()
     assert len(config.tabs.children) == 2
