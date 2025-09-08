@@ -58,6 +58,10 @@ class ConfigurationStepModel(
             </div>
         """
 
+    @property
+    def is_configured(self):
+        return self.has_structure
+
     def update(self):
         if self.has_pbc:
             relax_type_help = self.relax_type_help_template.format(
@@ -126,10 +130,8 @@ class ConfigurationStepModel(
     def update_state(self):
         if self.confirmed:
             self.state = State.SUCCESS
-        elif self.previous_step_state is State.SUCCESS:
+        elif self.is_configured or self.is_ready:
             self.state = State.CONFIGURED
-        elif self.previous_step_state is State.FAIL:  # TODO why?
-            self.state = State.FAIL
         else:
             self.state = State.INIT
 

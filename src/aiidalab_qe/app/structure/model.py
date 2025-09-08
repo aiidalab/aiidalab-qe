@@ -23,6 +23,10 @@ class StructureStepModel(
             "sssp_installed",
         ]
 
+    @property
+    def is_configured(self):
+        return self.structure_uuid is not None
+
     def update_widget_text(self):
         if not self.has_structure:
             self.structure_name = ""
@@ -39,7 +43,7 @@ class StructureStepModel(
     def update_state(self):
         if self.confirmed:
             self.state = State.SUCCESS
-        elif self.structure_uuid is not None:
+        elif self.is_configured:
             self.state = State.CONFIGURED
         else:
             self.state = State.READY

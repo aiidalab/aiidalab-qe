@@ -57,6 +57,10 @@ class SubmissionStepModel(
 
         self.default_user_email = orm.User.collection.get_default().email
 
+    @property
+    def is_configured(self):
+        return self.has_structure and self.input_parameters
+
     def confirm(self):
         super().confirm()
         if not self.has_process:
@@ -156,16 +160,12 @@ class SubmissionStepModel(
                 model.set_model_state(state[identifier])
 
     def update_state(self):
-        if self.previous_step_state is State.FAIL:  # TODO why?
-            self.state = State.FAIL
-        elif self.previous_step_state is not State.SUCCESS:
-            self.state = State.INIT
-        elif self.is_blocked:
-            self.state = State.READY
-        elif self.confirmed:
+        if self.confirmed:
             self.state = State.SUCCESS
-        else:
+        elif self.is_ready or self.is_configured:
             self.state = State.CONFIGURED
+        else:
+            self.state = State.INIT
 
     def await_resources(self):
         """Wait until resources are fetched, or timeout after 5 seconds."""

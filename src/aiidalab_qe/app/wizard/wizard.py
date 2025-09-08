@@ -124,7 +124,7 @@ class Wizard(ipw.Accordion):
         return sum(
             1
             for _, model in self._model.get_models()
-            if model.is_configured or model.is_finished
+            if model.is_configured or model.is_successful
         )
 
     def render(self):

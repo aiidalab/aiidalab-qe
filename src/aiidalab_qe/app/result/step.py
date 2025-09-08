@@ -74,7 +74,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             if not self._model.has_process
             or self._model.process.is_finished
             or self._model.process.is_excepted
-            or self._model.is_finished
+            or self._model.state in {State.SUCCESS, State.FAIL}
             else "block",
         )
         self.kill_button.on_click(self._on_kill_button_click)
@@ -153,7 +153,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
                 if self._model.has_process
                 else [loading_message]
             )
-            if self._model.is_configured or self._model.is_finished
+            if self._model.is_ready
             else [self._model.missing_process_warning],
         )
 
@@ -178,7 +178,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         )
 
     def _on_previous_step_state_change(self, _):
-        if self._model.is_configured:
+        if self._model.is_ready:
             message = (
                 "Loading results"
                 if self._model.has_process and self._model.process.is_finished

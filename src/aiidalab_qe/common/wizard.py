@@ -33,14 +33,14 @@ class WizardStepModel(Model):
 
     @property
     def is_configured(self) -> bool:
-        return self.state is State.CONFIGURED
+        raise NotImplementedError()
 
     @property
-    def is_finished(self) -> bool:
-        return self.state in {State.SUCCESS, State.FAIL}
+    def is_successful(self) -> bool:
+        return self.state is State.SUCCESS
 
     def update_state(self):
-        pass
+        raise NotImplementedError()
 
 
 WSM = t.TypeVar("WSM", bound=WizardStepModel)
@@ -195,6 +195,10 @@ class DependentWizardStepModel(
     WizardStepModel,
 ):
     previous_step_state = tl.UseEnum(State, default_value=State.INIT)
+
+    @property
+    def is_ready(self) -> bool:
+        return self.previous_step_state is State.SUCCESS
 
 
 DWSM = t.TypeVar("DWSM", bound=DependentWizardStepModel)
