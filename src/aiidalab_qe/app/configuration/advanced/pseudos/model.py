@@ -31,7 +31,7 @@ class PseudosConfigurationSettingsModel(
     identifier = "pseudos"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
         "protocol",
         "spin_orbit",
     ]
@@ -249,7 +249,7 @@ class PseudosConfigurationSettingsModel(
         if self.locked or not self.dictionary:
             return
 
-        kinds = self.input_structure.kinds if self.input_structure else []
+        kinds = self.input_structure.kinds if self.has_structure else []
         self.status_message = ""
 
         if self.family:

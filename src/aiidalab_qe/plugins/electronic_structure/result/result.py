@@ -100,7 +100,7 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
                 identifier: self._model.fetch_child_process_node(identifier)
                 for identifier in node_identifiers
             },
-            "root": self._model.fetch_process_node(),
+            "root": self._model.process,
         }
         model = BandsPdosModel.from_nodes(**nodes)
         widget = BandsPdosWidget(model=model)

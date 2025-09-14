@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 import typing as t
 from copy import deepcopy
 
@@ -8,6 +7,7 @@ import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
+from aiida.common.exceptions import NotExistent
 from aiida.common.links import LinkType
 from aiida.engine import ProcessState
 from aiida.tools.graph.graph_traversers import traverse_graph
@@ -102,9 +102,10 @@ class SimplifiedProcessTree(ipw.VBox):
         )
         self.collapse_button.on_click(self._collapse_all)
 
-        root = self._model.fetch_process_node()
-
-        self.trunk = WorkChainTreeNode(node=root, on_inspect=self._on_inspect)
+        self.trunk = WorkChainTreeNode(
+            node=self._model.process,
+            on_inspect=self._on_inspect,
+        )
         self.trunk.add_class("tree-trunk")
         self.trunk.initialize()
         self.trunk.expand()
@@ -157,18 +158,19 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         on_inspect: t.Callable[[str], None] | None = None,
         **kwargs,
     ):
-        self.uuid = node.uuid
+        self.process_uuid = node.uuid
         self.level = level
         self.on_inspect = on_inspect
         super().__init__(**kwargs)
-        self._node: dict[int, ProcessNodeType] = {}  # thread_id: node
 
     @property
-    def node(self) -> ProcessNodeType:
-        if (tid := threading.get_ident()) not in self._node:
-            node = orm.load_node(self.uuid)
-            self._node[tid] = node
-        return self._node[tid]
+    def process(self) -> ProcessNodeType | None:
+        if not self.process_uuid:
+            return None
+        try:
+            return t.cast(ProcessNodeType, orm.load_node(self.process_uuid))
+        except NotExistent:
+            return None
 
     def initialize(self):
         self._build_header()
@@ -193,11 +195,11 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         return STATE_ICONS.get(state, "❓")
 
     def _get_state(self):
-        if not hasattr(self.node, "process_state"):
+        if not hasattr(self.process, "process_state"):
             return "queued"
-        if self.node.is_failed:
+        if self.process.is_failed:
             return "failed"
-        state = self.node.process_state
+        state = self.process.process_state
         return (
             "running"
             if state is ProcessState.WAITING
@@ -207,7 +209,7 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         )
 
     def _get_human_readable_title(self):
-        node = self.node
+        node = self.process
         if not (label := node.process_label):
             return "Unknown"
         if label in ("PwBaseWorkChain", "PwCalculation"):
@@ -249,12 +251,12 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
         # summary to extract pw parameters. #1163 removes this dependency, thus allowing
         # the popping of the "relax" port if not running relaxation. However, this is
         # kept for backwards compatibility, for jobs ran before #1163.
-        inputs = deepcopy(self.node.get_metadata_inputs()) or {}
-        if "properties" in self.node.inputs:
+        inputs = deepcopy(self.process.get_metadata_inputs()) or {}
+        if "properties" in self.process.inputs:
             inputs = {
                 key: value
                 for key, value in inputs.items()
-                if key in self.node.inputs.properties.base.attributes.get("list")
+                if key in self.process.inputs.properties.base.attributes.get("list")
             }
         return inputs
 
@@ -332,9 +334,9 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
         self._add_branches_recursive()
         self._adding_branches = False
 
-    def _add_branches_recursive(self, node: orm.ProcessNode | None = None):
-        node = node or self.node
-        for child in sorted(node.called, key=lambda child: child.ctime):
+    def _add_branches_recursive(self, process: orm.ProcessNode | None = None):
+        process = process or self.process
+        for child in sorted(process.called, key=lambda child: child.ctime):
             if isinstance(child, orm.CalcFunctionNode):
                 continue
             if child.pk in self.pks:
@@ -373,7 +375,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
 
     def _count_finished(self):
         traverser = traverse_graph(
-            starting_pks=[self.node.pk],
+            starting_pks=[self.process.pk],
             links_forward=[
                 LinkType.CALL_WORK,
                 LinkType.CALL_CALC,
@@ -450,4 +452,4 @@ class CalcJobTreeNode(ProcessTreeNode[orm.CalcJobNode]):
     def _on_label_click(self, _):
         if self.on_inspect is None:
             return
-        self.on_inspect(self.uuid)
+        self.on_inspect(self.process_uuid)

@@ -20,7 +20,7 @@ class ConvergenceConfigurationSettingsModel(
     identifier = "convergence"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
         "protocol",
     ]
 

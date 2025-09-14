@@ -17,7 +17,7 @@ class BasicConfigurationSettingsPanel(
         super().__init__(model, **kwargs)
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
 
     def render(self):

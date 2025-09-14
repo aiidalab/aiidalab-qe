@@ -13,8 +13,8 @@ class ConvergenceConfigurationSettingsPanel(
         super().__init__(model, **kwargs)
 
         self._model.observe(
-            self._on_structure_change,
-            "input_structure",
+            self._on_input_structure_change,
+            "structure_uuid",
         )
         self._model.observe(
             self._on_protocol_change,
@@ -107,7 +107,7 @@ class ConvergenceConfigurationSettingsPanel(
             (self.kpoints_distance, "value"),
         )
         ipw.dlink(
-            (self._model, "input_structure"),
+            (self._model, "structure_uuid"),
             (self.kpoints_distance, "disabled"),
             lambda _: not self._model.has_pbc,
         )
@@ -239,7 +239,7 @@ class ConvergenceConfigurationSettingsPanel(
 
         self.rendered = True
 
-    def _on_structure_change(self, _):
+    def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
 
     def _on_protocol_change(self, _):

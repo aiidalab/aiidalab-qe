@@ -8,7 +8,7 @@ from aiida import orm
 from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.mixins import HasInputStructure, HasModels
+from aiidalab_qe.common.mixins import HasInputStructure, HasModels, HasProcess
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
 from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
 from aiidalab_qe.utils import shallow_copy_nested_dict
@@ -21,12 +21,12 @@ class SubmissionStepModel(
     QeConfirmableWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
+    HasProcess,
 ):
     identifier = "submission"
 
     input_parameters = tl.Dict()
 
-    process_node = tl.Instance(orm.WorkChainNode, allow_none=True)
     process_label = tl.Unicode("")
     process_description = tl.Unicode("")
 
@@ -62,7 +62,7 @@ class SubmissionStepModel(
 
     def confirm(self):
         super().confirm()
-        if not self.process_node:
+        if not self.has_process:
             self._submit()
 
     def update(self):
@@ -70,7 +70,7 @@ class SubmissionStepModel(
             model.update()
 
     def update_process_label(self):
-        if not self.input_structure:
+        if not self.has_structure:
             self.process_label = ""
             return
         structure_label = (
@@ -165,16 +165,17 @@ class SubmissionStepModel(
                 model.set_model_state(codes[identifier])
                 model.locked = True
 
-        if self.process_node:
-            self.process_label = self.process_node.label
-            self.process_description = self.process_node.description
-            self.locked = True
+    def update_process_metadata(self):
+        if not self.has_process:
+            return
+        self.process_label = self.process.label
+        self.process_description = self.process.description
+        self.locked = True
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.input_structure = None
             self.input_parameters = {}
-            self.process_node = None
+            self.process_uuid = None
             for identifier, model in self.get_models():
                 if identifier not in self._default_models:
                     model.include = False
@@ -197,13 +198,10 @@ class SubmissionStepModel(
                 "structure",
                 self.input_structure.get_formula(),
             )
-            self.process_node = process_node
+            self.process_uuid = process_node.uuid
 
-            self._update_url()
-
-    def _update_url(self):
-        pk = self.process_node.pk
-        display(Javascript(f"window.history.pushState(null, '', '?pk={pk}');"))
+            pk = process_node.pk
+            display(Javascript(f"window.history.pushState(null, '', '?pk={pk}');"))
 
     def _link_model(self, model: ResourceSettingsModel):
         for dependency in model.dependencies:

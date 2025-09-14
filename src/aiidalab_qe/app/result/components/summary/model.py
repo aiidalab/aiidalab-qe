@@ -124,16 +124,15 @@ class WorkChainSummaryModel(ResultsComponentModel):
 
     def generate_failure_report(self):
         """Generate a html for reporting the failure of the `QeAppWorkChain`."""
-        process_node = self.fetch_process_node()
-        if not (process_node and process_node.exit_status):
+        if not (self.has_process and self.process.exit_status):
             return
-        final_calcjob = self._get_final_calcjob(process_node)
+        final_calcjob = self._get_final_calcjob(self.process)
         env = Environment()
         template = files(templates).joinpath("workflow_failure.jinja").read_text()
         style = files(styles).joinpath("style.css").read_text()
         self.failed_calculation_report = env.from_string(template).render(
             style=style,
-            process_report=get_workchain_report(process_node, "REPORT"),
+            process_report=get_workchain_report(self.process, "REPORT"),
             calcjob_exit_message=final_calcjob.exit_message,
         )
         self.has_failure_report = True
@@ -151,9 +150,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
         """
         from aiida.orm.utils.serialize import deserialize_unsafe
 
-        qeapp_wc = self.fetch_process_node()
-
-        ui_parameters = qeapp_wc.base.extras.get("ui_parameters", {})
+        ui_parameters = self.process.base.extras.get("ui_parameters", {})
         if isinstance(ui_parameters, str):
             ui_parameters = deserialize_unsafe(ui_parameters)
         # Construct the report parameters needed for the report
@@ -161,19 +158,20 @@ class WorkChainSummaryModel(ResultsComponentModel):
         if "workchain" not in ui_parameters:
             return {}
 
-        inputs = qeapp_wc.inputs
+        inputs = self.inputs
+        assert inputs.structure, "BUG! Missing structure input"  # shouldn't happen!
         structure: orm.StructureData = inputs.structure
         basic = ui_parameters["workchain"]
         advanced = ui_parameters["advanced"]
-        ctime = qeapp_wc.ctime
-        mtime = qeapp_wc.mtime
+        ctime = self.process.ctime
+        mtime = self.process.mtime
 
         report = {
             "workflow_properties": {
-                "pk": qeapp_wc.pk,
-                "uuid": str(qeapp_wc.uuid),
-                "label": qeapp_wc.label,
-                "description": qeapp_wc.description,
+                "pk": self.process.pk,
+                "uuid": str(self.process.uuid),
+                "label": self.process.label,
+                "description": self.process.description,
                 "creation_time": f"{format_time(ctime)} ({relative_time(ctime)})",
                 "modification_time": f"{format_time(mtime)} ({relative_time(mtime)})",
             },

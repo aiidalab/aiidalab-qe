@@ -167,7 +167,7 @@ def test_warning_messages(
 
     # now we use a large structure, so we should have the Warning-1 (and 2 if not on localhost)
     structure = generate_structure_data("H2O-larger")
-    submit_model.input_structure = structure
+    submit_model.structure_uuid = structure.uuid
     pw_code.num_cpus = 1
     global_model.check_resources()
     num_sites = len(structure.sites)

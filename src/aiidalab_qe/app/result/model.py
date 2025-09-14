@@ -26,13 +26,13 @@ class ResultsStepModel(
         self._update_process_remote_folder_state()
 
     def kill_process(self):
-        if process_node := self.fetch_process_node():
-            control.kill_processes([process_node])
+        if self.has_process:
+            control.kill_processes([self.process])
 
     def clean_remote_data(self):
-        if not (process_node := self.fetch_process_node()):
+        if not self.has_process:
             return
-        for called_descendant in process_node.called_descendants:
+        for called_descendant in self.process.called_descendants:
             if isinstance(called_descendant, orm.CalcJobNode):
                 with contextlib.suppress(Exception):
                     called_descendant.outputs.remote_folder._clean()
@@ -43,11 +43,10 @@ class ResultsStepModel(
         self.process_info = ""
 
     def _update_process_remote_folder_state(self):
-        process_node = self.fetch_process_node()
-        if not (process_node and process_node.called_descendants):
+        if not (self.has_process and self.process.called_descendants):
             return
         cleaned = []
-        for called_descendant in process_node.called_descendants:
+        for called_descendant in self.process.called_descendants:
             if isinstance(called_descendant, orm.CalcJobNode):
                 with contextlib.suppress(Exception):
                     cleaned.append(called_descendant.outputs.remote_folder.is_empty)
