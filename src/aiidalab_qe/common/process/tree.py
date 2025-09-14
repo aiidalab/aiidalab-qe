@@ -12,7 +12,6 @@ from aiida.common.links import LinkType
 from aiida.engine import ProcessState
 from aiida.tools.graph.graph_traversers import traverse_graph
 from aiidalab_qe.app.utils import get_entry_items
-from aiidalab_qe.common.decorators import cache_per_thread
 from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_widgets_base import LoadingWidget
@@ -164,7 +163,6 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         self.on_inspect = on_inspect
         super().__init__(**kwargs)
 
-    @cache_per_thread(invalidator="process_uuid")
     @property
     def process(self) -> ProcessNodeType | None:
         if not self.process_uuid:

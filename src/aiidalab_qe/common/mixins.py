@@ -7,7 +7,6 @@ import traitlets as tl
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-from aiidalab_qe.common.decorators import cache_per_thread
 from aiidalab_qe.common.mvc import Model
 
 StructureType = t.Union[orm.StructureData, HubbardStructureData]
@@ -16,7 +15,6 @@ StructureType = t.Union[orm.StructureData, HubbardStructureData]
 class HasInputStructure(tl.HasTraits):
     structure_uuid = tl.Unicode(None, allow_none=True)
 
-    @cache_per_thread(invalidator="structure_uuid")
     @property
     def input_structure(self) -> StructureType | None:
         if not self.structure_uuid:
@@ -106,7 +104,6 @@ class HasProcess(tl.HasTraits):
     process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
 
-    @cache_per_thread(invalidator="process_uuid")
     @property
     def process(self) -> orm.WorkChainNode | None:
         if not self.process_uuid:
