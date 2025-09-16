@@ -625,6 +625,188 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
 
+class AddingFixedAtomsEditor(ipw.VBox):
+    """Editor for adding tags to atoms."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    selection = traitlets.List(traitlets.Int(), allow_none=True)
+    input_selection = traitlets.List(traitlets.Int(), allow_none=True)
+    structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
+
+    def __init__(self, title="", **kwargs):
+        self.title = title
+
+        self._status_message = StatusHTML()
+        self.atom_selection = ipw.Text(
+            placeholder="e.g. 1..5 8 10",
+            description="Index of atoms",
+            value="",
+            style={"description_width": "100px"},
+            layout={"width": "initial"},
+        )
+        self.from_selection = ipw.Button(description="From selection")
+        self.from_selection.on_click(self._from_selection)
+        self.fixed = ipw.BoundedIntText(
+            description="Fixed atoms", value=1, min=0, max=11, layout={"width": "initial"}
+        )
+        self.add_fixed = ipw.Button(
+            description="Update fixed atoms",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+
+        self.reset_fixed = ipw.Button(
+            description="Reset fixed atoms",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+        self.reset_all_fixed = ipw.Button(
+            description="Reset all fixed atoms",
+            button_style="warning",
+            layout={"width": "initial"},
+        )
+        self.scroll_note = ipw.HTML(
+            value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
+            layout={"visibility": "hidden"},
+        )
+        self.fixed_display = ipw.Output()
+        self.add_fixed.on_click(self._add_fixed)
+        self.reset_fixed.on_click(self._reset_fixed)
+        self.reset_all_fixed.on_click(self._reset_all_fixed)
+        self.atom_selection.observe(self._display_table, "value")
+        self.add_fixed.on_click(self._display_table)
+        self.reset_fixed.on_click(self._display_table)
+        self.reset_all_fixed.on_click(self._display_table)
+
+        super().__init__(
+            children=[
+                ipw.HTML(
+                    """
+                    <p>
+                    Fix x,y,z for selected atoms. <br>
+                    For example, 0 1 0 for a given atoms means the atom can move only in y.
+                    </p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>Atom indices start from 1, not 0. This means that the first atom in the list is numbered 1, the second atom is numbered 2, and so on.</li>
+                    </ul>
+                    </p>
+                    """
+                ),
+                ipw.HBox(
+                    [
+                        self.atom_selection,
+                        self.from_selection,
+                        self.fixed,
+                    ]
+                ),
+                self.fixed_display,
+                self.scroll_note,
+                ipw.HBox([self.add_fixed, self.reset_fixed, self.reset_all_fixed]),
+                self._status_message,
+            ],
+            **kwargs,
+        )
+
+    def _display_table(self, _=None):
+        """Function to control fixed_display
+        When given a list of atom in selection it will display a HTML table with Index, Element and fixed coordinates
+        """
+        selection = string_range_to_list(self.atom_selection.value)[0]
+        selection = [s for s in selection if s < len(self.structure)]
+        current_fixed = self.structure.get_fixed()
+        chemichal_symbols = self.structure.get_chemical_symbols()
+
+        if selection and (min(selection) >= 0):
+            table_data = []
+            for index in selection:
+                fixed = current_fixed[index]
+                symbol = chemichal_symbols[index]
+                if fixed == 0:
+                    fixed = ""
+                table_data.append([f"{index + 1}", f"{symbol}", f"{fixed}"])
+
+            # Create an HTML table
+            table_html = "<table>"
+            table_html += "<tr><th>Index</th><th>Element</th><th>Fixed</th></tr>"
+            for row in table_data:
+                table_html += "<tr>"
+                for cell in row:
+                    table_html += f"<td>{cell}</td>"
+                table_html += "</tr>"
+            table_html += "</table>"
+
+            # Set layout to a fix size
+            self.fixed_display.layout = {
+                "overflow": "auto",
+                "height": "100px",
+                "width": "150px",
+            }
+            with self.fixed_display:
+                clear_output()
+                display(HTML(table_html))
+            self.scroll_note.layout = {"visibility": "visible"}
+        else:
+            self.fixed_display.layout = {}
+            with self.fixed_display:
+                clear_output()
+            self.scroll_note.layout = {"visibility": "hidden"}
+
+    def _from_selection(self, _=None):
+        """Set the atom selection from the current selection."""
+        self.atom_selection.value = list_to_string_range(self.selection)
+
+    def _add_fixed(self, _=None):
+        """Add fixed coordinates to the selected atoms."""
+        if not self.atom_selection.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select atoms first.</strong>
+            </div>
+            """
+        else:
+            selection = string_range_to_list(self.atom_selection.value)[0]
+            new_structure = deepcopy(self.structure)
+            if not new_structure.get_fixed().any():
+                new_fixed = np.zeros(len(new_structure))
+            else:
+                new_fixed = new_structure.get_fixed()
+            new_fixed[selection] = self.fixed.value
+            new_structure.set_fixed(new_fixed)
+            self.structure = None
+            self.structure = deepcopy(new_structure)
+            self.input_selection = None
+            self.input_selection = deepcopy(self.selection)
+
+    def _reset_fixed(self, _=None):
+        """Clear fixed coordinates from selected atoms."""
+        if not self.atom_selection.value:
+            self._status_message.message = """
+            <div class="alert alert-info">
+            <strong>Please select atoms first.</strong>
+            </div>
+            """
+        else:
+            selection = string_range_to_list(self.atom_selection.value)[0]
+            new_structure = deepcopy(self.structure)
+            new_fixed = new_structure.get_fixed()
+            new_fixed[selection] = 0
+            new_structure.set_fixed(new_fixed)
+            self.structure = None
+            self.structure = deepcopy(new_structure)
+            self.input_selection = None
+            self.input_selection = deepcopy(self.selection)
+
+    def _reset_all_fixed(self, _=None):
+        """Clear all fixed coordinates."""
+        new_structure = deepcopy(self.structure)
+        new_fixed = np.zeros(len(new_structure))
+        new_structure.set_fixed(new_fixed)
+        self.structure = None
+        self.structure = deepcopy(new_structure)
+        self.input_selection = None
+        self.input_selection = deepcopy(self.selection)
+
 
 class PeriodicityEditor(ipw.VBox):
     """Editor for changing periodicity of structures."""
