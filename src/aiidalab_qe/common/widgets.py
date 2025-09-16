@@ -625,6 +625,7 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
 
+
 class AddingFixedAtomsEditor(ipw.VBox):
     """Editor for adding tags to atoms."""
 
@@ -647,7 +648,11 @@ class AddingFixedAtomsEditor(ipw.VBox):
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
         self.fixed = ipw.BoundedIntText(
-            description="Fixed atoms", value=1, min=0, max=11, layout={"width": "initial"}
+            description="Fixed atoms",
+            value=1,
+            min=0,
+            max=11,
+            layout={"width": "initial"},
         )
         self.add_fixed = ipw.Button(
             description="Update fixed atoms",

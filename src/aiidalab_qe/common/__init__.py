@@ -9,7 +9,7 @@ from .widgets import (
     PeriodicityEditor,
     ShakeNBreakEditor,
 )
-    
+
 __all__ = [
     "AddingFixedAtomsEditor",
     "AddingTagsEditor",
