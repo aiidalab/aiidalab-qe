@@ -6,6 +6,8 @@ Authors: AiiDAlab team
 import base64
 import hashlib
 import warnings
+import html
+import re
 from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
@@ -626,6 +628,254 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = deepcopy(self.selection)
 
 
+class AddingFixedAtomsEditor(ipw.VBox):
+    """Editor for adding tags to atoms."""
+
+    structure = traitlets.Instance(ase.Atoms, allow_none=True)
+    selection = traitlets.List(traitlets.Int(), allow_none=True)
+    input_selection = traitlets.List(traitlets.Int(), allow_none=True)
+    structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
+
+    def __init__(self, title="", **kwargs):
+        self.title = title
+
+        self._status_message = StatusHTML()
+        self.atom_selection = ipw.Text(
+            placeholder="e.g. 1..5 8 10",
+            description="Index of atoms",
+            value="",
+            style={"description_width": "100px"},
+            layout={"width": "initial"},
+        )
+        self.from_selection = ipw.Button(description="From selection")
+        self.from_selection.on_click(self._from_selection)
+        self.fixed = ipw.Text(
+            description="Free axes",
+            placeholder="e.g. 0 1 0  or  (1,0,0)",
+            value="1 1 1",
+            layout={"width": "initial"},
+            style={"description_width": "100px"},
+        )
+        
+        self.add_fixed = ipw.Button(
+            description="Update fixed atoms",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+
+        self.reset_fixed = ipw.Button(
+            description="Reset fixed atoms",
+            button_style="primary",
+            layout={"width": "initial"},
+        )
+        self.reset_all_fixed = ipw.Button(
+            description="Reset all fixed atoms",
+            button_style="warning",
+            layout={"width": "initial"},
+        )
+        self.scroll_note = ipw.HTML(
+            value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
+            layout={"visibility": "hidden"},
+        )
+        self.fixed_display = ipw.Output()
+        self.add_fixed.on_click(self._add_fixed)
+        self.reset_fixed.on_click(self._reset_fixed)
+        self.reset_all_fixed.on_click(self._reset_all_fixed)
+        self.atom_selection.observe(self._display_table, "value")
+        self.add_fixed.on_click(self._display_table)
+        self.reset_fixed.on_click(self._display_table)
+        self.reset_all_fixed.on_click(self._display_table)
+
+        super().__init__(
+            children=[
+                ipw.HTML(
+                    """
+                    <p>
+                    Fix x,y,z for selected atoms. <br>
+                    For example, 0 1 0 for a given atom means the atom can move only in y.
+                    </p>
+                    <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
+                    <ul style="padding-left: 2em; list-style-type: disc;">
+                        <li>Atom indices start from 1, not 0. This means that the first atom in the list is numbered 1, the second atom is numbered 2, and so on.</li>
+                    </ul>
+                    </p>
+                    """
+                ),
+                ipw.HBox(
+                    [
+                        self.atom_selection,
+                        self.from_selection,
+                        self.fixed,
+                    ]
+                ),
+                self.fixed_display,
+                self.scroll_note,
+                ipw.HBox([self.add_fixed, self.reset_fixed, self.reset_all_fixed]),
+                self._status_message,
+            ],
+            **kwargs,
+        )
+    def _parse_mask_text(self, text):
+        """Parse text like '0 1 0' or '(0,1,0)' into a validated (3,) int array in {0,1}."""
+        nums = re.findall(r"-?\d+", text)
+        if len(nums) != 3:
+            raise ValueError("Provide exactly three integers (e.g. 0 1 0).")
+        vals = np.array([int(n) for n in nums], dtype=int)
+        if not np.all(np.isin(vals, [0, 1])):
+            raise ValueError("Values must be 0 or 1 only.")
+        return vals
+    
+    def _ensure_mask_array(self, atoms):
+        """Ensure atoms has an Nx3 int mask array named 'fixed_atoms' (default ones)."""
+        if atoms is None:
+            return
+        if 'fixed_atoms' not in atoms.arrays:
+            atoms.set_array('fixed_atoms', np.ones((len(atoms), 3), dtype=int))
+
+    def _parse_mask_text(self, text):
+        """Parse text like '0 1 0' or '(0,1,0)' into a validated (3,) int array in {0,1}."""
+        nums = re.findall(r"-?\d+", text)
+        if len(nums) != 3:
+            raise ValueError("Provide exactly three integers (e.g. 0 1 0).")
+        vals = np.array([int(n) for n in nums], dtype=int)
+        if not np.all(np.isin(vals, [0, 1])):
+            raise ValueError("Values must be 0 or 1 only.")
+        return vals
+
+    def _display_table(self, _=None):
+        """Show table with Index, Element, and current (x y z) free-mask for selected atoms."""
+        if self.structure is None:
+            return
+        self._ensure_mask_array(self.structure)
+
+        selection = string_range_to_list(self.atom_selection.value)[0]
+        selection = [s for s in selection if 0 <= s < len(self.structure)]
+        chemichal_symbols = self.structure.get_chemical_symbols()
+        current_mask = self.structure.get_array('fixed_atoms')
+
+        if selection and (min(selection) >= 0):
+            table_data = []
+            for index in selection:
+                symbol = chemichal_symbols[index]
+                mask = current_mask[index]
+                mask_str = f"{int(mask[0])} {int(mask[1])} {int(mask[2])}"
+                table_data.append([f"{index + 1}", f"{symbol}", mask_str])
+
+            table_html = "<table>"
+            table_html += "<tr><th>Index</th><th>Element</th><th>Free (x y z)</th></tr>"
+            for row in table_data:
+                table_html += "<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>"
+            table_html += "</table>"
+
+            self.fixed_display.layout = {"overflow": "auto", "height": "120px", "width": "240px"}
+            with self.fixed_display:
+                clear_output()
+                display(HTML(table_html))
+            self.scroll_note.layout = {"visibility": "visible"}
+        else:
+            self.fixed_display.layout = {}
+            with self.fixed_display:
+                clear_output()
+            self.scroll_note.layout = {"visibility": "hidden"}
+
+
+    def _from_selection(self, _=None):
+        """Set the atom selection from the current selection."""
+        self.atom_selection.value = list_to_string_range(self.selection)
+
+    def _add_fixed(self, _=None):
+        """Apply parsed free-axes mask to the selected atoms."""
+        if not self.atom_selection.value:
+            self._status_message.message = """
+            <div class="alert alert-info"><strong>Please select atoms first.</strong></div>
+            """
+            return
+
+        try:
+            new_mask_row = self._parse_mask_text(self.fixed.value)  # (3,)
+        except Exception as exc:
+            self._status_message.message = f"""
+            <div class="alert alert-danger"><strong>Invalid mask:</strong> {html.escape(str(exc))}</div>
+            """
+            return
+
+        selection = string_range_to_list(self.atom_selection.value)[0]
+        selection = [s for s in selection if 0 <= s < len(self.structure)]
+
+        new_structure = deepcopy(self.structure)
+        self._ensure_mask_array(new_structure)
+
+        mask = new_structure.get_array('fixed_atoms').copy()  # (N,3)
+        if len(selection) == 0:
+            self._status_message.message = """
+            <div class="alert alert-warning"><strong>No valid atom indices selected.</strong></div>
+            """
+            return
+
+        mask[selection, :] = new_mask_row  # broadcast
+        new_structure.set_array('fixed_atoms', mask)
+
+        # trigger traitlet updates
+        self.structure = None
+        self.structure = deepcopy(new_structure)
+        self.input_selection = None
+        self.input_selection = deepcopy(self.selection)
+
+        self._status_message.message = """
+        <div class="alert alert-success"><strong>Updated movement mask for selected atoms.</strong></div>
+        """
+
+    def _reset_fixed(self, _=None):
+        """Reset selected atoms back to (1,1,1) free movement."""
+        if not self.atom_selection.value:
+            self._status_message.message = """
+            <div class="alert alert-info"><strong>Please select atoms first.</strong></div>
+            """
+            return
+
+        selection = string_range_to_list(self.atom_selection.value)[0]
+        selection = [s for s in selection if 0 <= s < len(self.structure)]
+
+        new_structure = deepcopy(self.structure)
+        self._ensure_mask_array(new_structure)
+
+        mask = new_structure.get_array('fixed_atoms').copy()
+        if len(selection) == 0:
+            self._status_message.message = """
+            <div class="alert alert-warning"><strong>No valid atom indices selected.</strong></div>
+            """
+            return
+
+        mask[selection, :] = np.array([1, 1, 1], dtype=int)
+        new_structure.set_array('fixed_atoms', mask)
+
+        self.structure = None
+        self.structure = deepcopy(new_structure)
+        self.input_selection = None
+        self.input_selection = deepcopy(self.selection)
+
+        self._status_message.message = """
+        <div class="alert alert-success"><strong>Selected atoms reset to (1,1,1).</strong></div>
+        """
+
+    def _reset_all_fixed(self, _=None):
+        """Reset all atoms to (1,1,1) free movement."""
+        new_structure = deepcopy(self.structure)
+        self._ensure_mask_array(new_structure)
+
+        mask = np.ones((len(new_structure), 3), dtype=int)
+        new_structure.set_array('fixed_atoms', mask)
+
+        self.structure = None
+        self.structure = deepcopy(new_structure)
+        self.input_selection = None
+        self.input_selection = deepcopy(self.selection)
+
+        self._status_message.message = """
+        <div class="alert alert-success"><strong>All atoms reset to (1,1,1).</strong></div>
+        """
+
+
 class PeriodicityEditor(ipw.VBox):
     """Editor for changing periodicity of structures."""
 
@@ -696,7 +946,7 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             description=kwargs.pop("description", None),
             default_calc_job_plugin=kwargs.pop("default_calc_job_plugin", None),
             include_setup_widget=False,
-            fetch_codes=True,  # TODO resolve testing issues when set to `False`
+            fetch_codes=True,
             **kwargs,
         )
         self.code_selection.layout.width = "80%"
