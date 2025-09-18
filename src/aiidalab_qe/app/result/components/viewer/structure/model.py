@@ -75,28 +75,47 @@ class StructureResultsModel(ResultsModel):
         """
 
     def _get_atom_table_data(self):
-        structure = self.structure.get_ase()
-        data = [
-            [
-                "Atom index",
-                "Chemical symbol",
-                "Tag",
-                "x (Å)",
-                "y (Å)",
-                "z (Å)",
-            ]
-        ]
-        positions = structure.positions
-        chemical_symbols = structure.get_chemical_symbols()
-        tags = structure.get_tags()
+        """Build table data; if 'fixed_atoms' is present in structure attributes,
+        add a 'Free x,y,z' column showing '✓' for free (1) and 'x' for fixed (0)."""
+        # Try to get fixed_atoms from AiiDA StructureData attributes
+        fixed_atoms = None
+        try:
+            fixed_atoms = self.structure.base.attributes.all['fixed_atoms']
+        except KeyError:
+            fixed_atoms = None
 
-        for index, (symbol, tag, position) in enumerate(
-            zip(chemical_symbols, tags, positions), start=1
-        ):
-            formatted_position = [f"{coord:.2f}" for coord in position]
-            data.append([index, symbol, tag, *formatted_position])
+        ase_atoms = self.structure.get_ase()
+
+        # Header
+        data = [["Atom index", "Chemical symbol", "Tag", "x (Å)", "y (Å)", "z (Å)"]]
+        if fixed_atoms is not None:
+            data[0].append("Free x,y,z")
+
+        positions = ase_atoms.positions
+        chemical_symbols = ase_atoms.get_chemical_symbols()
+        tags = ase_atoms.get_tags()
+
+        def fmt_free(mask):
+            """mask: tuple/list of three 0/1; 0=free -> 'X', 1=fixed -> ' '."""
+            try:
+                x, y, z = mask
+            except Exception:
+                x = y = z = 0
+            # If your UI collapses spaces, replace ' ' with '·' or '\u00A0' (NBSP).
+            return f"({'x' if x == 0 else '✓'} {'x' if y == 0 else '✓'} {'x' if z == 0 else '✓'})"
+
+        for idx, (symbol, tag, pos) in enumerate(zip(chemical_symbols, tags, positions), start=1):
+            formatted_position = [f"{coord:.2f}" for coord in pos]
+            row = [idx, symbol, tag, *formatted_position]
+
+            if fixed_atoms is not None:
+                mask = fixed_atoms[idx - 1] if idx - 1 < len(fixed_atoms) else (0, 0, 0)
+                row.append(fmt_free(mask))
+
+            data.append(row)
 
         return data
+
 
     def get_model_state(self):
         return {
