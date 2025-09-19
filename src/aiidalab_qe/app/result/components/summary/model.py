@@ -200,10 +200,19 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "positions": "atomic positions",
             "positions_cell": "full geometry",
         }
-        constraints = 'None'
-        if 'fixed_atoms' in structure.base.attributes.all:
-            constraints = 'There are fixed atoms'
         
+        # check for fixed atoms
+        constraints = 'None'
+        fixed_atoms = structure.base.attributes.all.get('fixed_atoms', None)
+        if fixed_atoms is not None:
+            has_fixed = any(
+                any((int(v) == 0) for v in row if v is not None)
+                for row in fixed_atoms
+            )
+            # True if any element equals 0 (works for (N,3), (N,), or nested lists)
+            if has_fixed:
+                constraints = "There are fixed atoms"        
+                
         report |= {
             "basic_settings": {
                 "relaxed": relax_value_mapping.get(basic["relax_type"], "off"),
