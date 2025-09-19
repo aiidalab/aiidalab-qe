@@ -94,6 +94,11 @@
     "type": "text",
     "description": "The periodicity of the structure"
   },
+  "constraints": {
+    "title": "Constraints",
+    "type": "text",
+    "description": "The constraints applied to the structure"
+  },
   "functional": {
     "title": "Functional",
     "type": "link",

@@ -628,13 +628,20 @@ class AddingTagsEditor(ipw.VBox):
         self.input_selection = deepcopy(self.selection)
 
 
-class AddingFixedAtomsEditor(ipw.VBox):
-    """Editor for adding tags to atoms."""
+import re, html
+import numpy as np
+from copy import deepcopy
+
+###ASA
+class AddingConstraintsEditor(ipw.VBox):
+    """Editor for per-atom constraints; supports 'fixed <axes>' → free-mask (1=free, 0=fixed)."""
 
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
     selection = traitlets.List(traitlets.Int(), allow_none=True)
     input_selection = traitlets.List(traitlets.Int(), allow_none=True)
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
+
+    _ARRAY_NAME = "fixed_atoms"  # Nx3 int array, 1=free, 0=fixed
 
     def __init__(self, title="", **kwargs):
         self.title = title
@@ -649,27 +656,29 @@ class AddingFixedAtomsEditor(ipw.VBox):
         )
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
-        self.fixed = ipw.Text(
-            description="Free axes",
-            placeholder="e.g. 0 1 0  or  (1,0,0)",
-            value="1 1 1",
+
+        # Renamed: general 'constraint' field. No numeric masks allowed.
+        self.constraint = ipw.Text(
+            description="Constraint",
+            placeholder="fixed x y   |   free x,y",
+            value="free x y z",
             layout={"width": "initial"},
             style={"description_width": "100px"},
         )
-        
-        self.add_fixed = ipw.Button(
-            description="Update fixed atoms",
+
+        self.apply_constraint = ipw.Button(
+            description="Apply constraint",
             button_style="primary",
             layout={"width": "initial"},
         )
 
         self.reset_fixed = ipw.Button(
-            description="Reset fixed atoms",
+            description="Reset selected",
             button_style="primary",
             layout={"width": "initial"},
         )
         self.reset_all_fixed = ipw.Button(
-            description="Reset all fixed atoms",
+            description="Reset all",
             button_style="warning",
             layout={"width": "initial"},
         )
@@ -678,11 +687,11 @@ class AddingFixedAtomsEditor(ipw.VBox):
             layout={"visibility": "hidden"},
         )
         self.fixed_display = ipw.Output()
-        self.add_fixed.on_click(self._add_fixed)
+        self.apply_constraint.on_click(self._add_fixed)
         self.reset_fixed.on_click(self._reset_fixed)
         self.reset_all_fixed.on_click(self._reset_all_fixed)
         self.atom_selection.observe(self._display_table, "value")
-        self.add_fixed.on_click(self._display_table)
+        self.apply_constraint.on_click(self._display_table)
         self.reset_fixed.on_click(self._display_table)
         self.reset_all_fixed.on_click(self._display_table)
 
@@ -691,59 +700,88 @@ class AddingFixedAtomsEditor(ipw.VBox):
                 ipw.HTML(
                     """
                     <p>
-                    Fix x,y,z for selected atoms. <br>
-                    For example, 0 1 0 for a given atom means the atom can move only in y.
+                    Constrain movement per atom with <code>fixed &lt;axes&gt;</code> or <code>free &lt;axes&gt;</code>, where axes are any of x, y, z.<br>
+                    Examples:<br>
+                    &nbsp;&nbsp;• <code>fixed x</code> → (0 1 1)&nbsp;&nbsp;&nbsp;&nbsp;• <code>fixed x y</code> → (0 0 1)<br>
+                    &nbsp;&nbsp;• <code>free x</code> → (1 0 0)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• <code>free x y</code> → (1 1 0)<br>
+                    <b>Numeric masks like '0 1 0' are not accepted.</b>
                     </p>
                     <p style="font-weight: bold; color: #1f77b4;">NOTE:</p>
                     <ul style="padding-left: 2em; list-style-type: disc;">
-                        <li>Atom indices start from 1, not 0. This means that the first atom in the list is numbered 1, the second atom is numbered 2, and so on.</li>
+                        <li>Atom indices in the UI start from 1.</li>
+                        <li>Unmodified atoms keep the default <code>(1, 1, 1)</code> (all free).</li>
                     </ul>
-                    </p>
                     """
                 ),
                 ipw.HBox(
                     [
                         self.atom_selection,
                         self.from_selection,
-                        self.fixed,
+                        self.constraint,
                     ]
                 ),
                 self.fixed_display,
                 self.scroll_note,
-                ipw.HBox([self.add_fixed, self.reset_fixed, self.reset_all_fixed]),
+                ipw.HBox([self.apply_constraint, self.reset_fixed, self.reset_all_fixed]),
                 self._status_message,
             ],
             **kwargs,
         )
-    def _parse_mask_text(self, text):
-        """Parse text like '0 1 0' or '(0,1,0)' into a validated (3,) int array in {0,1}."""
-        nums = re.findall(r"-?\d+", text)
-        if len(nums) != 3:
-            raise ValueError("Provide exactly three integers (e.g. 0 1 0).")
-        vals = np.array([int(n) for n in nums], dtype=int)
-        if not np.all(np.isin(vals, [0, 1])):
-            raise ValueError("Values must be 0 or 1 only.")
-        return vals
-    
+
+    # ---------- helpers ----------
+
     def _ensure_mask_array(self, atoms):
-        """Ensure atoms has an Nx3 int mask array named 'fixed_atoms' (default ones)."""
+        """Ensure atoms has an Nx3 int mask array named _ARRAY_NAME (default ones)."""
         if atoms is None:
             return
-        if 'fixed_atoms' not in atoms.arrays:
-            atoms.set_array('fixed_atoms', np.ones((len(atoms), 3), dtype=int))
+        if self._ARRAY_NAME not in atoms.arrays:
+            atoms.set_array(self._ARRAY_NAME, np.ones((len(atoms), 3), dtype=int))
 
-    def _parse_mask_text(self, text):
-        """Parse text like '0 1 0' or '(0,1,0)' into a validated (3,) int array in {0,1}."""
-        nums = re.findall(r"-?\d+", text)
-        if len(nums) != 3:
-            raise ValueError("Provide exactly three integers (e.g. 0 1 0).")
-        vals = np.array([int(n) for n in nums], dtype=int)
-        if not np.all(np.isin(vals, [0, 1])):
-            raise ValueError("Values must be 0 or 1 only.")
-        return vals
+    def _parse_constraint_text(self, text):
+        """
+        Parse 'fixed <axes>' or 'free <axes>' into a (3,) mask (1=free, 0=fixed).
+        Examples:
+        fixed x y -> [0, 0, 1]
+        free  x y -> [1, 1, 0]
+        """
+        if not text or not text.strip():
+            raise ValueError("Constraint string is empty.")
+
+        s = text.strip().lower()
+
+        # reject any digits (we no longer accept numeric masks)
+        if re.search(r"\d", s):
+            raise ValueError("Numeric masks are not accepted; use 'fixed x y' or 'free x y'.")
+
+        m = re.match(r"^(fix(?:ed)?|free)\b\s*(.*)$", s)
+        if not m:
+            raise ValueError("Constraint must start with 'fixed' or 'free' (e.g. 'fixed x', 'free y z').")
+
+        mode = "fixed" if m.group(1).startswith("fix") else "free"
+        tail = m.group(2) or ""
+
+        # only parse axes from the tail (after the keyword), commas/spaces allowed, order-insensitive
+        axes = re.findall(r"[xyz]", tail)
+        if not axes:
+            raise ValueError("Specify at least one axis after the keyword (x, y, z).")
+
+        idx_map = {"x": 0, "y": 1, "z": 2}
+        if mode == "fixed":
+            mask = np.ones(3, dtype=int)   # default free
+            for ax in axes:
+                mask[idx_map[ax]] = 0      # listed axes become fixed
+        else:  # mode == "free"
+            mask = np.zeros(3, dtype=int)  # default fixed
+            for ax in axes:
+                mask[idx_map[ax]] = 1      # listed axes become free
+
+        return mask
+
+
+
+    # ---------- UI logic ----------
 
     def _display_table(self, _=None):
-        """Show table with Index, Element, and current (x y z) free-mask for selected atoms."""
         if self.structure is None:
             return
         self._ensure_mask_array(self.structure)
@@ -751,23 +789,22 @@ class AddingFixedAtomsEditor(ipw.VBox):
         selection = string_range_to_list(self.atom_selection.value)[0]
         selection = [s for s in selection if 0 <= s < len(self.structure)]
         chemichal_symbols = self.structure.get_chemical_symbols()
-        current_mask = self.structure.get_array('fixed_atoms')
+        current_mask = self.structure.get_array(self._ARRAY_NAME)
 
         if selection and (min(selection) >= 0):
-            table_data = []
+            rows = []
             for index in selection:
                 symbol = chemichal_symbols[index]
-                mask = current_mask[index]
-                mask_str = f"{int(mask[0])} {int(mask[1])} {int(mask[2])}"
-                table_data.append([f"{index + 1}", f"{symbol}", mask_str])
+                m = current_mask[index]
+                rows.append([f"{index + 1}", f"{symbol}", f"{int(m[0])} {int(m[1])} {int(m[2])}"])
 
             table_html = "<table>"
             table_html += "<tr><th>Index</th><th>Element</th><th>Free (x y z)</th></tr>"
-            for row in table_data:
+            for row in rows:
                 table_html += "<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>"
             table_html += "</table>"
 
-            self.fixed_display.layout = {"overflow": "auto", "height": "120px", "width": "240px"}
+            self.fixed_display.layout = {"overflow": "auto", "height": "120px", "width": "260px"}
             with self.fixed_display:
                 clear_output()
                 display(HTML(table_html))
@@ -778,13 +815,11 @@ class AddingFixedAtomsEditor(ipw.VBox):
                 clear_output()
             self.scroll_note.layout = {"visibility": "hidden"}
 
-
     def _from_selection(self, _=None):
-        """Set the atom selection from the current selection."""
         self.atom_selection.value = list_to_string_range(self.selection)
 
     def _add_fixed(self, _=None):
-        """Apply parsed free-axes mask to the selected atoms."""
+        """Apply parsed 'fixed …' constraint to the selected atoms (updates free-mask)."""
         if not self.atom_selection.value:
             self._status_message.message = """
             <div class="alert alert-info"><strong>Please select atoms first.</strong></div>
@@ -792,10 +827,10 @@ class AddingFixedAtomsEditor(ipw.VBox):
             return
 
         try:
-            new_mask_row = self._parse_mask_text(self.fixed.value)  # (3,)
+            new_mask_row = self._parse_constraint_text(self.constraint.value)  # (3,)
         except Exception as exc:
             self._status_message.message = f"""
-            <div class="alert alert-danger"><strong>Invalid mask:</strong> {html.escape(str(exc))}</div>
+            <div class="alert alert-danger"><strong>Invalid constraint:</strong> {html.escape(str(exc))}</div>
             """
             return
 
@@ -805,24 +840,23 @@ class AddingFixedAtomsEditor(ipw.VBox):
         new_structure = deepcopy(self.structure)
         self._ensure_mask_array(new_structure)
 
-        mask = new_structure.get_array('fixed_atoms').copy()  # (N,3)
         if len(selection) == 0:
             self._status_message.message = """
             <div class="alert alert-warning"><strong>No valid atom indices selected.</strong></div>
             """
             return
 
+        mask = new_structure.get_array(self._ARRAY_NAME).copy()
         mask[selection, :] = new_mask_row  # broadcast
-        new_structure.set_array('fixed_atoms', mask)
+        new_structure.set_array(self._ARRAY_NAME, mask)
 
-        # trigger traitlet updates
         self.structure = None
         self.structure = deepcopy(new_structure)
         self.input_selection = None
         self.input_selection = deepcopy(self.selection)
 
         self._status_message.message = """
-        <div class="alert alert-success"><strong>Updated movement mask for selected atoms.</strong></div>
+        <div class="alert alert-success"><strong>Constraint applied to selected atoms.</strong></div>
         """
 
     def _reset_fixed(self, _=None):
@@ -839,15 +873,15 @@ class AddingFixedAtomsEditor(ipw.VBox):
         new_structure = deepcopy(self.structure)
         self._ensure_mask_array(new_structure)
 
-        mask = new_structure.get_array('fixed_atoms').copy()
         if len(selection) == 0:
             self._status_message.message = """
             <div class="alert alert-warning"><strong>No valid atom indices selected.</strong></div>
             """
             return
 
+        mask = new_structure.get_array(self._ARRAY_NAME).copy()
         mask[selection, :] = np.array([1, 1, 1], dtype=int)
-        new_structure.set_array('fixed_atoms', mask)
+        new_structure.set_array(self._ARRAY_NAME, mask)
 
         self.structure = None
         self.structure = deepcopy(new_structure)
@@ -864,7 +898,7 @@ class AddingFixedAtomsEditor(ipw.VBox):
         self._ensure_mask_array(new_structure)
 
         mask = np.ones((len(new_structure), 3), dtype=int)
-        new_structure.set_array('fixed_atoms', mask)
+        new_structure.set_array(self._ARRAY_NAME, mask)
 
         self.structure = None
         self.structure = deepcopy(new_structure)
@@ -875,7 +909,7 @@ class AddingFixedAtomsEditor(ipw.VBox):
         <div class="alert alert-success"><strong>All atoms reset to (1,1,1).</strong></div>
         """
 
-
+###ASA
 class PeriodicityEditor(ipw.VBox):
     """Editor for changing periodicity of structures."""
 

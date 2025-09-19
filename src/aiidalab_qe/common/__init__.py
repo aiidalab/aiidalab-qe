@@ -2,7 +2,7 @@
 from .node_view import CalcJobNodeViewerWidget  # noqa: F401
 from .process import QeAppWorkChainSelector, WorkChainSelector
 from .widgets import (
-    AddingFixedAtomsEditor,
+    AddingConstraintsEditor,
     AddingTagsEditor,
     LazyLoadedOptimade,
     LazyLoadedStructureBrowser,
@@ -11,7 +11,7 @@ from .widgets import (
 )
 
 __all__ = [
-    "AddingFixedAtomsEditor",
+    "AddingConstraintsEditor",
     "AddingTagsEditor",
     "LazyLoadedOptimade",
     "LazyLoadedStructureBrowser",

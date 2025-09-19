@@ -10,7 +10,7 @@ import ipywidgets as ipw
 from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common import (
-    AddingFixedAtomsEditor,
+    AddingConstraintsEditor,
     AddingTagsEditor,
     LazyLoadedOptimade,
     LazyLoadedStructureBrowser,
@@ -106,7 +106,7 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
             BasicCellEditor(title="Edit cell"),
             BasicStructureEditor(title="Edit structure"),
             AddingTagsEditor(title="Edit atom tags"),
-            AddingFixedAtomsEditor(title="Edit fixed atoms"),
+            AddingConstraintsEditor(title="Edit constraints"),
             PeriodicityEditor(title="Edit periodicity"),
             ShakeNBreakEditor(title="ShakeNBreak"),
         ]

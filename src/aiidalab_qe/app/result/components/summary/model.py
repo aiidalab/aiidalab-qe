@@ -193,13 +193,17 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "cell_lengths": "{:.3f} {:.3f} {:.3f}".format(*structure.cell_lengths),
             "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
         }
+        
 
         relax_value_mapping = {
             "none": "off",
             "positions": "atomic positions",
             "positions_cell": "full geometry",
         }
-
+        constraints = 'None'
+        if 'fixed_atoms' in structure.base.attributes.all:
+            constraints = 'There are fixed atoms'
+        
         report |= {
             "basic_settings": {
                 "relaxed": relax_value_mapping.get(basic["relax_type"], "off"),
@@ -207,6 +211,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "spin_type": "off" if basic["spin_type"] == "none" else "on",
                 "electronic_type": basic["electronic_type"],
                 "periodicity": PERIODICITY_MAPPING.get(structure.pbc, "xyz"),
+                "constraints": constraints
             },
             "advanced_settings": {},
         }

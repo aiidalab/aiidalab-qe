@@ -78,11 +78,7 @@ class StructureResultsModel(ResultsModel):
         """Build table data; if 'fixed_atoms' is present in structure attributes,
         add a 'Free x,y,z' column showing '✓' for free (1) and 'x' for fixed (0)."""
         # Try to get fixed_atoms from AiiDA StructureData attributes
-        fixed_atoms = None
-        try:
-            fixed_atoms = self.structure.base.attributes.all['fixed_atoms']
-        except KeyError:
-            fixed_atoms = None
+        fixed_atoms = self.structure.base.attributes.all.get('fixed_atoms', None) 
 
         ase_atoms = self.structure.get_ase()
 
