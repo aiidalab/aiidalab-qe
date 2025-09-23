@@ -206,9 +206,13 @@ class QeAppWorkChain(WorkChain):
             relax_builder.pop("structure", None)
             relax_builder.pop("clean_workdir", None)
             relax_builder.pop("base_final_scf", None)  # never run a final scf
+            settings = {}
             if 'fixed_atoms' in structure.base.attributes.all:
-                
-                relax_builder.base.pw.settings = orm.Dict({'FIXED_COORDS':[[v == 0 for v in row] for row in structure.base.attributes.all['fixed_atoms']]})
+                settings['FIXED_COORDS'] = [[v == 0 for v in row] for row in structure.base.attributes.all['fixed_atoms']]
+            if 'CONSTRAINTS' in structure.base.attributes.all:
+                settings['CONSTRAINTS'] = structure.base.attributes.all['CONSTRAINTS']
+            if settings:
+                relax_builder.base.pw.settings = orm.Dict(dict=settings)
             builder.relax = relax_builder            
         else:
             builder.pop("relax")
