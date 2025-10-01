@@ -4,11 +4,12 @@ import json
 import typing as t
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 
 import ipywidgets as ipw
 import traitlets as tl
 from importlib_resources import files
-from IPython.display import Image, display
+from IPython.display import Image, Javascript, display
 from jinja2 import Environment
 
 from aiida import orm
@@ -77,18 +78,60 @@ class AppController:
         self,
         auto_setup: bool = True,
         log_widget: ipw.Output | None = None,
+        duplicating: bool = False,
     ) -> None:
         """Load and initialize the wizard."""
-        _ = orm.User.collection.get_default().email  # HACK
+        # HACK somehow resolves https://github.com/aiidalab/aiidalab-qe/issues/1356
+        # TODO investigate why this is needed
+        _ = orm.User.collection.get_default().email
+
         self.wizard = Wizard(self._wizard_model, auto_setup, log_widget)
-        self._view.app_container.children = [self.wizard]
+
+        # Build state
         state = {"process_uuid": self._model.process_uuid}
         if self._model.process_uuid:
             state |= self._model.get_state_from_process()
-        if CURRENT_STATE_PATH.exists():
-            # TODO how to best guarantee the state was already written by this point?
-            state |= json.loads(CURRENT_STATE_PATH.read_text())
-            CURRENT_STATE_PATH.unlink(missing_ok=True)
+
+        if duplicating:
+            # We try to read the previous state from the file written by the duplicating
+            # instance of the app. We wait up to 0.5s for the file to appear. If it
+            # doesn't, we show an error message, prompting the user to try again.
+            i = 0
+            while i < 5:
+                if CURRENT_STATE_PATH.exists():
+                    # Load the previous state
+                    state |= json.loads(CURRENT_STATE_PATH.read_text())
+
+                    # Delete the file
+                    CURRENT_STATE_PATH.unlink(missing_ok=True)
+
+                    # Clear the URL
+                    display(
+                        Javascript(
+                            "window.history.pushState(null, '', window.location.pathname);"
+                        ),
+                    )
+                    break
+
+                # Wait a bit and try again
+                sleep(0.1)
+                i += 1
+
+            else:
+                # If we exit the loop without breaking, the file was not found
+                # Show an error message
+                self._view.app_container.children = [
+                    ipw.HTML(
+                        value="""
+                            <div class="alert alert-danger" style="text-align: center">
+                                Failed to load previous state. Please try again.
+                            </div>
+                        """,
+                    )
+                ]
+                return
+
+        self._view.app_container.children = [self.wizard]
         self._wizard_model.state = state
         self._model.loaded = True
 
@@ -290,9 +333,9 @@ class AppView(ipw.VBox):
 
         self.duplicate_workflow_link = LinkButton(
             description="Duplicate",
-            link="./qe.ipynb",
+            link="./qe.ipynb?duplicating=True",
             icon="clone",
-            tooltip="Duplicate calculation paramters in a separate tab",
+            tooltip="Duplicate calculation parameters in a separate tab",
         )
 
         self.external_links = ipw.HBox(
