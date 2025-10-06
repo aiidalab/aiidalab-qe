@@ -15,6 +15,6 @@ __all__ = [
     "LazyLoadedStructureBrowser",
     "PeriodicityEditor",
     "QeAppWorkChainSelector",
-    "WorkChainSelector",
     "ShakeNBreakEditor",
+    "WorkChainSelector",
 ]
