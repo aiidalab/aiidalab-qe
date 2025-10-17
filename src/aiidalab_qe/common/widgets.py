@@ -658,7 +658,7 @@ class AddingConstraintsEditor(ipw.VBox):
 
         self.constraint = ipw.Text(
             description="Constraint",
-            placeholder="fixed x y   |   free x,y   |   distance 2.0   |   none",
+            placeholder="fixed x y | free x | distance 2.0 | angle 60 | none",
             value="free x y z",
             layout={"width": "initial"},
             style={"description_width": "100px"},
@@ -699,7 +699,7 @@ class AddingConstraintsEditor(ipw.VBox):
                     """
                     <p>
                     Constrain movement per atom with <code>fixed &lt;axes&gt;</code> or <code>free &lt;axes&gt;</code>, where axes are any of x, y, z.<br>
-                    Also supported: <code>distance &lt;value&gt;</code> (requires exactly two atoms selected), and <code>none</code> to remove constraints for the selected atoms.
+                    Also supported: <code>distance &lt;value&gt;</code> (2 atoms), <code>angle &lt;value&gt;</code> (3 atoms, order matters), and <code>none</code> to remove constraints for the selected atoms.
                     </p>
                     <ul style="padding-left: 2em; list-style-type: disc;">
                         <li>Indices shown are 1-based in the legend (e.g. "distance 1 2 2.0").</li>
@@ -746,16 +746,17 @@ class AddingConstraintsEditor(ipw.VBox):
 
     def _parse_constraint_text(self, text):
         """
-        Returns a tuple (mode, payload):
-          - ('mask', np.array([x,y,z])) for fixed/free
-          - ('distance', float_value) for 'distance <float>'
-          - ('none', None) for 'none'
+        Returns (mode, payload):
+        - ('mask', np.array([x,y,z]))   for fixed/free
+        - ('distance', float_value)     for 'distance <float>'
+        - ('angle', float_value)        for 'angle <float>'
+        - ('none', None)                for 'none'
         """
         if not text or not text.strip():
             raise ValueError("Constraint string is empty.")
         s = text.strip().lower()
 
-        # 'none' removes constraints involving selected atoms
+        # 'none'
         if s == "none":
             return ("none", None)
 
@@ -764,14 +765,19 @@ class AddingConstraintsEditor(ipw.VBox):
         if m:
             return ("distance", float(m.group(1)))
 
-        # reject digits for fixed/free (we don't accept numeric masks)
+        # angle <float>
+        m = re.match(r"^angle\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)\s*$", s)
+        if m:
+            return ("angle", float(m.group(1)))
+
+        # reject digits for fixed/free masks
         if re.search(r"\d", s):
-            raise ValueError("Numeric masks are not accepted; use 'fixed x y', 'free x', 'distance 2.0', or 'none'.")
+            raise ValueError("Numeric masks not accepted; use 'fixed x y', 'free x', 'distance 2.0', 'angle 60', or 'none'.")
 
         # fixed/free axes
         m = re.match(r"^(fix(?:ed)?|free)\b\s*(.*)$", s)
         if not m:
-            raise ValueError("Constraint must be 'fixed ...', 'free ...', 'distance <float>', or 'none'.")
+            raise ValueError("Constraint must be 'fixed ...', 'free ...', 'distance <float>', 'angle <float>', or 'none'.")
         mode = "fixed" if m.group(1).startswith("fix") else "free"
         tail = m.group(2) or ""
         axes = re.findall(r"[xyz]", tail)
@@ -788,27 +794,42 @@ class AddingConstraintsEditor(ipw.VBox):
                 mask[idx_map[ax]] = 1
         return ("mask", mask)
 
+
     def _constraints_index_map(self, atoms_len, cdict):
-        """Return mapping atom_index -> list of constraint labels ['*1','*3',...] and legend lines."""
+        """Map atom_index -> ['*1','*3',...] and build legend lines."""
         marks = {i: [] for i in range(atoms_len)}
         legend = []
         for i, entry in enumerate(cdict.get("list", []), start=1):
-            # expected format: "distance i j value"
             parts = entry.strip().split()
+            label = f"*{i}"
             if len(parts) >= 4 and parts[0] == "distance":
                 try:
                     i1 = int(parts[1]) - 1
                     i2 = int(parts[2]) - 1
                 except Exception:
+                    legend.append(f"*{i} {entry}")
                     continue
-                label = f"*{i}"
                 if 0 <= i1 < atoms_len:
                     marks[i1].append(label)
                 if 0 <= i2 < atoms_len:
                     marks[i2].append(label)
-            # legend shows with star
+
+            elif len(parts) >= 5 and parts[0] == "angle":
+                try:
+                    i1 = int(parts[1]) - 1
+                    i2 = int(parts[2]) - 1
+                    i3 = int(parts[3]) - 1
+                except Exception:
+                    legend.append(f"*{i} {entry}")
+                    continue
+                for idx in (i1, i2, i3):
+                    if 0 <= idx < atoms_len:
+                        marks[idx].append(label)
+
+            # legend always shows the raw entry
             legend.append(f"*{i} {entry}")
         return marks, legend
+
 
     # ---------- UI logic ----------
 
@@ -917,31 +938,66 @@ class AddingConstraintsEditor(ipw.VBox):
                 cdict["tolerance"] = "1e-6"
             self._set_constraints_info(new_structure, cdict)
             msg = f"Added constraint: {entry}"
+            
+        elif mode == "angle":
+            # must select exactly three DISTINCT atoms, in the order selected
+            ordered = [i for i in self.selection if 0 <= i < len(self.structure)]
+            # keep only the ones also in the typed selection to avoid mismatch
+            # (optional; remove the next line if not needed)
+            # ordered = [i for i in ordered if i in selection]
 
+            if len(ordered) != 3 or len(set(ordered)) != 3:
+                self._status_message.message = """
+                <div class="alert alert-danger"><strong>angle</strong> requires exactly three distinct atoms, selected in order.</div>
+                """
+                return
+
+            i1, i2, i3 = (ordered[0]+1, ordered[1]+1, ordered[2]+1)  # 1-based, ORDERED
+            value = payload
+            cdict = self._get_constraints_info(new_structure)
+            entry = f"planar_angle {i1} {i2} {i3} {value:g}"
+            cdict["list"].append(entry)
+            cdict["number"] = len(cdict["list"])
+            if "tolerance" not in cdict or not cdict["tolerance"]:
+                cdict["tolerance"] = "1e-6"
+            self._set_constraints_info(new_structure, cdict)
+            msg = f"Added constraint: {entry}"
+
+            
         elif mode == "none":
-            # remove any constraints that involve any selected atom
-            sel_set = set(selection)
+            sel_set = set(selection) | set(self.selection)  # be generous
             cdict = self._get_constraints_info(new_structure)
             kept = []
             for entry in cdict["list"]:
                 parts = entry.strip().split()
+                drop = False
                 if len(parts) >= 4 and parts[0] == "distance":
                     try:
                         a = int(parts[1]) - 1
                         b = int(parts[2]) - 1
                     except Exception:
-                        kept.append(entry)
-                        continue
-                    if {a, b} & sel_set:
-                        # drop this constraint
-                        continue
-                else:
-                    # unknown format → keep
+                        pass
+                    else:
+                        if {a, b} & sel_set:
+                            drop = True
+
+                elif len(parts) >= 5 and parts[0] == "angle":
+                    try:
+                        a = int(parts[1]) - 1
+                        b = int(parts[2]) - 1
+                        c = int(parts[3]) - 1
+                    except Exception:
+                        pass
+                    else:
+                        if {a, b, c} & sel_set:
+                            drop = True
+
+                if not drop:
                     kept.append(entry)
+
             cdict["list"] = kept
             cdict["number"] = len(kept)
             if cdict["number"] == 0:
-                # keep the block but empty; you could also del info[_INFO_KEY]
                 cdict["tolerance"] = cdict.get("tolerance", "1e-6")
             self._set_constraints_info(new_structure, cdict)
             msg = "Removed constraints involving selected atoms."
