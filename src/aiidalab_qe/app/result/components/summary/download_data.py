@@ -2,6 +2,7 @@ import base64
 import pathlib
 import tempfile
 from threading import Thread
+from typing import cast
 
 import ipywidgets as ipw
 
@@ -30,7 +31,9 @@ class DownloadDataWidget(ipw.VBox):
         try:
             # check that we can import the ProcessDumper (not implemented in old AiiDA versions)
             # pre-commit: allow any unused imports in the next line
-            from aiida.tools.dumping.processes import ProcessDumper  # noqa: F401
+            # Note that we no longer use `ProcessDumper`, but we can still use it
+            # to check for AiiDA version compatibility.
+            from aiida.tools._dumping.facades import ProcessDumper  # noqa: F401
 
             self.download_raw_button.on_click(self._download_data_thread)
             self.dumper_is_available = True
@@ -160,7 +163,7 @@ class DownloadDataWidget(ipw.VBox):
         """
         from aiida import orm
 
-        reloaded_node = orm.load_node(node.pk)
+        reloaded_node = cast(orm.ProcessNode, orm.load_node(node.pk))
         with tempfile.TemporaryDirectory() as dirpath:
             if what == "archive":
                 from aiida.tools.archive.create import create_archive
@@ -182,12 +185,9 @@ class DownloadDataWidget(ipw.VBox):
             elif what == "raw":
                 import shutil
 
-                from aiida.tools.dumping.processes import ProcessDumper
-
                 path = pathlib.Path(dirpath) / "raw_data"
                 output_zip_path = pathlib.Path(dirpath) / "raw_data.zip"
-                dumper = ProcessDumper()
-                dumper.dump(process_node=reloaded_node, output_path=path)
+                reloaded_node.dump(output_path=path)
                 # writing files to a zipfile
                 shutil.make_archive(pathlib.Path(dirpath) / "raw_data", "zip", path)
 
