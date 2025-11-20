@@ -44,6 +44,7 @@ def test_qe_app_select_silicon_and_confirm(
         element = WebDriverWait(driver, 60).until(
             EC.element_to_be_clickable((By.XPATH, "//button[text()='Confirm']"))
         )
+        assert element.is_enabled()
         element.click()
         # Confirming means step is successful
         driver.find_element(By.CLASS_NAME, "qe-app-step-success")
