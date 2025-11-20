@@ -17,10 +17,6 @@ ARG UV_CACHE_DIR=/tmp/uv_cache
 ARG QE_APP_SRC=/tmp/quantum-espresso
 ARG COMPUTER_LABEL="localhost"
 
-#
-# We'll define the possible HQ download URLs (for x86_64 and ARM64).
-#
-# # XXX: fix me after release aiida-hyperqueue
 ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
 ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/aiidalab/aiidalab-qe-vibroscopy@v1.2.1"
@@ -114,7 +110,7 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
-      ${AIIDA_HQ_PKG} aiida-bader ${MUON_PKG} ${VIBROSCOPY_PKG}
+      ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG}
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -129,6 +125,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
     verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
+    pip install aiida-bader && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
