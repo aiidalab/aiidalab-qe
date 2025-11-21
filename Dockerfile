@@ -179,7 +179,10 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-      ${QE_APP_SRC} aiida-bader ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG}
+      ${QE_APP_SRC} aiida-bader ${AIIDA_HQ_PKG} ${MUON_PKG}
+
+# This fails on arm with `uv pip` so is installed separately
+RUN pip install ${VIBROSCOPY_PKG}
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
