@@ -12,6 +12,7 @@ on:
 
 env:
     FORCE_COLOR: 1
+    RUNNING_INTEGRATION_TESTS: '1'
 
 # https://docs.github.com/en/actions/using-jobs/using-concurrency
 concurrency:
