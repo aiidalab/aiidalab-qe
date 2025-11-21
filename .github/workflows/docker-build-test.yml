@@ -61,7 +61,7 @@ jobs:
 
             - name: Build and push images (GHCR)
               id: build-upload
-              uses: docker/build-push-action@v5
+              uses: docker/build-push-action@v6
               with:
                   # Provide multiple comma/line-separated tags:
                   tags: >
