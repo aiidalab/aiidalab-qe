@@ -70,10 +70,6 @@ jobs:
                   push: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) }}
                   context: .
                   platforms: linux/amd64
-                  cache-to: |
-                      type=gha,scope=${{ github.workflow }},mode=min
-                  cache-from: |
-                      type=gha,scope=${{ github.workflow }}
 
             - name: Set Up Python 🐍
               uses: actions/setup-python@v5
