@@ -224,7 +224,7 @@ class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
     def _update_state(self):
         if self._model.confirmed:
             self.state = self.State.SUCCESS
-        elif not self._model.has_structure:
-            self.state = self.State.READY
-        else:
+        elif self._model.structure_uuid:
             self.state = self.State.CONFIGURED
+        else:
+            self.state = self.State.READY
