@@ -2,12 +2,10 @@
 name: Build Docker image and test
 
 on:
-    pull_request:
-    push:
-        branches:
-            - main
-        tags:
-            - v*
+    workflow_run:
+        workflows: ['Run integration tests']
+        types:
+            - completed
     workflow_dispatch:
 
 env:
@@ -23,6 +21,7 @@ concurrency:
 
 jobs:
     build-test:
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
         runs-on: ubuntu-latest
 
         steps:
@@ -74,38 +73,3 @@ jobs:
                       type=gha,scope=${{ github.workflow }},mode=min
                   cache-from: |
                       type=gha,scope=${{ github.workflow }}
-
-            - name: Set Up Python 🐍
-              uses: actions/setup-python@v5
-              with:
-                  python-version: 3.11
-
-            - name: Install Dev Dependencies 📦
-              run: pip install -r requirements-docker.txt
-
-            - name: Set jupyter token env
-              run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
-
-            - name: Run pytest for Chrome
-              run: pytest -sv --driver Chrome tests_integration/
-              env:
-                  # We'd like to identify the image by its unique digest, i.e ghcr.io/aiidalab/qe@sha256:<digest>
-                  # but that sadly does not work when the image is loaded to Docker locally and not published on ghcr.io
-                  # as is the case for PRs from forks. Hence this super-ugly ternary expression...
-                  # For forks, we take the image as ghcr.io/aiidalab/qe:pr-XXX
-                  # which is stored in the steps.meta_ghcr.outputs.tags variable
-                  QE_IMAGE: >-
-                      ${{
-                          github.event_name == 'pull_request' &&
-                          github.event.pull_request.head.repo.fork &&
-                          steps.meta_ghcr.outputs.tags ||
-                          format('ghcr.io/{0}@{1}', env.IMAGE_NAME, steps.build-upload.outputs.imageid)
-                      }}
-
-            - name: Upload screenshots as artifacts
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: Screenshots
-                  path: screenshots/
-                  if-no-files-found: error

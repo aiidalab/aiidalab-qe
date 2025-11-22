@@ -3,6 +3,7 @@
 Authors: AiiDAlab team
 """
 
+import os
 from pathlib import Path
 
 import ipywidgets as ipw
@@ -64,8 +65,10 @@ class QeApp:
                 )
             )
 
+        running_integration_tests = os.getenv("RUNNING_INTEGRATION_TESTS", "0") == "1"
+
         # Set up bug report handling (if a URL is provided)
-        if bug_report_url:
+        if bug_report_url and not running_integration_tests:
             install_create_github_issue_exception_handler(
                 self.log_widget if show_log else self.view.output,
                 url=bug_report_url,
