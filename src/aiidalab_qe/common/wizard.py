@@ -181,14 +181,8 @@ class ConfirmableWizardStep(WizardStep[CWSM]):
         self._model.update_state()
 
     def _on_blockers_change(self, _):
-        if self.rendered:
-            self._enable_confirm_button()
         self._model.update_blocker_messages()
         self._model.update_state()
-
-    def _enable_confirm_button(self):
-        cannot_confirm = self._model.is_blocked or not self._model.is_configured
-        self.confirm_button.disabled = cannot_confirm
 
 
 class DependentWizardStepModel(
