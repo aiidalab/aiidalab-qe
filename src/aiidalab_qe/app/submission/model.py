@@ -57,10 +57,6 @@ class SubmissionStepModel(
 
         self.default_user_email = orm.User.collection.get_default().email
 
-    @property
-    def is_configured(self):
-        return self.has_structure and self.input_parameters
-
     def confirm(self):
         super().confirm()
         if not self.has_process:
@@ -162,7 +158,9 @@ class SubmissionStepModel(
     def update_state(self):
         if self.confirmed:
             self.state = State.SUCCESS
-        elif self.is_ready or self.is_configured:
+        elif self.is_previous_step_successful and (
+            self.has_structure and self.input_parameters
+        ):
             self.state = State.CONFIGURED
         else:
             self.state = State.INIT

@@ -8,7 +8,7 @@ from aiidalab_qe.app.structure import StructureStepModel
 from aiidalab_qe.app.submission import SubmissionStepModel
 from aiidalab_qe.common.mixins import HasModels
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.wizard import State, WizardStepModel
+from aiidalab_qe.common.wizard import WizardStepModel
 
 
 class WizardModel(Model, HasModels[WizardStepModel]):
@@ -123,6 +123,6 @@ class WizardModel(Model, HasModels[WizardStepModel]):
         if (
             (selected_step := model_list[index]).auto_advance
             and not (index + 1 == len(model_list))
-            and selected_step.state is State.SUCCESS
+            and selected_step.is_successful
         ):
             self.selected_index += 1

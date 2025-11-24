@@ -153,7 +153,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
                 if self._model.has_process
                 else [loading_message]
             )
-            if self._model.is_ready
+            if self._model.is_previous_step_successful
             else [self._model.missing_process_warning],
         )
 
@@ -178,7 +178,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         )
 
     def _on_previous_step_state_change(self, _):
-        if self._model.is_ready:
+        if self._model.is_previous_step_successful:
             message = (
                 "Loading results"
                 if self._model.has_process and self._model.process.is_finished

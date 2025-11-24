@@ -26,10 +26,6 @@ class ResultsStepModel(
 
     STATUS_TEMPLATE = "<h4>Workflow status: {}</h4"
 
-    @property
-    def is_configured(self):
-        return self.has_process
-
     def update(self):
         self._update_process_remote_folder_state()
 
@@ -47,7 +43,7 @@ class ResultsStepModel(
         self.process_remote_folder_is_clean = True
 
     def update_state(self):
-        if not self.is_configured:
+        if not self.has_process:
             self.state = State.INIT
             return
 

@@ -208,6 +208,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
     def _on_input_structure_change(self, _):
         self._model.update()
+        self._model.update_state()
 
     def _on_installed_properties_fetched(self, _):
         if not self.rendered:

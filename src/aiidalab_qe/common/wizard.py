@@ -33,7 +33,7 @@ class WizardStepModel(Model):
 
     @property
     def is_configured(self) -> bool:
-        raise NotImplementedError()
+        return self.state is State.CONFIGURED
 
     @property
     def is_successful(self) -> bool:
@@ -158,7 +158,7 @@ class ConfirmableWizardStep(WizardStep[CWSM]):
         ipw.dlink(
             (self._model, "state"),
             (self.confirm_button, "disabled"),
-            lambda state: self._model.is_blocked or state != State.CONFIGURED,
+            lambda _: self._model.is_blocked or not self._model.is_configured,
         )
         self.confirm_button.on_click(self.confirm)
 
@@ -187,8 +187,8 @@ class ConfirmableWizardStep(WizardStep[CWSM]):
         self._model.update_state()
 
     def _enable_confirm_button(self):
-        can_confirm = self._model.is_blocked or self._model.state != State.CONFIGURED
-        self.confirm_button.disabled = can_confirm
+        cannot_confirm = self._model.is_blocked or not self._model.is_configured
+        self.confirm_button.disabled = cannot_confirm
 
 
 class DependentWizardStepModel(
@@ -197,7 +197,7 @@ class DependentWizardStepModel(
     previous_step_state = tl.UseEnum(State, default_value=State.INIT)
 
     @property
-    def is_ready(self) -> bool:
+    def is_previous_step_successful(self) -> bool:
         return self.previous_step_state is State.SUCCESS
 
 
