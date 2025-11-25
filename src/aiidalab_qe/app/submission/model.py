@@ -41,6 +41,11 @@ class SubmissionStepModel(
 
     fetched_resources = tl.Bool(False)
 
+    _dependencies = [
+        "structure_uuid",
+        "input_parameters",
+    ]
+
     def __init__(self, *args, **kwargs):
         self._default_models = {
             "global",

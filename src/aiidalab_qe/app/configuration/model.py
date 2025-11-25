@@ -37,6 +37,10 @@ class ConfigurationStepModel(
     installed_properties_fetched = tl.Bool(False)
     available_properties_fetched = tl.Bool(False)
 
+    _dependencies = [
+        "structure_uuid",
+    ]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -126,7 +130,7 @@ class ConfigurationStepModel(
     def update_state(self):
         if self.confirmed:
             self.state = State.SUCCESS
-        elif self.is_previous_step_successful and self.has_structure:
+        elif self.is_previous_step_successful and self.has_all_dependencies:
             self.state = State.CONFIGURED
         else:
             self.state = State.INIT
@@ -180,9 +184,6 @@ class ConfigurationStepModel(
         )
 
     def _check_blockers(self):
-        if not self.has_structure:
-            yield "No selected input structure"
-            return
         for _, model in self.get_models():
             if model.is_blocked:
                 yield from model.blockers

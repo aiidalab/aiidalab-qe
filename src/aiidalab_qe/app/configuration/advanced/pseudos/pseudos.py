@@ -107,15 +107,6 @@ class PseudosConfigurationSettingsPanel(
 
         self.pseudos_list = ipw.VBox()
 
-        self.pseudos_container = ipw.VBox()
-        ipw.dlink(
-            (self._model, "structure_uuid"),
-            (self.pseudos_container, "children"),
-            lambda _: [self.pseudos_list]
-            if self._model.has_structure
-            else [self._model.missing_structure_warning],
-        )
-
         self.ecutwfc = ipw.FloatText(
             description="Wavefunction",
             style={"description_width": "150px"},
@@ -216,7 +207,7 @@ class PseudosConfigurationSettingsPanel(
                     </ul>
                 </div>
             """),
-            self.pseudos_container,
+            self.pseudos_list,
             ipw.HTML("<h4>Cutoffs</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4;">

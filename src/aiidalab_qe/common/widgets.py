@@ -1535,11 +1535,19 @@ class ShakeNBreakEditor(ipw.VBox):
         self.structure = atoms
 
 
-class MissingInfoWidget(ipw.HTML):
+class WarningWidget(ipw.HTML):
+    message = traitlets.Unicode()
+
+    _TEMPLATE = """
+        <div class="alert alert-danger" style="text-align: center; margin-bottom: 0;">
+            <b>{message}</b>
+        </div>
+    """
+
     def __init__(self, message: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.value = f"""
-            <div class="alert alert-danger" style="text-align: center; margin-bottom: 0;">
-                <b>{message}</b>
-            </div>
-        """
+        self.message = message
+
+    @traitlets.observe("message")
+    def _update_message(self, change: dict):
+        self.value = self._TEMPLATE.format(message=change["new"])

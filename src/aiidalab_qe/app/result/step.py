@@ -4,7 +4,7 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.wizard import DependentWizardStep, State
-from aiidalab_widgets_base import LoadingWidget, ProcessMonitor
+from aiidalab_widgets_base import ProcessMonitor
 
 from .components import ResultsComponent
 from .components.status import WorkChainStatusModel, WorkChainStatusPanel
@@ -14,6 +14,8 @@ from .model import ResultsStepModel
 
 
 class ResultsStep(DependentWizardStep[ResultsStepModel]):
+    _missing_message = "Please submit or load a calculation"
+
     def __init__(
         self,
         model: ResultsStepModel,
@@ -42,10 +44,6 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             "Results": self.results_panel,
         }
 
-        self._model.observe(
-            self._on_previous_step_state_change,
-            "previous_step_state",
-        )
         self._model.observe(
             self._on_process_change,
             "process_uuid",
@@ -117,7 +115,6 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
                 "bar-chart",
                 "tasks",
             ],
-            value=None,
         )
         self.toggle_controls.add_class("results-step-toggles")
         self.toggle_controls.observe(
@@ -131,60 +128,24 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             ],
         )
 
-        loading_message = LoadingWidget(message="Loading results")
-
-        ipw.dlink(
-            (self._model, "process_uuid"),
-            (self, "children"),
-            lambda _: (
-                [
-                    InAppGuide(identifier="results-step"),
-                    self.process_info,
-                    ipw.HBox(
-                        children=[
-                            self.kill_button,
-                            self.clean_scratch_button,
-                        ],
-                        layout=ipw.Layout(margin="0 3px"),
-                    ),
-                    self.toggle_controls,
-                    self.container,
-                ]
-                if self._model.has_process
-                else [loading_message]
-            )
-            if self._model.is_previous_step_successful
-            else [self._model.missing_process_warning],
-        )
+        self.content.children = [
+            InAppGuide(identifier="results-step"),
+            self.process_info,
+            ipw.HBox(
+                children=[
+                    self.kill_button,
+                    self.clean_scratch_button,
+                ],
+                layout=ipw.Layout(margin="0 3px"),
+            ),
+            self.toggle_controls,
+            self.container,
+        ]
 
     def _post_render(self):
-        self.toggle_controls.value = (
-            "Results"
-            if self._model.has_process and self._model.process.is_finished_ok
-            else "Status"
-        )
-
-        self.process_monitor = ProcessMonitor(
-            timeout=0.5,
-            callbacks=[
-                self._update_status,
-                lambda _: self._model.update_state(),
-            ],
-            log_widget=self.log_widget,
-        )
-        ipw.dlink(
-            (self._model, "process_uuid"),
-            (self.process_monitor, "value"),
-        )
-
-    def _on_previous_step_state_change(self, _):
-        if self._model.is_previous_step_successful:
-            message = (
-                "Loading results"
-                if self._model.has_process and self._model.process.is_finished
-                else "Submitting calculation"
-            )
-            self.children = [LoadingWidget(message)]
+        super()._post_render()
+        self._set_default_results_panel()
+        self._set_up_monitor()
 
     def _on_toggle_change(self, change):
         panel = self.panels[change["new"]]
@@ -204,5 +165,34 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         self.container.children = [panel]
         panel.render()
 
+    def _set_default_results_panel(self):
+        self.toggle_controls.value = (
+            "Results"
+            if self._model.has_process and self._model.process.is_finished_ok
+            else "Status"
+        )
+
+    def _set_up_monitor(self):
+        self.process_monitor = ProcessMonitor(
+            timeout=0.5,
+            callbacks=[
+                self._update_status,
+                lambda _: self._model.update_state(),
+            ],
+            log_widget=self.log_widget,
+        )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.process_monitor, "value"),
+        )
+
     def _update_status(self):
         self._model.monitor_counter += 1
+
+    def _show_loading_message(self):
+        self.loading_message.message.value = (
+            "Loading results"
+            if self._model.has_process and self._model.process.is_finished
+            else "Submitting workflow"
+        )
+        super()._show_loading_message()

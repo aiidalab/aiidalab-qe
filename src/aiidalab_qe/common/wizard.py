@@ -8,6 +8,7 @@ import traitlets as tl
 
 from aiidalab_qe.common.mixins import Confirmable, HasBlockers
 from aiidalab_qe.common.mvc import Model
+from aiidalab_qe.common.widgets import WarningWidget
 from aiidalab_widgets_base import LoadingWidget
 
 
@@ -49,6 +50,7 @@ WSM = t.TypeVar("WSM", bound=WizardStepModel)
 class WizardStep(ipw.VBox, t.Generic[WSM]):
     def __init__(self, model: WSM, **kwargs):
         self.loading_message = LoadingWidget(f"Loading {model.identifier} step")
+        self.content = ipw.VBox()
 
         super().__init__(children=[self.loading_message], **kwargs)
 
@@ -145,8 +147,6 @@ class ConfirmableWizardStep(WizardStep[CWSM]):
         self._model.confirm()
 
     def _render(self):
-        self.content = ipw.VBox()
-
         self.confirm_button = ipw.Button(
             description=self.confirm_button_description,
             tooltip=self.confirm_button_tooltip,
@@ -175,7 +175,6 @@ class ConfirmableWizardStep(WizardStep[CWSM]):
                 self.blocker_messages,
             ]
         )
-        self.children += (self.confirm_box,)
 
     def _on_confirmation_change(self, _):
         self._model.update_state()
@@ -185,29 +184,73 @@ class ConfirmableWizardStep(WizardStep[CWSM]):
         self._model.update_state()
 
 
-class DependentWizardStepModel(
-    WizardStepModel,
-):
+class DependentWizardStepModel(WizardStepModel):
     previous_step_state = tl.UseEnum(State, default_value=State.INIT)
+
+    _dependencies: list[str] = []
 
     @property
     def is_previous_step_successful(self) -> bool:
         return self.previous_step_state is State.SUCCESS
+
+    @property
+    def has_all_dependencies(self) -> bool:
+        return all(getattr(self, dep) for dep in self._dependencies)
+
+    @property
+    def is_loading(self):
+        return not (
+            self.has_all_dependencies and (self.is_configured or self.is_successful)
+        )
 
 
 DWSM = t.TypeVar("DWSM", bound=DependentWizardStepModel)
 
 
 class DependentWizardStep(WizardStep[DWSM]):
+    _missing_message = "Required information is missing"
+
     def __init__(self, model: DWSM, **kwargs):
         super().__init__(model, **kwargs)
+
+        self.missing_message = WarningWidget(message=self._missing_message)
+
         self._model.observe(
             self._on_previous_step_state_change,
             "previous_step_state",
         )
+        self._model.observe(
+            self._update_content,
+            [
+                "previous_step_state",
+                "state",
+                *self._model._dependencies,
+            ],
+        )
 
-    def _on_previous_step_state_change(self, _):
+    def _post_render(self):
+        super()._post_render()
+        self._update_content()
+
+    def _on_previous_step_state_change(self, _=None):
         self._model.update_state()
+
+    def _update_content(self, _=None):
+        if not self._model.is_previous_step_successful:
+            self._show_missing_info_warning()
+        elif self._model.is_loading:
+            self._show_loading_message()
+        else:
+            self._show_content()
+
+    def _show_missing_info_warning(self):
+        self.children = [self.missing_message]
+
+    def _show_loading_message(self):
+        self.children = [self.loading_message]
+
+    def _show_content(self):
+        self.children = [self.content]
 
 
 class ConfirmableDependentWizardStepModel(

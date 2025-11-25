@@ -21,7 +21,6 @@ from aiidalab_qe.common.panel import (
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
-from aiidalab_widgets_base import LoadingWidget
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -30,6 +29,8 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
+    _missing_message = "Missing input structure and/or workflow configuration"
+
     def __init__(self, model: SubmissionStepModel, auto_setup=True, **kwargs):
         super().__init__(
             model=model,
@@ -148,11 +149,7 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             "selected_index",
         )
 
-        self.tab_container = ipw.VBox(
-            children=[
-                LoadingWidget(message="Loading resource panels"),
-            ]
-        )
+        self.confirm_box.children += (self.qe_setup,)
 
         self.content.children = [
             InAppGuide(identifier="submission-step"),
@@ -174,7 +171,7 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
                 ],
                 layout=ipw.Layout(grid_gap="5px"),
             ),
-            self.tab_container,
+            self.tabs,
             ipw.HTML("""
                 <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
                     <h4 style="margin-bottom: 5px;">Workflow label and description</h4>
@@ -188,19 +185,13 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             """),
             self.process_label,
             self.process_description,
-        ]
-
-        self.confirm_box.children += (self.qe_setup,)
-
-        self.children = [
-            self.content,
             self.confirm_box,
         ]
 
     def _post_render(self):
+        super()._post_render()
         self._model.update()
         self._update_tabs()
-        self.tab_container.children = [self.tabs]
 
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:

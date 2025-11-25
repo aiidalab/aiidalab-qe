@@ -32,6 +32,8 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
+    _missing_message = "Missing input structure"
+
     def __init__(self, model: ConfigurationStepModel, **kwargs):
         super().__init__(
             model=model,
@@ -108,15 +110,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             (self.relax_type, "value"),
         )
 
-        self.relax_type_container = ipw.VBox()
-        ipw.dlink(
-            (self._model, "structure_uuid"),
-            (self.relax_type_container, "children"),
-            lambda _: [self.relax_type_help, self.relax_type]
-            if self._model.has_structure
-            else [self._model.missing_structure_warning],
-        )
-
         self.tabs = ipw.Tab(
             layout=ipw.Layout(min_height="250px"),
             selected_index=None,
@@ -187,16 +180,14 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                     <h4>Structure relaxation</h4>
                 </div>
             """),
-            self.relax_type_container,
+            self.relax_type_help,
+            self.relax_type,
             self.sub_steps,
-        ]
-
-        self.children = [
-            self.content,
             self.confirm_box,
         ]
 
     def _post_render(self):
+        super()._post_render()
         self._model.update()
         self._set_available_properties()
         self._update_tabs()

@@ -202,6 +202,4 @@ class MagnetizationConfigurationSettingsPanel(
             self.tot_magnetization_with_unit
             if self._model.type == "tot_magnetization"
             else self.moments_list
-            if self._model.has_structure
-            else self._model.missing_structure_warning
         ]

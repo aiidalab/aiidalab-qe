@@ -10,17 +10,12 @@ from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.widgets import MissingInfoWidget
 
 StructureType = t.Union[orm.StructureData, HubbardStructureData]
 
 
 class HasInputStructure(tl.HasTraits):
     structure_uuid = tl.Unicode(None, allow_none=True)
-
-    missing_structure_warning = MissingInfoWidget(
-        message="Please select and confirm an input structure"
-    )
 
     @property
     def input_structure(self) -> StructureType | None:
@@ -122,10 +117,6 @@ class HasModels(t.Generic[M]):
 class HasProcess(tl.HasTraits):
     process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
-
-    missing_process_warning = MissingInfoWidget(
-        message="Please submit or load a calculation"
-    )
 
     @property
     def process(self) -> orm.WorkChainNode | None:

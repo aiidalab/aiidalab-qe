@@ -26,6 +26,14 @@ class ResultsStepModel(
 
     STATUS_TEMPLATE = "<h4>Workflow status: {}</h4"
 
+    _dependencies = [
+        "process_uuid",
+    ]
+
+    @property
+    def is_loading(self):
+        return super().is_loading and self.state is not State.ACTIVE
+
     def update(self):
         self._update_process_remote_folder_state()
 
