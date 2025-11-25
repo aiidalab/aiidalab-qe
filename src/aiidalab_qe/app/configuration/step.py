@@ -197,6 +197,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         ]
 
     def _post_render(self):
+        self._model.update()
         self._set_available_properties()
         self._update_tabs()
 
