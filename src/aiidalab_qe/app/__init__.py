@@ -1,6 +1,6 @@
 """Package for the AiiDAlab QE app."""
 
-from .wrapper import AppController, AppModel, AppView
+from .app import AppController, AppModel, AppView
 
 __all__ = [
     "AppController",

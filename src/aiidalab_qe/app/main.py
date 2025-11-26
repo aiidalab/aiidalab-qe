@@ -14,7 +14,7 @@ from aiidalab_widgets_base.bug_report import (
 )
 from aiidalab_widgets_base.utils.loaders import load_css
 
-from .wrapper import AppController, AppModel, AppView
+from .app import AppController, AppModel, AppView
 
 DEFAULT_BUG_REPORT_URL = "https://github.com/aiidalab/aiidalab-qe/issues/new"
 
