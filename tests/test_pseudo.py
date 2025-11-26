@@ -3,7 +3,7 @@ import typing as t
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.configuration.advanced.pseudos import (
+from aiidalab_qe.app.configuration.advanced import (
     PseudosConfigurationSettingsModel,
     PseudosConfigurationSettingsPanel,
 )
