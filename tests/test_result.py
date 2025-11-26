@@ -1,41 +1,42 @@
+import typing as t
+
 import pytest
 from bs4 import BeautifulSoup
 
-from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
-from aiidalab_qe.app.result.components.summary import WorkChainSummaryModel
-from aiidalab_qe.app.result.components.viewer import (
-    WorkChainResultsViewer,
-    WorkChainResultsViewerModel,
-)
+from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
+from aiidalab_qe.app.result.components.summary import WorkflowSummaryModel
+from aiidalab_qe.app.result.components.viewer import ResultsViewer, ResultsViewerModel
 from aiidalab_qe.app.result.components.viewer.structure import (
     StructureResultsModel,
     StructureResultsPanel,
 )
-from aiidalab_qe.app.wizard_app import WizardApp
+from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.common.wizard import State
 
 
 def test_result_step(app_to_submit, generate_qeapp_workchain):
     """Test the result step is properly updated when the process
     is running."""
-    app: WizardApp = app_to_submit
-    step: ViewQeAppWorkChainStatusAndResultsStep = app.results_step
-    model = app.results_model
+    app: Wizard = app_to_submit
+    step: ResultsStep = app.results_step
+    model: ResultsStepModel = app.results_model
     model.process_uuid = generate_qeapp_workchain().node.uuid
-    assert step.state == step.State.ACTIVE
+    assert model.state == State.ACTIVE
     step.render()
     assert step.toggle_controls.value == "Status"
-    results_model: WorkChainResultsViewerModel = model.get_model("results")  # type: ignore
+    results_viewer_model = t.cast(ResultsViewerModel, model.get_model("results"))
     # All jobs are completed, so there should be no process status notifications
-    for _, model in results_model.get_models():
-        assert model.process_status_notification == ""
+    for _, results_model in results_viewer_model.get_models():
+        assert results_model.process_status_notification == ""
 
 
 def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
     """Test the kill and clean_scratch button are properly displayed when the process
     is in different states."""
-    step = app_to_submit.results_step
+    app: Wizard = app_to_submit
+    model: ResultsStepModel = app.results_model
+    step: ResultsStep = app.results_step
     step.render()
-    model = app_to_submit.results_model
     model.process_uuid = generate_qeapp_workchain().node.uuid
     assert step.kill_button.layout.display == "block"
     assert step.clean_scratch_button.layout.display == "none"
@@ -45,8 +46,8 @@ def test_workchainview(generate_qeapp_workchain):
     """Test the result tabs are properly updated"""
     workchain = generate_qeapp_workchain()
     workchain.node.seal()
-    model = WorkChainResultsViewerModel()
-    viewer = WorkChainResultsViewer(model=model)
+    model = ResultsViewerModel()
+    viewer = ResultsViewer(model=model)
     model.process_uuid = workchain.node.uuid
     viewer.render()
     assert len(viewer.tabs.children) == 2
@@ -56,7 +57,7 @@ def test_workchainview(generate_qeapp_workchain):
 def test_summary_report(data_regression, generate_qeapp_workchain):
     """Test the summary report can be properly generated."""
     workchain = generate_qeapp_workchain()
-    model = WorkChainSummaryModel()
+    model = WorkflowSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     # Discard variable parameters
@@ -80,7 +81,7 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
     workchain = generate_qeapp_workchain(
         spin_type="collinear", electronic_type="metal", initial_magnetic_moments=0.1
     )
-    model = WorkChainSummaryModel()
+    model = WorkflowSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     moments = report_parameters["advanced_settings"]["initial_magnetic_moments"]
@@ -110,7 +111,7 @@ def test_summary_report_symmetry_group(
         run_bands=False,
         relax_type="none",
     )
-    model = WorkChainSummaryModel()
+    model = WorkflowSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     assert symmetry_key in report_parameters["initial_structure_properties"]
@@ -119,7 +120,7 @@ def test_summary_report_symmetry_group(
 def test_summary_view(generate_qeapp_workchain):
     """Test the report html can be properly generated."""
     workchain = generate_qeapp_workchain()
-    model = WorkChainSummaryModel()
+    model = WorkflowSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_html = model.generate_report_html()
     parsed = BeautifulSoup(report_html, "html.parser")
@@ -139,11 +140,11 @@ def test_structure_results_panel(generate_qeapp_workchain):
     model = StructureResultsModel()
     panel = StructureResultsPanel(model=model)
 
-    def test_table_data(model):
-        rows = model.table_data[1:]  # skip table header
+    def test_table_data(model: StructureResultsModel):
+        rows = model.table_data[1:]  # skip table header # type: ignore
         for i, row in enumerate(rows):
             position = model.structure.sites[i].position
-            x, y, z = (f"{coordinate:.2f}" for coordinate in position)
+            x, y, z = (f"{coordinate:.2f}" for coordinate in position)  # type: ignore
             assert row == [i + 1, "Si", 0, x, y, z]  # type: ignore
 
     assert model.title == "Structure"

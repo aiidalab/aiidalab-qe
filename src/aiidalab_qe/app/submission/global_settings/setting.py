@@ -86,7 +86,10 @@ class GlobalResourceSettingsPanel(ResourceSettingsPanel[GlobalResourceSettingsMo
                                 "max_wallclock_seconds",
                             ],
                         )
+
+        self._model.update_active_codes()
         self._model.update_global_codes()
+        self._model.update_blockers()
 
     def reset(self):
         self._model.set_model_state({})

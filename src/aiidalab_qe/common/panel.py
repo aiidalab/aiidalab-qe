@@ -7,7 +7,6 @@ Authors:
 
 from __future__ import annotations
 
-import os
 import typing as t
 import warnings
 
@@ -22,7 +21,6 @@ from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.mixins import (
     Confirmable,
     HasBlockers,
-    HasInputStructure,
     HasModels,
     HasProcess,
 )
@@ -132,11 +130,6 @@ class ConfigurationSettingsPanel(Panel[PM]):
         self._unsubscribe()
         if self._model.include:
             self.update(specific)
-        if "PYTEST_CURRENT_TEST" in os.environ:
-            # Skip resetting to avoid having to inject a structure when testing
-            return
-        if isinstance(self._model, HasInputStructure) and not self._model.has_structure:
-            self._reset()
 
     def update(self, specific=""):
         """Updates the model if not yet updated.
@@ -148,20 +141,20 @@ class ConfigurationSettingsPanel(Panel[PM]):
         """
         if self._model.updated:
             return
-        if not self._model.locked:
+        if not self._model.locked and specific != "widgets":
             self._model.update(specific)
+        self._update()
         self._model.updated = True
+
+    def _update(self):
+        """Updates the panel UI."""
+        pass
 
     def _unsubscribe(self):
         """Unlinks any linked widgets."""
         for link in self._links:
             link.unlink()
         self._links.clear()
-
-    def _reset(self):
-        """Resets the model to present defaults."""
-        self._model.updated = False
-        self._model.reset()
 
 
 class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
@@ -196,7 +189,7 @@ class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
                 refresh=True,
             )
 
-    def get_model_state(self):
+    def get_model_state(self) -> dict:
         return {
             "codes": {
                 identifier: code_model.get_model_state()
@@ -205,8 +198,8 @@ class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
             },
         }
 
-    def set_model_state(self, parameters: dict):
-        code_data = parameters.get("codes", {}) or self.default_codes
+    def set_model_state(self, state: dict):
+        code_data = state.get("codes", {}) or self.default_codes
         for identifier, code_model in self.get_models():
             if identifier in code_data:
                 code_model.set_model_state(code_data[identifier])
@@ -224,6 +217,7 @@ class ResourceSettingsPanel(Panel[RSM]):
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs)
         self.code_widgets = {}
+        self.code_widgets_container = ipw.VBox()
 
     def register_code_trait_callbacks(self, code_model: CodeModel):
         """Registers event handlers on code model traits."""
@@ -257,9 +251,6 @@ class ResourceSettingsPanel(Panel[RSM]):
     def _toggle_code(self, code_model: CodeModel):
         if not self.rendered:
             return
-        if not code_model.is_rendered:
-            loading_message = LoadingWidget(f"Loading {code_model.name} code")
-            self.code_widgets_container.children += (loading_message,)
         if code_model.name not in self.code_widgets:
             code_widget = code_model.code_widget_class(
                 description=code_model.description,
@@ -269,6 +260,8 @@ class ResourceSettingsPanel(Panel[RSM]):
         else:
             code_widget = self.code_widgets[code_model.name]
         if not code_model.is_rendered:
+            loading_message = LoadingWidget(f"Loading {code_model.name} code")
+            self.code_widgets_container.children += (loading_message,)
             code_widget.observe(
                 code_widget.update_resources,
                 "value",
@@ -357,15 +350,15 @@ class PluginResourceSettingsModel(ResourceSettingsModel):
                 code_resources: dict = self.global_codes[model_key]  # type: ignore
                 code_model.set_model_state(code_resources)
 
-    def get_model_state(self):
+    def get_model_state(self) -> dict:
         return {
             "override": self.override,
             **super().get_model_state(),
         }
 
-    def set_model_state(self, parameters: dict):
-        self.override = parameters.get("override", False)
-        super().set_model_state(parameters)
+    def set_model_state(self, state: dict):
+        self.override = state.get("override", False)
+        super().set_model_state(state)
 
     def _link_model(self, model: CodeModel):
         tl.link(
@@ -408,7 +401,6 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             (self._model, "override"),
             (self.override, "value"),
         )
-        self.code_widgets_container = ipw.VBox()
 
         self.children = [
             ipw.HBox(
@@ -426,8 +418,6 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
         for _, code_model in self._model.get_models():
             if code_model.is_active:
                 self._toggle_code(code_model)
-
-        return self.code_widgets_container
 
     def _on_global_codes_change(self, _):
         self._model.update()

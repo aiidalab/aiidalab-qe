@@ -7,12 +7,12 @@ from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
 
-from .model import WorkChainResultsViewerModel
+from .model import ResultsViewerModel
 from .structure import StructureResultsModel, StructureResultsPanel
 
 
-class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
-    def __init__(self, model: WorkChainResultsViewerModel, **kwargs):
+class ResultsViewer(ResultsComponent[ResultsViewerModel]):
+    def __init__(self, model: ResultsViewerModel, **kwargs):
         # NOTE: here we want to add the structure and plugin models to the viewer
         # model BEFORE we define the observation of the process uuid. This ensures
         # that when the process changes, its reflected in the sub-models prior to
@@ -70,7 +70,7 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
         if children:
             self.tabs.selected_index = 0
 
-    def _add_structure_panel(self, viewer_model: WorkChainResultsViewerModel):
+    def _add_structure_panel(self, viewer_model: ResultsViewerModel):
         structure_model = StructureResultsModel()
         structure_model.process_uuid = viewer_model.process_uuid
         self.structure_results = StructureResultsPanel(model=structure_model)
@@ -81,7 +81,7 @@ class WorkChainResultsViewer(ResultsComponent[WorkChainResultsViewerModel]):
             **self.panels,
         }
 
-    def _fetch_plugin_results(self, viewer_model: WorkChainResultsViewerModel):
+    def _fetch_plugin_results(self, viewer_model: ResultsViewerModel):
         entries = get_entry_items("aiidalab_qe.properties", "result")
         for identifier, entry in entries.items():
             for key in ("panel", "model"):

@@ -197,6 +197,8 @@ class BasicConfigurationSettingsPanel(
 
         self.rendered = True
 
+        self._update_info_warning_messages()
+
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
 

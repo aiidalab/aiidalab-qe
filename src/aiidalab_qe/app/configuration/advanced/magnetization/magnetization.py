@@ -97,7 +97,7 @@ class MagnetizationConfigurationSettingsPanel(
             self.unit,
         )
 
-        self.kind_moment_widgets = ipw.VBox()
+        self.moments_list = ipw.VBox()
 
         self.container = ipw.VBox(
             children=[
@@ -128,22 +128,17 @@ class MagnetizationConfigurationSettingsPanel(
         self._toggle_widgets()
         self._model.update_type_help()
 
-    def update(self, specific=""):
-        if self._model.updated:
-            return
+    def _update(self):
         self._show_loading()
-        if not self._model.locked or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_kinds_widget()
+        self._build_moments_list()
         self._switch_widgets()
         self._toggle_widgets()
-        self._model.updated = True
 
     def _show_loading(self):
         if self.rendered:
-            self.kind_moment_widgets.children = [self.loading_message]
+            self.moments_list.children = [self.loading_message]
 
-    def _build_kinds_widget(self):
+    def _build_moments_list(self):
         if not self.rendered:
             return
 
@@ -156,7 +151,7 @@ class MagnetizationConfigurationSettingsPanel(
         )
 
         for kind_name in kind_names:
-            kind_moment_widget = ipw.BoundedFloatText(
+            kind_moment = ipw.BoundedFloatText(
                 description=kind_name,
                 min=-7,
                 max=7,
@@ -165,7 +160,7 @@ class MagnetizationConfigurationSettingsPanel(
             )
             link = ipw.link(
                 (self._model, "moments"),
-                (kind_moment_widget, "value"),
+                (kind_moment, "value"),
                 [
                     lambda moments, kind_name=kind_name: moments.get(kind_name, 0.0),
                     lambda value, kind_name=kind_name: {
@@ -175,9 +170,9 @@ class MagnetizationConfigurationSettingsPanel(
                 ],
             )
             self._links.append(link)
-            children.append(HBoxWithUnits(kind_moment_widget, "µ<sub>B</sub>"))
+            children.append(HBoxWithUnits(kind_moment, "µ<sub>B</sub>"))
 
-        self.kind_moment_widgets.children = children
+        self.moments_list.children = children
 
     def _switch_widgets(self):
         if not self.rendered:
@@ -206,5 +201,5 @@ class MagnetizationConfigurationSettingsPanel(
         self.container.children = [
             self.tot_magnetization_with_unit
             if self._model.type == "tot_magnetization"
-            else self.kind_moment_widgets
+            else self.moments_list
         ]

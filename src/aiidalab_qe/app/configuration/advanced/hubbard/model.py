@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from copy import deepcopy
 
 import numpy as np
@@ -42,6 +43,8 @@ class HubbardConfigurationSettingsModel(
     orbital_labels = []
 
     include = True  # build-in panel
+
+    needs_eigenvalues_widget = False
 
     def update(self, specific=""):  # noqa: ARG002
         if not self.has_structure:
@@ -86,12 +89,24 @@ class HubbardConfigurationSettingsModel(
         ]
 
     def set_active_eigenvalues(self, eigenvalues: list):
-        eigenvalues_array = np.array(eigenvalues, dtype=object)
-        num_states = len(set(eigenvalues_array[:, 0]))
-        num_spins = len(set(eigenvalues_array[:, 1]))
-        num_kinds = len(set(eigenvalues_array[:, 2]))
-        new_shape = (num_kinds, num_spins, num_states, 4)
-        self.eigenvalues = eigenvalues_array.reshape(new_shape).tolist()
+        num_states = len(self.eigenvalues[0][0])  # type: ignore
+
+        species_dict = defaultdict(lambda: defaultdict(dict))
+        for state, spin, kind, eigenvalue in eigenvalues:
+            species_dict[kind][spin][state] = eigenvalue
+
+        ui_format = []
+        for kind, spins in species_dict.items():
+            kind_block = []
+            for spin in (1, 2):
+                spin_block = []
+                for state in range(1, num_states + 1):
+                    eigenvalue = spins.get(spin, {}).get(state, -1.0)
+                    spin_block.append([state, spin, kind, eigenvalue])
+                kind_block.append(spin_block)
+            ui_format.append(kind_block)
+
+        self.eigenvalues = ui_format
         self.has_eigenvalues = True
 
     def get_parameters_from_hubbard_structure(self):
@@ -156,7 +171,7 @@ class HubbardConfigurationSettingsModel(
     def _get_default_eigenvalues(self):
         return deepcopy(self._defaults["eigenvalues"])
 
-    def _get_manifold(self, element):
+    def _get_manifold(self, element: Element):
         valence = [
             orbital
             for orbital in element.electronic_structure.split(".")
