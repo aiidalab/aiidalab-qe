@@ -4,7 +4,8 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
-from aiidalab_qe.plugins.bands.model import BandsConfigurationSettingsModel
+
+from .model import BandsConfigurationSettingsModel
 
 
 class BandsConfigurationSettingsPanel(

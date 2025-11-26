@@ -1,7 +1,7 @@
 from .model import SubmissionStepModel
-from .step import SubmitQeAppWorkChainStep
+from .step import SubmissionStep
 
 __all__ = [
+    "SubmissionStep",
     "SubmissionStepModel",
-    "SubmitQeAppWorkChainStep",
 ]

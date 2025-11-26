@@ -10,7 +10,7 @@ from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels, HasProcess
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.wizard import ConfirmableWizardStepModel
 from aiidalab_qe.utils import shallow_copy_nested_dict
 from aiidalab_qe.workflows import QeAppWorkChain
 
@@ -18,7 +18,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
     HasProcess,

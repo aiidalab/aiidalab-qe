@@ -18,7 +18,7 @@ from aiidalab_qe.common.panel import (
 )
 from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.widgets import LinkButton
-from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -26,7 +26,7 @@ from .model import SubmissionStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class SubmitQeAppWorkChainStep(QeConfirmableDependentWizardStep[SubmissionStepModel]):
+class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
     missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
 
     def __init__(self, model: SubmissionStepModel, auto_setup=True, **kwargs):

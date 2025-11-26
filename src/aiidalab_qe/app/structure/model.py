@@ -1,11 +1,11 @@
 import traitlets as tl
 
 from aiidalab_qe.common.mixins import HasInputStructure
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.wizard import ConfirmableWizardStepModel
 
 
 class StructureStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableWizardStepModel,
     HasInputStructure,
 ):
     identifier = "structure"

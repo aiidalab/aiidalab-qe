@@ -7,7 +7,6 @@ import pathlib
 
 import ipywidgets as ipw
 
-from aiidalab_qe.app.structure.model import StructureStepModel
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common import (
     AddingTagsEditor,
@@ -19,13 +18,15 @@ from aiidalab_qe.common import (
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget
-from aiidalab_qe.common.wizard import QeConfirmableWizardStep
+from aiidalab_qe.common.wizard import ConfirmableWizardStep
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
     StructureManagerWidget,
     StructureUploadWidget,
 )
+
+from .model import StructureStepModel
 
 # The Examples list of (name, file) tuple currently passed to
 # StructureExamplesWidget.
@@ -42,7 +43,7 @@ Examples = [
 ]
 
 
-class StructureSelectionStep(QeConfirmableWizardStep[StructureStepModel]):
+class StructureStep(ConfirmableWizardStep[StructureStepModel]):
     """Integrated widget for the selection and edition of structure.
     The widget includes a structure manager that allows to select a structure
     from different sources. It also includes the structure editor. Both the

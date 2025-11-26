@@ -1,11 +1,10 @@
-from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-from aiidalab_qe.app.configuration.model import ConfigurationStepModel
+from aiidalab_qe.app.configuration import ConfigurationStep, ConfigurationStepModel
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 
 def test_get_configuration_parameters():
     model = ConfigurationStepModel()
-    _ = ConfigureQeAppWorkChainStep(model=model)
+    _ = ConfigurationStep(model=model)
     parameters = model.get_model_state()
     parameters_ref = {
         "workchain": {
@@ -20,7 +19,7 @@ def test_get_configuration_parameters():
 
 def test_set_configuration_parameters():
     model = ConfigurationStepModel()
-    _ = ConfigureQeAppWorkChainStep(model=model)
+    _ = ConfigurationStep(model=model)
     parameters = model.get_model_state()
     parameters["workchain"]["relax_type"] = "positions"
     parameters["advanced"]["pseudo_family"] = f"SSSP/{SSSP_VERSION}/PBE/efficiency"
@@ -38,7 +37,7 @@ def test_set_configuration_parameters():
 def test_panel():
     """Dynamic add/remove the panel based on the workchain settings."""
     model = ConfigurationStepModel()
-    config = ConfigureQeAppWorkChainStep(model=model)
+    config = ConfigurationStep(model=model)
     config.render()
     assert len(config.tabs.children) == 2
     parameters = model.get_model_state()
@@ -52,7 +51,7 @@ def test_panel():
 def test_reminder_info():
     """Dynamic add/remove the reminder text based on the workchain settings."""
     model = ConfigurationStepModel()
-    config = ConfigureQeAppWorkChainStep(model=model)
+    config = ConfigurationStep(model=model)
     config.render()
     bands_info = next(
         (
@@ -76,6 +75,6 @@ def test_not_installed_property_children():
     current_file = os.path.abspath(__file__)
     plugin_file = os.path.join(os.path.dirname(current_file), "../plugins.yaml")
     model = ConfigurationStepModel()
-    config = ConfigureQeAppWorkChainStep(model=model)
+    config = ConfigurationStep(model=model)
     config._fetch_not_installed_property(str(plugin_file))
     assert len(config.not_installed_property_children) > 0

@@ -1,7 +1,7 @@
 from .model import StructureStepModel
-from .step import StructureSelectionStep
+from .step import StructureStep
 
 __all__ = [
-    "StructureSelectionStep",
+    "StructureStep",
     "StructureStepModel",
 ]
