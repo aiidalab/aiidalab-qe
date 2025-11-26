@@ -4,10 +4,10 @@ import pytest
 from bs4 import BeautifulSoup
 
 from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
-from aiidalab_qe.app.result.components.summary import WorkChainSummaryModel
+from aiidalab_qe.app.result.components.summary import WorkflowSummaryModel
 from aiidalab_qe.app.result.components.viewer import (
-    WorkChainResultsViewer,
-    WorkChainResultsViewerModel,
+    WorkflowResultsViewer,
+    WorkflowResultsViewerModel,
 )
 from aiidalab_qe.app.result.components.viewer.structure import (
     StructureResultsModel,
@@ -28,7 +28,7 @@ def test_result_step(app_to_submit, generate_qeapp_workchain):
     step.render()
     assert step.toggle_controls.value == "Status"
     results_viewer_model = t.cast(
-        WorkChainResultsViewerModel, model.get_model("results")
+        WorkflowResultsViewerModel, model.get_model("results")
     )
     # All jobs are completed, so there should be no process status notifications
     for _, results_model in results_viewer_model.get_models():
@@ -51,8 +51,8 @@ def test_workchainview(generate_qeapp_workchain):
     """Test the result tabs are properly updated"""
     workchain = generate_qeapp_workchain()
     workchain.node.seal()
-    model = WorkChainResultsViewerModel()
-    viewer = WorkChainResultsViewer(model=model)
+    model = WorkflowResultsViewerModel()
+    viewer = WorkflowResultsViewer(model=model)
     model.process_uuid = workchain.node.uuid
     viewer.render()
     assert len(viewer.tabs.children) == 2
@@ -62,7 +62,7 @@ def test_workchainview(generate_qeapp_workchain):
 def test_summary_report(data_regression, generate_qeapp_workchain):
     """Test the summary report can be properly generated."""
     workchain = generate_qeapp_workchain()
-    model = WorkChainSummaryModel()
+    model = WorkflowSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     # Discard variable parameters
@@ -86,7 +86,7 @@ def test_summary_report_advanced_settings(data_regression, generate_qeapp_workch
     workchain = generate_qeapp_workchain(
         spin_type="collinear", electronic_type="metal", initial_magnetic_moments=0.1
     )
-    model = WorkChainSummaryModel()
+    model = WorkflowSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     moments = report_parameters["advanced_settings"]["initial_magnetic_moments"]
@@ -116,7 +116,7 @@ def test_summary_report_symmetry_group(
         run_bands=False,
         relax_type="none",
     )
-    model = WorkChainSummaryModel()
+    model = WorkflowSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_parameters = model._generate_report_parameters()
     assert symmetry_key in report_parameters["initial_structure_properties"]
@@ -125,7 +125,7 @@ def test_summary_report_symmetry_group(
 def test_summary_view(generate_qeapp_workchain):
     """Test the report html can be properly generated."""
     workchain = generate_qeapp_workchain()
-    model = WorkChainSummaryModel()
+    model = WorkflowSummaryModel()
     model.process_uuid = workchain.node.uuid
     report_html = model.generate_report_html()
     parsed = BeautifulSoup(report_html, "html.parser")

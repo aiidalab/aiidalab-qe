@@ -3,13 +3,13 @@ import ipywidgets as ipw
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponent
 
-from .model import WorkChainSummaryModel
+from .model import WorkflowSummaryModel
 from .outputs import WorkChainOutputs
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
+class WorkflowSummary(ResultsComponent[WorkflowSummaryModel]):
     has_settings_report = False
     has_download_widget = False
 
