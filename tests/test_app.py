@@ -20,7 +20,7 @@ class TestApp:
             functional="PBE",
         )
         self.model.process_uuid = workchain.node.uuid
-        self.controller.load_app()
+        self.controller.load_wizard()
         wizard = self.controller.wizard
         assert wizard.configure_model.relax_type == "positions"
         assert wizard.configure_model.get_model("workchain").spin_type == "collinear"
