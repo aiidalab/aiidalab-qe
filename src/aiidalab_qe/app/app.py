@@ -1,25 +1,30 @@
 from __future__ import annotations
 
+import json
 import typing as t
 from datetime import datetime
+from pathlib import Path
+from time import sleep
 
 import ipywidgets as ipw
 import traitlets as tl
 from importlib_resources import files
-from IPython.display import Image, display
+from IPython.display import Image, Javascript, display
 from jinja2 import Environment
 
 from aiida import orm
 from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app.static import images as images_folder
 from aiidalab_qe.app.static import templates
+from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.app.wizard.model import WizardModel
 from aiidalab_qe.common.guide_manager import guide_manager
 from aiidalab_qe.common.infobox import InAppGuide, InfoBox
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.version import __version__
 from aiidalab_widgets_base import LoadingWidget
 
-from .wizard import Wizard, WizardModel
+CURRENT_STATE_PATH = Path("/tmp/current_state.json")
 
 
 def without_triggering(toggle: str):
@@ -44,7 +49,11 @@ def without_triggering(toggle: str):
 class AppController:
     """An MVC controller for the app."""
 
-    def __init__(self, model: AppModel, view: AppView) -> None:
+    def __init__(
+        self,
+        model: AppModel,
+        view: AppView,
+    ) -> None:
         """`AppController` constructor.
 
         Parameters
@@ -69,13 +78,55 @@ class AppController:
         self,
         auto_setup: bool = True,
         log_widget: ipw.Output | None = None,
+        duplicating: bool = False,
     ) -> None:
         """Load and initialize the wizard."""
         self.wizard = Wizard(self._wizard_model, auto_setup, log_widget)
-        self._view.app_container.children = [self.wizard]
+
         state = {"process_uuid": self._model.process_uuid}
         if self._model.process_uuid:
             state |= self._model.get_state_from_process()
+
+        if duplicating:
+            # We try to read the previous state from the file written by the duplicating
+            # instance of the app. We wait up to 0.5s for the file to appear. If it
+            # doesn't, we show an error message, prompting the user to try again.
+            i = 0
+            while i < 5:
+                if CURRENT_STATE_PATH.exists():
+                    # Load the previous state
+                    state |= json.loads(CURRENT_STATE_PATH.read_text())
+
+                    # Delete the file
+                    CURRENT_STATE_PATH.unlink(missing_ok=True)
+
+                    # Clear the URL
+                    display(
+                        Javascript(
+                            "window.history.pushState(null, '', window.location.pathname);"
+                        ),
+                    )
+                    break
+
+                # Wait a bit and try again
+                sleep(0.1)
+                i += 1
+
+            else:
+                # If we exit the loop without breaking, the file was not found
+                # Show an error message
+                self._view.app_container.children = [
+                    ipw.HTML(
+                        value="""
+                            <div class="alert alert-danger" style="text-align: center">
+                                Failed to load previous state. Please try again.
+                            </div>
+                        """,
+                    )
+                ]
+                return
+
+        self._view.app_container.children = [self.wizard]
         self._wizard_model.state = state
         self._model.loaded = True
 
@@ -116,6 +167,18 @@ class AppController:
         guide = self._view.guide_selection.value
         self._model.update_active_guide(category, guide)
 
+    def _on_duplicate_workflow_click(self, _):
+        if not self._model.loaded:
+            return
+        app: Wizard = self._view.app_container.children[0]  # type: ignore
+        payload = {
+            "step": min(app.current_step, 3),
+            "structure_state": app.structure_model.get_model_state(),
+            "configuration_state": app.configure_model.get_model_state(),
+            "resources_state": app.submit_model.get_model_state(),
+        }
+        CURRENT_STATE_PATH.write_text(json.dumps(payload))
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._model.observe(
@@ -138,6 +201,8 @@ class AppController:
             self._on_about_toggle,
             "value",
         )
+
+        self._view.duplicate_workflow_link.on_click(self._on_duplicate_workflow_click)
 
         ipw.dlink(
             (self._model, "guide_category_options"),
@@ -214,6 +279,7 @@ class AppModel(tl.HasTraits):
         # END BACKWARDS COMPATIBILITY
 
         return {
+            "step": 4,  # completed all steps
             "structure_state": {"uuid": self.process.inputs.structure.uuid},
             "configuration_state": parameters,
             "resources_state": codes,
@@ -244,7 +310,6 @@ class AppView(ipw.VBox):
             link="./calculation_history.ipynb",
             icon="list",
             tooltip="View a list of previous calculations",
-            style_="background-color: var(--color-aiida-orange)",
         )
 
         self.setup_resources_link = LinkButton(
@@ -252,22 +317,28 @@ class AppView(ipw.VBox):
             link="../home/code_setup.ipynb",
             icon="database",
             tooltip="Setup computational resources for your calculations",
-            style_="background-color: var(--color-aiida-blue)",
         )
 
-        self.new_workchain_link = LinkButton(
+        self.new_workflow_link = LinkButton(
             description="New calculation",
             link="./qe.ipynb",
             icon="plus-circle",
             tooltip="Open a new calculation in a separate tab",
-            style_="background-color: var(--color-aiida-green)",
+        )
+
+        self.duplicate_workflow_link = LinkButton(
+            description="Duplicate",
+            link="./qe.ipynb?duplicating=True",
+            icon="clone",
+            tooltip="Duplicate calculation parameters in a separate tab",
         )
 
         self.external_links = ipw.HBox(
             children=[
                 self.calculation_history_link,
                 self.setup_resources_link,
-                self.new_workchain_link,
+                self.new_workflow_link,
+                self.duplicate_workflow_link,
             ],
         )
 
