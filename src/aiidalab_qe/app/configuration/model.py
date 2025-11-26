@@ -9,7 +9,7 @@ from aiidalab_qe.common.mixins import (
     HasModels,
 )
 from aiidalab_qe.common.panel import PanelModel
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.wizard import ConfirmableWizardStepModel
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -17,7 +17,7 @@ NO_RELAXATION_OPTION = ("Structure as is", "none")
 
 
 class ConfigurationStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableWizardStepModel,
     HasModels[PanelModel],
     HasInputStructure,
 ):
