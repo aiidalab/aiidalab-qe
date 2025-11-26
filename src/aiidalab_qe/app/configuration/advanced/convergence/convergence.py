@@ -51,11 +51,22 @@ class ConvergenceConfigurationSettingsPanel(
             )
         )
         ipw.dlink(
-            (self._model, "scf_conv_thr"),
+            (self._model, "scf_conv_thr_abs"),
             (scf_conv_thr_abs, "value"),
-            lambda value: f"{value * len(self._model.input_structure.sites):.5e}",
+            lambda v: f"{v:.5e}",
         )
         scf_conv_thr_abs.add_class("convergence-label")
+
+        scf_conv_thr_with_units = HBoxWithUnits(
+            widget=scf_conv_thr_abs,
+            units="Ry",
+            layout={"margin": "-8px 0 0 150px"},
+        )
+        ipw.dlink(
+            (self._model, "structure_uuid"),
+            (scf_conv_thr_with_units.layout, "display"),
+            lambda _: "flex" if self._model.has_structure else "none",
+        )
 
         self.etot_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
@@ -74,11 +85,22 @@ class ConvergenceConfigurationSettingsPanel(
 
         etot_conv_thr_abs = ipw.Label()
         ipw.dlink(
-            (self._model, "etot_conv_thr"),
+            (self._model, "etot_conv_thr_abs"),
             (etot_conv_thr_abs, "value"),
-            lambda value: f"{value * len(self._model.input_structure.sites):.5e}",
+            lambda v: f"{v:.5e}",
         )
         etot_conv_thr_abs.add_class("convergence-label")
+
+        etot_conv_thr_with_units = HBoxWithUnits(
+            widget=etot_conv_thr_abs,
+            units="Ry",
+            layout={"margin": "-8px 0 0 150px"},
+        )
+        ipw.dlink(
+            (self._model, "structure_uuid"),
+            (etot_conv_thr_with_units.layout, "display"),
+            lambda _: "flex" if self._model.has_structure else "none",
+        )
 
         self.forc_conv_thr = ipw.BoundedFloatText(
             min=1e-15,
@@ -185,22 +207,14 @@ class ConvergenceConfigurationSettingsPanel(
             ipw.VBox(
                 children=[
                     HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
-                    HBoxWithUnits(
-                        widget=scf_conv_thr_abs,
-                        units="Ry",
-                        layout={"margin": "-8px 0 0 150px"},
-                    ),
+                    scf_conv_thr_with_units,
                 ]
             ),
             ipw.HTML("<h4>Thresholds for ionic convergence</h4>"),
             ipw.VBox(
                 children=[
                     HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
-                    HBoxWithUnits(
-                        widget=etot_conv_thr_abs,
-                        units="Ry",
-                        layout={"margin": "-8px 0 0 150px"},
-                    ),
+                    etot_conv_thr_with_units,
                 ]
             ),
             HBoxWithUnits(self.forc_conv_thr, "Ry/Bohr"),
