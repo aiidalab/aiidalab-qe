@@ -19,8 +19,7 @@ from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.version import __version__
 from aiidalab_widgets_base import LoadingWidget
 
-from .wizard_app import Wizard
-from .wizard_model import WizardModel
+from .wizard import Wizard, WizardModel
 
 
 def without_triggering(toggle: str):
