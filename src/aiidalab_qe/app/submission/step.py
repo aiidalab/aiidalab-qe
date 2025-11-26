@@ -27,7 +27,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
-    missing_information_warning = "Missing input structure and/or configuration parameters. Please set them first."
+    _missing_message = "Missing input structure and/or workflow configuration"
 
     def __init__(self, model: SubmissionStepModel, auto_setup=True, **kwargs):
         super().__init__(
@@ -70,6 +70,10 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             "qe_installed",
         )
         self._model.observe(
+            self._on_input_structure_change,
+            "structure_uuid",
+        )
+        self._model.observe(
             self._on_input_parameters_change,
             "input_parameters",
         )
@@ -77,13 +81,21 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             self._on_process_change,
             "process_uuid",
         )
+        self._model.observe(
+            self._on_fetched_resources_change,
+            "fetched_resources",
+        )
 
         self.settings = {
             "global": self.global_resources,
         }
+
         self._fetch_plugin_resource_settings()
 
         self._set_up_qe(auto_setup)
+
+    def reset(self):
+        self._model.reset()
 
     def _render(self):
         super()._render()
@@ -135,6 +147,8 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             "selected_index",
         )
 
+        self.confirm_box.children += (self.qe_setup,)
+
         self.content.children = [
             InAppGuide(identifier="submission-step"),
             ipw.HTML("""
@@ -169,26 +183,23 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             """),
             self.process_label,
             self.process_description,
-        ]
-
-        self.confirm_box.children += (self.qe_setup,)
-
-        self.children = [
-            self.content,
             self.confirm_box,
         ]
 
     def _post_render(self):
+        super()._post_render()
+        self._model.update()
         self._update_tabs()
-
-    def reset(self):
-        self._model.reset()
 
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
         tab: ResourceSettingsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
+
+    def _on_input_structure_change(self, _):
+        self._model.update_process_label()
+        self._model.update_blockers()
 
     def _on_input_parameters_change(self, _):
         self._model.update_process_label()
@@ -216,6 +227,9 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
 
     def _on_process_change(self, _):
         self._model.update_process_metadata()
+
+    def _on_fetched_resources_change(self, _):
+        self._update_tabs()
 
     def _set_up_qe(self, auto_setup):
         self.qe_setup = QESetupWidget(auto_start=False)
@@ -258,18 +272,6 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
                 self.tabs.set_title(i, title)
             self.tabs.selected_index = 0
 
-    def _update_state(self, _=None):
-        if self.previous_step_state is self.State.FAIL:
-            self.state = self.State.FAIL
-        elif self.previous_step_state is not self.State.SUCCESS:
-            self.state = self.State.INIT
-        elif self._model.confirmed:
-            self.state = self.State.SUCCESS
-        elif self._model.is_blocked:
-            self.state = self.State.READY
-        else:
-            self.state = self.state.CONFIGURED
-
     def _fetch_plugin_resource_settings(self):
         entries = get_entry_items("aiidalab_qe.properties", "resources")
         codes: PluginCodes = {
@@ -306,3 +308,5 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             codes[identifier] = dict(model.get_models())
 
         self.global_resources.build_global_codes(codes)
+
+        self._model.fetched_resources = True
