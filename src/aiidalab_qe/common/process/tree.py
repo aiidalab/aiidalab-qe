@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import typing as t
 from copy import deepcopy
 
@@ -167,10 +168,8 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
     def process(self) -> ProcessNodeType | None:
         if not self.process_uuid:
             return None
-        try:
+        with contextlib.suppress(NotExistent):
             return t.cast(ProcessNodeType, orm.load_node(self.process_uuid))
-        except NotExistent:
-            return None
 
     def initialize(self):
         self._build_header()
