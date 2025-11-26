@@ -50,7 +50,7 @@ class CodeModel(Model):
 
     @property
     def is_ready(self):
-        return self.is_active and bool(self.selected)
+        return self.is_active and self.selected is not None
 
     @property
     def first_option(self):
