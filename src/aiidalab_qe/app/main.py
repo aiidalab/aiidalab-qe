@@ -9,12 +9,12 @@ import ipywidgets as ipw
 from IPython.display import display
 
 from aiidalab_qe.app.static import styles
-from aiidalab_qe.app.wizard_app import WizardApp
-from aiidalab_qe.app.wrapper import AppWrapperContoller, AppWrapperModel, AppWrapperView
 from aiidalab_widgets_base.bug_report import (
     install_create_github_issue_exception_handler,
 )
 from aiidalab_widgets_base.utils.loaders import load_css
+
+from .wrapper import AppController, AppModel, AppView
 
 DEFAULT_BUG_REPORT_URL = "https://github.com/aiidalab/aiidalab-qe/issues/new"
 
@@ -35,9 +35,8 @@ class QeApp:
 
         self._load_styles()
 
-        # Initialize MVC components
-        self.model = AppWrapperModel()
-        self.view = AppWrapperView()
+        self.model = AppModel()
+        self.view = AppView()
         display(self.view)
 
         if show_log:
@@ -64,7 +63,6 @@ class QeApp:
                 )
             )
 
-        # Set up bug report handling (if a URL is provided)
         if bug_report_url:
             install_create_github_issue_exception_handler(
                 self.log_widget if show_log else self.view.output,
@@ -72,21 +70,23 @@ class QeApp:
                 labels=("bug", "automated-report"),
             )
 
-        # setup UI controls
-        self.controller = AppWrapperContoller(self.model, self.view)
+        self.controller = AppController(self.model, self.view)
         self.controller.enable_toggles()
+
+        if not self.model.validate_process(process):
+            self.view.app_container.children = [
+                ipw.HTML(f"""
+                    <div class="alert alert-danger" style="text-align: center">
+                        Process {process} does not exist
+                        <br>
+                        Please visit the <b>Calculation history</b> page to view
+                        existing processes
+                    </div>
+                """)
+            ]
+        else:
+            self.controller.load_wizard()
 
     def _load_styles(self):
         """Load CSS styles from the static directory."""
         load_css(css_path=Path(styles.__file__).parent)
-
-    def load(self):
-        """Initialize the WizardApp and integrate the app into the main view."""
-        self.app = WizardApp(
-            auto_setup=self.auto_setup,
-            log_widget=self.log_widget,
-        )
-        self.view.main.children = [self.app]
-        # load a previous calculation if it is provided
-        if self.process:
-            self.app.process = self.process
