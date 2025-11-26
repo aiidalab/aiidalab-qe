@@ -72,6 +72,13 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
         )
         self._install_sssp(auto_setup)
 
+    def confirm(self, _=None):
+        self.manager.store_structure()
+        super().confirm()
+
+    def reset(self):
+        self._model.reset()
+
     def render(self):
         if self.rendered:
             # Due to NGLView issues, we need to always "refresh" the widget
@@ -127,7 +134,7 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
             ],
         )
 
-        if self._model.confirmed:  # loaded from a process
+        if self._model.has_structure:  # preloaded
             # NOTE important to do this prior to setting up the links
             # to avoid an override of the structure in the model,
             # which in turn would trigger a reset of the model
@@ -138,12 +145,17 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
             (self._model, "structure_uuid"),
             lambda node: node.uuid if node else None,
         )
+        ipw.dlink(
+            (self.manager, "structure_node"),
+            (self._model, "structure_name"),
+            lambda struct: str(struct.get_formula()) if struct else "",
+        )
         ipw.link(
             (self._model, "manager_output"),
             (self.manager.output, "value"),
         )
 
-        self.structure_name_text = ipw.Text(
+        self.structure_name = ipw.Text(
             placeholder="[No structure selected]",
             description="Selected:",
             disabled=True,
@@ -151,7 +163,7 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
         )
         ipw.dlink(
             (self._model, "structure_name"),
-            (self.structure_name_text, "value"),
+            (self.structure_name, "value"),
         )
 
         self.content.children = [
@@ -165,7 +177,7 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
                 </p>
             """),
             self.manager,
-            self.structure_name_text,
+            self.structure_name,
         ]
 
         self.confirm_box.children += (self.sssp_installation,)
@@ -180,16 +192,6 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
         # to properly display the structure
         self.manager.viewer._viewer._set_size("100%", "300px")
 
-    def confirm(self, _=None):
-        self.manager.store_structure()
-        super().confirm()
-
-    def can_reset(self):
-        return self._model.confirmed
-
-    def reset(self):
-        self._model.reset()
-
     def _on_installation_change(self, _):
         self._model.update_blockers()
 
@@ -197,8 +199,7 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
         self._toggle_sssp_installation_widget()
 
     def _on_input_structure_change(self, _):
-        self._model.update_widget_text()
-        self._update_state()
+        self._model.update_state()
 
     def _install_sssp(self, auto_setup):
         self.sssp_installation = PseudosInstallWidget(auto_start=False)
@@ -221,11 +222,3 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
     def _toggle_sssp_installation_widget(self):
         sssp_installation_display = "none" if self._model.sssp_installed else "block"
         self.sssp_installation.layout.display = sssp_installation_display
-
-    def _update_state(self):
-        if self._model.confirmed:
-            self.state = self.State.SUCCESS
-        elif self._model.structure_uuid:
-            self.state = self.State.CONFIGURED
-        else:
-            self.state = self.State.READY
