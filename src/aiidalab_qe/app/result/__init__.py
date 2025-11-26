@@ -1,7 +1,7 @@
 from .model import ResultsStepModel
-from .step import ViewQeAppWorkChainStatusAndResultsStep
+from .step import ResultsStep
 
 __all__ = [
+    "ResultsStep",
     "ResultsStepModel",
-    "ViewQeAppWorkChainStatusAndResultsStep",
 ]
