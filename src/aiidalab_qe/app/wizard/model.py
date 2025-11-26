@@ -17,46 +17,46 @@ class WizardModel(Model, HasModels[WizardStepModel]):
     loading = tl.Bool(False)
 
     def load_from_state(self, state: dict):
-        step = None
+        step_index = state.get("step", 0) - 1
+        structure_state = state.get("structure_state")
+        configuration_state = state.get("configuration_state")
+        resources_state = state.get("resources_state")
+        process_uuid = state.get("process_uuid")
 
-        if structure_state := state.get("structure_state"):
+        if step_index >= 0:
             self.loading = True
             structure_model = t.cast(
                 StructureStepModel,
                 self.get_model("structure"),
             )
             structure_model.set_model_state(structure_state)
-            step = 0
 
-            if configuration_state := state.get("configuration_state"):
+            if step_index >= 1:
                 structure_model.confirm()
                 configuration_model = t.cast(
                     ConfigurationStepModel,
                     self.get_model("configure"),
                 )
                 configuration_model.set_model_state(configuration_state)
-                step = 1
 
-                if resources_state := state.get("resources_state", {}):
+                if step_index >= 2:
                     configuration_model.confirm()
                     submission_model = t.cast(
                         SubmissionStepModel,
                         self.get_model("submit"),
                     )
                     submission_model.set_model_state(resources_state)
-                    step = 2
 
-                    if process_uuid := state.get("process_uuid"):
+                    if step_index >= 3:
                         submission_model.process_uuid = process_uuid
                         submission_model.confirm()
                         structure_model.lock()
                         configuration_model.lock()
                         submission_model.lock()
-                        step = 3
 
             self.loading = False
 
-        self.selected_index = step
+            self.selected_index = step_index
 
     def update_configuration_model(self):
         structure_model = t.cast(
