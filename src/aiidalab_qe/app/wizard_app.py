@@ -1,194 +1,175 @@
-import ipywidgets as ipw
-import traitlets as tl
-from IPython.display import Javascript, display
+from __future__ import annotations
 
-from aiida.orm import load_node
-from aiida.orm.utils.serialize import deserialize_unsafe
+import ipywidgets as ipw
+
 from aiidalab_qe.app.configuration import ConfigurationStep, ConfigurationStepModel
 from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
 from aiidalab_qe.app.structure import StructureStep, StructureStepModel
 from aiidalab_qe.app.submission import SubmissionStep, SubmissionStepModel
-from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.wizard import WizardStep
-from aiidalab_widgets_base import LoadingWidget, WizardAppWidget
+from aiidalab_qe.common.wizard import State, WizardStep
+
+from .wizard_model import WizardModel
 
 
-class WizardApp(ipw.VBox):
+class Wizard(ipw.Accordion):
     """The main widget that combines all the application steps together."""
 
-    # The PK or UUID of the work chain node.
-    process = tl.Union([tl.Unicode(), tl.Int()], allow_none=True)
+    ICONS = {
+        State.INIT: "\u25cb",
+        State.READY: "\u25ce",
+        State.CONFIGURED: "\u25cf",
+        State.ACTIVE: "\u231b",
+        State.SUCCESS: "\u2713",
+        State.FAIL: "\u00d7",
+    }
 
-    def __init__(self, auto_setup=True, **kwargs):
-        # Initialize the models
-        self.structure_model = StructureStepModel()
-        self.configure_model = ConfigurationStepModel()
-        self.submit_model = SubmissionStepModel()
-        self.results_model = ResultsStepModel()
+    TITLES = {
+        "structure": "Select structure",
+        "configure": "Configure workflow",
+        "submit": "Choose computational resources",
+        "results": "Status & results",
+    }
 
-        log_widget = kwargs.pop("log_widget", None)
+    def __init__(
+        self,
+        model: WizardModel,
+        auto_setup: bool = True,
+        log_widget: ipw.Output | None = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
 
-        # Create the application steps
+        self._model = model
+        ipw.link(
+            (self._model, "selected_index"),
+            (self, "selected_index"),
+        )
+
+        self.structure_model = StructureStepModel(auto_advance=True)
         self.structure_step = StructureStep(
             model=self.structure_model,
-            auto_advance=True,
             auto_setup=auto_setup,
         )
-        self.configure_step = ConfigurationStep(
-            model=self.configure_model,
-            auto_advance=True,
+        self._model.add_model("structure", self.structure_model)
+
+        self.configure_model = ConfigurationStepModel(auto_advance=True)
+        self.configure_step = ConfigurationStep(model=self.configure_model)
+        self._model.add_model("configure", self.configure_model)
+        ipw.dlink(
+            (self.structure_model, "state"),
+            (self.configure_model, "previous_step_state"),
         )
+
+        self.submit_model = SubmissionStepModel(auto_advance=True)
         self.submit_step = SubmissionStep(
             model=self.submit_model,
-            auto_advance=True,
             auto_setup=auto_setup,
         )
+        self._model.add_model("submit", self.submit_model)
+        ipw.dlink(
+            (self.configure_model, "state"),
+            (self.submit_model, "previous_step_state"),
+        )
+
+        self.results_model = ResultsStepModel()
         self.results_step = ResultsStep(
             model=self.results_model,
             log_widget=log_widget,
         )
-
-        # Wizard step observations
+        self._model.add_model("results", self.results_model)
         ipw.dlink(
-            (self.structure_step, "state"),
-            (self.configure_step, "previous_step_state"),
+            (self.submit_model, "state"),
+            (self.results_model, "previous_step_state"),
         )
+
+        for step_model in (
+            self.structure_model,
+            self.configure_model,
+            self.submit_model,
+            self.results_model,
+        ):
+            step_model.observe(
+                self._on_step_state_change,
+                "state",
+            )
+
         self.structure_model.observe(
             self._on_structure_confirmation_change,
             "confirmed",
         )
-        ipw.dlink(
-            (self.configure_step, "state"),
-            (self.submit_step, "previous_step_state"),
-        )
         self.configure_model.observe(
             self._on_configuration_confirmation_change,
             "confirmed",
-        )
-        ipw.dlink(
-            (self.submit_step, "state"),
-            (self.results_step, "previous_step_state"),
         )
         self.submit_model.observe(
             self._on_submission,
             "confirmed",
         )
 
-        # Add the application steps to the application
-        self._wizard_app_widget = WizardAppWidget(
-            steps=[
-                ("Select structure", self.structure_step),
-                ("Configure workflow", self.configure_step),
-                ("Choose computational resources", self.submit_step),
-                ("Status & results", self.results_step),
-            ]
+        self._model.observe(
+            self._on_state_change,
+            "state",
         )
-        self._wizard_app_widget.observe(
+        self._model.observe(
             self._on_step_change,
             "selected_index",
         )
 
-        # Hide the header
-        self._wizard_app_widget.children[0].layout.display = "none"  # type: ignore
+        self.rendered = False
 
-        self._process_loading_message = LoadingWidget(
-            message="Loading process",
-            layout={"display": "none"},
-        )
-
-        super().__init__(
-            children=[
-                InAppGuide(identifier="guide-header"),
-                self._process_loading_message,
-                self._wizard_app_widget,
-                InAppGuide(identifier="post-guide"),
-            ],
-            **kwargs,
-        )
-
-        self._wizard_app_widget.selected_index = None
-
-        self.structure_step.state = WizardStep.State.READY
+        self.render()
 
     @property
-    def steps(self):
-        return self._wizard_app_widget.steps
+    def current_step(self) -> int:
+        return sum(
+            1
+            for _, model in self._model.get_models()
+            if model.is_configured or model.is_successful
+        )
 
-    @tl.observe("process")
-    def _on_process_change(self, change):
-        self._update_from_process(change["new"])
+    def render(self):
+        if self.rendered:
+            return
 
-    def _on_new_workchain_button_click(self, _):
-        display(Javascript("window.open('./qe.ipynb', '_blank')"))
+        self.children = [
+            self.structure_step,
+            self.configure_step,
+            self.submit_step,
+            self.results_step,
+        ]
+        self._update_titles()
 
-    def _on_step_change(self, change):
+        self.rendered = True
+
+    def _on_state_change(self, change: dict):
+        self._model.load_from_state(change["new"] or {})
+
+    def _on_step_state_change(self, _=None):
+        self._update_titles()
+
+    def _on_step_change(self, change: dict):
         if (step_index := change["new"]) is not None:
             self._render_step(step_index)
 
     def _on_structure_confirmation_change(self, _):
-        self._update_configuration_step()
+        self._model.auto_advance()
+        self._model.update_configuration_model()
 
     def _on_configuration_confirmation_change(self, _):
-        self._update_submission_step()
+        self._model.auto_advance()
+        self._model.update_submission_model()
 
     def _on_submission(self, _):
-        self._update_results_step()
-        self._lock_app()
+        self._model.auto_advance()
+        self._model.update_results_model()
+        self._model.lock_app()  # TODO .lock() might be enough - check!
 
-    def _render_step(self, step_index):
-        step: WizardStep = self.steps[step_index][1]
+    def _render_step(self, step_index: int):
+        step: WizardStep = self.children[step_index]  # type: ignore
         step.render()
 
-    def _update_configuration_step(self):
-        if self.structure_model.confirmed:
-            self.configure_model.structure_uuid = self.structure_model.structure_uuid
-        else:
-            self.configure_model.structure_uuid = None
-
-    def _update_submission_step(self):
-        if self.configure_model.confirmed:
-            self.submit_model.structure_uuid = self.structure_model.structure_uuid
-            self.submit_model.input_parameters = self.configure_model.get_model_state()
-        else:
-            self.submit_model.structure_uuid = None
-            self.submit_model.input_parameters = {}
-
-    def _update_results_step(self):
-        ipw.dlink(
-            (self.submit_model, "process_uuid"),
-            (self.results_model, "process_uuid"),
-        )
-
-    def _lock_app(self):
-        for model in (
-            self.structure_model,
-            self.configure_model,
-            self.submit_model,
-        ):
-            model.unobserve_all("confirmed")
-
-    def _update_from_process(self, pk):
-        if pk is None:
-            self._wizard_app_widget.reset()
-            self._wizard_app_widget.selected_index = 0
-        else:
-            self._show_process_loading_message()
-            process_node = load_node(pk)
-            self.structure_model.structure_uuid = process_node.inputs.structure.uuid
-            self.structure_model.confirm()
-            parameters = process_node.base.extras.get("ui_parameters", {})
-            if parameters and isinstance(parameters, str):
-                parameters = deserialize_unsafe(parameters)
-            self.configure_model.set_model_state(parameters)
-            self.configure_model.confirm()
-            self.submit_model.process_uuid = process_node.uuid
-            self.submit_model.set_model_state(parameters)
-            self.submit_model.confirm()
-            self._wizard_app_widget.selected_index = 3
-            self._hide_process_loading_message()
-
-    def _show_process_loading_message(self):
-        self._process_loading_message.layout.display = "flex"
-
-    def _hide_process_loading_message(self):
-        self._process_loading_message.layout.display = "none"
+    def _update_titles(self):
+        for i, (step_id, title) in enumerate(self.TITLES.items()):
+            step_model = self._model.get_model(step_id)
+            icon = self.ICONS.get(step_model.state)
+            self.set_title(i, f"{icon} Step {i + 1}: {title}")
