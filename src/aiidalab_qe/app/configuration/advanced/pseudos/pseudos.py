@@ -82,17 +82,10 @@ class PseudosConfigurationSettingsPanel(
             (self._model, "functional"),
             (self.functional, "value"),
         )
-        ipw.link(
-            (self._model, "functional"),
+        ipw.dlink(
             (self._model, "functionals"),
-            [
-                lambda functional: [functional] * len(self._model.input_structure.kinds)
-                if self._model.has_structure
-                else [],
-                lambda functionals: functionals[0]
-                if len(set(functionals)) == 1
-                else None,
-            ],
+            (self._model, "functional"),
+            lambda functionals: functionals[0] if len(set(functionals)) == 1 else None,
         )
 
         self.library = ipw.ToggleButtons(style={"button_width": "fit-content"})
@@ -243,10 +236,12 @@ class PseudosConfigurationSettingsPanel(
 
     def _on_functional_change(self, _):
         self._model.update_family()
+        self._model.update_functionals()
 
     def _on_library_change(self, _):
         self._model.update_family_header()
         self._model.update_family()
+        self._model.update_blockers()
 
     def _on_functionals_change(self, _):
         self._model.update_blockers()
