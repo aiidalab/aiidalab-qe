@@ -17,7 +17,7 @@ import ase
 import ipywidgets as ipw
 import numpy as np
 import traitlets
-from IPython.display import HTML, Javascript, clear_output, display
+from IPython.display import HTML, Javascript, display
 from pymatgen.io.ase import AseAtomsAdaptor
 from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
@@ -487,7 +487,7 @@ class AddingTagsEditor(ipw.VBox):
             value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
             layout={"visibility": "hidden"},
         )
-        self.tag_display = ipw.Output()
+        self.tag_display = ipw.VBox()
         self.add_tags.on_click(self._add_tags)
         self.reset_tags.on_click(self._reset_tags)
         self.reset_all_tags.on_click(self._reset_all_tags)
@@ -560,14 +560,11 @@ class AddingTagsEditor(ipw.VBox):
                 "height": "100px",
                 "width": "150px",
             }
-            with self.tag_display:
-                clear_output()
-                display(HTML(table_html))
+            self.tag_display.children = [ipw.HTML(table_html)]
             self.scroll_note.layout = {"visibility": "visible"}
         else:
             self.tag_display.layout = {}
-            with self.tag_display:
-                clear_output()
+            self.tag_display.children = []
             self.scroll_note.layout = {"visibility": "hidden"}
 
     def _from_selection(self, _=None):
@@ -718,7 +715,7 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
 
         self.btn_setup_resource_detail = ipw.ToggleButton(description="More")
         self.btn_setup_resource_detail.observe(self._setup_resource_detail, "value")
-        self._setup_resource_detail_output = ipw.Output(layout={"width": "500px"})
+        self._setup_resource_detail_output = ipw.VBox(layout={"width": "500px"})
 
         # combine code, nodes and cpus
         children = [
@@ -797,23 +794,20 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             ]
 
     def _setup_resource_detail(self, _=None):
-        with self._setup_resource_detail_output:
-            clear_output()
-            if self.btn_setup_resource_detail.value:
-                self._setup_resource_detail_output.layout = {
-                    "width": "500px",
-                    "border": "1px solid gray",
-                }
-
-                children = [
-                    self.resource_detail,
-                ]
-                display(*children)
-            else:
-                self._setup_resource_detail_output.layout = {
-                    "width": "500px",
-                    "border": "none",
-                }
+        if self.btn_setup_resource_detail.value:
+            self._setup_resource_detail_output.layout = {
+                "width": "500px",
+                "border": "1px solid gray",
+            }
+            self._setup_resource_detail_output.children = [
+                self.resource_detail,
+            ]
+        else:
+            self._setup_resource_detail_output.layout = {
+                "width": "500px",
+                "border": "none",
+            }
+            self._setup_resource_detail_output.children = []
 
 
 class ResourceDetailSettings(ipw.VBox):
