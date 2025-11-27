@@ -61,6 +61,10 @@ class ConfigurationStepModel(
         """
 
     def update(self):
+        self.update_relaxation_options()
+        self.update_blockers()
+
+    def update_relaxation_options(self):
         if self.has_pbc:
             relax_type_help = self.relax_type_help_template.format(
                 option_count="three",
@@ -100,8 +104,6 @@ class ConfigurationStepModel(
         self.relax_type_help = self._get_default("relax_type_help")
         self.relax_type_options = self._get_default("relax_type_options")
         self.relax_type = self._get_default_relax_type()
-
-        self.update_blockers()
 
     def get_model_state(self) -> dict:
         state = {
