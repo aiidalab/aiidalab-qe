@@ -188,7 +188,6 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
 
     def _post_render(self):
         super()._post_render()
-        self._model.update()
         self._update_tabs()
 
     def _on_tab_change(self, change):
@@ -198,14 +197,10 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
         tab.render()
 
     def _on_input_structure_change(self, _):
-        self._model.update_process_label()
-        self._model.update_blockers()
+        self._model.update()
 
     def _on_input_parameters_change(self, _):
-        self._model.update_process_label()
-        self._model.update_plugin_inclusion()
-        self._model.update_plugin_overrides()
-        self._model.update_blockers()
+        self._model.update()
         self._update_tabs()
 
     def _on_plugin_overrides_change(self, _):
