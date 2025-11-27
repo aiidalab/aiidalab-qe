@@ -66,6 +66,9 @@ class SubmissionStepModel(
             self._submit()
 
     def update(self):
+        self.update_process_label()
+        self.update_plugin_inclusion()
+        self.update_plugin_overrides()
         self.update_blockers()
         for _, model in self.get_models():
             model.update()
@@ -74,6 +77,7 @@ class SubmissionStepModel(
         if not self.has_structure or not self.input_parameters:
             self.process_label = ""
             return
+
         structure_label = (
             self.input_structure.label
             if len(self.input_structure.label) > 0
@@ -117,6 +121,8 @@ class SubmissionStepModel(
         self.process_label = label
 
     def update_plugin_inclusion(self):
+        if not self.input_parameters:
+            return
         properties = self._get_properties()
         for identifier, model in self.get_models():
             if identifier in self._default_models:
@@ -124,6 +130,8 @@ class SubmissionStepModel(
             model.include = identifier in properties
 
     def update_plugin_overrides(self):
+        if not self.input_parameters:
+            return
         self.plugin_overrides = [
             identifier
             for identifier, model in self.get_models()
