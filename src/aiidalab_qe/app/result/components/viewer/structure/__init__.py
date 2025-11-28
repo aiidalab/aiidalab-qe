@@ -1,5 +1,5 @@
 from .model import StructureResultsModel
-from .structure import StructureResultsPanel
+from .results import StructureResultsPanel
 
 __all__ = [
     "StructureResultsModel",

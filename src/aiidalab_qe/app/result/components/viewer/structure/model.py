@@ -66,11 +66,11 @@ class StructureResultsModel(ResultsModel):
         relative = relative_time(structure.ctime)
         return f"""
             <div style='line-height: 1.4;'>
-                <strong>PK:</strong> {structure.pk}<br>
-                <strong>Label:</strong> {structure.label}<br>
-                <strong>Description:</strong> {structure.description}<br>
-                <strong>Number of atoms:</strong> {len(structure.sites)}<br>
-                <strong>Creation time:</strong> {formatted} ({relative})<br>
+                <b>PK:</b> {structure.pk}<br>
+                <b>Label:</b> {structure.label}<br>
+                <b>Description:</b> {structure.description}<br>
+                <b>Number of atoms:</b> {len(structure.sites)}<br>
+                <b>Creation time:</b> {formatted} ({relative})<br>
             </div>
         """
 
