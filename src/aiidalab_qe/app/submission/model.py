@@ -10,7 +10,7 @@ from aiida.orm.utils.serialize import serialize
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels, HasProcess
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStepModel, State
 from aiidalab_qe.utils import shallow_copy_nested_dict
 from aiidalab_qe.workflows import QeAppWorkChain
 
@@ -18,7 +18,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableDependentWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
     HasProcess,
@@ -37,28 +37,28 @@ class SubmissionStepModel(
 
     plugin_overrides = tl.List(tl.Unicode())
 
+    fetched_resources = tl.Bool(False)
+
+    _dependencies = [
+        "structure_uuid",
+        "input_parameters",
+    ]
+
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.confirmation_exceptions += [
-            "warning_messages",
-            "installing_qe",
-            "qe_installed",
-        ]
-
-        self.default_user_email = orm.User.collection.get_default().email
-
         self._default_models = {
             "global",
         }
 
-        self._ALERT_MESSAGE = """
-            <div class="alert alert-{alert_class} alert-dismissible">
-                <a href="#" class="close" data-dismiss="alert" aria-label="close">
-                    &times;
-                </a>
-                <strong>{message}</strong>
-            </div>
-        """
+        super().__init__(*args, **kwargs)
+
+        self.confirmation_exceptions += [
+            "warning_messages",
+            "installing_qe",
+            "qe_installed",
+            "fetched_resources",
+        ]
+
+        self.default_user_email = orm.User.collection.get_default().email
 
     def confirm(self):
         super().confirm()
@@ -66,11 +66,12 @@ class SubmissionStepModel(
             self._submit()
 
     def update(self):
+        self.update_blockers()
         for _, model in self.get_models():
             model.update()
 
     def update_process_label(self):
-        if not self.has_structure:
+        if not self.has_structure or not self.input_parameters:
             self.process_label = ""
             return
         structure_label = (
@@ -137,40 +138,35 @@ class SubmissionStepModel(
             warning_messages += model.warning_messages
         self.warning_messages = warning_messages
 
-    def get_model_state(self) -> dict:
-        parameters: dict = shallow_copy_nested_dict(self.input_parameters)  # type: ignore
-        parameters["codes"] = {
-            identifier: model.get_model_state()
-            for identifier, model in self.get_models()
-            if model.include
-        }
-        return parameters
-
-    def set_model_state(self, state: dict):
-        codes: dict = state.get("codes", {})
-
-        if "resources" in state:
-            resources = state["resources"]
-            codes |= {key: {"code": value} for key, value in codes.items()}
-            codes["pw"]["nodes"] = resources["num_machines"]
-            codes["pw"]["cpus"] = resources["num_mpiprocs_per_machine"]
-            codes["pw"]["parallelization"] = {"npool": resources["npools"]}
-
-        workchain_parameters: dict = state.get("workchain", {})
-        properties = set(workchain_parameters.get("properties", []))
-        included = self._default_models | properties
-        for identifier, model in self.get_models():
-            model.include = identifier in included
-            if codes.get(identifier):
-                model.set_model_state(codes[identifier])
-                model.locked = True
-
     def update_process_metadata(self):
         if not self.has_process:
             return
         self.process_label = self.process.label
         self.process_description = self.process.description
         self.locked = True
+
+    def get_model_state(self) -> dict:
+        return {
+            identifier: model.get_model_state()
+            for identifier, model in self.get_models()
+            if model.include
+        }
+
+    def set_model_state(self, state: dict):
+        for identifier, model in self.get_models():
+            if state.get(identifier):
+                model.include = True
+                model.set_model_state(state[identifier])
+
+    def update_state(self):
+        if self.confirmed:
+            self.state = State.SUCCESS
+        elif self.is_previous_step_successful and (
+            self.has_structure and self.input_parameters
+        ):
+            self.state = State.CONFIGURED
+        else:
+            self.state = State.INIT
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -181,7 +177,8 @@ class SubmissionStepModel(
                     model.include = False
 
     def _submit(self):
-        parameters = self.get_model_state()
+        parameters = shallow_copy_nested_dict(self.input_parameters)
+        parameters |= {"codes": self.get_model_state()}
         builder = self._create_builder(parameters)
 
         with self.hold_trait_notifications():
@@ -246,6 +243,12 @@ class SubmissionStepModel(
         return builder
 
     def _check_blockers(self):
+        if not self.has_structure:
+            yield "No selected input structure"
+
+        if not self.input_parameters:
+            yield "No selected input parameters"
+
         if self.installing_qe:
             yield "Installing Quantum ESPRESSO codes..."
 

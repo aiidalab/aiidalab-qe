@@ -1,7 +1,9 @@
+import typing as t
+
 import pytest
 from bs4 import BeautifulSoup
 
-from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
+from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
 from aiidalab_qe.app.result.components.summary import WorkChainSummaryModel
 from aiidalab_qe.app.result.components.viewer import (
     WorkChainResultsViewer,
@@ -11,31 +13,35 @@ from aiidalab_qe.app.result.components.viewer.structure import (
     StructureResultsModel,
     StructureResultsPanel,
 )
-from aiidalab_qe.app.wizard_app import WizardApp
+from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.common.wizard import State
 
 
 def test_result_step(app_to_submit, generate_qeapp_workchain):
     """Test the result step is properly updated when the process
     is running."""
-    app: WizardApp = app_to_submit
-    step: ViewQeAppWorkChainStatusAndResultsStep = app.results_step
-    model = app.results_model
+    app: Wizard = app_to_submit
+    step: ResultsStep = app.results_step
+    model: ResultsStepModel = app.results_model
     model.process_uuid = generate_qeapp_workchain().node.uuid
-    assert step.state == step.State.ACTIVE
+    assert model.state == State.ACTIVE
     step.render()
     assert step.toggle_controls.value == "Status"
-    results_model: WorkChainResultsViewerModel = model.get_model("results")  # type: ignore
+    results_viewer_model = t.cast(
+        WorkChainResultsViewerModel, model.get_model("results")
+    )
     # All jobs are completed, so there should be no process status notifications
-    for _, model in results_model.get_models():
-        assert model.process_status_notification == ""
+    for _, results_model in results_viewer_model.get_models():
+        assert results_model.process_status_notification == ""
 
 
 def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
     """Test the kill and clean_scratch button are properly displayed when the process
     is in different states."""
-    step = app_to_submit.results_step
+    app: Wizard = app_to_submit
+    model: ResultsStepModel = app.results_model
+    step: ResultsStep = app.results_step
     step.render()
-    model = app_to_submit.results_model
     model.process_uuid = generate_qeapp_workchain().node.uuid
     assert step.kill_button.layout.display == "block"
     assert step.clean_scratch_button.layout.display == "none"
@@ -139,11 +145,11 @@ def test_structure_results_panel(generate_qeapp_workchain):
     model = StructureResultsModel()
     panel = StructureResultsPanel(model=model)
 
-    def test_table_data(model):
-        rows = model.table_data[1:]  # skip table header
+    def test_table_data(model: StructureResultsModel):
+        rows = model.table_data[1:]  # skip table header # type: ignore
         for i, row in enumerate(rows):
             position = model.structure.sites[i].position
-            x, y, z = (f"{coordinate:.2f}" for coordinate in position)
+            x, y, z = (f"{coordinate:.2f}" for coordinate in position)  # type: ignore
             assert row == [i + 1, "Si", 0, x, y, z]  # type: ignore
 
     assert model.title == "Structure"
