@@ -5,9 +5,10 @@ Authors: AiiDAlab team
 
 import ipywidgets as ipw
 
-from aiidalab_qe.app.configuration.basic.model import BasicConfigurationSettingsModel
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel
+
+from .model import BasicConfigurationSettingsModel
 
 
 class BasicConfigurationSettingsPanel(
@@ -196,6 +197,8 @@ class BasicConfigurationSettingsPanel(
         ]
 
         self.rendered = True
+
+        self._update_info_warning_messages()
 
     def _on_input_structure_change(self, _):
         self.refresh(specific="structure")
