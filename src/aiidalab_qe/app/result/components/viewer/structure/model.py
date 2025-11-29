@@ -31,7 +31,10 @@ class StructureResultsModel(ResultsModel):
 
     @property
     def is_relaxed(self):
-        return "relax" in self.properties
+        if "relax" not in self.properties:
+            return False
+        parameters = self.inputs.relax.base.pw.parameters.get_dict()
+        return "relax" in parameters["CONTROL"]["calculation"]
 
     def update(self):
         super().update()
