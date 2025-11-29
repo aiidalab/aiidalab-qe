@@ -11,6 +11,7 @@ from pathlib import Path
 import ipywidgets as ipw
 from IPython.display import display
 
+from aiida import orm
 from aiidalab_qe.app.static import styles
 from aiidalab_widgets_base.bug_report import (
     install_create_github_issue_exception_handler,
@@ -31,6 +32,10 @@ class QeApp:
         show_log=False,
     ):
         """Initialize the AiiDAlab QE application with the necessary setup."""
+
+        # HACK somehow resolves https://github.com/aiidalab/aiidalab-qe/issues/1356
+        # TODO investigate why this is needed and how it resolves the issue
+        _ = orm.User.collection.get_default().email
 
         url_query = url_query or {}
 
