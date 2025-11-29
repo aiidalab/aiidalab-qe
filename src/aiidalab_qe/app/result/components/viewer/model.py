@@ -5,7 +5,7 @@ from aiidalab_qe.common.mixins import HasModels
 from aiidalab_qe.common.panel import ResultsModel
 
 
-class WorkChainResultsViewerModel(
+class WorkflowResultsViewerModel(
     ResultsComponentModel,
     HasModels[ResultsModel],
 ):

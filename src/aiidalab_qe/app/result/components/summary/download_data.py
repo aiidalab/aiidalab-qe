@@ -102,7 +102,7 @@ class DownloadDataWidget(ipw.VBox):
         self._downloading_message.value = f"""
             <div style="display: flex; align-items: center; margin: 6px 0;">
                 Creating {what} data to download
-                <i class="fa fa-spinner fa-spin fa-2x fa-fw" style="margin-left: 4px;"></i>
+                <i class="fa fa-spinner fa-spin fa-2x fa-fw"></i>
             </div>
         """
 

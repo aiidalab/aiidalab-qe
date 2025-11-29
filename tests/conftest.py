@@ -14,16 +14,17 @@ from aiida.manage.manager import get_manager
 from aiida.orm.utils.serialize import serialize
 from aiida.plugins import DataFactory, OrbitalFactory
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-from aiidalab_qe.app.configuration.advanced.smearing import (
+from aiidalab_qe.app.configuration.advanced import (
+    AdvancedConfigurationSettingsModel,
+    ConvergenceConfigurationSettingsModel,
+    GeneralConfigurationSettingsModel,
+    MagnetizationConfigurationSettingsModel,
+    PseudosConfigurationSettingsModel,
     SmearingConfigurationSettingsModel,
-    SmearingConfigurationSettingsPanel,
 )
-from aiidalab_qe.app.configuration.basic import (
-    BasicConfigurationSettingsModel,
-    BasicConfigurationSettingsPanel,
-)
+from aiidalab_qe.app.configuration.basic import BasicConfigurationSettingsModel
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.app.wizard_app import WizardApp
+from aiidalab_qe.app.wizard import Wizard, WizardModel
 from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 from aiidalab_qe.utils import shallow_copy_nested_dict
@@ -355,32 +356,6 @@ def projwfc_code(generate_code):
     return generate_code("projwfc")
 
 
-@pytest.fixture()
-def workchain_settings_generator():
-    """Return a function that generates a workchain settings dictionary."""
-
-    def _workchain_settings_generator(**kwargs):
-        model = BasicConfigurationSettingsModel()
-        workchain_settings = BasicConfigurationSettingsPanel(model=model)
-        workchain_settings._update_settings(**kwargs)
-        return workchain_settings
-
-    return _workchain_settings_generator
-
-
-@pytest.fixture()
-def smearing_settings_generator():
-    """Return a function that generates a smearing settings dictionary."""
-
-    def _smearing_settings_generator(**kwargs):
-        model = SmearingConfigurationSettingsModel()
-        smearing_settings = SmearingConfigurationSettingsPanel(model=model)
-        smearing_settings.update_settings(**kwargs)
-        return smearing_settings
-
-    return _smearing_settings_generator
-
-
 @pytest.fixture
 def app(pw_code, dos_code, projwfc_code):
     # Assign test codes as defaults
@@ -389,7 +364,8 @@ def app(pw_code, dos_code, projwfc_code):
     DEFAULTS["codes"]["dos"]["code"] = dos_code.full_label
     DEFAULTS["codes"]["projwfc"]["code"] = projwfc_code.full_label
 
-    app = WizardApp(auto_setup=False)
+    model = WizardModel()
+    app = Wizard(model=model, auto_setup=False)
 
     # Since we use `auto_setup=False`, which will skip the pseudo library
     # installation, we need to mock set the installation status to `True` to
@@ -403,10 +379,7 @@ def app(pw_code, dos_code, projwfc_code):
 
 
 @pytest.fixture()
-def submit_app_generator(
-    app: WizardApp,
-    generate_structure_data,
-):
+def submit_app_generator(app: Wizard, generate_structure_data):
     """Return a function that generates a submit step widget."""
 
     def _submit_app_generator(
@@ -437,24 +410,39 @@ def submit_app_generator(
         }
         app.configure_model.set_model_state(parameters)
 
-        advanced_model = app.configure_model.get_model("advanced")
+        advanced_model = t.cast(
+            AdvancedConfigurationSettingsModel,
+            app.configure_model.get_model("advanced"),
+        )
 
-        general_model = advanced_model.get_model("general")
+        general_model = t.cast(
+            GeneralConfigurationSettingsModel,
+            advanced_model.get_model("general"),
+        )
         general_model.total_charge = tot_charge
         general_model.van_der_waals = vdw_corr
 
-        convergence_model = advanced_model.get_model("convergence")
+        convergence_model = t.cast(
+            ConvergenceConfigurationSettingsModel,
+            advanced_model.get_model("convergence"),
+        )
         convergence_model.electron_maxstep = electron_maxstep
         convergence_model.kpoints_distance = kpoints_distance
 
-        smearing_model = advanced_model.get_model("smearing")
+        smearing_model = t.cast(
+            SmearingConfigurationSettingsModel,
+            advanced_model.get_model("smearing"),
+        )
         smearing_model.type = smearing
         smearing_model.degauss = degauss
 
         if isinstance(initial_magnetic_moments, (int, float)):
             initial_magnetic_moments = [initial_magnetic_moments]
 
-        magnetization_model = advanced_model.get_model("magnetization")
+        magnetization_model = t.cast(
+            MagnetizationConfigurationSettingsModel,
+            advanced_model.get_model("magnetization"),
+        )
         magnetization_model.moments = dict(
             zip(
                 app.configure_model.input_structure.get_kind_names(),
@@ -473,7 +461,7 @@ def submit_app_generator(
 
 
 @pytest.fixture
-def app_to_submit(app: WizardApp, generate_structure_data):
+def app_to_submit(app: Wizard, generate_structure_data):
     # Step 1: select structure from example
     app.structure_model.structure_uuid = generate_structure_data().uuid
     app.structure_model.confirm()
@@ -688,7 +676,7 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app: WizardApp,
+    app: Wizard,
     projwfc_code,
     generate_structure_data,
     generate_workchain,
@@ -719,8 +707,10 @@ def generate_qeapp_workchain(
         app.structure_model.confirm()
 
         # step 2 configure
-        workchain_model = app.configure_model.get_model("workchain")
-        advanced_model = app.configure_model.get_model("advanced")
+        basic_model = t.cast(
+            BasicConfigurationSettingsModel,
+            app.configure_model.get_model("workchain"),
+        )
 
         app.configure_model.relax_type = relax_type
 
@@ -729,12 +719,20 @@ def generate_qeapp_workchain(
         app.configure_model.get_model("bands").include = run_bands
         app.configure_model.get_model("pdos").include = run_pdos
 
-        workchain_model.protocol = "fast"
-        workchain_model.spin_type = spin_type
-        workchain_model.electronic_type = electronic_type
+        basic_model.protocol = "fast"
+        basic_model.spin_type = spin_type
+        basic_model.electronic_type = electronic_type
+
+        advanced_model = t.cast(
+            AdvancedConfigurationSettingsModel,
+            app.configure_model.get_model("advanced"),
+        )
 
         if spin_type == "collinear":
-            magnetization_model = advanced_model.get_model("magnetization")
+            magnetization_model = t.cast(
+                MagnetizationConfigurationSettingsModel,
+                advanced_model.get_model("magnetization"),
+            )
             if electronic_type == "insulator":
                 magnetization_model.total = tot_magnetization
             elif magnetization_type == "starting_magnetization":
@@ -749,7 +747,10 @@ def generate_qeapp_workchain(
             else:
                 magnetization_model.total = tot_magnetization
 
-        pseudos = advanced_model.get_model("pseudos")
+        pseudos = t.cast(
+            PseudosConfigurationSettingsModel,
+            advanced_model.get_model("pseudos"),
+        )
         pseudos.functional = functional
 
         app.configure_model.confirm()
@@ -757,7 +758,8 @@ def generate_qeapp_workchain(
         # step 3 setup code and resources
         global_resources_model = app.submit_model.get_model("global")
         global_resources_model.get_model("quantumespresso__pw").num_cpus = 4
-        parameters = app.submit_model.get_model_state()
+        parameters = shallow_copy_nested_dict(app.submit_model.input_parameters)
+        parameters |= {"codes": app.submit_model.get_model_state()}
         builder = app.submit_model._create_builder(parameters)
 
         inputs = builder._inputs()

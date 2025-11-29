@@ -53,7 +53,7 @@ VDW_CORRECTION_VERSION = {
 }
 
 
-class WorkChainSummaryModel(ResultsComponentModel):
+class WorkflowSummaryModel(ResultsComponentModel):
     identifier = "workflow summary"
 
     failed_calculation_report = tl.Unicode("")
