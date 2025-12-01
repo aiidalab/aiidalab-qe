@@ -4,16 +4,12 @@ from IPython.display import Javascript, display
 
 from aiida.orm import load_node
 from aiida.orm.utils.serialize import deserialize_unsafe
-from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-from aiidalab_qe.app.configuration.model import ConfigurationStepModel
-from aiidalab_qe.app.result import ViewQeAppWorkChainStatusAndResultsStep
-from aiidalab_qe.app.result.model import ResultsStepModel
-from aiidalab_qe.app.structure import StructureSelectionStep
-from aiidalab_qe.app.structure.model import StructureStepModel
-from aiidalab_qe.app.submission import SubmitQeAppWorkChainStep
-from aiidalab_qe.app.submission.model import SubmissionStepModel
+from aiidalab_qe.app.configuration import ConfigurationStep, ConfigurationStepModel
+from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
+from aiidalab_qe.app.structure import StructureStep, StructureStepModel
+from aiidalab_qe.app.submission import SubmissionStep, SubmissionStepModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.wizard import QeWizardStep
+from aiidalab_qe.common.wizard import WizardStep
 from aiidalab_widgets_base import LoadingWidget, WizardAppWidget
 
 
@@ -33,21 +29,21 @@ class WizardApp(ipw.VBox):
         log_widget = kwargs.pop("log_widget", None)
 
         # Create the application steps
-        self.structure_step = StructureSelectionStep(
+        self.structure_step = StructureStep(
             model=self.structure_model,
             auto_advance=True,
             auto_setup=auto_setup,
         )
-        self.configure_step = ConfigureQeAppWorkChainStep(
+        self.configure_step = ConfigurationStep(
             model=self.configure_model,
             auto_advance=True,
         )
-        self.submit_step = SubmitQeAppWorkChainStep(
+        self.submit_step = SubmissionStep(
             model=self.submit_model,
             auto_advance=True,
             auto_setup=auto_setup,
         )
-        self.results_step = ViewQeAppWorkChainStatusAndResultsStep(
+        self.results_step = ResultsStep(
             model=self.results_model,
             log_widget=log_widget,
         )
@@ -112,7 +108,7 @@ class WizardApp(ipw.VBox):
 
         self._wizard_app_widget.selected_index = None
 
-        self.structure_step.state = QeWizardStep.State.READY
+        self.structure_step.state = WizardStep.State.READY
 
     @property
     def steps(self):
@@ -140,7 +136,7 @@ class WizardApp(ipw.VBox):
         self._lock_app()
 
     def _render_step(self, step_index):
-        step: QeWizardStep = self.steps[step_index][1]
+        step: WizardStep = self.steps[step_index][1]
         step.render()
 
     def _update_configuration_step(self):

@@ -11,14 +11,14 @@ from aiidalab_qe.common.mvc import Model
 from aiidalab_widgets_base import LoadingWidget, WizardAppWidgetStep
 
 
-class QeWizardStepModel(Model):
+class WizardStepModel(Model):
     identifier = "QE wizard"
 
 
-WSM = t.TypeVar("WSM", bound=QeWizardStepModel)
+WSM = t.TypeVar("WSM", bound=WizardStepModel)
 
 
-class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[WSM]):
+class WizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[WSM]):
     def __init__(self, model: WSM, **kwargs):
         self.loading_message = LoadingWidget(f"Loading {model.identifier} step")
         super().__init__(children=[self.loading_message], **kwargs)
@@ -52,8 +52,8 @@ class QeWizardStep(ipw.VBox, WizardAppWidgetStep, t.Generic[WSM]):
         pass
 
 
-class QeConfirmableWizardStepModel(
-    QeWizardStepModel,
+class ConfirmableWizardStepModel(
+    WizardStepModel,
     Confirmable,
     HasBlockers,
 ):
@@ -97,10 +97,10 @@ class QeConfirmableWizardStepModel(
         raise NotImplementedError
 
 
-CWSM = t.TypeVar("CWSM", bound=QeConfirmableWizardStepModel)
+CWSM = t.TypeVar("CWSM", bound=ConfirmableWizardStepModel)
 
 
-class QeConfirmableWizardStep(QeWizardStep[CWSM]):
+class ConfirmableWizardStep(WizardStep[CWSM]):
     def __init__(
         self,
         model: CWSM,
@@ -175,7 +175,7 @@ class QeConfirmableWizardStep(QeWizardStep[CWSM]):
         self.confirm_button.disabled = can_confirm
 
 
-class QeDependentWizardStep(QeWizardStep[WSM]):
+class DependentWizardStep(WizardStep[WSM]):
     missing_information_warning = "Missing information"
 
     previous_step_state = tl.UseEnum(WizardAppWidgetStep.State)
@@ -215,8 +215,8 @@ class QeDependentWizardStep(QeWizardStep[WSM]):
         self.children = self.previous_children
 
 
-class QeConfirmableDependentWizardStep(
-    QeDependentWizardStep[CWSM],
-    QeConfirmableWizardStep[CWSM],
+class ConfirmableDependentWizardStep(
+    DependentWizardStep[CWSM],
+    ConfirmableWizardStep[CWSM],
 ):
     pass
