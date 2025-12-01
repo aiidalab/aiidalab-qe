@@ -51,6 +51,8 @@ def test_qe_app_select_silicon_and_confirm(
     except Exception:
         driver.find_element(By.TAG_NAME, "summary").click()
         time.sleep(10)
+    # Scroll to bottom of screen
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
     # Take a screenshot of the selected diamond
     driver.get_screenshot_as_file(
         str(Path.joinpath(screenshot_dir, "qe-app-select-diamond-selected.png"))

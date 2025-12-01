@@ -1,0 +1,59 @@
+---
+name: Run integration tests
+
+on:
+    pull_request:
+    push:
+        branches:
+            - main
+        tags:
+            - v*
+    workflow_dispatch:
+
+env:
+    FORCE_COLOR: 1
+    RUNNING_INTEGRATION_TESTS: '1'
+
+# https://docs.github.com/en/actions/using-jobs/using-concurrency
+concurrency:
+    # only cancel in-progress jobs or runs for the current workflow - matches against branch & tags
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    run-integration-tests:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout Repo
+              uses: actions/checkout@v4
+
+            - name: Login to GitHub Container Registry 🔑
+              uses: docker/login-action@v2
+              if: ${{ !github.event.pull_request.head.repo.fork }}
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Set Up Python 🐍
+              uses: actions/setup-python@v5
+              with:
+                  python-version: 3.11
+
+            - name: Install Dev Dependencies 📦
+              run: pip install -r requirements-docker.txt
+
+            - name: Set jupyter token env
+              run: echo "JUPYTER_TOKEN=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
+            - name: Run pytest for Chrome
+              run: pytest -sv --driver Chrome tests_integration/
+
+            - name: Upload screenshots as artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Screenshots
+                  path: screenshots/
+                  if-no-files-found: error
