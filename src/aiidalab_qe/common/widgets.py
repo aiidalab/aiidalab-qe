@@ -649,13 +649,20 @@ class AddingFixedAtomsEditor(ipw.VBox):
         )
         self.from_selection = ipw.Button(description="From selection")
         self.from_selection.on_click(self._from_selection)
-        self.fixed = ipw.Text(
-            description="Free axes",
-            placeholder="e.g. 0 1 0  or  (1,0,0)",
-            value="1 1 1",
+
+        
+        self.fixed_x = ipw.Checkbox(description="x", value=False)  # False → free(1)
+        self.fixed_y = ipw.Checkbox(description="y", value=False)
+        self.fixed_z = ipw.Checkbox(description="z", value=False)
+
+        self.fixed = ipw.VBox(
+            [
+                ipw.HTML("<b>Fix components:</b>"),
+                ipw.HBox([self.fixed_x, self.fixed_y, self.fixed_z])
+            ],
             layout={"width": "initial"},
-            style={"description_width": "100px"},
         )
+
         
         self.add_fixed = ipw.Button(
             description="Update fixed atoms",
@@ -715,15 +722,6 @@ class AddingFixedAtomsEditor(ipw.VBox):
             ],
             **kwargs,
         )
-    def _parse_mask_text(self, text):
-        """Parse text like '0 1 0' or '(0,1,0)' into a validated (3,) int array in {0,1}."""
-        nums = re.findall(r"-?\d+", text)
-        if len(nums) != 3:
-            raise ValueError("Provide exactly three integers (e.g. 0 1 0).")
-        vals = np.array([int(n) for n in nums], dtype=int)
-        if not np.all(np.isin(vals, [0, 1])):
-            raise ValueError("Values must be 0 or 1 only.")
-        return vals
     
     def _ensure_mask_array(self, atoms):
         """Ensure atoms has an Nx3 int mask array named 'fixed_atoms' (default ones)."""
@@ -732,15 +730,14 @@ class AddingFixedAtomsEditor(ipw.VBox):
         if 'fixed_atoms' not in atoms.arrays:
             atoms.set_array('fixed_atoms', np.ones((len(atoms), 3), dtype=int))
 
-    def _parse_mask_text(self, text):
-        """Parse text like '0 1 0' or '(0,1,0)' into a validated (3,) int array in {0,1}."""
-        nums = re.findall(r"-?\d+", text)
-        if len(nums) != 3:
-            raise ValueError("Provide exactly three integers (e.g. 0 1 0).")
-        vals = np.array([int(n) for n in nums], dtype=int)
-        if not np.all(np.isin(vals, [0, 1])):
-            raise ValueError("Values must be 0 or 1 only.")
-        return vals
+    def _mask_from_checkboxes(self):
+        """Return np.array([x, y, z]) where checked→0 (fixed), unchecked→1 (free)."""
+        return np.array([
+            0 if self.fixed_x.value else 1,
+            0 if self.fixed_y.value else 1,
+            0 if self.fixed_z.value else 1,
+        ], dtype=int)
+
 
     def _display_table(self, _=None):
         """Show table with Index, Element, and current (x y z) free-mask for selected atoms."""
@@ -792,7 +789,10 @@ class AddingFixedAtomsEditor(ipw.VBox):
             return
 
         try:
-            new_mask_row = self._parse_mask_text(self.fixed.value)  # (3,)
+            new_mask_row = self._mask_from_checkboxes()
+            self.fixed_x.value  = False # reset checkboxes
+            self.fixed_y.value  = False
+            self.fixed_z.value  = False
         except Exception as exc:
             self._status_message.message = f"""
             <div class="alert alert-danger"><strong>Invalid mask:</strong> {html.escape(str(exc))}</div>
