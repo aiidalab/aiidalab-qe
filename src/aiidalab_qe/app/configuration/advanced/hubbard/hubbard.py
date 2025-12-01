@@ -145,6 +145,33 @@ class HubbardConfigurationSettingsPanel(
 
         children = []
 
+        # Update the eigenvalues to include a list of  the missing kinds with -1 eigenvalues if the lengths differ
+        present_kinds = {eig[0][0][2] for eig in self._model.eigenvalues}
+        if len(present_kinds) < len(self._model.applicable_kind_names):
+            new_eigenvalues = []
+            for kind_name, num_states in self._model.applicable_kind_names:
+                kind_found = next(
+                    (
+                        eig
+                        for eig in self._model.eigenvalues
+                        if eig[0][0][2] == kind_name
+                    ),
+                    None,
+                )
+                if kind_found is not None:
+                    new_eigenvalues.append(kind_found)
+                else:
+                    missing_eigenvalues = [
+                        [
+                            [i + 1, 1, kind_name, -1.0] for i in range(num_states)
+                        ],  # spin up
+                        [
+                            [i + 1, 2, kind_name, -1.0] for i in range(num_states)
+                        ],  # spin down
+                    ]
+                    new_eigenvalues.append(missing_eigenvalues)
+            self._model.eigenvalues = new_eigenvalues
+
         for (
             kind_index,
             (kind_name, num_states),
