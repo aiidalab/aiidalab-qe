@@ -9,7 +9,7 @@ from aiidalab_qe.common.mixins import (
     HasModels,
 )
 from aiidalab_qe.common.panel import PanelModel
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStepModel, State
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -17,15 +17,27 @@ NO_RELAXATION_OPTION = ("Structure as is", "none")
 
 
 class ConfigurationStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableDependentWizardStepModel,
     HasModels[PanelModel],
     HasInputStructure,
 ):
     identifier = "configuration"
 
-    relax_type_help = tl.Unicode()
-    relax_type_options = tl.List([NO_RELAXATION_OPTION])
+    relax_type_help = tl.Unicode("""
+        <div style="display: flex; margin: 4px 2px">
+            Loading help text
+            <i class="fa fa-spinner fa-spin fa-2x fa-fw"></i>
+        </div>
+    """)
+    relax_type_options = tl.List(default_value=[NO_RELAXATION_OPTION])
     relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
+
+    installed_properties_fetched = tl.Bool(False)
+    available_properties_fetched = tl.Bool(False)
+
+    _dependencies = [
+        "structure_uuid",
+    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -85,9 +97,11 @@ class ConfigurationStepModel(
             "relax_type": relax_type,
         }
 
-        self.relax_type_help = self._get_default_relax_type_help()
-        self.relax_type_options = self._get_default_relax_type_options()
+        self.relax_type_help = self._get_default("relax_type_help")
+        self.relax_type_options = self._get_default("relax_type_options")
         self.relax_type = self._get_default_relax_type()
+
+        self.update_blockers()
 
     def get_model_state(self) -> dict:
         state = {
@@ -102,20 +116,26 @@ class ConfigurationStepModel(
         return state
 
     def set_model_state(self, state: dict):
-        with self.hold_trait_notifications():
-            workchain_parameters: dict = state.get("workchain", {})
-            self.relax_type = workchain_parameters.get("relax_type")
-            properties = set(workchain_parameters.get("properties", []))
-            for identifier, model in self.get_models():
-                model.include = identifier in self._default_models | properties
-                if state.get(identifier):
-                    model.set_model_state(state[identifier])
-                    model.locked = True
+        workchain_parameters: dict = state.get("workchain", {})
+        self.relax_type = workchain_parameters.get("relax_type")
+        properties = set(workchain_parameters.get("properties", []))
+        for identifier, model in self.get_models():
+            model.include = identifier in self._default_models | properties
+            if state.get(identifier):
+                model.set_model_state(state[identifier])
+
+    def update_state(self):
+        if self.confirmed:
+            self.state = State.SUCCESS
+        elif self.is_previous_step_successful and self.has_all_dependencies:
+            self.state = State.CONFIGURED
+        else:
+            self.state = State.INIT
 
     def reset(self):
         self.confirmed = False
-        self.relax_type_help = self._get_default_relax_type_help()
-        self.relax_type_options = self._get_default_relax_type_options()
+        self.relax_type_help = self._get_default("relax_type_help")
+        self.relax_type_options = self._get_default("relax_type_options")
         self.relax_type = self._get_default_relax_type()
         for identifier, model in self.get_models():
             if identifier not in self._default_models:
@@ -139,15 +159,9 @@ class ConfigurationStepModel(
             properties.append("relax")
         return properties
 
-    def _get_default_relax_type_help(self):
-        return self._defaults.get("relax_type_help", "")
-
-    def _get_default_relax_type_options(self):
-        return self._defaults.get("relax_type_options", [NO_RELAXATION_OPTION])
-
     def _get_default_relax_type(self):
-        options = self._get_default_relax_type_options()
-        relax_type = self._defaults.get("relax_type", NO_RELAXATION_OPTION[-1])
+        options = self._get_default("relax_type_options")
+        relax_type = self._get_default("relax_type")
         return (
             relax_type
             if relax_type in [option[1] for option in options]
@@ -155,6 +169,9 @@ class ConfigurationStepModel(
         )
 
     def _check_blockers(self):
+        if not self.has_structure:
+            yield "No selected input structure"
+
         for _, model in self.get_models():
             if model.is_blocked:
                 yield from model.blockers
