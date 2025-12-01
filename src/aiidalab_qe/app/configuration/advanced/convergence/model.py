@@ -29,8 +29,10 @@ class ConvergenceConfigurationSettingsModel(
     help_message = tl.Unicode()
     scf_conv_thr = tl.Float(0.0)
     scf_conv_thr_step = tl.Float(1e-10)
+    scf_conv_thr_abs = tl.Float(0.0)
     etot_conv_thr = tl.Float(0.0)
     etot_conv_thr_step = tl.Float(1e-5)
+    etot_conv_thr_abs = tl.Float(0.0)
     forc_conv_thr = tl.Float(0.0)
     forc_conv_thr_step = tl.Float(1e-4)
     kpoints_distance = tl.Float(0.0)
@@ -51,15 +53,14 @@ class ConvergenceConfigurationSettingsModel(
     include = True  # build-in panel
 
     def update(self, specific=""):
-        with self.hold_trait_notifications():
-            if specific == "structure":
-                self._update_help_message()
-            elif specific == "protocol":
-                self._update_thresholds()
-            if not specific or specific != "mesh":
-                parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
-                self._update_kpoints_distance(parameters)
-            self._update_kpoints_mesh()
+        if specific == "structure":
+            self._update_help_message()
+        if specific in {"structure", "protocol"}:
+            self._update_thresholds()
+        if not specific or specific != "mesh":
+            parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
+            self._update_kpoints_distance(parameters)
+        self._update_kpoints_mesh()
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -97,15 +98,19 @@ class ConvergenceConfigurationSettingsModel(
     def _update_thresholds(self):
         parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
 
+        num_atoms = len(self.input_structure.sites) if self.has_structure else 1
+
         etot_value = parameters["meta_parameters"]["etot_conv_thr_per_atom"]
         self._set_value_and_step("etot_conv_thr", etot_value)
         self.etot_conv_thr = self._defaults["etot_conv_thr"]
         self.etot_conv_thr_step = self._defaults["etot_conv_thr_step"]
+        self.etot_conv_thr_abs = self.etot_conv_thr * num_atoms
 
         scf_value = parameters["meta_parameters"]["conv_thr_per_atom"]
         self._set_value_and_step("scf_conv_thr", scf_value)
         self.scf_conv_thr = self._defaults["scf_conv_thr"]
         self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
+        self.scf_conv_thr_abs = self.scf_conv_thr * num_atoms
 
         forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
         self._set_value_and_step("forc_conv_thr", forc_value)

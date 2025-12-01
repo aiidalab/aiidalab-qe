@@ -1,12 +1,30 @@
 from __future__ import annotations
 
+import json
+import typing as t
+from datetime import datetime
+from pathlib import Path
+from time import sleep
+
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import display
+from importlib_resources import files
+from IPython.display import Image, Javascript, display
+from jinja2 import Environment
 
+from aiida import orm
+from aiida.orm.utils.serialize import deserialize_unsafe
+from aiidalab_qe.app.static import images as images_folder
+from aiidalab_qe.app.static import templates
+from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.app.wizard.model import WizardModel
 from aiidalab_qe.common.guide_manager import guide_manager
+from aiidalab_qe.common.infobox import InAppGuide, InfoBox
 from aiidalab_qe.common.widgets import LinkButton
+from aiidalab_qe.version import __version__
 from aiidalab_widgets_base import LoadingWidget
+
+CURRENT_STATE_PATH = Path("/tmp/current_state.json")
 
 
 def without_triggering(toggle: str):
@@ -15,7 +33,7 @@ def without_triggering(toggle: str):
     def decorator(func):
         def wrapper(self, change: dict):
             """Toggle off other button without triggering its callback."""
-            view: AppWrapperView = self._view
+            view: AppView = self._view
             button: ipw.ToggleButton = getattr(view, toggle)
             callback = getattr(self, f"_on_{toggle}")
             button.unobserve(callback, "value")
@@ -28,31 +46,94 @@ def without_triggering(toggle: str):
     return decorator
 
 
-class AppWrapperContoller:
-    """An MVC controller for `AppWrapper`."""
+class AppController:
+    """An MVC controller for the app."""
 
     def __init__(
         self,
-        model: AppWrapperModel,
-        view: AppWrapperView,
+        model: AppModel,
+        view: AppView,
     ) -> None:
-        """`AppWrapperController` constructor.
+        """`AppController` constructor.
 
         Parameters
         ----------
-        `model` : `AppWrapperModel`
+        `model` : `AppModel`
             The associated model.
-        `view` : `AppWrapperView`
+        `view` : `AppView`
             The associated view.
         """
         self._model = model
         self._view = view
+        self._wizard_model = WizardModel()
         self._set_event_handlers()
 
     def enable_toggles(self) -> None:
         """Enable the toggle buttons at the top of the app."""
+        toggle: ipw.ToggleButton
         for toggle in self._view.toggles.children:
             toggle.disabled = False
+
+    def load_wizard(
+        self,
+        auto_setup: bool = True,
+        log_widget: ipw.Output | None = None,
+        duplicating: bool = False,
+    ) -> None:
+        """Load and initialize the wizard."""
+        # HACK somehow resolves https://github.com/aiidalab/aiidalab-qe/issues/1356
+        # TODO investigate why this is needed
+        _ = orm.User.collection.get_default().email
+
+        self.wizard = Wizard(self._wizard_model, auto_setup, log_widget)
+
+        # Build state
+        state = {"process_uuid": self._model.process_uuid}
+        if self._model.process_uuid:
+            state |= self._model.get_state_from_process()
+
+        if duplicating:
+            # We try to read the previous state from the file written by the duplicating
+            # instance of the app. We wait up to 0.5s for the file to appear. If it
+            # doesn't, we show an error message, prompting the user to try again.
+            i = 0
+            while i < 5:
+                if CURRENT_STATE_PATH.exists():
+                    # Load the previous state
+                    state |= json.loads(CURRENT_STATE_PATH.read_text())
+
+                    # Delete the file
+                    CURRENT_STATE_PATH.unlink(missing_ok=True)
+
+                    # Clear the URL
+                    display(
+                        Javascript(
+                            "window.history.pushState(null, '', window.location.pathname);"
+                        ),
+                    )
+                    break
+
+                # Wait a bit and try again
+                sleep(0.1)
+                i += 1
+
+            else:
+                # If we exit the loop without breaking, the file was not found
+                # Show an error message
+                self._view.app_container.children = [
+                    ipw.HTML(
+                        value="""
+                            <div class="alert alert-danger" style="text-align: center">
+                                Failed to load previous state. Please try again.
+                            </div>
+                        """,
+                    )
+                ]
+                return
+
+        self._view.app_container.children = [self.wizard]
+        self._wizard_model.state = state
+        self._model.loaded = True
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -91,6 +172,18 @@ class AppWrapperContoller:
         guide = self._view.guide_selection.value
         self._model.update_active_guide(category, guide)
 
+    def _on_duplicate_workflow_click(self, _):
+        if not self._model.loaded:
+            return
+        app: Wizard = self._view.app_container.children[0]  # type: ignore
+        payload = {
+            "step": min(app.current_step, 3),
+            "structure_state": app.structure_model.get_model_state(),
+            "configuration_state": app.configure_model.get_model_state(),
+            "resources_state": app.submit_model.get_model_state(),
+        }
+        CURRENT_STATE_PATH.write_text(json.dumps(payload))
+
     def _set_event_handlers(self) -> None:
         """Set up event handlers."""
         self._model.observe(
@@ -114,6 +207,8 @@ class AppWrapperContoller:
             "value",
         )
 
+        self._view.duplicate_workflow_link.on_click(self._on_duplicate_workflow_click)
+
         ipw.dlink(
             (self._model, "guide_category_options"),
             (self._view.guide_category_selection, "options"),
@@ -130,10 +225,15 @@ class AppWrapperContoller:
             (self._model, "selected_guide"),
             (self._view.guide_selection, "value"),
         )
+        ipw.dlink(
+            (self._wizard_model, "loading"),
+            (self._view.wizard_loading_message.layout, "display"),
+            lambda loading: "flex" if loading else "none",
+        )
 
 
-class AppWrapperModel(tl.HasTraits):
-    """An MVC model for `AppWrapper`."""
+class AppModel(tl.HasTraits):
+    """An MVC model for the app."""
 
     guide_category_options = tl.List(
         ["No guides", *guide_manager.get_guide_categories()]
@@ -142,32 +242,60 @@ class AppWrapperModel(tl.HasTraits):
     guide_options = tl.List(tl.Unicode())
     selected_guide = tl.Unicode(None, allow_none=True)
 
+    process_uuid: str | None = None
+    loaded = False
+
+    @property
+    def process(self) -> orm.WorkChainNode:
+        return t.cast(orm.WorkChainNode, orm.load_node(self.process_uuid))
+
+    def validate_process(self, process_identifier: str | None = None) -> bool:
+        """Validate the process identifier."""
+        if process_identifier:
+            try:
+                process = orm.load_node(process_identifier)
+                assert isinstance(process, orm.WorkChainNode)
+                self.process_uuid = process.uuid
+            except Exception:
+                return False
+        return True
+
     def update_active_guide(self, category, guide):
         """Sets the current active guide."""
         active_guide = f"{category}/{guide}" if category != "No guides" else category
         guide_manager.active_guide = active_guide
 
+    def get_state_from_process(self) -> dict:
+        if not self.process_uuid:
+            return {}
+        parameters: dict = self.process.base.extras.get("ui_parameters", {})
+        if parameters and isinstance(parameters, str):
+            parameters = deserialize_unsafe(parameters)
+        codes = parameters.pop("codes", {})
 
-class AppWrapperView(ipw.VBox):
-    """An MVC view for `AppWrapper`."""
+        # BACKWARDS COMPATIBILITY
+        # We used to store the codes under "resources"
+        if "resources" in parameters:
+            resources = parameters["resources"]
+            codes |= {key: {"code": value} for key, value in codes.items()}
+            codes["pw"]["nodes"] = resources["num_machines"]
+            codes["pw"]["cpus"] = resources["num_mpiprocs_per_machine"]
+            codes["pw"]["parallelization"] = {"npool": resources["npools"]}
+        # END BACKWARDS COMPATIBILITY
+
+        return {
+            "step": 4,  # completed all steps
+            "structure_state": {"uuid": self.process.inputs.structure.uuid},
+            "configuration_state": parameters,
+            "resources_state": codes,
+        }
+
+
+class AppView(ipw.VBox):
+    """An MVC view for the app."""
 
     def __init__(self) -> None:
-        """`AppWrapperView` constructor."""
-
-        ################# LAZY LOADING #################
-
-        from datetime import datetime
-
-        from importlib_resources import files
-        from IPython.display import Image
-        from jinja2 import Environment
-
-        from aiidalab_qe.app.static import images as images_folder
-        from aiidalab_qe.app.static import templates
-        from aiidalab_qe.common.infobox import InfoBox
-        from aiidalab_qe.version import __version__
-
-        #################################################
+        """`AppView` constructor."""
 
         self.output = ipw.Output()
 
@@ -187,7 +315,6 @@ class AppWrapperView(ipw.VBox):
             link="./calculation_history.ipynb",
             icon="list",
             tooltip="View a list of previous calculations",
-            style_="background-color: var(--color-aiida-orange)",
         )
 
         self.setup_resources_link = LinkButton(
@@ -195,22 +322,28 @@ class AppWrapperView(ipw.VBox):
             link="../home/code_setup.ipynb",
             icon="database",
             tooltip="Setup computational resources for your calculations",
-            style_="background-color: var(--color-aiida-blue)",
         )
 
-        self.new_workchain_link = LinkButton(
+        self.new_workflow_link = LinkButton(
             description="New calculation",
             link="./qe.ipynb",
             icon="plus-circle",
             tooltip="Open a new calculation in a separate tab",
-            style_="background-color: var(--color-aiida-green)",
+        )
+
+        self.duplicate_workflow_link = LinkButton(
+            description="Duplicate",
+            link="./qe.ipynb?duplicating=True",
+            icon="clone",
+            tooltip="Duplicate calculation parameters in a separate tab",
         )
 
         self.external_links = ipw.HBox(
             children=[
                 self.calculation_history_link,
                 self.setup_resources_link,
-                self.new_workchain_link,
+                self.new_workflow_link,
+                self.duplicate_workflow_link,
             ],
         )
 
@@ -277,7 +410,12 @@ class AppWrapperView(ipw.VBox):
         )
         header.add_class("app-header")
 
-        self.main = ipw.VBox(children=[LoadingWidget("Loading the app")])
+        self.wizard_loading_message = LoadingWidget(
+            message="Populating the wizard",
+            layout={"display": "none"},
+        )
+
+        self.app_container = ipw.VBox(children=[LoadingWidget("Loading the app")])
 
         current_year = datetime.now().year
         footer = ipw.HTML(f"""
@@ -292,7 +430,10 @@ class AppWrapperView(ipw.VBox):
             children=[
                 self.output,
                 header,
-                self.main,
+                InAppGuide(identifier="guide-header"),
+                self.wizard_loading_message,
+                self.app_container,
+                InAppGuide(identifier="post-guide"),
                 footer,
             ],
         )

@@ -209,7 +209,7 @@ class GlobalResourceSettingsModel(
         return self.input_parameters.get("workchain", {}).get("properties", [])
 
     def _check_blockers(self):
-        if not self.input_parameters:
+        if not self.input_parameters or not self.global_codes:
             return
 
         warning_in_blockers = (

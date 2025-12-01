@@ -1,7 +1,9 @@
+import typing as t
+
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.configuration.advanced.pseudos import (
+from aiidalab_qe.app.configuration.advanced import (
     PseudosConfigurationSettingsModel,
     PseudosConfigurationSettingsPanel,
 )
@@ -192,15 +194,18 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     pseudos.render()
 
     # Check uploaders
-    assert len(pseudos.setter_widget.children) == 2
+    assert len(pseudos.pseudos_list.children) == 2
 
     message = "{ecutwfc} | {ecutrho} | {functional} | {relativistic}"
 
     # Check Si uploader (Si.upf)
-    Si_uploader: PseudoPotentialUploader = pseudos.setter_widget.children[0]
+    Si_uploader = t.cast(
+        PseudoPotentialUploader,
+        pseudos.pseudos_list.children[0],  # type: ignore
+    )
     assert Si_uploader._model.kind_name == "Si"
     assert Si_uploader._model.kind_symbol == "Si"
-    pseudo = orm.load_node(model.dictionary["Si"])
+    pseudo = orm.load_node(model.dictionary["Si"])  # type: ignore[index]
     assert Si_uploader._model.pseudo == pseudo
     assert Si_uploader._model.cutoffs == [30, 240]
     assert Si_uploader.pseudo_filename.value == pseudo.filename
@@ -215,10 +220,13 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     )
 
     # Check O uploader (O.upf)
-    O_uploader: PseudoPotentialUploader = pseudos.setter_widget.children[1]
+    O_uploader = t.cast(
+        PseudoPotentialUploader,
+        pseudos.pseudos_list.children[1],  # type: ignore
+    )
     assert O_uploader._model.kind_name == "O"
     assert O_uploader._model.kind_symbol == "O"
-    pseudo = orm.load_node(model.dictionary["O"])
+    pseudo = orm.load_node(model.dictionary["O"])  # type: ignore[index]
     assert O_uploader._model.pseudo == pseudo
     assert O_uploader._model.cutoffs == [30, 240]
     assert O_uploader.pseudo_filename.value == pseudo.filename
@@ -359,10 +367,10 @@ def test_missing_pseudos(generate_structure_data):
     model.functional = "PBEsol"
     model.library = "PseudoDojo standard (SR)"
     assert model.family == "PseudoDojo/0.4/PBEsol/SR/standard/upf"
-    assert model.dictionary["Ce"] is None
-    assert model.dictionary["O"] is not None
+    assert model.dictionary["Ce"] is None  # type: ignore
+    assert model.dictionary["O"] is not None  # type: ignore
     assert len(model.blockers) == 1
-    assert "does not contain a pseudopotential for Ce" in model.blockers[0]
+    assert "does not contain a pseudopotential for Ce" in model.blockers[0]  # type: ignore
 
 
 def test_functional_mismatch_blocker(generate_structure_data):
@@ -372,7 +380,7 @@ def test_functional_mismatch_blocker(generate_structure_data):
     model.structure_uuid = generate_structure_data("silica").uuid
     model.functionals = ["PBE", "PBEsol"]
     assert len(model.blockers) == 1
-    assert "must have the same exchange-correlation" in model.blockers[0]
+    assert "must have the same exchange-correlation" in model.blockers[0]  # type: ignore
 
 
 def test_relativistic_mismatch_blocker(generate_structure_data):
@@ -385,4 +393,4 @@ def test_relativistic_mismatch_blocker(generate_structure_data):
     model.spin_orbit = "soc"
     model.family = "SSSP/1.3/PBEsol/efficiency"
     assert len(model.blockers) == 1
-    assert "pseudopotentials must be fully relativistic" in model.blockers[0]
+    assert "pseudopotentials must be fully relativistic" in model.blockers[0]  # type: ignore
