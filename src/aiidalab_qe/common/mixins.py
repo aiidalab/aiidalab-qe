@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing as t
+import warnings
 
 import traitlets as tl
 
@@ -90,7 +91,21 @@ class HasModels(t.Generic[M]):
             dependency_parts = dependency.rsplit(".", 1)
             if len(dependency_parts) == 1:  # from parent
                 target_model = self
-                trait = dependency
+                if dependency == "input_structure":
+                    # BACKWARDS COMPATIBLE - remove when all plugins are updated!
+                    warnings.warn(
+                        (
+                            "The `input_structure` dependency is deprecated. "
+                            "Please use the `structure_uuid` dependency instead. "
+                            "`input_structure` is now a property that loads the "
+                            "structure by uuid."
+                        ),
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                    trait = "structure_uuid"
+                else:
+                    trait = dependency
             else:  # from sibling
                 sibling, trait = dependency_parts
                 target_model = self.get_model(sibling)
