@@ -102,11 +102,11 @@ def test_create_builder_advanced_settings(
 
     # check if the AiiDA nodes are passed to the plugins instead of copied, take psuedos as an example
     assert (
-        builder.relax.base.pw.pseudos["Si"].uuid
+        builder.relax.base_relax.pw.pseudos["Si"].uuid
         == builder.bands.bands.scf.pw.pseudos["Si"].uuid
     )
     assert (
-        builder.relax.base.pw.pseudos["Si"].uuid
+        builder.relax.base_relax.pw.pseudos["Si"].uuid
         == builder.pdos.scf.pw.pseudos["Si"].uuid
     )
 
@@ -115,7 +115,7 @@ def test_create_builder_advanced_settings(
 
     # test tot_charge is updated in the three steps
     for parameters in [
-        got["relax"]["base"],
+        got["relax"]["base_relax"],
         got["bands"]["bands"]["scf"],
         got["pdos"]["scf"],
         got["pdos"]["nscf"],
