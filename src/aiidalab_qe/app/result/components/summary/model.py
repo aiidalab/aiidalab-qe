@@ -9,7 +9,6 @@ from jinja2 import Environment
 
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
-from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponentModel
@@ -199,6 +198,11 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "positions_cell": "full geometry",
         }
 
+        if self.properties == ["pp"]:
+            # If the workflow only included post-processing, no PW calculation was run.
+            # In this case, we return a minimal report.
+            return report
+
         report |= {
             "basic_settings": {
                 "relaxed": relax_value_mapping.get(basic["relax_type"], "off"),
@@ -243,14 +247,8 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "value": "custom",
             }
 
-        def safe_filename(pp_uuid):
-            try:
-                return orm.load_node(pp_uuid).filename
-            except NotExistent:
-                return str(pp_uuid)
-
         report["advanced_settings"]["pseudos"] = [
-            f"<b>{kind}:</b> {safe_filename(pp_uuid)}"
+            f"<b>{kind}:</b> {orm.load_node(pp_uuid).filename}"
             for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
         ]
 
