@@ -85,13 +85,25 @@ class HubbardConfigurationSettingsModel(
             for eigenvalue in eigenvalues_array.reshape(new_shape).tolist()
         ]
 
-    def set_active_eigenvalues(self, eigenvalues: list):
-        eigenvalues_array = np.array(eigenvalues, dtype=object)
-        num_states = len(set(eigenvalues_array[:, 0]))
-        num_spins = len(set(eigenvalues_array[:, 1]))
-        num_kinds = len(set(eigenvalues_array[:, 2]))
-        new_shape = (num_kinds, num_spins, num_states, 4)
-        self.eigenvalues = eigenvalues_array.reshape(new_shape).tolist()
+    def set_active_eigenvalues(self, active_eigenvalues: list):
+        active_map = {
+            (int(state), int(spin), kind_name): [state, spin, kind_name, value]
+            for state, spin, kind_name, value in active_eigenvalues
+        }
+
+        self.eigenvalues = [
+            [
+                [
+                    active_map.get(
+                        (state, spin, kind_name),
+                        [state, spin, kind_name, -1],
+                    )
+                    for state in range(1, num_states + 1)
+                ]
+                for spin in (1, 2)
+            ]
+            for kind_name, num_states in self.applicable_kind_names
+        ]
         self.has_eigenvalues = True
 
     def get_parameters_from_hubbard_structure(self):
