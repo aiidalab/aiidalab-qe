@@ -201,7 +201,7 @@ class QeAppWorkChain(WorkChain):
                 overrides=relax_overrides,
                 **kwargs,
             )
-            enable_pencil_decomposition(relax_builder.base.pw)
+            enable_pencil_decomposition(relax_builder.base_relax.pw)
             # pop the inputs that are excluded from the expose_inputs
             relax_builder.pop("structure", None)
             relax_builder.pop("clean_workdir", None)
