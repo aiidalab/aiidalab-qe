@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 import traitlets as tl
-from IPython.display import display
 
 from aiidalab_qe.common.guide_manager import guide_manager
 from aiidalab_qe.common.widgets import LinkButton
@@ -159,7 +158,6 @@ class AppWrapperView(ipw.VBox):
         from datetime import datetime
 
         from importlib_resources import files
-        from IPython.display import Image
         from jinja2 import Environment
 
         from aiidalab_qe.app.static import images as images_folder
@@ -169,15 +167,12 @@ class AppWrapperView(ipw.VBox):
 
         #################################################
 
-        self.output = ipw.Output()
+        self.output = ipw.VBox()
 
-        logo_img = Image(
-            filename=files(images_folder) / "logo.png",
+        logo = ipw.Image(
+            value=(files(images_folder) / "logo.png").read_bytes(),
             width="700",
         )
-        logo = ipw.Output()
-        with logo:
-            display(logo_img)
         logo.add_class("logo")
 
         subtitle = ipw.HTML("<h3 id='subtitle'>🎉 Happy computing 🎉</h3>")
