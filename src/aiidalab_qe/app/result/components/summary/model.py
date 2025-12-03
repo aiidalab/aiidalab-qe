@@ -198,6 +198,11 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "positions_cell": "full geometry",
         }
 
+        if self.properties == ["pp"]:
+            # If the workflow only included post-processing, no PW calculation was run.
+            # In this case, we return a minimal report.
+            return report
+
         report |= {
             "basic_settings": {
                 "relaxed": relax_value_mapping.get(basic["relax_type"], "off"),
@@ -241,6 +246,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
                 "url": None,
                 "value": "custom",
             }
+
         report["advanced_settings"]["pseudos"] = [
             f"<b>{kind}:</b> {orm.load_node(pp_uuid).filename}"
             for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
