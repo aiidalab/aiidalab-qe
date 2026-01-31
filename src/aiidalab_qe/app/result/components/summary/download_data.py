@@ -6,10 +6,13 @@ from typing import cast
 
 import ipywidgets as ipw
 
+from aiida import orm
+
 
 class DownloadDataWidget(ipw.VBox):
-    def __init__(self, workchain_node):
-        #
+    def __init__(self, workchain_node: orm.WorkChainNode):
+        self.node = workchain_node
+
         self.download_archive_button = ipw.Button(
             description="Download AiiDA archive.aiida data",
             icon="download",
@@ -20,29 +23,19 @@ class DownloadDataWidget(ipw.VBox):
         )
         self.download_archive_button.on_click(self._download_data_thread)
 
+        self.dumper_is_available = hasattr(self.node, "dump")
+
         self.download_raw_button = ipw.Button(
             description="Download AiiDA raw data (zip format)",
             icon="download",
             button_style="primary",
-            disabled=False,
+            disabled=not self.dumper_is_available,
             tooltip="Download the raw data of the simulation, organized in intuitive directory paths.",
             layout=ipw.Layout(width="100%"),
         )
-        try:
-            # check that we can import the ProcessDumper (not implemented in old AiiDA versions)
-            # pre-commit: allow any unused imports in the next line
-            # Note that we no longer use `ProcessDumper`, but we can still use it
-            # to check for AiiDA version compatibility.
-            from aiida.tools._dumping.facades import ProcessDumper  # noqa: F401
 
+        if self.dumper_is_available:
             self.download_raw_button.on_click(self._download_data_thread)
-            self.dumper_is_available = True
-        except Exception:
-            self.dumper_is_available = False
-
-        self.download_raw_button.disabled = not self.dumper_is_available
-
-        self.node = workchain_node
 
         self._downloading_message = ipw.HTML()
 
