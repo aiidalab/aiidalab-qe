@@ -2,13 +2,17 @@ import base64
 import pathlib
 import tempfile
 from threading import Thread
+from typing import cast
 
 import ipywidgets as ipw
 
+from aiida import orm
+
 
 class DownloadDataWidget(ipw.VBox):
-    def __init__(self, workchain_node):
-        #
+    def __init__(self, workchain_node: orm.WorkChainNode):
+        self.node = workchain_node
+
         self.download_archive_button = ipw.Button(
             description="Download AiiDA archive.aiida data",
             icon="download",
@@ -19,27 +23,19 @@ class DownloadDataWidget(ipw.VBox):
         )
         self.download_archive_button.on_click(self._download_data_thread)
 
+        self.dumper_is_available = hasattr(self.node, "dump")
+
         self.download_raw_button = ipw.Button(
             description="Download AiiDA raw data (zip format)",
             icon="download",
             button_style="primary",
-            disabled=False,
+            disabled=not self.dumper_is_available,
             tooltip="Download the raw data of the simulation, organized in intuitive directory paths.",
             layout=ipw.Layout(width="100%"),
         )
-        try:
-            # check that we can import the ProcessDumper (not implemented in old AiiDA versions)
-            # pre-commit: allow any unused imports in the next line
-            from aiida.tools.dumping.processes import ProcessDumper  # noqa: F401
 
+        if self.dumper_is_available:
             self.download_raw_button.on_click(self._download_data_thread)
-            self.dumper_is_available = True
-        except Exception:
-            self.dumper_is_available = False
-
-        self.download_raw_button.disabled = not self.dumper_is_available
-
-        self.node = workchain_node
 
         self._downloading_message = ipw.HTML()
 
@@ -160,7 +156,7 @@ class DownloadDataWidget(ipw.VBox):
         """
         from aiida import orm
 
-        reloaded_node = orm.load_node(node.pk)
+        reloaded_node = cast(orm.ProcessNode, orm.load_node(node.pk))
         with tempfile.TemporaryDirectory() as dirpath:
             if what == "archive":
                 from aiida.tools.archive.create import create_archive
@@ -182,12 +178,9 @@ class DownloadDataWidget(ipw.VBox):
             elif what == "raw":
                 import shutil
 
-                from aiida.tools.dumping.processes import ProcessDumper
-
                 path = pathlib.Path(dirpath) / "raw_data"
                 output_zip_path = pathlib.Path(dirpath) / "raw_data.zip"
-                dumper = ProcessDumper()
-                dumper.dump(process_node=reloaded_node, output_path=path)
+                reloaded_node.dump(output_path=path)
                 # writing files to a zipfile
                 shutil.make_archive(pathlib.Path(dirpath) / "raw_data", "zip", path)
 
