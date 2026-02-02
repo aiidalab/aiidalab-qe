@@ -88,7 +88,7 @@ class DownloadDataWidget(ipw.VBox):
 
         self._disable_buttons()
         self._show_downloading_message(what)
-        data = self.produce_bitestream(self.node, what=what)
+        data = self.produce_bytestream(self.node, what=what)
         self._download(payload=data, filename=filename)
         del data
         self._hide_downloading_message()
@@ -131,7 +131,7 @@ class DownloadDataWidget(ipw.VBox):
         display(javas)
 
     @staticmethod
-    def produce_bitestream(node, what="archive"):
+    def produce_bytestream(node, what="archive"):
         """
         Produce a base64-encoded bitstream of the specified node data.
 
@@ -173,7 +173,7 @@ class DownloadDataWidget(ipw.VBox):
                     zip_data = f.read()
 
                 # Convert the ZIP data to base64 so it can be used as a payload in JavaScript
-                bitestream = base64.b64encode(zip_data).decode()
+                bytestream = base64.b64encode(zip_data).decode()
 
             elif what == "raw":
                 import shutil
@@ -188,9 +188,9 @@ class DownloadDataWidget(ipw.VBox):
                     raw_data = f.read()
 
                 # Convert the raw_data to base64 so it can be used as a payload in JavaScript
-                bitestream = base64.b64encode(raw_data).decode()
+                bytestream = base64.b64encode(raw_data).decode()
 
             else:
                 raise KeyError("You should ask for `archive` or `raw` only!")
 
-            return bitestream
+            return bytestream
