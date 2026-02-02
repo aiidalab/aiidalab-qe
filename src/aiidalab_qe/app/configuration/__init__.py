@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.app.utils.plugin_manager import (
     DEFAULT_PLUGIN_CONFIG_SOURCE,
@@ -18,6 +17,7 @@ from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 from .advanced import (
     AdvancedConfigurationSettingsModel,

@@ -1,7 +1,7 @@
 import ipywidgets as ipw
 
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponent
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 from .model import WorkChainSummaryModel
 from .outputs import WorkChainOutputs

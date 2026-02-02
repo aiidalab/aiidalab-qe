@@ -4,8 +4,6 @@ from pathlib import Path
 
 import yaml
 
-from aiidalab_qe.app import parameters
-
 
 def recursive_merge(d1, d2):
     """Merge dictionary `d2` into dictionary `d1` recursively.
@@ -45,7 +43,7 @@ def recursive_merge(d1, d2):
     return d1
 
 
-DEFAULT_PARAMETERS = yaml.safe_load(resources.read_text(parameters, "qeapp.yaml"))
+DEFAULT_PARAMETERS = yaml.safe_load(resources.read_text(__package__, "qeapp.yaml"))
 
 CONFIG_DIR_PATH = Path.home() / ".aiidalab" / "quantum-espresso"
 

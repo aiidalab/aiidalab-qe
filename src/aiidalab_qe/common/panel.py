@@ -16,7 +16,6 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code.model import CodeModel
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.mixins import (
@@ -31,6 +30,7 @@ from aiidalab_qe.common.widgets import (
     PwCodeResourceSetupWidget,
     QEAppComputationalResourcesWidget,
 )
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_widgets_base import LoadingWidget
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
