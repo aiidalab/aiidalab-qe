@@ -3,9 +3,9 @@ from __future__ import annotations
 import ipywidgets as ipw
 
 from aiidalab_qe.app.result.components import ResultsComponent
-from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
+from aiidalab_qe.plugins.utils import get_entry_items
 
 from .model import WorkChainResultsViewerModel
 from .structure import StructureResultsModel, StructureResultsPanel

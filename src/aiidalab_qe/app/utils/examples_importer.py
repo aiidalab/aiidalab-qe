@@ -3,8 +3,8 @@ import subprocess
 import ipywidgets as ipw
 import requests as req
 
-from aiidalab_qe.app.utils import get_entries
 from aiidalab_qe.common.widgets import RollingOutput
+from aiidalab_qe.plugins.utils import get_entries
 from aiidalab_widgets_base import LoadingWidget
 
 

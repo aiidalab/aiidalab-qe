@@ -6,7 +6,7 @@ import traitlets as tl
 from bs4 import BeautifulSoup, PageElement
 
 import aiidalab_qe
-from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.plugins.utils import get_entry_items
 
 
 class GuideManager(tl.HasTraits):

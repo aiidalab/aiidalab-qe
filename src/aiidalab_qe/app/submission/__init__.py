@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import ipywidgets as ipw
 
-from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common.code import PluginCodes, PwCodeModel
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import (
@@ -19,6 +18,7 @@ from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.plugins.utils import get_entry_items
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
