@@ -8,7 +8,7 @@ def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
                 border: 1px solid #aaaaaa;
                 border-radius: 4px;
                 padding: 1rem 2rem 0.25rem;
-                margin-bottom: 1rem;
+                margin: 1rem 2px 2rem;
             }}
             summary {{
                 font-weight: bold;
