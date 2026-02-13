@@ -11,12 +11,12 @@
 .info-box.in-app-guide.show {
   display: flex !important;
 }
-.about ol {
+#about ol {
   margin-top: 5px;
   list-style: none;
   line-height: 2;
 }
-.about p:last-of-type {
+#about p:last-of-type {
   margin-bottom: 0.5em;
 }
 .in-app-guide:has(#guide-header),
@@ -33,6 +33,7 @@
 #post-guide {
   margin: 1em 0;
 }
+#about .alert,
 .in-app-guide .alert {
   color: black;
   margin: 10px 0;
@@ -46,6 +47,7 @@
 .in-app-guide .alert.alert-success {
   border-color: #8fbc8f;
 }
+#about h4,
 .in-app-guide h4 {
   font-weight: bold;
 }
