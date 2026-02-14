@@ -7,10 +7,10 @@ from IPython.display import Javascript, display
 from aiida import orm
 from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm.utils.serialize import serialize
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels, HasProcess
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
 from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.utils import shallow_copy_nested_dict
 from aiidalab_qe.workflows import QeAppWorkChain
 

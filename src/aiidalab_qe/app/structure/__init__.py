@@ -8,7 +8,6 @@ import pathlib
 import ipywidgets as ipw
 
 from aiidalab_qe.app.structure.model import StructureStepModel
-from aiidalab_qe.app.utils import get_entry_items
 from aiidalab_qe.common import (
     AddingTagsEditor,
     LazyLoadedOptimade,
@@ -20,6 +19,7 @@ from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget
 from aiidalab_qe.common.wizard import QeConfirmableWizardStep
+from aiidalab_qe.plugins.utils import get_entry_items
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,

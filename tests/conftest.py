@@ -22,8 +22,8 @@ from aiidalab_qe.app.configuration.basic import (
     BasicConfigurationSettingsModel,
     BasicConfigurationSettingsPanel,
 )
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.wizard_app import WizardApp
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 from aiidalab_qe.utils import shallow_copy_nested_dict

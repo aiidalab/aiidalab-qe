@@ -1,8 +1,8 @@
 import traitlets as tl
 
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import PanelModel
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 

@@ -9,9 +9,9 @@ from aiida import orm
 from aiida.common import exceptions
 from aiida.plugins import GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure
 from aiidalab_qe.common.panel import PanelModel
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 
 from .utils import get_pseudo_family_by_label, get_upf_dict
