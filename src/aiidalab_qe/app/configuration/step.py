@@ -15,7 +15,7 @@ from aiidalab_qe.app.utils.plugin_manager import (
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
 from aiidalab_qe.common.widgets import LinkButton
-from aiidalab_qe.common.wizard import QeConfirmableDependentWizardStep
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.plugins.utils import get_entry_items
 
@@ -29,9 +29,7 @@ from .model import ConfigurationStepModel
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class ConfigureQeAppWorkChainStep(
-    QeConfirmableDependentWizardStep[ConfigurationStepModel]
-):
+class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
     missing_information_warning = "Missing input structure. Please set it first."
 
     def __init__(self, model: ConfigurationStepModel, **kwargs):

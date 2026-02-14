@@ -1,7 +1,7 @@
 from .model import ConfigurationStepModel
-from .step import ConfigureQeAppWorkChainStep
+from .step import ConfigurationStep
 
 __all__ = [
+    "ConfigurationStep",
     "ConfigurationStepModel",
-    "ConfigureQeAppWorkChainStep",
 ]
