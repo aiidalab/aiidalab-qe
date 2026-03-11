@@ -56,7 +56,7 @@ def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
                         src="{appbase}/miscellaneous/logos/history.png"
                         alt="Calculation history"
                     />
-                    <div class="feature-label">Calculation History</div>
+                    <div class="feature-label">Calculation history</div>
                 </a>
                 <a
                     class="feature"
