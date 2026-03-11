@@ -30,7 +30,7 @@ DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
-    missing_information_warning = "Missing input structure. Please set it first."
+    _missing_message = "Missing input structure"
 
     def __init__(self, model: ConfigurationStepModel, **kwargs):
         super().__init__(
@@ -63,20 +63,34 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self._on_input_structure_change,
             "structure_uuid",
         )
+        self._model.observe(
+            self._on_installed_properties_fetched,
+            "installed_properties_fetched",
+        )
+        self._model.observe(
+            self._on_available_properties_fetched,
+            "available_properties_fetched",
+        )
 
         self.settings = {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
 
-        self.installed_property_children = []
-        self.not_installed_property_children = []
+        self.installed_properties_list = []
+        self.available_properties_list = []
+
         self._fetch_plugin_calculation_settings()
+        self._fetch_available_properties()
+
+    def reset(self):
+        self._model.reset()
+        if self.rendered:
+            self.sub_steps.selected_index = None
+            self.tabs.selected_index = 0
 
     def _render(self):
         super()._render()
-
-        self._fetch_not_installed_property()
 
         # RelaxType: degrees of freedom in geometry optimization
         self.relax_type_help = ipw.HTML()
@@ -110,12 +124,21 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             tooltip="Browse and install additional plugins from the Plugin Store",
         )
 
+        self.installed_properties = ipw.VBox(children=self.installed_properties_list)
+
+        self.available_properties = ipw.HTML("""
+            <div class="loading" style="display: flex; align-items: center; font-size: unset;">
+                Loading available properties
+                <i class="fa fa-spinner fa-spin fa-2x fa-fw"></i>
+            </div>
+        """)
+
         self.sub_steps = ipw.Accordion(
             children=[
                 ipw.VBox(
                     children=[
                         InAppGuide(identifier="properties-selection"),
-                        *self.installed_property_children,
+                        self.installed_properties,
                         ipw.HTML("<hr>"),
                         ipw.HTML(
                             value="""
@@ -132,7 +155,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                             layout=ipw.Layout(margin="10px 0px"),
                         ),
                         self.install_new_plugin_button,
-                        *self.not_installed_property_children,
+                        self.available_properties,
                     ]
                 ),
                 ipw.VBox(
@@ -158,32 +181,41 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self.relax_type_help,
             self.relax_type,
             self.sub_steps,
-        ]
-
-        self.children = [
-            self.content,
             self.confirm_box,
         ]
 
     def _post_render(self):
+        super()._post_render()
+        self._model.update()
+        self._set_available_properties()
         self._update_tabs()
-
-    def reset(self):
-        self._model.reset()
-        if self.rendered:
-            self.sub_steps.selected_index = None
-            self.tabs.selected_index = 0
 
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
         tab: ConfigurationSettingsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
-        tab.update()
 
     def _on_input_structure_change(self, _):
         self._model.update()
-        self.reset()
+        self._model.update_state()
+
+    def _on_installed_properties_fetched(self, _):
+        if not self.rendered:
+            return
+        self.installed_properties.children = self.installed_properties_list
+
+    def _on_available_properties_fetched(self, _):
+        if not self.rendered:
+            return
+        self._set_available_properties()
+
+    def _set_available_properties(self):
+        self.available_properties.value = f"""
+            <ul style="margin-top: 8px">
+                {"".join(f"<li>{title}</li>" for title in self.available_properties_list)}
+            </ul>
+        """
 
     def _update_tabs(self):
         children = []
@@ -199,38 +231,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             for i, title in enumerate(titles):
                 self.tabs.set_title(i, title)
             self.tabs.selected_index = 0
-
-    def _update_state(self, _=None):
-        if self._model.confirmed:
-            self.state = self.State.SUCCESS
-        elif self.previous_step_state is self.State.SUCCESS:
-            self.state = self.State.CONFIGURED
-        elif self.previous_step_state is self.State.FAIL:
-            self.state = self.State.FAIL
-        else:
-            self.state = self.State.INIT
-
-    def _fetch_not_installed_property(self, plugin_config_source=None):
-        self.not_installed_property_children = []
-
-        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
-        plugin_manager = PluginManager(plugin_config_source)
-        for plugin_name, plugin_data in plugin_manager.data.items():
-            if (
-                plugin_data.get("category", "calculation").lower() != "calculation"
-            ):  # Ignore non-property plugins
-                continue
-
-            is_installed = is_package_installed(plugin_name)
-            if not is_installed:
-                checkbox = ipw.Checkbox(
-                    value=False,
-                    description=plugin_data["title"],
-                    disabled=True,
-                    indent=False,
-                    style={"description_width": "initial"},
-                )
-                self.not_installed_property_children.append(checkbox)
 
     def _fetch_plugin_calculation_settings(self):
         outlines = get_entry_items("aiidalab_qe.properties", "outline")
@@ -272,7 +272,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 "include",
             )
 
-            self.installed_property_children.append(
+            self.installed_properties_list.append(
                 ipw.HBox(
                     children=[
                         outline,
@@ -283,3 +283,21 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
             panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
             self.settings[identifier] = panel
+
+        self._model.installed_properties_fetched = True
+
+    def _fetch_available_properties(self, plugin_config_source=None):
+        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
+        plugin_manager = PluginManager(plugin_config_source)
+
+        for plugin_name, plugin_data in plugin_manager.data.items():
+            if (
+                plugin_data.get("category", "calculation").lower() != "calculation"
+            ):  # Ignore non-property plugins
+                continue
+
+            is_installed = is_package_installed(plugin_name)
+            if not is_installed:
+                self.available_properties_list.append(plugin_data["title"])
+
+        self._model.available_properties_fetched = True
