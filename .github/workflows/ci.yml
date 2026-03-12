@@ -21,7 +21,7 @@ jobs:
         strategy:
             matrix:
                 python-version: ['3.9', '3.11', '3.12']
-                aiida-core-version: [git+https://github.com/khsrali/aiida-core@namespace]
+                aiida-core-version: [git+https://github.com/mbercx/aiida-core@fix/6994/builder-repr]
             fail-fast: false
 
         runs-on: ubuntu-latest
