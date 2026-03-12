@@ -20,8 +20,8 @@ jobs:
 
         strategy:
             matrix:
-                python-version: ['3.9', '3.11']
-                aiida-core-version: ['2.7']
+                python-version: ['3.9', '3.11', '3.12']
+                aiida-core-version: [git+https://github.com/mbercx/aiida-core@fix/6994/builder-repr]
             fail-fast: false
 
         runs-on: ubuntu-latest
@@ -36,27 +36,27 @@ jobs:
         steps:
 
             - name: Check out app
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Set up Python
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v6
               with:
                   python-version: ${{ matrix.python-version }}
 
             - name: Install uv
-              uses: astral-sh/setup-uv@v6
+              uses: astral-sh/setup-uv@v7
               with:
                   activate-environment: true
                   python-version: ${{ matrix.python-version }}
 
             - name: Install package
-              run: uv pip install -e .[dev] aiida-core==${{ matrix.aiida-core-version }}
+              run: uv pip install -e .[dev] aiida-core@${{ matrix.aiida-core-version }}
 
             - name: Run pytest
               run: pytest -v tests --cov=aiidalab_qe --skip-slow
 
             - name: Upload coverage reports to Codecov
-              uses: codecov/codecov-action@v4
+              uses: codecov/codecov-action@v5
               with:
                   flags: python-${{ matrix.python-version }}
                   token: ${{ secrets.CODECOV_TOKEN }}
