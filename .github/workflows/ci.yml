@@ -50,7 +50,7 @@ jobs:
                   python-version: ${{ matrix.python-version }}
 
             - name: Install package
-              run: uv pip install -e .[dev] aiida-core@${{ matrix.aiida-core-version }}
+              run: uv pip install -e .[dev] aiida-core==${{ matrix.aiida-core-version }}
 
             - name: Run pytest
               run: pytest -v tests --cov=aiidalab_qe --skip-slow
