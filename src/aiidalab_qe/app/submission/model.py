@@ -229,7 +229,7 @@ class SubmissionStepModel(
 
         codes = parameters["codes"]["global"]["codes"]
         if "relax" in builder:
-            builder.relax.base.pw.metadata.options.resources = {
+            builder.relax.base_relax.pw.metadata.options.resources = {
                 "num_machines": codes.get("quantumespresso__pw")["nodes"],
                 "num_mpiprocs_per_machine": codes.get("quantumespresso__pw")[
                     "ntasks_per_node"
@@ -239,9 +239,9 @@ class SubmissionStepModel(
                 ],
             }
             mws = codes.get("quantumespresso__pw")["max_wallclock_seconds"]
-            builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = mws
+            builder.relax.base_relax.pw.metadata.options["max_wallclock_seconds"] = mws
             parallelization = codes["quantumespresso__pw"]["parallelization"]
-            builder.relax.base.pw.parallelization = orm.Dict(dict=parallelization)
+            builder.relax.base_relax.pw.parallelization = orm.Dict(dict=parallelization)
 
         return builder
 
