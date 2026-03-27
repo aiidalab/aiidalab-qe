@@ -55,12 +55,13 @@ def test_reminder_info():
     config.render()
     bands_info = next(
         (
-            child.children[1]
-            for child in config.installed_property_children
-            if "Electronic band structure" in child.children[0].title
+            installed_property.children[1]
+            for installed_property in config.installed_properties_list
+            if "Electronic band structure" in installed_property.children[0].title
         ),
         None,
     )
+    assert bands_info is not None
     assert bands_info.value == ""
     bands_model = model.get_model("bands")
     bands_model.include = True
@@ -69,12 +70,13 @@ def test_reminder_info():
     assert bands_info.value == ""
 
 
-def test_not_installed_property_children():
+def test_fetching_available_properties():
     import os
 
     current_file = os.path.abspath(__file__)
     plugin_file = os.path.join(os.path.dirname(current_file), "../plugins.yaml")
     model = ConfigurationStepModel()
     config = ConfigurationStep(model=model)
-    config._fetch_not_installed_property(str(plugin_file))
-    assert len(config.not_installed_property_children) > 0
+    config._fetch_available_properties(str(plugin_file))
+    assert len(config.available_properties_list) > 0
+    assert model.available_properties_fetched
