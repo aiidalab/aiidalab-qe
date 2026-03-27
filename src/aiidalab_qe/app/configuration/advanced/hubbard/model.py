@@ -43,6 +43,10 @@ class HubbardConfigurationSettingsModel(
 
     include = True  # build-in panel
 
+    @property
+    def needs_eigenvalues_widget(self):
+        return len(self.applicable_kind_names) > 0
+
     def update(self, specific=""):  # noqa: ARG002
         if not self.has_structure:
             self.applicable_kind_names = []
@@ -65,7 +69,6 @@ class HubbardConfigurationSettingsModel(
         with self.hold_trait_notifications():
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
-            self.needs_eigenvalues_widget = len(self.applicable_kind_names) > 0
 
     def get_active_eigenvalues(self):
         if not (
