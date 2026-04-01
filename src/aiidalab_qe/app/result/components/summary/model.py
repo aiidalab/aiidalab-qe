@@ -150,11 +150,14 @@ class WorkChainSummaryModel(ResultsComponentModel):
         """
         from aiida.orm.utils.serialize import deserialize_unsafe
 
+        if not self.process:
+            return {}
+
         ui_parameters = self.process.base.extras.get("ui_parameters", {})
+
         if isinstance(ui_parameters, str):
             ui_parameters = deserialize_unsafe(ui_parameters)
-        # Construct the report parameters needed for the report
-        # drop support for old ui parameters
+
         if "workchain" not in ui_parameters:
             return {}
 
