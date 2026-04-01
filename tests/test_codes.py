@@ -33,13 +33,13 @@ def test_set_codes(submit_app_generator):
     assert model.get_model_state() == app.submit_model.get_model_state()
 
 
-def test_global_code_toggle(app: Wizard):
+def test_global_code_toggle(wizard: Wizard):
     """Test that global codes toggle on/off based on their activity."""
     global_resources_model = t.cast(
         GlobalResourceSettingsModel,
-        app.submit_model.get_model("global"),
+        wizard.submit_model.get_model("global"),
     )
-    global_resources = app.submit_step.global_resources
+    global_resources = wizard.submit_step.global_resources
     global_resources.render()
 
     dos_code_model = global_resources_model.get_model("quantumespresso__dos")
@@ -80,11 +80,11 @@ def test_check_blockers(app_to_submit: Wizard):
     assert "input parameters" in model.blockers[1]  # type: ignore
 
 
-def test_qeapp_computational_resources_widget(app: Wizard):
+def test_qeapp_computational_resources_widget(wizard: Wizard):
     """Test QEAppComputationalResourcesWidget."""
-    app.submit_step.render()
-    global_model = app.submit_model.get_model("global")
-    global_resources = app.submit_step.global_resources
+    wizard.submit_step.render()
+    global_model = wizard.submit_model.get_model("global")
+    global_resources = wizard.submit_step.global_resources
     pw_code_model = t.cast(
         PwCodeModel,
         global_model.get_model("quantumespresso__pw"),

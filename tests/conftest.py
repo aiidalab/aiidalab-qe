@@ -60,6 +60,36 @@ CUTOFFS = {
 }
 
 
+def _terminate_process_monitor(wizard: Wizard | None):
+    from contextlib import suppress
+
+    if wizard is None:
+        return
+
+    with suppress(Exception):
+        wizard.results_model.process_uuid = None
+
+    if not hasattr(wizard.results_step, "process_monitor"):
+        return
+
+    process_monitor = wizard.results_step.process_monitor
+    if process_monitor is None:
+        return
+
+    with suppress(Exception):
+        process_monitor.value = None
+    monitor_stop = getattr(process_monitor, "_monitor_thread_stop", None)
+    monitor_thread = getattr(process_monitor, "_monitor_thread", None)
+    if monitor_stop is not None:
+        with suppress(Exception):
+            monitor_stop.set()
+    if monitor_thread is not None:
+        with suppress(Exception):
+            monitor_thread.join(timeout=2)
+    with suppress(Exception):
+        process_monitor.join()
+
+
 def pytest_addoption(parser):
     parser.addoption(
         "--skip-slow", action="store_true", default=False, help="run slow tests"
@@ -365,7 +395,7 @@ def projwfc_code(generate_code):
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code):
+def wizard(pw_code, dos_code, projwfc_code):
     # Assign test codes as defaults
     DEFAULTS = t.cast(dict, DEFAULT_PARAMETERS)
     DEFAULTS["codes"]["pw"]["code"] = pw_code.full_label
@@ -373,21 +403,23 @@ def app(pw_code, dos_code, projwfc_code):
     DEFAULTS["codes"]["projwfc"]["code"] = projwfc_code.full_label
 
     model = WizardModel()
-    app = Wizard(model=model, auto_setup=False)
+    wizard = Wizard(model=model, auto_setup=False)
 
     # Since we use `auto_setup=False`, which will skip the pseudo library
     # installation, we need to mock set the installation status to `True` to
     # avoid the blocker message pop up in the submission step.
-    app.structure_model.installing_sssp = False
-    app.structure_model.sssp_installed = True
-    app.submit_model.installing_qe = False
-    app.submit_model.qe_installed = True
+    wizard.structure_model.installing_sssp = False
+    wizard.structure_model.sssp_installed = True
+    wizard.submit_model.installing_qe = False
+    wizard.submit_model.qe_installed = True
 
-    yield app
+    yield wizard
+
+    _terminate_process_monitor(wizard)
 
 
 @pytest.fixture()
-def submit_app_generator(app: Wizard, generate_structure_data):
+def submit_app_generator(wizard: Wizard, generate_structure_data):
     """Return a function that generates a submit step widget."""
 
     def _submit_app_generator(
@@ -404,8 +436,8 @@ def submit_app_generator(app: Wizard, generate_structure_data):
         initial_magnetic_moments=0.0,
         electron_maxstep=80,
     ):
-        app.structure_model.structure_uuid = generate_structure_data().uuid
-        app.structure_model.confirm()
+        wizard.structure_model.structure_uuid = generate_structure_data().uuid
+        wizard.structure_model.confirm()
 
         parameters = {
             "workchain": {
@@ -416,11 +448,11 @@ def submit_app_generator(app: Wizard, generate_structure_data):
                 "protocol": workchain_protocol,
             }
         }
-        app.configure_model.set_model_state(parameters)
+        wizard.configure_model.set_model_state(parameters)
 
         advanced_model = t.cast(
             AdvancedConfigurationSettingsModel,
-            app.configure_model.get_model("advanced"),
+            wizard.configure_model.get_model("advanced"),
         )
 
         general_model = t.cast(
@@ -453,32 +485,32 @@ def submit_app_generator(app: Wizard, generate_structure_data):
         )
         magnetization_model.moments = dict(
             zip(
-                app.configure_model.input_structure.get_kind_names(),
+                wizard.configure_model.input_structure.get_kind_names(),
                 initial_magnetic_moments,
             )
         )
 
-        app.configure_model.confirm()
+        wizard.configure_model.confirm()
 
-        global_resources_model = app.submit_model.get_model("global")
+        global_resources_model = wizard.submit_model.get_model("global")
         global_resources_model.get_model("quantumespresso__pw").num_cpus = 2
 
-        return app
+        return wizard
 
     return _submit_app_generator
 
 
 @pytest.fixture
-def app_to_submit(app: Wizard, generate_structure_data):
+def app_to_submit(wizard: Wizard, generate_structure_data):
     # Step 1: select structure from example
-    app.structure_model.structure_uuid = generate_structure_data().uuid
-    app.structure_model.confirm()
+    wizard.structure_model.structure_uuid = generate_structure_data().uuid
+    wizard.structure_model.confirm()
     # Step 2: configure calculation
     # TODO do we need to include bands and pdos here?
-    app.configure_model.get_model("bands").include = True
-    app.configure_model.get_model("pdos").include = True
-    app.configure_model.confirm()
-    yield app
+    wizard.configure_model.get_model("bands").include = True
+    wizard.configure_model.get_model("pdos").include = True
+    wizard.configure_model.confirm()
+    yield wizard
 
 
 @pytest.fixture
@@ -684,7 +716,7 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app: Wizard,
+    wizard: Wizard,
     projwfc_code,
     generate_structure_data,
     generate_workchain,
@@ -711,21 +743,21 @@ def generate_qeapp_workchain(
         else:
             structure.store()
 
-        app.structure_model.structure_uuid = structure.uuid
-        app.structure_model.confirm()
+        wizard.structure_model.structure_uuid = structure.uuid
+        wizard.structure_model.confirm()
 
         # step 2 configure
         basic_model = t.cast(
             BasicConfigurationSettingsModel,
-            app.configure_model.get_model("workchain"),
+            wizard.configure_model.get_model("workchain"),
         )
 
-        app.configure_model.relax_type = relax_type
+        wizard.configure_model.relax_type = relax_type
 
         # In order to prepare complete inputs, I set all the properties to true
         # this can be overridden later
-        app.configure_model.get_model("bands").include = run_bands
-        app.configure_model.get_model("pdos").include = run_pdos
+        wizard.configure_model.get_model("bands").include = run_bands
+        wizard.configure_model.get_model("pdos").include = run_pdos
 
         basic_model.protocol = "fast"
         basic_model.spin_type = spin_type
@@ -733,7 +765,7 @@ def generate_qeapp_workchain(
 
         advanced_model = t.cast(
             AdvancedConfigurationSettingsModel,
-            app.configure_model.get_model("advanced"),
+            wizard.configure_model.get_model("advanced"),
         )
 
         if spin_type == "collinear":
@@ -761,14 +793,14 @@ def generate_qeapp_workchain(
         )
         pseudos.functional = functional
 
-        app.configure_model.confirm()
+        wizard.configure_model.confirm()
 
         # step 3 setup code and resources
-        global_resources_model = app.submit_model.get_model("global")
+        global_resources_model = wizard.submit_model.get_model("global")
         global_resources_model.get_model("quantumespresso__pw").num_cpus = 4
-        parameters = shallow_copy_nested_dict(app.submit_model.input_parameters)
-        parameters |= {"codes": app.submit_model.get_model_state()}
-        builder = app.submit_model._create_builder(parameters)
+        parameters = shallow_copy_nested_dict(wizard.submit_model.input_parameters)
+        parameters |= {"codes": wizard.submit_model.get_model_state()}
+        builder = wizard.submit_model._create_builder(parameters)
 
         inputs = builder._inputs()
         if "relax" in inputs:
@@ -807,7 +839,7 @@ def generate_qeapp_workchain(
 
         # mock output
         if relax_type != "none":
-            workchain.out("structure", app.structure_model.input_structure)
+            workchain.out("structure", wizard.structure_model.input_structure)
 
         if run_pdos:
             pdos = generate_pdos_workchain(structure, spin_type)

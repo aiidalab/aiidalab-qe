@@ -1,3 +1,5 @@
+from conftest import _terminate_process_monitor
+
 from aiidalab_qe.app import AppController, AppModel, AppView
 from aiidalab_qe.app.structure import StructureStepModel
 from aiidalab_qe.common.wizard import State
@@ -31,6 +33,7 @@ class TestApp:
         pseudos_model = advanced_model.get_model("pseudos")
         assert len(pseudos_model.dictionary) > 0
         assert pseudos_model.functional == "PBE"
+        _terminate_process_monitor(self.controller.wizard)
 
     def test_enable_toggles(self):
         """Test enable_toggles method."""
