@@ -159,6 +159,7 @@ class WorkChainSummaryModel(ResultsComponentModel):
             return {}
 
         inputs = self.inputs
+        assert inputs is not None, "BUG! Missing process inputs"  # shouldn't happen!
         assert inputs.structure, "BUG! Missing structure input"  # shouldn't happen!
         structure: orm.StructureData = inputs.structure
         basic = ui_parameters["workchain"]

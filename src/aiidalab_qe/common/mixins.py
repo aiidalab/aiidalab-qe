@@ -133,8 +133,8 @@ class HasProcess(tl.HasTraits):
         return self.process is not None
 
     @property
-    def inputs(self) -> orm.NodeLinksManager | list:
-        return self.process.inputs if self.has_process else []
+    def inputs(self) -> orm.NodeLinksManager | None:
+        return self.process.inputs if self.has_process else None
 
     @property
     def properties(self) -> list:
@@ -147,8 +147,8 @@ class HasProcess(tl.HasTraits):
         )
 
     @property
-    def outputs(self):
-        return self.process.outputs if self.has_process else []
+    def outputs(self) -> orm.NodeLinksManager | None:
+        return self.process.outputs if self.has_process else None
 
 
 class Confirmable(tl.HasTraits):
