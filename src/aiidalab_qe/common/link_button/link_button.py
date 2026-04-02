@@ -5,8 +5,8 @@ from anywidget import AnyWidget
 
 
 class LinkButton(AnyWidget):
-    _esm = Path(__file__).parent / "link_button.js"
-    _css = Path(__file__).parent / "link_button.css"
+    _esm = Path(__file__).parent / "static" / "link_button.js"
+    _css = Path(__file__).parent / "static" / "link_button.css"
 
     icon = tl.Unicode("").tag(sync=True)
     description = tl.Unicode("Open").tag(sync=True)
