@@ -573,7 +573,9 @@ class ResultsModel(PanelModel, HasProcess):
         if not (node := self.fetch_child_process_node(which)):
             outputs = super().outputs
             child = which if which != "this" else self.identifier
-            return getattr(outputs, child) if child in outputs else AttributeDict({})
+            if outputs is not None and child in outputs:
+                return getattr(outputs, child)
+            return AttributeDict({})
         return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
 
 

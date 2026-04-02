@@ -20,7 +20,7 @@ class TestApp:
             functional="PBE",
         )
         self.model.process_uuid = workchain.node.uuid
-        self.controller.load_app()
+        self.controller.load_wizard()
         wizard = self.controller.wizard
         assert wizard.configure_model.relax_type == "positions"
         assert wizard.configure_model.get_model("workchain").spin_type == "collinear"
@@ -31,6 +31,7 @@ class TestApp:
         pseudos_model = advanced_model.get_model("pseudos")
         assert len(pseudos_model.dictionary) > 0
         assert pseudos_model.functional == "PBE"
+        self.controller.wizard.results_model.process_uuid = None  # terminate monitor
 
     def test_enable_toggles(self):
         """Test enable_toggles method."""

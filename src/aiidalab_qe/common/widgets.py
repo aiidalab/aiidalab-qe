@@ -403,12 +403,12 @@ class ProgressBar(ipw.HBox):
         if self._animate_thread is not None:
             raise RuntimeError("Cannot start animation more than once!")
 
-        self._animate_thread = Thread(target=self._animate)
+        self._animate_thread = Thread(target=self._animate, daemon=True)
         self._animate_thread.start()
 
     def _stop_animate(self):
         self._animate_stop_event.set()
-        self._animate_thread.join()
+        self._animate_thread.join(timeout=1)
         self._animate_stop_event.clear()
         self._animate_thread = None
 
