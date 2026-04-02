@@ -403,12 +403,12 @@ class ProgressBar(ipw.HBox):
         if self._animate_thread is not None:
             raise RuntimeError("Cannot start animation more than once!")
 
-        self._animate_thread = Thread(target=self._animate)
+        self._animate_thread = Thread(target=self._animate, daemon=True)
         self._animate_thread.start()
 
     def _stop_animate(self):
         self._animate_stop_event.set()
-        self._animate_thread.join()
+        self._animate_thread.join(timeout=1)
         self._animate_stop_event.clear()
         self._animate_thread = None
 
@@ -1571,3 +1571,21 @@ class ShakeNBreakEditor(ipw.VBox):
             atoms = pymatgen_ase.get_atoms(struc_distorted)
         atoms.set_pbc(periodicity)
         self.structure = atoms
+
+
+class WarningWidget(ipw.HTML):
+    message = traitlets.Unicode()
+
+    _TEMPLATE = """
+        <div class="alert alert-danger" style="text-align: center; margin-bottom: 0;">
+            <b>{message}</b>
+        </div>
+    """
+
+    def __init__(self, message: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.message = message
+
+    @traitlets.observe("message")
+    def _update_message(self, change: dict):
+        self.value = self._TEMPLATE.format(message=change["new"])
