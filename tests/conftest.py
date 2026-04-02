@@ -14,15 +14,16 @@ from aiida.manage.manager import get_manager
 from aiida.orm.utils.serialize import serialize
 from aiida.plugins import DataFactory, OrbitalFactory
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-from aiidalab_qe.app.configuration.advanced.smearing import (
+from aiidalab_qe.app.configuration.advanced import (
+    AdvancedConfigurationSettingsModel,
+    ConvergenceConfigurationSettingsModel,
+    GeneralConfigurationSettingsModel,
+    MagnetizationConfigurationSettingsModel,
+    PseudosConfigurationSettingsModel,
     SmearingConfigurationSettingsModel,
-    SmearingConfigurationSettingsPanel,
 )
-from aiidalab_qe.app.configuration.basic import (
-    BasicConfigurationSettingsModel,
-    BasicConfigurationSettingsPanel,
-)
-from aiidalab_qe.app.wizard_app import WizardApp
+from aiidalab_qe.app.configuration.basic import BasicConfigurationSettingsModel
+from aiidalab_qe.app.wizard import Wizard, WizardModel
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
@@ -49,6 +50,36 @@ CUTOFFS = {
     }
     for element in ELEMENTS
 }
+
+
+def _terminate_process_monitor(wizard: Wizard | None):
+    from contextlib import suppress
+
+    if wizard is None:
+        return
+
+    with suppress(Exception):
+        wizard.results_model.process_uuid = None
+
+    if not hasattr(wizard.results_step, "process_monitor"):
+        return
+
+    process_monitor = wizard.results_step.process_monitor
+    if process_monitor is None:
+        return
+
+    with suppress(Exception):
+        process_monitor.value = None
+    monitor_stop = getattr(process_monitor, "_monitor_thread_stop", None)
+    monitor_thread = getattr(process_monitor, "_monitor_thread", None)
+    if monitor_stop is not None:
+        with suppress(Exception):
+            monitor_stop.set()
+    if monitor_thread is not None:
+        with suppress(Exception):
+            monitor_thread.join(timeout=2)
+    with suppress(Exception):
+        process_monitor.join()
 
 
 def pytest_addoption(parser):
@@ -355,58 +386,32 @@ def projwfc_code(generate_code):
     return generate_code("projwfc")
 
 
-@pytest.fixture()
-def workchain_settings_generator():
-    """Return a function that generates a workchain settings dictionary."""
-
-    def _workchain_settings_generator(**kwargs):
-        model = BasicConfigurationSettingsModel()
-        workchain_settings = BasicConfigurationSettingsPanel(model=model)
-        workchain_settings._update_settings(**kwargs)
-        return workchain_settings
-
-    return _workchain_settings_generator
-
-
-@pytest.fixture()
-def smearing_settings_generator():
-    """Return a function that generates a smearing settings dictionary."""
-
-    def _smearing_settings_generator(**kwargs):
-        model = SmearingConfigurationSettingsModel()
-        smearing_settings = SmearingConfigurationSettingsPanel(model=model)
-        smearing_settings.update_settings(**kwargs)
-        return smearing_settings
-
-    return _smearing_settings_generator
-
-
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code):
+def wizard(pw_code, dos_code, projwfc_code):
     # Assign test codes as defaults
     DEFAULTS = t.cast(dict, DEFAULT_PARAMETERS)
     DEFAULTS["codes"]["pw"]["code"] = pw_code.full_label
     DEFAULTS["codes"]["dos"]["code"] = dos_code.full_label
     DEFAULTS["codes"]["projwfc"]["code"] = projwfc_code.full_label
 
-    app = WizardApp(auto_setup=False)
+    model = WizardModel()
+    wizard = Wizard(model=model, auto_setup=False)
 
     # Since we use `auto_setup=False`, which will skip the pseudo library
     # installation, we need to mock set the installation status to `True` to
     # avoid the blocker message pop up in the submission step.
-    app.structure_model.installing_sssp = False
-    app.structure_model.sssp_installed = True
-    app.submit_model.installing_qe = False
-    app.submit_model.qe_installed = True
+    wizard.structure_model.installing_sssp = False
+    wizard.structure_model.sssp_installed = True
+    wizard.submit_model.installing_qe = False
+    wizard.submit_model.qe_installed = True
 
-    yield app
+    yield wizard
+
+    _terminate_process_monitor(wizard)
 
 
 @pytest.fixture()
-def submit_app_generator(
-    app: WizardApp,
-    generate_structure_data,
-):
+def submit_app_generator(wizard: Wizard, generate_structure_data):
     """Return a function that generates a submit step widget."""
 
     def _submit_app_generator(
@@ -423,8 +428,8 @@ def submit_app_generator(
         initial_magnetic_moments=0.0,
         electron_maxstep=80,
     ):
-        app.structure_model.structure_uuid = generate_structure_data().uuid
-        app.structure_model.confirm()
+        wizard.structure_model.structure_uuid = generate_structure_data().uuid
+        wizard.structure_model.confirm()
 
         parameters = {
             "workchain": {
@@ -435,54 +440,69 @@ def submit_app_generator(
                 "protocol": workchain_protocol,
             }
         }
-        app.configure_model.set_model_state(parameters)
+        wizard.configure_model.set_model_state(parameters)
 
-        advanced_model = app.configure_model.get_model("advanced")
+        advanced_model = t.cast(
+            AdvancedConfigurationSettingsModel,
+            wizard.configure_model.get_model("advanced"),
+        )
 
-        general_model = advanced_model.get_model("general")
+        general_model = t.cast(
+            GeneralConfigurationSettingsModel,
+            advanced_model.get_model("general"),
+        )
         general_model.total_charge = tot_charge
         general_model.van_der_waals = vdw_corr
 
-        convergence_model = advanced_model.get_model("convergence")
+        convergence_model = t.cast(
+            ConvergenceConfigurationSettingsModel,
+            advanced_model.get_model("convergence"),
+        )
         convergence_model.electron_maxstep = electron_maxstep
         convergence_model.kpoints_distance = kpoints_distance
 
-        smearing_model = advanced_model.get_model("smearing")
+        smearing_model = t.cast(
+            SmearingConfigurationSettingsModel,
+            advanced_model.get_model("smearing"),
+        )
         smearing_model.type = smearing
         smearing_model.degauss = degauss
 
         if isinstance(initial_magnetic_moments, (int, float)):
             initial_magnetic_moments = [initial_magnetic_moments]
 
-        magnetization_model = advanced_model.get_model("magnetization")
+        magnetization_model = t.cast(
+            MagnetizationConfigurationSettingsModel,
+            advanced_model.get_model("magnetization"),
+        )
         magnetization_model.moments = dict(
             zip(
-                app.configure_model.input_structure.get_kind_names(),
+                wizard.configure_model.input_structure.get_kind_names(),
                 initial_magnetic_moments,
             )
         )
 
-        app.configure_model.confirm()
+        wizard.configure_model.confirm()
 
-        global_resources_model = app.submit_model.get_model("global")
+        global_resources_model = wizard.submit_model.get_model("global")
         global_resources_model.get_model("quantumespresso__pw").num_cpus = 2
 
-        return app
+        return wizard
 
     return _submit_app_generator
 
 
 @pytest.fixture
-def app_to_submit(app: WizardApp, generate_structure_data):
+def app_to_submit(wizard: Wizard, generate_structure_data):
     # Step 1: select structure from example
-    app.structure_model.structure_uuid = generate_structure_data().uuid
-    app.structure_model.confirm()
+    wizard.structure_model.structure_uuid = generate_structure_data().uuid
+    wizard.structure_model.confirm()
     # Step 2: configure calculation
     # TODO do we need to include bands and pdos here?
-    app.configure_model.get_model("bands").include = True
-    app.configure_model.get_model("pdos").include = True
-    app.configure_model.confirm()
-    yield app
+    wizard.configure_model.get_model("bands").include = True
+    wizard.configure_model.get_model("pdos").include = True
+    wizard.configure_model.confirm()
+    yield wizard
 
 
 @pytest.fixture
@@ -688,7 +708,7 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app: WizardApp,
+    wizard: Wizard,
     projwfc_code,
     generate_structure_data,
     generate_workchain,
@@ -715,26 +735,36 @@ def generate_qeapp_workchain(
         else:
             structure.store()
 
-        app.structure_model.structure_uuid = structure.uuid
-        app.structure_model.confirm()
+        wizard.structure_model.structure_uuid = structure.uuid
+        wizard.structure_model.confirm()
 
         # step 2 configure
-        workchain_model = app.configure_model.get_model("workchain")
-        advanced_model = app.configure_model.get_model("advanced")
+        basic_model = t.cast(
+            BasicConfigurationSettingsModel,
+            wizard.configure_model.get_model("workchain"),
+        )
 
-        app.configure_model.relax_type = relax_type
+        wizard.configure_model.relax_type = relax_type
 
         # In order to prepare complete inputs, I set all the properties to true
         # this can be overridden later
-        app.configure_model.get_model("bands").include = run_bands
-        app.configure_model.get_model("pdos").include = run_pdos
+        wizard.configure_model.get_model("bands").include = run_bands
+        wizard.configure_model.get_model("pdos").include = run_pdos
 
-        workchain_model.protocol = "fast"
-        workchain_model.spin_type = spin_type
-        workchain_model.electronic_type = electronic_type
+        basic_model.protocol = "fast"
+        basic_model.spin_type = spin_type
+        basic_model.electronic_type = electronic_type
+
+        advanced_model = t.cast(
+            AdvancedConfigurationSettingsModel,
+            wizard.configure_model.get_model("advanced"),
+        )
 
         if spin_type == "collinear":
-            magnetization_model = advanced_model.get_model("magnetization")
+            magnetization_model = t.cast(
+                MagnetizationConfigurationSettingsModel,
+                advanced_model.get_model("magnetization"),
+            )
             if electronic_type == "insulator":
                 magnetization_model.total = tot_magnetization
             elif magnetization_type == "starting_magnetization":
@@ -749,16 +779,20 @@ def generate_qeapp_workchain(
             else:
                 magnetization_model.total = tot_magnetization
 
-        pseudos = advanced_model.get_model("pseudos")
+        pseudos = t.cast(
+            PseudosConfigurationSettingsModel,
+            advanced_model.get_model("pseudos"),
+        )
         pseudos.functional = functional
 
-        app.configure_model.confirm()
+        wizard.configure_model.confirm()
 
         # step 3 setup code and resources
-        global_resources_model = app.submit_model.get_model("global")
+        global_resources_model = wizard.submit_model.get_model("global")
         global_resources_model.get_model("quantumespresso__pw").num_cpus = 4
-        parameters = app.submit_model.get_model_state()
-        builder = app.submit_model._create_builder(parameters)
+        parameters = shallow_copy_nested_dict(wizard.submit_model.input_parameters)
+        parameters |= {"codes": wizard.submit_model.get_model_state()}
+        builder = wizard.submit_model._create_builder(parameters)
 
         inputs = builder._inputs()
         if "relax" in inputs:
@@ -797,7 +831,7 @@ def generate_qeapp_workchain(
 
         # mock output
         if relax_type != "none":
-            workchain.out("structure", app.structure_model.input_structure)
+            workchain.out("structure", wizard.structure_model.input_structure)
 
         if run_pdos:
             pdos = generate_pdos_workchain(structure, spin_type)

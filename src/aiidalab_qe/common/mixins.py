@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import typing as t
 import warnings
 
@@ -20,10 +21,8 @@ class HasInputStructure(tl.HasTraits):
     def input_structure(self) -> StructureType | None:
         if not self.structure_uuid:
             return None
-        try:
+        with contextlib.suppress(NotExistent):
             return t.cast(StructureType, orm.load_node(self.structure_uuid))
-        except NotExistent:
-            return None
 
     @property
     def has_structure(self):
@@ -123,18 +122,16 @@ class HasProcess(tl.HasTraits):
     def process(self) -> orm.WorkChainNode | None:
         if not self.process_uuid:
             return None
-        try:
+        with contextlib.suppress(NotExistent):
             return t.cast(orm.WorkChainNode, orm.load_node(self.process_uuid))
-        except NotExistent:
-            return None
 
     @property
     def has_process(self):
         return self.process is not None
 
     @property
-    def inputs(self) -> orm.NodeLinksManager | list:
-        return self.process.inputs if self.has_process else []
+    def inputs(self) -> orm.NodeLinksManager | None:
+        return self.process.inputs if self.has_process else None
 
     @property
     def properties(self) -> list:
@@ -147,8 +144,8 @@ class HasProcess(tl.HasTraits):
         )
 
     @property
-    def outputs(self):
-        return self.process.outputs if self.has_process else []
+    def outputs(self) -> orm.NodeLinksManager | None:
+        return self.process.outputs if self.has_process else None
 
 
 class Confirmable(tl.HasTraits):
@@ -190,7 +187,7 @@ class HasBlockers(tl.HasTraits):
         if self.is_blocked:
             formatted = "\n".join(f"<li>{item}</li>" for item in self.blockers)
             self.blocker_messages = f"""
-                <div class="alert alert-danger">
+                <div class="alert alert-danger" style="margin-top: 8px;">
                     <b>The step is blocked due to the following reason(s):</b>
                     <ul>
                         {formatted}
