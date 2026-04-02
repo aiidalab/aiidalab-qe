@@ -1,14 +1,14 @@
 from aiidalab_qe.app.configuration.advanced import (
     AdvancedConfigurationSettingsModel,
     AdvancedConfigurationSettingsPanel,
-)
-from aiidalab_qe.app.configuration.advanced.convergence import (
     ConvergenceConfigurationSettingsModel,
     ConvergenceConfigurationSettingsPanel,
-)
-from aiidalab_qe.app.configuration.advanced.general import (
     GeneralConfigurationSettingsModel,
     GeneralConfigurationSettingsPanel,
+    HubbardConfigurationSettingsModel,
+    HubbardConfigurationSettingsPanel,
+    MagnetizationConfigurationSettingsModel,
+    MagnetizationConfigurationSettingsPanel,
 )
 
 
@@ -165,10 +165,6 @@ def test_advanced_smearing_settings():
 
 def test_advanced_hubbard_settings(generate_structure_data):
     """Test Hubbard widget."""
-    from aiidalab_qe.app.configuration.advanced.hubbard import (
-        HubbardConfigurationSettingsModel,
-        HubbardConfigurationSettingsPanel,
-    )
 
     model = HubbardConfigurationSettingsModel()
     hubbard = HubbardConfigurationSettingsPanel(model=model)
@@ -230,10 +226,6 @@ def test_advanced_hubbard_settings(generate_structure_data):
 def test_advanced_magnetic_settings(generate_structure_data):
     """Test Magnetization widget."""
     from aiida.orm import StructureData
-    from aiidalab_qe.app.configuration.advanced.magnetization import (
-        MagnetizationConfigurationSettingsModel,
-        MagnetizationConfigurationSettingsPanel,
-    )
     from aiidalab_qe.app.configuration.advanced.pseudos.utils import (
         get_pseudo_family_by_label,
     )

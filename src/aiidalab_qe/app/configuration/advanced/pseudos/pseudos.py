@@ -33,8 +33,12 @@ class PseudosConfigurationSettingsPanel(
             "spin_orbit",
         )
         self._model.observe(
-            self._on_family_parameters_change,
-            ["library", "functional"],
+            self._on_functional_change,
+            "functional",
+        )
+        self._model.observe(
+            self._on_library_change,
+            "library",
         )
         self._model.observe(
             self._on_functionals_change,
@@ -51,10 +55,6 @@ class PseudosConfigurationSettingsPanel(
         self._model.observe(
             self._on_cutoffs_change,
             "cutoffs",
-        )
-        self._model.observe(
-            self._on_show_upload_warning_change,
-            "show_upload_warning",
         )
 
     def render(self):
@@ -82,6 +82,11 @@ class PseudosConfigurationSettingsPanel(
             (self._model, "functional"),
             (self.functional, "value"),
         )
+        ipw.dlink(
+            (self._model, "functionals"),
+            (self._model, "functional"),
+            lambda functionals: functionals[0] if len(set(functionals)) == 1 else None,
+        )
 
         self.library = ipw.ToggleButtons(style={"button_width": "fit-content"})
         ipw.dlink(
@@ -93,7 +98,7 @@ class PseudosConfigurationSettingsPanel(
             (self.library, "value"),
         )
 
-        self.setter_widget = ipw.VBox()
+        self.pseudos_list = ipw.VBox()
 
         self.ecutwfc = ipw.FloatText(
             description="Wavefunction",
@@ -137,6 +142,11 @@ class PseudosConfigurationSettingsPanel(
             layout=ipw.Layout(
                 display="block" if self._model.show_upload_warning else "none",
             ),
+        )
+        ipw.dlink(
+            (self._model, "show_upload_warning"),
+            (self._warning_message.layout, "display"),
+            lambda show: "block" if show else "none",
         )
 
         self.children = [
@@ -190,7 +200,7 @@ class PseudosConfigurationSettingsPanel(
                     </ul>
                 </div>
             """),
-            self.setter_widget,
+            self.pseudos_list,
             ipw.HTML("<h4>Cutoffs</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4;">
@@ -224,18 +234,16 @@ class PseudosConfigurationSettingsPanel(
     def _on_spin_orbit_change(self, _):
         self._model.update_library_options()
 
-    def _on_family_parameters_change(self, _):
+    def _on_functional_change(self, _):
         self._model.update_family()
-        self._model.update_family_header()
         self._model.update_functionals()
+
+    def _on_library_change(self, _):
+        self._model.update_family_header()
+        self._model.update_family()
         self._model.update_blockers()
 
     def _on_functionals_change(self, _):
-        self._model.functional = (
-            self._model.functionals[0]  # type: ignore
-            if len(set(self._model.functionals)) == 1
-            else None
-        )
         self._model.update_blockers()
 
     def _on_family_change(self, _):
@@ -250,29 +258,15 @@ class PseudosConfigurationSettingsPanel(
         self._model.ecutwfc = max(cutoffs[0])
         self._model.ecutrho = max(cutoffs[1])
 
-    def _on_show_upload_warning_change(self, change):
-        if not self.rendered:
-            return
-        self._warning_message.layout.display = "block" if change["new"] else "none"
-
-    def update(self, specific=""):
-        if self._model.updated:
-            return
-        self._show_loading()
-        if not self._model.locked or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_setter_widgets()
-        self._model.update_library_options()
+    def _update(self):
+        self._build_pseudos_list()
         self._model.update_family_header()
-        self._model.updated = True
 
-    def _show_loading(self):
-        if self.rendered:
-            self.setter_widget.children = [self.loading_message]
-
-    def _build_setter_widgets(self):
+    def _build_pseudos_list(self):
         if not self.rendered:
             return
+
+        self.pseudos_list.children = [self.loading_message]
 
         children = []
 
@@ -355,4 +349,4 @@ class PseudosConfigurationSettingsPanel(
 
             children.append(uploader)
 
-        self.setter_widget.children = children
+        self.pseudos_list.children = children
