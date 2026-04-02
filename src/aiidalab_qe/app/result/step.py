@@ -8,8 +8,8 @@ from aiidalab_widgets_base import ProcessMonitor
 
 from .components import ResultsComponent
 from .components.status import WorkChainStatusModel, WorkChainStatusPanel
-from .components.summary import WorkChainSummary, WorkChainSummaryModel
-from .components.viewer import WorkChainResultsViewer, WorkChainResultsViewerModel
+from .components.summary import WorkflowSummary, WorkflowSummaryModel
+from .components.viewer import WorkflowResultsViewer, WorkflowResultsViewerModel
 from .model import ResultsStepModel
 
 
@@ -24,12 +24,12 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
     ):
         super().__init__(model=model, **kwargs)
 
-        summary_model = WorkChainSummaryModel()
-        self.summary_panel = WorkChainSummary(model=summary_model)
+        summary_model = WorkflowSummaryModel()
+        self.summary_panel = WorkflowSummary(model=summary_model)
         self._model.add_model("summary", summary_model)
 
-        results_model = WorkChainResultsViewerModel()
-        self.results_panel = WorkChainResultsViewer(model=results_model)
+        results_model = WorkflowResultsViewerModel()
+        self.results_panel = WorkflowResultsViewer(model=results_model)
         self._model.add_model("results", results_model)
 
         status_model = WorkChainStatusModel()
