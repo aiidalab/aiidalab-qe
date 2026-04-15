@@ -14,20 +14,12 @@ from aiida.manage.manager import get_manager
 from aiida.orm.utils.serialize import serialize
 from aiida.plugins import DataFactory, OrbitalFactory
 from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-from aiidalab_qe.app.configuration.advanced import AdvancedConfigurationSettingsModel
-from aiidalab_qe.app.configuration.advanced.convergence import (
+from aiidalab_qe.app.configuration.advanced import (
+    AdvancedConfigurationSettingsModel,
     ConvergenceConfigurationSettingsModel,
-)
-from aiidalab_qe.app.configuration.advanced.general import (
     GeneralConfigurationSettingsModel,
-)
-from aiidalab_qe.app.configuration.advanced.magnetization import (
     MagnetizationConfigurationSettingsModel,
-)
-from aiidalab_qe.app.configuration.advanced.pseudos import (
     PseudosConfigurationSettingsModel,
-)
-from aiidalab_qe.app.configuration.advanced.smearing import (
     SmearingConfigurationSettingsModel,
 )
 from aiidalab_qe.app.configuration.basic import BasicConfigurationSettingsModel

@@ -138,11 +138,9 @@ class HasProcess(tl.HasTraits):
 
     @property
     def properties(self) -> list:
-        # read the attributes directly instead of using the `get_list` method
-        # to avoid error in case of the orm.List object being converted to a orm.Data object
         return (
             self.inputs.properties.base.attributes.get("list")
-            if self.has_process
+            if self.inputs and "properties" in self.inputs
             else []
         )
 
@@ -190,7 +188,7 @@ class HasBlockers(tl.HasTraits):
         if self.is_blocked:
             formatted = "\n".join(f"<li>{item}</li>" for item in self.blockers)
             self.blocker_messages = f"""
-                <div class="alert alert-danger">
+                <div class="alert alert-danger" style="margin-top: 8px;">
                     <b>The step is blocked due to the following reason(s):</b>
                     <ul>
                         {formatted}
