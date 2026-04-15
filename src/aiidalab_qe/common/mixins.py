@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import typing as t
 import warnings
 
@@ -21,8 +20,10 @@ class HasInputStructure(tl.HasTraits):
     def input_structure(self) -> StructureType | None:
         if not self.structure_uuid:
             return None
-        with contextlib.suppress(NotExistent):
+        try:
             return t.cast(StructureType, orm.load_node(self.structure_uuid))
+        except NotExistent:
+            return None
 
     @property
     def has_structure(self):
@@ -122,8 +123,10 @@ class HasProcess(tl.HasTraits):
     def process(self) -> orm.WorkChainNode | None:
         if not self.process_uuid:
             return None
-        with contextlib.suppress(NotExistent):
+        try:
             return t.cast(orm.WorkChainNode, orm.load_node(self.process_uuid))
+        except NotExistent:
+            return None
 
     @property
     def has_process(self):
@@ -135,11 +138,9 @@ class HasProcess(tl.HasTraits):
 
     @property
     def properties(self) -> list:
-        # read the attributes directly instead of using the `get_list` method
-        # to avoid error in case of the orm.List object being converted to a orm.Data object
         return (
             self.inputs.properties.base.attributes.get("list")
-            if self.has_process
+            if self.inputs and "properties" in self.inputs
             else []
         )
 

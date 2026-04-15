@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import contextlib
-
 import traitlets as tl
 from ase.formula import Formula
 
@@ -59,10 +57,10 @@ class StructureResultsModel(ResultsModel):
         self.selected_view = "relaxed" if self.selected_view == "initial" else "initial"
 
     def _get_structure(self) -> orm.StructureData | None:
-        if not self.source:
-            return None
-        with contextlib.suppress(AttributeError):
+        try:
             return self.source.structure if self.source else None
+        except AttributeError:
+            return None
 
     def _get_structure_info(self):
         structure = self.structure
