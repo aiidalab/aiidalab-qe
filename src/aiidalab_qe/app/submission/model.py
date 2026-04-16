@@ -188,7 +188,6 @@ class SubmissionStepModel(
         parameters = shallow_copy_nested_dict(self.input_parameters)
         parameters |= {"codes": self.get_model_state()}
         builder = self._create_builder(parameters)
-
         with self.hold_trait_notifications():
             process_node = submit(builder)
 
@@ -234,7 +233,7 @@ class SubmissionStepModel(
 
         codes = parameters["codes"]["global"]["codes"]
         if "relax" in builder:
-            builder.relax.base.pw.metadata.options.resources = {
+            builder.relax.base_relax.pw.metadata.options.resources = {
                 "num_machines": codes.get("quantumespresso__pw")["nodes"],
                 "num_mpiprocs_per_machine": codes.get("quantumespresso__pw")[
                     "ntasks_per_node"
@@ -243,10 +242,11 @@ class SubmissionStepModel(
                     "cpus_per_task"
                 ],
             }
+            print(builder.relax.base_relax.pw.metadata.options.resources, flush=True)
             mws = codes.get("quantumespresso__pw")["max_wallclock_seconds"]
-            builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = mws
+            builder.relax.base_relax.pw.metadata.options["max_wallclock_seconds"] = mws
             parallelization = codes["quantumespresso__pw"]["parallelization"]
-            builder.relax.base.pw.parallelization = orm.Dict(dict=parallelization)
+            builder.relax.base_relax.pw.parallelization = orm.Dict(dict=parallelization)
 
         return builder
 

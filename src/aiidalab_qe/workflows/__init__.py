@@ -140,16 +140,16 @@ class QeAppWorkChain(WorkChain):
 
         # relax
         relax_overrides = {
-            "base": parameters["advanced"],
-            "base_final_scf": parameters["advanced"],
+            "base_relax": parameters["advanced"],
+           # "base_final_scf": parameters["advanced"],
         }
         # nsteps only for relaxation workflow
-        relax_overrides["base"]["pw"]["parameters"]["CONTROL"]["nstep"] = parameters[
+        relax_overrides["base_relax"]["pw"]["parameters"]["CONTROL"]["nstep"] = parameters[
             "advanced"
         ]["optimization_maxsteps"]
-        relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
-            parameters["advanced"]["optimization_maxsteps"]
-        )
+        #relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
+        #    parameters["advanced"]["optimization_maxsteps"]
+        #)
 
         protocol = parameters["workchain"]["protocol"]
 
@@ -169,11 +169,11 @@ class QeAppWorkChain(WorkChain):
                 overrides=relax_overrides,
                 **kwargs,
             )
-            enable_pencil_decomposition(relax_builder.base.pw)
+            enable_pencil_decomposition(relax_builder.base_relax.pw)
             # pop the inputs that are excluded from the expose_inputs
             relax_builder.pop("structure", None)
             relax_builder.pop("clean_workdir", None)
-            relax_builder.pop("base_final_scf", None)  # never run a final scf
+            relax_builder.pop("base_init_relax", None)  # never run a final scf
             builder.relax = relax_builder
         else:
             builder.pop("relax")
