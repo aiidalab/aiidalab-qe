@@ -1,57 +1,102 @@
 <div id="about">
+  <section id="general">
+    <h3>About the Quantum ESPRESSO (QE) app</h3>
     <p>
-      The Quantum ESPRESSO app (or QE app for short) is a graphical front end for calculating materials properties using
-      <a href="https://www.quantum-espresso.org/" target="_blank">Quantum ESPRESSO</a> (QE).
-      Each property is calculated by workflows powered by the <a href="https://www.aiida.net/" target="_bland">AiiDA</a>
-      engine, and maintained in the <a href="https://aiida-quantumespresso.readthedocs.io/en/latest/"
-        target="_blank">aiida-quantumespresso</a> plugin and many other plugins developed by the AiiDA community.
+      The Quantum ESPRESSO (QE) app is a graphical user interface for computing
+      materials properties using the
+      <a href="https://www.quantum-espresso.org/" target="_blank"
+        >Quantum ESPRESSO</a
+      >
+      simulation package. It enables users to run complex simulations through
+      automated, reproducible workflows powered by the
+      <a href="https://www.aiida.net/" target="_bland">AiiDA</a>
+      engine. These workflows are maintained by the AiiDA team via the
+      <a
+        href="https://aiida-quantumespresso.readthedocs.io/en/latest/"
+        target="_blank"
+        >aiida-quantumespresso</a
+      >
+      plugin. and are further extended by a growing ecosystem of
+      community-developed plugins.
     </p>
-    <p>
-      The QE app allows you to calculate properties in a simple 4-step process:
-    </p>
+    <p>The app guides you through the following steps:</p>
     <ol>
+      <li>⚛️ <b>Step 1:</b> Select the structure of interest.</li>
       <li>
-        🔍 <strong>Step 1:</strong> Select the structure you want to run.
+        ⚙️ <b>Step 2:</b> Select the properties of interest and configure their
+        calculation parameters.
       </li>
       <li>
-        ⚙️ <strong>Step 2:</strong> Select the properties you are interested in.
+        💻 <b>Step 3:</b> Choose computational resources and submit your
+        workflow.
       </li>
-      <li>
-        💻 <strong>Step 3:</strong> Choose the computational resources you want to run on and submit your workflow.
-      </li>
-      <li>
-        🚀 <strong>Step 4:</strong> Monitor and view your workflow results.
-      </li>
+      <li>🚀 <b>Step 4:</b> Monitor and view your workflow results.</li>
     </ol>
+    <p>We provide the following tools at the top of the app:</p>
+    <ul>
+      <li>
+        <b><i class="fa fa-list"></i> Calculation history</b>: View a history of
+        submitted workflows.
+      </li>
+      <li>
+        <b><i class="fa fa-puzzle-piece"></i> Plugin manager</b>: Manage
+        community-developed plugins.
+      </li>
+      <li>
+        <b><i class="fa fa-database"></i> Setup resources</b>: Manage your
+        computational resources.
+      </li>
+      <li>
+        <b><i class="fa fa-plus-circle"></i> New calculation</b>: Start a new
+        calculation in a new tab.
+      </li>
+      <li>
+        <b><i class="fa fa-clone"></i> Duplicate</b>: Copy the current settings
+        in a new tab (great for running similar calculations with minor
+        modifications).
+      </li>
+    </ul>
+  </section>
+  <section id="tutorials">
+    <h3>Tutorials</h3>
     <p>
-      New users can go straight to the first step and select their structure.
+      Follow the
+      <a
+        href="https://aiidalab-qe.readthedocs.io/tutorials/basic.html"
+        target="_blank"
+        >basic</a
+      >
+      tutorial to get started with the Quantum ESPRESSO app, or try out the
+      <a
+        href="https://aiidalab-qe.readthedocs.io/tutorials/advanced.html"
+        target="_blank"
+        >advanced</a
+      >
+      tutorial to learn additional features offered by the app. In addition, we
+      maintain several
+      <a
+        href="https://aiidalab-qe.readthedocs.io/howto/in_app_guides.html"
+        target="_blank"
+        >in-app guides</a
+      >
+      to help you get started with the app. Community plugins (installable via
+      the
+      <b>Plugin manager</b>) may provide additional guides. To access the
+      guides, click on the <b><i class="fa fa-book"></i> Tutorials</b> button at
+      the top of the app.
     </p>
-    <p>
-      Completed workflows can be viewed in the <strong>Calculation history</strong> section.
-    </p>
-    <p>
-      To start a new calculation in a separate tab, click the <strong>New calculation</strong> button.
-    </p>
-    <p>
-      You can also check out the
-      <a href="https://aiidalab-qe.readthedocs.io/tutorials/basic.html" target="_blank">basic</a> tutorial to get
-      started
-      with the Quantum ESPRESSO app, or try out the
-      <a href="https://aiidalab-qe.readthedocs.io/tutorials/advanced.html" target="_blank">advanced</a> tutorial to
-      learn
-      additional features offered by the app.
-    </p>
-    <p>
-      For a more in-depth dive into the app's features, please refer to the
-      <a href="https://aiidalab-qe.readthedocs.io/howto/index.html" target="_blank">how-to guides</a>.
-    </p>
-    <div class="alert alert-success">
-      <h4>Cite</h4>
-      If you use the AiiDAlab QE app in your work, please cite:
-      <div style="padding: 6px 20px 0;">
-        Wang, X., Bainglass, E., Bonacci, M., Ortega-Guerrero, A. et al.<br />
-        Making atomistic materials calculations accessible with the AiiDAlab Quantum ESPRESSO app<br />
-        <em>npj. Comput. Mater.</em> <b>12</b>, 72 (2026). <a href="https://doi.org/10.1038/s41524-025-01936-4" target="_blank">https://doi.org/10.1038/s41524-025-01936-4</a>
-      </div>
+  </section>
+  <section id="cite">
+    <h3>How to cite</h3>
+    If you use the AiiDAlab QE app in your work, please cite:
+    <div style="padding: 8px 24px 0">
+      Wang, X., Bainglass, E., Bonacci, M., Ortega-Guerrero, A. et al.<br />
+      Making atomistic materials calculations accessible with the AiiDAlab
+      Quantum ESPRESSO app<br />
+      <em>npj. Comput. Mater.</em> <b>12</b>, 72 (2026).
+      <a href="https://doi.org/10.1038/s41524-025-01936-4" target="_blank"
+        >https://doi.org/10.1038/s41524-025-01936-4</a
+      >
     </div>
+  </section>
 </div>

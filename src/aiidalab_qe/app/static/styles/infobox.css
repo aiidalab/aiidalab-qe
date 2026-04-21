@@ -11,13 +11,22 @@
 .info-box.in-app-guide.show {
   display: flex !important;
 }
+#about {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+#about p,
 #about ol {
-  margin-top: 5px;
+  margin: 0.5rem 0;
+}
+#about p {
+  line-height: 1.5;
+}
+#about ol,
+#about ul {
   list-style: none;
   line-height: 2;
-}
-#about p:last-of-type {
-  margin-bottom: 0.5em;
 }
 .in-app-guide:has(#guide-header),
 .in-app-guide:has(#post-guide) {
