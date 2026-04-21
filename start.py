@@ -22,10 +22,6 @@ def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
             details[open] summary::before {{
                 content: "▼";
             }}
-            #citation {{
-                line-height: 1.5;
-                padding: 0 2rem 1rem;
-            }}
         </style>
         <div class="app-container">
             <a
@@ -94,12 +90,4 @@ def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
             </div>
 
         </div>
-        <details>
-            <summary>&nbsp; If you use the AiiDAlab QE app in your work, click here for the citation</summary>
-            <div id="citation">
-                Wang, X., Bainglass, E., Bonacci, M., Ortega-Guerrero, A. et al.<br />
-                Making atomistic materials calculations accessible with the AiiDAlab Quantum ESPRESSO app<br />
-                <em>npj. Comput. Mater.</em> <b>12</b>, 72 (2026). <a href="https://doi.org/10.1038/s41524-025-01936-4" target="_blank">https://doi.org/10.1038/s41524-025-01936-4</a>
-            </div>
-        </details>
     """)
