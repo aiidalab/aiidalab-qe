@@ -33,7 +33,7 @@
   border-left: 2px solid var(--jp-border-color1);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 992px) {
   .app-controls {
     flex-direction: column;
   }

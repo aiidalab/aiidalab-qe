@@ -309,6 +309,13 @@ class AppView(ipw.VBox):
             tooltip="View a list of previous calculations",
         )
 
+        self.plugin_manager_link = LinkButton(
+            description="Plugin manager",
+            link="./plugin_manager.ipynb",
+            icon="puzzle-piece",
+            tooltip="Manage community-developed plugins that extend the app's functionality",
+        )
+
         self.setup_resources_link = LinkButton(
             description="Setup resources",
             link="../home/code_setup.ipynb",
@@ -333,6 +340,7 @@ class AppView(ipw.VBox):
         self.external_links = ipw.HBox(
             children=[
                 self.calculation_history_link,
+                self.plugin_manager_link,
                 self.setup_resources_link,
                 self.new_workflow_link,
                 self.duplicate_workflow_link,
