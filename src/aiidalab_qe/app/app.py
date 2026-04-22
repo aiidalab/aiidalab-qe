@@ -302,6 +302,20 @@ class AppView(ipw.VBox):
 
         subtitle = ipw.HTML("<h3 id='subtitle'>🎉 Happy computing 🎉</h3>")
 
+        self.new_workflow_link = LinkButton(
+            description="New calculation",
+            link="./qe.ipynb",
+            icon="plus-circle",
+            tooltip="Open a new calculation in a separate tab",
+        )
+
+        self.duplicate_workflow_link = LinkButton(
+            description="Duplicate",
+            link="./qe.ipynb?duplicating=True",
+            icon="clone",
+            tooltip="Duplicate calculation parameters in a separate tab",
+        )
+
         self.calculation_history_link = LinkButton(
             description="Calculation history",
             link="./calculation_history.ipynb",
@@ -323,27 +337,13 @@ class AppView(ipw.VBox):
             tooltip="Setup computational resources for your calculations",
         )
 
-        self.new_workflow_link = LinkButton(
-            description="New calculation",
-            link="./qe.ipynb",
-            icon="plus-circle",
-            tooltip="Open a new calculation in a separate tab",
-        )
-
-        self.duplicate_workflow_link = LinkButton(
-            description="Duplicate",
-            link="./qe.ipynb?duplicating=True",
-            icon="clone",
-            tooltip="Duplicate calculation parameters in a separate tab",
-        )
-
         self.external_links = ipw.HBox(
             children=[
+                self.new_workflow_link,
+                self.duplicate_workflow_link,
                 self.calculation_history_link,
                 self.plugin_manager_link,
                 self.setup_resources_link,
-                self.new_workflow_link,
-                self.duplicate_workflow_link,
             ],
         )
 
