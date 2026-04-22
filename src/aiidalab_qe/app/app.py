@@ -292,7 +292,7 @@ class AppView(ipw.VBox):
     def __init__(self) -> None:
         """`AppView` constructor."""
 
-        self.output = ipw.VBox()
+        self.output = ipw.Output()
 
         logo = ipw.Image(
             value=(files(images_folder) / "logo.png").read_bytes(),
