@@ -141,15 +141,15 @@ class QeAppWorkChain(WorkChain):
         # relax
         relax_overrides = {
             "base_relax": parameters["advanced"],
-           # "base_final_scf": parameters["advanced"],
+            # "base_final_scf": parameters["advanced"],
         }
         # nsteps only for relaxation workflow
-        relax_overrides["base_relax"]["pw"]["parameters"]["CONTROL"]["nstep"] = parameters[
-            "advanced"
-        ]["optimization_maxsteps"]
-        #relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
+        relax_overrides["base_relax"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
+            parameters["advanced"]["optimization_maxsteps"]
+        )
+        # relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
         #    parameters["advanced"]["optimization_maxsteps"]
-        #)
+        # )
 
         protocol = parameters["workchain"]["protocol"]
 
