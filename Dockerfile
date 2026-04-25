@@ -190,11 +190,13 @@ USER root
 # Build wannier90 for all arches, and build bader from source ONLY on arm64
 RUN set -ex; \
     apt-get update && apt-get install -y --no-install-recommends \
-    gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin; \
+    gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin libopenmpi-dev; \
     git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
     cd /tmp/wannier90; \
     cp config/make.inc.gfort make.inc; \
-    make wannier; \
+    echo "COMMS=mpi" >> make.inc; \
+    echo "MPIF90=mpif90" >> make.inc; \
+    make -j"$(nproc)" wannier; \
     cp wannier90.x /opt/conda/bin/wannier90.x; \
     \
     if [ "${TARGETARCH}" = "arm64" ]; then \
@@ -207,7 +209,7 @@ RUN set -ex; \
     else \
       echo "Skipping Bader build on AMD64 (installed via conda)."; \
     fi; \
-    apt-get remove --purge -y gfortran libblas-dev liblapack-dev && \
+    apt-get remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
