@@ -19,13 +19,6 @@ class GlobalResourceSettingsModel(
     title = "Global resources"
     identifier = "global"
 
-    dependencies = [
-        "structure_uuid",
-        "input_parameters",
-    ]
-
-    input_parameters = tl.Dict()
-
     plugin_overrides = tl.List(tl.Unicode())
     plugin_overrides_notification = tl.Unicode("")
 
@@ -33,6 +26,7 @@ class GlobalResourceSettingsModel(
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.dependencies.append("structure_uuid")
 
         self._RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
         self._RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD = 1000  # \AA^3
@@ -59,7 +53,9 @@ class GlobalResourceSettingsModel(
         for identifier, code_names in self.plugin_mapping.items():
             if identifier in properties:
                 for code_name in code_names:
-                    self.get_model(code_name).activate()
+                    code_model = self.get_model(code_name)
+                    if code_model.check_condition(self.input_parameters):
+                        code_model.activate()
 
     def update_plugin_overrides_notification(self):
         if self.plugin_overrides:
@@ -102,6 +98,7 @@ class GlobalResourceSettingsModel(
                     name=name,
                     description=name,
                     default_calc_job_plugin=default_calc_job_plugin,
+                    condition=code_model.check_condition,
                 )
             self.add_model(model_key, base_code_model)
 
@@ -238,7 +235,7 @@ class GlobalResourceSettingsModel(
             if identifier in properties:
                 for name in code_names:
                     code_model = self.get_model(name)
-                    if not code_model.is_ready:
+                    if code_model.is_active and code_model.selected is None:
                         blocker = True
                         yield message.format(
                             property=identifier,

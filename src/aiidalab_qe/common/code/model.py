@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import typing as t
+
 import ipywidgets as ipw
 import traitlets as tl
 
@@ -36,12 +40,14 @@ class CodeModel(Model):
         description,
         default_calc_job_plugin,
         code_widget_class=QEAppComputationalResourcesWidget,
+        condition: t.Callable[[dict], bool] | None = None,
     ):
         self.name = name
         self.description = description
         self.default_calc_job_plugin = default_calc_job_plugin
         self.code_widget_class = code_widget_class
-        self.is_rendered = False
+        self.is_widget_rendered = False
+        self._condition = condition or (lambda _: True)
 
         ipw.dlink(
             (self, "num_cpus"),
@@ -55,6 +61,9 @@ class CodeModel(Model):
     @property
     def first_option(self):
         return self.options[0][1] if self.options else None  # type: ignore
+
+    def check_condition(self, paramters: dict) -> bool:
+        return self._condition(paramters)
 
     def activate(self):
         self.is_active = True
