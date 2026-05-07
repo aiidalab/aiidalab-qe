@@ -291,6 +291,10 @@ class BandsWorkChain(WorkChain):
             builder.bands = builder_bands
 
         elif simulation_mode == "fat_bands":
+            if projwfc_code is None:
+                raise ValueError(
+                    "projwfc_code must be provided for fat bands simulation mode"
+                )
             builder_bands_projwfc = ProjwfcBandsWorkChain.get_builder_from_protocol(
                 pw_code,
                 projwfc_code,
