@@ -15,6 +15,11 @@ class BandsResourceSettingsModel(PluginResourceSettingsModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        def condition(parameters):
+            bands_params = parameters.get("bands", {})
+            return bands_params.get("projwfc_bands", False)
+
         self.add_models(
             {
                 "pw": PwCodeModel(
@@ -26,6 +31,7 @@ class BandsResourceSettingsModel(PluginResourceSettingsModel):
                     name="projwfc.x",
                     description="projwfc.x",
                     default_calc_job_plugin="quantumespresso.projwfc",
+                    condition=condition,
                 ),
             }
         )
