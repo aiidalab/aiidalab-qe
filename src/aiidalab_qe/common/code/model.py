@@ -15,7 +15,7 @@ from aiidalab_qe.common.widgets import (
 
 
 class CodeModel(Model):
-    is_active = tl.Bool(None, allow_none=True)
+    is_active = tl.Bool(False)
     options = tl.List(
         trait=tl.Tuple(tl.Unicode(), tl.Unicode()),  # code option (label, uuid)
         default_value=[],

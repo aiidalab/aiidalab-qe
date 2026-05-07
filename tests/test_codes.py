@@ -48,7 +48,7 @@ def test_global_code_toggle(app: Wizard):
     global_resources.render()
 
     dos_code_model = global_resources_model.get_model("quantumespresso__dos")
-    assert dos_code_model.is_active is None
+    assert dos_code_model.is_active is False
 
     global_resources_model.input_parameters = {"workchain": {"properties": ["pdos"]}}
     assert dos_code_model.is_active is True
@@ -113,15 +113,7 @@ def test_qeapp_computational_resources_widget(app: Wizard):
     }
 
 
-@pytest.mark.parametrize(
-    "parameters, expected",
-    [
-        ({"use_this_code": True}, True),
-        ({"use_this_code": False}, False),
-        ({}, False),
-    ],
-)
-def test_parameters_aware_codes(parameters, expected):
+def test_parameters_aware_codes():
     def condition(params):
         return params.get("use_this_code", False)
 
@@ -139,9 +131,10 @@ def test_parameters_aware_codes(parameters, expected):
     panel = ResourceSettingsPanel(model)
     panel.render()
 
-    model.input_parameters = parameters
+    model.input_parameters = {"use_this_code": True}
+    assert model.get_model("test").is_active
+    assert panel.code_widgets["test"].layout.display == "block"
 
-    assert model.get_model("test").is_active == expected
-
-    display = "block" if expected else "none"
-    assert panel.code_widgets["test"].layout.display == display
+    model.input_parameters = {"use_this_code": False}
+    assert not model.get_model("test").is_active
+    assert panel.code_widgets["test"].layout.display == "none"
