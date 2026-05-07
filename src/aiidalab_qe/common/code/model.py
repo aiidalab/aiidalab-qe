@@ -47,7 +47,7 @@ class CodeModel(Model):
         self.default_calc_job_plugin = default_calc_job_plugin
         self.code_widget_class = code_widget_class
         self.is_widget_rendered = False
-        self._condition = condition or (lambda _: True)
+        self.check_condition = condition or (lambda _: True)
 
         ipw.dlink(
             (self, "num_cpus"),
@@ -61,9 +61,6 @@ class CodeModel(Model):
     @property
     def first_option(self):
         return self.options[0][1] if self.options else None  # type: ignore
-
-    def check_condition(self, paramters: dict) -> bool:
-        return self._condition(paramters)
 
     def activate(self):
         self.is_active = True
