@@ -48,7 +48,7 @@ def test_global_code_toggle(app: Wizard):
     global_resources.render()
 
     dos_code_model = global_resources_model.get_model("quantumespresso__dos")
-    assert dos_code_model.is_active is False
+    assert dos_code_model.is_active is None
 
     global_resources_model.input_parameters = {"workchain": {"properties": ["pdos"]}}
     assert dos_code_model.is_active is True
