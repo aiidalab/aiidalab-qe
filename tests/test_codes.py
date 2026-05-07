@@ -1,9 +1,14 @@
 import typing as t
 
+import pytest
+
+from aiida import orm
 from aiidalab_qe.app.submission import SubmissionStep, SubmissionStepModel
 from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsModel
 from aiidalab_qe.app.wizard import Wizard
 from aiidalab_qe.common.code import PwCodeModel
+from aiidalab_qe.common.code.model import CodeModel
+from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
 from aiidalab_qe.common.widgets import PwCodeResourceSetupWidget
 from aiidalab_qe.common.wizard import State
 from aiidalab_qe.utils import shallow_copy_nested_dict
@@ -106,3 +111,38 @@ def test_qeapp_computational_resources_widget(app: Wizard):
         "ntasks_per_node": 1,
         "parallelization": {"npool": 2},
     }
+
+
+@pytest.mark.parametrize(
+    "parameters, expected",
+    [
+        ({"use_this_code": True}, True),
+        ({"use_this_code": False}, False),
+        ({}, False),
+    ],
+)
+def test_parameters_aware_codes(parameters, expected):
+
+    def condition(params):
+        return params.get("use_this_code", False)
+
+    code_model = CodeModel(
+        name="test",
+        description="Test Code Model",
+        default_calc_job_plugin="test.mock",
+        condition=condition,
+    )
+
+    default_user_email = orm.User.collection.get_default().email
+    model = ResourceSettingsModel(default_user_email=default_user_email)
+    model.add_model("test", code_model)
+
+    panel = ResourceSettingsPanel(model)
+    panel.render()
+
+    model.input_parameters = parameters
+
+    assert model.get_model("test").is_active == expected
+
+    display = "block" if expected else "none"
+    assert panel.code_widgets["test"].layout.display == display
