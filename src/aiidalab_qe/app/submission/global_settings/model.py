@@ -79,13 +79,12 @@ class GlobalResourceSettingsModel(
         code_model: CodeModel,
     ) -> CodeModel | None:
         """Registers a code with this model."""
-        base_code_model = None
         default_calc_job_plugin = code_model.default_calc_job_plugin
         name = default_calc_job_plugin.split(".")[-1]
         # "." in the model key means nested models
         model_key = default_calc_job_plugin.replace(".", "__")
 
-        if not self.has_model(default_calc_job_plugin):
+        if not self.has_model(model_key):
             if default_calc_job_plugin == "quantumespresso.pw":
                 base_code_model = PwCodeModel(
                     name=name,
@@ -107,7 +106,7 @@ class GlobalResourceSettingsModel(
         else:
             self.plugin_mapping[identifier].append(model_key)
 
-        return base_code_model
+        return self.get_model(model_key)
 
     def check_resources(self):
         if not self.has_model("quantumespresso__pw"):
