@@ -1,7 +1,5 @@
 import typing as t
 
-import pytest
-
 from aiida import orm
 from aiidalab_qe.app.submission import SubmissionStep, SubmissionStepModel
 from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsModel
