@@ -122,7 +122,6 @@ def test_qeapp_computational_resources_widget(app: Wizard):
     ],
 )
 def test_parameters_aware_codes(parameters, expected):
-
     def condition(params):
         return params.get("use_this_code", False)
 
