@@ -4,6 +4,7 @@ aiidalab-qe-vibroscopy:
     description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials via finite displacement and finite field approach.
     author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
     github: https://github.com/aiidalab/aiidalab-qe-vibroscopy
+    pip: aiidalab-qe-vibroscopy
     post_install: setup-phonopy
     status: stable
     category: calculation
@@ -70,6 +71,7 @@ aiidalab-qe-pp:
     description: A plugin enabling analysis of charge density, spin density, molecular orbitals, STM images, and more.
     author: Andres Ortega-Guerrero
     github: https://github.com/aiidalab/aiidalab-qe-pp
+    pip: aiidalab-qe-pp
     post_install: post-install
     status: beta
     category: calculation
