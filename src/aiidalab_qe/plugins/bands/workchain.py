@@ -64,7 +64,10 @@ def get_builder(codes, structure, parameters, **kwargs):
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
 
-    check_codes(pw_code, codes.get("projwfc_bands")["code"])
+    projwfc_code = None
+    if "projwfc_bands" in codes:
+        projwfc_code = codes.get("projwfc_bands")["code"]
+        check_codes(pw_code, projwfc_code)
 
     overrides = {
         "scf": scf_overrides,
@@ -79,7 +82,7 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     bands_builder = BandsWorkChain.get_builder_from_protocol(
         pw_code=pw_code,
-        projwfc_code=codes.get("projwfc_bands")["code"],
+        projwfc_code=projwfc_code,
         structure=structure,
         simulation_mode=simulation_mode,
         protocol=protocol,

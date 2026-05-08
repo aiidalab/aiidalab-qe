@@ -155,6 +155,8 @@ class ConfigurationSettingsPanel(Panel[PM]):
 class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
     """Base model for resource setting models."""
 
+    input_parameters = tl.Dict()
+
     global_codes = tl.Dict(
         key_trait=tl.Unicode(),
         value_trait=tl.Dict(),
@@ -166,6 +168,7 @@ class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
         self.default_codes: dict[str, dict] = kwargs.pop("default_codes", {})
         self.default_user_email = default_user_email
         super().__init__(*args, **kwargs)
+        self.dependencies = ["input_parameters"]
 
     def add_model(self, identifier, model):
         super().add_model(identifier, model)
@@ -174,6 +177,13 @@ class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
             user_email=self.default_user_email,
             default_code=self.default_codes.get(code_key, {}).get("code"),
         )
+
+    def update_active_codes(self):
+        for _, code_model in self.get_models():
+            if code_model.check_condition(self.input_parameters):
+                code_model.activate()
+            else:
+                code_model.deactivate()
 
     def refresh_codes(self):
         for _, code_model in self.get_models():
@@ -213,7 +223,47 @@ class ResourceSettingsPanel(Panel[RSM]):
         super().__init__(model, **kwargs)
         self.code_widgets = {}
 
-    def register_code_trait_callbacks(self, code_model: CodeModel):
+        self._model.observe(
+            self._on_input_parameters_change,
+            "input_parameters",
+        )
+
+        for _, code_model in self._model.get_models():
+            self._register_code_trait_callbacks(code_model)
+
+    def render(self):
+        if self.rendered:
+            return
+        self._render()
+        self.rendered = True
+        self._post_render()
+
+    def _render(self):
+        self.code_widgets_container = ipw.VBox()
+
+    def _post_render(self):
+        for _, code_model in self._model.get_models():
+            if code_model.is_active:
+                self._toggle_code(code_model)
+
+    def _on_input_parameters_change(self, _):
+        self._model.update_active_codes()
+        self._model.update_blockers()
+
+    def _on_code_activation_change(self, change):
+        self._toggle_code(change["owner"])
+
+    def _on_code_selection_change(self, _):
+        self._model.update_blockers()
+
+    def _on_code_resource_change(self, _):
+        pass
+
+    def _on_code_options_change(self, change: dict):
+        widget: ipw.Dropdown = change["owner"]
+        widget.disabled = not widget.options
+
+    def _register_code_trait_callbacks(self, code_model: CodeModel):
         """Registers event handlers on code model traits."""
         if code_model.default_calc_job_plugin == "quantumespresso.pw":
             code_model.observe(
@@ -234,18 +284,19 @@ class ResourceSettingsPanel(Panel[RSM]):
                 "max_wallclock_seconds",
             ],
         )
-
-    def _on_code_resource_change(self, _):
-        pass
-
-    def _on_code_options_change(self, change: dict):
-        widget: ipw.Dropdown = change["owner"]
-        widget.disabled = not widget.options
+        code_model.observe(
+            self._on_code_activation_change,
+            "is_active",
+        )
+        code_model.observe(
+            self._on_code_selection_change,
+            "selected",
+        )
 
     def _toggle_code(self, code_model: CodeModel):
         if not self.rendered:
             return
-        if not code_model.is_rendered:
+        if not code_model.is_widget_rendered:
             loading_message = LoadingWidget(f"Loading {code_model.name} code")
             self.code_widgets_container.children += (loading_message,)
         if code_model.name not in self.code_widgets:
@@ -256,12 +307,16 @@ class ResourceSettingsPanel(Panel[RSM]):
             self.code_widgets[code_model.name] = code_widget
         else:
             code_widget = self.code_widgets[code_model.name]
-        if not code_model.is_rendered:
+        if not code_model.is_widget_rendered:
             code_widget.observe(
                 code_widget.update_resources,
                 "value",
             )
             self._render_code_widget(code_model, code_widget)
+        if code_model.is_active:
+            code_widget.layout.display = "block"
+        else:
+            code_widget.layout.display = "none"
 
     def _render_code_widget(
         self,
@@ -315,17 +370,17 @@ class ResourceSettingsPanel(Panel[RSM]):
         )
         code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
         self.code_widgets_container.children = [*code_widgets, code_widget]
-        code_model.is_rendered = True
+        code_model.is_widget_rendered = True
 
 
 class PluginResourceSettingsModel(ResourceSettingsModel):
     """Base model for plugin resource setting models."""
 
-    dependencies = [
-        "global.global_codes",
-    ]
-
     override = tl.Bool(False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dependencies.append("global.global_codes")
 
     def add_model(self, identifier, model: CodeModel):
         super().add_model(identifier, model)
@@ -380,9 +435,8 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             "override",
         )
 
-    def render(self):
-        if self.rendered:
-            return
+    def _render(self):
+        super()._render()
 
         self.override_help = ipw.HTML(
             "Click to override the resource settings for this plugin."
@@ -396,7 +450,6 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             (self._model, "override"),
             (self.override, "value"),
         )
-        self.code_widgets_container = ipw.VBox()
 
         self.children = [
             ipw.HBox(
@@ -407,15 +460,6 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             ),
             self.code_widgets_container,
         ]
-
-        self.rendered = True
-
-        # Render any active codes
-        for _, code_model in self._model.get_models():
-            if code_model.is_active:
-                self._toggle_code(code_model)
-
-        return self.code_widgets_container
 
     def _on_global_codes_change(self, _):
         self._model.update()
