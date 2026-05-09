@@ -13,7 +13,7 @@ from aiidalab_qe.app.result.components.status import (
     WorkChainStatusModel,
     WorkChainStatusPanel,
 )
-from aiidalab_qe.common.process.tree import (
+from aiidalab_qe.app.result.components.status.tree import (
     TITLE_MAPPING,
     CalcJobTreeNode,
     SimplifiedProcessTree,
