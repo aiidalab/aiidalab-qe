@@ -110,7 +110,7 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
-      ${AIIDA_HQ_PKG} ${MUON_PKG} aiida-bader
+      ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG} aiida-bader
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -125,7 +125,6 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
     verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
-    pip install --no-user ${VIBROSCOPY_PKG} && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
@@ -172,17 +171,12 @@ RUN mamba install aiida-core.atomic_tools --y && \
 # Install dependencies in the final image.
 # It is important that these are installed in /opt/conda, not ~/.local
 # Use uv cache from the previous build step
-# NOTE: uv refuses the install aiidalab-qe-vibroscopy due to invalid RECORD file,
-# pyproject.toml is likely invalid as it contains direct git dependency.
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-      ${QE_APP_SRC} aiida-bader ${AIIDA_HQ_PKG} ${MUON_PKG}
-
-# This fails on arm with `uv pip` so is installed separately
-RUN pip install --no-user ${VIBROSCOPY_PKG}
+      ${QE_APP_SRC} aiida-bader ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG}
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
