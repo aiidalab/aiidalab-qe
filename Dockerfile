@@ -171,11 +171,13 @@ RUN mamba install aiida-core.atomic_tools --y && \
 # Install dependencies in the final image.
 # It is important that these are installed in /opt/conda, not ~/.local
 # Use uv cache from the previous build step
+# NOTE: --no-build-isolation added since building euphonic package under arm64
+# fails due to missing numpy build dependency.
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
-    uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
+    uv pip install --no-build-isolation --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
       ${QE_APP_SRC} aiida-bader ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG}
 
 # copy hq binary
