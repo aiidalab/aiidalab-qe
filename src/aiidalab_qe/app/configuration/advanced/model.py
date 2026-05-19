@@ -156,70 +156,117 @@ class AdvancedConfigurationSettingsModel(
         return state
 
     def set_model_state(self, state: dict):
-        pseudos = t.cast(
-            PseudosConfigurationSettingsModel,
-            self.get_model("pseudos"),
+        PW: dict = state.get("pw", {})
+        PW_PARAMS: dict = PW.get("parameters", {})
+        SYSTEM: dict = PW_PARAMS.get("SYSTEM", {})
+        CONTROL: dict = PW_PARAMS.get("CONTROL", {})
+        ELECTRONS: dict = PW_PARAMS.get("ELECTRONS", {})
+
+        num_atoms = len(self.input_structure.sites) if self.has_structure else 1
+
+        self.spin_orbit = "soc" if "lspinorb" in SYSTEM else "wo_soc"
+
+        general = t.cast(
+            GeneralConfigurationSettingsModel,
+            self.get_model("general"),
         )
-        if pseudo_family_string := state.get("pseudo_family"):
-            pseudo_family = PseudoFamily.from_string(pseudo_family_string)
-            library = f"{pseudo_family.library} {pseudo_family.accuracy}"
-            if relativistic := pseudo_family.relativistic:
-                library += f" ({relativistic})"
-            pseudos.functional = pseudo_family.functional
-            pseudos.library = library
-            pseudos.family = pseudo_family_string
-        else:
-            pp_uuid = next(iter(state["pw"]["pseudos"].values()))
-            pseudo_info = get_pseudo_info(pp_uuid)
-            pseudos.functional = pseudo_info["functional"]
-            pseudos.library = None
-            pseudos.family = None
-            pseudos.show_upload_warning = True
-
-        pseudos.functionals = [pseudos.functional] * len(pseudos.dictionary)
-
-        if "pseudos" in state["pw"]:
-            pseudos.dictionary = state["pw"]["pseudos"]
-            pseudos.ecutwfc = state["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
-            pseudos.ecutrho = state["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+        with general.hold_trait_notifications():
+            general.clean_workdir = state.get("clean_workdir", True)
+            general.total_charge = SYSTEM.get("tot_charge", 0)
+            general.van_der_waals = general.dftd3_version.get(
+                SYSTEM.get("dftd3_version", ""),
+                SYSTEM.get("vdw_corr", "none"),
+            )
 
         convergence = t.cast(
             ConvergenceConfigurationSettingsModel,
             self.get_model("convergence"),
         )
-        convergence.optimization_maxsteps = state.get("optimization_maxsteps", 50)
-        convergence.kpoints_distance = state.get("kpoints_distance", 0.15)
+        with convergence.hold_trait_notifications():
+            convergence.optimization_maxsteps = state.get("optimization_maxsteps", 50)
+            convergence.kpoints_distance = state.get("kpoints_distance", 0.15)
+            convergence.forc_conv_thr = CONTROL.get("forc_conv_thr", 0.0)
+            convergence.etot_conv_thr = CONTROL.get("etot_conv_thr", 0.0) / num_atoms
+            convergence.scf_conv_thr = ELECTRONS.get("conv_thr", 0.0) / num_atoms
+            convergence.electron_maxstep = ELECTRONS.get("electron_maxstep", 80)
+            convergence.mixing_mode = ELECTRONS.get("mixing_mode", "plain")
+            convergence.mixing_beta = ELECTRONS.get("mixing_beta", 0.4)
 
-        if (pw_parameters := state.get("pw", {}).get("parameters")) is not None:
-            self._set_pw_parameters(pw_parameters)
+        smearing = t.cast(
+            SmearingConfigurationSettingsModel,
+            self.get_model("smearing"),
+        )
+        with smearing.hold_trait_notifications():
+            if "degauss" in SYSTEM:
+                smearing.degauss = SYSTEM["degauss"]
+            if "smearing" in SYSTEM:
+                smearing.type = SYSTEM["smearing"]
 
-        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
-            "magnetization"
-        )  # type: ignore
-        if magnetic_moments := state.get("initial_magnetic_moments"):
-            if isinstance(magnetic_moments, (int, float)):
-                magnetic_moments = [magnetic_moments]
-            if isinstance(magnetic_moments, list):
-                magnetic_moments = dict(
-                    zip(
-                        self.input_structure.get_kind_names(),
-                        magnetic_moments,
+        num_kinds = len(self.input_structure.kinds) if self.has_structure else 1
+
+        pseudos = t.cast(
+            PseudosConfigurationSettingsModel,
+            self.get_model("pseudos"),
+        )
+        with pseudos.hold_trait_notifications():
+            if pseudo_family_string := state.get("pseudo_family"):
+                pseudo_family = PseudoFamily.from_string(pseudo_family_string)
+                library = f"{pseudo_family.library} {pseudo_family.accuracy}"
+                if relativistic := pseudo_family.relativistic:
+                    library += f" ({relativistic})"
+                pseudos.functional = pseudo_family.functional
+                pseudos.library = library
+                pseudos.family = pseudo_family_string
+            else:
+                try:
+                    pp_uuid = next(iter(PW["pseudos"].values()))
+                    pseudo_info = get_pseudo_info(pp_uuid)
+                    pseudos.functional = pseudo_info["functional"]
+                except Exception:
+                    pseudos.functional = None
+                pseudos.library = None
+                pseudos.family = None
+                pseudos.show_upload_warning = True
+
+            pseudos.functionals = [pseudos.functional] * num_kinds
+
+            if pseudos_dictionary := PW.get("pseudos"):
+                pseudos.dictionary = pseudos_dictionary
+                pseudos.ecutwfc = SYSTEM.get("ecutwfc", 0.0)
+                pseudos.ecutrho = SYSTEM.get("ecutrho", 0.0)
+
+        magnetization = t.cast(
+            MagnetizationConfigurationSettingsModel,
+            self.get_model("magnetization"),
+        )
+        with magnetization.hold_trait_notifications():
+            if "tot_magnetization" in SYSTEM:
+                magnetization.type = "tot_magnetization"
+                magnetization.total = SYSTEM["tot_magnetization"]
+
+            if magnetic_moments := state.get("initial_magnetic_moments"):
+                if isinstance(magnetic_moments, (int, float)):
+                    magnetic_moments = [magnetic_moments]
+                if isinstance(magnetic_moments, list):
+                    magnetic_moments = dict(
+                        zip(
+                            self.input_structure.get_kind_names(),
+                            magnetic_moments,
+                        )
                     )
-                )
-            magnetization.moments = magnetic_moments
+                magnetization.moments = magnetic_moments
 
-        hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
-        if state.get("hubbard_parameters"):
-            hubbard.is_active = True
-            hubbard.parameters = state["hubbard_parameters"]["hubbard_u"]
-            starting_ns_eigenvalue = (
-                state.get("pw", {})
-                .get("parameters", {})
-                .get("SYSTEM", {})
-                .get("starting_ns_eigenvalue")
-            )
-            if starting_ns_eigenvalue is not None:
-                hubbard.set_active_eigenvalues(starting_ns_eigenvalue)
+        hubbard = t.cast(
+            HubbardConfigurationSettingsModel,
+            self.get_model("hubbard"),
+        )
+        with hubbard.hold_trait_notifications():
+            if hubbard_parameters := state.get("hubbard_parameters"):
+                hubbard.is_active = True
+                hubbard.parameters = hubbard_parameters["hubbard_u"]
+                starting_ns_eigenvalue = SYSTEM.get("starting_ns_eigenvalue")
+                if starting_ns_eigenvalue is not None:
+                    hubbard.set_active_eigenvalues(starting_ns_eigenvalue)
 
     def _link_model(self, model: PanelModel):
         tl.link(
@@ -227,50 +274,3 @@ class AdvancedConfigurationSettingsModel(
             (model, "confirmed"),
         )
         super()._link_model(model)
-
-    def _set_pw_parameters(self, pw_parameters):
-        system_params: dict = pw_parameters.get("SYSTEM", {})
-        control_params: dict = pw_parameters.get("CONTROL", {})
-        electron_params: dict = pw_parameters.get("ELECTRONS", {})
-
-        num_atoms = len(self.input_structure.sites) if self.has_structure else 1
-
-        general = t.cast(
-            GeneralConfigurationSettingsModel,
-            self.get_model("general"),
-        )
-        convergence = t.cast(
-            ConvergenceConfigurationSettingsModel,
-            self.get_model("convergence"),
-        )
-        convergence.forc_conv_thr = control_params.get("forc_conv_thr", 0.0)
-        convergence.etot_conv_thr = control_params.get("etot_conv_thr", 0.0) / num_atoms
-        convergence.scf_conv_thr = electron_params.get("conv_thr", 0.0) / num_atoms
-        convergence.electron_maxstep = electron_params.get("electron_maxstep", 80)
-        convergence.mixing_mode = electron_params.get("mixing_mode", "plain")
-        convergence.mixing_beta = electron_params.get("mixing_beta", 0.4)
-
-        general.total_charge = system_params.get("tot_charge", 0)
-
-        # NOTE: this is here for backwards compatability, as SYSTEM parameters
-        # are part of the advanced input namespace.
-        self.spin_orbit = "soc" if "lspinorb" in system_params else "wo_soc"
-
-        general.van_der_waals = general.dftd3_version.get(
-            system_params.get("dftd3_version", ""),
-            system_params.get("vdw_corr", "none"),
-        )
-
-        smearing: SmearingConfigurationSettingsModel = self.get_model("smearing")  # type: ignore
-        if "degauss" in system_params:
-            smearing.degauss = system_params["degauss"]
-
-        if "smearing" in system_params:
-            smearing.type = system_params["smearing"]
-
-        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
-            "magnetization"
-        )  # type: ignore
-        if "tot_magnetization" in system_params:
-            magnetization.type = "tot_magnetization"
-            magnetization.total = system_params["tot_magnetization"]

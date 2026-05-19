@@ -31,7 +31,7 @@ class StructureResultsModel(ResultsModel):
 
     @property
     def is_relaxed(self):
-        if "relax" not in self.properties:
+        if not self.inputs or "relax" not in self.properties:
             return False
         parameters = self.inputs.relax.base.pw.parameters.get_dict()
         return "relax" in parameters["CONTROL"]["calculation"]
@@ -60,7 +60,6 @@ class StructureResultsModel(ResultsModel):
         try:
             return self.source.structure if self.source else None
         except AttributeError:
-            # If source is outputs but job failed, there may not be a structure
             return None
 
     def _get_structure_info(self):

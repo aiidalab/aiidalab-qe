@@ -1,7 +1,7 @@
-from .model import WorkChainSummaryModel
-from .summary import WorkChainSummary
+from .model import WorkflowSummaryModel
+from .summary import WorkflowSummary
 
 __all__ = [
-    "WorkChainSummary",
-    "WorkChainSummaryModel",
+    "WorkflowSummary",
+    "WorkflowSummaryModel",
 ]

@@ -1,7 +1,7 @@
-from .model import WorkChainResultsViewerModel
-from .viewer import WorkChainResultsViewer
+from .model import WorkflowResultsViewerModel
+from .viewer import WorkflowResultsViewer
 
 __all__ = [
-    "WorkChainResultsViewer",
-    "WorkChainResultsViewerModel",
+    "WorkflowResultsViewer",
+    "WorkflowResultsViewerModel",
 ]

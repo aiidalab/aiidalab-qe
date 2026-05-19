@@ -153,7 +153,7 @@ class PseudosConfigurationSettingsModel(
         if self.locked or not (self.functional and self.family):
             return
         self.functionals = (
-            [self.functional for _ in self.input_structure.kinds]
+            [self.functional] * len(self.input_structure.kinds)
             if self.has_structure
             else []
         )
