@@ -165,22 +165,18 @@ WORKDIR /tmp
 # Install common dependencies such as pymatgen and pandas via conda,
 # to avoid building them when installing via pip
 # TODO: Remove this once it is part of the full-stack image.
-# NOTE: euphonic (needed by vibroscopy plugin) is installed via conda
-# to avoid an arm64 wheel build failure due to a missing build dependency on numpy
-RUN mamba install aiida-core.atomic_tools euphonic=1.3.* --y && \
+RUN mamba install aiida-core.atomic_tools -y && \
     mamba clean --all -f -y
 
 # Install dependencies in the final image.
 # It is important that these are installed in /opt/conda, not ~/.local
 # Use uv cache from the previous build step
-# NOTE: --no-build-isolation added since building euphonic package under arm64
-# fails due to missing numpy build dependency.
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-      ${QE_APP_SRC} aiida-bader ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG}
+      ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG} aiida-bader
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
