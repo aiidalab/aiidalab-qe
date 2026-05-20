@@ -178,6 +178,7 @@ ENV UV_LINK_MODE=copy
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
+    uv pip install --strict --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
       ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
