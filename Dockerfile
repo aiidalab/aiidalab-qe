@@ -7,7 +7,8 @@
 ###############################################################################
 # 1) Global ARGs
 ###############################################################################
-ARG FULL_STACK_VER=2026.1030
+# Test the new nbclassic-based python-3.12 image
+ARG FULL_STACK_VER=pr-479
 ARG UV_VER=0.11.15
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
