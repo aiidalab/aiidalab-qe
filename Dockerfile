@@ -173,7 +173,7 @@ RUN mamba install aiida-core.atomic_tools -y && \
 # Use uv cache from the previous build step
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
       ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG} aiida-bader
