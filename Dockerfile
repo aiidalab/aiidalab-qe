@@ -68,6 +68,18 @@ ENV UV_SYSTEM_PYTHON=1
 ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
 
 ###############################################################################
+# 7) Prepare a clean copy of the QeApp repo
+#    - This must be a separate stage because we run `git clean` after COPY,
+#      and we don't want to have junk in intermediate layers.
+###############################################################################
+FROM base AS qeapp_src
+
+WORKDIR ${QE_APP_FOLDER}
+COPY --chown=${NB_UID}:${NB_GID} . .
+# Remove all untracked files and directories.
+RUN git clean -dffx
+
+###############################################################################
 # 5) build_deps stage
 #    - Installs Python dependencies using uv for caching
 ###############################################################################
@@ -82,7 +94,7 @@ WORKDIR ${QE_APP_SRC}
 # otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    --mount=type=bind,target=.,rw \
+    --mount=from=qeapp_src,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
     uv pip install --strict -r pyproject.toml ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
@@ -147,18 +159,6 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # because .conda typically just holds local environment information, caches, or references
     # to available environments.
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude .cache --exclude work --exclude .conda .
-
-###############################################################################
-# 7) Prepare a clean copy of the QeApp repo
-#    - This must be a separate stage because we run `git clean` after COPY,
-#      and we don't want to have junk in intermediate layers.
-###############################################################################
-FROM base AS qeapp_src
-
-WORKDIR ${QE_APP_FOLDER}
-COPY --chown=${NB_UID}:${NB_GID} . .
-# Remove all untracked files and directories.
-RUN git clean -dffx
 
 ###############################################################################
 # 8) Final stage
