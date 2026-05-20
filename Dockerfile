@@ -102,7 +102,6 @@ RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
-ENV UV_LINK_MODE=copy
 
 # NOTE: euphonic must be build separately with --no-build-isolation,
 # otherwise it fails to build on arm64 due to missing build-time numpy dependency.
@@ -130,7 +129,6 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
     python -m aiidalab_qe_muon setup-python3 && \
     # wannier90 plugin need SSSP 1.1
-    # Install this earlier as part of the pseudo installation
     aiida-pseudo install sssp -v 1.1 -x PBE && \
     aiida-pseudo install sssp -v 1.1 -x PBEsol && \
     verdi daemon stop && \
@@ -171,7 +169,6 @@ RUN mamba install aiida-core.atomic_tools -y && \
 # It is important that these are installed in /opt/conda, not ~/.local
 # Use uv cache from the previous build step
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
-ENV UV_LINK_MODE=copy
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
