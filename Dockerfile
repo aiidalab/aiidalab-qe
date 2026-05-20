@@ -199,9 +199,9 @@ COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /us
 RUN find /home/${NB_USER}/ -mindepth 1 -delete
 
 ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
-# Remove all untracked files and directories.
-RUN git clean -dffx || true
 COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
+# Remove all untracked files and directories.
+RUN cd ${QE_APP_FOLDER} && git clean -dffx
 
 ENV HOME_TAR="/opt/home.tar"
 COPY --from=home_build /opt/conda/home.tar "$HOME_TAR"
