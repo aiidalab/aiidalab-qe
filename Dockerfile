@@ -46,6 +46,7 @@ RUN set -ex; \
 
 ###############################################################################
 # 4) base stage to setup common environment variables
+#    NOTE: Any ENVs set here will end up in the final image!
 ###############################################################################
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS base
 ARG AIIDA_HQ_PKG
@@ -63,6 +64,8 @@ ENV UV_LINK_MODE=copy
 ENV UV_NO_PROGRESS=1
 # Make sure UV installs into the conda environment at /opt/conda
 ENV UV_SYSTEM_PYTHON=1
+
+ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
 
 ###############################################################################
 # 5) build_deps stage
@@ -142,7 +145,19 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude .cache --exclude work --exclude .conda .
 
 ###############################################################################
-# 7) Final stage
+# 7) Prepare a clean copy of the QeApp repo
+#    - This must be a separate stage because we run `git clean` after COPY,
+#      and we don't want to have junk in intermediate layers.
+###############################################################################
+FROM base AS qeapp_src
+
+WORKDIR ${QE_APP_FOLDER}
+COPY --chown=${NB_UID}:${NB_GID} . .
+# Remove all untracked files and directories.
+RUN git clean -dffx
+
+###############################################################################
+# 8) Final stage
 #    - Installs python dependencies again, copies QE env, compiles wannier90,
 #      and sets up the final environment.
 ###############################################################################
@@ -198,13 +213,10 @@ COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /us
 # Remove the content of /home/<user>, but keep the folder itself
 RUN find /home/${NB_USER}/ -mindepth 1 -delete
 
-ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
-COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
-# Remove all untracked files and directories.
-RUN cd ${QE_APP_FOLDER} && git clean -dffx
-
 ENV HOME_TAR="/opt/home.tar"
 COPY --from=home_build /opt/conda/home.tar "$HOME_TAR"
+
+COPY --from=qeapp_src ${QE_APP_FOLDER} ${QE_APP_FOLDER}
 
 USER ${NB_USER}
 WORKDIR "/home/${NB_USER}"
