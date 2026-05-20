@@ -130,7 +130,7 @@ class GlobalResourceSettingsModel(
         on_localhost = (
             orm.load_node(pw_code_model.selected).computer.hostname == "localhost"
         )
-        num_sites = len(self.input_structure.sites)
+        num_sites = self.get_num_atoms()
         volume = self.input_structure.get_cell_volume()
 
         code = orm.load_node(pw_code_model.selected)
