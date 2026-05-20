@@ -40,7 +40,7 @@ ARG TARGETARCH
 
 USER ${NB_USER}
 RUN set -ex; \
-    echo "Installing QE plus Bader for x86_64..." && \
+    echo "Installing QE and Bader..." && \
     mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
     mamba clean --all -f -y
 
@@ -77,9 +77,12 @@ WORKDIR ${QE_APP_SRC}
 COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
 COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
+# NOTE: euphonic must be build separately with --no-build-isolation,
+# otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    uv pip install --strict .
+    uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
+    uv pip install --strict . ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 ###############################################################################
 # 6) home_build stage
@@ -93,9 +96,7 @@ ARG TARGETARCH
 ARG HQ_URL_AMD64
 ARG HQ_URL_ARM64
 
-#
 # Download and unpack the correct hq binary for the architecture:
-#
 RUN set -ex; \
     if [ "${TARGETARCH}" = "arm64" ]; then \
       wget --no-verbose -c -O hq.tar.gz "${HQ_URL_ARM64}"; \
@@ -109,13 +110,6 @@ ENV PSEUDO_FOLDER=/tmp/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
-# NOTE: euphonic must be build separately with --no-build-isolation,
-# otherwise it fails to build on arm64 due to missing build-time numpy dependency.
-RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
-    uv pip install --strict ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
-
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
 # TODO: Remove PGSQL and daemon log files, and other unneeded files
@@ -125,10 +119,10 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/42_setup-hq-computer.sh && \
     python -m aiidalab_qe install-qe --computer ${COMPUTER_LABEL} && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
-    # steup code: pythonjob, bader, wannier90 code
-    verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
-    verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
-    verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
+    # setup code: pythonjob, bader, wannier90 code
+    verdi code create core.code.installed --label python --computer=${COMPUTER_LABEL} --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
+    verdi code create core.code.installed --label bader --computer=${COMPUTER_LABEL} --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
+    verdi code create core.code.installed --label wannier90 --computer=${COMPUTER_LABEL} --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
@@ -150,12 +144,29 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
 ###############################################################################
 # 7) Final stage
 #    - Installs python dependencies again, copies QE env, compiles wannier90,
-#      (conditionally) compiles bader on ARM64, and sets up the final environment.
+#      and sets up the final environment.
 ###############################################################################
 FROM base
 ARG QE_DIR
 ARG QE_APP_SRC
 ARG TARGETARCH
+
+USER root
+# Build wannier90 for all arches
+RUN set -ex; \
+    apt-get -q update && apt-get -q install -y --no-install-recommends \
+    gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin libopenmpi-dev; \
+    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
+    cd /tmp/wannier90; \
+    cp config/make.inc.gfort make.inc; \
+    echo "COMMS=mpi" >> make.inc; \
+    echo "MPIF90=mpif90" >> make.inc; \
+    make -j"$(nproc)" wannier; \
+    cp wannier90.x /opt/conda/bin/wannier90.x; \
+    apt-get -q remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
+    apt-get -q autoremove -y && \
+    apt-get -q clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
 
 USER ${NB_USER}
 WORKDIR /tmp
@@ -171,7 +182,6 @@ RUN mamba install aiida-core.atomic_tools -y && \
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
-    uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
     uv pip install --strict --compile-bytecode \
       ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
@@ -181,22 +191,6 @@ COPY --from=home_build /opt/conda/hq /usr/local/bin/
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
-
-# Build wannier90 for all arches
-RUN set -ex; \
-    apt-get update && apt-get install -y --no-install-recommends \
-    gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin libopenmpi-dev; \
-    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
-    cd /tmp/wannier90; \
-    cp config/make.inc.gfort make.inc; \
-    echo "COMMS=mpi" >> make.inc; \
-    echo "MPIF90=mpif90" >> make.inc; \
-    make -j"$(nproc)" wannier; \
-    cp wannier90.x /opt/conda/bin/wannier90.x; \
-    apt-get remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
 
 # We exclude 42_setup-hq-computer.sh file because the computer is already setup, thus it is not needed in the final image.
 COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /usr/local/bin/before-notebook.d/
