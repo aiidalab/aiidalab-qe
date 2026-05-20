@@ -41,7 +41,7 @@ class AdvancedConfigurationSettingsModel(
     include = True
 
     def get_model_state(self) -> dict:
-        num_atoms = len(self.input_structure.sites) if self.has_structure else 1
+        num_atoms = self.get_num_atoms() or 1
 
         general = t.cast(
             GeneralConfigurationSettingsModel,
@@ -162,7 +162,7 @@ class AdvancedConfigurationSettingsModel(
         CONTROL: dict = PW_PARAMS.get("CONTROL", {})
         ELECTRONS: dict = PW_PARAMS.get("ELECTRONS", {})
 
-        num_atoms = len(self.input_structure.sites) if self.has_structure else 1
+        num_atoms = self.get_num_atoms() or 1
 
         self.spin_orbit = "soc" if "lspinorb" in SYSTEM else "wo_soc"
 

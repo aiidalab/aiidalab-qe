@@ -56,7 +56,7 @@ def test_advanced_general_settings():
 def test_advanced_convergence_settings(generate_structure_data):
     """Test Convergence Settings."""
     model = ConvergenceConfigurationSettingsModel()
-    _ = ConvergenceConfigurationSettingsPanel(model=model)
+    panel = ConvergenceConfigurationSettingsPanel(model=model)
 
     # Test structure-dependent convergence change
     model.structure_uuid = generate_structure_data("silica").uuid
@@ -79,6 +79,11 @@ def test_advanced_convergence_settings(generate_structure_data):
     model.scf_conv_thr = 0.1
     model.reset()
     assert model.scf_conv_thr == 4e-10
+
+    # Test absolute convergence threshold display
+    panel.render()
+    assert panel.scf_conv_thr_abs.value == f"{4e-10 * model.get_num_atoms():.5e}"
+    assert panel.etot_conv_thr_abs.value == f"{1e-4 * model.get_num_atoms():.5e}"
 
 
 def test_advanced_kpoints_settings():
