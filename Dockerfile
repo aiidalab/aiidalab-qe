@@ -13,7 +13,6 @@ ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
 
-ARG UV_CACHE_DIR=/tmp/uv_cache
 ARG QE_APP_SRC=/tmp/quantum-espresso
 ARG COMPUTER_LABEL="localhost"
 
@@ -24,6 +23,7 @@ ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
 ###############################################################################
 # 2) uv stage (unchanged)
+#    https://docs.astral.sh/uv/guides/integration/docker/
 ###############################################################################
 FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
@@ -50,13 +50,30 @@ RUN set -ex; \
     fi && \
     mamba clean --all -f -y
 
+# base stage to setup common environment variables
+FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS base
+ARG AIIDA_HQ_PKG
+ARG MUON_PKG
+ARG COMPUTER_LABEL
+
+ENV COMPUTER_LABEL=${COMPUTER_LABEL}
+ENV AIIDA_HQ_PKG=${AIIDA_HQ_PKG}
+ENV MUON_PKG=${MUON_PKG}
+
+# https://docs.astral.sh/uv/reference/environment/
+ENV UV_CACHE_DIR=/tmp/uv_cache
+ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
+ENV UV_LINK_MODE=copy
+ENV UV_NO_PROGRESS=1
+# Make sure UV installs into the conda environment at /opt/conda
+ENV UV_SYSTEM_PYTHON=1
+
 ###############################################################################
 # 4) build_deps stage
 #    - Installs Python dependencies using uv for caching
 ###############################################################################
-FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS build_deps
+FROM base AS build_deps
 ARG QE_DIR
-ARG UV_CACHE_DIR
 ARG QE_APP_SRC
 
 WORKDIR ${QE_APP_SRC}
@@ -64,9 +81,9 @@ WORKDIR ${QE_APP_SRC}
 COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
 COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
-ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    uv pip install --strict --system --cache-dir=${UV_CACHE_DIR} .
+    --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
+    uv pip install --strict .
 
 ###############################################################################
 # 5) home_build stage
@@ -74,16 +91,11 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
 #      and archives the home folder (home.tar).
 ###############################################################################
 FROM build_deps AS home_build
-ARG UV_CACHE_DIR
 ARG QE_DIR
-ARG HQ_VER
-ARG COMPUTER_LABEL
 # We'll use these to pick the correct HQ binary
 ARG TARGETARCH
 ARG HQ_URL_AMD64
 ARG HQ_URL_ARM64
-ARG AIIDA_HQ_PKG
-ARG MUON_PKG
 
 #
 # Download and unpack the correct hq binary for the architecture:
@@ -101,15 +113,12 @@ ENV PSEUDO_FOLDER=/tmp/pseudo
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
-ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
-
 # NOTE: euphonic must be build separately with --no-build-isolation,
 # otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
-    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
-      ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
+    --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
+    uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
+    uv pip install --strict ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -147,14 +156,10 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
 #    - Installs python dependencies again, copies QE env, compiles wannier90,
 #      (conditionally) compiles bader on ARM64, and sets up the final environment.
 ###############################################################################
-FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER}
+FROM base
 ARG QE_DIR
 ARG QE_APP_SRC
-ARG UV_CACHE_DIR
-ARG COMPUTER_LABEL
 ARG TARGETARCH
-ARG AIIDA_HQ_PKG
-ARG MUON_PKG
 
 USER ${NB_USER}
 WORKDIR /tmp
@@ -166,14 +171,12 @@ RUN mamba install aiida-core.atomic_tools -y && \
     mamba clean --all -f -y
 
 # Install dependencies in the final image.
-# It is important that these are installed in /opt/conda, not ~/.local
 # Use uv cache from the previous build step
-ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
-    uv pip install --strict --system --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
-    uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
+    uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
+    uv pip install --strict --compile-bytecode \
       ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 # copy hq binary
@@ -212,15 +215,14 @@ RUN set -ex; \
 
 # We exclude 42_setup-hq-computer.sh file because the computer is already setup, thus it is not needed in the final image.
 COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /usr/local/bin/before-notebook.d/
-ENV COMPUTER_LABEL=$COMPUTER_LABEL
 
 # Remove the content of /home/<user>, but keep the folder itself
 RUN find /home/${NB_USER}/ -mindepth 1 -delete
 
 ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
-COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
 # Remove all untracked files and directories.
 RUN git clean -dffx || true
+COPY --chown=${NB_UID}:${NB_GID} . ${QE_APP_FOLDER}
 
 ENV HOME_TAR="/opt/home.tar"
 COPY --from=home_build /opt/conda/home.tar "$HOME_TAR"
