@@ -150,12 +150,29 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
 ###############################################################################
 # 7) Final stage
 #    - Installs python dependencies again, copies QE env, compiles wannier90,
-#      (conditionally) compiles bader on ARM64, and sets up the final environment.
+#      and sets up the final environment.
 ###############################################################################
 FROM base
 ARG QE_DIR
 ARG QE_APP_SRC
 ARG TARGETARCH
+
+USER root
+# Build wannier90 for all arches
+RUN set -ex; \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin libopenmpi-dev; \
+    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
+    cd /tmp/wannier90; \
+    cp config/make.inc.gfort make.inc; \
+    echo "COMMS=mpi" >> make.inc; \
+    echo "MPIF90=mpif90" >> make.inc; \
+    make -j"$(nproc)" wannier; \
+    cp wannier90.x /opt/conda/bin/wannier90.x; \
+    apt-get remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
 
 USER ${NB_USER}
 WORKDIR /tmp
@@ -181,22 +198,6 @@ COPY --from=home_build /opt/conda/hq /usr/local/bin/
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
-
-# Build wannier90 for all arches
-RUN set -ex; \
-    apt-get update && apt-get install -y --no-install-recommends \
-    gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin libopenmpi-dev; \
-    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
-    cd /tmp/wannier90; \
-    cp config/make.inc.gfort make.inc; \
-    echo "COMMS=mpi" >> make.inc; \
-    echo "MPIF90=mpif90" >> make.inc; \
-    make -j"$(nproc)" wannier; \
-    cp wannier90.x /opt/conda/bin/wannier90.x; \
-    apt-get remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
 
 # We exclude 42_setup-hq-computer.sh file because the computer is already setup, thus it is not needed in the final image.
 COPY ./before-notebook.d/00_untar-home.sh ./before-notebook.d/43_start-hq.sh /usr/local/bin/before-notebook.d/
