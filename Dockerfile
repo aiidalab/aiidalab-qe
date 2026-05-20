@@ -8,7 +8,7 @@
 # 1) Global ARGs
 ###############################################################################
 ARG FULL_STACK_VER=2026.1030
-ARG UV_VER=0.11.1
+ARG UV_VER=0.11.15
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
@@ -17,13 +17,9 @@ ARG UV_CACHE_DIR=/tmp/uv_cache
 ARG QE_APP_SRC=/tmp/quantum-espresso
 ARG COMPUTER_LABEL="localhost"
 
-#
-# We'll define the possible HQ download URLs (for x86_64 and ARM64).
-#
 ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
-ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/mikibonacci/aiidalab-qe-vibroscopy@v1.2.0"
-ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/mikibonacci/aiidalab-qe-muon@v1.0.0"
+ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.1.1"
 ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
 ###############################################################################
@@ -87,7 +83,6 @@ ARG TARGETARCH
 ARG HQ_URL_AMD64
 ARG HQ_URL_ARM64
 ARG AIIDA_HQ_PKG
-ARG VIBROSCOPY_PKG
 ARG MUON_PKG
 
 #
@@ -95,11 +90,9 @@ ARG MUON_PKG
 #
 RUN set -ex; \
     if [ "${TARGETARCH}" = "arm64" ]; then \
-      echo "Downloading hyperqueue for ARM64..."; \
-      wget -c -O hq.tar.gz "${HQ_URL_ARM64}"; \
+      wget --no-verbose -c -O hq.tar.gz "${HQ_URL_ARM64}"; \
     else \
-      echo "Downloading hyperqueue for x86_64..."; \
-      wget -c -O hq.tar.gz "${HQ_URL_AMD64}"; \
+      wget --no-verbose -c -O hq.tar.gz "${HQ_URL_AMD64}"; \
     fi && \
     tar xf hq.tar.gz -C /opt/conda/
 
@@ -109,10 +102,14 @@ RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
-# Install the aiida-hyperqueue
+
+# NOTE: euphonic must be build separately with --no-build-isolation,
+# otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} ${AIIDA_HQ_PKG}
+    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
+    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
+      ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -127,9 +124,6 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label python --computer=localhost --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
     verdi code create core.code.installed --label bader --computer=localhost --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
     verdi code create core.code.installed --label wannier90 --computer=localhost --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
-    # Additional plugins
-    pip uninstall -y phonopy && \
-    pip install aiida-bader ${VIBROSCOPY_PKG} ${MUON_PKG} && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
@@ -138,7 +132,6 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     aiida-pseudo install sssp -v 1.1 -x PBE && \
     aiida-pseudo install sssp -v 1.1 -x PBEsol && \
     verdi daemon stop && \
-    pip install spglib==2.5.0 && \
     mamba run -n aiida-core-services pg_ctl stop && \
     touch /home/${NB_USER}/.FLAG_HOME_INITIALIZED && \
     # NOTE: The work folder is empty but if included clashes with the work folder in a Renku
@@ -147,7 +140,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # It is usually safe (and preferable) to let .conda be recreated on the fly each time,
     # because .conda typically just holds local environment information, caches, or references
     # to available environments.
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude work --exclude .conda .
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude .cache --exclude work --exclude .conda .
 
 ###############################################################################
 # 6) Final stage
@@ -161,24 +154,27 @@ ARG UV_CACHE_DIR
 ARG COMPUTER_LABEL
 ARG TARGETARCH
 ARG AIIDA_HQ_PKG
-ARG VIBROSCOPY_PKG
 ARG MUON_PKG
 
 USER ${NB_USER}
 WORKDIR /tmp
-# Install python dependencies
+
+# Install common dependencies such as pymatgen and pandas via conda,
+# to avoid building them when installing via pip
+# TODO: Remove this once it is part of the full-stack image.
+RUN mamba install aiida-core.atomic_tools -y && \
+    mamba clean --all -f -y
+
+# Install dependencies in the final image.
+# It is important that these are installed in /opt/conda, not ~/.local
 # Use uv cache from the previous build step
-# # Install the aiida-hyperqueue
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
+    uv pip install --strict --system --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-      ${QE_APP_SRC} ${AIIDA_HQ_PKG}
-# Install plugins in the final image
-RUN pip install aiida-bader ${VIBROSCOPY_PKG} ${MUON_PKG} && \
-    mamba install scipy==1.13.1 --y && \
-    mamba clean --all -f -y
+      ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
