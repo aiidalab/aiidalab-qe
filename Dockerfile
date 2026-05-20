@@ -65,11 +65,8 @@ COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
 COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
-ENV UV_CACHE_DIR=${UV_CACHE_DIR}
-ENV UV_SYSTEM_PYTHON=true
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    uv cache dir && \
-    uv pip install --strict .
+    uv pip install --strict --system --cache-dir=${UV_CACHE_DIR} .
 
 ###############################################################################
 # 5) home_build stage
@@ -111,8 +108,8 @@ ENV UV_LINK_MODE=copy
 # otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
-    uv pip install --strict --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
-    uv pip install --strict --cache-dir=${UV_CACHE_DIR} \
+    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
+    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
       ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
