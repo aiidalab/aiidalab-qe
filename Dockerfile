@@ -154,7 +154,7 @@ ARG TARGETARCH
 USER root
 # Build wannier90 for all arches
 RUN set -ex; \
-    apt-get update && apt-get install -y --no-install-recommends \
+    apt-get -q update && apt-get -q install -y --no-install-recommends \
     gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin libopenmpi-dev; \
     git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
     cd /tmp/wannier90; \
@@ -163,9 +163,9 @@ RUN set -ex; \
     echo "MPIF90=mpif90" >> make.inc; \
     make -j"$(nproc)" wannier; \
     cp wannier90.x /opt/conda/bin/wannier90.x; \
-    apt-get remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
-    apt-get autoremove -y && \
-    apt-get clean && \
+    apt-get -q remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
+    apt-get -q autoremove -y && \
+    apt-get -q clean && \
     rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
 
 USER ${NB_USER}
