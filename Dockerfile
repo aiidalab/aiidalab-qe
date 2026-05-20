@@ -104,7 +104,10 @@ RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
+ENV UV_LINK_MODE=copy
 
+# NOTE: euphonic must be build separately with --no-build-isolation,
+# otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
@@ -171,6 +174,7 @@ RUN mamba install aiida-core.atomic_tools -y && \
 # It is important that these are installed in /opt/conda, not ~/.local
 # Use uv cache from the previous build step
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
+ENV UV_LINK_MODE=copy
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
