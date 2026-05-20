@@ -23,6 +23,7 @@ ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
 ###############################################################################
 # 2) uv stage (unchanged)
+#    https://docs.astral.sh/uv/guides/integration/docker/
 ###############################################################################
 FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
@@ -59,12 +60,13 @@ ENV COMPUTER_LABEL=${COMPUTER_LABEL}
 ENV AIIDA_HQ_PKG=${AIIDA_HQ_PKG}
 ENV MUON_PKG=${MUON_PKG}
 
-
+# https://docs.astral.sh/uv/reference/environment/
 ENV UV_CACHE_DIR=/tmp/uv_cache
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
-# Make sure UV installs into the conda environment at /opt/conda
-ENV UV_SYSTEM_PYTHON=true
 ENV UV_LINK_MODE=copy
+ENV UV_NO_PROGRESS=1
+# Make sure UV installs into the conda environment at /opt/conda
+ENV UV_SYSTEM_PYTHON=1
 
 ###############################################################################
 # 4) build_deps stage
