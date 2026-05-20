@@ -57,9 +57,11 @@ class StructureResultsPanel(ResultsPanel[StructureResultsModel]):
         ipw.dlink(
             (self.view_toggle_button, "disabled"),
             (self.view_toggle_button, "tooltip"),
-            lambda disabled: "Waiting for results"
-            if disabled
-            else "Toggle between the initial and relaxed structures",
+            lambda disabled: (
+                "Waiting for results"
+                if disabled
+                else "Toggle between the initial and relaxed structures"
+            ),
         )
 
         self.view_toggle_button.on_click(self._toggle_view)

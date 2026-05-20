@@ -426,27 +426,14 @@ class PluginManager:
             github_data = plugin_data.get("github", "")
             post_install_data = plugin_data.get("post_install", None)
             install_btn.on_click(
-                lambda _btn,
-                pn=plugin_name,
-                pip=pip_data,
-                gh=github_data,
-                post=post_install_data,
-                oc=output_container,
-                mc=message_container,
-                ib=install_btn,
-                rb=remove_btn,
-                ac=self.accordion,
-                idx=i: install_package(pn, pip, gh, post, oc, mc, ib, rb, ac, idx)
+                lambda _btn, pn=plugin_name, pip=pip_data, gh=github_data, post=post_install_data, oc=output_container, mc=message_container, ib=install_btn, rb=remove_btn, ac=self.accordion, idx=i: (
+                    install_package(pn, pip, gh, post, oc, mc, ib, rb, ac, idx)
+                )
             )
             remove_btn.on_click(
-                lambda _btn,
-                pn=plugin_name,
-                oc=output_container,
-                mc=message_container,
-                ib=install_btn,
-                rb=remove_btn,
-                ac=self.accordion,
-                idx=i: remove_package(pn, oc, mc, ib, rb, ac, idx)
+                lambda _btn, pn=plugin_name, oc=output_container, mc=message_container, ib=install_btn, rb=remove_btn, ac=self.accordion, idx=i: (
+                    remove_package(pn, oc, mc, ib, rb, ac, idx)
+                )
             )
 
             # Create layout for each plugin

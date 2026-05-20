@@ -9,6 +9,6 @@ def test_entry_point():
     entries_list = list(entries.keys())
     prioritized_entries = ["electronic_structure", "bands", "pdos"]
     for i, prioritized_entry in enumerate(prioritized_entries):
-        assert (
-            entries_list.index(prioritized_entry) == i
-        ), f"Entry point {prioritized_entry} is not in the expected position."
+        assert entries_list.index(prioritized_entry) == i, (
+            f"Entry point {prioritized_entry} is not in the expected position."
+        )
