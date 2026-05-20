@@ -40,6 +40,9 @@ class HasInputStructure(tl.HasTraits):
             for kind_name in self.input_structure.get_kind_names()
         )
 
+    def get_num_atoms(self) -> int:
+        return len(self.input_structure.sites) if self.has_structure else 0
+
 
 M = t.TypeVar("M", bound=Model)
 

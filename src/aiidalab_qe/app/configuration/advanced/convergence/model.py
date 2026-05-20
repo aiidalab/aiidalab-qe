@@ -29,10 +29,8 @@ class ConvergenceConfigurationSettingsModel(
     help_message = tl.Unicode()
     scf_conv_thr = tl.Float(0.0)
     scf_conv_thr_step = tl.Float(1e-10)
-    scf_conv_thr_abs = tl.Float(0.0)
     etot_conv_thr = tl.Float(0.0)
     etot_conv_thr_step = tl.Float(1e-5)
-    etot_conv_thr_abs = tl.Float(0.0)
     forc_conv_thr = tl.Float(0.0)
     forc_conv_thr_step = tl.Float(1e-4)
     kpoints_distance = tl.Float(0.0)
@@ -58,8 +56,7 @@ class ConvergenceConfigurationSettingsModel(
         if specific in {"structure", "protocol"}:
             self._update_thresholds()
         if not specific or specific != "mesh":
-            parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
-            self._update_kpoints_distance(parameters)
+            self._update_kpoints_distance()
         self._update_kpoints_mesh()
 
     def reset(self):
@@ -80,7 +77,6 @@ class ConvergenceConfigurationSettingsModel(
         if not self.has_structure:
             self.help_message = "No structure available."
             return
-        num_atoms = len(self.input_structure.sites)
         self.help_message = f"""
             <div style="line-height: 1.4; margin-bottom: 5px;">
                 Setting the energy threshold for the self-consistent field (SCF)
@@ -91,26 +87,22 @@ class ConvergenceConfigurationSettingsModel(
                 thresholds, the actual value used in the calculation (shown below
                 widget) is given as:
                 <code>threshold x num_atoms</code>
-                (<code>num_atoms = {num_atoms}</code>)
+                (<code>num_atoms = {self.get_num_atoms()}</code>)
             </div>
         """
 
     def _update_thresholds(self):
         parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
 
-        num_atoms = len(self.input_structure.sites) if self.has_structure else 1
-
         etot_value = parameters["meta_parameters"]["etot_conv_thr_per_atom"]
         self._set_value_and_step("etot_conv_thr", etot_value)
         self.etot_conv_thr = self._defaults["etot_conv_thr"]
         self.etot_conv_thr_step = self._defaults["etot_conv_thr_step"]
-        self.etot_conv_thr_abs = self.etot_conv_thr * num_atoms
 
         scf_value = parameters["meta_parameters"]["conv_thr_per_atom"]
         self._set_value_and_step("scf_conv_thr", scf_value)
         self.scf_conv_thr = self._defaults["scf_conv_thr"]
         self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
-        self.scf_conv_thr_abs = self.scf_conv_thr * num_atoms
 
         forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
         self._set_value_and_step("forc_conv_thr", forc_value)
@@ -126,7 +118,8 @@ class ConvergenceConfigurationSettingsModel(
             step = 0.1
         self._defaults[f"{attribute}_step"] = step
 
-    def _update_kpoints_distance(self, parameters):
+    def _update_kpoints_distance(self):
+        parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
         kpoints_distance = parameters["kpoints_distance"] if self.has_pbc else 100.0
         self._defaults["kpoints_distance"] = kpoints_distance
         self.kpoints_distance = self._defaults["kpoints_distance"]

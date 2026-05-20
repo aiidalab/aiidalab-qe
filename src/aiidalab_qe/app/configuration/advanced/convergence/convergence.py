@@ -51,9 +51,9 @@ class ConvergenceConfigurationSettingsPanel(
             )
         )
         ipw.dlink(
-            (self._model, "scf_conv_thr_abs"),
+            (self.scf_conv_thr, "value"),
             (scf_conv_thr_abs, "value"),
-            lambda v: f"{v:.5e}",
+            lambda v: f"{v * self._model.get_num_atoms():.5e}",
         )
         scf_conv_thr_abs.add_class("convergence-label")
 
@@ -85,9 +85,9 @@ class ConvergenceConfigurationSettingsPanel(
 
         etot_conv_thr_abs = ipw.Label()
         ipw.dlink(
-            (self._model, "etot_conv_thr_abs"),
+            (self.etot_conv_thr, "value"),
             (etot_conv_thr_abs, "value"),
-            lambda v: f"{v:.5e}",
+            lambda v: f"{v * self._model.get_num_atoms():.5e}",
         )
         etot_conv_thr_abs.add_class("convergence-label")
 
