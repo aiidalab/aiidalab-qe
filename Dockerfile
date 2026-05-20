@@ -113,7 +113,7 @@ RUN mkdir -p ${PSEUDO_FOLDER} && \
 # NOTE: euphonic must be build separately with --no-build-isolation,
 # otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    --mount=type=cache,target=${UV_CACHE_DIR},rw \
     uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
     uv pip install --strict ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
@@ -170,7 +170,7 @@ RUN mamba install aiida-core.atomic_tools -y && \
 # Install dependencies in the final image.
 # Use uv cache from the previous build step
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    --mount=type=cache,target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
     uv pip install --strict --compile-bytecode \
