@@ -30,8 +30,7 @@ FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 ###############################################################################
 # 3) qe_conda_env stage
 #    - Creates the quantum-espresso conda environment in /opt/conda/envs/quantum-espresso-<QE_VER>
-#    - On x86_64, we install the 'bader' package from conda. On arm64, skip 'bader' because
-#      it’s unavailable and we'll build from source later.
+#    - Install QuantumEspresso and bader packages
 ###############################################################################
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS qe_conda_env
 ARG QE_VER
@@ -41,16 +40,13 @@ ARG TARGETARCH
 
 USER ${NB_USER}
 RUN set -ex; \
-    if [ "${TARGETARCH}" = "amd64" ]; then \
-      echo "Installing QE plus Bader for x86_64..."; \
-      mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader; \
-    else \
-      echo "Installing QE (without bader) for ARM64..."; \
-      mamba create -p ${QE_DIR} --yes qe=${QE_VER}; \
-    fi && \
+    echo "Installing QE plus Bader for x86_64..." && \
+    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
     mamba clean --all -f -y
 
-# base stage to setup common environment variables
+###############################################################################
+# 4) base stage to setup common environment variables
+###############################################################################
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS base
 ARG AIIDA_HQ_PKG
 ARG MUON_PKG
@@ -69,7 +65,7 @@ ENV UV_NO_PROGRESS=1
 ENV UV_SYSTEM_PYTHON=1
 
 ###############################################################################
-# 4) build_deps stage
+# 5) build_deps stage
 #    - Installs Python dependencies using uv for caching
 ###############################################################################
 FROM base AS build_deps
@@ -86,7 +82,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     uv pip install --strict .
 
 ###############################################################################
-# 5) home_build stage
+# 6) home_build stage
 #    - Prepares AiiDA profile, sets up hyperqueue, installs QE codes/pseudos,
 #      and archives the home folder (home.tar).
 ###############################################################################
@@ -152,7 +148,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude .cache --exclude work --exclude .conda .
 
 ###############################################################################
-# 6) Final stage
+# 7) Final stage
 #    - Installs python dependencies again, copies QE env, compiles wannier90,
 #      (conditionally) compiles bader on ARM64, and sets up the final environment.
 ###############################################################################
@@ -186,7 +182,7 @@ COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
 
 USER root
 
-# Build wannier90 for all arches, and build bader from source ONLY on arm64
+# Build wannier90 for all arches
 RUN set -ex; \
     apt-get update && apt-get install -y --no-install-recommends \
     gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin libopenmpi-dev; \
@@ -197,17 +193,6 @@ RUN set -ex; \
     echo "MPIF90=mpif90" >> make.inc; \
     make -j"$(nproc)" wannier; \
     cp wannier90.x /opt/conda/bin/wannier90.x; \
-    \
-    if [ "${TARGETARCH}" = "arm64" ]; then \
-      echo "Building bader from source for ARM64..."; \
-      git clone --depth=1 https://gitlab.com/jameskermode/bader.git /tmp/bader; \
-      cd /tmp/bader; \
-      cp makefile.osx_gfortran Makefile; \
-      make; \
-      cp bader ${QE_DIR}/bin/bader; \
-    else \
-      echo "Skipping Bader build on AMD64 (installed via conda)."; \
-    fi; \
     apt-get remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
     apt-get autoremove -y && \
     apt-get clean && \
