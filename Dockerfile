@@ -19,7 +19,6 @@ ARG COMPUTER_LABEL="localhost"
 
 ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
-ARG VIBROSCOPY_PKG="aiidalab-qe-vibroscopy@git+https://github.com/danielhollas/aiidalab-qe-vibroscopy@update-pyproject"
 ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.1.1"
 ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
@@ -84,7 +83,6 @@ ARG TARGETARCH
 ARG HQ_URL_AMD64
 ARG HQ_URL_ARM64
 ARG AIIDA_HQ_PKG
-ARG VIBROSCOPY_PKG
 ARG MUON_PKG
 
 #
@@ -112,7 +110,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} --no-build-isolation euphonic==1.3.2 && \
     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
-      ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG} aiida-bader
+      ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
@@ -158,7 +156,6 @@ ARG UV_CACHE_DIR
 ARG COMPUTER_LABEL
 ARG TARGETARCH
 ARG AIIDA_HQ_PKG
-ARG VIBROSCOPY_PKG
 ARG MUON_PKG
 
 USER ${NB_USER}
@@ -179,7 +176,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=home_build,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --system --compile-bytecode --cache-dir=${UV_CACHE_DIR} \
-      ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG} aiida-bader
+      ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
