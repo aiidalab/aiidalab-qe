@@ -8,7 +8,7 @@
 # 1) Global ARGs
 ###############################################################################
 ARG FULL_STACK_VER=2026.1030
-ARG UV_VER=0.11.1
+ARG UV_VER=0.11.15
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
@@ -106,7 +106,7 @@ RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
 
 ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
-# Install the aiida-hyperqueue
+
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
