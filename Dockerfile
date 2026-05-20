@@ -74,30 +74,17 @@ ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
 FROM base AS build_deps
 ARG QE_DIR
 ARG QE_APP_SRC
+ARG TARGETARCH
 
 WORKDIR ${QE_APP_SRC}
-
-COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
-COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
 # NOTE: euphonic must be build separately with --no-build-isolation,
 # otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
+    --mount=type=bind,target=.,rw \
     uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
-    uv pip install --strict . ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
-
-###############################################################################
-# 6) home_build stage
-#    - Prepares AiiDA profile, sets up hyperqueue, installs QE codes/pseudos,
-#      and archives the home folder (home.tar).
-###############################################################################
-FROM build_deps AS home_build
-ARG QE_DIR
-# We'll use these to pick the correct HQ binary
-ARG TARGETARCH
-ARG HQ_URL_AMD64
-ARG HQ_URL_ARM64
+    uv pip install --strict -r pyproject.toml ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 # Download and unpack the correct hq binary for the architecture:
 RUN set -ex; \
@@ -107,6 +94,23 @@ RUN set -ex; \
       wget --no-verbose -c -O hq.tar.gz "${HQ_URL_AMD64}"; \
     fi && \
     tar xf hq.tar.gz -C /opt/conda/
+
+# Install QeApp (all the dependencies should already be installed in the previous step!)
+COPY --chown=${NB_UID}:${NB_GID} src/ LICENSE README.md setup.cfg pyproject.toml .
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+    --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
+    uv pip install --strict .
+
+###############################################################################
+# 6) home_build stage
+#    - Prepares AiiDA profile, sets up hyperqueue, installs QE codes/pseudos,
+#      and archives the home folder (home.tar).
+###############################################################################
+FROM build_deps AS home_build
+ARG QE_DIR
+# We'll use these to pick the correct HQ binary
+ARG HQ_URL_AMD64
+ARG HQ_URL_ARM64
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
