@@ -210,6 +210,8 @@ class AdvancedConfigurationSettingsModel(
         )
         with pseudos.hold_trait_notifications():
             if pseudo_family_string := state.get("pseudo_family"):
+                # If a pseudo family string exists, we can assume that no custom pseudos were uploaded.
+                # We therefore populate the UI from the pseudo family.
                 pseudo_family = PseudoFamily.from_string(pseudo_family_string)
                 library = f"{pseudo_family.library} {pseudo_family.accuracy}"
                 if relativistic := pseudo_family.relativistic:
@@ -217,23 +219,32 @@ class AdvancedConfigurationSettingsModel(
                 pseudos.functional = pseudo_family.functional
                 pseudos.library = library
                 pseudos.family = pseudo_family_string
+                pseudos.functionals = [pseudos.functional] * num_kinds
             else:
+                # Otherwise, we assume a custom pseudo upload (warning enabled).
+                # Everything is set to None except the functionals, which we extract from the pseudos.
+                pseudos.show_upload_warning = True
+                functionals = []
                 try:
-                    pp_uuid = next(iter(PW["pseudos"].values()))
-                    pseudo_info = get_pseudo_info(pp_uuid)
-                    pseudos.functional = pseudo_info["functional"]
-                except Exception:
+                    for pp_uuid in PW["pseudos"].values():
+                        pseudo_info = get_pseudo_info(pp_uuid)
+                        functionals.append(pseudo_info["functional"])
+                    if len(set(functionals)) == 1:
+                        pseudos.functional = functionals[0]
+                    else:
+                        pseudos.functional = None
+                except Exception as err:
+                    print(f"Error loading pseudos: {err}")
                     pseudos.functional = None
                 pseudos.library = None
                 pseudos.family = None
-                pseudos.show_upload_warning = True
+                pseudos.functionals = functionals
 
-            pseudos.functionals = [pseudos.functional] * num_kinds
-
-            if pseudos_dictionary := PW.get("pseudos"):
-                pseudos.dictionary = pseudos_dictionary
-                pseudos.ecutwfc = SYSTEM.get("ecutwfc", 0.0)
-                pseudos.ecutrho = SYSTEM.get("ecutrho", 0.0)
+        if pseudos_dictionary := PW.get("pseudos"):
+            # We set these outside of the context manager to avoid a reset by other trait notifications.
+            pseudos.dictionary = pseudos_dictionary
+            pseudos.ecutwfc = SYSTEM.get("ecutwfc", 0.0)
+            pseudos.ecutrho = SYSTEM.get("ecutrho", 0.0)
 
         magnetization = t.cast(
             MagnetizationConfigurationSettingsModel,
