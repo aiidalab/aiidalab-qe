@@ -109,6 +109,7 @@ ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
 
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=from=build_deps,source=${UV_CACHE_DIR},target=${UV_CACHE_DIR},rw \
+    uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} euphonic==1.3.2 && \
     uv pip install --system --strict --cache-dir=${UV_CACHE_DIR} \
       ${AIIDA_HQ_PKG} ${MUON_PKG} ${VIBROSCOPY_PKG} aiida-bader
 
