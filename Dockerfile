@@ -77,9 +77,12 @@ WORKDIR ${QE_APP_SRC}
 COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
 COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
+# NOTE: euphonic must be build separately with --no-build-isolation,
+# otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    uv pip install --strict .
+    uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
+    uv pip install --strict . ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 ###############################################################################
 # 6) home_build stage
@@ -93,9 +96,7 @@ ARG TARGETARCH
 ARG HQ_URL_AMD64
 ARG HQ_URL_ARM64
 
-#
 # Download and unpack the correct hq binary for the architecture:
-#
 RUN set -ex; \
     if [ "${TARGETARCH}" = "arm64" ]; then \
       wget --no-verbose -c -O hq.tar.gz "${HQ_URL_ARM64}"; \
@@ -108,13 +109,6 @@ ENV PSEUDO_FOLDER=/tmp/pseudo
 
 RUN mkdir -p ${PSEUDO_FOLDER} && \
     python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
-
-# NOTE: euphonic must be build separately with --no-build-isolation,
-# otherwise it fails to build on arm64 due to missing build-time numpy dependency.
-RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
-    uv pip install --strict ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
