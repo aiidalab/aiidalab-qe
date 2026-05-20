@@ -44,7 +44,7 @@ class ConvergenceConfigurationSettingsPanel(
             (self.scf_conv_thr, "step"),
         )
 
-        scf_conv_thr_abs = ipw.Label(
+        self.scf_conv_thr_abs = ipw.Label(
             layout=ipw.Layout(
                 width="150px",
                 text_align="center",
@@ -52,13 +52,13 @@ class ConvergenceConfigurationSettingsPanel(
         )
         ipw.dlink(
             (self.scf_conv_thr, "value"),
-            (scf_conv_thr_abs, "value"),
+            (self.scf_conv_thr_abs, "value"),
             lambda v: f"{v * self._model.get_num_atoms():.5e}",
         )
-        scf_conv_thr_abs.add_class("convergence-label")
+        self.scf_conv_thr_abs.add_class("convergence-label")
 
         scf_conv_thr_with_units = HBoxWithUnits(
-            widget=scf_conv_thr_abs,
+            widget=self.scf_conv_thr_abs,
             units="Ry",
             layout={"margin": "-8px 0 0 150px"},
         )
@@ -83,16 +83,16 @@ class ConvergenceConfigurationSettingsPanel(
             (self.etot_conv_thr, "step"),
         )
 
-        etot_conv_thr_abs = ipw.Label()
+        self.etot_conv_thr_abs = ipw.Label()
         ipw.dlink(
             (self.etot_conv_thr, "value"),
-            (etot_conv_thr_abs, "value"),
+            (self.etot_conv_thr_abs, "value"),
             lambda v: f"{v * self._model.get_num_atoms():.5e}",
         )
-        etot_conv_thr_abs.add_class("convergence-label")
+        self.etot_conv_thr_abs.add_class("convergence-label")
 
         etot_conv_thr_with_units = HBoxWithUnits(
-            widget=etot_conv_thr_abs,
+            widget=self.etot_conv_thr_abs,
             units="Ry",
             layout={"margin": "-8px 0 0 150px"},
         )
