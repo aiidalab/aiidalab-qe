@@ -92,11 +92,9 @@ ARG MUON_PKG
 #
 RUN set -ex; \
     if [ "${TARGETARCH}" = "arm64" ]; then \
-      echo "Downloading hyperqueue for ARM64..."; \
-      wget -c -O hq.tar.gz "${HQ_URL_ARM64}"; \
+      wget --no-verbose -c -O hq.tar.gz "${HQ_URL_ARM64}"; \
     else \
-      echo "Downloading hyperqueue for x86_64..."; \
-      wget -c -O hq.tar.gz "${HQ_URL_AMD64}"; \
+      wget --no-verbose -c -O hq.tar.gz "${HQ_URL_AMD64}"; \
     fi && \
     tar xf hq.tar.gz -C /opt/conda/
 
