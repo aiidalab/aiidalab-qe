@@ -4,7 +4,6 @@ from pathlib import Path
 
 import ipywidgets as ipw
 
-
 _APP_DIR = Path(__file__).parent
 
 
