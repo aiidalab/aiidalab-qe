@@ -1,8 +1,6 @@
 import typing as t
 
 from aiida_pseudo.groups.family import PseudoPotentialFamily
-from upf_tools import UPFDict
-
 from aiida import orm
 from aiida.plugins import DataFactory, GroupFactory
 
@@ -89,6 +87,14 @@ def get_pseudo_family_by_label(label) -> PseudoPotentialFamily:
 
 
 def get_upf_dict(pseudo):
+    try:
+        from upf_tools import UPFDict
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            "Parsing UPF pseudo files requires the optional 'upf_tools' dependency. "
+            "Install the 'pseudos' extra to enable this feature."
+        ) from err
+
     with pseudo.as_path() as pseudo_path:
         upf_dict = UPFDict.from_upf(pseudo_path.as_posix())
     return upf_dict

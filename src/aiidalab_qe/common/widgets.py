@@ -19,7 +19,6 @@ import numpy as np
 import traitlets
 from IPython.display import HTML, Javascript, display
 from pymatgen.io.ase import AseAtomsAdaptor
-from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
@@ -32,6 +31,17 @@ from aiidalab_widgets_base.utils import (
 )
 
 from .link_button import LinkButton
+
+
+def _load_shakenbreak_distortions():
+    try:
+        from shakenbreak.distortions import distort, local_mc_rattle, rattle
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            "The defect distortion tools require the optional 'shakenbreak' "
+            "dependency. Install the 'defects' extra to enable this editor."
+        ) from err
+    return distort, local_mc_rattle, rattle
 
 __all__ = [
     "CalcJobOutputFollower",
@@ -1468,6 +1478,7 @@ class ShakeNBreakEditor(ipw.VBox):
             else:
                 frac_coords = self.str2vec(self.vacancy_coords.value)
 
+            distort, _, _ = _load_shakenbreak_distortions()
             self._apply_distortion(
                 distort,
                 num_nearest_neighbours=self.num_nearest_neighbours.value,
@@ -1501,6 +1512,7 @@ class ShakeNBreakEditor(ipw.VBox):
             else:
                 self.wrong_syntax.layout.visibility = "hidden"
 
+                _, local_mc_rattle, _ = _load_shakenbreak_distortions()
                 self._apply_distortion(
                     local_mc_rattle,
                     site_index=site_index,
@@ -1510,6 +1522,7 @@ class ShakeNBreakEditor(ipw.VBox):
                 )
 
     def _apply_random_distortion_all(self, _=None):
+        _, _, rattle = _load_shakenbreak_distortions()
         self._apply_distortion(
             rattle,
             active_atoms=None,
