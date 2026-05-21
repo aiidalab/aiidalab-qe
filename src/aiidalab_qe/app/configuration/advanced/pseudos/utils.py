@@ -1,6 +1,7 @@
 import typing as t
 
 from aiida_pseudo.groups.family import PseudoPotentialFamily
+
 from aiida import orm
 from aiida.plugins import DataFactory, GroupFactory
 

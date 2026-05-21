@@ -43,6 +43,7 @@ def _load_shakenbreak_distortions():
         ) from err
     return distort, local_mc_rattle, rattle
 
+
 __all__ = [
     "CalcJobOutputFollower",
     "LinkButton",
