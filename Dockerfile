@@ -85,7 +85,7 @@ COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
     uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
-    uv pip install --strict . ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
+    uv pip install --strict . ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy "aiida-bader>=0.1.10"
 
 ###############################################################################
 # 6) home_build stage
@@ -126,8 +126,8 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed --label python --computer=${COMPUTER_LABEL} --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
     verdi code create core.code.installed --label bader --computer=${COMPUTER_LABEL} --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
     verdi code create core.code.installed --label wannier90 --computer=${COMPUTER_LABEL} --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
-    # run post_install for plugin
-    python -m aiida_bader post-install && \
+    # Import Bader PAW pseudopotentials; the code is created explicitly above.
+    python -c 'from aiida import load_profile; load_profile(); from aiida_bader.utils import install_pseudos; install_pseudos()' && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
     python -m aiidalab_qe_muon setup-python3 && \
     # wannier90 plugin need SSSP 1.1
@@ -198,7 +198,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
     --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
     uv pip install --strict --compile-bytecode \
-      ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
+      ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy "aiida-bader>=0.1.10"
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
