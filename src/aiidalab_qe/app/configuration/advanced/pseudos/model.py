@@ -47,7 +47,7 @@ class PseudosConfigurationSettingsModel(
         value_trait=tl.Unicode(allow_none=True),  # pseudopotential node uuid
         default_value={},
     )
-    functional = tl.Unicode(allow_none=True)
+    functional = tl.Unicode(None, allow_none=True)
     functional_options = tl.List(
         trait=tl.Unicode(),
         default_value=[
@@ -55,7 +55,7 @@ class PseudosConfigurationSettingsModel(
             "PBEsol",
         ],
     )
-    library = tl.Unicode(allow_none=True)
+    library = tl.Unicode(None, allow_none=True)
     library_options = tl.List(
         trait=tl.Unicode(),
         default_value=[
@@ -67,7 +67,7 @@ class PseudosConfigurationSettingsModel(
             "PseudoDojo stringent (FR)",
         ],
     )
-    family = tl.Unicode(allow_none=True)
+    family = tl.Unicode(None, allow_none=True)
     family_header = tl.Unicode(allow_none=True)
     cutoffs = tl.List(
         trait=tl.List(tl.Float()),  # [[ecutwfc values], [ecutrho values]]
