@@ -248,7 +248,8 @@ class QeAppWorkChain(WorkChain):
             self.out("structure", self.ctx.current_structure)
 
     def should_run_plugin(self, name):
-        return name in self.inputs
+        """Return whether a plugin was requested by the selected properties."""
+        return name in self.inputs.properties.get_list()
 
     def run_plugin(self):
         """Run the plugin `WorkChain`."""
