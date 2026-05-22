@@ -22,9 +22,12 @@ def test_qe_app_select_silicon_and_confirm(
 
     driver.find_element(By.CLASS_NAME, "qe-app-step-ready")  # ready on start
 
-    # Open structure selection step
+    # Open structure selection step. The exact accordion DOM classes differ
+    # between ipywidgets/Jupyter versions, but the rendered title is stable.
     element = WebDriverWait(driver, 60).until(
-        EC.presence_of_element_located((By.CLASS_NAME, "p-Accordion-child"))
+        EC.element_to_be_clickable(
+            (By.XPATH, "//span[contains(.,'Step 1: Select structure')]")
+        )
     )
     element.click()
     # check that element has CSS class
