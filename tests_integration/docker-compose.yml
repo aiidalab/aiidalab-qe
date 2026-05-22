@@ -5,7 +5,7 @@ services:
         image: ${REGISTRY:-}${QE_IMAGE:-aiidalab/qe}${TAG:-}
         environment:
             TZ: Europe/Zurich
-            DOCKER_STACKS_JUPYTER_CMD: notebook
+            DOCKER_STACKS_JUPYTER_CMD: nbclassic
             SETUP_DEFAULT_AIIDA_PROFILE: 'true'
             AIIDALAB_DEFAULT_APPS: ''
             JUPYTER_TOKEN: ${JUPYTER_TOKEN}
