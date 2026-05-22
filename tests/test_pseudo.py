@@ -373,12 +373,16 @@ def test_missing_pseudos(generate_structure_data):
     assert "does not contain a pseudopotential for Ce" in model.blockers[0]  # type: ignore
 
 
-def test_functional_mismatch_blocker(generate_structure_data):
+def test_functional_mismatch_blocker(generate_structure_data, generate_upf_data):
     """Test blocker for inconsistent functional across selected pseudopotentials."""
     model = PseudosConfigurationSettingsModel()
     _ = PseudosConfigurationSettingsPanel(model=model)
     model.structure_uuid = generate_structure_data("silica").uuid
-    model.functionals = ["PBE", "PBEsol"]
+    pseudo1 = generate_upf_data("Si", "Si_PBE.upf").store()
+    pseudo1.base.extras.set("functional", "PBE")
+    pseudo2 = generate_upf_data("O", "O_PBEsol.upf").store()
+    pseudo2.base.extras.set("functional", "PBEsol")
+    model.dictionary = {"Si": pseudo1.uuid, "O": pseudo2.uuid}
     assert len(model.blockers) == 1
     assert "must have the same exchange-correlation" in model.blockers[0]  # type: ignore
 
