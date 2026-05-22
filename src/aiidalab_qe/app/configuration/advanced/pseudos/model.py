@@ -413,3 +413,9 @@ class PseudosConfigurationSettingsModel(
         if self.spin_orbit == "soc":
             if relativistic_set != {"full"}:
                 yield "For spin-orbit coupling (SOC) calculations, all pseudopotentials must be fully relativistic."
+
+        if self.ecutwfc == 0.0:
+            yield "The cutoff energy for wavefunctions (ecutwfc) cannot be zero."
+
+        if self.ecutrho == 0.0:
+            yield "The cutoff energy for charge density (ecutrho) cannot be zero."
