@@ -202,8 +202,6 @@ class AdvancedConfigurationSettingsModel(
             if "smearing" in SYSTEM:
                 smearing.type = SYSTEM["smearing"]
 
-        num_kinds = len(self.input_structure.kinds) if self.has_structure else 1
-
         pseudos = t.cast(
             PseudosConfigurationSettingsModel,
             self.get_model("pseudos"),
@@ -219,7 +217,6 @@ class AdvancedConfigurationSettingsModel(
                 pseudos.functional = pseudo_family.functional
                 pseudos.library = library
                 pseudos.family = pseudo_family_string
-                pseudos.functionals = [pseudos.functional] * num_kinds
             else:
                 # Otherwise, we assume a custom pseudo upload (warning enabled).
                 # Everything is set to None except the functionals, which we extract from the pseudos.
@@ -238,7 +235,6 @@ class AdvancedConfigurationSettingsModel(
                     pseudos.functional = None
                 pseudos.library = None
                 pseudos.family = None
-                pseudos.functionals = functionals
 
         if pseudos_dictionary := PW.get("pseudos"):
             # We set these outside of the context manager to avoid a reset by other trait notifications.
