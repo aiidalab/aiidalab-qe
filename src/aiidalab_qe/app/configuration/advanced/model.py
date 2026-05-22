@@ -219,7 +219,7 @@ class AdvancedConfigurationSettingsModel(
                 pseudos.family = pseudo_family_string
             else:
                 # Otherwise, we assume a custom pseudo upload (warning enabled).
-                # Everything is set to None except the functionals, which we extract from the pseudos.
+                # Everything is set to None except the functional, which we extract from the pseudos.
                 pseudos.show_upload_warning = True
                 functionals = []
                 try:
