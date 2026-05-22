@@ -25,6 +25,12 @@ def docker_compose_file(pytestconfig):
 
 
 @pytest.fixture(scope="session")
+def docker_setup():
+    """Start compose without Docker's --wait; notebook_service handles readiness."""
+    return ["up --build -d"]
+
+
+@pytest.fixture(scope="session")
 def docker_compose(docker_services):
     return docker_services._docker_compose
 
