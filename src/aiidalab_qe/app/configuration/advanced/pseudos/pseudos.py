@@ -56,6 +56,10 @@ class PseudosConfigurationSettingsPanel(
             self._on_cutoffs_change,
             "cutoffs",
         )
+        self._model.observe(
+            self._on_ecut_change,
+            ["ecutwfc", "ecutrho"],
+        )
 
     def render(self):
         if self.rendered:
@@ -261,6 +265,9 @@ class PseudosConfigurationSettingsPanel(
         cutoffs = change["new"]  # [[ecutwfc...], [ecutrho...]]
         self._model.ecutwfc = max(cutoffs[0])
         self._model.ecutrho = max(cutoffs[1])
+
+    def _on_ecut_change(self, _):
+        self._model.update_blockers()
 
     def _update(self):
         self._build_pseudos_list()
