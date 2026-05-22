@@ -6,7 +6,7 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiidalab_qe.common.mixins import Confirmable, HasBlockers
+from aiidalab_qe.common.mixins import Confirmable
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import WarningWidget
 from aiidalab_widgets_base import LoadingWidget
@@ -15,6 +15,7 @@ from aiidalab_widgets_base import LoadingWidget
 class State(enum.Enum):
     """Local copy of AWB's `WizardAppWidgetStep.State`"""
 
+    BLOCKED = -2
     FAIL = -1
     INIT = 0
     CONFIGURED = 1
@@ -91,9 +92,7 @@ class WizardStep(ipw.VBox, t.Generic[WSM]):
 class ConfirmableWizardStepModel(
     WizardStepModel,
     Confirmable,
-    HasBlockers,
 ):
-    blockers = tl.List(tl.Unicode())
     blocker_messages = tl.Unicode("")
 
     def __init__(self, *args, **kwargs):
@@ -107,9 +106,23 @@ class ConfirmableWizardStepModel(
             ]
         )
 
-    @property
-    def is_blocked(self):
-        return any(self.blockers)
+    def update_blockers(self):
+        if self.state is not State.INIT:
+            super().update_blockers()
+
+    def update_blocker_messages(self):
+        if self.is_blocked:
+            formatted = "\n".join(f"<li>{item}</li>" for item in self.blockers)
+            self.blocker_messages = f"""
+                <div class="alert alert-danger" style="margin-top: 8px;">
+                    <b>The step is blocked due to the following reason(s):</b>
+                    <ul>
+                        {formatted}
+                    </ul>
+                </div>
+            """
+        else:
+            self.blocker_messages = ""
 
     def lock(self):
         super().lock()
@@ -181,8 +194,9 @@ class ConfirmableWizardStep(WizardStep[CWSM]):
         self._model.update_state()
 
     def _on_blockers_change(self, _):
-        self._model.update_blocker_messages()
-        self._model.update_state()
+        if self._model.state is not State.INIT:
+            self._model.update_blocker_messages()
+            self._model.update_state()
 
 
 class DependentWizardStepModel(WizardStepModel):
@@ -197,12 +211,6 @@ class DependentWizardStepModel(WizardStepModel):
     @property
     def has_all_dependencies(self) -> bool:
         return all(getattr(self, dep) for dep in self._dependencies)
-
-    @property
-    def is_loading(self):
-        return not (
-            self.has_all_dependencies and (self.is_configured or self.is_successful)
-        )
 
 
 DWSM = t.TypeVar("DWSM", bound=DependentWizardStepModel)
@@ -239,7 +247,7 @@ class DependentWizardStep(WizardStep[DWSM]):
     def _update_content(self, _=None):
         if not self._model.is_previous_step_successful:
             self._show_missing_info_warning()
-        elif self._model.is_loading:
+        elif not self._model.has_all_dependencies:
             self._show_loading_message()
         else:
             self._show_content()

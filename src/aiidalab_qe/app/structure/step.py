@@ -194,13 +194,13 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
         self.manager.viewer._viewer._set_size("100%", "300px")
 
     def _on_installation_change(self, _):
-        self._model.update_blockers()
+        self._model.update()
 
     def _on_sssp_installed(self, _):
         self._toggle_sssp_installation_widget()
 
     def _on_input_structure_change(self, _):
-        self._model.update_state()
+        self._model.update()
 
     def _install_sssp(self, auto_setup):
         self.sssp_installation = PseudosInstallWidget(auto_start=False)

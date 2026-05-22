@@ -17,7 +17,7 @@ from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiidalab_qe.common.code.model import CodeModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import Confirmable, HasBlockers, HasModels, HasProcess
+from aiidalab_qe.common.mixins import Confirmable, HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
     PwCodeResourceSetupWidget,
@@ -29,7 +29,7 @@ from aiidalab_widgets_base import LoadingWidget
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class PanelModel(Model, Confirmable, HasBlockers):
+class PanelModel(Model, Confirmable):
     """Base class for all panel models.
 
     Attributes
@@ -103,9 +103,6 @@ class ConfigurationSettingsModel(PanelModel):
         super().__init__(*args, **kwargs)
 
 
-CSM = t.TypeVar("CSM", bound=ConfigurationSettingsModel)
-
-
 class ConfigurationSettingsPanel(Panel[PM]):
     """Base class for configuration settings panels."""
 
@@ -121,28 +118,12 @@ class ConfigurationSettingsPanel(Panel[PM]):
         `specific` : `str`, optional
             If provided, specifies the level of refresh.
         """
-        self._model.updated = False
         self._unsubscribe()
         if self._model.include:
-            self.update(specific)
-
-    def update(self, specific=""):
-        """Updates the model if not yet updated.
-
-        Parameters
-        ----------
-        `specific` : `str`, optional
-            If provided, specifies the level of update.
-        """
-        if self._model.updated:
-            return
-        if not self._model.locked and specific != "widgets":
             self._model.update(specific)
-        self._update()
-        self._model.updated = True
+            self._update_ui()
 
-    def _update(self):
-        """Updates the panel UI."""
+    def _update_ui(self):
         pass
 
     def _unsubscribe(self):
@@ -386,7 +367,7 @@ class PluginResourceSettingsModel(ResourceSettingsModel):
         super().add_model(identifier, model)
         model.activate()
 
-    def update(self):
+    def _update(self, specific=""):
         """Updates the code models from the global resources.
 
         Skips synchronization with global resources if the user has chosen to override
@@ -539,7 +520,7 @@ class ResultsModel(PanelModel, HasProcess):
         node = self.fetch_child_process_node()
         return node and node.is_finished_ok
 
-    def update(self):
+    def _update(self, specific=""):
         self.auto_render = self.has_results
 
     def update_process_status_notification(self):

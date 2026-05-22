@@ -106,7 +106,7 @@ class PseudosConfigurationSettingsModel(
 
     include = True  # build-in panel
 
-    def update(self, specific=""):
+    def _update(self, specific=""):
         if not self.has_structure:
             return
         family = self.family

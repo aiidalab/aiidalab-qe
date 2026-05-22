@@ -48,7 +48,7 @@ class RollingOutput(ipw.VBox):
     value = traitlets.Unicode()
     auto_scroll = traitlets.Bool()
 
-    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):  # noqa: ARG002
+    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):
         self._num_min_lines = num_min_lines
         self._output = ipw.HTML(layout=ipw.Layout(min_width="80em"))
         self._refresh_output()

@@ -47,7 +47,7 @@ class HubbardConfigurationSettingsModel(
     def needs_eigenvalues_widget(self):
         return len(self.applicable_kind_names) > 0
 
-    def update(self, specific=""):  # noqa: ARG002
+    def _update(self, specific=""):
         if not self.has_structure:
             self.applicable_kind_names = []
             self.orbital_labels = []

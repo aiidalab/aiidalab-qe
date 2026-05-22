@@ -128,7 +128,7 @@ class MagnetizationConfigurationSettingsPanel(
         self._toggle_widgets()
         self._model.update_type_help()
 
-    def _update(self):
+    def _update_ui(self):
         self._show_loading()
         self._build_moments_list()
         self._switch_widgets()

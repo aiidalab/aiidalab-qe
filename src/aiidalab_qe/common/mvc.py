@@ -4,6 +4,8 @@ import typing as t
 
 import traitlets as tl
 
+from aiidalab_qe.common.mixins import HasBlockers
+
 
 class MetaHasTraitsLast(tl.MetaHasTraits):
     """A metaclass that ensures that `HasTraits` is pushed to the end of the MRO.
@@ -18,7 +20,11 @@ class MetaHasTraitsLast(tl.MetaHasTraits):
         return super().__new__(cls, name, bases, classdict)
 
 
-class Model(tl.HasTraits, metaclass=MetaHasTraitsLast):
+class Model(
+    tl.HasTraits,
+    HasBlockers,
+    metaclass=MetaHasTraitsLast,
+):
     """A parent class for all MVC models.
 
     The class extends `traitlet`'s `HasTraits` and uses a metaclass to
@@ -32,15 +38,12 @@ class Model(tl.HasTraits, metaclass=MetaHasTraitsLast):
         The identifier for this model.
     `dependencies` : `list[str]`
         A list of dependencies for this model.
-    `updated` : `bool`
-        Whether the model has been updated.
     `locked` : `bool`
         Whether the model is locked.
     """
 
     identifier = ""
     dependencies: list[str] = []
-    updated = False
 
     locked = tl.Bool(False)
 
@@ -62,6 +65,14 @@ class Model(tl.HasTraits, metaclass=MetaHasTraitsLast):
         `specific` : `str`, optional
             If provided, specifies the level of update.
         """
+        if self.locked or specific == "widgets":
+            return
+        self._update(specific)
+        self.update_blockers()
+        self.update_state()
+
+    def update_state(self):
+        """Update the model state."""
         pass
 
     def get_model_state(self) -> dict:
@@ -74,6 +85,10 @@ class Model(tl.HasTraits, metaclass=MetaHasTraitsLast):
 
     def reset(self):
         """Reset the model to present defaults."""
+        pass
+
+    def _update(self, specific=""):
+        """Internal method to update the model."""
         pass
 
     def _get_default(self, trait: dict) -> t.Any:

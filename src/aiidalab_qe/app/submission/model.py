@@ -65,11 +65,10 @@ class SubmissionStepModel(
         if not self.has_process:
             self._submit()
 
-    def update(self):
+    def _update(self, specific=""):
         self.update_process_label()
         self.update_plugin_inclusion()
         self.update_plugin_overrides()
-        self.update_blockers()
         for _, model in self.get_models():
             model.update()
 
@@ -167,11 +166,11 @@ class SubmissionStepModel(
                 model.set_model_state(state[identifier])
 
     def update_state(self):
-        if self.confirmed:
+        if self.is_blocked:
+            self.state = State.BLOCKED
+        elif self.confirmed:
             self.state = State.SUCCESS
-        elif self.is_previous_step_successful and (
-            self.has_structure and self.input_parameters
-        ):
+        elif self.is_previous_step_successful and self.has_all_dependencies:
             self.state = State.CONFIGURED
         else:
             self.state = State.INIT

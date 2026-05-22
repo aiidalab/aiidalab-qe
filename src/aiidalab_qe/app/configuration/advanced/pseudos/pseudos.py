@@ -255,7 +255,7 @@ class PseudosConfigurationSettingsPanel(
     def _on_ecut_change(self, _):
         self._model.update_blockers()
 
-    def _update(self):
+    def _update_ui(self):
         self._build_pseudos_list()
         self._model.update_family_header()
 

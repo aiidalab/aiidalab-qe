@@ -50,7 +50,7 @@ class ConvergenceConfigurationSettingsModel(
 
     include = True  # build-in panel
 
-    def update(self, specific=""):
+    def _update(self, specific=""):
         if specific == "structure":
             self._update_help_message()
         if specific in {"structure", "protocol"}:

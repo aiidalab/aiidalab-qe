@@ -38,11 +38,7 @@ class ResultsStepModel(
     def is_failed(self):
         return self.state is State.FAIL
 
-    @property
-    def is_loading(self):
-        return super().is_loading and not (self.is_active or self.is_failed)
-
-    def update(self):
+    def _update(self, specific=""):
         self._update_process_remote_folder_state()
 
     def kill_process(self):

@@ -36,8 +36,8 @@ class StructureResultsModel(ResultsModel):
         parameters = self.inputs.relax.base.pw.parameters.get_dict()
         return "relax" in parameters["CONTROL"]["calculation"]
 
-    def update(self):
-        super().update()
+    def _update(self, specific=""):
+        super()._update(specific)
         with self.hold_trait_notifications():
             if not self.is_relaxed or self.selected_view == "initial":
                 self.sub_header = self._SUB_HEADER_TEMPLATE.format(content="Initial")
