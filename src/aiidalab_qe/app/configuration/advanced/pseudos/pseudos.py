@@ -100,16 +100,20 @@ class PseudosConfigurationSettingsPanel(
 
         self.pseudos_list = ipw.VBox()
 
-        self.ecutwfc = ipw.FloatText(
+        self.ecutwfc = ipw.BoundedFloatText(
             description="Wavefunction",
+            min=0.0,
+            max=1e4,
             style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "ecutwfc"),
             (self.ecutwfc, "value"),
         )
-        self.ecutrho = ipw.FloatText(
+        self.ecutrho = ipw.BoundedFloatText(
             description="Charge density",
+            min=0.0,
+            max=1e4,
             style={"description_width": "150px"},
         )
         ipw.link(
