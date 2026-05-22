@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
-
 import ipywidgets as ipw
 
 from aiida import orm
@@ -39,10 +37,6 @@ class PseudosConfigurationSettingsPanel(
         self._model.observe(
             self._on_library_change,
             "library",
-        )
-        self._model.observe(
-            self._on_functionals_change,
-            "functionals",
         )
         self._model.observe(
             self._on_family_change,
@@ -85,11 +79,6 @@ class PseudosConfigurationSettingsPanel(
         ipw.link(
             (self._model, "functional"),
             (self.functional, "value"),
-        )
-        ipw.dlink(
-            (self._model, "functionals"),
-            (self._model, "functional"),
-            lambda functionals: functionals[0] if len(set(functionals)) == 1 else None,
         )
 
         self.library = ipw.ToggleButtons(style={"button_width": "fit-content"})
@@ -244,22 +233,19 @@ class PseudosConfigurationSettingsPanel(
 
     def _on_functional_change(self, _):
         self._model.update_family()
-        self._model.update_functionals()
 
     def _on_library_change(self, _):
         self._model.update_family_header()
         self._model.update_family()
-        self._model.update_blockers()
-
-    def _on_functionals_change(self, _):
-        self._model.update_blockers()
 
     def _on_family_change(self, _):
-        self._model.show_upload_warning = not self._model.family
+        self._toggle_upload_warning()
         self._model.update_dictionary()
 
     def _on_dictionary_change(self, _):
+        self._model.update_functional()
         self._model.update_cutoffs()
+        self._model.update_blockers()
 
     def _on_cutoffs_change(self, change):
         cutoffs = change["new"]  # [[ecutwfc...], [ecutrho...]]
@@ -273,6 +259,9 @@ class PseudosConfigurationSettingsPanel(
         self._build_pseudos_list()
         self._model.update_family_header()
 
+    def _toggle_upload_warning(self):
+        self._model.show_upload_warning = not self._model.family
+
     def _build_pseudos_list(self):
         if not self.rendered:
             return
@@ -285,11 +274,30 @@ class PseudosConfigurationSettingsPanel(
 
         for index, kind in enumerate(kinds):
             uploader_model = PseudoPotentialUploaderModel(kind.name, kind.symbol)
-            uploader = PseudoPotentialUploader(model=uploader_model)
 
-            def on_default_pseudo(
+            def on_pseudo_upload(
                 _=None,
-                model: PseudoPotentialUploaderModel = uploader_model,
+                model=uploader_model,
+                kind_name=kind.name,
+            ):
+                if not (model.uploaded and model.pseudo):
+                    return
+                with self._model.hold_trait_notifications():
+                    self._model.dictionary = {
+                        **self._model.dictionary,
+                        kind_name: model.pseudo.uuid,
+                    }
+                    self._model.library = None
+                    self._model.family = None
+
+            uploader_model.observe(
+                on_pseudo_upload,
+                "uploaded",
+            )
+
+            def synchronize_pseudo(
+                _=None,
+                model=uploader_model,
                 kind_name=kind.name,
                 index=index,
             ):
@@ -299,65 +307,23 @@ class PseudosConfigurationSettingsPanel(
                     pseudo = orm.load_node(self._model.dictionary.get(kind_name))
                 except Exception:
                     pseudo = None
+                model.uploaded = model.pseudo is pseudo
                 model.pseudo = pseudo
-                model.cutoffs = (
-                    [
-                        self._model.cutoffs[0][index],  # type: ignore
-                        self._model.cutoffs[1][index],  # type: ignore
-                    ]
-                    if len(self._model.cutoffs[0]) > index  # type: ignore
-                    else [0.0, 0.0]
-                )
+                model.cutoffs = self._model.get_cutoffs_by_index(index)
                 model.update_pseudo_info()
-                model.uploaded = False
 
             self._model.observe(
-                on_default_pseudo,
+                synchronize_pseudo,
                 "dictionary",
             )
 
-            def on_pseudo_upload(
-                change,
-                model: PseudoPotentialUploaderModel = uploader_model,
-                kind_name=kind.name,
-                index=index,
-            ):
-                if not (change["new"] and model.pseudo):
-                    return
-
-                self._model.family = None
-                self._model.library = None
-                self._model.functional = None
-
-                self._model.dictionary = {
-                    **self._model.dictionary,
-                    kind_name: model.pseudo.uuid,
-                }
-
-                functional = model.pseudo.base.extras.get("functional", None)
-                functionals = [*self._model.functionals]
-                functionals[index] = functional
-                # The following double-setting is done to force the blockers check,
-                # which now also bail early if the functionals are empty.
-                self._model.functionals = []
-                self._model.functionals = functionals
-
-                cutoffs: list = deepcopy(self._model.cutoffs)  # type: ignore
-                cutoffs[0][index] = model.cutoffs[0]  # type: ignore
-                cutoffs[1][index] = model.cutoffs[1]  # type: ignore
-                self._model.cutoffs = cutoffs
-
-            uploader_model.observe(
-                on_pseudo_upload,
-                "uploaded",
-            )
-
+            uploader = PseudoPotentialUploader(model=uploader_model)
             uploader.render()
-
-            on_default_pseudo()
 
             self._links.extend(uploader.links)
 
             children.append(uploader)
+
+            synchronize_pseudo()
 
         self.pseudos_list.children = children

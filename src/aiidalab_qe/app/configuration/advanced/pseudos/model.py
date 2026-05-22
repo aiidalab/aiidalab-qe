@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import traitlets as tl
 from aiida_pseudo.common.units import U
+from aiida_pseudo.data.pseudo import UpfData
 
 from aiida import orm
 from aiida.common import exceptions
@@ -54,7 +55,6 @@ class PseudosConfigurationSettingsModel(
             "PBEsol",
         ],
     )
-    functionals = tl.List(trait=tl.Unicode(allow_none=True))
     library = tl.Unicode(allow_none=True)
     library_options = tl.List(
         trait=tl.Unicode(),
@@ -112,13 +112,12 @@ class PseudosConfigurationSettingsModel(
         family = self.family
         self.update_family_parameters()
         # When the app starts, the family is not yet set. `update_family_parameters`
-        # will set the family, which will set the functionals and dictionary.
+        # will set the family, which will set the dictionary.
         # However, when the structure is changed, the family may already be set to
-        # the default, in which case, the functionals and dictionary will not be
+        # the default, in which case, the dictionary will not be
         # updated. Therefore, we need to force the update.
         if specific == "structure" and self.family == family:
             self.update_dictionary()
-            self.update_functionals()
 
     def update_family_parameters(self):
         if self.locked:
@@ -149,17 +148,8 @@ class PseudosConfigurationSettingsModel(
             self.functional = self._defaults["functional"]
             self.library = self._defaults["library"]
 
-    def update_functionals(self):
-        if self.locked or not (self.functional and self.family):
-            return
-        self.functionals = (
-            [self.functional] * len(self.input_structure.kinds)
-            if self.has_structure
-            else []
-        )
-
     def update_family(self):
-        if self.locked or not (self.library and self.functional):
+        if not (self.library and self.functional) or self.locked:
             return
 
         parts = self.library.split()
@@ -224,7 +214,7 @@ class PseudosConfigurationSettingsModel(
                 f"Failed to fetch pseudo family using the '{self.family}' string"
             ) from err
 
-        pseudos = {}
+        pseudos: dict[str, UpfData | None] = {}
         for kind in self.input_structure.kinds:
             # If the kind is not in the family, we set it to None.
             # This will block the app and notify the user of the missing pseudo.
@@ -246,7 +236,7 @@ class PseudosConfigurationSettingsModel(
         self.dictionary = self._get_default_dictionary()
 
     def update_cutoffs(self):
-        if self.locked or not self.dictionary:
+        if not self.dictionary or self.locked:
             return
 
         kinds = self.input_structure.kinds if self.has_structure else []
@@ -313,7 +303,7 @@ class PseudosConfigurationSettingsModel(
         self.cutoffs = self._get_default_cutoffs()
 
     def update_library_options(self):
-        if self.locked or not self.has_structure:
+        if not self.has_structure or self.locked:
             return
 
         relativistic_options = [
@@ -337,6 +327,27 @@ class PseudosConfigurationSettingsModel(
         self.library_options = self._defaults["library_options"]
 
         self.update_family_parameters()
+
+    def get_cutoffs_by_index(self, index: int) -> list[float]:
+        return (
+            [self.cutoffs[0][index], self.cutoffs[1][index]]
+            if len(self.cutoffs[0]) > index
+            else [0.0, 0.0]
+        )
+
+    def update_functional(self):
+        pseudos: list[UpfData] = []
+        for uuid in self.dictionary.values():
+            try:
+                assert uuid is not None
+                pseudo = orm.load_node(uuid)
+                pseudos.append(pseudo)
+            except (AssertionError, exceptions.NotExistent):
+                continue
+        functional_set = {pp.base.extras.get("functional", None) for pp in pseudos}
+        functional = functional_set.pop() if len(functional_set) == 1 else None
+        self._defaults["functional"] = functional
+        self.functional = self._get_default("functional")
 
     def reset(self):
         with self.hold_trait_notifications():
@@ -386,10 +397,10 @@ class PseudosConfigurationSettingsModel(
         return deepcopy(self._defaults["cutoffs"])
 
     def _check_blockers(self):
-        if not (self.dictionary and self.functionals):
+        if not (self.has_structure and self.dictionary):
             return
 
-        pseudos = []
+        pseudos: list[UpfData] = []
         for kind_name, uuid in self.dictionary.items():
             kind = self.input_structure.get_kind(kind_name)
             try:
@@ -403,7 +414,7 @@ class PseudosConfigurationSettingsModel(
                 yield f"Pseudopotential with UUID {uuid} does not exist for {kind.symbol}."
                 return
 
-        functional_set = set(self.functionals)
+        functional_set = {pp.base.extras.get("functional", None) for pp in pseudos}
         if len(functional_set) != 1:
             yield "All pseudopotentials must have the same exchange-correlation (XC) functional."
         elif self.functional and self.functional not in functional_set:
