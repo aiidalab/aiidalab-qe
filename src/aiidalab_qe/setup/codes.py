@@ -5,6 +5,7 @@ from shutil import which
 
 from filelock import FileLock, Timeout
 
+from aiida import load_profile
 from aiida.common.exceptions import NotExistent
 from aiida.orm import load_code
 
@@ -105,6 +106,7 @@ def install_qe():
 
 
 def _code_is_setup(name, computer):
+    load_profile()
     try:
         load_code(f"{name}-{QE_VERSION}@{computer}")
     except NotExistent:
@@ -134,6 +136,7 @@ def _generate_string_to_setup_code(code_name, computer):
 
     Tries to load an existing code and if not existent,
     generates Python code to create and store a new code setup."""
+    load_profile()
     try:
         load_code(f"{code_name}-{QE_VERSION}@{computer}")
     except NotExistent:
