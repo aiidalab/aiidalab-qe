@@ -3,6 +3,7 @@
 Authors: AiiDAlab team
 """
 
+import asyncio
 import base64
 import hashlib
 import warnings
@@ -338,6 +339,11 @@ class CalcJobOutputFollower(traitlets.HasTraits):
 
     def _push_output(self, calcjob_uuid, delay=0.2):
         """Push new log lines onto the queue."""
+        try:
+            asyncio.get_event_loop()
+        except RuntimeError:
+            asyncio.set_event_loop(asyncio.new_event_loop())
+
         lineno = 0
         calcjob = load_node(calcjob_uuid)
         while True:
