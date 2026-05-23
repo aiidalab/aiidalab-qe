@@ -197,7 +197,6 @@ def run_cmd(
     for attempt in range(1, retries + 1):
         try:
             run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
-            return
         except CalledProcessError as exception:
             if attempt == retries:
                 stdout = _format_process_output(exception.stdout)
@@ -208,6 +207,8 @@ def run_cmd(
                     f"stderr:\n{stderr}"
                 ) from exception
             time.sleep(retry_delay)
+        else:
+            return
 
 
 def _install_pseudos(

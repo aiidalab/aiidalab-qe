@@ -13,7 +13,7 @@ def test_calcjob_output_follower_sets_event_loop_in_worker_thread(monkeypatch):
     follower = CalcJobOutputFollower()
     errors = []
 
-    monkeypatch.setattr(widgets, "load_node", lambda uuid: _SealedCalcJob())
+    monkeypatch.setattr(widgets, "load_node", lambda _uuid: _SealedCalcJob())
 
     def fetch_output(_calcjob):
         try:
