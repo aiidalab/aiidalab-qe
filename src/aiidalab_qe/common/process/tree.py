@@ -18,7 +18,7 @@ from aiidalab_widgets_base import LoadingWidget
 
 from .state import STATE_ICONS
 
-BASE_TITLE_MAPPING = {
+TITLE_MAPPING = {
     "QeAppWorkChain": "Quantum ESPRESSO app workflow",
     "PwRelaxWorkChain": "Structure relaxation workflow manager",
     "PwBaseWorkChain": {
@@ -39,7 +39,7 @@ BASE_TITLE_MAPPING = {
 
 
 def get_title_mapping():
-    return BASE_TITLE_MAPPING | {
+    return TITLE_MAPPING | {
         process: human_readable
         for metadata in get_entry_items(
             "aiidalab_qe.properties",
