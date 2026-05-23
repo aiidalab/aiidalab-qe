@@ -187,5 +187,12 @@ class HasBlockers(tl.HasTraits):
                     blockers.extend(model.blockers)
         self.blockers = blockers
 
+    def reset_blockers(self):
+        self.blockers = []
+        if isinstance(self, HasModels):
+            for _, model in self.get_models():
+                if isinstance(model, HasBlockers):
+                    model.reset_blockers()
+
     def _check_blockers(self):
         pass

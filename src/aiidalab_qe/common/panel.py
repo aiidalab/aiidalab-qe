@@ -44,6 +44,10 @@ class PanelModel(Model, Confirmable):
 
     include = tl.Bool(False)
 
+    def update_blockers(self):
+        if self.include:
+            super().update_blockers()
+
 
 PM = t.TypeVar("PM", bound=PanelModel)
 
@@ -122,6 +126,8 @@ class ConfigurationSettingsPanel(Panel[PM]):
         if self._model.include:
             self._model.update(specific)
             self._update_ui()
+        else:
+            self._model.reset_blockers()
 
     def _update_ui(self):
         pass
