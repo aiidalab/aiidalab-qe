@@ -1,4 +1,5 @@
 import typing as t
+from subprocess import CalledProcessError
 
 import pytest
 
@@ -11,6 +12,7 @@ from aiidalab_qe.app.configuration.advanced.pseudos.uploader import (
     PseudoPotentialUploader,
     PseudoPotentialUploaderModel,
 )
+from aiidalab_qe.setup import pseudos
 from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
@@ -108,6 +110,22 @@ def test_setup_pseudos_cmd(tmp_path):
         "--from-download",
         f"{tmp_path!s}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
     ]
+
+
+def test_run_cmd_retries_transient_failures(monkeypatch):
+    calls = []
+
+    def run(cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        if len(calls) < 3:
+            raise CalledProcessError(1, cmd, output=b"out", stderr=b"err")
+
+    monkeypatch.setattr(pseudos, "run", run)
+    monkeypatch.setattr(pseudos.time, "sleep", lambda _delay: None)
+
+    pseudos.run_cmd(["aiida-pseudo"], retries=3)
+
+    assert [call[0] for call in calls] == [["aiida-pseudo"]] * 3
 
 
 @pytest.mark.slow

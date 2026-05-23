@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from subprocess import run
+from subprocess import CalledProcessError, run
 
 from aiida_pseudo.groups.family import PseudoPotentialFamily
 from filelock import FileLock, Timeout
@@ -177,9 +178,36 @@ def _construct_cmd(
     return cmd
 
 
-def run_cmd(cmd: list, env: dict | None = None, cwd: Path | None = None):
-    """Run the command with specific env in the workdir specified."""
-    run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
+def _format_process_output(output):
+    if not output:
+        return ""
+    if isinstance(output, bytes):
+        return output.decode(errors="replace")
+    return str(output)
+
+
+def run_cmd(
+    cmd: list,
+    env: dict | None = None,
+    cwd: Path | None = None,
+    retries: int = 3,
+    retry_delay: int = 10,
+):
+    """Run the command with retries for transient download failures."""
+    for attempt in range(1, retries + 1):
+        try:
+            run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
+            return
+        except CalledProcessError as exception:
+            if attempt == retries:
+                stdout = _format_process_output(exception.stdout)
+                stderr = _format_process_output(exception.stderr)
+                raise RuntimeError(
+                    f"Command {cmd!r} failed after {retries} attempts.\n"
+                    f"stdout:\n{stdout}\n"
+                    f"stderr:\n{stderr}"
+                ) from exception
+            time.sleep(retry_delay)
 
 
 def _install_pseudos(
