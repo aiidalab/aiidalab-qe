@@ -108,4 +108,4 @@ jobs:
               with:
                   name: Screenshots
                   path: screenshots/
-                  if-no-files-found: error
+                  if-no-files-found: warn
