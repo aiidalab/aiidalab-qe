@@ -6,12 +6,32 @@ from aiida import orm
 from aiida.common import AttributeDict
 from aiida.engine import WorkChain
 from aiida.plugins import DataFactory, WorkflowFactory
+from aiida_quantumespresso.workflows.pw.bands import (
+    validate_inputs as validate_pw_bands_inputs,
+)
 
 GAMMA = "\u0393"
 
 PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 ProjwfcBandsWorkChain = WorkflowFactory("wannier90_workflows.projwfcbands")
 KpointsData = DataFactory("core.array.kpoints")
+
+
+def _validate_projwfc_bands_inputs(inputs, port):
+    """Validate projected bands inputs with the AiiDA 2.8 validator signature."""
+    return validate_pw_bands_inputs(inputs, port)
+
+
+def _patch_projwfc_bands_validator(workchain_cls=None):
+    """Patch aiida-wannier90-workflows 2.7 validator signature for AiiDA 2.8."""
+    ProjwfcBandsWorkChain.spec().inputs.validator = _validate_projwfc_bands_inputs
+    if workchain_cls is not None and "bands_projwfc" in workchain_cls.spec().inputs:
+        workchain_cls.spec().inputs[
+            "bands_projwfc"
+        ].validator = _validate_projwfc_bands_inputs
+
+
+_patch_projwfc_bands_validator()
 
 
 def points_per_branch(vector_a, vector_b, reciprocal_cell, bands_kpoints_distance):
@@ -306,6 +326,7 @@ class BandsWorkChain(WorkChain):
             builder.pop("bands", None)
             builder_bands_projwfc.pop("relax", None)
             builder_bands_projwfc.pop("structure", None)
+            _patch_projwfc_bands_validator(cls)
             builder.bands_projwfc = builder_bands_projwfc
 
         else:

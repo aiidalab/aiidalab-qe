@@ -35,14 +35,18 @@ TITLE_MAPPING = {
         "relax": "Structure geometry optimization",
         "md": "Molecular dynamics simulation",
     },
-} | {
-    process: human_readable
-    for metadata in get_entry_items(
-        "aiidalab_qe.properties",
-        "metadata",
-    ).values()
-    for process, human_readable in metadata.get("process_labels", {}).items()
 }
+
+
+def get_title_mapping():
+    return TITLE_MAPPING | {
+        process: human_readable
+        for metadata in get_entry_items(
+            "aiidalab_qe.properties",
+            "metadata",
+        ).values()
+        for process, human_readable in metadata.get("process_labels", {}).items()
+    }
 
 
 class SimplifiedProcessTreeModel(Model, HasProcess):
@@ -212,13 +216,14 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
         node = self.process
         if not (label := node.process_label):
             return "Unknown"
+        title_mapping = get_title_mapping()
         if label in ("PwBaseWorkChain", "PwCalculation"):
             inputs = node.inputs.pw if label == "PwBaseWorkChain" else node.inputs
             parameters = inputs.parameters.base.attributes.all
             calculation: str = parameters["CONTROL"]["calculation"]
             calculation = calculation.replace("vc-", "")
-            return TITLE_MAPPING.get(label, {}).get(calculation, label)
-        return TITLE_MAPPING.get(label, label)
+            return title_mapping.get(label, {}).get(calculation, label)
+        return title_mapping.get(label, label)
 
 
 class ProcessTreeBranches(ipw.VBox):
