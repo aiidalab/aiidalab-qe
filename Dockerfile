@@ -110,8 +110,13 @@ RUN set -ex; \
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
-RUN mkdir -p ${PSEUDO_FOLDER} && \
-    python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER}
+RUN set -ex; \
+    mkdir -p ${PSEUDO_FOLDER}; \
+    for attempt in 1 2 3; do \
+        python -m aiidalab_qe download-pseudos --dest ${PSEUDO_FOLDER} && break; \
+        if [ "$attempt" = 3 ]; then exit 1; fi; \
+        sleep 10; \
+    done
 
 COPY ./before-notebook.d/* /usr/local/bin/before-notebook.d/
 
