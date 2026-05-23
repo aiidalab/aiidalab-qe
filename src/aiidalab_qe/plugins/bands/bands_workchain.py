@@ -26,9 +26,9 @@ def _patch_projwfc_bands_validator(workchain_cls=None):
     """Patch aiida-wannier90-workflows 2.7 validator signature for AiiDA 2.8."""
     ProjwfcBandsWorkChain.spec().inputs.validator = _validate_projwfc_bands_inputs
     if workchain_cls is not None and "bands_projwfc" in workchain_cls.spec().inputs:
-        workchain_cls.spec().inputs["bands_projwfc"].validator = (
-            _validate_projwfc_bands_inputs
-        )
+        workchain_cls.spec().inputs[
+            "bands_projwfc"
+        ].validator = _validate_projwfc_bands_inputs
 
 
 _patch_projwfc_bands_validator()
