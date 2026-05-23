@@ -11,3 +11,5 @@ services:
             JUPYTER_TOKEN: ${JUPYTER_TOKEN}
         ports:
             - 0.0.0.0:${AIIDALAB_PORT:-8998}:8888
+        healthcheck:
+            disable: true
