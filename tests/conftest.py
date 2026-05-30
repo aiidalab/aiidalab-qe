@@ -299,6 +299,7 @@ def sssp(generate_upf_data_for_session):
                 filename = f"{element}_{'_'.join(params.values())}.upf"
                 upf = generate_upf_data_for_session(element, filename, params)
                 upf.store()
+                upf.base.extras.set("functional", functional)
                 nodes.append(upf)
             family.add_nodes(nodes)
             family.set_cutoffs(CUTOFFS, accuracy, unit="Ry")
@@ -325,6 +326,7 @@ def pseudodojo(generate_upf_data_for_session):
                     filename = f"{element}_{'_'.join(params.values())}.upf"
                     upf = generate_upf_data_for_session(element, filename, params)
                     upf.store()
+                    upf.base.extras.set("functional", functional)
                     nodes.append(upf)
                 family.add_nodes(nodes)
                 family.set_cutoffs(CUTOFFS, stringency, unit="Ry")
