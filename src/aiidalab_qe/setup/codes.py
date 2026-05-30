@@ -43,6 +43,12 @@ CODE_NAMES = (
     "hp",
 )
 
+# Some quantumespresso features are developed in separate repositories, with different
+# entry point prefix (e.g. `xspec` in aiida-qe-xspec)
+ENTRY_POINT_MAP = {
+    "xspectra": "xspec",
+}
+
 
 def qe_installed():
     """Check if Quantum Espresso (QE) is installed in the specified conda environment.
@@ -140,7 +146,8 @@ def _generate_string_to_setup_code(code_name, computer):
         label = f"{code_name}-{QE_VERSION}"
         description = f"{code_name}.x ({QE_VERSION}) setup by AiiDAlab."
         filepath_executable = get_qe_env().joinpath("bin", f"{code_name}.x")
-        default_calc_job_plugin = f"quantumespresso.{code_name}"
+        prefix = ENTRY_POINT_MAP.get(code_name, "quantumespresso")
+        default_calc_job_plugin = f"{prefix}.{code_name}"
         prepend_text = f'eval "$(conda shell.posix hook)"\\nconda activate {get_qe_env()}\\nexport OMP_NUM_THREADS=1'
         python_code = """
 computer = load_computer('{}')

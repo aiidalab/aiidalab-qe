@@ -18,7 +18,7 @@ ARG COMPUTER_LABEL="localhost"
 
 ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
-ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.1.1"
+ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.1.3"
 ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
 ###############################################################################

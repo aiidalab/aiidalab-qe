@@ -13,10 +13,9 @@ from aiida.engine import ProcessState
 from aiida.tools.graph.graph_traversers import traverse_graph
 from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.mvc import Model
+from aiidalab_qe.common.process import STATE_ICONS
 from aiidalab_qe.plugins.utils import get_entry_items
 from aiidalab_widgets_base import LoadingWidget
-
-from .state import STATE_ICONS
 
 TITLE_MAPPING = {
     "QeAppWorkChain": "Quantum ESPRESSO app workflow",
