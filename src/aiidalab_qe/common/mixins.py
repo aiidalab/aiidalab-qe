@@ -179,8 +179,7 @@ class HasBlockers(tl.HasTraits):
         return any(self.blockers)
 
     def update_blockers(self):
-        blockers = self._check_blockers()
-        blockers = list(blockers) if blockers is not None else []
+        blockers = list(self._check_blockers() or [])
         if isinstance(self, HasModels):
             for _, model in self.get_models():
                 if isinstance(model, HasBlockers):
@@ -194,5 +193,5 @@ class HasBlockers(tl.HasTraits):
                 if isinstance(model, HasBlockers):
                     model.reset_blockers()
 
-    def _check_blockers(self):
+    def _check_blockers(self) -> t.Generator[str, None, None] | None:
         pass
