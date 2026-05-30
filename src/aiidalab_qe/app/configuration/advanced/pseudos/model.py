@@ -337,12 +337,21 @@ class PseudosConfigurationSettingsModel(
 
     def update_functional(self):
         pseudos: list[UpfData] = []
-        for uuid in self.dictionary.values():
+        for kind_name, uuid in self.dictionary.items():
+            kind = self.input_structure.get_kind(kind_name)
             try:
                 assert uuid is not None
                 pseudo = orm.load_node(uuid)
                 pseudos.append(pseudo)
-            except (AssertionError, exceptions.NotExistent):
+            except AssertionError:
+                print(
+                    f"The selected pseudopotential family does not contain a pseudopotential for {kind.symbol}. Consider changing the family or uploading a custom pseudopotential."
+                )
+                continue
+            except exceptions.NotExistent:
+                print(
+                    f"Pseudopotential with UUID {uuid} does not exist for {kind.symbol}."
+                )
                 continue
         functional_set = {pp.base.extras.get("functional", None) for pp in pseudos}
         functional = functional_set.pop() if len(functional_set) == 1 else None
