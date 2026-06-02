@@ -64,7 +64,7 @@ class MagnetizationConfigurationSettingsModel(
             lambda spin_type: spin_type == "collinear",
         )
 
-    def update(self, specific=""):  # noqa: ARG002
+    def _update(self, specific=""):
         if self.spin_type == "none" or not self.has_structure:
             self._defaults["moments"] = {}
         else:

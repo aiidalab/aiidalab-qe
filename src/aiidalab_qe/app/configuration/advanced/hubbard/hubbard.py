@@ -86,7 +86,7 @@ class HubbardConfigurationSettingsPanel(
     def _on_eigenvalues_definition(self, _):
         self._toggle_eigenvalues_widget()
 
-    def _update(self):
+    def _update_ui(self):
         self._show_loading()
         self._build_hubbard_widget()
         self._toggle_hubbard_widget()
@@ -171,18 +171,20 @@ class HubbardConfigurationSettingsPanel(
                     [
                         lambda eigenvalues,
                         kind_index=kind_index,
-                        state_index=state_index: str(
-                            int(eigenvalues[kind_index][0][state_index][-1])
+                        state_index=state_index: (
+                            str(int(eigenvalues[kind_index][0][state_index][-1]))
                         ),
                         lambda value,
                         kind_index=kind_index,
                         state_index=state_index,
-                        kind_name=kind_name: update(
-                            kind_index,
-                            1,
-                            state_index,
-                            kind_name,
-                            float(value),
+                        kind_name=kind_name: (
+                            update(
+                                kind_index,
+                                1,
+                                state_index,
+                                kind_name,
+                                float(value),
+                            )
                         ),
                     ],
                 )
@@ -204,18 +206,20 @@ class HubbardConfigurationSettingsPanel(
                     [
                         lambda eigenvalues,
                         kind_index=kind_index,
-                        state_index=state_index: str(
-                            int(eigenvalues[kind_index][1][state_index][-1])
+                        state_index=state_index: (
+                            str(int(eigenvalues[kind_index][1][state_index][-1]))
                         ),
                         lambda value,
                         kind_index=kind_index,
                         state_index=state_index,
-                        kind_name=kind_name: update(
-                            kind_index,
-                            2,
-                            state_index,
-                            kind_name,
-                            float(value),
+                        kind_name=kind_name: (
+                            update(
+                                kind_index,
+                                2,
+                                state_index,
+                                kind_name,
+                                float(value),
+                            )
                         ),
                     ],
                 )

@@ -21,6 +21,7 @@ class Wizard(ipw.Accordion):
         State.ACTIVE: "\u231b",
         State.SUCCESS: "\u2713",
         State.FAIL: "\u00d7",
+        State.BLOCKED: "\u25cf",
     }
 
     TITLES = {

@@ -62,8 +62,8 @@ class ElectronicStructureResultsModel(ResultsModel):
     def needs_property_selector(self):
         return len(self.identifiers) > 1
 
-    def update(self):
-        super().update()
+    def _update(self, specific=""):
+        super()._update(specific)
         self.identifiers = list(
             filter(
                 lambda identifier: identifier in self.properties,

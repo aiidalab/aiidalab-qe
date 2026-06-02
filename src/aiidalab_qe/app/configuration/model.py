@@ -60,9 +60,8 @@ class ConfigurationStepModel(
             </div>
         """
 
-    def update(self):
+    def _update(self, specific=""):
         self.update_relaxation_options()
-        self.update_blockers()
 
     def update_relaxation_options(self):
         if self.has_pbc:
@@ -127,7 +126,9 @@ class ConfigurationStepModel(
                 model.set_model_state(state[identifier])
 
     def update_state(self):
-        if self.confirmed:
+        if self.is_blocked:
+            self.state = State.BLOCKED
+        elif self.confirmed:
             self.state = State.SUCCESS
         elif self.is_previous_step_successful and self.has_all_dependencies:
             self.state = State.CONFIGURED
@@ -173,7 +174,3 @@ class ConfigurationStepModel(
     def _check_blockers(self):
         if not self.has_structure:
             yield "No selected input structure"
-
-        for _, model in self.get_models():
-            if model.is_blocked:
-                yield from model.blockers

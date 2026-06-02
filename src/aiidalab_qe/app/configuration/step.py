@@ -197,7 +197,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
     def _on_input_structure_change(self, _):
         self._model.update()
-        self._model.update_state()
 
     def _on_installed_properties_fetched(self, _):
         if not self.rendered:
@@ -256,14 +255,16 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                     lambda _: not self._model.has_pbc,
                 )
 
-            def toggle_plugin(change, identifier=identifier, model=model, info=info):
+            panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
+
+            def toggle_plugin(change, identifier=identifier, panel=panel, info=info):
                 if change["new"]:
                     info.value = (
                         f"Customize {identifier} settings in <b>Step 2.2</b> if needed"
                     )
                 else:
                     info.value = ""
-                model.update()
+                panel.refresh()
                 self._update_tabs()
 
             model.observe(
@@ -280,7 +281,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 )
             )
 
-            panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
             self.settings[identifier] = panel
 
         self._model.installed_properties_fetched = True

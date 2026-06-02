@@ -8,7 +8,9 @@ import traitlets as tl
 from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
-from aiidalab_qe.common.mvc import Model
+
+if t.TYPE_CHECKING:
+    from aiidalab_qe.common.mvc import Model
 
 StructureType = t.Union[orm.StructureData, HubbardStructureData]
 
@@ -44,7 +46,7 @@ class HasInputStructure(tl.HasTraits):
         return len(self.input_structure.sites) if self.has_structure else 0
 
 
-M = t.TypeVar("M", bound=Model)
+M = t.TypeVar("M", bound="Model")
 
 
 class HasModels(t.Generic[M]):
@@ -80,16 +82,14 @@ class HasModels(t.Generic[M]):
         return self._models.items()
 
     def _link_model(self, model: M):
-        assert isinstance(model, Model), "HasModels only works with Model instances"
         tl.dlink(
             (self, "locked"),
             (model, "locked"),
         )
-        if isinstance(self, HasBlockers) and isinstance(model, HasBlockers):
-            tl.dlink(
-                (model, "blockers"),
-                (self, "blockers"),
-            )
+        tl.dlink(
+            (model, "blockers"),
+            (self, "blockers"),
+        )
         for dependency in model.dependencies:
             dependency_parts = dependency.rsplit(".", 1)
             if len(dependency_parts) == 1:  # from parent
@@ -173,33 +173,25 @@ class Confirmable(tl.HasTraits):
 
 class HasBlockers(tl.HasTraits):
     blockers = tl.List(tl.Unicode())
-    blocker_messages = tl.Unicode("")
 
     @property
     def is_blocked(self):
         return any(self.blockers)
 
     def update_blockers(self):
-        blockers = list(self._check_blockers())
+        blockers = list(self._check_blockers() or [])
         if isinstance(self, HasModels):
             for _, model in self.get_models():
                 if isinstance(model, HasBlockers):
-                    blockers += model.blockers
+                    blockers.extend(model.blockers)
         self.blockers = blockers
 
-    def update_blocker_messages(self):
-        if self.is_blocked:
-            formatted = "\n".join(f"<li>{item}</li>" for item in self.blockers)
-            self.blocker_messages = f"""
-                <div class="alert alert-danger" style="margin-top: 8px;">
-                    <b>The step is blocked due to the following reason(s):</b>
-                    <ul>
-                        {formatted}
-                    </ul>
-                </div>
-            """
-        else:
-            self.blocker_messages = ""
+    def reset_blockers(self):
+        self.blockers = []
+        if isinstance(self, HasModels):
+            for _, model in self.get_models():
+                if isinstance(model, HasBlockers):
+                    model.reset_blockers()
 
-    def _check_blockers(self):
-        raise NotImplementedError
+    def _check_blockers(self) -> t.Generator[str, None, None] | None:
+        pass

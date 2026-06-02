@@ -107,6 +107,10 @@ footer {
   background-color: var(--color-failed);
 }
 
+.p-Accordion-child:has(.qe-app-step-blocked) > .p-Collapse-header {
+  background-color: var(--color-blocked);
+}
+
 .p-TabBar-tab {
   min-width: fit-content !important;
 }

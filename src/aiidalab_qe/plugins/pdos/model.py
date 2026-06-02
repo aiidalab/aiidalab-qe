@@ -26,7 +26,7 @@ class PdosConfigurationSettingsModel(PanelModel, HasInputStructure):
     pdos_degauss = tl.Float(0.005)
     energy_grid_step = tl.Float(0.01)
 
-    def update(self, specific=""):
+    def _update(self, specific=""):
         with self.hold_trait_notifications():
             if not specific or specific != "mesh":
                 parameters = PdosWorkChain.get_protocol_inputs(self.protocol)

@@ -30,7 +30,7 @@ class SmearingConfigurationSettingsModel(PanelModel):
 
     include = True  # build-in panel
 
-    def update(self, specific=""):  # noqa: ARG002
+    def _update(self, specific=""):
         parameters = (
             PwBaseWorkChain.get_protocol_inputs(self.protocol)
             .get("pw", {})
