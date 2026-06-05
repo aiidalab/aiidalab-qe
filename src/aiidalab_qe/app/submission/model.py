@@ -245,12 +245,6 @@ class SubmissionStepModel(
         if not self.input_parameters:
             yield "No selected input parameters"
 
-        if self.installing_qe:
-            yield "Installing Quantum ESPRESSO codes..."
-
-        if not self.qe_installed:
-            yield "Quantum ESPRESSO is not yet installed"
-
     def _check_warnings(self):
         """Check for any warnings that should be displayed to the user."""
         return ""
