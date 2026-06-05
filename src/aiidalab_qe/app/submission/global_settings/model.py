@@ -47,6 +47,11 @@ class GlobalResourceSettingsModel(
         self.global_codes = self.get_model_state()["codes"]
 
     def update_active_codes(self):
+        """Toggle code selectors conditional on plugin activity and required parameters.
+
+        For a given code (e.g., pw), if at least one active plugin requires it (if any condition
+        registered for the code is met), we activate it.
+        """
         for identifier, code_model in self.get_models():
             if identifier != "quantumespresso__pw":
                 code_model.deactivate()
