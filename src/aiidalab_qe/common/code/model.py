@@ -81,10 +81,7 @@ class CodeModel(Model):
                 try:
                     selected = orm.load_code(default_code).uuid
                 except NotExistent:
-                    selected = None
-                    self.warning = self._WARNING_TEMPLATE.format(
-                        warning=f"Code '{default_code}' not found"
-                    )
+                    selected = self.first_option
             else:
                 selected = self.first_option
             self.selected = selected
