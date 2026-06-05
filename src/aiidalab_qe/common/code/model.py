@@ -68,9 +68,15 @@ class CodeModel(Model):
     def deactivate(self):
         self.is_active = False
 
-    def update(self, user_email: str, default_code=None, refresh=False):
+    def update(
+        self,
+        user_email: str,
+        default_code: str | None = None,
+        filter_codes_for_user: bool = True,
+        refresh: bool = False,
+    ):
         if not self.options or refresh:
-            self.options = self._get_codes(user_email)
+            self.options = self._get_codes(user_email, filter_codes_for_user)
             if default_code:
                 try:
                     selected = orm.load_code(default_code).uuid
@@ -115,7 +121,11 @@ class CodeModel(Model):
         # in the app and thus will not be considered as an option!
         return uuid if uuid in [opt[1] for opt in self.options] else None
 
-    def _get_codes(self, user_email: str):
+    def _get_codes(
+        self,
+        user_email: str,
+        filter_codes_for_user: bool = True,
+    ) -> list[tuple[str, str]]:
         user = orm.User.collection.get(email=user_email)
 
         filters = (
@@ -124,25 +134,33 @@ class CodeModel(Model):
             else {}
         )
 
-        codes = (
-            orm.QueryBuilder()
-            .append(
-                orm.Code,
-                filters=filters,
-            )
-            .all(flat=True)
+        codes = t.cast(
+            list[orm.Code],
+            (
+                orm.QueryBuilder()
+                .append(
+                    orm.Code,
+                    filters=filters,
+                )
+                .all(flat=True)
+            ),
         )
 
         return [
             (self._full_code_label(code), code.uuid)
             for code in codes
-            if code.computer.is_user_configured(user)
-            and (self.allow_hidden_codes or not code.is_hidden)
-            and (self.allow_disabled_computers or code.computer.is_user_enabled(user))
+            if not filter_codes_for_user
+            or (
+                code.computer.is_user_configured(user)
+                and (self.allow_hidden_codes or not code.is_hidden)
+                and (
+                    self.allow_disabled_computers or code.computer.is_user_enabled(user)
+                )
+            )
         ]
 
     @staticmethod
-    def _full_code_label(code):
+    def _full_code_label(code: orm.Code) -> str:
         return f"{code.label}@{code.computer.label}"
 
 

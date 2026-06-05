@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ipywidgets as ipw
 import traitlets as tl
 from IPython.display import Javascript, display
 
@@ -64,6 +63,7 @@ class SubmissionStepModel(
         super().confirm()
         if not self.has_process:
             self._submit()
+        self.lock()
 
     def _update(self, specific=""):
         self.update_process_label()
@@ -150,7 +150,10 @@ class SubmissionStepModel(
             return
         self.process_label = self.process.label
         self.process_description = self.process.description
-        self.locked = True
+
+    def refresh_codes(self, filter_codes_for_user: bool = True):
+        for _, resource_model in self.get_models():
+            resource_model.refresh_codes(filter_codes_for_user=filter_codes_for_user)
 
     def get_model_state(self) -> dict:
         return {
@@ -206,20 +209,6 @@ class SubmissionStepModel(
 
             pk = process_node.pk
             display(Javascript(f"window.history.pushState(null, '', '?pk={pk}');"))
-
-    def _link_model(self, model: ResourceSettingsModel):
-        for dependency in model.dependencies:
-            dependency_parts = dependency.split(".")
-            if len(dependency_parts) == 1:  # from parent, e.g. input_structure
-                target_model = self
-                trait = dependency
-            else:  # from sibling, e.g. workchain.protocol
-                sibling, trait = dependency_parts
-                target_model = self.get_model(sibling)
-            ipw.dlink(
-                (target_model, trait),
-                (model, trait),
-            )
 
     def _get_properties(self) -> list[str]:
         return self.input_parameters.get("workchain", {}).get("properties", [])

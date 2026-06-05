@@ -172,12 +172,13 @@ class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
             else:
                 code_model.deactivate()
 
-    def refresh_codes(self):
+    def refresh_codes(self, filter_codes_for_user: bool = True):
         for _, code_model in self.get_models():
             code_key = code_model.default_calc_job_plugin.split(".")[-1]
             code_model.update(
                 user_email=self.default_user_email,
                 default_code=self.default_codes.get(code_key, {}).get("code"),
+                filter_codes_for_user=filter_codes_for_user,
                 refresh=True,
             )
 
