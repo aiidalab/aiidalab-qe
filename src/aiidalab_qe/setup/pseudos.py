@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from subprocess import run
+from subprocess import CalledProcessError, run
 
 from aiida_pseudo.groups.family import PseudoPotentialFamily
 from filelock import FileLock, Timeout
@@ -74,7 +75,7 @@ class PseudoFamily:
         # where <relativistic> is either 'SR' or 'FR' and <file_type> is either 'upf' or 'psml'
         # Before we unify the format of family strings, the conditions below are necessary
         # to distinguish between the two families
-        library = pseudo_family_string.split("/")[0]
+        library = pseudo_family_string.split("/", maxsplit=1)[0]
         if library == "SSSP":
             version, functional, accuracy = pseudo_family_string.split("/")[1:]
             relativistic = None
@@ -177,9 +178,28 @@ def _construct_cmd(
     return cmd
 
 
-def run_cmd(cmd: list, env: dict | None = None, cwd: Path | None = None):
-    """Run the command with specific env in the workdir specified."""
-    run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
+def run_cmd(
+    cmd: list,
+    env: dict | None = None,
+    cwd: Path | None = None,
+    attempts: int = 3,
+    delay: float = 5.0,
+):
+    """Run the command with specific env in the workdir specified.
+
+    If the command fails, it will retry for a few times with a delay in between.
+    This is to avoid the transient network issues during the installation of pseudos.
+    """
+    current_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            run(cmd, env=env, cwd=cwd, capture_output=True, check=True)
+            break
+        except (TimeoutError, CalledProcessError) as error:
+            current_error = error
+            time.sleep(attempt * delay)
+    else:
+        raise current_error
 
 
 def _install_pseudos(
