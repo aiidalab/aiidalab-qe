@@ -45,6 +45,8 @@ class WizardModel(Model, HasModels[WizardStepModel]):
                         SubmissionStepModel,
                         self.get_model("submit"),
                     )
+                    if process_uuid is not None:
+                        submission_model.refresh_codes(filter_codes_for_user=False)
                     submission_model.set_model_state(resources_state)
 
                     if step_index >= 3:

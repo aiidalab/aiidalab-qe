@@ -136,3 +136,30 @@ def test_parameters_aware_codes():
     model.input_parameters = {"use_this_code": False}
     assert not model.get_model("test").is_active
     assert panel.code_widgets["test"].layout.display == "none"
+
+
+def test_filter_codes_for_user(app: Wizard, aiida_computer_ssh, aiida_code_installed):
+    unconfigured_computer = aiida_computer_ssh(
+        label="unconfigured_computer",
+        configure=False,
+    )
+    new_code = aiida_code_installed(
+        default_calc_job_plugin="quantumespresso.pw",
+        computer=unconfigured_computer,
+    ).store()
+
+    global_model = app.submit_model.get_model("global")
+
+    # In general, we filter out unconfigured codes so the user can't submit with them
+    app.submit_model.refresh_codes(filter_codes_for_user=True)
+    assert new_code.uuid not in [
+        code_uuid
+        for _, code_uuid in global_model.get_model("quantumespresso__pw").options
+    ]
+
+    # We allow for these codes when loading from a process, since the user can no longer submit
+    app.submit_model.refresh_codes(filter_codes_for_user=False)
+    assert new_code.uuid in [
+        code_uuid
+        for _, code_uuid in global_model.get_model("quantumespresso__pw").options
+    ]
