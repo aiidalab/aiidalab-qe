@@ -195,6 +195,7 @@ class ConfirmableWizardStep(WizardStep[CWSM]):
 
     def _on_blockers_change(self, _):
         if self._model.state is not State.INIT:
+            self._model.update_blockers()
             self._model.update_blocker_messages()
             self._model.update_state()
 

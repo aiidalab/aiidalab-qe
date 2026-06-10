@@ -85,6 +85,10 @@ class AdvancedConfigurationSettingsPanel(
             self._on_spin_type_change,
             "spin_type",
         )
+        self._model.observe(
+            self._on_blockers_change,
+            "blockers",
+        )
 
         self.sub_settings: dict[str, ConfigurationSettingsPanel] = {
             "general": self.general,
@@ -129,6 +133,16 @@ class AdvancedConfigurationSettingsPanel(
     def _on_spin_type_change(self, _):
         self._update_tabs()
 
+    def _on_advanced_tab_change(self, change):
+        tab: ConfigurationSettingsPanel = self.advanced_tabs.children[change["new"]]  # type: ignore
+        tab.render()
+
+    def _on_reset_to_defaults_button_click(self, _):
+        self._reset()
+
+    def _on_blockers_change(self, _):
+        self._model.update_blockers()
+
     def _update_tabs(self):
         if not self.rendered:
             return
@@ -148,13 +162,6 @@ class AdvancedConfigurationSettingsPanel(
         # Reset tab selection to the first tab (rendered by default) to avoid
         # possible redirection to an un-rendered tab
         self.advanced_tabs.selected_index = 0
-
-    def _on_advanced_tab_change(self, change):
-        tab: ConfigurationSettingsPanel = self.advanced_tabs.children[change["new"]]  # type: ignore
-        tab.render()
-
-    def _on_reset_to_defaults_button_click(self, _):
-        self._reset()
 
     def _reset(self):
         self._model.reset()
