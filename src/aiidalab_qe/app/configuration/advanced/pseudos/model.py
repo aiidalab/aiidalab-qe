@@ -328,14 +328,9 @@ class PseudosConfigurationSettingsModel(
 
         self.update_family_parameters()
 
-    def get_cutoffs_by_index(self, index: int) -> list[float]:
-        return (
-            [self.cutoffs[0][index], self.cutoffs[1][index]]
-            if len(self.cutoffs[0]) > index
-            else [0.0, 0.0]
-        )
-
     def update_functional(self):
+        if not self.dictionary or self.locked:
+            return
         pseudos: list[UpfData] = []
         for kind_name, uuid in self.dictionary.items():
             kind = self.input_structure.get_kind(kind_name)
@@ -357,6 +352,13 @@ class PseudosConfigurationSettingsModel(
         functional = functional_set.pop() if len(functional_set) == 1 else None
         self._defaults["functional"] = functional
         self.functional = self._get_default("functional")
+
+    def get_cutoffs_by_index(self, index: int) -> list[float]:
+        return (
+            [self.cutoffs[0][index], self.cutoffs[1][index]]
+            if len(self.cutoffs[0]) > index
+            else [0.0, 0.0]
+        )
 
     def reset(self):
         with self.hold_trait_notifications():
