@@ -3,13 +3,14 @@
 Authors: AiiDAlab team
 """
 
+import asyncio
 import base64
 import hashlib
+import os
 import warnings
 from copy import deepcopy
-from queue import Queue
 from tempfile import NamedTemporaryFile
-from threading import Event, Lock, Thread
+from threading import Event, Thread
 from time import time
 
 import anywidget
@@ -269,13 +270,7 @@ class CalcJobOutputFollower(traitlets.HasTraits):
     lineno = traitlets.Int()
 
     def __init__(self, **kwargs):
-        self._output_queue = Queue()
-
-        self._lock = Lock()
-        self._push_thread = None
-        self._pull_thread = None
-        self._stop_follow_output = Event()
-        self._follow_output_thread = None
+        self._follow_task = None
 
         super().__init__(**kwargs)
 
@@ -285,34 +280,56 @@ class CalcJobOutputFollower(traitlets.HasTraits):
         if change["old"] == calcjob_uuid:
             return
 
-        with self._lock:
-            # Stop following
-            self._stop_follow_output.set()
+        # Stop following: cancel any running task without blocking the loop.
+        if self._follow_task is not None:
+            self._follow_task.cancel()
+            self._follow_task = None
 
-            if self._follow_output_thread:
-                self._follow_output_thread.join()
-                self._follow_output_thread = None
+        # Reset all traitlets.
+        self.output.clear()
+        self.lineno = 0
 
-            # Reset all traitlets and signals.
-            self.output.clear()
-            self.lineno = 0
-            self._stop_follow_output.clear()
+        # (Re/)start following as an async task on the running kernel loop.
+        if calcjob_uuid:
+            self._follow_task = self._schedule(self._follow_output(calcjob_uuid))
 
-            # (Re/)start following
-            if change["new"]:
-                self._follow_output_thread = Thread(
-                    target=self._follow_output, args=(calcjob_uuid,)
-                )
-                self._follow_output_thread.start()
+    @staticmethod
+    def _schedule(coro):
+        """Schedule a coroutine on the running event loop.
 
-    def _follow_output(self, calcjob_uuid):
-        """Monitor calcjob and orchestrate pushing and pulling of output."""
-        self._pull_thread = Thread(target=self._pull_output)
-        self._pull_thread.start()
-        self._push_thread = Thread(target=self._push_output, args=(calcjob_uuid,))
-        self._push_thread.start()
+        Falls back to ``get_event_loop`` if no loop is currently running so the
+        widget never crashes at construction time.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.get_event_loop()
+        return loop.create_task(coro)
 
-    def _fetch_output(self, calcjob):
+    async def _follow_output(self, calcjob_uuid, delay=0.2):
+        """Poll the calcjob output and update traitlets until it is sealed."""
+        calcjob = load_node(calcjob_uuid)
+        lineno = 0
+        while True:
+            try:
+                lines = await self._fetch_output(calcjob)
+            except asyncio.CancelledError:
+                raise
+            except Exception as error:
+                new_lines = [f"[ERROR: {error}]"]
+            else:
+                new_lines = lines[lineno:]
+                lineno = len(lines)
+
+            with self.hold_trait_notifications():
+                self.output.extend(new_lines)
+                self.lineno += len(new_lines)
+
+            if calcjob.is_sealed:
+                break
+            await asyncio.sleep(delay)
+
+    async def _fetch_output(self, calcjob):
         assert isinstance(calcjob, CalcJobNode)
         if "retrieved" in calcjob.outputs:
             try:
@@ -326,46 +343,17 @@ class CalcJobOutputFollower(traitlets.HasTraits):
             try:
                 fn_out = calcjob.base.attributes.get("output_filename")
                 self.filename = fn_out
+                remote_folder = calcjob.outputs.remote_folder
+                authinfo = remote_folder.get_authinfo()
+                full_path = os.path.join(remote_folder.get_remote_path(), fn_out)
                 with NamedTemporaryFile() as tmpfile:
-                    calcjob.outputs.remote_folder.getfile(fn_out, tmpfile.name)
+                    async with authinfo.get_transport() as transport:
+                        await transport.getfile_async(full_path, tmpfile.name)
                     return tmpfile.read().decode().splitlines()
             except OSError:
                 return []
         else:
             return []
-
-    _EOF = None
-
-    def _push_output(self, calcjob_uuid, delay=0.2):
-        """Push new log lines onto the queue."""
-        lineno = 0
-        calcjob = load_node(calcjob_uuid)
-        while True:
-            try:
-                lines = self._fetch_output(calcjob)
-            except Exception as error:
-                self._output_queue.put([f"[ERROR: {error}]"])
-            else:
-                self._output_queue.put(lines[lineno:])
-                lineno = len(lines)
-            finally:
-                if calcjob.is_sealed or self._stop_follow_output.wait(delay):
-                    # Pushing EOF signals to the pull thread to stop.
-                    self._output_queue.put(self._EOF)
-                    break  # noqa: B012
-
-    def _pull_output(self):
-        """Pull new log lines from the queue and update traitlets."""
-        while True:
-            item = self._output_queue.get()
-            if item is self._EOF:
-                self._output_queue.task_done()
-                break
-            else:  # item is 'new lines'
-                with self.hold_trait_notifications():
-                    self.output.extend(item)
-                    self.lineno += len(item)
-                self._output_queue.task_done()
 
 
 class ProgressBar(ipw.HBox):
