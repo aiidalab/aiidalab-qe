@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing as t
+
 import ipywidgets as ipw
 
 from aiida import orm
@@ -54,6 +56,8 @@ class PseudosConfigurationSettingsPanel(
             self._on_ecut_change,
             ["ecutwfc", "ecutrho"],
         )
+
+        self._uploader_dictionary_observers: list[t.Callable] = []
 
     def render(self):
         if self.rendered:
@@ -223,6 +227,7 @@ class PseudosConfigurationSettingsPanel(
         self.refresh(specific="widgets")
 
     def _on_input_structure_change(self, _):
+        self._unsubscribe_uploader_observations()
         self.refresh(specific="structure")
 
     def _on_protocol_change(self, _):
@@ -258,6 +263,11 @@ class PseudosConfigurationSettingsPanel(
     def _update_ui(self):
         self._build_pseudos_list()
         self._model.update_family_header()
+
+    def _unsubscribe_uploader_observations(self):
+        for observer in self._uploader_dictionary_observers:
+            self._model.unobserve(observer, "dictionary")
+        self._uploader_dictionary_observers.clear()
 
     def _toggle_upload_warning(self):
         self._model.show_upload_warning = not self._model.family
@@ -316,6 +326,7 @@ class PseudosConfigurationSettingsPanel(
                 synchronize_pseudo,
                 "dictionary",
             )
+            self._uploader_dictionary_observers.append(synchronize_pseudo)
 
             uploader = PseudoPotentialUploader(model=uploader_model)
             uploader.render()

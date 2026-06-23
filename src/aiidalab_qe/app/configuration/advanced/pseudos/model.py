@@ -15,7 +15,12 @@ from aiidalab_qe.common.panel import PanelModel
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 
-from .utils import get_pseudo_family_by_label, get_upf_dict
+from .utils import (
+    get_info_from_family,
+    get_pseudo_family_by_label,
+    get_pseudo_family_by_md5,
+    get_upf_dict,
+)
 
 SsspFamily = GroupFactory("pseudo.family.sssp")
 PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
@@ -329,15 +334,15 @@ class PseudosConfigurationSettingsModel(
         self.update_family_parameters()
 
     def update_functional(self):
-        if not self.dictionary or self.locked:
+        if not self.dictionary or self.family or self.locked:
             return
-        pseudos: list[UpfData] = []
+
+        functional_set = set()
         for kind_name, uuid in self.dictionary.items():
             kind = self.input_structure.get_kind(kind_name)
             try:
                 assert uuid is not None
                 pseudo = orm.load_node(uuid)
-                pseudos.append(pseudo)
             except AssertionError:
                 print(
                     f"The selected pseudopotential family does not contain a pseudopotential for {kind.symbol}. Consider changing the family or uploading a custom pseudopotential."
@@ -348,7 +353,16 @@ class PseudosConfigurationSettingsModel(
                     f"Pseudopotential with UUID {uuid} does not exist for {kind.symbol}."
                 )
                 continue
-        functional_set = {pp.base.extras.get("functional", None) for pp in pseudos}
+            else:
+                functional = pseudo.base.extras.get("functional", None)
+                if functional is None:
+                    # Family-based pseudos may not yet have the extra information.
+                    # We use the pseudo's md5 hash to retrieve the family and extract the info.
+                    family = get_pseudo_family_by_md5(pseudo.md5)
+                    if family is not None:
+                        functional, _ = get_info_from_family(family)
+                functional_set.add(functional)
+
         functional = functional_set.pop() if len(functional_set) == 1 else None
         self._defaults["functional"] = functional
         self.functional = self._get_default("functional")
@@ -411,27 +425,36 @@ class PseudosConfigurationSettingsModel(
         if not (self.has_structure and self.dictionary):
             return
 
-        pseudos: list[UpfData] = []
+        functional_set = set()
+        relativistic_set = set()
         for kind_name, uuid in self.dictionary.items():
             kind = self.input_structure.get_kind(kind_name)
             try:
                 assert uuid is not None
                 pseudo = orm.load_node(uuid)
-                pseudos.append(pseudo)
             except AssertionError:
                 yield f"The selected pseudopotential family does not contain a pseudopotential for {kind.symbol}. Consider changing the family or uploading a custom pseudopotential."
                 return
             except exceptions.NotExistent:
                 yield f"Pseudopotential with UUID {uuid} does not exist for {kind.symbol}."
                 return
+            else:
+                functional = pseudo.base.extras.get("functional", None)
+                relativistic = pseudo.base.extras.get("relativistic", None)
+                if functional is None or relativistic is None:
+                    # Family-based pseudos may not yet have the extra information.
+                    # We use the pseudo's md5 hash to retrieve the family and extract the info.
+                    family = get_pseudo_family_by_md5(pseudo.md5)
+                    if family is not None:
+                        functional, relativistic = get_info_from_family(family)
+                functional_set.add(functional)
+                relativistic_set.add(relativistic)
 
-        functional_set = {pp.base.extras.get("functional", None) for pp in pseudos}
         if len(functional_set) != 1:
             yield "All pseudopotentials must have the same exchange-correlation (XC) functional."
         elif self.functional and self.functional not in functional_set:
             yield "Selected exchange-correlation (XC) functional is not consistent with the pseudopotentials."
 
-        relativistic_set = {pp.base.extras.get("relativistic", None) for pp in pseudos}
         if self.spin_orbit == "soc":
             if relativistic_set != {"full"}:
                 yield "For spin-orbit coupling (SOC) calculations, all pseudopotentials must be fully relativistic."
