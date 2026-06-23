@@ -45,10 +45,6 @@ class PseudoPotentialUploaderModel(Model):
         if not self.pseudo:
             return
 
-        keys = ("functional", "relativistic")
-        if all(key in self.pseudo.base.extras.all for key in keys):
-            return
-
         try:
             upf_dict = get_upf_dict(self.pseudo)
         except Exception as err:
