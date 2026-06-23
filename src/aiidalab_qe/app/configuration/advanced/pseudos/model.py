@@ -16,8 +16,9 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION, PseudoFamily
 
 from .utils import (
-    get_info_from_family_by_md5,
+    get_info_from_family,
     get_pseudo_family_by_label,
+    get_pseudo_family_by_md5,
     get_upf_dict,
 )
 
@@ -355,7 +356,11 @@ class PseudosConfigurationSettingsModel(
             else:
                 functional = pseudo.base.extras.get("functional", None)
                 if functional is None:
-                    functional, _ = get_info_from_family_by_md5(pseudo.md5)
+                    # Family-based pseudos may not yet have the extra information.
+                    # We use the pseudo's md5 hash to retrieve the family and extract the info.
+                    family = get_pseudo_family_by_md5(pseudo.md5)
+                    if family is not None:
+                        functional, _ = get_info_from_family(family)
                 functional_set.add(functional)
 
         functional = functional_set.pop() if len(functional_set) == 1 else None
@@ -437,7 +442,11 @@ class PseudosConfigurationSettingsModel(
                 functional = pseudo.base.extras.get("functional", None)
                 relativistic = pseudo.base.extras.get("relativistic", None)
                 if functional is None or relativistic is None:
-                    functional, relativistic = get_info_from_family_by_md5(pseudo.md5)
+                    # Family-based pseudos may not yet have the extra information.
+                    # We use the pseudo's md5 hash to retrieve the family and extract the info.
+                    family = get_pseudo_family_by_md5(pseudo.md5)
+                    if family is not None:
+                        functional, relativistic = get_info_from_family(family)
                 functional_set.add(functional)
                 relativistic_set.add(relativistic)
 
