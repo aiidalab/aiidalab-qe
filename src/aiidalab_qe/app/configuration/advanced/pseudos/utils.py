@@ -42,6 +42,13 @@ def get_info_from_family(pseudo_family: PseudoPotentialFamily):
         return functional, relativistic
 
 
+def get_info_from_family_by_md5(md5: str):
+    pseudo_family = get_pseudo_family_by_md5(md5)
+    if pseudo_family:
+        return get_info_from_family(pseudo_family)
+    return None, None
+
+
 def get_pseudo_by_filename(filename: str):
     return (
         orm.QueryBuilder()
