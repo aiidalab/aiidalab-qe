@@ -329,7 +329,7 @@ class PseudosConfigurationSettingsModel(
         self.update_family_parameters()
 
     def update_functional(self):
-        if not self.dictionary or self.locked:
+        if not self.dictionary or self.family or self.locked:
             return
         pseudos: list[UpfData] = []
         for kind_name, uuid in self.dictionary.items():
