@@ -6,7 +6,7 @@ from ..utils import (
     FUNCTIONAL_MAPPING,
     UpfData,
     get_info_from_family,
-    get_pseudo_family_by_content,
+    get_pseudo_family_by_md5,
     get_upf_dict,
 )
 
@@ -52,7 +52,7 @@ class PseudoPotentialUploaderModel(Model):
                 f"Failed to read UPF data from pseudo potential with UUID {self.pseudo.uuid}"
             ) from err
 
-        if pseudo_family := get_pseudo_family_by_content(self.pseudo.md5):
+        if pseudo_family := get_pseudo_family_by_md5(self.pseudo.md5):
             functional, relativistic = get_info_from_family(pseudo_family)
         else:
             functional = FUNCTIONAL_MAPPING.get(

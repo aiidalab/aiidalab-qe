@@ -26,12 +26,12 @@ RELATIVISTIC_MAPPING = {
 
 def get_info_from_family(pseudo_family: PseudoPotentialFamily):
     try:
-        if isinstance(pseudo_family, SsspFamily):
-            functional = pseudo_family.label.split("/")[2]
-            relativistic = None
+        label_parts = pseudo_family.label.split("/")
+        functional = label_parts[2]
+        if isinstance(pseudo_family, PseudoDojoFamily):
+            relativistic = RELATIVISTIC_MAPPING.get(label_parts[3])
         else:
-            functional = pseudo_family.label.split("/")[2]
-            relativistic = pseudo_family.label.split("/")[3]
+            relativistic = None
     except TypeError as err:
         raise ValueError(
             "Pseudo family label format is invalid. Expected format: 'family/functional/relativistic'."
@@ -39,7 +39,7 @@ def get_info_from_family(pseudo_family: PseudoPotentialFamily):
     except Exception as err:
         raise ValueError("Invalid pseudo family label format") from err
     else:
-        return functional, RELATIVISTIC_MAPPING.get(relativistic or "", relativistic)
+        return functional, relativistic
 
 
 def get_pseudo_by_filename(filename: str):
@@ -64,7 +64,7 @@ def get_pseudo_by_md5(md5: str):
     )
 
 
-def get_pseudo_family_by_content(md5: str) -> t.Optional[PseudoPotentialFamily]:
+def get_pseudo_family_by_md5(md5: str) -> t.Optional[PseudoPotentialFamily]:
     return (
         orm.QueryBuilder()
         .append(
