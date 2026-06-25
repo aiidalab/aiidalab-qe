@@ -80,12 +80,9 @@ WORKDIR ${QE_APP_SRC}
 COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
 COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
-# NOTE: euphonic must be build separately with --no-build-isolation,
-# otherwise it fails to build on arm64 due to missing build-time numpy dependency.
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    uv pip install --strict --no-build-isolation euphonic==1.3.2 && \
-    uv pip install --strict . ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
+    uv pip install --strict ${AIIDA_HQ_PKG}
 
 ###############################################################################
 # 6) home_build stage
@@ -107,6 +104,9 @@ RUN set -ex; \
       wget --no-verbose -c -O hq.tar.gz "${HQ_URL_AMD64}"; \
     fi && \
     tar xf hq.tar.gz -C /opt/conda/
+
+# Install the app and its plugins into the user's local Python environment
+RUN python -m pip install . ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
@@ -196,9 +196,7 @@ RUN mamba install aiida-core.atomic_tools -y && \
 # Use uv cache from the previous build step
 RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    --mount=from=build_deps,source=${QE_APP_SRC},target=${QE_APP_SRC},rw \
-    uv pip install --strict --compile-bytecode \
-      ${QE_APP_SRC} ${AIIDA_HQ_PKG} ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
+    uv pip install --strict --compile-bytecode ${AIIDA_HQ_PKG}
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
