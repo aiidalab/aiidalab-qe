@@ -98,7 +98,8 @@ RUN mamba install aiida-core.atomic_tools -y && \
     mamba clean --all -f -y
 
 # Install the app and its plugins into the user's local Python environment
-RUN python -m pip install --user --no-cache-dir . ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
+RUN python -m pip install --user --no-cache-dir --no-build-isolation euphonic==1.3.2 && \
+    python -m pip install --user --no-cache-dir . ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
