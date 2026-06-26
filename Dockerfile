@@ -5,7 +5,7 @@
 ###############################################################################
 # 1) Global ARGs
 ###############################################################################
-ARG FULL_STACK_VER=2026.1031
+ARG FULL_STACK_VER=edge
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
@@ -91,14 +91,9 @@ RUN set -ex; \
     fi && \
     tar xf hq.tar.gz -C /opt/conda/
 
-# Install common dependencies such as pymatgen and pandas via conda,
-# to avoid building them when installing via pip
-# TODO: Remove this once it is part of the full-stack image.
-RUN mamba install aiida-core.atomic_tools -y && \
-    mamba clean --all -f -y
-
 # Install the app and its plugins into the user's local Python environment
-RUN python -m pip install --user --no-cache-dir . ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
+RUN python -m pip install --user --no-cache-dir --no-build-isolation euphonic==1.3.2 && \
+    python -m pip install --user --no-cache-dir . ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
@@ -167,13 +162,6 @@ RUN apt-get -q update && \
     rm -rf /var/lib/apt/lists/*
 
 USER ${NB_USER}
-WORKDIR /tmp
-
-# Install common dependencies such as pymatgen and pandas via conda,
-# to avoid building them when installing via pip
-# TODO: Remove this once it is part of the full-stack image.
-RUN mamba install aiida-core.atomic_tools -y && \
-    mamba clean --all -f -y
 
 RUN python -m pip install --no-user --no-cache-dir ${AIIDA_HQ_PKG}
 

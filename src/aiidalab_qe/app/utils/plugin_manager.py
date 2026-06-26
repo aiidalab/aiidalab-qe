@@ -461,8 +461,8 @@ class PluginManager:
 
             # Define the title with checkmark if installed
             title_with_icon = f"{plugin_data.get('title')} {'✅' if installed else ''}"
-            self.accordion.set_title(i, title_with_icon)
             self.accordion.children = [*self.accordion.children, box]
+            self.accordion.set_title(i, title_with_icon)
 
     def display_ui(self) -> None:
         """
