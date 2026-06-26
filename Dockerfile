@@ -80,6 +80,12 @@ RUN set -ex; \
     fi && \
     tar xf hq.tar.gz -C /opt/conda/
 
+# Install common dependencies such as pymatgen and pandas via conda,
+# to avoid building them when installing via pip
+# TODO: Remove this once it is part of the full-stack image.
+RUN mamba install aiida-core.atomic_tools -y && \
+    mamba clean --all -f -y
+
 # Install the app and its plugins into the user's local Python environment
 RUN python -m pip install --user --no-cache-dir . ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
 
