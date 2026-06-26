@@ -24,7 +24,9 @@ def test_qe_app_select_silicon_and_confirm(
 
     # Open structure selection step
     element = WebDriverWait(driver, 60).until(
-        EC.presence_of_element_located((By.CLASS_NAME, "p-Accordion-child"))
+        EC.element_to_be_clickable(
+            (By.XPATH, "//span[contains(.,'Step 1: Select structure')]")
+        )
     )
     element.click()
     # check that element has CSS class
