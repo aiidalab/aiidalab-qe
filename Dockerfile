@@ -35,6 +35,7 @@ RUN echo "Installing QE and Bader..." && \
     mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
     mamba clean --all -f -y
 
+USER root
 # Build wannier90 and copy the binary to $QE_DIR conda env
 # TODO: Make a conda-forge package for wannier90!
 RUN apt-get -q update && \
