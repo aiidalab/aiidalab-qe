@@ -1,14 +1,11 @@
 ##
 # Unified multi-arch Dockerfile for both AMD64 and ARM64 builds.
-# Conditionally installs 'bader' in conda (on x86_64) or compiles from source (on arm64),
-# and downloads the correct Hyperqueue (hq) binary for each architecture.
 ##
 
 ###############################################################################
 # 1) Global ARGs
 ###############################################################################
 ARG FULL_STACK_VER=2026.1031
-ARG UV_VER=0.11.15
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
@@ -21,14 +18,9 @@ ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download
 ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.1.3"
 ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
-###############################################################################
-# 2) uv stage (unchanged)
-#    https://docs.astral.sh/uv/guides/integration/docker/
-###############################################################################
-FROM ghcr.io/astral-sh/uv:${UV_VER} AS uv
 
 ###############################################################################
-# 3) qe_conda_env stage
+# 2) qe_conda_env stage
 #    - Creates the quantum-espresso conda environment in /opt/conda/envs/quantum-espresso-<QE_VER>
 #    - Install QuantumEspresso and bader packages
 ###############################################################################
@@ -45,7 +37,7 @@ RUN set -ex; \
     mamba clean --all -f -y
 
 ###############################################################################
-# 4) base stage to setup common environment variables
+# 3) base stage to setup common environment variables
 #    NOTE: Any ENVs set here will end up in the final image!
 ###############################################################################
 FROM ghcr.io/aiidalab/full-stack:${FULL_STACK_VER} AS base
@@ -57,44 +49,27 @@ ENV COMPUTER_LABEL=${COMPUTER_LABEL}
 ENV AIIDA_HQ_PKG=${AIIDA_HQ_PKG}
 ENV MUON_PKG=${MUON_PKG}
 
-# https://docs.astral.sh/uv/reference/environment/
-ENV UV_CACHE_DIR=/tmp/uv_cache
-ENV UV_CONSTRAINT=${PIP_CONSTRAINT}
-ENV UV_LINK_MODE=copy
-ENV UV_NO_PROGRESS=1
-# Make sure UV installs into the conda environment at /opt/conda
-ENV UV_SYSTEM_PYTHON=1
-
 ENV QE_APP_FOLDER=/opt/conda/quantum-espresso
 
 ###############################################################################
-# 5) build_deps stage
-#    - Installs Python dependencies using uv for caching
+# 4) home_build stage
+#    - Prepares AiiDA profile, sets up hyperqueue, installs QE codes/pseudos,
+#      and archives the home folder (home.tar).
 ###############################################################################
-FROM base AS build_deps
-ARG QE_DIR
+FROM base AS home_build
 ARG QE_APP_SRC
+ARG QE_DIR
+# We'll use these to pick the correct HQ binary
+ARG TARGETARCH
+ARG HQ_URL_AMD64
+ARG HQ_URL_ARM64
 
 WORKDIR ${QE_APP_SRC}
 
 COPY --chown=${NB_UID}:${NB_GID} src/ ${QE_APP_SRC}/src
 COPY --chown=${NB_UID}:${NB_GID} setup.cfg pyproject.toml LICENSE README.md ${QE_APP_SRC}
 
-RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    uv pip install --strict ${AIIDA_HQ_PKG}
-
-###############################################################################
-# 6) home_build stage
-#    - Prepares AiiDA profile, sets up hyperqueue, installs QE codes/pseudos,
-#      and archives the home folder (home.tar).
-###############################################################################
-FROM build_deps AS home_build
-ARG QE_DIR
-# We'll use these to pick the correct HQ binary
-ARG TARGETARCH
-ARG HQ_URL_AMD64
-ARG HQ_URL_ARM64
+RUN python -m pip install --no-user --no-cache-dir ${AIIDA_HQ_PKG}
 
 # Download and unpack the correct hq binary for the architecture:
 RUN set -ex; \
@@ -142,7 +117,8 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # It is usually safe (and preferable) to let .conda be recreated on the fly each time,
     # because .conda typically just holds local environment information, caches, or references
     # to available environments.
-    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar --exclude .cache --exclude work --exclude .conda .
+    cd /home/${NB_USER} && tar -cf /opt/conda/home.tar \
+      --exclude .npm/_logs --exclude .aiida/access/default --exclude .cache --exclude .npm/ --exclude work --exclude .conda .
 
 ###############################################################################
 # 7) Prepare a clean copy of the QeApp repo
@@ -192,11 +168,7 @@ WORKDIR /tmp
 RUN mamba install aiida-core.atomic_tools -y && \
     mamba clean --all -f -y
 
-# Install dependencies in the final image.
-# Use uv cache from the previous build step
-RUN --mount=from=uv,source=/uv,target=/bin/uv \
-    --mount=type=cache,sharing=locked,target=${UV_CACHE_DIR},uid=${NB_UID},gid=${NB_GID} \
-    uv pip install --strict --compile-bytecode ${AIIDA_HQ_PKG}
+RUN python -m pip install --no-user --no-cache-dir ${AIIDA_HQ_PKG}
 
 # copy hq binary
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
