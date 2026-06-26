@@ -31,10 +31,21 @@ ARG QE_DIR
 ARG TARGETARCH
 
 USER ${NB_USER}
-RUN set -ex; \
-    echo "Installing QE and Bader..." && \
+RUN echo "Installing QE and Bader..." && \
     mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
     mamba clean --all -f -y
+
+USER root
+# Build wannier90 and copy the binary to $QE_DIR conda env
+# TODO: Make a conda-forge package for wannier90!
+RUN apt-get -q update && \
+    apt-get -q install -y --no-install-recommends gfortran libblas-dev liblapack-dev libopenmpi-dev && \
+    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90 && \
+    cd /tmp/wannier90 && \
+    cp config/make.inc.gfort make.inc && \
+    echo -e "COMMS=mpi\nMPIF90=mpif90" >> make.inc && \
+    make -j wannier && \
+    cp wannier90.x ${QE_DIR}/bin/wannier90.x
 
 ###############################################################################
 # 3) base stage to setup common environment variables
@@ -106,7 +117,7 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # setup code: pythonjob, bader, wannier90 code
     verdi code create core.code.installed --label python --computer=${COMPUTER_LABEL} --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
     verdi code create core.code.installed --label bader --computer=${COMPUTER_LABEL} --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
-    verdi code create core.code.installed --label wannier90 --computer=${COMPUTER_LABEL} --default-calc-job-plugin wannier90.wannier90 --filepath-executable=/opt/conda/bin/wannier90.x -n && \
+    verdi code create core.code.installed --label wannier90 --computer=${COMPUTER_LABEL} --default-calc-job-plugin wannier90.wannier90 --filepath-executable=${QE_DIR}/bin/wannier90.x -n && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
@@ -149,21 +160,11 @@ ARG QE_APP_SRC
 ARG TARGETARCH
 
 USER root
-# Build wannier90 for all arches
-RUN set -ex; \
-    apt-get -q update && apt-get -q install -y --no-install-recommends \
-    gfortran libblas-dev liblapack-dev liblapack3 openmpi-bin libopenmpi-dev; \
-    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90; \
-    cd /tmp/wannier90; \
-    cp config/make.inc.gfort make.inc; \
-    echo "COMMS=mpi" >> make.inc; \
-    echo "MPIF90=mpif90" >> make.inc; \
-    make -j"$(nproc)" wannier; \
-    cp wannier90.x /opt/conda/bin/wannier90.x; \
-    apt-get -q remove --purge -y gfortran libblas-dev liblapack-dev libopenmpi-dev && \
-    apt-get -q autoremove -y && \
+# Install deps for wannier90
+RUN apt-get -q update && \
+    apt-get -q install -y --no-install-recommends liblapack3 openmpi-bin && \
     apt-get -q clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/wannier90 /tmp/bader
+    rm -rf /var/lib/apt/lists/*
 
 USER ${NB_USER}
 WORKDIR /tmp
@@ -180,6 +181,8 @@ RUN python -m pip install --no-user --no-cache-dir ${AIIDA_HQ_PKG}
 COPY --from=home_build /opt/conda/hq /usr/local/bin/
 # Copy the QE conda environment
 COPY --from=qe_conda_env ${QE_DIR} ${QE_DIR}
+# This is for backwards compatibility
+COPY --from=qe_conda_env ${QE_DIR}/bin/wannier90.x /opt/conda/bin/wannier90.x
 
 USER root
 
