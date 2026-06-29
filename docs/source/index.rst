@@ -95,6 +95,23 @@ Welcome Page
 
          To the development guide
 
+   .. grid-item-card:: events
+      :text-align: center
+      :shadow: md
+
+      Schools, workshops, and tutorials
+
+      ++++
+
+      .. button-ref:: events/index
+         :ref-type: doc
+         :click-parent:
+         :expand:
+         :color: primary
+         :outline:
+
+         To the events
+
    .. grid-item-card:: Blogs
       :text-align: center
       :shadow: md
@@ -137,6 +154,7 @@ Welcome Page
    tutorials/index
    howto/index
    development/index
+   events/index
    blogs/index
    report_issue
 
