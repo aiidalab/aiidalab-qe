@@ -126,10 +126,10 @@ class ConfigurationStepModel(
                 model.set_model_state(state[identifier])
 
     def update_state(self):
-        if self.is_blocked:
-            self.state = State.BLOCKED
-        elif self.confirmed:
+        if self.confirmed:
             self.state = State.SUCCESS
+        elif self.is_blocked:
+            self.state = State.BLOCKED
         elif self.is_previous_step_successful and self.has_all_dependencies:
             self.state = State.CONFIGURED
         else:

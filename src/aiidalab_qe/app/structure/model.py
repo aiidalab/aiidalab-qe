@@ -30,10 +30,10 @@ class StructureStepModel(
         self.structure_uuid = state.get("uuid")
 
     def update_state(self):
-        if self.is_blocked:
-            self.state = State.BLOCKED
-        elif self.confirmed:
+        if self.confirmed:
             self.state = State.SUCCESS
+        elif self.is_blocked:
+            self.state = State.BLOCKED
         elif self.structure_uuid:
             # We check the UUID directly (not using `has_structure`), as the structure
             # may not yet be stored.
