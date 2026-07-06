@@ -74,7 +74,7 @@ class PseudoFamily:
         # where <relativistic> is either 'SR' or 'FR' and <file_type> is either 'upf' or 'psml'
         # Before we unify the format of family strings, the conditions below are necessary
         # to distinguish between the two families
-        library = pseudo_family_string.split("/")[0]
+        library = pseudo_family_string.split("/", maxsplit=1)[0]
         if library == "SSSP":
             version, functional, accuracy = pseudo_family_string.split("/")[1:]
             relativistic = None
