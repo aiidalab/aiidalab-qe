@@ -5,6 +5,15 @@
 .output_subarea {
   max-width: none !important;
 }
+
+.widget-toggle-buttons {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.widget-toggle-buttons label {
+  margin-right: 1em;
+}
 /* end override */
 
 .app-header {
