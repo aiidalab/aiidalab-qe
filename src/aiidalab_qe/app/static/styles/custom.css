@@ -117,7 +117,7 @@ footer {
   background-color: var(--color-blocked);
 }
 
-.jupyter-widget-TabBar-tab {
+.lm-TabBar-tab {
   min-width: fit-content !important;
 }
 
