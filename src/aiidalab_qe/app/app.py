@@ -257,7 +257,7 @@ class AppModel(tl.HasTraits):
 
     def update_active_guide(self, category, guide):
         """Sets the current active guide."""
-        active_guide = f"{category}/{guide}" if category != "No guides" else category
+        active_guide = "No guides" if guide is None else f"{category}/{guide}"
         guide_manager.active_guide = active_guide
 
     def get_state_from_process(self) -> dict:
