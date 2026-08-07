@@ -18,7 +18,6 @@ ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download
 ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.1.3"
 ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
-
 ###############################################################################
 # 2) qe_conda_env stage
 #    - Creates the quantum-espresso conda environment in /opt/conda/envs/quantum-espresso-<QE_VER>
@@ -98,7 +97,18 @@ RUN mamba install aiida-core.atomic_tools -y && \
     mamba clean --all -f -y
 
 # Install the app and its plugins into the user's local Python environment
-RUN python -m pip install --user --no-cache-dir . ${MUON_PKG} aiidalab-qe-vibroscopy aiida-bader
+RUN python -m pip install --user --no-cache-dir . \
+    ${MUON_PKG} \
+    aiidalab-qe-vibroscopy \
+    aiida-bader \
+    aiidalab-qe-hp \
+    aiidalab-qe-pp \
+    aiida-qe-xspec \
+    # the following git-installed plugins are due to PyPI quarantines - discard when resolved
+    aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows \
+    aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90 \
+    aiida-skeaf@git+https://github.com/aiidaplugins/aiida-skeaf \
+    aiidalab-qe-wannier90
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
