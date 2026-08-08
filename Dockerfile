@@ -105,8 +105,8 @@ RUN python -m pip install --user --no-cache-dir . \
     aiidalab-qe-pp \
     aiida-qe-xspec \
     # the following git-installed plugins are due to PyPI quarantines - discard when resolved
-    aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v2.7.1 \
     aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90@v2.2.0 \
+    aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v2.7.1 \
     aiida-skeaf@git+https://github.com/aiidaplugins/aiida-skeaf@v0.2.0 \
     aiidalab-qe-wannier90
 
