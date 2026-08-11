@@ -50,7 +50,6 @@ aiidalab-qe-wannier90:
     author: Xing Wang, Junfeng Qiao, Nicola Marzari and Giovanni Pizzi
     github: https://github.com/aiidalab/aiidalab-qe-wannier90
     documentation: https://aiidalab-qe-wannier90.readthedocs.io/
-    pip: aiidalab-qe-wannier90
     status: beta
     category: calculation
     requires_aiidalab_qe: '>26.05.0'
