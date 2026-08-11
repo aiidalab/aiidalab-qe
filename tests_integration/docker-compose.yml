@@ -11,4 +11,8 @@ services:
         ports:
             - 0.0.0.0:${AIIDALAB_PORT:-8998}:8888
         healthcheck:
-            disable: true
+            test: ["CMD-SHELL", "/etc/jupyter/docker_healthcheck.py || exit 1"]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+            start_period: 30s
