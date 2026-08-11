@@ -11,5 +11,6 @@ How-to guides
    setup_computer_code
    import_structure
    upgrade_uninstall
+   search_job
    xas
    xps
