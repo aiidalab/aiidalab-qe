@@ -22,12 +22,14 @@ class TestApp:
         self.model.process_uuid = workchain.node.uuid
         self.controller.load_wizard()
         wizard = self.controller.wizard
-        assert wizard.configure_model.relax_type == "positions"
-        assert wizard.configure_model.get_model("workchain").spin_type == "collinear"
-        assert wizard.configure_model.get_model("bands").include is True
-        assert wizard.configure_model.get_model("pdos").include is False
-        assert wizard.configure_model.state == State.SUCCESS
-        advanced_model = wizard.configure_model.get_model("advanced")
+        assert wizard.configuration_model.relax_type == "positions"
+        assert (
+            wizard.configuration_model.get_model("workchain").spin_type == "collinear"
+        )
+        assert wizard.configuration_model.get_model("bands").include is True
+        assert wizard.configuration_model.get_model("pdos").include is False
+        assert wizard.configuration_model.state == State.SUCCESS
+        advanced_model = wizard.configuration_model.get_model("advanced")
         pseudos_model = advanced_model.get_model("pseudos")
         assert len(pseudos_model.dictionary) > 0
         assert pseudos_model.functional == "PBE"

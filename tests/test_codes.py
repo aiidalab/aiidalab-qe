@@ -3,7 +3,7 @@ import typing as t
 from aiida import orm
 from aiidalab_qe.app.submission import SubmissionStep, SubmissionStepModel
 from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsModel
-from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.app.wizard import QeWizard
 from aiidalab_qe.common.code import PwCodeModel
 from aiidalab_qe.common.code.model import CodeModel
 from aiidalab_qe.common.panel import ResourceSettingsModel, ResourceSettingsPanel
@@ -14,35 +14,35 @@ from aiidalab_qe.utils import shallow_copy_nested_dict
 
 def test_code_not_selected(submit_app_generator):
     """Test if there is an error when the code is not selected."""
-    app: Wizard = submit_app_generator(properties=["dos"])
-    model = app.submit_model
+    app: QeWizard = submit_app_generator(properties=["dos"])
+    model = app.submission_model
     model.get_model("global").get_model("quantumespresso__dos").selected = None
     # Check builder construction passes without an error
-    parameters = shallow_copy_nested_dict(app.submit_model.input_parameters)
-    parameters |= {"codes": app.submit_model.get_model_state()}
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters |= {"codes": app.submission_model.get_model_state()}
     model._create_builder(parameters)
 
 
 def test_set_codes(submit_app_generator):
     """Test setting codes (in practice, from a loaded process)."""
-    app: Wizard = submit_app_generator()
-    resources = app.submit_model.get_model_state()
+    app: QeWizard = submit_app_generator()
+    resources = app.submission_model.get_model_state()
     model = SubmissionStepModel()
     _ = SubmissionStep(model=model, auto_setup=False)
-    for identifier, code_model in app.submit_model.get_model("global").get_models():
+    for identifier, code_model in app.submission_model.get_model("global").get_models():
         model.get_model("global").get_model(identifier).is_active = code_model.is_active
     model.get_model("global").set_model_state(resources["global"])  # type: ignore
     model.previous_step_state = State.SUCCESS
-    assert model.get_model_state() == app.submit_model.get_model_state()
+    assert model.get_model_state() == app.submission_model.get_model_state()
 
 
-def test_global_code_toggle(app: Wizard):
+def test_global_code_toggle(app: QeWizard):
     """Test that global codes toggle on/off based on their activity."""
     global_resources_model = t.cast(
         GlobalResourceSettingsModel,
-        app.submit_model.get_model("global"),
+        app.submission_model.get_model("global"),
     )
-    global_resources = app.submit_step.global_resources
+    global_resources = app.submission_step.global_resources
     global_resources.render()
 
     dos_code_model = global_resources_model.get_model("quantumespresso__dos")
@@ -57,9 +57,9 @@ def test_global_code_toggle(app: Wizard):
     assert global_resources.code_widgets["dos"].layout.display == "none"
 
 
-def test_check_blockers(app_to_submit: Wizard):
+def test_check_blockers(app_to_submit: QeWizard):
     """Test check_submission_blockers method."""
-    model = app_to_submit.submit_model
+    model = app_to_submit.submission_model
 
     assert len(model.blockers) == 0
 
@@ -83,11 +83,11 @@ def test_check_blockers(app_to_submit: Wizard):
     assert "input parameters" in model.blockers[1]  # type: ignore
 
 
-def test_qeapp_computational_resources_widget(app: Wizard):
+def test_qeapp_computational_resources_widget(app: QeWizard):
     """Test QEAppComputationalResourcesWidget."""
-    app.submit_step.render()
-    global_model = app.submit_model.get_model("global")
-    global_resources = app.submit_step.global_resources
+    app.submission_step.render()
+    global_model = app.submission_model.get_model("global")
+    global_resources = app.submission_step.global_resources
     pw_code_model = t.cast(
         PwCodeModel,
         global_model.get_model("quantumespresso__pw"),
@@ -138,7 +138,7 @@ def test_parameters_aware_codes():
     assert panel.code_widgets["test"].layout.display == "none"
 
 
-def test_filter_codes_for_user(app: Wizard, aiida_computer_ssh, aiida_code_installed):
+def test_filter_codes_for_user(app: QeWizard, aiida_computer_ssh, aiida_code_installed):
     unconfigured_computer = aiida_computer_ssh(
         label="unconfigured_computer",
         configure=False,
@@ -148,17 +148,17 @@ def test_filter_codes_for_user(app: Wizard, aiida_computer_ssh, aiida_code_insta
         computer=unconfigured_computer,
     ).store()
 
-    global_model = app.submit_model.get_model("global")
+    global_model = app.submission_model.get_model("global")
 
     # In general, we filter out unconfigured codes so the user can't submit with them
-    app.submit_model.refresh_codes(filter_codes_for_user=True)
+    app.submission_model.refresh_codes(filter_codes_for_user=True)
     assert new_code.uuid not in [
         code_uuid
         for _, code_uuid in global_model.get_model("quantumespresso__pw").options
     ]
 
     # We allow for these codes when loading from a process, since the user can no longer submit
-    app.submit_model.refresh_codes(filter_codes_for_user=False)
+    app.submission_model.refresh_codes(filter_codes_for_user=False)
     assert new_code.uuid in [
         code_uuid
         for _, code_uuid in global_model.get_model("quantumespresso__pw").options
