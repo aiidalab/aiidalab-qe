@@ -134,20 +134,23 @@ class DownloadButton(ipw.Button):
         display(
             HTML(
                 f"""
-            <html>
-            <body>
-            <a id="{link_id}" download="{self.filename}" href="data:text/plain;base64,{payload}" download>
-            </a>
+                    <html>
+                        <body>
+                            <a
+                                id="{link_id}"
+                                download="{self.filename}"
+                                href="data:text/plain;base64,{payload}"
+                            ></a>
 
-            <script>
-            (function download() {{
-            document.getElementById('{id}').click();
-            }})()
-            </script>
+                            <script>
+                                (function download() {{
+                                    document.getElementById('{link_id}').click();
+                                }})()
+                            </script>
 
-            </body>
-            </html>
-            """
+                        </body>
+                    </html>
+                """
             )
         )
 
