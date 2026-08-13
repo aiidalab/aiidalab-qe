@@ -54,13 +54,17 @@ class RollingOutput(ipw.VBox):
         self._output = ipw.HTML(layout=ipw.Layout(min_width="80em"))
         self._refresh_output()
 
+        layout = kwargs.pop("layout", {})
+        if isinstance(layout, dict):
+            layout = ipw.Layout(**layout)
+        if not layout.max_height:
+            layout.max_height = max_output_height
+        if not layout.overflow:
+            layout.overflow = "auto"
+
         super().__init__(
             children=[self._output],
-            layout=ipw.Layout(
-                **kwargs.pop("layout", {}),
-                max_height=max_output_height,
-                overflow="auto",
-            ),
+            layout=layout,
             **kwargs,
         )
 
