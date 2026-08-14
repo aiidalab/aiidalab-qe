@@ -94,32 +94,6 @@ footer {
   text-align: right;
 }
 
-.wizard > div:has(.qe-app-step-ready) > div:first-child {
-  background-color: var(--color-ready);
-}
-
-.wizard > div:has(.qe-app-step-configured) > div:first-child {
-  background-color: var(--color-ready);
-  filter: brightness(0.95);
-  -webkit-filter: brightness(0.95);
-}
-
-.wizard > div:has(.qe-app-step-active) > div:first-child {
-  background-color: var(--color-active);
-}
-
-.wizard > div:has(.qe-app-step-success) > div:first-child {
-  background-color: var(--color-success);
-}
-
-.wizard > div:has(.qe-app-step-fail) > div:first-child {
-  background-color: var(--color-failed);
-}
-
-.wizard > div:has(.qe-app-step-blocked) > div:first-child {
-  background-color: var(--color-blocked);
-}
-
 .lm-TabBar-tab {
   min-width: fit-content !important;
 }
