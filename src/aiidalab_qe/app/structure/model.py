@@ -28,6 +28,8 @@ class StructureStepModel(
 
     def set_model_state(self, state: dict):
         self.structure_uuid = state.get("uuid")
+        structure = self.input_structure
+        self.structure_name = structure.get_formula() if structure else ""
 
     def update_state(self):
         if self.confirmed:
