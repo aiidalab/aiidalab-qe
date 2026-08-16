@@ -30,9 +30,20 @@ ARG QE_DIR
 ARG TARGETARCH
 
 USER ${NB_USER}
-RUN echo "Installing QE, Wannier90, and Bader..." && \
-    mamba create -p ${QE_DIR} --yes qe=${QE_VER} wannier90 bader && \
+RUN echo "Installing QE and Bader..." && \
+    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader && \
     mamba clean --all -f -y
+
+USER root
+# Build wannier90 and copy the binary to $QE_DIR conda env
+RUN apt-get -q update && \
+    apt-get -q install -y --no-install-recommends gfortran libblas-dev liblapack-dev libopenmpi-dev && \
+    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90 && \
+    cd /tmp/wannier90 && \
+    cp config/make.inc.gfort make.inc && \
+    echo -e "COMMS=mpi\nMPIF90=mpif90" >> make.inc && \
+    make -j wannier && \
+    cp wannier90.x ${QE_DIR}/bin/wannier90.x
 
 ###############################################################################
 # 3) base stage to setup common environment variables
