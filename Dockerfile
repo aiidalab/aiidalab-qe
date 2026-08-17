@@ -30,9 +30,21 @@ ARG QE_DIR
 ARG TARGETARCH
 
 USER ${NB_USER}
-RUN echo "Installing QE, Wannier90, and Bader..." && \
-    mamba create -p ${QE_DIR} --yes qe=${QE_VER} wannier90 bader && \
+RUN echo "Installing QE, Bader, and SKEAF..." && \
+    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader skeaf && \
     mamba clean --all -f -y
+
+USER root
+# Build wannier90 and copy the binary to $QE_DIR conda env
+# TODO use the conda recipe once we bump QE to 7.5 (for openMPI 5 support)
+RUN apt-get -q update && \
+    apt-get -q install -y --no-install-recommends gfortran libblas-dev liblapack-dev libopenmpi-dev && \
+    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90 && \
+    cd /tmp/wannier90 && \
+    cp config/make.inc.gfort make.inc && \
+    echo -e "COMMS=mpi\nMPIF90=mpif90" >> make.inc && \
+    make -j wannier && \
+    cp wannier90.x ${QE_DIR}/bin/wannier90.x
 
 ###############################################################################
 # 3) base stage to setup common environment variables
@@ -95,7 +107,7 @@ RUN python -m pip install --user --no-cache-dir . \
     # the following git-installed plugins are due to PyPI quarantines - discard when resolved
     aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90@v2.2.0 \
     aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v2.7.1 \
-    aiida-skeaf@git+https://github.com/aiidaplugins/aiida-skeaf@v0.2.0 \
+    aiida-skeaf@git+https://github.com/aiidaplugins/aiida-skeaf@v0.2.1 \
     aiidalab-qe-wannier90
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
@@ -112,10 +124,12 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     bash /usr/local/bin/before-notebook.d/42_setup-hq-computer.sh && \
     python -m aiidalab_qe install-qe --computer ${COMPUTER_LABEL} && \
     python -m aiidalab_qe install-pseudos --source ${PSEUDO_FOLDER} && \
-    # setup code: pythonjob, bader, wannier90 code
-    verdi code create core.code.installed --label python --computer=${COMPUTER_LABEL} --default-calc-job-plugin pythonjob.pythonjob --filepath-executable=/opt/conda/bin/python -n && \
-    verdi code create core.code.installed --label bader --computer=${COMPUTER_LABEL} --default-calc-job-plugin bader.bader --filepath-executable=${QE_DIR}/bin/bader -n && \
-    verdi code create core.code.installed --label wannier90 --computer=${COMPUTER_LABEL} --default-calc-job-plugin wannier90.wannier90 --filepath-executable=${QE_DIR}/bin/wannier90.x -n && \
+    # setup code: pythonjob, bader, wannier90, skeaf codes
+    verdi code create core.code.installed -Y ${COMPUTER_LABEL} -L python -P pythonjob.pythonjob -X /opt/conda/bin/python -n && \
+    verdi code create core.code.installed -Y ${COMPUTER_LABEL} -L bader -P bader.bader -X ${QE_DIR}/bin/bader -n && \
+    verdi code create core.code.installed -Y ${COMPUTER_LABEL} -L wannier90 -P wannier90.wannier90 -X ${QE_DIR}/bin/wannier90.x -n && \
+    verdi code create core.code.installed -Y ${COMPUTER_LABEL} -L skeaf -P skeaf.skeaf -X ${QE_DIR}/bin/skeaf -n && \
+    verdi code create core.code.installed -Y ${COMPUTER_LABEL} -L wan2skeaf -P skeaf.wan2skeaf -X "$(which wan2skeaf)" -n && \
     # run post_install for plugin
     python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
