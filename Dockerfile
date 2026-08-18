@@ -100,10 +100,6 @@ RUN mamba install aiida-core.atomic_tools -y && \
 RUN python -m pip install --user --no-cache-dir . \
     ${MUON_PKG} \
     aiidalab-qe-vibroscopy \
-    aiida-bader \
-    aiidalab-qe-hp \
-    aiidalab-qe-pp \
-    aiida-qe-xspec \
     # the following git-installed plugins are due to PyPI quarantines - discard when resolved
     aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90@v2.2.0 \
     aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v2.7.1 \
@@ -131,7 +127,6 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     verdi code create core.code.installed -Y ${COMPUTER_LABEL} -L skeaf -P skeaf.skeaf -X ${QE_DIR}/bin/skeaf -n && \
     verdi code create core.code.installed -Y ${COMPUTER_LABEL} -L wan2skeaf -P skeaf.wan2skeaf -X "$(which wan2skeaf)" -n && \
     # run post_install for plugin
-    python -m aiida_bader post-install && \
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
     python -m aiidalab_qe_muon setup-python3 && \
     # wannier90 plugin need SSSP 1.1
