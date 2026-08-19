@@ -56,7 +56,7 @@ def test_workchainview(generate_qeapp_workchain):
     model.process_uuid = workchain.node.uuid
     viewer.render()
     assert len(viewer.tabs.children) == 2
-    assert viewer.tabs._titles["0"] == "Structure"  # type: ignore
+    assert viewer.tabs.titles[0] == "Structure"
 
 
 def test_summary_report(data_regression, generate_qeapp_workchain):

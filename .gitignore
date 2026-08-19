@@ -3,6 +3,7 @@
 *.tar.gz
 *.code-workspace
 .*.ipynb
+*-[0-9]*.ipynb
 .ipynb*
 build/
 export/

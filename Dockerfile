@@ -5,7 +5,7 @@
 ###############################################################################
 # 1) Global ARGs
 ###############################################################################
-ARG FULL_STACK_VER=2026.1031
+ARG FULL_STACK_VER=edge
 ARG QE_VER=7.4
 ARG QE_DIR=/opt/conda/envs/quantum-espresso-${QE_VER}
 ARG HQ_VER=0.19.0
@@ -15,7 +15,7 @@ ARG COMPUTER_LABEL="localhost"
 
 ARG HQ_URL_AMD64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-x64.tar.gz"
 ARG HQ_URL_ARM64="https://github.com/It4innovations/hyperqueue/releases/download/v${HQ_VER}/hq-v${HQ_VER}-linux-arm64-linux.tar.gz"
-ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@support/1.1.x"
+ARG MUON_PKG="aiidalab-qe-muon@git+https://github.com/aiidalab/aiidalab-qe-muon@v1.2.1"
 ARG AIIDA_HQ_PKG="aiida-hyperqueue~=0.3.0"
 
 ###############################################################################
@@ -31,20 +31,8 @@ ARG TARGETARCH
 
 USER ${NB_USER}
 RUN echo "Installing QE, Bader, and SKEAF..." && \
-    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader skeaf && \
+    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader skeaf wannier90 && \
     mamba clean --all -f -y
-
-USER root
-# Build wannier90 and copy the binary to $QE_DIR conda env
-# TODO use the conda recipe once we bump QE to 7.5 (for openMPI 5 support)
-RUN apt-get -q update && \
-    apt-get -q install -y --no-install-recommends gfortran libblas-dev liblapack-dev libopenmpi-dev && \
-    git clone --depth=1 https://github.com/wannier-developers/wannier90.git /tmp/wannier90 && \
-    cd /tmp/wannier90 && \
-    cp config/make.inc.gfort make.inc && \
-    echo -e "COMMS=mpi\nMPIF90=mpif90" >> make.inc && \
-    make -j wannier && \
-    cp wannier90.x ${QE_DIR}/bin/wannier90.x
 
 ###############################################################################
 # 3) base stage to setup common environment variables
@@ -90,21 +78,15 @@ RUN set -ex; \
     fi && \
     tar xf hq.tar.gz -C /opt/conda/
 
-# Install common dependencies such as pymatgen and pandas via conda,
-# to avoid building them when installing via pip
-# TODO: Remove this once it is part of the full-stack image.
-RUN mamba install aiida-core.atomic_tools -y && \
-    mamba clean --all -f -y
-
 # Install the app and its plugins into the user's local Python environment
 RUN python -m pip install --user --no-cache-dir . \
     ${MUON_PKG} \
     aiidalab-qe-vibroscopy \
     # the following git-installed plugins are due to PyPI quarantines - discard when resolved
-    aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90@v2.2.0 \
-    aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v2.7.1 \
+    aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90.git@v2.2.0 \
+    aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v3.0.0 \
     aiida-skeaf@git+https://github.com/aiidaplugins/aiida-skeaf@v0.2.1 \
-    aiidalab-qe-wannier90
+    aiidalab-qe-wannier90@git+https://github.com/aiidalab/aiidalab-qe-wannier90
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
@@ -174,13 +156,6 @@ RUN apt-get -q update && \
     rm -rf /var/lib/apt/lists/*
 
 USER ${NB_USER}
-WORKDIR /tmp
-
-# Install common dependencies such as pymatgen and pandas via conda,
-# to avoid building them when installing via pip
-# TODO: Remove this once it is part of the full-stack image.
-RUN mamba install aiida-core.atomic_tools -y && \
-    mamba clean --all -f -y
 
 RUN python -m pip install --no-user --no-cache-dir ${AIIDA_HQ_PKG}
 

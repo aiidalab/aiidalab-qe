@@ -11,6 +11,7 @@ from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import time
+from uuid import uuid4
 
 import anywidget
 import ase
@@ -41,24 +42,34 @@ __all__ = [
 
 
 class RollingOutput(ipw.VBox):
-    style = (
-        "background-color: #253239; color: #cdd3df; line-height: normal; custom=test"
-    )
+    style = "background-color: #253239; color: #cdd3df; line-height: normal;"
 
     value = traitlets.Unicode()
     auto_scroll = traitlets.Bool()
 
     def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):
         self._num_min_lines = num_min_lines
+        self._scroll_class = f"rolling-output-{uuid4().hex}"
+
         self._output = ipw.HTML(layout=ipw.Layout(min_width="80em"))
         self._refresh_output()
+
+        layout = kwargs.pop("layout", {})
+        if isinstance(layout, dict):
+            layout = ipw.Layout(**layout)
+        if not layout.max_height:
+            layout.max_height = max_output_height
+        if not layout.overflow:
+            layout.overflow = "auto"
+
         super().__init__(
-            children=[
-                self._output,
-            ],
-            layout=ipw.Layout(max_height=max_output_height),
+            children=[self._output],
+            layout=layout,
+            **kwargs,
         )
+
         self.add_class("rolling-output")
+        self.add_class(self._scroll_class)
 
     @traitlets.default("value")
     def _default_value(self):
@@ -70,19 +81,16 @@ class RollingOutput(ipw.VBox):
         return True
 
     def scroll_to_bottom(self):
-        # Slight hack because it will scroll all widgets with the same class
-        # name and max height to the bottom. That would primarily be an issue in
-        # case that there are two LogOutputWidgets in the DOM. Could probably be
-        # alleviated by adding a custom class.
         display(
             Javascript(
+                f"""
+                    requestAnimationFrame(() => {{
+                        const el = document.querySelector(".{self._scroll_class}");
+                        if (el) {{
+                            el.scrollTop = el.scrollHeight;
+                        }}
+                    }});
                 """
-            Array.from(document.getElementsByClassName('{class_name}'))
-            .filter(el => el.style["max-height"] === "{max_height}")
-            .forEach(el => el.scrollTop = el.scrollHeight)""".format(
-                    class_name="p-Widget p-Panel jupyter-widgets widget-container widget-box widget-vbox",
-                    max_height=self.layout.max_height,
-                )
             )
         )
 
