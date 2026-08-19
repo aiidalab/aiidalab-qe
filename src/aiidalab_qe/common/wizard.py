@@ -386,7 +386,7 @@ class Wizard(ipw.Accordion):
     def _update_titles(self):
         for i, (identifier, title) in enumerate(self._titles.items()):
             step_model = self._model.get_model(identifier)
-            icon = self._icons.get(step_model.state)
+            icon = self._icons.get(step_model.state, "")
             step_title = f"{icon} Step {i + 1}"
             if title:
                 step_title += f": {title}"
