@@ -6,11 +6,10 @@ from aiidalab_qe.app.configuration import ConfigurationStepModel
 from aiidalab_qe.app.result import ResultsStepModel
 from aiidalab_qe.app.structure import StructureStepModel
 from aiidalab_qe.app.submission import SubmissionStepModel
-from aiidalab_qe.common.mixins import HasModels
-from aiidalab_qe.common.wizard import WizardModel, WizardStepModel
+from aiidalab_qe.common.wizard import WizardModel
 
 
-class QeWizardModel(WizardModel, HasModels[WizardStepModel]):
+class QeWizardModel(WizardModel):
     state = tl.Dict(None, allow_none=True)
     selected_index = tl.Int(None, allow_none=True)
     loading = tl.Bool(False)
