@@ -309,22 +309,16 @@ class WizardModel(Model, HasModels[WizardStepModel]):
 class Wizard(ipw.Accordion):
     """A wizard widget that manages multiple steps."""
 
-    def __init__(
-        self,
-        model: WizardModel,
-        titles: dict[str, str],
-        icons: dict[str, str],
-        **kwargs,
-    ):
+    def __init__(self, model: WizardModel, icons: dict[str, str], **kwargs):
         super().__init__(**kwargs)
         self.add_class("wizard")
 
         self._model = model
-        self._titles = titles
         self._icons = icons
 
         self._models: list[WizardStepModel] = []
         self._steps: list[WizardStep] = []
+        self._titles: dict[str, str] = {}
 
         ipw.link(
             (self._model, "selected_index"),
@@ -349,7 +343,12 @@ class Wizard(ipw.Accordion):
             if model.is_configured or model.is_successful
         )
 
-    def add_step(self, step: WizardStep, model: WizardStepModel):
+    def add_step(
+        self,
+        step: WizardStep,
+        model: WizardStepModel,
+        title: str | None = None,
+    ):
         if len(self._steps) > 0:
             previous_model = self._models[-1]
             ipw.dlink(
@@ -359,6 +358,7 @@ class Wizard(ipw.Accordion):
         self._model.add_model(model.identifier, model)
         self._models.append(model)
         self._steps.append(step)
+        self._titles[model.identifier] = title or model.identifier
 
     def render(self):
         if self.rendered:
@@ -387,4 +387,7 @@ class Wizard(ipw.Accordion):
         for i, (identifier, title) in enumerate(self._titles.items()):
             step_model = self._model.get_model(identifier)
             icon = self._icons.get(step_model.state)
-            self.set_title(i, f"{icon} Step {i + 1}: {title}")
+            step_title = f"{icon} Step {i + 1}"
+            if title:
+                step_title += f": {title}"
+            self.set_title(i, step_title)
