@@ -10,10 +10,6 @@ from aiidalab_qe.common.wizard import WizardModel
 
 
 class QeWizardModel(WizardModel):
-    state = tl.Dict(None, allow_none=True)
-    selected_index = tl.Int(None, allow_none=True)
-    loading = tl.Bool(False)
-
     def load_from_state(self, state: dict):
         super().load_from_state(state)
 
