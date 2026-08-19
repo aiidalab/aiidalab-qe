@@ -284,7 +284,7 @@ class ConfirmableDependentWizardStep(
 
 
 class WizardModel(Model, HasModels[WizardStepModel]):
-    state = tl.UseEnum(State, default_value=State.INIT)
+    state = tl.Dict(None, allow_none=True)
     selected_index = tl.Int(None, allow_none=True)
     loading = tl.Bool(False)
 
