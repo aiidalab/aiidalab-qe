@@ -13,14 +13,14 @@ from aiidalab_qe.app.result.components.viewer.structure import (
     StructureResultsModel,
     StructureResultsPanel,
 )
-from aiidalab_qe.app.wizard import Wizard
+from aiidalab_qe.app.wizard import QeWizard
 from aiidalab_qe.common.wizard import State
 
 
 def test_result_step(app_to_submit, generate_qeapp_workchain):
     """Test the result step is properly updated when the process
     is running."""
-    app: Wizard = app_to_submit
+    app: QeWizard = app_to_submit
     step: ResultsStep = app.results_step
     model: ResultsStepModel = app.results_model
     model.process_uuid = generate_qeapp_workchain().node.uuid
@@ -38,7 +38,7 @@ def test_result_step(app_to_submit, generate_qeapp_workchain):
 def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
     """Test the kill and clean_scratch button are properly displayed when the process
     is in different states."""
-    app: Wizard = app_to_submit
+    app: QeWizard = app_to_submit
     model: ResultsStepModel = app.results_model
     step: ResultsStep = app.results_step
     step.render()

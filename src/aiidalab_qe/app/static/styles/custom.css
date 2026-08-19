@@ -94,38 +94,6 @@ footer {
   text-align: right;
 }
 
-.jupyter-widget-Accordion-child:has(.qe-app-step-ready)
-  > .jupyter-widget-Collapse-header {
-  background-color: var(--color-ready);
-}
-
-.jupyter-widget-Accordion-child:has(.qe-app-step-configured)
-  > .jupyter-widget-Collapse-header {
-  background-color: var(--color-ready);
-  filter: brightness(0.95);
-  -webkit-filter: brightness(0.95);
-}
-
-.jupyter-widget-Accordion-child:has(.qe-app-step-active)
-  > .jupyter-widget-Collapse-header {
-  background-color: var(--color-active);
-}
-
-.jupyter-widget-Accordion-child:has(.qe-app-step-success)
-  > .jupyter-widget-Collapse-header {
-  background-color: var(--color-success);
-}
-
-.jupyter-widget-Accordion-child:has(.qe-app-step-fail)
-  > .jupyter-widget-Collapse-header {
-  background-color: var(--color-failed);
-}
-
-.jupyter-widget-Accordion-child:has(.qe-app-step-blocked)
-  > .jupyter-widget-Collapse-header {
-  background-color: var(--color-blocked);
-}
-
 .lm-TabBar-tab {
   min-width: fit-content !important;
 }

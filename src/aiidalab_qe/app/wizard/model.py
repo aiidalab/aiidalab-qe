@@ -6,17 +6,13 @@ from aiidalab_qe.app.configuration import ConfigurationStepModel
 from aiidalab_qe.app.result import ResultsStepModel
 from aiidalab_qe.app.structure import StructureStepModel
 from aiidalab_qe.app.submission import SubmissionStepModel
-from aiidalab_qe.common.mixins import HasModels
-from aiidalab_qe.common.mvc import Model
-from aiidalab_qe.common.wizard import WizardStepModel
+from aiidalab_qe.common.wizard import WizardModel
 
 
-class WizardModel(Model, HasModels[WizardStepModel]):
-    state = tl.Dict(None, allow_none=True)
-    selected_index = tl.Int(None, allow_none=True)
-    loading = tl.Bool(False)
-
+class QeWizardModel(WizardModel):
     def load_from_state(self, state: dict):
+        super().load_from_state(state)
+
         step_index = state.get("step", 0) - 1
         structure_state = state.get("structure_state")
         configuration_state = state.get("configuration_state")
@@ -35,7 +31,7 @@ class WizardModel(Model, HasModels[WizardStepModel]):
                 structure_model.confirm()
                 configuration_model = t.cast(
                     ConfigurationStepModel,
-                    self.get_model("configure"),
+                    self.get_model("configuration"),
                 )
                 configuration_model.set_model_state(configuration_state)
 
@@ -43,7 +39,7 @@ class WizardModel(Model, HasModels[WizardStepModel]):
                     configuration_model.confirm()
                     submission_model = t.cast(
                         SubmissionStepModel,
-                        self.get_model("submit"),
+                        self.get_model("submission"),
                     )
                     if process_uuid is not None:
                         submission_model.refresh_codes(filter_codes_for_user=False)
@@ -67,7 +63,7 @@ class WizardModel(Model, HasModels[WizardStepModel]):
         )
         configuration_model = t.cast(
             ConfigurationStepModel,
-            self.get_model("configure"),
+            self.get_model("configuration"),
         )
         if structure_model.confirmed:
             configuration_model.structure_uuid = structure_model.structure_uuid
@@ -81,11 +77,11 @@ class WizardModel(Model, HasModels[WizardStepModel]):
         )
         configuration_model = t.cast(
             ConfigurationStepModel,
-            self.get_model("configure"),
+            self.get_model("configuration"),
         )
         submission_model = t.cast(
             SubmissionStepModel,
-            self.get_model("submit"),
+            self.get_model("submission"),
         )
         if configuration_model.confirmed:
             submission_model.structure_uuid = structure_model.structure_uuid
@@ -97,7 +93,7 @@ class WizardModel(Model, HasModels[WizardStepModel]):
     def update_results_model(self):
         submission_model = t.cast(
             SubmissionStepModel,
-            self.get_model("submit"),
+            self.get_model("submission"),
         )
         results_model = t.cast(
             ResultsStepModel,
@@ -109,20 +105,6 @@ class WizardModel(Model, HasModels[WizardStepModel]):
         )
 
     def lock_app(self):
-        for identifier in ("structure", "configure", "submit"):
+        for identifier in ("structure", "configuration", "submission"):
             model = self.get_model(identifier)
             model.lock()
-
-    def auto_advance(self):
-        if self.selected_index is None:
-            return
-
-        model_list = list(self._models.values())
-        index = t.cast(int, self.selected_index)
-
-        if (
-            (selected_step := model_list[index]).auto_advance
-            and not (index + 1 == len(model_list))
-            and selected_step.is_successful
-        ):
-            self.selected_index += 1

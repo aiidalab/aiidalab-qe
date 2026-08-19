@@ -16,8 +16,8 @@ from aiida import orm
 from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app.static import images as images_folder
 from aiidalab_qe.app.static import templates
-from aiidalab_qe.app.wizard import Wizard
-from aiidalab_qe.app.wizard.model import WizardModel
+from aiidalab_qe.app.wizard import QeWizard
+from aiidalab_qe.app.wizard.model import QeWizardModel
 from aiidalab_qe.common.guide_manager import guide_manager
 from aiidalab_qe.common.infobox import InAppGuide, InfoBox
 from aiidalab_qe.common.widgets import LinkButton
@@ -65,7 +65,7 @@ class AppController:
         """
         self._model = model
         self._view = view
-        self._wizard_model = WizardModel()
+        self._wizard_model = QeWizardModel()
         self._set_event_handlers()
 
     def enable_toggles(self) -> None:
@@ -81,7 +81,7 @@ class AppController:
         duplicating: bool = False,
     ) -> None:
         """Load and initialize the wizard."""
-        self.wizard = Wizard(self._wizard_model, auto_setup, log_widget)
+        self.wizard = QeWizard(self._wizard_model, auto_setup, log_widget)
 
         state = {"process_uuid": self._model.process_uuid}
         if self._model.process_uuid:
@@ -170,12 +170,12 @@ class AppController:
     def _on_duplicate_workflow_click(self, _):
         if not self._model.loaded:
             return
-        app: Wizard = self._view.app_container.children[0]  # type: ignore
+        app: QeWizard = self._view.app_container.children[0]  # type: ignore
         payload = {
             "step": min(app.current_step, 3),
             "structure_state": app.structure_model.get_model_state(),
-            "configuration_state": app.configure_model.get_model_state(),
-            "resources_state": app.submit_model.get_model_state(),
+            "configuration_state": app.configuration_model.get_model_state(),
+            "resources_state": app.submission_model.get_model_state(),
         }
         CURRENT_STATE_PATH.write_text(json.dumps(payload))
 

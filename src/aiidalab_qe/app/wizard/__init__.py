@@ -1,7 +1,7 @@
-from .model import WizardModel
-from .wizard import Wizard
+from .model import QeWizardModel
+from .wizard import QeWizard
 
 __all__ = [
-    "Wizard",
-    "WizardModel",
+    "QeWizard",
+    "QeWizardModel",
 ]

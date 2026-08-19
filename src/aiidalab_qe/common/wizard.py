@@ -6,7 +6,7 @@ import typing as t
 import ipywidgets as ipw
 import traitlets as tl
 
-from aiidalab_qe.common.mixins import Confirmable
+from aiidalab_qe.common.mixins import Confirmable, HasModels
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import WarningWidget
 from aiidalab_widgets_base import LoadingWidget
@@ -53,6 +53,7 @@ class WizardStep(ipw.VBox, t.Generic[WSM]):
         self.loading_message = LoadingWidget(f"Loading {model.identifier} step")
 
         super().__init__(children=[self.loading_message], **kwargs)
+        self.add_class("wizard-step")
 
         self._model = model
 
@@ -280,3 +281,113 @@ class ConfirmableDependentWizardStep(
     ConfirmableWizardStep[CDWSM],
 ):
     """A confirmable dependent wizard step."""
+
+
+class WizardModel(Model, HasModels[WizardStepModel]):
+    state = tl.Dict(None, allow_none=True)
+    selected_index = tl.Int(None, allow_none=True)
+    loading = tl.Bool(False)
+
+    def load_from_state(self, state: dict):
+        pass
+
+    def auto_advance(self):
+        if self.selected_index is None:
+            return
+
+        model_list = list(self._models.values())
+        index = t.cast(int, self.selected_index)
+
+        if (
+            (selected_step := model_list[index]).auto_advance
+            and not (index + 1 == len(model_list))
+            and selected_step.is_successful
+        ):
+            self.selected_index += 1
+
+
+class Wizard(ipw.Accordion):
+    """A wizard widget that manages multiple steps."""
+
+    def __init__(self, model: WizardModel, icons: dict[str, str], **kwargs):
+        super().__init__(**kwargs)
+        self.add_class("wizard")
+
+        self._model = model
+        self._icons = icons
+
+        self._models: list[WizardStepModel] = []
+        self._steps: list[WizardStep] = []
+        self._titles: dict[str, str] = {}
+
+        ipw.link(
+            (self._model, "selected_index"),
+            (self, "selected_index"),
+        )
+        self._model.observe(
+            self._on_state_change,
+            "state",
+        )
+        self._model.observe(
+            self._on_step_change,
+            "selected_index",
+        )
+
+        self.rendered = False
+
+    @property
+    def current_step(self) -> int:
+        return sum(
+            1
+            for _, model in self._model.get_models()
+            if model.is_configured or model.is_successful
+        )
+
+    def add_step(
+        self,
+        step: WizardStep,
+        model: WizardStepModel,
+        title: str | None = None,
+    ):
+        if len(self._steps) > 0:
+            previous_model = self._models[-1]
+            ipw.dlink(
+                (previous_model, "state"),
+                (model, "previous_step_state"),
+            )
+        self._model.add_model(model.identifier, model)
+        self._models.append(model)
+        self._steps.append(step)
+        self._titles[model.identifier] = title or model.identifier
+
+    def render(self):
+        if self.rendered:
+            return
+
+        self.children = self._steps
+        self._update_titles()
+
+        self.rendered = True
+
+    def _render_step(self, step_index: int):
+        step: WizardStep = self.children[step_index]  # type: ignore
+        step.render()
+
+    def _on_state_change(self, change: dict):
+        self._model.load_from_state(change["new"] or {})
+
+    def _on_step_state_change(self, _=None):
+        self._update_titles()
+
+    def _on_step_change(self, change: dict):
+        if (step_index := change["new"]) is not None:
+            self._render_step(step_index)
+
+    def _update_titles(self):
+        for i, (identifier, title) in enumerate(self._titles.items()):
+            step_model = self._model.get_model(identifier)
+            icon = self._icons.get(step_model.state, "")
+            step_title = f"{icon} Step {i + 1}"
+            if title:
+                step_title += f": {title}"
+            self.set_title(i, step_title)
