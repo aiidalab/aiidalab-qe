@@ -169,15 +169,10 @@ class HubbardConfigurationSettingsPanel(
                     (self._model, "eigenvalues"),
                     (eigenvalues_up, "value"),
                     [
-                        lambda eigenvalues,
-                        kind_index=kind_index,
-                        state_index=state_index: (
+                        lambda eigenvalues, kind_index=kind_index, state_index=state_index: (
                             str(int(eigenvalues[kind_index][0][state_index][-1]))
                         ),
-                        lambda value,
-                        kind_index=kind_index,
-                        state_index=state_index,
-                        kind_name=kind_name: (
+                        lambda value, kind_index=kind_index, state_index=state_index, kind_name=kind_name: (
                             update(
                                 kind_index,
                                 1,
@@ -204,15 +199,10 @@ class HubbardConfigurationSettingsPanel(
                     (self._model, "eigenvalues"),
                     (eigenvalues_down, "value"),
                     [
-                        lambda eigenvalues,
-                        kind_index=kind_index,
-                        state_index=state_index: (
+                        lambda eigenvalues, kind_index=kind_index, state_index=state_index: (
                             str(int(eigenvalues[kind_index][1][state_index][-1]))
                         ),
-                        lambda value,
-                        kind_index=kind_index,
-                        state_index=state_index,
-                        kind_name=kind_name: (
+                        lambda value, kind_index=kind_index, state_index=state_index, kind_name=kind_name: (
                             update(
                                 kind_index,
                                 2,

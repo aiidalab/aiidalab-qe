@@ -68,12 +68,14 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         ipw.dlink(
             (self._model, "process_uuid"),
             (self.kill_button.layout, "display"),
-            lambda _: "none"
-            if not self._model.has_process
-            or self._model.process.is_finished
-            or self._model.process.is_excepted
-            or self._model.state in {State.SUCCESS, State.FAIL}
-            else "block",
+            lambda _: (
+                "none"
+                if not self._model.has_process
+                or self._model.process.is_finished
+                or self._model.process.is_excepted
+                or self._model.state in {State.SUCCESS, State.FAIL}
+                else "block"
+            ),
         )
         self.kill_button.on_click(self._on_kill_button_click)
 
@@ -91,9 +93,11 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         ipw.dlink(
             (self._model, "process_uuid"),
             (self.clean_scratch_button.layout, "display"),
-            lambda _: "block"
-            if self._model.has_process and self._model.process.is_terminated
-            else "none",
+            lambda _: (
+                "block"
+                if self._model.has_process and self._model.process.is_terminated
+                else "none"
+            ),
         )
         self.clean_scratch_button.on_click(self._on_clean_scratch_button_click)
 
