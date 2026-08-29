@@ -291,6 +291,7 @@ class BandsPdosPlotly:
         # Convert paths to a list of Scatter objects
         scatter_objects = []
 
+        print("Bands data keys:", bands_data["band_type_idx"], flush=True)
         spin_polarized = 1 in bands_data["band_type_idx"]
         for spin in [0, 1]:
             trace_settings_spin = deepcopy(trace_settings)
