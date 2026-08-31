@@ -19,7 +19,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
     def __init__(
         self,
         model: ResultsStepModel,
-        log_widget: ipw.Output | None,
+        log_widget: ipw.VBox | None,
         **kwargs,
     ):
         super().__init__(model=model, **kwargs)

@@ -52,7 +52,7 @@ class QeApp:
         display(self.view)
 
         if show_log:
-            self.log_widget = ipw.Output(
+            self.log_widget = ipw.VBox(
                 layout=ipw.Layout(
                     border="solid 1px lightgray",
                     margin="2px",
@@ -65,7 +65,7 @@ class QeApp:
                 icon="trash",
                 layout=ipw.Layout(width="fit-content"),
             )
-            reset_button.on_click(lambda _: self.log_widget.clear_output())
+            reset_button.on_click(lambda _: setattr(self.log_widget, "children", ()))
             display(
                 ipw.VBox(
                     children=[
@@ -74,6 +74,7 @@ class QeApp:
                     ],
                 )
             )
+
 
         if bug_report_url:
             install_create_github_issue_exception_handler(
