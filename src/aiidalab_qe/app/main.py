@@ -75,7 +75,6 @@ class QeApp:
                 )
             )
 
-
         if bug_report_url:
             install_create_github_issue_exception_handler(
                 self.log_widget if show_log else self.view.output,
