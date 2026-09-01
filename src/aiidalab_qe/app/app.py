@@ -77,7 +77,7 @@ class AppController:
     def load_wizard(
         self,
         auto_setup: bool = True,
-        log_widget: ipw.Output | None = None,
+        log_widget: ipw.VBox | None = None,
         duplicating: bool = False,
     ) -> None:
         """Load and initialize the wizard."""
@@ -292,7 +292,7 @@ class AppView(ipw.VBox):
     def __init__(self) -> None:
         """`AppView` constructor."""
 
-        self.output = ipw.Output()
+        self.output = ipw.VBox()
 
         logo = ipw.Image(
             value=(files(images_folder) / "logo.png").read_bytes(),

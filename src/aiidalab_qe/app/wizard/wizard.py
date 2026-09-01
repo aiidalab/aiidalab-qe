@@ -28,7 +28,7 @@ class QeWizard(Wizard):
         self,
         model: QeWizardModel,
         auto_setup: bool = True,
-        log_widget: ipw.Output | None = None,
+        log_widget: ipw.VBox | None = None,
         **kwargs,
     ):
         super().__init__(model, ICONS, **kwargs)
