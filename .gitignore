@@ -4,6 +4,9 @@
 *.code-workspace
 .*.ipynb
 .ipynb*
+
+# Numbered copies created when AiiDAlab reopens running notebooks
+*-[0-9]*.ipynb
 build/
 export/
 .do-not-setup-on-localhost
