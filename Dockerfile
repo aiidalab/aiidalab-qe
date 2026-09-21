@@ -84,9 +84,9 @@ RUN python -m pip install --user --no-cache-dir . \
     aiidalab-qe-vibroscopy \
     # the following git-installed plugins are due to PyPI quarantines - discard when resolved
     aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90.git@v2.2.0 \
-    aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v3.0.0 \
+    aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@e3f289cf2d423b8fd78c6cc3be161793537e0881 \
     aiida-skeaf@git+https://github.com/aiidaplugins/aiida-skeaf@v0.2.1 \
-    aiidalab-qe-wannier90@git+https://github.com/aiidalab/aiidalab-qe-wannier90
+    aiidalab-qe-wannier90@git+https://github.com/cpignedoli/aiidalab-qe-wannier90@65dc1846d09365ffdbb0e09b24029f38e0a3c038
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 

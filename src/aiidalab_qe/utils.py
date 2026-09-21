@@ -2,6 +2,7 @@ import typing as t
 
 from aiida import orm
 from aiida.common.exceptions import NotExistent
+from aiida.engine import ProcessBuilderNamespace
 
 
 def generate_alert(alert_type: str, message: str, class_: str = "", style_: str = ""):
@@ -41,6 +42,38 @@ def enable_pencil_decomposition(component):
     """Enable the pencil decomposition for the given component."""
 
     component.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
+
+
+def set_default_process_failure_policy(
+    builder: ProcessBuilderNamespace,
+    on_unhandled_failure: str = "restart_and_pause",
+    pause_on_max_iterations: bool = True,
+):
+    """Recursively set defaults on populated restart-workchain namespaces."""
+    populated_namespaces = [
+        builder[key]
+        for key in builder._inputs(prune=True)
+        if isinstance(builder[key], ProcessBuilderNamespace)
+    ]
+
+    if (
+        "on_unhandled_failure" in builder._valid_fields
+        and builder.get("on_unhandled_failure") is None
+    ):
+        builder.on_unhandled_failure = orm.Str(on_unhandled_failure)
+
+    if (
+        "pause_on_max_iterations" in builder._valid_fields
+        and builder.get("pause_on_max_iterations") is None
+    ):
+        builder.pause_on_max_iterations = orm.Bool(pause_on_max_iterations)
+
+    for namespace in populated_namespaces:
+        set_default_process_failure_policy(
+            namespace,
+            on_unhandled_failure=on_unhandled_failure,
+            pause_on_max_iterations=pause_on_max_iterations,
+        )
 
 
 def shallow_copy_nested_dict(d):

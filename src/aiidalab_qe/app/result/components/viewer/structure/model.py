@@ -33,7 +33,12 @@ class StructureResultsModel(ResultsModel):
     def is_relaxed(self):
         if not self.inputs or "relax" not in self.properties:
             return False
-        parameters = self.inputs.relax.base.pw.parameters.get_dict()
+        try:
+            base = self.inputs.relax.base_relax
+        except AttributeError:
+            # Workflows created with aiida-quantumespresso v4 used the base namespace.
+            base = self.inputs.relax.base
+        parameters = base.pw.parameters.get_dict()
         return "relax" in parameters["CONTROL"]["calculation"]
 
     def _update(self, specific=""):

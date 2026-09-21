@@ -399,6 +399,7 @@ def submit_app_generator(app: QeWizard, generate_structure_data):
         vdw_corr="none",
         initial_magnetic_moments=0.0,
         electron_maxstep=80,
+        projwfc_bands=False,
     ):
         app.structure_model.structure_uuid = generate_structure_data().uuid
         app.structure_model.confirm()
@@ -453,6 +454,8 @@ def submit_app_generator(app: QeWizard, generate_structure_data):
                 initial_magnetic_moments,
             )
         )
+
+        app.configuration_model.get_model("bands").projwfc_bands = projwfc_bands
 
         app.configuration_model.confirm()
 
@@ -633,14 +636,6 @@ def generate_bands_workchain(
                 "bands": {
                     "pseudo_family": pseudo_family,
                 },
-                "relax": {
-                    "base": {
-                        "pseudo_family": pseudo_family,
-                    },
-                    "base_final_scf": {
-                        "pseudo_family": pseudo_family,
-                    },
-                },
             },
         }
         builder = BandsWorkChain.get_builder_from_protocol(**inputs)
@@ -767,11 +762,6 @@ def generate_qeapp_workchain(
         builder = app.submission_model._create_builder(parameters)
 
         inputs = builder._inputs()
-        if "relax" in inputs:
-            inputs["relax"]["base_final_scf"] = shallow_copy_nested_dict(
-                inputs["relax"]["base"]
-            )
-
         if run_bands:
             # Setting up inputs for bands_projwfc
             inputs["bands"]["bands_projwfc"]["scf"]["pw"] = shallow_copy_nested_dict(
@@ -791,7 +781,7 @@ def generate_qeapp_workchain(
                 projwfc_code
             )
             inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = (
-                orm.Dict({"PROJWFC": {"DeltaE": 0.01}}).store()
+                orm.Dict({"PROJWFC": {"deltae": 0.01}}).store()
             )
             inputs["properties"].append("bands")
 
