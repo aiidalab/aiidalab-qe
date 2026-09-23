@@ -86,7 +86,7 @@ RUN python -m pip install --user --no-cache-dir . \
     aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90.git@v2.2.0 \
     aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v3.1.0 \
     aiida-skeaf@git+https://github.com/aiidaplugins/aiida-skeaf@v0.2.1 \
-    aiidalab-qe-wannier90@git+https://github.com/cpignedoli/aiidalab-qe-wannier90@8ec8c5addb07ac70a677c7fdbd0953ab99e9c60e
+    aiidalab-qe-wannier90@git+https://github.com/aiidalab/aiidalab-qe-wannier90
 
 ENV PSEUDO_FOLDER=/tmp/pseudo
 
