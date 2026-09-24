@@ -5,6 +5,13 @@ from aiidalab_qe.app.wizard import QeWizard
 from aiidalab_qe.utils import shallow_copy_nested_dict
 
 
+def assert_builder_is_valid(builder):
+    validation_error = builder.process_class.spec().inputs.validate(
+        builder._inputs(prune=True)
+    )
+    assert validation_error is None, validation_error
+
+
 def test_create_builder_default(
     data_regression,
     submit_app_generator,
@@ -18,7 +25,21 @@ def test_create_builder_default(
 
     parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
     parameters |= {"codes": app.submission_model.get_model_state()}
-    app.submission_model._create_builder(parameters)
+    builder = app.submission_model._create_builder(parameters)
+
+    restart_workchains = [
+        builder.relax.base_relax,
+        builder.bands.bands.scf,
+        builder.bands.bands.bands,
+        builder.pdos.scf,
+        builder.pdos.nscf,
+    ]
+    for workchain in restart_workchains:
+        assert workchain.on_unhandled_failure.value == "restart_and_pause"
+        assert workchain.pause_on_max_iterations.value is True
+
+    assert_builder_is_valid(builder)
+
     # since uuid is specific to each run, we remove it from the output
     ui_parameters = remove_uuid_fields(parameters)
     remove_code_options(ui_parameters)
@@ -28,6 +49,36 @@ def test_create_builder_default(
     # test if create builder successfully
     # app.submission_model._create_builder(ui_parameters)  # TODO what are we doing here?
     # In the future, we will check the builder parameters using regresion test
+
+
+def test_create_builder_scf_only(submit_app_generator):
+    """Test that the no-relaxation mode runs exactly one SCF."""
+
+    app: QeWizard = submit_app_generator(relax_type="none")
+
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
+
+    assert "base_init_relax" not in builder.relax
+    assert builder.relax.base_relax.pw.parameters["CONTROL"]["calculation"] == "scf"
+
+
+def test_create_builder_fat_bands(submit_app_generator):
+    """Test that failure-policy defaults do not activate the normal bands branch."""
+
+    app: QeWizard = submit_app_generator(
+        relax_type="none",
+        properties=["bands"],
+        projwfc_bands=True,
+    )
+
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
+
+    assert builder.bands.bands_projwfc.scf.pw.parameters
+    assert_builder_is_valid(builder)
 
 
 def test_create_process_label(submit_app_generator):
@@ -109,11 +160,11 @@ def test_create_builder_advanced_settings(
 
     # check if the AiiDA nodes are passed to the plugins instead of copied, take psuedos as an example
     assert (
-        builder.relax.base.pw.pseudos["Si"].uuid
+        builder.relax.base_relax.pw.pseudos["Si"].uuid
         == builder.bands.bands.scf.pw.pseudos["Si"].uuid
     )
     assert (
-        builder.relax.base.pw.pseudos["Si"].uuid
+        builder.relax.base_relax.pw.pseudos["Si"].uuid
         == builder.pdos.scf.pw.pseudos["Si"].uuid
     )
 
@@ -122,7 +173,7 @@ def test_create_builder_advanced_settings(
 
     # test tot_charge is updated in the three steps
     for parameters in [
-        got["relax"]["base"],
+        got["relax"]["base_relax"],
         got["bands"]["bands"]["scf"],
         got["pdos"]["scf"],
         got["pdos"]["nscf"],
@@ -134,9 +185,9 @@ def test_create_builder_advanced_settings(
 
     # test initial_magnetic_moments set 'starting_magnetization' in pw.in
     assert (
-        got["relax"]["base"]["pw"]["parameters"]["SYSTEM"]["starting_magnetization"][
-            "Si"
-        ]
+        got["relax"]["base_relax"]["pw"]["parameters"]["SYSTEM"][
+            "starting_magnetization"
+        ]["Si"]
         == 0.025
     )
 

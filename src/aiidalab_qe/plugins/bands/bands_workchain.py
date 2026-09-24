@@ -213,7 +213,7 @@ class BandsWorkChain(WorkChain):
         spec.expose_inputs(
             PwBandsWorkChain,
             namespace="bands",
-            exclude=["structure", "relax"],
+            exclude=["structure"],
             namespace_options={
                 "required": False,
                 "populate_defaults": False,
@@ -223,7 +223,7 @@ class BandsWorkChain(WorkChain):
         spec.expose_inputs(
             ProjwfcBandsWorkChain,
             namespace="bands_projwfc",
-            exclude=["structure", "relax"],
+            exclude=["structure"],
             namespace_options={
                 "required": False,
                 "populate_defaults": False,
@@ -286,7 +286,6 @@ class BandsWorkChain(WorkChain):
                 pw_code, structure, protocol, overrides=overrides, **kwargs
             )
             builder.pop("bands_projwfc", None)
-            builder_bands.pop("relax", None)
             builder_bands.pop("structure", None)
             builder.bands = builder_bands
 
@@ -304,7 +303,6 @@ class BandsWorkChain(WorkChain):
                 **kwargs,
             )
             builder.pop("bands", None)
-            builder_bands_projwfc.pop("relax", None)
             builder_bands_projwfc.pop("structure", None)
             builder.bands_projwfc = builder_bands_projwfc
 

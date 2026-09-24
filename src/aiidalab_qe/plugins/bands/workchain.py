@@ -55,10 +55,6 @@ def get_builder(codes, structure, parameters, **kwargs):
     pw_code = codes.get("pw")["code"]
     protocol = parameters["workchain"]["protocol"]
     scf_overrides = shallow_copy_nested_dict(parameters["advanced"])
-    relax_overrides = {
-        "base": shallow_copy_nested_dict(parameters["advanced"]),
-        "base_final_scf": shallow_copy_nested_dict(parameters["advanced"]),
-    }
     bands_overrides = shallow_copy_nested_dict(parameters["advanced"])
     bands_overrides.pop("kpoints_distance", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
@@ -72,7 +68,6 @@ def get_builder(codes, structure, parameters, **kwargs):
     overrides = {
         "scf": scf_overrides,
         "bands": bands_overrides,
-        "relax": relax_overrides,
     }
 
     if parameters["bands"]["projwfc_bands"]:

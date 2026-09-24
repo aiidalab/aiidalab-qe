@@ -65,14 +65,14 @@ def get_builder(codes, structure, parameters, **kwargs):
     dos_overrides = {
         "parameters": {
             "DOS": {
-                "DeltaE": parameters["pdos"]["energy_grid_step"],
+                "deltae": parameters["pdos"]["energy_grid_step"],
             }
         }
     }
     projwfc_overrides = {
         "parameters": {
             "PROJWFC": {
-                "DeltaE": parameters["pdos"]["energy_grid_step"],
+                "deltae": parameters["pdos"]["energy_grid_step"],
             }
         }
     }

@@ -9,7 +9,10 @@ from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
 from aiidalab_qe.plugins.utils import get_entry_items
-from aiidalab_qe.utils import enable_pencil_decomposition
+from aiidalab_qe.utils import (
+    enable_pencil_decomposition,
+    set_default_process_failure_policy,
+)
 
 XyData = DataFactory("core.array.xy")
 StructureData = DataFactory("core.structure")
@@ -140,14 +143,10 @@ class QeAppWorkChain(WorkChain):
 
         # relax
         relax_overrides = {
-            "base": parameters["advanced"],
-            "base_final_scf": parameters["advanced"],
+            "base_relax": parameters["advanced"],
         }
         # nsteps only for relaxation workflow
-        relax_overrides["base"]["pw"]["parameters"]["CONTROL"]["nstep"] = parameters[
-            "advanced"
-        ]["optimization_maxsteps"]
-        relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
+        relax_overrides["base_relax"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
             parameters["advanced"]["optimization_maxsteps"]
         )
 
@@ -169,12 +168,13 @@ class QeAppWorkChain(WorkChain):
                 overrides=relax_overrides,
                 **kwargs,
             )
-            enable_pencil_decomposition(relax_builder.base.pw)
+            enable_pencil_decomposition(relax_builder.base_relax.pw)
             # pop the inputs that are excluded from the expose_inputs
             relax_builder.pop("structure", None)
             relax_builder.pop("clean_workdir", None)
-            relax_builder.pop("base_final_scf", None)  # never run a final scf
             builder.relax = relax_builder
+            # Preserve the app's existing single-stage relaxation behavior.
+            builder.relax.pop("base_init_relax", None)
         else:
             builder.pop("relax")
 
@@ -199,6 +199,8 @@ class QeAppWorkChain(WorkChain):
                 setattr(builder, name, plugin_builder._inputs(prune=True))
             else:
                 builder.pop(name, None)
+
+        set_default_process_failure_policy(builder)
         return builder
 
     def setup(self):
