@@ -7,16 +7,16 @@ import traitlets as tl
 from aiida import orm
 from aiida.engine import ProcessState
 from aiida.engine.processes import control
-from aiidalab_qe.common.mixins import HasModels, HasProcess
+from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.process import STATE_ICONS
 from aiidalab_qe.common.wizard import DependentWizardStepModel, State
 
-from .components import ResultsComponentModel
+from .utils import HasProcessModels, ResultsSubModel
 
 
 class ResultsStepModel(
     DependentWizardStepModel,
-    HasModels[ResultsComponentModel],
+    HasProcessModels[ResultsSubModel],
     HasProcess,
 ):
     identifier = "results"
@@ -99,16 +99,6 @@ class ResultsStepModel(
                 with contextlib.suppress(Exception):
                     cleaned.append(called_descendant.outputs.remote_folder.is_empty)
         self.process_remote_folder_is_clean = all(cleaned)
-
-    def _link_model(self, model: ResultsComponentModel):
-        tl.dlink(
-            (self, "process_uuid"),
-            (model, "process_uuid"),
-        )
-        tl.dlink(
-            (self, "monitor_counter"),
-            (model, "monitor_counter"),
-        )
 
     def _get_process_status(self, state: str):
         return f"{state.capitalize()} {STATE_ICONS[state]}"

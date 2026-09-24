@@ -11,22 +11,18 @@ from .tree import SimplifiedProcessTree, SimplifiedProcessTreeModel
 
 
 class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
-    def _render(self):
+    def __init__(self, model: WorkChainStatusModel, **kwargs):
+        super().__init__(model, **kwargs)
+
         model = SimplifiedProcessTreeModel()
         self.simplified_process_tree = SimplifiedProcessTree(model=model)
-        ipw.dlink(
-            (self._model, "process_uuid"),
-            (model, "process_uuid"),
-        )
-        ipw.dlink(
-            (self._model, "monitor_counter"),
-            (model, "monitor_counter"),
-        )
+        self._model.add_model("tree", model)
         model.observe(
             self._on_calculation_link_click,
             "clicked",
         )
 
+    def _render(self):
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink(
             (self._model, "process_uuid"),
