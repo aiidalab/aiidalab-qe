@@ -77,6 +77,12 @@ class PausedProcessesTable(ipw.VBox):
         self.daemon_warning = ipw.HTML()
         self.alert = ipw.HTML()
 
+        self._header = self._build_header_row()
+        self._empty_message = ipw.HTML("<b>No paused processes</b>")
+        self._rows: dict[str, tuple[ipw.HBox, ipw.HTML, ipw.HTML, ipw.Button]] = {}
+        self._row_states: dict[str, tuple[str, str]] = {}
+        self._row_order: tuple[str, ...] | None = None
+
         super().__init__(
             children=[
                 self.daemon_warning,
@@ -89,6 +95,10 @@ class PausedProcessesTable(ipw.VBox):
         self._model.observe(
             self._on_monitor_counter_change,
             "monitor_counter",
+        )
+        self._model.observe(
+            self._on_paused_count_change,
+            "paused_count",
         )
         self._model.observe(
             self._on_error_message_change,
@@ -106,6 +116,10 @@ class PausedProcessesTable(ipw.VBox):
         self._render_table()
         self._render_daemon_warning()
 
+    def _on_paused_count_change(self, _):
+        self._render_table()
+        self._render_daemon_warning()
+
     def _on_error_message_change(self, change):
         message = change["new"]
         self.alert.value = (
@@ -114,7 +128,7 @@ class PausedProcessesTable(ipw.VBox):
 
     def _on_daemon_status_change(self, _):
         self._render_daemon_warning()
-        self._render_table()
+        self._update_play_buttons()
 
     def _render_daemon_warning(self):
         self.daemon_warning.value = (
@@ -126,13 +140,62 @@ class PausedProcessesTable(ipw.VBox):
         )
 
     def _render_table(self):
-        if not self._model.nodes:
-            self.table.children = [ipw.HTML("<b>No paused processes</b>")]
+        nodes = {node.uuid: node for node in self._model.nodes}
+        self._sync_rows(nodes)
+        self._set_table_rows(tuple(nodes))
+
+    def _sync_rows(self, nodes: dict[str, orm.ProcessNode]):
+        """Synchronize the internal row representations with the given nodes.
+
+        This method ensures that the internal dictionaries `_rows` and `_row_states`
+        are consistent with the provided `nodes` dictionary. Rows corresponding to
+        removed nodes are deleted, and new rows are created for newly added nodes.
+        Existing rows are updated if their state has changed.
+        """
+        for uuid in self._rows.keys() - nodes.keys():
+            self._rows.pop(uuid)
+            self._row_states.pop(uuid)
+
+        for uuid, node in nodes.items():
+            state = self._get_row_state(node)
+            if row := self._rows.get(uuid):
+                if self._row_states[uuid] != state:
+                    self._update_row(row, state)
+            else:
+                self._rows[uuid] = self._build_row(node)
+            self._row_states[uuid] = state
+
+    def _get_row_state(self, node: orm.ProcessNode) -> tuple[str, str]:
+        return (
+            node.label or node.process_label,
+            node.process_status or "Paused",
+        )
+
+    def _update_row(
+        self,
+        row: tuple[ipw.HBox, ipw.HTML, ipw.HTML, ipw.Button],
+        state: tuple[str, str],
+    ):
+        _, label, reason, _ = row
+        label.value = state[0]
+        reason.value = state[1]
+
+    def _set_table_rows(self, order: tuple[str, ...]):
+        """Set the table rows in the specified order.
+
+        If the order has not changed, this method does nothing.
+        Otherwise, it updates the table's children to reflect the new order,
+        including the header and any empty message if there are no rows.
+        """
+        if order == self._row_order:
             return
-        self.table.children = [
-            self._build_header_row(),
-            *[self._build_row(node) for node in self._model.nodes],
-        ]
+        self._row_order = order
+        self.table.children = (
+            (self._empty_message,)
+            if not order
+            else (self._header, *(self._rows[uuid][0] for uuid in order))
+        )
+        self._update_play_buttons()
 
     def _build_header_row(self):
         return ipw.HBox(
@@ -144,7 +207,19 @@ class PausedProcessesTable(ipw.VBox):
             ],
         )
 
-    def _build_row(self, node: orm.ProcessNode):
+    def _build_row(
+        self,
+        node: orm.ProcessNode,
+    ) -> tuple[ipw.HBox, ipw.HTML, ipw.HTML, ipw.Button]:
+        label = ipw.HTML(
+            node.label or node.process_label,
+            layout=ipw.Layout(width="200px"),
+        )
+        reason = ipw.HTML(
+            node.process_status or "Paused",
+            layout=ipw.Layout(flex="1"),
+        )
+
         goto_button = ipw.Button(
             icon="share",
             tooltip="Go to process in advanced status view",
@@ -165,21 +240,25 @@ class PausedProcessesTable(ipw.VBox):
         )
         play_button.on_click(lambda _, uuid=node.uuid: self._model.play(uuid))
 
-        return ipw.HBox(
+        row = ipw.HBox(
             children=[
                 ipw.HTML(f"<b>{node.pk}</b>", layout=ipw.Layout(width="60px")),
-                ipw.HTML(
-                    node.label or node.process_label,
-                    layout=ipw.Layout(width="200px"),
-                ),
-                ipw.HTML(
-                    node.process_status or "Paused",
-                    layout=ipw.Layout(flex="1"),
-                ),
+                label,
+                reason,
                 goto_button,
                 play_button,
             ],
         )
+        return row, label, reason, play_button
+
+    def _update_play_buttons(self):
+        for _, _, _, play_button in self._rows.values():
+            play_button.disabled = not self._model.daemon_is_running
+            play_button.tooltip = (
+                "Resume the paused process"
+                if self._model.daemon_is_running
+                else "Resume is unavailable because the AiiDA daemon is not running"
+            )
 
     def _on_goto_click(self, uuid: str):
         if self.on_inspect:
