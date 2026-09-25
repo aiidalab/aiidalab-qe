@@ -1,7 +1,9 @@
 import typing as t
+from unittest.mock import Mock
 
 import pytest
 from bs4 import BeautifulSoup
+from aiida.engine.processes import control
 
 from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
 from aiidalab_qe.app.result.components.summary import WorkflowSummaryModel
@@ -58,6 +60,28 @@ def test_paused_processes_warning(app_to_submit):
 
     assert "2 paused processes" in step.paused_processes_warning.value
     assert "Paused processes" in step.paused_processes_warning.value
+
+
+def test_kill_workflow_resets_paused_processes(
+    app_to_submit,
+    generate_qeapp_workchain,
+    monkeypatch,
+):
+    app: QeWizard = app_to_submit
+    step: ResultsStep = app.results_step
+    model: ResultsStepModel = app.results_model
+    model.process_uuid = generate_qeapp_workchain().node.uuid
+    step.render()
+    paused_model = step.status_panel.paused_processes_model
+    paused_model.nodes = [model.process]
+    paused_model.paused_count = 1
+    monkeypatch.setattr(control, "kill_processes", Mock())
+
+    model.kill_process()
+
+    assert paused_model.process_uuid is None
+    assert paused_model.nodes == []
+    assert paused_model.paused_count == 0
 
 
 def test_workchainview(generate_qeapp_workchain):

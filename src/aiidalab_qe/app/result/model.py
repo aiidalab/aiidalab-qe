@@ -44,6 +44,7 @@ class ResultsStepModel(
     def kill_process(self):
         if self.has_process:
             control.kill_processes([self.process])
+            self.get_model("status.paused").reset()
 
     def clean_remote_data(self):
         if not self.has_process:

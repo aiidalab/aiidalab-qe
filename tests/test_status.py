@@ -479,3 +479,24 @@ class TestPausedProcessesTable:
 
         model.error_message = ""
         assert panel.alert.value == ""
+
+    def test_daemon_warning_disables_play(self):
+        root, _, calculation = create_process_graph()
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        model.daemon_is_running = False
+        panel = PausedProcessesTable(model=model)
+
+        assert panel.daemon_warning.value == ""
+
+        calculation.pause()
+        model.monitor_counter += 1
+
+        assert "daemon is not running" in panel.daemon_warning.value
+        assert panel.table.children[1].children[4].disabled
+
+        model.daemon_is_running = True
+
+        assert panel.daemon_warning.value == ""
+        assert not panel.table.children[1].children[4].disabled
