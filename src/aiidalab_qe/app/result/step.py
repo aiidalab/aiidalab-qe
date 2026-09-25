@@ -109,7 +109,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
 
         PAUSED_PROCESSES_WARNING = """
             <div class="alert alert-warning">
-                ⚠️ Detected <b>{count} paused processes</b> ⚠️
+                ⚠️ Detected <b>{count} paused processes</b>
                 <ul>
                     <li>To review and resume, go to <b>Status</b> > <b>Paused processes</b></li>
                     <li>To terminate the workflow, click the <b>Kill workflow</b> button above</li>

@@ -99,7 +99,7 @@ class WorkChainStatusPanel(ResultsComponent[WorkChainStatusModel]):
                 f"Paused Processes ({self.paused_processes_model.paused_count})",
             ),
             ("overview", simplified_tree_section, "Overview"),
-            ("advanced", advanced_tree_section, "Advanced View"),
+            ("advanced", advanced_tree_section, "Advanced view"),
         ]
         self._section_indices = {
             name: index for index, (name, _, _) in enumerate(self._sections)
