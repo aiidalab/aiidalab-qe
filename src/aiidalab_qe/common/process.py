@@ -2,7 +2,7 @@ STATE_ICONS = {
     "created": "🚀",
     "waiting": "⏳",
     "queued": "⏳",
-    "paused": "⏸",
+    "paused": "⏸️",
     "running": "▶️",
     "finished": "✅",
     "failed": "❌",

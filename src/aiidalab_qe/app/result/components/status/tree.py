@@ -195,6 +195,8 @@ class ProcessTreeNode(ipw.VBox, t.Generic[ProcessNodeType]):
     def _get_state(self):
         if not hasattr(self.process, "process_state"):
             return "queued"
+        if self.process.paused:
+            return "paused"
         if self.process.is_failed:
             return "failed"
         state = self.process.process_state

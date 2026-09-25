@@ -54,8 +54,8 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
 
     def _render(self):
         self.kill_button = ipw.Button(
-            description="Kill workchain",
-            tooltip="Kill the below workchain.",
+            description="Kill workflow",
+            tooltip="Terminate the entire workflow",
             button_style="danger",
             icon="stop",
             layout=ipw.Layout(width="auto", display="none"),
@@ -107,6 +107,23 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             (self.process_info, "value"),
         )
 
+        PAUSED_PROCESSES_WARNING = """
+            <div class="alert alert-warning">
+                ⚠️ Detected <b>{count} paused processes</b> ⚠️
+                <ul>
+                    <li>To review and resume, go to <b>Status</b> > <b>Paused processes</b></li>
+                    <li>To terminate the workflow, click the <b>Kill workflow</b> button above</li>
+                </ul>
+            </div>
+        """
+
+        self.paused_processes_warning = ipw.HTML()
+        ipw.dlink(
+            (self.status_panel.paused_processes_model, "paused_count"),
+            (self.paused_processes_warning, "value"),
+            lambda count: PAUSED_PROCESSES_WARNING.format(count=count) if count else "",
+        )
+
         self.toggle_controls = ipw.ToggleButtons(
             options=[*self.panels.keys()],
             tooltips=[
@@ -116,8 +133,8 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             ],
             icons=[
                 "file-text-o",
-                "bar-chart",
                 "tasks",
+                "bar-chart",
             ],
             value=None,
         )
@@ -135,14 +152,19 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
 
         self.content.children = [
             InAppGuide(identifier="results-step"),
-            self.process_info,
             ipw.HBox(
                 children=[
-                    self.kill_button,
-                    self.clean_scratch_button,
+                    self.process_info,
+                    ipw.HBox(
+                        children=[
+                            self.clean_scratch_button,
+                            self.kill_button,
+                        ],
+                    ),
                 ],
-                layout=ipw.Layout(margin="0 3px"),
+                layout=ipw.Layout(justify_content="space-between"),
             ),
+            self.paused_processes_warning,
             self.toggle_controls,
             self.container,
         ]
