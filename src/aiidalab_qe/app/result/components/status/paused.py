@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import typing as t
 from dataclasses import dataclass
 
@@ -20,6 +21,18 @@ class PausedProcess:
 
 
 PausedProcessRowType = tuple[ipw.HBox, ipw.HTML, ipw.HTML, ipw.Button]
+
+
+class _ControlErrorHandler(logging.Handler):
+    """Custom logging handler to capture control errors."""
+
+    def __init__(self):
+        super().__init__(level=logging.ERROR)
+        self.messages: list[str] = []
+
+    def emit(self, record: logging.LogRecord):
+        self.messages.append(record.getMessage())
+
 
 PK_LAYOUT = ipw.Layout(width="60px")
 LABEL_LAYOUT = ipw.Layout(flex="1 1 0px", min_width="0")
@@ -45,11 +58,9 @@ class PausedProcessesModel(ResultsSubModel):
     def play(self, uuid: str):
         """Attempt to resume a single paused process."""
         try:
-            control.play_processes([orm.load_node(uuid)])
+            self._play_processes([orm.load_node(uuid)])
         except Exception as exception:
             self.error_message = str(exception)
-        else:
-            self.error_message = ""
         self.update()
 
     def play_all(self):
@@ -58,12 +69,20 @@ class PausedProcessesModel(ResultsSubModel):
             processes = [
                 orm.load_node(process.uuid) for process in self.paused_processes
             ]
-            control.play_processes(processes)
+            self._play_processes(processes)
         except Exception as exception:
             self.error_message = str(exception)
-        else:
-            self.error_message = ""
         self.update()
+
+    def _play_processes(self, processes: list[orm.ProcessNode]):
+        handler = _ControlErrorHandler()
+        control.LOGGER.addHandler(handler)
+        try:
+            control.play_processes(processes)
+        finally:
+            control.LOGGER.removeHandler(handler)
+
+        self.error_message = "\n".join(handler.messages)
 
     def reset(self):
         self.paused_processes = ()
@@ -73,7 +92,8 @@ class PausedProcessesModel(ResultsSubModel):
         self.daemon_status_known = False
 
     def _update(self, specific=""):
-        if not self.has_process:
+        process = self.process
+        if process is None:
             self.paused_processes = ()
         else:
             self.paused_processes = tuple(
@@ -83,7 +103,7 @@ class PausedProcessesModel(ResultsSubModel):
                     label=node.label or node.process_label,
                     status=node.process_status or "Paused",
                 )
-                for node in (self.process, *self.process.called_descendants)
+                for node in (process, *process.called_descendants)
                 if (
                     isinstance(node, orm.ProcessNode)
                     and node.paused
@@ -193,8 +213,9 @@ class PausedProcessesTable(ipw.VBox):
         Existing rows are updated if their state has changed.
         """
         for uuid in self._rows.keys() - processes.keys():
-            self._rows.pop(uuid)
+            row = self._rows.pop(uuid)
             self._row_states.pop(uuid)
+            self._close_row(row)
 
         for uuid, process in processes.items():
             state = self._get_row_state(process)
@@ -204,6 +225,16 @@ class PausedProcessesTable(ipw.VBox):
             else:
                 self._rows[uuid] = self._build_row(process)
             self._row_states[uuid] = state
+
+    def _close_row(self, row: PausedProcessRowType):
+        """Close and clean up the widgets in the given row."""
+        row_widget = row[0]
+        for widget in row_widget.children:
+            style = getattr(widget, "style", None)
+            if isinstance(style, ipw.Widget):
+                style.close()
+            widget.close()
+        row_widget.close()
 
     def _get_row_state(self, process: PausedProcess) -> tuple[str, str]:
         return process.label, process.status
@@ -274,7 +305,7 @@ class PausedProcessesTable(ipw.VBox):
 
         row = ipw.HBox(
             children=[
-                ipw.HTML(f"<b>{process.pk}</b>", layout=ipw.Layout(width="60px")),
+                ipw.HTML(f"<b>{process.pk}</b>", layout=PK_LAYOUT),
                 label,
                 reason,
                 goto_button,

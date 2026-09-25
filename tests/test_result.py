@@ -99,6 +99,36 @@ def test_kill_workflow_resets_paused_processes(
     assert paused_model.paused_count == 0
 
 
+def test_pending_kill_failure_keeps_monitoring_and_allows_retry(
+    app_to_submit,
+    generate_qeapp_workchain,
+    monkeypatch,
+):
+    app: QeWizard = app_to_submit
+    step: ResultsStep = app.results_step
+    model: ResultsStepModel = app.results_model
+    model.process_uuid = generate_qeapp_workchain().node.uuid
+    step.render()
+    model.daemon_is_running = True
+    model.daemon_status_known = True
+    model.update_daemon_status = Mock()
+    model.kill_pending = True
+    model._kill_deadline = 0
+    kill_processes = Mock(side_effect=[RuntimeError("kill RPC failed"), None])
+    monkeypatch.setattr(control, "kill_processes", kill_processes)
+    initial_monitor_counter = model.monitor_counter
+
+    step._update_status()
+
+    assert model.monitor_counter > initial_monitor_counter
+    assert model.kill_pending is False
+    assert "kill RPC failed" in step.status_panel.paused_processes_model.error_message
+
+    model.kill_process()
+
+    assert kill_processes.call_count == 2
+
+
 def test_workchainview(generate_qeapp_workchain):
     """Test the result tabs are properly updated"""
     workchain = generate_qeapp_workchain()

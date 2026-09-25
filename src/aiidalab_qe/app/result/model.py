@@ -42,10 +42,6 @@ class ResultsStepModel(
     def is_failed(self):
         return self.state is State.FAIL
 
-    def _update(self, specific=""):
-        self.update_daemon_status()
-        self._update_process_remote_folder_state()
-
     def update_daemon_status(self):
         try:
             self.daemon_is_running = get_daemon_client().is_daemon_running
@@ -76,8 +72,7 @@ class ResultsStepModel(
             self._kill_deadline = time.monotonic() + 5.0
             return
 
-        control.kill_processes([self.process])
-        paused_model.reset()
+        self._kill_root_workflow(paused_model)
 
     def process_pending_kill(self):
         from aiidalab_qe.app.result.components.status.paused import PausedProcessesModel
@@ -99,9 +94,7 @@ class ResultsStepModel(
             self.kill_pending = False
             return
 
-        control.kill_processes([self.process])
-        paused_model.reset()
-        self.kill_pending = False
+        self._kill_root_workflow(paused_model)
 
     def clean_remote_data(self):
         if not self.has_process:
@@ -151,6 +144,10 @@ class ResultsStepModel(
         self.daemon_status_known = False
         self.kill_pending = False
 
+    def _update(self, specific=""):
+        self.update_daemon_status()
+        self._update_process_remote_folder_state()
+
     def _update_process_remote_folder_state(self):
         if not (self.has_process and self.process.called_descendants):
             return
@@ -160,6 +157,17 @@ class ResultsStepModel(
                 with contextlib.suppress(Exception):
                     cleaned.append(called_descendant.outputs.remote_folder.is_empty)
         self.process_remote_folder_is_clean = all(cleaned)
+
+    def _kill_root_workflow(self, paused_model):
+        try:
+            control.kill_processes([self.process])
+        except Exception as exception:
+            paused_model.error_message = str(exception)
+            self.kill_pending = False
+            return
+
+        paused_model.reset()
+        self.kill_pending = False
 
     def _get_process_status(self, state: str):
         return f"{state.capitalize()} {STATE_ICONS[state]}"

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import threading
 import time
+import typing as t
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import ipywidgets as ipw
@@ -16,6 +18,7 @@ from aiidalab_qe.app.result.components.status import (
     WorkChainStatusPanel,
 )
 from aiidalab_qe.app.result.components.status.paused import (
+    PausedProcess,
     PausedProcessesModel,
     PausedProcessesTable,
 )
@@ -26,6 +29,8 @@ from aiidalab_qe.app.result.components.status.tree import (
     SimplifiedProcessTreeModel,
     WorkChainTreeNode,
 )
+
+WIDGET_INSTANCES: t.MutableMapping[str, ipw.Widget] = {}
 
 
 def mock_calcjob(label):
@@ -434,6 +439,38 @@ def test_paused_model_play_reports_errors(monkeypatch):
     assert model.error_message == "daemon unavailable"
 
 
+@pytest.mark.parametrize("play_action", ["play", "play_all"])
+def test_paused_model_surfaces_logged_unreachable_process(
+    monkeypatch,
+    play_action,
+):
+    root, _, calculation = create_process_graph()
+    calculation.pause()
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+    model.update()
+
+    controller = Mock()
+    controller.play_process.side_effect = control.communications.UnroutableError(
+        "unreachable"
+    )
+    manager = Mock()
+    manager.get_process_controller.return_value = controller
+    monkeypatch.setattr(control, "get_manager", lambda: manager)
+    monkeypatch.setattr(
+        control,
+        "get_daemon_client",
+        lambda: SimpleNamespace(is_daemon_running=True),
+    )
+
+    if play_action == "play":
+        model.play(calculation.uuid)
+    else:
+        model.play_all()
+
+    assert "unreachable" in model.error_message
+
+
 class TestPausedProcessesTable:
     def test_renders_rows_and_actions(self):
         root, _, calculation = create_process_graph()
@@ -551,3 +588,33 @@ class TestPausedProcessesTable:
         assert panel.table.children[0] is header
         assert panel.table.children[1] is panel._rows[child.uuid][0]
         assert len(panel.table.children) == 2
+
+    def test_removed_rows_close_owned_widgets(self):
+        model = PausedProcessesModel()
+        panel = PausedProcessesTable(model=model)
+        baseline_widget_ids = set(WIDGET_INSTANCES)
+
+        for index in range(100):
+            process = PausedProcess(
+                uuid=f"process-{index}",
+                pk=index,
+                label=f"Process {index}",
+                status="Paused",
+            )
+            model.paused_processes = (process,)
+            model.paused_count = 1
+            row = panel._rows[process.uuid]
+            owned_widgets = [*row[0].children, row[0]]
+            owned_styles = [
+                widget.style
+                for widget in row[0].children
+                if isinstance(getattr(widget, "style", None), ipw.Widget)
+            ]
+
+            model.paused_processes = ()
+            model.paused_count = 0
+
+            assert all(widget.comm is None for widget in owned_widgets)
+            assert all(style.comm is None for style in owned_styles)
+
+        assert set(WIDGET_INSTANCES) == baseline_widget_ids
