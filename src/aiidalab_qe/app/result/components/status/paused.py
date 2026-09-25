@@ -21,6 +21,15 @@ class PausedProcess:
 
 PausedProcessRowType = tuple[ipw.HBox, ipw.HTML, ipw.HTML, ipw.Button]
 
+PK_LAYOUT = ipw.Layout(width="60px")
+LABEL_LAYOUT = ipw.Layout(flex="1 1 0px", min_width="0")
+REASON_LAYOUT = ipw.Layout(flex="2 1 0px", min_width="0")
+ACTIONS_LAYOUT = ipw.Layout(width="72px")
+ACTION_BUTTON_LAYOUT = ipw.Layout(width="36px")
+FULL_WIDTH_LAYOUT = ipw.Layout(width="100%")
+PLAY_ALL_LAYOUT = ipw.Layout(width="fit-content", margin="0 0 0 auto")
+TABLE_LAYOUT = ipw.Layout(grid_gap="8px")
+
 
 class PausedProcessesModel(ResultsSubModel):
     """Tracks paused processes (calculations and workflows) within the monitored process."""
@@ -57,7 +66,6 @@ class PausedProcessesModel(ResultsSubModel):
         self.update()
 
     def reset(self):
-        self.process_uuid = None
         self.paused_processes = ()
         self.paused_count = 0
         self.error_message = ""
@@ -104,7 +112,7 @@ class PausedProcessesTable(ipw.VBox):
             icon="play",
             button_style="success",
             tooltip="Resume all paused processes in this workflow",
-            layout=ipw.Layout(width="fit-content", margin="0 0 0 auto"),
+            layout=PLAY_ALL_LAYOUT,
         )
         self.play_all_button.on_click(lambda _: self._model.play_all())
 
@@ -120,7 +128,7 @@ class PausedProcessesTable(ipw.VBox):
                 self.table,
                 self.alert,
             ],
-            layout=ipw.Layout(grid_gap="8px"),
+            layout=TABLE_LAYOUT,
             **kwargs,
         )
 
@@ -138,11 +146,10 @@ class PausedProcessesTable(ipw.VBox):
         )
         self._model.observe(
             self._on_daemon_status_change,
-            "daemon_is_running",
-        )
-        self._model.observe(
-            self._on_daemon_status_change,
-            "daemon_status_known",
+            [
+                "daemon_is_running",
+                "daemon_status_known",
+            ],
         )
 
         self._render_table()
@@ -231,27 +238,22 @@ class PausedProcessesTable(ipw.VBox):
     def _build_header_row(self):
         return ipw.HBox(
             children=[
-                ipw.HTML("<b>PK</b>", layout=ipw.Layout(width="60px")),
-                ipw.HTML("<b>Label</b>", layout=ipw.Layout(width="200px")),
-                ipw.HTML("<b>Reason</b>", layout=ipw.Layout(flex="1")),
-                ipw.HTML("<b>Actions</b>", layout=ipw.Layout(width="72px")),
+                ipw.HTML("<b>PK</b>", layout=PK_LAYOUT),
+                ipw.HTML("<b>Label</b>", layout=LABEL_LAYOUT),
+                ipw.HTML("<b>Reason</b>", layout=REASON_LAYOUT),
+                ipw.HTML("<b>Actions</b>", layout=ACTIONS_LAYOUT),
             ],
+            layout=FULL_WIDTH_LAYOUT,
         )
 
     def _build_row(self, process: PausedProcess) -> PausedProcessRowType:
-        label = ipw.HTML(
-            process.label,
-            layout=ipw.Layout(width="200px"),
-        )
-        reason = ipw.HTML(
-            process.status,
-            layout=ipw.Layout(flex="1"),
-        )
+        label = ipw.HTML(process.label, layout=LABEL_LAYOUT)
+        reason = ipw.HTML(process.status, layout=REASON_LAYOUT)
 
         goto_button = ipw.Button(
             icon="share",
             tooltip="Go to process in advanced status view",
-            layout=ipw.Layout(width="36px"),
+            layout=ACTION_BUTTON_LAYOUT,
         )
         goto_button.on_click(lambda _, uuid=process.uuid: self._on_goto_click(uuid))
 
@@ -266,7 +268,7 @@ class PausedProcessesTable(ipw.VBox):
             disabled=(
                 not self._model.daemon_status_known or not self._model.daemon_is_running
             ),
-            layout=ipw.Layout(width="36px"),
+            layout=ACTION_BUTTON_LAYOUT,
         )
         play_button.on_click(lambda _, uuid=process.uuid: self._model.play(uuid))
 
@@ -278,6 +280,7 @@ class PausedProcessesTable(ipw.VBox):
                 goto_button,
                 play_button,
             ],
+            layout=FULL_WIDTH_LAYOUT,
         )
         return row, label, reason, play_button
 

@@ -26,6 +26,7 @@ class ResultsStepModel(
 
     process_info = tl.Unicode("")
     process_remote_folder_is_clean = tl.Bool(False)
+    kill_pending = tl.Bool(False)
 
     STATUS_TEMPLATE = "<h4>Workflow status: {}</h4"
 
@@ -71,18 +72,36 @@ class ResultsStepModel(
             paused_model.play_all()
             if paused_model.error_message:
                 return
-            deadline = time.monotonic() + 5.0
-            while paused_model.paused_processes and time.monotonic() < deadline:
-                time.sleep(0.1)
-                paused_model.update()
-            if paused_model.paused_processes:
-                paused_model.error_message = (
-                    "Could not resume all paused processes before killing the workflow."
-                )
-                return
+            self.kill_pending = True
+            self._kill_deadline = time.monotonic() + 5.0
+            return
 
         control.kill_processes([self.process])
         paused_model.reset()
+
+    def process_pending_kill(self):
+        from aiidalab_qe.app.result.components.status.paused import PausedProcessesModel
+
+        if not self.kill_pending:
+            return
+
+        paused_model = t.cast(PausedProcessesModel, self.get_model("status.paused"))
+        if not self.daemon_status_known or not self.daemon_is_running:
+            paused_model.error_message = "The AiiDA daemon is not running."
+            self.kill_pending = False
+            return
+        if paused_model.paused_processes:
+            if time.monotonic() < self._kill_deadline:
+                return
+            paused_model.error_message = (
+                "Could not resume all paused processes before killing the workflow."
+            )
+            self.kill_pending = False
+            return
+
+        control.kill_processes([self.process])
+        paused_model.reset()
+        self.kill_pending = False
 
     def clean_remote_data(self):
         if not self.has_process:
@@ -130,6 +149,7 @@ class ResultsStepModel(
         self.process_info = ""
         self.daemon_is_running = False
         self.daemon_status_known = False
+        self.kill_pending = False
 
     def _update_process_remote_folder_state(self):
         if not (self.has_process and self.process.called_descendants):

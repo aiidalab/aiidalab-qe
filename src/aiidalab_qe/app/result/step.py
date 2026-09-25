@@ -48,11 +48,11 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         )
         self._model.observe(
             self._on_daemon_status_change,
-            "daemon_is_running",
-        )
-        self._model.observe(
-            self._on_daemon_status_change,
-            "daemon_status_known",
+            [
+                "daemon_is_running",
+                "daemon_status_known",
+                "kill_pending",
+            ],
         )
 
         self.log_widget = log_widget
@@ -73,6 +73,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             (self.kill_button, "disabled"),
             lambda state: (
                 state is not State.ACTIVE
+                or self._model.kill_pending
                 or not self._model.daemon_status_known
                 or not self._model.daemon_is_running
             ),
@@ -202,14 +203,16 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
     def _on_daemon_status_change(self, _):
         if not self.rendered:
             return
+
         daemon_is_running = self._model.daemon_is_running
         daemon_status_known = self._model.daemon_status_known
+
         if not daemon_status_known:
-            self.daemon_warning.value = ""
+            daemon_warning = ""
             kill_disabled = True
-            self.kill_button.tooltip = "Checking AiiDA daemon status"
+            tooltip = "Checking AiiDA daemon status"
         elif not daemon_is_running:
-            self.daemon_warning.value = (
+            daemon_warning = (
                 '<div class="alert alert-warning">'
                 "The AiiDA daemon is not running. Monitoring and process actions are unavailable."
                 "</div>"
@@ -217,15 +220,21 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
                 else ""
             )
             kill_disabled = True
-            self.kill_button.tooltip = (
-                "Kill is unavailable because the AiiDA daemon is not running"
-            )
+            tooltip = "Kill is unavailable because the AiiDA daemon is not running"
         else:
-            self.daemon_warning.value = ""
-            kill_disabled = self._model.state is not State.ACTIVE
-            self.kill_button.tooltip = "Terminate the entire workflow"
-        if hasattr(self, "kill_button"):
-            self.kill_button.disabled = kill_disabled
+            daemon_warning = ""
+            kill_disabled = (
+                self._model.state is not State.ACTIVE or self._model.kill_pending
+            )
+            tooltip = (
+                "Waiting for paused processes to resume"
+                if self._model.kill_pending
+                else "Terminate the entire workflow"
+            )
+
+        self.daemon_warning.value = daemon_warning
+        self.kill_button.tooltip = tooltip
+        self.kill_button.disabled = kill_disabled
 
     def _on_kill_button_click(self, _):
         self._model.kill_process()
@@ -261,6 +270,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
     def _update_status(self):
         self._model.update_daemon_status()
         self._model.monitor_counter += 1
+        self._model.process_pending_kill()
 
     def _show_loading_message(self):
         self.loading_message.message.value = (
