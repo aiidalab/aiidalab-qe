@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 import pytest
 from bs4 import BeautifulSoup
-from aiida.engine.processes import control
 
+from aiida.engine.processes import control
 from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
 from aiidalab_qe.app.result.components.summary import WorkflowSummaryModel
 from aiidalab_qe.app.result.components.viewer import (

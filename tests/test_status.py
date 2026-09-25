@@ -500,3 +500,52 @@ class TestPausedProcessesTable:
 
         assert panel.daemon_warning.value == ""
         assert not panel.table.children[1].children[4].disabled
+
+    def test_reset_clears_table_immediately(self):
+        root, _, calculation = create_process_graph()
+        calculation.pause()
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        panel = PausedProcessesTable(model=model)
+        assert len(panel.table.children) == 2
+
+        model.reset()
+
+        assert len(panel.table.children) == 1
+        assert panel.table.children[0].value == "<b>No paused processes</b>"
+        assert panel.daemon_warning.value == ""
+
+    def test_refresh_reuses_header_and_updates_rows_incrementally(self):
+        root, child, calculation = create_process_graph()
+        calculation.pause()
+        calculation.set_process_status("SCF paused")
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        panel = PausedProcessesTable(model=model)
+
+        header = panel.table.children[0]
+        row = panel.table.children[1]
+
+        calculation.set_process_status("SCF paused again")
+        model.monitor_counter += 1
+
+        assert panel.table.children[0] is header
+        assert panel.table.children[1] is row
+        assert row.children[2].value == "SCF paused again"
+
+        child.pause()
+        model.monitor_counter += 1
+
+        assert panel.table.children[0] is header
+        assert panel.table.children[1] is panel._rows[child.uuid][0]
+        assert panel.table.children[2] is row
+        assert len(panel.table.children) == 3
+
+        calculation.unpause()
+        model.monitor_counter += 1
+
+        assert panel.table.children[0] is header
+        assert panel.table.children[1] is panel._rows[child.uuid][0]
+        assert len(panel.table.children) == 2

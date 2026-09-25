@@ -30,8 +30,10 @@ Resuming a process
 ==================
 
 Use the **Play** action to ask AiiDA to resume the selected process from its saved
-checkpoint. The AiiDA daemon must be running for this action to succeed. Any error
-reported while requesting the resume is shown below the paused-process table.
+checkpoint. The AiiDA daemon must be running for this action to succeed. When the
+daemon is stopped, a warning appears above the table and the Play buttons are
+disabled until the daemon becomes active. Any error reported while requesting the
+resume is shown below the paused-process table.
 
 The reason text is supplied by AiiDA and can vary depending on the workflow and the
 plugin that paused the process.
