@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+from unittest.mock import Mock
 
 import ipywidgets as ipw
 import pytest
@@ -9,9 +10,14 @@ import pytest
 from aiida import orm
 from aiida.common.links import LinkType
 from aiida.engine import ProcessState
+from aiida.engine.processes import control
 from aiidalab_qe.app.result.components.status import (
     WorkChainStatusModel,
     WorkChainStatusPanel,
+)
+from aiidalab_qe.app.result.components.status.paused import (
+    PausedProcessesModel,
+    PausedProcessesTable,
 )
 from aiidalab_qe.app.result.components.status.tree import (
     TITLE_MAPPING,
@@ -36,6 +42,36 @@ def mock_workchain(label):
     workchain.set_exit_status(0)
     workchain.set_process_label(label)
     return workchain
+
+
+def create_process_graph():
+    root = orm.WorkChainNode()
+    root.set_process_label("QeAppWorkChain")
+    root.set_process_state(ProcessState.RUNNING)
+
+    child = orm.WorkChainNode()
+    child.set_process_label("PwBaseWorkChain")
+    child.set_process_state(ProcessState.RUNNING)
+
+    calculation = orm.CalcJobNode()
+    calculation.set_process_label("PwCalculation")
+    calculation.set_process_state(ProcessState.RUNNING)
+
+    child.base.links.add_incoming(
+        root,
+        link_type=LinkType.CALL_WORK,
+        link_label="child",
+    )
+    calculation.base.links.add_incoming(
+        child,
+        link_type=LinkType.CALL_CALC,
+        link_label="calculation",
+    )
+
+    root.store()
+    child.store()
+    calculation.store()
+    return root, child, calculation
 
 
 @pytest.fixture(scope="module")
@@ -296,7 +332,7 @@ class TestWorkChainStatusPanel(TreeTestingMixin):
     def test_render(self):
         self.panel.render()
         assert self.panel.children[0] is self.panel.accordion
-        assert self.panel.accordion.selected_index == 0
+        assert self.panel.accordion.selected_index == 1
         assert self.panel.simplified_process_tree.rendered
 
     def test_calcjob_node_link(self):
@@ -315,6 +351,131 @@ class TestWorkChainStatusPanel(TreeTestingMixin):
         # assert self.panel.node_view_container.children[0] is self.node_view  # type: ignore
 
     def test_to_advanced_view_button(self):
-        assert self.panel.accordion.selected_index == 0
-        self.panel.to_advanced_view_button.click()
         assert self.panel.accordion.selected_index == 1
+        self.panel.to_advanced_view_button.click()
+        assert self.panel.accordion.selected_index == 2
+
+    def test_paused_title_and_navigation(self, mock_qeapp_workchain):
+        calculation = next(
+            node
+            for node in mock_qeapp_workchain.called_descendants
+            if isinstance(node, orm.CalcJobNode)
+        )
+        self.panel.paused_processes_model.paused_count = 2
+        assert self.panel.accordion.titles[0] == "Paused Processes (2)"
+
+        self.panel._on_paused_inspect(calculation.uuid)
+
+        assert self.panel.accordion.selected_index == 2
+        assert self.panel.process_tree.value == calculation.uuid
+
+
+def test_paused_model_detects_paused_root_and_descendants():
+    root, child, calculation = create_process_graph()
+    root.pause()
+    root.set_process_status("Root paused")
+    calculation.pause()
+    calculation.set_process_status("Calculation paused")
+
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+    model.update()
+
+    assert model.paused_count == 2
+    assert {node.uuid for node in model.nodes} == {root.uuid, calculation.uuid}
+    assert child.uuid not in {node.uuid for node in model.nodes}
+
+
+def test_paused_model_updates_when_monitor_counter_changes():
+    root, _, calculation = create_process_graph()
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+
+    model.monitor_counter += 1
+    assert model.paused_count == 0
+
+    calculation.pause()
+    model.monitor_counter += 1
+    assert model.paused_count == 1
+    assert model.nodes[0].uuid == calculation.uuid
+
+
+def test_paused_model_play_clears_previous_error(monkeypatch):
+    root, _, _ = create_process_graph()
+    root.pause()
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+    model.error_message = "previous error"
+    play_processes = Mock()
+    monkeypatch.setattr(control, "play_processes", play_processes)
+
+    model.play(root.uuid)
+
+    play_processes.assert_called_once()
+    assert play_processes.call_args.args[0][0].uuid == root.uuid
+    assert model.error_message == ""
+
+
+def test_paused_model_play_reports_errors(monkeypatch):
+    root, _, _ = create_process_graph()
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+    monkeypatch.setattr(
+        control,
+        "play_processes",
+        Mock(side_effect=RuntimeError("daemon unavailable")),
+    )
+
+    model.play(root.uuid)
+
+    assert model.error_message == "daemon unavailable"
+
+
+class TestPausedProcessesTable:
+    def test_renders_rows_and_actions(self):
+        root, _, calculation = create_process_graph()
+        calculation.pause()
+        calculation.set_process_status("SCF paused")
+
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        on_inspect = Mock()
+        panel = PausedProcessesTable(model=model, on_inspect=on_inspect)
+
+        assert len(panel.table.children) == 2
+        assert panel.table.children[0].children[0].value == "<b>PK</b>"
+
+        row = panel.table.children[1]
+        assert len(row.children) == 5
+        assert row.children[0].value == f"<b>{calculation.pk}</b>"
+        assert row.children[2].value == "SCF paused"
+
+        row.children[3].click()
+        on_inspect.assert_called_once_with(calculation.uuid)
+
+    def test_play_button_delegates_to_model(self, monkeypatch):
+        root, _, calculation = create_process_graph()
+        calculation.pause()
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        play = Mock()
+        monkeypatch.setattr(model, "play", play)
+        panel = PausedProcessesTable(model=model)
+
+        panel.table.children[1].children[4].click()
+
+        play.assert_called_once_with(calculation.uuid)
+
+    def test_displays_error_message(self):
+        model = PausedProcessesModel()
+        panel = PausedProcessesTable(model=model)
+
+        model.error_message = "daemon unavailable"
+
+        assert "alert-danger" in panel.alert.value
+        assert "daemon unavailable" in panel.alert.value
+
+        model.error_message = ""
+        assert panel.alert.value == ""

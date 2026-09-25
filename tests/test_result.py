@@ -47,6 +47,19 @@ def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
     assert step.clean_scratch_button.layout.display == "none"
 
 
+def test_paused_processes_warning(app_to_submit):
+    app: QeWizard = app_to_submit
+    step: ResultsStep = app.results_step
+    step.render()
+
+    assert step.paused_processes_warning.value == ""
+
+    step.status_panel.paused_processes_model.paused_count = 2
+
+    assert "2 paused processes" in step.paused_processes_warning.value
+    assert "Paused processes" in step.paused_processes_warning.value
+
+
 def test_workchainview(generate_qeapp_workchain):
     """Test the result tabs are properly updated"""
     workchain = generate_qeapp_workchain()
