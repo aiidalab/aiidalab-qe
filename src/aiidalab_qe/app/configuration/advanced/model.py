@@ -70,6 +70,7 @@ class AdvancedConfigurationSettingsModel(
                 }
             },
             "clean_workdir": general.clean_workdir,
+            "on_unhandled_failure": general.on_unhandled_failure,
             "kpoints_distance": convergence.kpoints_distance,
             "optimization_maxsteps": convergence.optimization_maxsteps,
         }
@@ -172,6 +173,7 @@ class AdvancedConfigurationSettingsModel(
         )
         with general.hold_trait_notifications():
             general.clean_workdir = state.get("clean_workdir", True)
+            general.on_unhandled_failure = state.get("on_unhandled_failure", "pause")
             general.total_charge = SYSTEM.get("tot_charge", 0)
             general.van_der_waals = general.dftd3_version.get(
                 SYSTEM.get("dftd3_version", ""),

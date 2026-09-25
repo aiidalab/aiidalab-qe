@@ -106,6 +106,8 @@ class HasModels(t.Generic[M]):
 class HasProcess(tl.HasTraits):
     process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
+    daemon_is_running = tl.Bool(False)
+    daemon_status_known = tl.Bool(False)
 
     @property
     def process(self) -> orm.WorkChainNode | None:

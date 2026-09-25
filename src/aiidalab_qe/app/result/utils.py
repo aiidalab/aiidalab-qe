@@ -26,3 +26,11 @@ class HasProcessModels(HasModels[PM]):
             (self, "monitor_counter"),
             (model, "monitor_counter"),
         )
+        tl.dlink(
+            (self, "daemon_is_running"),
+            (model, "daemon_is_running"),
+        )
+        tl.dlink(
+            (self, "daemon_status_known"),
+            (model, "daemon_status_known"),
+        )

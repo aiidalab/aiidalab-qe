@@ -46,6 +46,14 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             self._on_process_change,
             "process_uuid",
         )
+        self._model.observe(
+            self._on_daemon_status_change,
+            "daemon_is_running",
+        )
+        self._model.observe(
+            self._on_daemon_status_change,
+            "daemon_status_known",
+        )
 
         self.log_widget = log_widget
 
@@ -55,7 +63,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
     def _render(self):
         self.kill_button = ipw.Button(
             description="Kill workflow",
-            tooltip="Terminate the entire workflow",
+            tooltip="Checking AiiDA daemon status",
             button_style="danger",
             icon="stop",
             layout=ipw.Layout(width="auto", display="none"),
@@ -63,7 +71,11 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         ipw.dlink(
             (self._model, "state"),
             (self.kill_button, "disabled"),
-            lambda state: state is not State.ACTIVE,
+            lambda state: (
+                state is not State.ACTIVE
+                or not self._model.daemon_status_known
+                or not self._model.daemon_is_running
+            ),
         )
         ipw.dlink(
             (self._model, "process_uuid"),
@@ -100,6 +112,8 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
             ),
         )
         self.clean_scratch_button.on_click(self._on_clean_scratch_button_click)
+
+        self.daemon_warning = ipw.HTML()
 
         self.process_info = ipw.HTML()
         ipw.dlink(
@@ -164,6 +178,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
                 ],
                 layout=ipw.Layout(justify_content="space-between"),
             ),
+            self.daemon_warning,
             self.paused_processes_warning,
             self.toggle_controls,
             self.container,
@@ -171,6 +186,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
 
     def _post_render(self):
         super()._post_render()
+        self._on_daemon_status_change(None)
         self._set_default_results_panel()
         self._set_up_monitor()
 
@@ -181,6 +197,35 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
     def _on_process_change(self, _):
         self._model.update()
         self._model.update_state()
+        self._on_daemon_status_change(None)
+
+    def _on_daemon_status_change(self, _):
+        if not self.rendered:
+            return
+        daemon_is_running = self._model.daemon_is_running
+        daemon_status_known = self._model.daemon_status_known
+        if not daemon_status_known:
+            self.daemon_warning.value = ""
+            kill_disabled = True
+            self.kill_button.tooltip = "Checking AiiDA daemon status"
+        elif not daemon_is_running:
+            self.daemon_warning.value = (
+                '<div class="alert alert-warning">'
+                "The AiiDA daemon is not running. Monitoring and process actions are unavailable."
+                "</div>"
+                if self._model.has_process
+                else ""
+            )
+            kill_disabled = True
+            self.kill_button.tooltip = (
+                "Kill is unavailable because the AiiDA daemon is not running"
+            )
+        else:
+            self.daemon_warning.value = ""
+            kill_disabled = self._model.state is not State.ACTIVE
+            self.kill_button.tooltip = "Terminate the entire workflow"
+        if hasattr(self, "kill_button"):
+            self.kill_button.disabled = kill_disabled
 
     def _on_kill_button_click(self, _):
         self._model.kill_process()
@@ -214,6 +259,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         )
 
     def _update_status(self):
+        self._model.update_daemon_status()
         self._model.monitor_counter += 1
 
     def _show_loading_message(self):

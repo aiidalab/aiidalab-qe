@@ -22,6 +22,21 @@ class GeneralConfigurationSettingsPanel(
             (self.clean_workdir, "value"),
         )
 
+        self.on_unhandled_failure = ipw.Dropdown(
+            description="Action on failure:",
+            options=[
+                ("Abort", "abort"),
+                ("Pause", "pause"),
+                ("Restart once", "restart_once"),
+                ("Restart and pause", "restart_and_pause"),
+            ],
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "on_unhandled_failure"),
+            (self.on_unhandled_failure, "value"),
+        )
+
         # Total change setting
         self.total_charge = ipw.BoundedFloatText(
             min=-3,
@@ -50,7 +65,10 @@ class GeneralConfigurationSettingsPanel(
         )
 
         self.children = [
+            ipw.HTML(value="<h4>Workflow configuration</h4>"),
             self.clean_workdir,
+            self.on_unhandled_failure,
+            ipw.HTML(value="<h4>Global properties</h4>"),
             self.total_charge,
             self.van_der_waals,
         ]

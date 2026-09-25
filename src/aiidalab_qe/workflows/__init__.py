@@ -34,6 +34,8 @@ class QeAppWorkChain(WorkChain):
                    help='The inputs structure.')
         spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(True),
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
+        spec.input('on_unhandled_failure', valid_type=orm.Str, default=lambda: orm.Str('pause'),
+               help='Action to take when a first-level plugin workflow encounters an unhandled failure.')
         spec.input('properties', valid_type=orm.List, default=lambda: orm.List(),
                    help='The properties to calculate, used to control the logic of QeAppWorkChain.')
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
@@ -182,6 +184,11 @@ class QeAppWorkChain(WorkChain):
         # clean workdir
         clean_workdir = orm.Bool(parameters["advanced"]["clean_workdir"])
         builder.clean_workdir = clean_workdir
+        on_unhandled_failure = parameters["advanced"].get(
+            "on_unhandled_failure",
+            "pause",
+        )
+        builder.on_unhandled_failure = orm.Str(on_unhandled_failure)
         # add plugin workchain
         for name, entry_point in plugin_entries.items():
             if name in properties:
@@ -194,13 +201,18 @@ class QeAppWorkChain(WorkChain):
                 plugin_workchain = entry_point["workchain"]
                 if plugin_workchain.spec().has_input("clean_workdir"):
                     plugin_builder.clean_workdir = clean_workdir
+                if plugin_workchain.spec().has_input("on_unhandled_failure"):
+                    plugin_builder.on_unhandled_failure = orm.Str(on_unhandled_failure)
                 # some plugin's logic depend on whether a input exist or not, but not check if it is empty.
                 # here we remove the empty namespace for safety.
                 setattr(builder, name, plugin_builder._inputs(prune=True))
             else:
                 builder.pop(name, None)
 
-        set_default_process_failure_policy(builder)
+        set_default_process_failure_policy(
+            builder,
+            on_unhandled_failure=on_unhandled_failure,
+        )
         return builder
 
     def setup(self):
