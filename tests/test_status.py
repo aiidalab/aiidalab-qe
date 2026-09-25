@@ -382,8 +382,11 @@ def test_paused_model_detects_paused_root_and_descendants():
     model.update()
 
     assert model.paused_count == 2
-    assert {node.uuid for node in model.nodes} == {root.uuid, calculation.uuid}
-    assert child.uuid not in {node.uuid for node in model.nodes}
+    assert {process.uuid for process in model.paused_processes} == {
+        root.uuid,
+        calculation.uuid,
+    }
+    assert child.uuid not in {process.uuid for process in model.paused_processes}
 
 
 def test_paused_model_updates_when_monitor_counter_changes():
@@ -397,7 +400,7 @@ def test_paused_model_updates_when_monitor_counter_changes():
     calculation.pause()
     model.monitor_counter += 1
     assert model.paused_count == 1
-    assert model.nodes[0].uuid == calculation.uuid
+    assert model.paused_processes[0].uuid == calculation.uuid
 
 
 def test_paused_model_play_clears_previous_error(monkeypatch):
@@ -480,26 +483,25 @@ class TestPausedProcessesTable:
         model.error_message = ""
         assert panel.alert.value == ""
 
-    def test_daemon_warning_disables_play(self):
+    def test_daemon_status_disables_play(self):
         root, _, calculation = create_process_graph()
         model = PausedProcessesModel()
         model.process_uuid = root.uuid
         model.update()
         model.daemon_is_running = False
+        model.daemon_status_known = True
         panel = PausedProcessesTable(model=model)
-
-        assert panel.daemon_warning.value == ""
 
         calculation.pause()
         model.monitor_counter += 1
 
-        assert "daemon is not running" in panel.daemon_warning.value
         assert panel.table.children[1].children[4].disabled
+        assert panel.play_all_button.disabled
 
         model.daemon_is_running = True
 
-        assert panel.daemon_warning.value == ""
         assert not panel.table.children[1].children[4].disabled
+        assert not panel.play_all_button.disabled
 
     def test_reset_clears_table_immediately(self):
         root, _, calculation = create_process_graph()
@@ -514,7 +516,7 @@ class TestPausedProcessesTable:
 
         assert len(panel.table.children) == 1
         assert panel.table.children[0].value == "<b>No paused processes</b>"
-        assert panel.daemon_warning.value == ""
+        assert panel.play_all_button.layout.display == "none"
 
     def test_refresh_reuses_header_and_updates_rows_incrementally(self):
         root, child, calculation = create_process_graph()

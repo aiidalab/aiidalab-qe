@@ -35,7 +35,7 @@ def test_create_builder_default(
         builder.pdos.nscf,
     ]
     for workchain in restart_workchains:
-        assert workchain.on_unhandled_failure.value == "restart_and_pause"
+        assert workchain.on_unhandled_failure.value == "pause"
         assert workchain.pause_on_max_iterations.value is True
 
     assert_builder_is_valid(builder)
@@ -62,6 +62,19 @@ def test_create_builder_scf_only(submit_app_generator):
 
     assert "base_init_relax" not in builder.relax
     assert builder.relax.base_relax.pw.parameters["CONTROL"]["calculation"] == "scf"
+
+
+def test_create_builder_propagates_failure_policy(submit_app_generator):
+    app: QeWizard = submit_app_generator(properties=["bands", "pdos"])
+
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters["advanced"]["on_unhandled_failure"] = "abort"
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
+
+    assert builder.on_unhandled_failure.value == "abort"
+    assert builder.bands.bands.scf.on_unhandled_failure.value == "abort"
+    assert builder.pdos.scf.on_unhandled_failure.value == "abort"
 
 
 def test_create_builder_fat_bands(submit_app_generator):

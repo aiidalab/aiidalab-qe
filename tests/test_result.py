@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 
 from aiida.engine.processes import control
 from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
+from aiidalab_qe.app.result.components.status.paused import PausedProcess
 from aiidalab_qe.app.result.components.summary import WorkflowSummaryModel
 from aiidalab_qe.app.result.components.viewer import (
     WorkflowResultsViewer,
@@ -73,14 +74,28 @@ def test_kill_workflow_resets_paused_processes(
     model.process_uuid = generate_qeapp_workchain().node.uuid
     step.render()
     paused_model = step.status_panel.paused_processes_model
-    paused_model.nodes = [model.process]
+    model.daemon_is_running = True
+    model.daemon_status_known = True
+    paused_model.daemon_is_running = True
+    paused_model.daemon_status_known = True
+    paused_model.paused_processes = (
+        PausedProcess(
+            uuid=model.process.uuid,
+            pk=model.process.pk,
+            label=model.process.label,
+            status="Paused",
+        ),
+    )
     paused_model.paused_count = 1
     monkeypatch.setattr(control, "kill_processes", Mock())
 
-    model.kill_process()
+    model.kill_pending = True
+    model._kill_deadline = 0
+    paused_model.paused_processes = ()
+    model.process_pending_kill()
+    paused_model.reset()
 
-    assert paused_model.process_uuid is None
-    assert paused_model.nodes == []
+    assert paused_model.paused_processes == ()
     assert paused_model.paused_count == 0
 
 
