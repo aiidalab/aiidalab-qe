@@ -14,7 +14,7 @@ from aiidalab_qe.common.mixins import HasProcess
 from aiidalab_qe.common.process import STATE_ICONS
 from aiidalab_qe.common.wizard import DependentWizardStepModel, State
 
-from .utils import HasProcessModels, ResultsSubModel
+from .utils import HasProcessModels, ResultsSubModel, capture_control_errors
 
 
 class ResultsStepModel(
@@ -160,9 +160,15 @@ class ResultsStepModel(
 
     def _kill_root_workflow(self, paused_model):
         try:
-            control.kill_processes([self.process])
+            with capture_control_errors(control.LOGGER) as logged_errors:
+                control.kill_processes([self.process])
         except Exception as exception:
             paused_model.error_message = str(exception)
+            self.kill_pending = False
+            return
+
+        if logged_errors:
+            paused_model.error_message = "\n".join(logged_errors)
             self.kill_pending = False
             return
 

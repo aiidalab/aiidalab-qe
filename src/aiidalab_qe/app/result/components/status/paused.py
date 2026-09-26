@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import typing as t
 from dataclasses import dataclass
 
@@ -9,7 +8,7 @@ import traitlets as tl
 
 from aiida import orm
 from aiida.engine.processes import control
-from aiidalab_qe.app.result.utils import ResultsSubModel
+from aiidalab_qe.app.result.utils import ResultsSubModel, capture_control_errors
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,17 +20,6 @@ class PausedProcess:
 
 
 PausedProcessRowType = tuple[ipw.HBox, ipw.HTML, ipw.HTML, ipw.Button]
-
-
-class _ControlErrorHandler(logging.Handler):
-    """Custom logging handler to capture control errors."""
-
-    def __init__(self):
-        super().__init__(level=logging.ERROR)
-        self.messages: list[str] = []
-
-    def emit(self, record: logging.LogRecord):
-        self.messages.append(record.getMessage())
 
 
 PK_LAYOUT = ipw.Layout(width="60px")
@@ -75,14 +63,9 @@ class PausedProcessesModel(ResultsSubModel):
         self.update()
 
     def _play_processes(self, processes: list[orm.ProcessNode]):
-        handler = _ControlErrorHandler()
-        control.LOGGER.addHandler(handler)
-        try:
+        with capture_control_errors(control.LOGGER) as errors:
             control.play_processes(processes)
-        finally:
-            control.LOGGER.removeHandler(handler)
-
-        self.error_message = "\n".join(handler.messages)
+        self.error_message = "\n".join(errors)
 
     def reset(self):
         self.paused_processes = ()

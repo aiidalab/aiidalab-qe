@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import threading
 import time
-import typing as t
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import ipywidgets as ipw
 import pytest
+from ipywidgets.widgets.widget import _instances as widget_instances
 
 from aiida import orm
 from aiida.common.links import LinkType
@@ -18,6 +18,14 @@ from aiidalab_qe.app.result.components.status import (
     WorkChainStatusPanel,
 )
 from aiidalab_qe.app.result.components.status.paused import (
+    ACTION_BUTTON_LAYOUT,
+    ACTIONS_LAYOUT,
+    FULL_WIDTH_LAYOUT,
+    LABEL_LAYOUT,
+    PK_LAYOUT,
+    PLAY_ALL_LAYOUT,
+    REASON_LAYOUT,
+    TABLE_LAYOUT,
     PausedProcess,
     PausedProcessesModel,
     PausedProcessesTable,
@@ -29,8 +37,6 @@ from aiidalab_qe.app.result.components.status.tree import (
     SimplifiedProcessTreeModel,
     WorkChainTreeNode,
 )
-
-WIDGET_INSTANCES: t.MutableMapping[str, ipw.Widget] = {}
 
 
 def mock_calcjob(label):
@@ -592,9 +598,19 @@ class TestPausedProcessesTable:
     def test_removed_rows_close_owned_widgets(self):
         model = PausedProcessesModel()
         panel = PausedProcessesTable(model=model)
-        baseline_widget_ids = set(WIDGET_INSTANCES)
+        baseline_widget_ids = set(widget_instances)
+        shared_layouts = (
+            ACTION_BUTTON_LAYOUT,
+            ACTIONS_LAYOUT,
+            FULL_WIDTH_LAYOUT,
+            LABEL_LAYOUT,
+            PK_LAYOUT,
+            PLAY_ALL_LAYOUT,
+            REASON_LAYOUT,
+            TABLE_LAYOUT,
+        )
 
-        for index in range(100):
+        for index in range(1000):
             process = PausedProcess(
                 uuid=f"process-{index}",
                 pk=index,
@@ -617,4 +633,5 @@ class TestPausedProcessesTable:
             assert all(widget.comm is None for widget in owned_widgets)
             assert all(style.comm is None for style in owned_styles)
 
-        assert set(WIDGET_INSTANCES) == baseline_widget_ids
+        assert set(widget_instances) == baseline_widget_ids
+        assert all(layout.comm is not None for layout in shared_layouts)

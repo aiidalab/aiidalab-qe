@@ -1,9 +1,38 @@
+import contextlib
+import logging
 import typing as t
 
 import traitlets as tl
 
 from aiidalab_qe.common.mixins import HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
+
+
+@contextlib.contextmanager
+def capture_control_errors(
+    logger: logging.Logger,
+) -> t.Generator[list[str], None, None]:
+    """Collect error messages logged by AiiDA process-control functions.
+
+    AiiDA control functions can log failures such as unreachable processes and
+    return normally, so checking only for raised exceptions can mistake failure
+    for success.
+    """
+    messages = []
+
+    class ErrorCaptureHandler(logging.Handler):
+        def __init__(self):
+            super().__init__(level=logging.ERROR)
+
+        def emit(self, record: logging.LogRecord):
+            messages.append(record.getMessage())
+
+    handler = ErrorCaptureHandler()
+    logger.addHandler(handler)
+    try:
+        yield messages
+    finally:
+        logger.removeHandler(handler)
 
 
 class ResultsSubModel(Model, HasProcess):
