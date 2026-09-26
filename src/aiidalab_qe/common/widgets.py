@@ -312,15 +312,17 @@ class CalcJobOutputFollower(traitlets.HasTraits):
             # (Re/)start following
             if change["new"]:
                 self._follow_output_thread = Thread(
-                    target=self._follow_output, args=(calcjob_uuid,)
+                    target=self._follow_output, args=(calcjob_uuid,), daemon=True
                 )
                 self._follow_output_thread.start()
 
     def _follow_output(self, calcjob_uuid):
         """Monitor calcjob and orchestrate pushing and pulling of output."""
-        self._pull_thread = Thread(target=self._pull_output)
+        self._pull_thread = Thread(target=self._pull_output, daemon=True)
         self._pull_thread.start()
-        self._push_thread = Thread(target=self._push_output, args=(calcjob_uuid,))
+        self._push_thread = Thread(
+            target=self._push_output, args=(calcjob_uuid,), daemon=True
+        )
         self._push_thread.start()
 
     def _fetch_output(self, calcjob):

@@ -1,4 +1,6 @@
 import typing as t
+from threading import Event
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -17,7 +19,39 @@ from aiidalab_qe.app.result.components.viewer.structure import (
     StructureResultsPanel,
 )
 from aiidalab_qe.app.wizard import QeWizard
+from aiidalab_qe.common import widgets as common_widgets
 from aiidalab_qe.common.wizard import State
+
+
+def test_calcjob_output_follower_threads_are_daemon(monkeypatch):
+    started = Event()
+    monkeypatch.setattr(
+        common_widgets, "load_node", lambda _: SimpleNamespace(is_sealed=False)
+    )
+    follower = common_widgets.CalcJobOutputFollower()
+
+    def fetch_output(_):
+        started.set()
+        return []
+
+    monkeypatch.setattr(follower, "_fetch_output", fetch_output)
+    follower.calcjob_uuid = "calcjob-uuid"
+    try:
+        assert started.wait(timeout=2)
+        assert follower._follow_output_thread.daemon
+        assert follower._push_thread.is_alive() and follower._push_thread.daemon
+        assert follower._pull_thread.is_alive() and follower._pull_thread.daemon
+    finally:
+        follower._stop_follow_output.set()
+        for thread in (
+            follower._follow_output_thread,
+            follower._push_thread,
+            follower._pull_thread,
+        ):
+            if thread is not None:
+                thread.join(timeout=2)
+    assert not follower._push_thread.is_alive()
+    assert not follower._pull_thread.is_alive()
 
 
 def test_result_step(app_to_submit, generate_qeapp_workchain):
