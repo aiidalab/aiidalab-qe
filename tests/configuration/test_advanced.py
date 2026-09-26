@@ -42,15 +42,18 @@ def test_advanced_general_settings():
 
     assert model.total_charge == 0.0
     assert model.van_der_waals == "none"
+    assert model.on_unhandled_failure == "pause"
 
     # Check reset
     model.total_charge = 1.0
     model.van_der_waals = "dft-d3"
+    model.on_unhandled_failure = "abort"
 
     model.reset()
 
     assert model.total_charge == 0.0
     assert model.van_der_waals == "none"
+    assert model.on_unhandled_failure == "pause"
 
 
 def test_advanced_convergence_settings(generate_structure_data):

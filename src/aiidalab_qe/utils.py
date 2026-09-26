@@ -46,7 +46,7 @@ def enable_pencil_decomposition(component):
 
 def set_default_process_failure_policy(
     builder: ProcessBuilderNamespace,
-    on_unhandled_failure: str = "restart_and_pause",
+    on_unhandled_failure: str = "pause",
     pause_on_max_iterations: bool = True,
 ):
     """Recursively set defaults on populated restart-workchain namespaces."""

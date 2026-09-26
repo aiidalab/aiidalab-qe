@@ -10,7 +10,7 @@ from jinja2 import Environment
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
-from aiidalab_qe.app.result.components import ResultsComponentModel
+from aiidalab_qe.app.result.utils import ResultsSubModel
 from aiidalab_qe.app.static import styles, templates
 from aiidalab_qe.common.time import format_time, relative_time
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
@@ -53,8 +53,8 @@ VDW_CORRECTION_VERSION = {
 }
 
 
-class WorkflowSummaryModel(ResultsComponentModel):
-    identifier = "workflow summary"
+class WorkflowSummaryModel(ResultsSubModel):
+    identifier = "summary"
 
     failed_calculation_report = tl.Unicode("")
 

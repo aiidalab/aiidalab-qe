@@ -2,20 +2,14 @@ import typing as t
 
 import ipywidgets as ipw
 
-from aiidalab_qe.common.mixins import HasProcess
-from aiidalab_qe.common.mvc import Model
+from aiidalab_qe.app.result.utils import ResultsSubModel
 from aiidalab_widgets_base import LoadingWidget
 
-
-class ResultsComponentModel(Model, HasProcess):
-    identifier = "results"
+RSM = t.TypeVar("RSM", bound=ResultsSubModel)
 
 
-RCM = t.TypeVar("RCM", bound=ResultsComponentModel)
-
-
-class ResultsComponent(ipw.VBox, t.Generic[RCM]):
-    def __init__(self, model: RCM, **kwargs):
+class ResultsComponent(ipw.VBox, t.Generic[RSM]):
+    def __init__(self, model: RSM, **kwargs):
         self.loading_message = LoadingWidget(f"Loading {model.identifier}")
 
         super().__init__(

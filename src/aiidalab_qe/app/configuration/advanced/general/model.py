@@ -15,6 +15,7 @@ class GeneralConfigurationSettingsModel(PanelModel):
     identifier = "general"
 
     clean_workdir = tl.Bool(DEFAULT["advanced"]["clean_workdir"])
+    on_unhandled_failure = tl.Unicode(DEFAULT["advanced"]["on_unhandled_failure"])
     total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
     van_der_waals_options = tl.List(
         trait=tl.List(tl.Unicode()),
@@ -40,5 +41,6 @@ class GeneralConfigurationSettingsModel(PanelModel):
 
     def reset(self):
         with self.hold_trait_notifications():
+            self.on_unhandled_failure = self._get_default("on_unhandled_failure")
             self.total_charge = self._get_default("total_charge")
             self.van_der_waals = self._get_default("van_der_waals")

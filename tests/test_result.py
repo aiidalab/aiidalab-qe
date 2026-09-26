@@ -1,9 +1,12 @@
 import typing as t
+from unittest.mock import Mock
 
 import pytest
 from bs4 import BeautifulSoup
 
+from aiida.engine.processes import control
 from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
+from aiidalab_qe.app.result.components.status.paused import PausedProcess
 from aiidalab_qe.app.result.components.summary import WorkflowSummaryModel
 from aiidalab_qe.app.result.components.viewer import (
     WorkflowResultsViewer,
@@ -45,6 +48,85 @@ def test_kill_and_clean_buttons(app_to_submit, generate_qeapp_workchain):
     model.process_uuid = generate_qeapp_workchain().node.uuid
     assert step.kill_button.layout.display == "block"
     assert step.clean_scratch_button.layout.display == "none"
+
+
+def test_paused_processes_warning(app_to_submit):
+    app: QeWizard = app_to_submit
+    step: ResultsStep = app.results_step
+    step.render()
+
+    assert step.paused_processes_warning.value == ""
+
+    step.status_panel.paused_processes_model.paused_count = 2
+
+    assert "2 paused processes" in step.paused_processes_warning.value
+    assert "Paused processes" in step.paused_processes_warning.value
+
+
+def test_kill_workflow_resets_paused_processes(
+    app_to_submit,
+    generate_qeapp_workchain,
+    monkeypatch,
+):
+    app: QeWizard = app_to_submit
+    step: ResultsStep = app.results_step
+    model: ResultsStepModel = app.results_model
+    model.process_uuid = generate_qeapp_workchain().node.uuid
+    step.render()
+    paused_model = step.status_panel.paused_processes_model
+    model.daemon_is_running = True
+    model.daemon_status_known = True
+    paused_model.daemon_is_running = True
+    paused_model.daemon_status_known = True
+    paused_model.paused_processes = (
+        PausedProcess(
+            uuid=model.process.uuid,
+            pk=model.process.pk,
+            label=model.process.label,
+            status="Paused",
+        ),
+    )
+    paused_model.paused_count = 1
+    monkeypatch.setattr(control, "kill_processes", Mock())
+
+    model.kill_pending = True
+    model._kill_deadline = 0
+    paused_model.paused_processes = ()
+    model.process_pending_kill()
+    paused_model.reset()
+
+    assert paused_model.paused_processes == ()
+    assert paused_model.paused_count == 0
+
+
+def test_pending_kill_failure_keeps_monitoring_and_allows_retry(
+    app_to_submit,
+    generate_qeapp_workchain,
+    monkeypatch,
+):
+    app: QeWizard = app_to_submit
+    step: ResultsStep = app.results_step
+    model: ResultsStepModel = app.results_model
+    model.process_uuid = generate_qeapp_workchain().node.uuid
+    step.render()
+    model.daemon_is_running = True
+    model.daemon_status_known = True
+    model.update_daemon_status = Mock()
+    model.kill_pending = True
+    model._kill_deadline = 0
+    kill_processes = Mock(side_effect=[RuntimeError("kill RPC failed"), None])
+    monkeypatch.setattr(control, "kill_processes", kill_processes)
+    initial_monitor_counter = model.monitor_counter
+
+    step._update_status()
+
+    assert model.monitor_counter > initial_monitor_counter
+    assert model.kill_pending is False
+    assert "kill RPC failed" in step.status_panel.paused_processes_model.error_message
+
+    model.kill_process()
+
+    assert kill_processes.call_count == 2
 
 
 def test_workchainview(generate_qeapp_workchain):
