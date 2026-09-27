@@ -13,7 +13,6 @@ from threading import Event, Lock, Thread
 from time import time
 from uuid import uuid4
 
-import anywidget
 import ase
 import ipywidgets as ipw
 import numpy as np
@@ -33,11 +32,13 @@ from aiidalab_widgets_base.utils import (
 )
 
 from .link_button import LinkButton
+from .table_widget import TableWidget
 
 __all__ = [
     "CalcJobOutputFollower",
     "LinkButton",
     "LogOutputWidget",
+    "TableWidget",
 ]
 
 
@@ -1140,104 +1141,6 @@ class CategorizedStructureExamplesWidget(StructureExamplesWidget):
         new_category = change["new"]
         new_examples = self.examples_by_category.get(new_category, [])
         self._select_structure.options = self.get_example_structures(new_examples)
-
-
-class TableWidget(anywidget.AnyWidget):
-    _esm = """
-    function render({ model, el }) {
-        let domElement = document.createElement("div");
-        el.classList.add("custom-table");
-        let selectedIndices = [];
-
-        function drawTable() {
-            const data = model.get("data");
-            domElement.innerHTML = "";
-            let innerHTML = '<table><tr>' + data[0].map(header => `<th>${header}</th>`).join('') + '</tr>';
-
-            for (let i = 1; i < data.length; i++) {
-                innerHTML += '<tr>' + data[i].map(cell => `<td>${cell}</td>`).join('') + '</tr>';
-            }
-
-            innerHTML += "</table>";
-            domElement.innerHTML = innerHTML;
-
-            const rows = domElement.querySelectorAll('tr');
-            rows.forEach((row, index) => {
-                if (index > 0) {
-                    row.addEventListener('click', () => {
-                        const rowIndex = index - 1;
-                        if (selectedIndices.includes(rowIndex)) {
-                            selectedIndices = selectedIndices.filter(i => i !== rowIndex);
-                            row.classList.remove('selected-row');
-                        } else {
-                            selectedIndices.push(rowIndex);
-                            row.classList.add('selected-row');
-                        }
-                        model.set('selected_rows', [...selectedIndices]);
-                        model.save_changes();
-                    });
-
-                    row.addEventListener('mouseover', () => {
-                        if (!row.classList.contains('selected-row')) {
-                            row.classList.add('hover-row');
-                        }
-                    });
-
-                    row.addEventListener('mouseout', () => {
-                        row.classList.remove('hover-row');
-                    });
-                }
-            });
-        }
-
-        function updateSelection() {
-            const newSelection = model.get("selected_rows");
-            selectedIndices = [...newSelection]; // Synchronize the JavaScript state with the Python state
-            const rows = domElement.querySelectorAll('tr');
-            rows.forEach((row, index) => {
-                if (index > 0) {
-                    if (selectedIndices.includes(index - 1)) {
-                        row.classList.add('selected-row');
-                    } else {
-                        row.classList.remove('selected-row');
-                    }
-                }
-            });
-        }
-
-        drawTable();
-        model.on("change:data", drawTable);
-        model.on("change:selected_rows", updateSelection);
-        el.appendChild(domElement);
-    }
-    export default { render };
-    """
-    _css = """
-    .custom-table table, .custom-table th, .custom-table td {
-        border: 1px solid black;
-        border-collapse: collapse;
-        text-align: left;
-        padding: 4px;
-    }
-    .custom-table th, .custom-table td {
-        min-width: 50px;
-        word-wrap: break-word;
-    }
-    .custom-table table {
-        width: 70%;
-        font-size: 1.0em;
-    }
-    /* Hover effect with light gray background */
-    .custom-table tr.hover-row:not(.selected-row) {
-        background-color: #f0f0f0;
-    }
-    /* Selected row effect with light green background */
-    .custom-table tr.selected-row {
-        background-color: #DFF0D8;
-    }
-    """
-    data = traitlets.List().tag(sync=True)
-    selected_rows = traitlets.List().tag(sync=True)
 
 
 class HBoxWithUnits(ipw.HBox):
