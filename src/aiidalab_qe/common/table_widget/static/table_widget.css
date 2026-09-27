@@ -1,0 +1,29 @@
+.custom-table table,
+.custom-table th,
+.custom-table td {
+  border: 1px solid black;
+  border-collapse: collapse;
+  text-align: left;
+  padding: 4px;
+}
+
+.custom-table th,
+.custom-table td {
+  min-width: 50px;
+  word-wrap: break-word;
+}
+
+.custom-table table {
+  width: 70%;
+  font-size: 1em;
+}
+
+/* Hover effect with light gray background */
+.custom-table tr.hover-row:not(.selected-row) {
+  background-color: #f0f0f0;
+}
+
+/* Selected row effect with light green background */
+.custom-table tr.selected-row {
+  background-color: #dff0d8;
+}
