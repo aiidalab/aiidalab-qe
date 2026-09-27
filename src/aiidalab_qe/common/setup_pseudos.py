@@ -39,14 +39,18 @@ class PseudosInstallWidget(ProgressBar):
         self.description = f"{self.prefix}{msg}"
 
     def _refresh_installed(self):
+        self.animating = False
         self.set_trait("busy", True)
 
         try:
             for msg, progress in install():
                 self.set_message(msg)
-                self.value = progress
+                self.animating = progress is None
+                if progress is not None:
+                    self.value = progress
 
         except Exception as error:
+            self.animating = False
             self.set_trait("error", str(error))
             self.set_message(str(error))
         else:
@@ -84,6 +88,7 @@ class PseudosInstallWidget(ProgressBar):
 
             if self.error or self.installed:
                 self.value = 1.0
+                self.animating = False
 
             self.bar_style = (
                 "info"
