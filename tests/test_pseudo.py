@@ -11,6 +11,8 @@ from aiidalab_qe.app.configuration.advanced.pseudos.uploader import (
     PseudoPotentialUploader,
     PseudoPotentialUploaderModel,
 )
+from aiidalab_qe.common import setup_pseudos as setup_pseudos_module
+from aiidalab_qe.setup import pseudos as pseudos_module
 from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
@@ -108,6 +110,53 @@ def test_setup_pseudos_cmd(tmp_path):
         "--from-download",
         f"{tmp_path!s}/PseudoDojo_{PSEUDODOJO_VERSION}_PBEsol_SR_standard_upf.aiida_pseudo",
     ]
+
+
+def test_install_reports_indeterminate_progress_when_lock_is_held(monkeypatch):
+    class ContendedThenReleasedLock:
+        def __init__(self, _filename, timeout):
+            self.filename = _filename
+            self.timeout = timeout
+
+        def __enter__(self):
+            if self.timeout == 5:
+                raise pseudos_module.Timeout(self.filename)
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+    monkeypatch.setattr(pseudos_module, "FileLock", ContendedThenReleasedLock)
+    monkeypatch.setattr(pseudos_module, "pseudos_to_install", set)
+
+    assert list(pseudos_module.install()) == [
+        ("Checking installation status...", 0.1),
+        (
+            "Installation was already started elsewhere, waiting for it to finish...",
+            None,
+        ),
+    ]
+
+
+def test_pseudo_widget_stops_animation_on_numeric_progress(monkeypatch):
+    from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
+
+    monkeypatch.setattr(
+        setup_pseudos_module,
+        "install",
+        lambda: iter([("Waiting...", None), ("Installing...", 0.5)]),
+    )
+    monkeypatch.setattr(setup_pseudos_module, "pseudos_to_install", set)
+
+    widget = PseudosInstallWidget(auto_start=False, hide_by_default=False)
+    animation_states = []
+    widget.observe(lambda change: animation_states.append(change["new"]), "animating")
+
+    widget._refresh_installed()
+
+    assert animation_states == [True, False]
+    assert widget.value == 1.0
+    assert widget.animating is False
 
 
 @pytest.mark.slow
