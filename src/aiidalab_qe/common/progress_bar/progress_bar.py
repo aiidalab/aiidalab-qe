@@ -23,9 +23,13 @@ class ProgressBar(AnyWidget):
         description_layout: ipw.Layout | dict | None = None,
         **kwargs: t.Any,
     ) -> None:
-        description_layout = normalize_layout(description_layout)
-        description_layout.setdefault("width", "auto")
-        description_layout.setdefault("flex", "1 1 auto")
+        if description_layout is None:
+            description_layout = {
+                "width": "auto",
+                "flex": "1 1 auto",
+            }
+        else:
+            description_layout = normalize_layout(description_layout)
 
         super().__init__(**kwargs)
         self.description_layout = description_layout
