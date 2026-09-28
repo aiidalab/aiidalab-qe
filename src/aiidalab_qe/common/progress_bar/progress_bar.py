@@ -1,8 +1,11 @@
+import typing as t
 from pathlib import Path
 
 import ipywidgets as ipw
 import traitlets
 from anywidget import AnyWidget
+
+from aiidalab_qe.common.utils import normalize_layout
 
 
 class ProgressBar(AnyWidget):
@@ -15,17 +18,14 @@ class ProgressBar(AnyWidget):
     bar_style = traitlets.Unicode("").tag(sync=True)
     animating = traitlets.Bool(False).tag(sync=True)
 
-    def __init__(self, description_layout=None, **kwargs):
-        if description_layout is None:
-            description_layout = ipw.Layout(width="auto", flex="2 1 auto")
-        elif isinstance(description_layout, dict):
-            description_layout = ipw.Layout(**description_layout)
-
-        description_layout = {
-            key: value
-            for key, value in description_layout.get_state().items()
-            if not key.startswith("_") and value is not None
-        }
+    def __init__(
+        self,
+        description_layout: ipw.Layout | dict | None = None,
+        **kwargs: t.Any,
+    ) -> None:
+        description_layout = normalize_layout(description_layout)
+        description_layout.setdefault("width", "auto")
+        description_layout.setdefault("flex", "1 1 auto")
 
         super().__init__(**kwargs)
         self.description_layout = description_layout
