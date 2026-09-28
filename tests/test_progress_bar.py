@@ -26,7 +26,7 @@ def test_progress_bar_preserves_description_layout():
 def test_progress_bar_rejects_out_of_range_values(value):
     progress = ProgressBar()
 
-    with pytest.raises(traitlets.TraitError, match="between 0 and 1.0"):
+    with pytest.raises(traitlets.TraitError, match=r"between 0 and 1\.0"):
         progress.value = value
 
 
