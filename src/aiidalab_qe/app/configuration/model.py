@@ -46,6 +46,7 @@ class ConfigurationStepModel(
             "workchain",
             "advanced",
         }
+        self.incompatible_properties: set[str] = set()
 
         self.relax_type_help_template = """
             <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
@@ -121,7 +122,9 @@ class ConfigurationStepModel(
         self.relax_type = workchain_parameters.get("relax_type")
         properties = set(workchain_parameters.get("properties", []))
         for identifier, model in self.get_models():
-            model.include = identifier in self._default_models | properties
+            model.include = identifier in self._default_models | (
+                properties - self.incompatible_properties
+            )
             if state.get(identifier):
                 model.set_model_state(state[identifier])
 
@@ -156,7 +159,7 @@ class ConfigurationStepModel(
         for identifier, model in self.get_models():
             if identifier in self._default_models:
                 continue
-            if model.include:
+            if model.include and identifier not in self.incompatible_properties:
                 properties.append(identifier)
         if RelaxType(self.relax_type) is not RelaxType.NONE or not properties:
             properties.append("relax")
