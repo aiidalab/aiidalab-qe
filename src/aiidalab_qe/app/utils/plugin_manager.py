@@ -530,7 +530,7 @@ class PluginManager:
 
         :param config_source: Either a local YAML file path or a URL to a remote YAML file.
         """
-        self.config_source = "/home/jovyan/apps/quantum-espresso/plugins.yaml"
+        self.config_source = config_source
         self.data = self._load_config()
         self.accordion = ipw.Accordion()
 
@@ -653,11 +653,19 @@ class PluginManager:
             if "github" in plugin_data:
                 details += f"<b>Github:</b> <a href='{plugin_data.get('github')}' target='_blank'>Visit</a>"
 
-            # Create install/remove buttons
+            version_warning = ipw.HTML(value=version_message)
+
             install_btn = ipw.Button(
                 description="Install",
                 button_style="success",
                 disabled=installed or not app_compatible or bool(requirement_error),
+            )
+            post_install_btn = ipw.Button(
+                description="Run post-install",
+                button_style="info",
+                layout=ipw.Layout(
+                    display="" if plugin_data.get("post_install") else "none"
+                ),
             )
             update_btn = ipw.Button(
                 description="Update",
@@ -671,41 +679,58 @@ class PluginManager:
             )
             clear_output_btn = ipw.Button(
                 description="Clear output",
-                icon="trash-o",
                 tooltip="Clear plugin messages and command output",
                 disabled=True,
             )
-            post_install_btn = ipw.Button(
-                description="Run post-install only",
-                button_style="",
-            )
-            post_install_btn.layout.display = (
-                "" if plugin_data.get("post_install") else "none"
-            )
-            version_warning = ipw.HTML(value=version_message)
 
             # Attach callbacks
             github_data = plugin_data.get("github", "")
             post_install_data = plugin_data.get("post_install", None)
             install_btn.on_click(
-                lambda _btn, pn=package_name, pip=pip_data, gh=github_data, post=post_install_data, oc=output_container, mc=message_container, ib=install_btn, rb=remove_btn, ac=self.accordion, idx=i: (
-                    install_package(pn, pip, gh, post, oc, mc, ib, rb, ac, idx)
-                )
+                lambda _btn,
+                pn=package_name,
+                pip=pip_data,
+                gh=github_data,
+                post=post_install_data,
+                oc=output_container,
+                mc=message_container,
+                ib=install_btn,
+                rb=remove_btn,
+                ac=self.accordion,
+                idx=i: (install_package(pn, pip, gh, post, oc, mc, ib, rb, ac, idx))
             )
-            remove_btn.on_click(
-                lambda _btn, pn=package_name, oc=output_container, mc=message_container, ib=install_btn, rb=remove_btn, ac=self.accordion, idx=i: (
-                    remove_package(pn, oc, mc, ib, rb, ac, idx)
-                )
+            post_install_btn.on_click(
+                lambda _btn,
+                pn=package_name,
+                post=post_install_data,
+                oc=output_container,
+                mc=message_container: (run_post_install(pn, post, oc, mc))
             )
             update_btn.on_click(
-                lambda _btn, pn=package_name, pip=pip_data, gh=github_data, oc=output_container, mc=message_container, ib=install_btn, ub=update_btn, rb=remove_btn, warning=version_warning, ac=self.accordion, idx=i: (
+                lambda _btn,
+                pn=package_name,
+                pip=pip_data,
+                gh=github_data,
+                oc=output_container,
+                mc=message_container,
+                ib=install_btn,
+                ub=update_btn,
+                rb=remove_btn,
+                warning=version_warning,
+                ac=self.accordion,
+                idx=i: (
                     update_package(pn, pip, gh, oc, mc, ib, ub, rb, warning, ac, idx)
                 )
             )
-            post_install_btn.on_click(
-                lambda _btn, pn=package_name, post=post_install_data, oc=output_container, mc=message_container: (
-                    run_post_install(pn, post, oc, mc)
-                )
+            remove_btn.on_click(
+                lambda _btn,
+                pn=package_name,
+                oc=output_container,
+                mc=message_container,
+                ib=install_btn,
+                rb=remove_btn,
+                ac=self.accordion,
+                idx=i: (remove_package(pn, oc, mc, ib, rb, ac, idx))
             )
             clear_output_btn.on_click(
                 lambda _btn, oc=output_container, mc=message_container: (
@@ -714,9 +739,10 @@ class PluginManager:
             )
             for output_widget in (message_container, output_container):
                 output_widget.observe(
-                    lambda _change, mc=message_container, oc=output_container, btn=clear_output_btn: (
-                        _sync_clear_output_button(mc, oc, btn)
-                    ),
+                    lambda _change,
+                    mc=message_container,
+                    oc=output_container,
+                    btn=clear_output_btn: (_sync_clear_output_button(mc, oc, btn)),
                     names="value",
                 )
 
@@ -728,8 +754,8 @@ class PluginManager:
                     ipw.HBox(
                         [
                             install_btn,
-                            update_btn,
                             post_install_btn,
+                            update_btn,
                             remove_btn,
                             clear_output_btn,
                         ]

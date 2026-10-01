@@ -117,8 +117,9 @@ def test_available_properties_render_with_single_list_item(monkeypatch):
 
 
 def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
-    from aiidalab_qe.app.configuration import step as configuration_step
     from types import SimpleNamespace
+
+    from aiidalab_qe.app.configuration import step as configuration_step
 
     class Registry:
         data = {
