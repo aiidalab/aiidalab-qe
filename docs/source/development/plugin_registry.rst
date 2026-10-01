@@ -40,7 +40,7 @@ Plugin Entry Requirements
 
 - **github:** If provided, this should be the URL to the plugin's GitHub homepage.
 
-At least one of ``github`` or ``pip`` is required. ``pip`` installation will be preferred if both are provided, and "==version-of-the-code" can be omitted (but strongly suggested, to ensure compatiblity).
+At least one of ``github`` or ``pip`` is required. ``pip`` installation will be preferred if both are provided. Its value can include a PEP 508 version constraint, for example ``aiidalab-qe-xyz>=1.2.0`` to specify a minimum version or ``aiidalab-qe-xyz==1.2.0`` to pin an exact version. Installed plugins that do not meet their constraint are shown as incompatible in Step 2.1 and can be updated in the Plugin Store.
 
 - **pip:** The PyPI package name for your plugin, useful for installation via pip. Example: ``aiida-quantum``.
 - **documentation:** The URL to your plugin's online documentation, such as ReadTheDocs.
@@ -52,4 +52,4 @@ How to define a post install command in your plugin
 If you need to run a post-install command, you can define it in the CLI of your package. The command should be designed to be run as ``package-name post-install-command``.
 To define the CLI, you can use the ``__main__.py`` file in your source folder and the ``pyproject.toml`` file. You can refer to the `aiidalab-qe-vibroscopy <https://github.com/mikibonacci/aiidalab-qe-vibroscopy>`_ plugin for an example of how to do this.
 In that plugin, the automatic setup for the phonopy code is implemented. It assumes that the ``phonopy`` binary is already present on the machine, as the plugin will install it as a dependency.
-The post-install command will be triggered after the installation of the plugin (only) from the plugin list page of the Quantum ESPRESSO app.
+The post-install command is triggered after installing the plugin from the Plugin Store. If needed, it can also be run on its own from the plugin entry in the store, without reinstalling the package.

@@ -6,17 +6,22 @@ install and remove Python-based AiiDAlab plugins, with real-time streaming
 of command output in a Jupyter environment.
 """
 
-import importlib
+import html
+import logging
 import subprocess
 import sys
+from importlib import metadata
 from threading import Thread
 
 import ipywidgets as ipw
 import requests
 import yaml
 from IPython.display import display
+from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import SpecifierSet
-from packaging.version import parse
+from packaging.version import InvalidVersion, Version, parse
+
+LOGGER = logging.getLogger(__name__)
 
 # Define badge colors based on status
 COLOR_MAP = {
@@ -98,13 +103,37 @@ def is_package_installed(package_name: str) -> bool:
     """
     Check if a given Python package is already installed.
     """
-    package_name = package_name.replace("-", "_")
     try:
-        importlib.import_module(package_name)
-    except ImportError:
+        metadata.version(package_name)
+    except metadata.PackageNotFoundError:
         return False
     else:
         return True
+
+
+def get_plugin_version_info(
+    plugin_name: str, pip_requirement: str | None
+) -> tuple[str | None, bool, str | None]:
+    """Return the installed version, compatibility, and any requirement error."""
+    try:
+        requirement = Requirement(pip_requirement or plugin_name)
+    except InvalidRequirement as error:
+        return None, False, str(error)
+
+    try:
+        installed_version = metadata.version(requirement.name)
+    except metadata.PackageNotFoundError:
+        return None, True, None
+
+    try:
+        version = Version(installed_version)
+    except InvalidVersion as error:
+        return installed_version, False, str(error)
+
+    compatible = not requirement.specifier or requirement.specifier.contains(
+        version, prereleases=True
+    )
+    return installed_version, compatible, None
 
 
 def stream_output(process: subprocess.Popen, output_widget: ipw.HTML) -> None:
@@ -116,7 +145,52 @@ def stream_output(process: subprocess.Popen, output_widget: ipw.HTML) -> None:
         if process.poll() is not None and output == "":
             break
         if output:
-            output_widget.value += f"""<div style="background-color: #3B3B3B; color: #FFFFFF;">{output}</div>"""
+            _append_output(output_widget, output)
+
+
+def _append_output(output_widget: ipw.HTML, text: str) -> None:
+    """Append escaped text while preserving terminal line breaks."""
+    output_widget.value += (
+        '<div style="background-color: #3B3B3B; color: #FFFFFF; '
+        'white-space: pre-wrap; margin: 0; padding: 0 4px;">'
+        + html.escape(text)
+        + "</div>"
+    )
+
+
+def _append_message(
+    message_widget: ipw.HTML, text: str, color: str = "#000000"
+) -> None:
+    """Append an escaped high-level status message."""
+    message_widget.value += (
+        f'<div style="color: {color}; padding: 0 4px;">{html.escape(text)}</div>'
+    )
+
+
+def _clear_plugin_output(message_widget: ipw.HTML, output_widget: ipw.HTML) -> None:
+    """Clear and hide the high-level and command output widgets."""
+    message_widget.value = ""
+    output_widget.value = ""
+    message_widget.layout.display = "none"
+    output_widget.layout.display = "none"
+
+
+def _sync_clear_output_button(
+    message_widget: ipw.HTML, output_widget: ipw.HTML, button: ipw.Button
+) -> None:
+    """Enable clearing only when either output widget contains text."""
+    button.disabled = not (message_widget.value or output_widget.value)
+
+
+def _set_accordion_status(accordion: ipw.Accordion, index: int, status: str) -> None:
+    """Replace the status marker in an accordion title."""
+    title = accordion.get_title(index)
+    for marker in ("✅", "⚠️", "☐"):
+        suffix = f" {marker}"
+        if title.endswith(suffix):
+            title = title[: -len(suffix)]
+            break
+    accordion.set_title(index, f"{title} {status}".rstrip())
 
 
 def execute_command_with_output(
@@ -125,14 +199,28 @@ def execute_command_with_output(
     install_btn: ipw.Button,
     remove_btn: ipw.Button,
     action: str = "install",
+    clear_output: bool = True,
 ) -> bool:
     """
     Execute a shell command and stream its output to the provided widget.
     """
-    output_widget.value = ""  # Clear the widget before running the command
-    process = subprocess.Popen(
-        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
-    )
+    if clear_output:
+        output_widget.value = ""
+    try:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+    except OSError:
+        LOGGER.exception("Could not start plugin command %r", command)
+        _append_output(
+            output_widget,
+            "The command could not be started. Details were logged for debugging.\n",
+        )
+        return False
 
     thread = Thread(target=stream_output, args=(process, output_widget))
     thread.start()
@@ -142,12 +230,23 @@ def execute_command_with_output(
         install_btn.disabled = True
         remove_btn.disabled = False
         return True
+    elif process.returncode == 0 and action == "update":
+        install_btn.disabled = True
+        remove_btn.disabled = False
+        return True
     elif process.returncode == 0 and action == "remove":
         install_btn.disabled = False
         remove_btn.disabled = True
         return True
     else:
-        output_widget.value += """<div style="background-color: #3B3B3B; color: #FF0000;">Command failed.</div>"""
+        LOGGER.error(
+            "Plugin command %r failed with exit code %s", command, process.returncode
+        )
+        _append_output(
+            output_widget,
+            "\nThe command did not complete successfully. Review the output above; "
+            "details were logged for debugging.\n",
+        )
         return False
 
 
@@ -159,30 +258,32 @@ def remove_package(
     remove_btn: ipw.Button,
     accordion: ipw.Accordion,
     index: int,
+    clear_output: bool = True,
 ) -> None:
     """
     Remove a plugin package via pip uninstall.
     """
-    # Show the containers when user starts the remove action.
-    message_container.layout.display = "block"
     output_container.layout.display = "block"
-
-    message_container.value += (
-        f"""<div style="color: #FF0000;">Removing {package_name}...</div>"""
-    )
+    message_container.layout.display = "block"
+    _append_message(message_container, f"Removing {package_name}...")
     normalized_name = package_name.replace("-", "_")
     command = ["pip", "uninstall", "-y", normalized_name]
     result = execute_command_with_output(
-        command, output_container, install_btn, remove_btn, action="remove"
+        command,
+        output_container,
+        install_btn,
+        remove_btn,
+        action="remove",
+        clear_output=clear_output,
     )
 
     if result:
-        message_container.value += f"""<div style="color: #008000;">{package_name} removed successfully.</div>"""
-        # Remove the checkmark from the Accordion title
-        title = accordion.get_title(index)
-        if title.endswith("✅"):
-            new_title = title[:-2] + "☐"
-            accordion.set_title(index, new_title)
+        _append_message(
+            message_container,
+            f"{package_name} removed successfully.",
+            color="#008000",
+        )
+        _set_accordion_status(accordion, index, "")
 
         # Attempt to restart AiiDA daemon
         command = ["verdi", "daemon", "restart"]
@@ -205,89 +306,215 @@ def install_package(
     Install a plugin package from pip or GitHub, then optionally run a post-install command
     and test the plugin.
     """
-    # Show the containers when user starts the install action.
-    message_container.layout.display = "block"
     output_container.layout.display = "block"
+    message_container.layout.display = "block"
+    message_container.value = ""
+    output_container.value = ""
+    _append_message(message_container, f"Installing {package_name}...")
 
     if pip_install:
         command = ["pip", "install", pip_install, "--user"]
     else:
         command = ["pip", "install", "git+" + github, "--user"]
 
-    message_container.value = (
-        f"""<div style="color: #000000;">Installing {package_name}...</div>"""
-    )
     install_result = execute_command_with_output(
         command, output_container, install_btn, remove_btn
     )
-
-    # If post_install is defined, attempt to run that command
-    if install_result and post_install:
-        message_container.value += (
-            """<div style="color: #008000;">Post-install step in progress...</div>"""
+    if not install_result:
+        _append_message(
+            message_container,
+            "Installation did not complete. Review the command output for details.",
+            color="#FF0000",
         )
-        cmd = [sys.executable, "-m", package_name.replace("-", "_"), post_install]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-        if result.returncode != 0:
-            message_container.value += f"""
-                <div style="color: #FF0000;">
-                    Post-install command failed: {result.stderr}
-                </div>
-            """
+        return
 
-    # Test the plugin functionality if install was successful
-    if install_result:
-        message_container.value += (
-            """<div style="color: #008000;">Testing plugin loading...</div>"""
+    if post_install:
+        _append_message(
+            message_container, "Post-install step in progress...", color="#008000"
         )
-        cmd = [sys.executable, "-m", "aiidalab_qe", "test-plugin", package_name]
-        test_result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if not run_post_install(
+            package_name,
+            post_install,
+            output_container,
+            message_container,
+            clear_output=False,
+        ):
+            _set_accordion_status(accordion, index, "⚠️")
+            return
 
-        if test_result.returncode == 0:
-            message_container.value += (
-                """<div style="color: #008000;">Plugin test passed.</div>"""
-            )
-            message_container.value += (
-                """<div style="color: #008000;">Plugin installed successfully.</div>"""
-            )
+    _append_message(message_container, "Testing plugin loading...", color="#008000")
+    cmd = [sys.executable, "-m", "aiidalab_qe", "test-plugin", package_name]
+    try:
+        test_result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        LOGGER.exception("Could not run plugin loading test for %s", package_name)
+        _append_message(
+            message_container,
+            "The plugin test could not be started. Details were logged for debugging.",
+            color="#FF0000",
+        )
+        _set_accordion_status(accordion, index, "⚠️")
+        return
 
-            # Update Accordion title with a checkmark
-            title = accordion.get_title(index)
-            if title.endswith("☐"):
-                new_title = title[:-1] + "✅"
-                accordion.set_title(index, new_title)
+    if test_result.stdout:
+        _append_output(output_container, test_result.stdout)
+    if test_result.stderr:
+        _append_output(output_container, test_result.stderr)
 
-            # Restart daemon
-            daemon_cmd = ["verdi", "daemon", "restart"]
-            subprocess.run(daemon_cmd, capture_output=True, check=False)
+    if test_result.returncode == 0:
+        _append_message(message_container, "Plugin test passed.", color="#008000")
+        _append_message(
+            message_container,
+            "Plugin installed successfully.",
+            color="#008000",
+        )
+        _set_accordion_status(accordion, index, "✅")
 
-        else:
-            message_container.value += f"""
-                <div style="color: #FF0000;">
-                    The plugin '{package_name}' was installed but failed functionality test:
-                    {test_result.stderr}.
-                </div>
-            """
-            message_container.value += """
-                <div style="color: #FF0000;">
-                    This may be due to compatibility issues with the current AiiDAlab QEApp.
-                    Please contact the plugin author for assistance.
-                </div>
-            """
-            message_container.value += """
-                <div style="color: #FF0000;">
-                    The plugin will now be uninstalled to prevent issues.
-                </div>
-            """
-            remove_package(
-                package_name,
-                output_container,
+        # Restart daemon
+        daemon_cmd = ["verdi", "daemon", "restart"]
+        subprocess.run(daemon_cmd, capture_output=True, check=False)
+
+    else:
+        LOGGER.error(
+            "Plugin test failed for %s (exit code %s): %s%s",
+            package_name,
+            test_result.returncode,
+            test_result.stdout,
+            test_result.stderr,
+        )
+        _append_message(
+            message_container,
+            f"The plugin test for {package_name} did not pass. The package will be "
+            "removed to prevent use in an incomplete state. Details were logged.",
+            color="#FF0000",
+        )
+        remove_package(
+            package_name,
+            output_container,
+            message_container,
+            install_btn,
+            remove_btn,
+            accordion,
+            index,
+            clear_output=False,
+        )
+
+
+def update_package(
+    package_name: str,
+    pip_install: str,
+    github: str,
+    output_container: ipw.HTML,
+    message_container: ipw.HTML,
+    install_btn: ipw.Button,
+    update_btn: ipw.Button,
+    remove_btn: ipw.Button,
+    version_warning: ipw.HTML,
+    accordion: ipw.Accordion | None = None,
+    index: int | None = None,
+) -> None:
+    """Upgrade a plugin and clear its warning if it meets the registry requirement."""
+    output_container.layout.display = "block"
+    message_container.layout.display = "block"
+    message_container.value = ""
+    _append_message(message_container, f"Updating {package_name}...")
+    requirement = pip_install or "git+" + github
+    result = execute_command_with_output(
+        ["pip", "install", "--upgrade", requirement, "--user"],
+        output_container,
+        install_btn,
+        remove_btn,
+        action="update",
+    )
+
+    if result:
+        installed_version, compatible, error = get_plugin_version_info(
+            package_name, pip_install
+        )
+        if compatible and installed_version is not None:
+            version_warning.value = ""
+            update_btn.disabled = True
+            if accordion is not None and index is not None:
+                _set_accordion_status(accordion, index, "✅")
+            _append_message(
                 message_container,
-                install_btn,
-                remove_btn,
-                accordion,
-                index,
+                f"Updated {package_name} to {installed_version}.",
+                color="#008000",
             )
+        elif error:
+            _append_message(
+                message_container,
+                f"Could not verify the installed version: {error}",
+                color="#FF0000",
+            )
+        else:
+            _append_message(
+                message_container,
+                f"Installed version {installed_version or 'unknown'} does not meet "
+                "the required version.",
+                color="#FF0000",
+            )
+
+
+def run_post_install(
+    package_name: str,
+    post_install: str,
+    output_container: ipw.HTML,
+    message_container: ipw.HTML,
+    clear_output: bool = True,
+) -> bool:
+    """Run only the configured post-install command for an installed plugin."""
+    output_container.layout.display = "block"
+    message_container.layout.display = "block"
+    if clear_output:
+        output_container.value = ""
+        message_container.value = ""
+    _append_message(message_container, f"Running post-install for {package_name}...")
+    command = [sys.executable, "-m", package_name.replace("-", "_"), post_install]
+    try:
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        LOGGER.exception("Could not start post-install for %s", package_name)
+        _append_message(
+            message_container,
+            "Post-install could not be started. Details were logged for debugging.",
+            color="#FF0000",
+        )
+        return False
+    if result.stdout:
+        _append_output(output_container, result.stdout)
+    if result.returncode == 0:
+        _append_message(
+            message_container,
+            f"Post-install completed for {package_name}.",
+            color="#008000",
+        )
+        return True
+    else:
+        LOGGER.error(
+            "Post-install for %s failed with exit code %s: %s",
+            package_name,
+            result.returncode,
+            result.stdout,
+        )
+        _append_message(
+            message_container,
+            "Post-install did not complete. The package is present, but setup may be "
+            "incomplete. Review the command output; details were logged for debugging.",
+            color="#FF0000",
+        )
+        return False
 
 
 class PluginManager:
@@ -303,7 +530,7 @@ class PluginManager:
 
         :param config_source: Either a local YAML file path or a URL to a remote YAML file.
         """
-        self.config_source = config_source
+        self.config_source = "/home/jovyan/apps/quantum-espresso/plugins.yaml"
         self.data = self._load_config()
         self.accordion = ipw.Accordion()
 
@@ -350,26 +577,31 @@ class PluginManager:
         Build the Accordion UI based on the loaded plugin data.
         """
         for i, (plugin_name, plugin_data) in enumerate(self.data.items()):
-            installed = is_package_installed(plugin_name)
+            package_name = plugin_data.get("package", plugin_name)
+            pip_data = plugin_data.get("pip")
+            installed_version, plugin_compatible, requirement_error = (
+                get_plugin_version_info(package_name, pip_data or package_name)
+            )
+            installed = installed_version is not None
             required_version = plugin_data.get("requires_aiidalab_qe", None)
-            compatible = is_version_compatible(required_version)
+            app_compatible = is_version_compatible(required_version)
 
             # Create message and output containers
-            output_container = ipw.HTML(
-                value="",
-                layout=ipw.Layout(
-                    max_height="250px",
-                    overflow="auto",
-                    border="2px solid #CCCCCC",
-                    display="none",
-                ),
-            )
             message_container = ipw.HTML(
                 value="",
                 layout=ipw.Layout(
                     max_height="250px",
                     overflow="auto",
-                    border="2px solid #CCCCCC",
+                    border="1px solid #9e9e9e",
+                    display="none",
+                ),
+            )
+            output_container = ipw.HTML(
+                value="",
+                layout=ipw.Layout(
+                    max_height="250px",
+                    overflow="auto",
+                    border="1px solid #9e9e9e",
                     display="none",
                 ),
             )
@@ -385,69 +617,133 @@ class PluginManager:
                 </span>
             """
 
-            # Display AIIDA version requirement if any
+            # Display host app and plugin package version requirements.
             version_message = ""
-            if not compatible:
+            if not app_compatible:
                 version_message = f"""
-                <div style="color: #FF0000;">
-                    ⚠️ This plugin requires aiidalab_qe >= {required_version}, but you have {INSTALLED_AIIDA_QE_VERSION}.
+                <div class="alert alert-danger" role="alert">
+                    ⚠️ This plugin requires aiidalab_qe {required_version}, but you have {INSTALLED_AIIDA_QE_VERSION}.
+                </div>
+                """
+            if requirement_error:
+                version_message += f"""
+                <div class="alert alert-danger" role="alert">
+                    ⚠️ Could not evaluate plugin requirement/version: {requirement_error}
+                </div>
+                """
+            elif installed and not plugin_compatible:
+                requirement = Requirement(pip_data or package_name)
+                version_message += f"""
+                <div class="alert alert-danger" role="alert">
+                    ⚠️ Installed version {installed_version} does not satisfy
+                    {requirement.name}{requirement.specifier}. Please update accordingly.
                 </div>
                 """
 
             # Build plugin description details
             details = f"""
+                <b>Package:</b> {package_name}<br>
                 <b>Author:</b> {plugin_data.get("author", "N/A")}<br>
                 <b>Description:</b> {plugin_data.get("description", "No description available")}<br>
                 <b>Status:</b> {badge_html}<br>
-                {version_message}
             """
 
             if "documentation" in plugin_data:
-                details += f"📖 <b>Documentation:</b> <a href='{plugin_data['documentation']}' target='_blank'>Visit</a><br>"
+                details += f"<b>Documentation:</b> <a href='{plugin_data['documentation']}' target='_blank'>Visit</a><br>"
             if "github" in plugin_data:
-                details += f"💻 <b>Github:</b> <a href='{plugin_data.get('github')}' target='_blank'>Visit</a>"
+                details += f"<b>Github:</b> <a href='{plugin_data.get('github')}' target='_blank'>Visit</a>"
 
             # Create install/remove buttons
             install_btn = ipw.Button(
                 description="Install",
                 button_style="success",
-                disabled=(
-                    not compatible or installed
-                ),  # Disable if not compatible or already installed
+                disabled=installed or not app_compatible or bool(requirement_error),
+            )
+            update_btn = ipw.Button(
+                description="Update",
+                button_style="warning",
+                disabled=not installed or plugin_compatible or not app_compatible,
             )
             remove_btn = ipw.Button(
                 description="Remove",
                 button_style="danger",
                 disabled=not installed,
             )
+            clear_output_btn = ipw.Button(
+                description="Clear output",
+                icon="trash-o",
+                tooltip="Clear plugin messages and command output",
+                disabled=True,
+            )
+            post_install_btn = ipw.Button(
+                description="Run post-install only",
+                button_style="",
+            )
+            post_install_btn.layout.display = (
+                "" if plugin_data.get("post_install") else "none"
+            )
+            version_warning = ipw.HTML(value=version_message)
 
             # Attach callbacks
-            pip_data = plugin_data.get("pip", None)
             github_data = plugin_data.get("github", "")
             post_install_data = plugin_data.get("post_install", None)
             install_btn.on_click(
-                lambda _btn, pn=plugin_name, pip=pip_data, gh=github_data, post=post_install_data, oc=output_container, mc=message_container, ib=install_btn, rb=remove_btn, ac=self.accordion, idx=i: (
+                lambda _btn, pn=package_name, pip=pip_data, gh=github_data, post=post_install_data, oc=output_container, mc=message_container, ib=install_btn, rb=remove_btn, ac=self.accordion, idx=i: (
                     install_package(pn, pip, gh, post, oc, mc, ib, rb, ac, idx)
                 )
             )
             remove_btn.on_click(
-                lambda _btn, pn=plugin_name, oc=output_container, mc=message_container, ib=install_btn, rb=remove_btn, ac=self.accordion, idx=i: (
+                lambda _btn, pn=package_name, oc=output_container, mc=message_container, ib=install_btn, rb=remove_btn, ac=self.accordion, idx=i: (
                     remove_package(pn, oc, mc, ib, rb, ac, idx)
                 )
             )
+            update_btn.on_click(
+                lambda _btn, pn=package_name, pip=pip_data, gh=github_data, oc=output_container, mc=message_container, ib=install_btn, ub=update_btn, rb=remove_btn, warning=version_warning, ac=self.accordion, idx=i: (
+                    update_package(pn, pip, gh, oc, mc, ib, ub, rb, warning, ac, idx)
+                )
+            )
+            post_install_btn.on_click(
+                lambda _btn, pn=package_name, post=post_install_data, oc=output_container, mc=message_container: (
+                    run_post_install(pn, post, oc, mc)
+                )
+            )
+            clear_output_btn.on_click(
+                lambda _btn, oc=output_container, mc=message_container: (
+                    _clear_plugin_output(mc, oc)
+                )
+            )
+            for output_widget in (message_container, output_container):
+                output_widget.observe(
+                    lambda _change, mc=message_container, oc=output_container, btn=clear_output_btn: (
+                        _sync_clear_output_button(mc, oc, btn)
+                    ),
+                    names="value",
+                )
 
             # Create layout for each plugin
             box = ipw.VBox(
                 [
                     ipw.HTML(details),
-                    ipw.HBox([install_btn, remove_btn]),
+                    version_warning,
+                    ipw.HBox(
+                        [
+                            install_btn,
+                            update_btn,
+                            post_install_btn,
+                            remove_btn,
+                            clear_output_btn,
+                        ]
+                    ),
                     message_container,
                     output_container,
                 ]
             )
 
-            # Define the title with checkmark if installed
-            title_with_icon = f"{plugin_data.get('title')} {'✅' if installed else ''}"
+            # Keep the title marker consistent with the compatibility warning.
+            status_icon = (
+                "⚠️" if installed and version_message else "✅" if installed else ""
+            )
+            title_with_icon = f"{plugin_data.get('title')} {status_icon}".rstrip()
             self.accordion.children = [*self.accordion.children, box]
             self.accordion.set_title(i, title_with_icon)
 
@@ -455,5 +751,6 @@ class PluginManager:
         """
         Display the Accordion UI in a Jupyter notebook.
         """
+        self.accordion.children = ()
         self._build_ui()
         display(self.accordion)
