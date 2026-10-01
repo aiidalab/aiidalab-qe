@@ -208,6 +208,8 @@ def test_plugin_manager_default_config_file():
         ("1.2.8", "my-plugin>=1.2.9", False),
         ("1.2.9", "my-plugin>=1.2.9", True),
         ("1.3.0", "my-plugin>=1.2.9", True),
+        ("1.3.0", "my-plugin>=1.2.9,<1.3.0", False),
+        ("1.2.9", "my-plugin>=1.2.9,<1.3.0", True),
         ("1.0", "my-plugin", True),
     ],
 )
@@ -285,6 +287,42 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
     assert warning.value == ""
     assert update_button.disabled
     assert accordion.get_title(0).endswith("✅")
+
+
+def test_update_package_resolves_version_above_upper_bound(monkeypatch):
+    commands = []
+    installed_version = {"value": "1.3.0"}
+    requirement = "my-plugin>=1.2.9,<1.3.0"
+
+    def execute(command, *_args, **_kwargs):
+        commands.append(command)
+        installed_version["value"] = "1.2.9"
+        return True
+
+    monkeypatch.setattr(plugin_manager, "execute_command_with_output", execute)
+    monkeypatch.setattr(
+        plugin_manager.metadata,
+        "version",
+        lambda _name: installed_version["value"],
+    )
+    warning = ipw.HTML(value="Installed version 1.3.0 is incompatible")
+    update_button = ipw.Button()
+
+    plugin_manager.update_package(
+        "my-plugin",
+        requirement,
+        "",
+        ipw.HTML(),
+        ipw.HTML(),
+        ipw.Button(disabled=True),
+        update_button,
+        ipw.Button(),
+        warning,
+    )
+
+    assert commands == [["pip", "install", "--upgrade", requirement, "--user"]]
+    assert warning.value == ""
+    assert update_button.disabled
 
 
 def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
