@@ -23,9 +23,7 @@ from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.plugins.utils import (
-    get_entry_items,
-)
+from aiidalab_qe.plugins.utils import get_entry_items
 
 from .advanced import (
     AdvancedConfigurationSettingsModel,
@@ -89,6 +87,9 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         self.incompatible_properties_list = []
         self.available_properties_list = []
         self.incompatible_plugin_data = {}
+        self.properties = {}
+        self.observed_property_models = set()
+
         self.entry_point_distributions = {
             entry_point.name: distribution.metadata["Name"]
             for distribution in distributions()
@@ -96,8 +97,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             if entry_point.group == "aiidalab_qe.properties"
             and distribution.metadata.get("Name")
         }
-        self.properties = {}
-        self.observed_property_models = set()
 
         self._fetch_available_properties()
         self._fetch_plugin_calculation_settings()
@@ -243,18 +242,19 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             return
         self.installed_properties.children = self.installed_properties_list
         self._set_incompatible_properties()
-        self.incompatible_properties_section.layout.display = (
-            "" if self.incompatible_properties_list else "none"
-        )
+        self._toggle_incompatible_properties()
 
     def _on_available_properties_fetched(self, _):
         if not self.rendered:
             return
         self._set_incompatible_properties()
+        self._toggle_incompatible_properties()
+        self._set_available_properties()
+
+    def _toggle_incompatible_properties(self):
         self.incompatible_properties_section.layout.display = (
             "" if self.incompatible_properties_list else "none"
         )
-        self._set_available_properties()
 
     def _set_incompatible_properties(self):
         items = "".join(
