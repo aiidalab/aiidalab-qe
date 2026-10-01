@@ -178,7 +178,7 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
                 </p>
                 <p>
                     <b>Note:</b> App plugins may add structure importers, examples, and/or editors.
-                    Visit the <b>Plugin Store</b> for more information about available plugins.
+                    Visit the plugin store for more information about available plugins.
                 </p>
             """),
             self.manager,
