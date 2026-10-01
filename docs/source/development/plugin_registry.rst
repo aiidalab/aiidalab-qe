@@ -23,7 +23,7 @@ To include your plugin in the registry, follow these steps:
         github: "https://github.com/alicedoe/aiidalab-qe-xyz"
         documentation: "https://aiidalab-qe-xyz.readthedocs.io/"
         pip: "aiidalab-qe-xyz==version-of-the-code"
-        post-install: "post-install-command"
+        post_install: "post-install-command"
 
 3. Submit a Pull Request. Direct it to `this repository's Pull Requests section <https://github.com/aiidalab/aiidalab-qe/pulls>`_.
 
@@ -45,7 +45,7 @@ At least one of ``github`` or ``pip`` is required. ``pip`` installation will be 
 - **pip:** The PyPI package name for your plugin, useful for installation via pip. Example: ``aiida-quantum``.
 - **documentation:** The URL to your plugin's online documentation, such as ReadTheDocs.
 - **author:** The developer of the plugin.
-- **post-install:** a post install Command Line Interface (CLI) command which should be defined inside your plugin if you needs it. For example in the ``aiidalab-qe-vibroscopy`` plugin, we automatically setup the phonopy code via this command. See below for more explanations.
+- **post_install:** a post install Command Line Interface (CLI) command which should be defined inside your plugin if you needs it. For example in the ``aiidalab-qe-vibroscopy`` plugin, we automatically setup the phonopy code via this command. See below for more explanations.
 
 How to define a post install command in your plugin
 ---------------------------------------------------------------------

@@ -64,7 +64,7 @@ def test_outdated_plugin_actions(monkeypatch):
         manager._build_ui()
 
     buttons = manager.accordion.children[0].children[2].children
-    install_button, update_button, _post_install_button, remove_button, clear_button = (
+    install_button, _post_install_button, update_button, remove_button, clear_button = (
         buttons
     )
     assert install_button.disabled
@@ -404,5 +404,5 @@ def test_post_install_only_button_is_enabled_when_package_is_not_installed(
     manager = PluginManager()
     manager._build_ui()
 
-    post_install_button = manager.accordion.children[0].children[2].children[2]
+    post_install_button = manager.accordion.children[0].children[2].children[1]
     assert not post_install_button.disabled
