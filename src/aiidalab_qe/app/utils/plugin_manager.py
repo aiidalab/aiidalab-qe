@@ -10,7 +10,7 @@ import html
 import logging
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from importlib import metadata
 from pathlib import Path
@@ -238,33 +238,22 @@ class QeAppPluginData:
         }
 
 
-class QeAppPluginRow:
-    """Widgets and actions for one validated plugin registry entry."""
+class QeAppPlugin(ipw.VBox):
+    """Widget and actions for one validated plugin registry entry."""
 
-    def __init__(self, data: QeAppPluginData):
+    def __init__(
+        self,
+        data: QeAppPluginData,
+        title_updater: Callable[[str], None] | None = None,
+        **kwargs,
+    ):
         self.data = data
-        self.accordion: ipw.Accordion | None = None
-        self.index: int | None = None
+        self.title_updater = title_updater
         self.installed_version: str | None = None
         self.plugin_compatible = True
         self.app_compatible = True
         self.requirement_error: str | None = None
-        self.version_warning: ipw.HTML | None = None
-        self.message_container: ipw.HTML | None = None
-        self.output_container: ipw.HTML | None = None
-        self.install_button: ipw.Button | None = None
-        self.post_install_button: ipw.Button | None = None
-        self.update_button: ipw.Button | None = None
-        self.remove_button: ipw.Button | None = None
-        self.clear_output_button: ipw.Button | None = None
 
-    @property
-    def is_installed(self) -> bool:
-        return self.installed_version is not None
-
-    def build_panel(self, accordion: ipw.Accordion, index: int) -> ipw.VBox:
-        self.accordion = accordion
-        self.index = index
         self.version_warning = ipw.HTML()
         self.message_container = ipw.HTML(
             value="",
@@ -329,9 +318,7 @@ class QeAppPluginRow:
                 "value",
             )
 
-        self.reconcile_state()
-
-        return ipw.VBox(
+        super().__init__(
             children=[
                 ipw.HTML(self._details_html()),
                 self.version_warning,
@@ -347,7 +334,14 @@ class QeAppPluginRow:
                 self.message_container,
                 self.output_container,
             ],
+            **kwargs,
         )
+
+        self.reconcile_state()
+
+    @property
+    def is_installed(self) -> bool:
+        return self.installed_version is not None
 
     def reconcile_state(self) -> None:
         """Refresh package compatibility and every widget derived from it."""
@@ -356,17 +350,21 @@ class QeAppPluginRow:
                 self.data.package, self.data.pip or self.data.package
             )
         )
+
         self.app_compatible = is_version_compatible(self.data.requires_aiidalab_qe)
+
         if self.version_warning is None:
             return
 
         warning = ""
+
         if not self.app_compatible:
             warning += (
                 '<div class="alert alert-danger" role="alert">'
                 f"This plugin requires aiidalab_qe {self.data.requires_aiidalab_qe}, "
                 f"but you have {INSTALLED_AIIDA_QE_VERSION}.</div>"
             )
+
         if self.requirement_error:
             warning += (
                 '<div class="alert alert-danger" role="alert">'
@@ -381,6 +379,7 @@ class QeAppPluginRow:
                 f"{requirement.name}{requirement.specifier}. Please update accordingly."
                 "</div>"
             )
+
         self.version_warning.value = warning
 
         if self.install_button is not None:
@@ -389,54 +388,61 @@ class QeAppPluginRow:
                 or not self.app_compatible
                 or bool(self.requirement_error)
             )
+
         if self.update_button is not None:
             self.update_button.disabled = (
                 not self.is_installed
                 or self.plugin_compatible
                 or not self.app_compatible
             )
+
         if self.remove_button is not None:
             self.remove_button.disabled = not self.is_installed
-        self._sync_title(warning)
+
+        self.update_title(warning)
+
+    def update_title(self, warning: str | None = None) -> None:
+        if self.title_updater is None:
+            return
+
+        if warning is None and self.version_warning is not None:
+            warning = self.version_warning.value
+
+        status = (
+            "⚠️" if self.is_installed and warning else "✅" if self.is_installed else ""
+        )
+
+        self.title_updater(f"{self.data.title} {status}".rstrip())
 
     def _details_html(self) -> str:
         status_value = self.data.status.strip().lower()
         badge_color = COLOR_MAP.get(status_value, "#666666")
         display_text = status_value.capitalize() if status_value else "N/A"
+
         badge_html = (
             f'<span style="background-color: {badge_color}; color: #FFFFFF; '
             f'border-radius: 4px; padding: 2px 6px;">{display_text}</span>'
         )
+
         details = (
             f"<b>Package:</b> {self.data.package}<br>"
             f"<b>Author:</b> {self.data.author}<br>"
             f"<b>Description:</b> {self.data.description}<br>"
             f"<b>Status:</b> {badge_html}<br>"
         )
+
         if self.data.documentation:
             details += (
                 f"<b>Documentation:</b> <a href='{self.data.documentation}' "
                 "target='_blank'>Visit</a><br>"
             )
+
         if self.data.github:
             details += (
                 f"<b>Github:</b> <a href='{self.data.github}' target='_blank'>Visit</a>"
             )
-        return details
 
-    def _sync_title(self, warning: str | None = None) -> None:
-        if (
-            self.accordion is None
-            or self.index is None
-            or self.index >= len(self.accordion.children)
-        ):
-            return
-        if warning is None and self.version_warning is not None:
-            warning = self.version_warning.value
-        status = (
-            "⚠️" if self.is_installed and warning else "✅" if self.is_installed else ""
-        )
-        self.accordion.set_title(self.index, f"{self.data.title} {status}".rstrip())
+        return details
 
     def _on_install(self, _button: ipw.Button) -> None:
         message = self.message_container
@@ -445,7 +451,9 @@ class QeAppPluginRow:
         message.layout.display = "block"
         message.value = ""
         output.value = ""
+
         self._append_message(f"Installing {self.data.package}...")
+
         install_source = self.data.pip or f"git+{self.data.github}"
         installed = self._execute_command(
             [sys.executable, "-m", "pip", "install", install_source, "--user"],
@@ -463,6 +471,7 @@ class QeAppPluginRow:
             return
 
         self._append_message("Testing plugin loading...", color="#008000")
+
         try:
             result = subprocess.run(
                 [
@@ -489,8 +498,10 @@ class QeAppPluginRow:
 
         if result.stdout:
             self._append_output(result.stdout)
+
         if result.stderr:
             self._append_output(result.stderr)
+
         if result.returncode == 0:
             self._append_message("Plugin test passed.", color="#008000")
             self._append_message("Plugin installed successfully.", color="#008000")
@@ -509,6 +520,7 @@ class QeAppPluginRow:
                 color="#FF0000",
             )
             self._remove_package(clear_output=False)
+
         self.reconcile_state()
 
     def _on_update(self, _button: ipw.Button) -> None:
@@ -517,7 +529,9 @@ class QeAppPluginRow:
         output.layout.display = "block"
         message.layout.display = "block"
         message.value = ""
+
         self._append_message(f"Updating {self.data.package}...")
+
         requirement = self.data.pip or f"git+{self.data.github}"
         result = self._execute_command(
             [
@@ -532,7 +546,9 @@ class QeAppPluginRow:
         )
         if result:
             self._restart_daemon()
+
         self.reconcile_state()
+
         if result and self.is_installed and self.plugin_compatible:
             self._append_message(
                 f"Updated {self.data.package} to {self.installed_version}.",
@@ -552,6 +568,7 @@ class QeAppPluginRow:
 
     def _remove_package(self, clear_output: bool = True) -> bool:
         self._append_message(f"Removing {self.data.package}...")
+
         requirement = Requirement(self.data.pip or self.data.package)
         result = self._execute_command(
             [sys.executable, "-m", "pip", "uninstall", "-y", requirement.name],
@@ -563,7 +580,9 @@ class QeAppPluginRow:
                 color="#008000",
             )
             self._restart_daemon()
+
         self.reconcile_state()
+
         return result
 
     def _on_post_install(self, _button: ipw.Button) -> None:
@@ -575,16 +594,20 @@ class QeAppPluginRow:
         message = self.message_container
         output.layout.display = "block"
         message.layout.display = "block"
+
         if clear_output:
             output.value = ""
             message.value = ""
+
         self._append_message(f"Running post-install for {self.data.package}...")
+
         command = [
             sys.executable,
             "-m",
             self.data.package.replace("-", "_"),
             self.data.post_install,
         ]
+
         try:
             result = subprocess.run(
                 command,
@@ -600,25 +623,30 @@ class QeAppPluginRow:
                 color="#FF0000",
             )
             return False
+
         if result.stdout:
             self._append_output(result.stdout)
+
         if result.returncode == 0:
             self._append_message(
                 f"Post-install completed for {self.data.package}.",
                 color="#008000",
             )
             return True
+
         LOGGER.error(
             "Post-install for %s failed with exit code %s: %s",
             self.data.package,
             result.returncode,
             result.stdout,
         )
+
         self._append_message(
             "Post-install did not complete. The package is present, but setup may be "
             "incomplete. Review the command output; details were logged for debugging.",
             color="#FF0000",
         )
+
         return False
 
     def _on_clear_output(self, _button: ipw.Button) -> None:
@@ -660,7 +688,9 @@ class QeAppPluginRow:
 
         for output in process.stdout:
             self._append_output(output)
+
         return_code = process.wait()
+
         if return_code != 0:
             LOGGER.error(
                 "Plugin command %r failed with exit code %s", command, return_code
@@ -670,6 +700,7 @@ class QeAppPluginRow:
                 "details were logged for debugging.\n"
             )
             return False
+
         return True
 
     def _clear_output(self) -> None:
@@ -697,13 +728,13 @@ class PluginManager:
     """
 
     def __init__(self, config_source: str = DEFAULT_PLUGIN_CONFIG_SOURCE):
-        """
-        Initialize the PluginManager with a path to a YAML config or a URL.
+        """Initialize the PluginManager with a path to a YAML config or a URL.
 
         :param config_source: Either a local YAML file path or a URL to a remote YAML file.
         """
         self.config_source = config_source
         self.config_error = None
+
         try:
             self.plugins = {
                 name: QeAppPluginData.from_mapping(name, data)
@@ -720,7 +751,6 @@ class PluginManager:
             self.plugins = {}
 
         self.accordion = ipw.Accordion()
-        self.rows: dict[str, QeAppPluginRow] = {}
 
     @property
     def data(self) -> dict:
@@ -730,9 +760,7 @@ class PluginManager:
         }
 
     def display_ui(self) -> None:
-        """
-        Display the Accordion UI in a Jupyter notebook.
-        """
+        """Display the Accordion UI in a Jupyter notebook."""
         if self.config_error:
             display(
                 ipw.HTML(
@@ -745,7 +773,7 @@ class PluginManager:
             )
             return
 
-        self._build_ui()
+        self._build_accordion()
         display(self.accordion)
 
     def _load_config(self) -> dict:
@@ -757,6 +785,7 @@ class PluginManager:
                 content = response.text
             else:
                 content = Path(self.config_source).read_text(encoding="utf-8")
+
             data = yaml.safe_load(content)
         except requests.RequestException as error:
             raise ValueError(f"Could not fetch plugin registry: {error}") from error
@@ -767,18 +796,23 @@ class PluginManager:
             return {}
         if not isinstance(data, Mapping):
             raise TypeError("plugin registry must be a mapping of names to entries")
+
         return data
 
-    def _build_ui(self) -> None:
+    def _build_accordion(self) -> None:
         """Build the Accordion UI from the validated plugin records."""
-        self.rows = {
-            name: QeAppPluginRow(plugin_data)
-            for name, plugin_data in self.plugins.items()
-        }
-        panels = [
-            row.build_panel(self.accordion, index)
-            for index, row in enumerate(self.rows.values())
+
+        def update_title(index: int, title: str) -> None:
+            if index < len(self.accordion.children):
+                self.accordion.set_title(index, title)
+
+        self.accordion.children = [
+            QeAppPlugin(
+                plugin_data,
+                title_updater=lambda title, index=index: update_title(index, title),
+            )
+            for index, plugin_data in enumerate(self.plugins.values())
         ]
-        self.accordion.children = panels
-        for row in self.rows.values():
-            row._sync_title()
+
+        for plugin in self.accordion.children:
+            plugin.update_title()
