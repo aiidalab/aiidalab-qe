@@ -46,6 +46,18 @@ At least one of ``github`` or ``pip`` is required. ``pip`` installation will be 
 - **documentation:** The URL to your plugin's online documentation, such as ReadTheDocs.
 - **author:** The developer of the plugin.
 - **post_install:** a post install Command Line Interface (CLI) command which should be defined inside your plugin if you needs it. For example in the ``aiidalab-qe-vibroscopy`` plugin, we automatically setup the phonopy code via this command. See below for more explanations.
+- **requires_aiidalab_qe:** an optional version specifier for the minimum compatible AiiDAlab QE app version, such as ``>26.09.0``.
+
+Registry Validation
+-------------------
+
+The registry is validated when it is loaded. Each entry must provide non-empty
+``title`` and ``description`` values, and at least one non-empty ``pip`` or
+``github`` installation source. A ``pip`` value must be a valid PEP 508
+requirement, and ``requires_aiidalab_qe`` must be a valid version specifier.
+Unknown keys are allowed so registry metadata can be extended without changing
+the loader. The test suite also validates every entry in the checked-in
+``plugins.yaml`` file.
 
 How to define a post install command in your plugin
 ---------------------------------------------------------------------

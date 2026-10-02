@@ -6,7 +6,11 @@ import ipywidgets as ipw
 import pytest
 
 from aiidalab_qe.app.utils import plugin_manager
-from aiidalab_qe.app.utils.plugin_manager import PluginManager
+from aiidalab_qe.app.utils.plugin_manager import (
+    PluginManager,
+    QeAppPluginData,
+    QeAppPluginRow,
+)
 
 # mock the content of the YAML file
 yaml_content = """
@@ -49,6 +53,109 @@ def test_plugin_manager_local_config_file():
         ), "Check second plugin title"
 
 
+def test_checked_in_plugin_registry_is_valid():
+    registry_path = Path(__file__).parents[1] / "plugins.yaml"
+    registry = plugin_manager.yaml.safe_load(registry_path.read_text())
+
+    plugins = [
+        QeAppPluginData.from_mapping(name, data) for name, data in registry.items()
+    ]
+
+    assert plugins
+
+
+@pytest.mark.parametrize(
+    ("data", "message"),
+    [
+        ({"description": "missing title", "pip": "my-plugin"}, "title"),
+        (
+            {"title": "My plugin", "description": "Test", "pip": "not a requirement"},
+            "invalid 'pip' requirement",
+        ),
+        (
+            {
+                "title": "My plugin",
+                "description": "Test",
+                "github": "https://example.test/plugin",
+                "requires_aiidalab_qe": "invalid",
+            },
+            "invalid 'requires_aiidalab_qe' specifier",
+        ),
+    ],
+)
+def test_plugin_registry_entry_validation(data, message):
+    with pytest.raises(ValueError, match=message):
+        QeAppPluginData.from_mapping("my-plugin", data)
+
+
+def test_plugin_registry_preserves_unknown_metadata():
+    plugin = QeAppPluginData.from_mapping(
+        "my-plugin",
+        {
+            "title": "My plugin",
+            "description": "Test",
+            "pip": "my-plugin",
+            "future_field": "kept",
+        },
+    )
+
+    assert plugin.as_mapping()["future_field"] == "kept"
+
+
+def test_plugin_data_and_row_keep_metadata_and_widgets_separate():
+    data = QeAppPluginData.from_mapping(
+        "my-plugin",
+        {
+            "title": "My plugin",
+            "description": "Test",
+            "pip": "my-plugin",
+        },
+    )
+
+    row = QeAppPluginRow(data)
+
+    assert row.data is data
+    assert not hasattr(data, "version_warning")
+    assert not hasattr(data, "install_button")
+    assert row.version_warning is None
+
+
+def test_empty_registry_is_normalized_to_mapping(tmp_path):
+    config_file = tmp_path / "plugins.yaml"
+    config_file.write_text("")
+
+    manager = PluginManager(config_source=str(config_file))
+
+    assert manager.data == {}
+    assert manager.config_error is None
+
+
+def test_invalid_registry_entry_is_reported_in_store(tmp_path, monkeypatch):
+    config_file = tmp_path / "plugins.yaml"
+    config_file.write_text(
+        "my-plugin:\n  title: My plugin\n  description: Test\n  pip: 'not a requirement'\n"
+    )
+    displayed = []
+    monkeypatch.setattr(plugin_manager, "display", displayed.append)
+
+    manager = PluginManager(config_source=str(config_file))
+    manager.display_ui()
+
+    assert "invalid 'pip' requirement" in manager.config_error
+    assert "invalid &#x27;pip&#x27; requirement" in displayed[0].value
+
+
+def test_remote_registry_request_error_is_reported(monkeypatch):
+    def fail_request(*_args, **_kwargs):
+        raise plugin_manager.requests.ConnectionError("offline")
+
+    monkeypatch.setattr(plugin_manager.requests, "get", fail_request)
+
+    manager = PluginManager(config_source="https://example.test/plugins.yaml")
+
+    assert "Could not fetch plugin registry: offline" in manager.config_error
+
+
 def test_outdated_plugin_actions(monkeypatch):
     monkeypatch.setattr(
         plugin_manager,
@@ -76,38 +183,46 @@ def test_outdated_plugin_actions(monkeypatch):
     assert "Installed version 1.0" in warning
 
 
-def test_install_button_stays_disabled_after_update(monkeypatch):
+def test_execute_command_streams_without_changing_widget_policy(monkeypatch):
     class Process:
         returncode = 0
         stdout = StringIO()
 
-        def poll(self):
+        def wait(self):
             return self.returncode
 
     monkeypatch.setattr(
         plugin_manager.subprocess, "Popen", lambda *_args, **_kwargs: Process()
     )
-    install_button = ipw.Button()
-    remove_button = ipw.Button(disabled=True)
-
-    result = plugin_manager.execute_command_with_output(
-        ["pip", "install", "--upgrade", "my-plugin"],
-        ipw.HTML(),
-        install_button,
-        remove_button,
-        action="update",
+    row = QeAppPluginRow(
+        QeAppPluginData.from_mapping(
+            "my-plugin",
+            {
+                "title": "My plugin",
+                "description": "Test",
+                "pip": "my-plugin",
+            },
+        )
     )
+    row.output_container = ipw.HTML()
+
+    result = row._execute_command(["pip", "install", "--upgrade", "my-plugin"])
 
     assert result
-    assert install_button.disabled
-    assert not remove_button.disabled
+    assert row.output_container.value == ""
 
 
 def test_clear_output_button_clears_and_hides_logs(monkeypatch):
     monkeypatch.setattr(
         PluginManager,
         "_load_config",
-        lambda _self: {"my-plugin": {"title": "My Test Plugin", "pip": "my-plugin"}},
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin",
+            }
+        },
     )
     monkeypatch.setattr(
         plugin_manager, "get_plugin_version_info", lambda *_args: (None, True, None)
@@ -150,6 +265,7 @@ def test_installed_plugin_status_icon(
         lambda _self: {
             "my-plugin": {
                 "title": "My Test Plugin",
+                "description": "A test plugin",
                 "pip": "my-plugin>=1",
             }
         },
@@ -173,7 +289,13 @@ def test_plugin_manager_displays_accordion_without_refresh_button(monkeypatch):
     monkeypatch.setattr(
         PluginManager,
         "_load_config",
-        lambda _self: {"my-plugin": {"title": "My Test Plugin", "pip": "my-plugin"}},
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin",
+            }
+        },
     )
     monkeypatch.setattr(
         plugin_manager,
@@ -252,41 +374,61 @@ def test_get_plugin_version_info_invalid_requirement():
 
 def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
     commands = []
-    monkeypatch.setattr(
-        plugin_manager,
-        "execute_command_with_output",
-        lambda command, *_args, **_kwargs: commands.append(command) or True,
-    )
+
+    def execute(_row, command, *_args, **_kwargs):
+        commands.append(command)
+        installed_version["value"] = "1.2.9"
+        return True
+
+    installed_version = {"value": "1.2.8"}
+    monkeypatch.setattr(QeAppPluginRow, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_manager,
         "get_plugin_version_info",
-        lambda *_args: ("1.2.9", True, None),
+        lambda *_args: (
+            installed_version["value"],
+            installed_version["value"] == "1.2.9",
+            None,
+        ),
     )
-    install_button = ipw.Button()
-    update_button = ipw.Button()
-    remove_button = ipw.Button()
-    warning = ipw.HTML(value="Outdated")
-    accordion = ipw.Accordion(children=[ipw.VBox()])
-    accordion.set_title(0, "My Test Plugin ⚠️")
-
-    plugin_manager.update_package(
-        "my-plugin",
-        "my-plugin>=1.2.9",
-        "",
-        ipw.HTML(),
-        ipw.HTML(),
-        install_button,
-        update_button,
-        remove_button,
-        warning,
-        accordion,
-        0,
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    daemon_commands = []
+    monkeypatch.setattr(
+        plugin_manager.subprocess,
+        "run",
+        lambda command, **_kwargs: daemon_commands.append(command),
     )
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin>=1.2.9",
+            }
+        },
+    )
+    manager = PluginManager()
+    manager._build_ui()
+    plugin = manager.rows["my-plugin"]
+    plugin._on_update(None)
 
-    assert commands == [["pip", "install", "--upgrade", "my-plugin>=1.2.9", "--user"]]
-    assert warning.value == ""
-    assert update_button.disabled
-    assert accordion.get_title(0).endswith("✅")
+    assert commands == [
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "my-plugin>=1.2.9",
+            "--user",
+        ]
+    ]
+    assert plugin.version_warning.value == ""
+    assert plugin.update_button.disabled
+    assert manager.accordion.get_title(0).endswith("✅")
+    assert daemon_commands == [["verdi", "daemon", "restart"]]
 
 
 def test_update_package_resolves_version_above_upper_bound(monkeypatch):
@@ -294,41 +436,65 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
     installed_version = {"value": "1.3.0"}
     requirement = "my-plugin>=1.2.9,<1.3.0"
 
-    def execute(command, *_args, **_kwargs):
+    def execute(_row, command, *_args, **_kwargs):
         commands.append(command)
         installed_version["value"] = "1.2.9"
         return True
 
-    monkeypatch.setattr(plugin_manager, "execute_command_with_output", execute)
+    monkeypatch.setattr(QeAppPluginRow, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_manager.metadata,
         "version",
         lambda _name: installed_version["value"],
     )
-    warning = ipw.HTML(value="Installed version 1.3.0 is incompatible")
-    update_button = ipw.Button()
-
-    plugin_manager.update_package(
-        "my-plugin",
-        requirement,
-        "",
-        ipw.HTML(),
-        ipw.HTML(),
-        ipw.Button(disabled=True),
-        update_button,
-        ipw.Button(),
-        warning,
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda *_args: (
+            installed_version["value"],
+            installed_version["value"] == "1.2.9",
+            None,
+        ),
     )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_manager.subprocess, "run", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": requirement,
+            }
+        },
+    )
+    manager = PluginManager()
+    manager._build_ui()
+    plugin = manager.rows["my-plugin"]
+    plugin._on_update(None)
 
-    assert commands == [["pip", "install", "--upgrade", requirement, "--user"]]
-    assert warning.value == ""
-    assert update_button.disabled
+    assert commands == [
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            requirement,
+            "--user",
+        ]
+    ]
+    assert plugin.version_warning.value == ""
+    assert plugin.update_button.disabled
 
 
 def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
     monkeypatch.setattr(
-        plugin_manager,
-        "execute_command_with_output",
+        QeAppPluginRow,
+        "_execute_command",
         lambda *_args, **_kwargs: True,
     )
     monkeypatch.setattr(
@@ -336,25 +502,164 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
         "get_plugin_version_info",
         lambda *_args: ("1.2.8", False, None),
     )
-    warning = ipw.HTML(value="Outdated")
-    message = ipw.HTML()
-    update_button = ipw.Button()
-
-    plugin_manager.update_package(
-        "my-plugin",
-        "my-plugin>=1.2.9",
-        "",
-        ipw.HTML(),
-        message,
-        ipw.Button(),
-        update_button,
-        ipw.Button(),
-        warning,
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.8", False, None),
     )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_manager.subprocess, "run", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin>=1.2.9",
+            }
+        },
+    )
+    manager = PluginManager()
+    manager._build_ui()
+    plugin = manager.rows["my-plugin"]
+    plugin._on_update(None)
 
-    assert warning.value == "Outdated"
-    assert not update_button.disabled
-    assert "does not meet the required version" in message.value
+    assert 'class="alert alert-danger"' in plugin.version_warning.value
+    assert not plugin.update_button.disabled
+    assert "does not meet the required version" in plugin.message_container.value
+
+
+def test_remove_reconciles_all_plugin_controls(monkeypatch):
+    installed = {"version": "1.0"}
+    commands = []
+    daemon_commands = []
+
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda *_args: (
+            (installed["version"], False, None)
+            if installed["version"]
+            else (None, True, None)
+        ),
+    )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+
+    def execute(_row, command, *_args, **_kwargs):
+        commands.append(command)
+        installed["version"] = None
+        return True
+
+    monkeypatch.setattr(QeAppPluginRow, "_execute_command", execute)
+    monkeypatch.setattr(
+        plugin_manager.subprocess,
+        "run",
+        lambda command, **_kwargs: daemon_commands.append(command),
+    )
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin>=2.0",
+            }
+        },
+    )
+    manager = PluginManager()
+    manager._build_ui()
+    plugin = manager.rows["my-plugin"]
+    assert not plugin.update_button.disabled
+    assert not plugin.remove_button.disabled
+
+    plugin._on_remove(None)
+
+    assert commands == [
+        [plugin_manager.sys.executable, "-m", "pip", "uninstall", "-y", "my-plugin"]
+    ]
+    assert not plugin.install_button.disabled
+    assert plugin.update_button.disabled
+    assert plugin.remove_button.disabled
+    assert plugin.version_warning.value == ""
+    assert manager.accordion.get_title(0) == "My Test Plugin"
+    assert daemon_commands == [["verdi", "daemon", "restart"]]
+
+
+def test_install_reconciles_plugin_controls(monkeypatch):
+    installed = {"version": "1.0"}
+    commands = []
+    daemon_commands = []
+
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda *_args: (installed["version"], installed["version"] == "2.0", None),
+    )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+
+    def execute(_row, command, *_args, **_kwargs):
+        commands.append(command)
+        installed["version"] = "2.0"
+        return True
+
+    monkeypatch.setattr(QeAppPluginRow, "_execute_command", execute)
+
+    class Result:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def run(command, **_kwargs):
+        daemon_commands.append(command)
+        return Result()
+
+    monkeypatch.setattr(plugin_manager.subprocess, "run", run)
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin>=2.0",
+            }
+        },
+    )
+    manager = PluginManager()
+    manager._build_ui()
+    plugin = manager.rows["my-plugin"]
+
+    plugin._on_install(None)
+
+    assert commands == [
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "my-plugin>=2.0",
+            "--user",
+        ]
+    ]
+    assert plugin.install_button.disabled
+    assert plugin.update_button.disabled
+    assert not plugin.remove_button.disabled
+    assert plugin.version_warning.value == ""
+    assert manager.accordion.get_title(0).endswith("✅")
+    assert daemon_commands == [
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "aiidalab_qe",
+            "test-plugin",
+            "my-plugin",
+        ],
+        ["verdi", "daemon", "restart"],
+    ]
 
 
 def test_run_post_install_runs_only_configured_command(monkeypatch):
@@ -372,8 +677,19 @@ def test_run_post_install_runs_only_configured_command(monkeypatch):
     )
     output = ipw.HTML()
     message = ipw.HTML()
-
-    plugin_manager.run_post_install("my-plugin", "setup", output, message)
+    data = QeAppPluginData.from_mapping(
+        "my-plugin",
+        {
+            "title": "My Test Plugin",
+            "description": "A test plugin",
+            "pip": "my-plugin",
+            "post_install": "setup",
+        },
+    )
+    plugin = QeAppPluginRow(data)
+    plugin.output_container = output
+    plugin.message_container = message
+    plugin._run_post_install()
 
     assert calls == [[plugin_manager.sys.executable, "-m", "my_plugin", "setup"]]
     assert "background-color: #3B3B3B" in output.value
@@ -391,6 +707,7 @@ def test_post_install_only_button_is_enabled_when_package_is_not_installed(
         lambda _self: {
             "my-plugin": {
                 "title": "My Test Plugin",
+                "description": "A test plugin",
                 "pip": "my-plugin",
                 "post_install": "setup",
             }
