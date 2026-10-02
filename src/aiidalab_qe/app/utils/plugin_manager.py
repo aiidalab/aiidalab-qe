@@ -38,6 +38,7 @@ COLOR_MAP = {
 DEFAULT_PLUGIN_CONFIG_SOURCE = (
     "https://raw.githubusercontent.com/aiidalab/aiidalab-qe/main/plugins.yaml"
 )
+BUTTON_WIDTH = "120px"
 
 
 def get_aiidalab_qe_version() -> str:
@@ -283,31 +284,55 @@ class QeAppPluginRow:
                 display="none",
             ),
         )
-        self.install_button = ipw.Button(description="Install", button_style="success")
+        self.install_button = ipw.Button(
+            description="Install",
+            button_style="success",
+            layout=ipw.Layout(width=BUTTON_WIDTH),
+        )
+        self.install_button.on_click(self._on_install)
+
         self.post_install_button = ipw.Button(
             description="Run post-install",
             button_style="info",
-            layout=ipw.Layout(display="" if self.data.post_install else "none"),
+            layout=ipw.Layout(
+                width=BUTTON_WIDTH,
+                display="" if self.data.post_install else "none",
+            ),
         )
-        self.update_button = ipw.Button(description="Update", button_style="warning")
-        self.remove_button = ipw.Button(description="Remove", button_style="danger")
+        self.post_install_button.on_click(self._on_post_install)
+
+        self.update_button = ipw.Button(
+            description="Update",
+            button_style="warning",
+            layout=ipw.Layout(width=BUTTON_WIDTH),
+        )
+        self.update_button.on_click(self._on_update)
+
+        self.remove_button = ipw.Button(
+            description="Remove",
+            button_style="danger",
+            layout=ipw.Layout(width=BUTTON_WIDTH),
+        )
+        self.remove_button.on_click(self._on_remove)
+
         self.clear_output_button = ipw.Button(
             description="Clear output",
             tooltip="Clear plugin messages and command output",
             disabled=True,
+            layout=ipw.Layout(width=BUTTON_WIDTH),
         )
-        self.install_button.on_click(self._on_install)
-        self.post_install_button.on_click(self._on_post_install)
-        self.update_button.on_click(self._on_update)
-        self.remove_button.on_click(self._on_remove)
         self.clear_output_button.on_click(self._on_clear_output)
+
         for output_widget in (self.message_container, self.output_container):
-            output_widget.observe(self._sync_clear_output_button, names="value")
+            output_widget.observe(
+                self._sync_clear_output_button,
+                "value",
+            )
 
         self.reconcile_state()
 
         return ipw.VBox(
-            [
+            children=[
                 ipw.HTML(self._details_html()),
                 self.version_warning,
                 ipw.HBox(
@@ -321,7 +346,7 @@ class QeAppPluginRow:
                 ),
                 self.message_container,
                 self.output_container,
-            ]
+            ],
         )
 
     def reconcile_state(self) -> None:
