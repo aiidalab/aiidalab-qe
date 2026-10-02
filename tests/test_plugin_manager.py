@@ -8,8 +8,8 @@ import pytest
 from aiidalab_qe.app.utils import plugin_manager
 from aiidalab_qe.app.utils.plugin_manager import (
     PluginManager,
+    QeAppPlugin,
     QeAppPluginData,
-    QeAppPluginRow,
 )
 
 # mock the content of the YAML file
@@ -41,7 +41,7 @@ def test_plugin_manager_local_config_file():
 
         # Instantiate the manager
         manager = PluginManager(config_source=str(config_file))
-        manager._build_ui()
+        manager._build_accordion()
         assert len(manager.accordion.children) == 2, "Should build 2 accordion panels."
 
         # Check that the titles are set correctly
@@ -102,7 +102,7 @@ def test_plugin_registry_preserves_unknown_metadata():
     assert plugin.as_mapping()["future_field"] == "kept"
 
 
-def test_plugin_data_and_row_keep_metadata_and_widgets_separate():
+def test_plugin_data_and_widget_keep_metadata_and_widgets_separate():
     data = QeAppPluginData.from_mapping(
         "my-plugin",
         {
@@ -112,12 +112,14 @@ def test_plugin_data_and_row_keep_metadata_and_widgets_separate():
         },
     )
 
-    row = QeAppPluginRow(data)
+    plugin = QeAppPlugin(data)
 
-    assert row.data is data
+    assert plugin.data is data
+    assert isinstance(plugin, ipw.VBox)
     assert not hasattr(data, "version_warning")
     assert not hasattr(data, "install_button")
-    assert row.version_warning is None
+    assert isinstance(plugin.version_warning, ipw.HTML)
+    assert isinstance(plugin.install_button, ipw.Button)
 
 
 def test_empty_registry_is_normalized_to_mapping(tmp_path):
@@ -168,7 +170,7 @@ def test_outdated_plugin_actions(monkeypatch):
         config_file = Path(tmp_dir) / "test_plugins.yaml"
         config_file.write_text(yaml_content)
         manager = PluginManager(config_source=str(config_file))
-        manager._build_ui()
+        manager._build_accordion()
 
     buttons = manager.accordion.children[0].children[2].children
     install_button, _post_install_button, update_button, remove_button, clear_button = (
@@ -194,7 +196,7 @@ def test_execute_command_streams_without_changing_widget_policy(monkeypatch):
     monkeypatch.setattr(
         plugin_manager.subprocess, "Popen", lambda *_args, **_kwargs: Process()
     )
-    row = QeAppPluginRow(
+    row = QeAppPlugin(
         QeAppPluginData.from_mapping(
             "my-plugin",
             {
@@ -230,7 +232,7 @@ def test_clear_output_button_clears_and_hides_logs(monkeypatch):
     monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
 
     manager = PluginManager()
-    manager._build_ui()
+    manager._build_accordion()
     row = manager.accordion.children[0].children
     message_container, output_container = row[3:5]
     clear_button = row[2].children[-1]
@@ -280,7 +282,7 @@ def test_installed_plugin_status_icon(
     )
 
     manager = PluginManager()
-    manager._build_ui()
+    manager._build_accordion()
 
     assert manager.accordion.get_title(0).endswith(expected_icon)
 
@@ -318,7 +320,7 @@ def test_plugin_manager_default_config_file():
     Test that PluginManager loads the YAML file from default source (GitHub repo).
     """
     manager = PluginManager()
-    manager._build_ui()
+    manager._build_accordion()
     assert (
         len(manager.accordion.children) > 0
     ), "Should build at least one accordion panels."
@@ -381,7 +383,7 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
         return True
 
     installed_version = {"value": "1.2.8"}
-    monkeypatch.setattr(QeAppPluginRow, "_execute_command", execute)
+    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_manager,
         "get_plugin_version_info",
@@ -410,8 +412,8 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_ui()
-    plugin = manager.rows["my-plugin"]
+    manager._build_accordion()
+    plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
     assert commands == [
@@ -441,7 +443,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
         installed_version["value"] = "1.2.9"
         return True
 
-    monkeypatch.setattr(QeAppPluginRow, "_execute_command", execute)
+    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_manager.metadata,
         "version",
@@ -472,8 +474,8 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_ui()
-    plugin = manager.rows["my-plugin"]
+    manager._build_accordion()
+    plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
     assert commands == [
@@ -493,7 +495,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
 
 def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
     monkeypatch.setattr(
-        QeAppPluginRow,
+        QeAppPlugin,
         "_execute_command",
         lambda *_args, **_kwargs: True,
     )
@@ -523,8 +525,8 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_ui()
-    plugin = manager.rows["my-plugin"]
+    manager._build_accordion()
+    plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
     assert 'class="alert alert-danger"' in plugin.version_warning.value
@@ -553,7 +555,7 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
         installed["version"] = None
         return True
 
-    monkeypatch.setattr(QeAppPluginRow, "_execute_command", execute)
+    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_manager.subprocess,
         "run",
@@ -571,8 +573,8 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_ui()
-    plugin = manager.rows["my-plugin"]
+    manager._build_accordion()
+    plugin = manager.accordion.children[0]
     assert not plugin.update_button.disabled
     assert not plugin.remove_button.disabled
 
@@ -606,7 +608,7 @@ def test_install_reconciles_plugin_controls(monkeypatch):
         installed["version"] = "2.0"
         return True
 
-    monkeypatch.setattr(QeAppPluginRow, "_execute_command", execute)
+    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
 
     class Result:
         returncode = 0
@@ -630,8 +632,8 @@ def test_install_reconciles_plugin_controls(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_ui()
-    plugin = manager.rows["my-plugin"]
+    manager._build_accordion()
+    plugin = manager.accordion.children[0]
 
     plugin._on_install(None)
 
@@ -686,7 +688,7 @@ def test_run_post_install_runs_only_configured_command(monkeypatch):
             "post_install": "setup",
         },
     )
-    plugin = QeAppPluginRow(data)
+    plugin = QeAppPlugin(data)
     plugin.output_container = output
     plugin.message_container = message
     plugin._run_post_install()
@@ -719,7 +721,7 @@ def test_post_install_only_button_is_enabled_when_package_is_not_installed(
     monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
 
     manager = PluginManager()
-    manager._build_ui()
+    manager._build_accordion()
 
     post_install_button = manager.accordion.children[0].children[2].children[1]
     assert not post_install_button.disabled
