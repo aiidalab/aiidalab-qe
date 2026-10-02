@@ -9,7 +9,7 @@ aiidalab-qe-vibroscopy:
     post_install: setup-phonopy
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>26.09.0'
+    requires_aiidalab_qe: '>=26.09.0'
 
 aiidalab-qe-muon:
     title: Muon spectroscopy
@@ -20,7 +20,7 @@ aiidalab-qe-muon:
     post_install: setup-python3
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>26.09.0'
+    requires_aiidalab_qe: '>=26.09.0'
 
 aiida-bader:
     title: Bader charge analysis
@@ -33,7 +33,7 @@ aiida-bader:
     post_install: post-install
     status: stable
     category: calculation
-    requires_aiidalab_qe: '>26.09.0'
+    requires_aiidalab_qe: '>=26.09.0'
 
 aiida-qe-xspec:
     title: Core-level spectroscopy
@@ -46,7 +46,7 @@ aiida-qe-xspec:
     post_install: post-install
     status: beta
     category: calculation
-    requires_aiidalab_qe: '>26.09.0'
+    requires_aiidalab_qe: '>=26.09.0'
 
 aiidalab-qe-wannier90:
     title: Wannier functions
@@ -57,7 +57,7 @@ aiidalab-qe-wannier90:
     documentation: https://aiidalab-qe-wannier90.readthedocs.io/
     status: beta
     category: calculation
-    requires_aiidalab_qe: '>26.09.0'
+    requires_aiidalab_qe: '>=26.09.0'
 
 aiidalab-qe-hp:
     title: Hubbard parameters
@@ -69,7 +69,7 @@ aiidalab-qe-hp:
     pip: aiidalab-qe-hp
     status: beta
     category: calculation
-    requires_aiidalab_qe: '>26.09.0'
+    requires_aiidalab_qe: '>=26.09.0'
 
 aiidalab-qe-pp:
     title: Post-processing
@@ -81,4 +81,4 @@ aiidalab-qe-pp:
     post_install: post-install
     status: beta
     category: calculation
-    requires_aiidalab_qe: '>26.09.0'
+    requires_aiidalab_qe: '>=26.09.0'
