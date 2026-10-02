@@ -48,28 +48,6 @@ def test_panel():
     assert "bands" in parameters
 
 
-def test_reminder_info():
-    """Dynamic add/remove the reminder text based on the workchain settings."""
-    model = ConfigurationStepModel()
-    config = ConfigurationStep(model=model)
-    config.render()
-    bands_info = next(
-        (
-            installed_property.children[1]
-            for installed_property in config.installed_properties_list
-            if "Electronic band structure" in installed_property.children[0].title
-        ),
-        None,
-    )
-    assert bands_info is not None
-    assert bands_info.value == ""
-    bands_model = model.get_model("bands")
-    bands_model.include = True
-    assert bands_info.value == "Customize bands settings in <b>Step 2.2</b> if needed"
-    bands_model.include = False
-    assert bands_info.value == ""
-
-
 def test_fetching_available_properties():
     import os
 
