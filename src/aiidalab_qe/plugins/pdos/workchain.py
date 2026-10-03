@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from aiida import orm
 from aiida.plugins import WorkflowFactory
 from aiida_quantumespresso.common.types import ElectronicType, SpinType
@@ -138,9 +140,20 @@ def update_inputs(inputs, ctx):
     inputs.structure = ctx.current_structure
 
 
+def get_workchain_metadata(
+    **_kwargs,
+):
+    """Return the metadata for the workchain."""
+    return {
+        "dynamic": False,
+        "number_of_calcjob": 4,
+    }
+
+
 workchain_and_builder = {
     "workchain": PdosWorkChain,
     "exclude": ("structure", "relax"),
     "get_builder": get_builder,
     "update_inputs": update_inputs,
+    "get_workchain_metadata": get_workchain_metadata,
 }
