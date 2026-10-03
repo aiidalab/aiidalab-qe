@@ -1,7 +1,6 @@
 import builtins
 
 import aiidalab_widgets_base as awb
-
 from aiidalab_qe.app.structure.step import _get_optional_cdxml_importer
 
 
