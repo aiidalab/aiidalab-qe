@@ -20,10 +20,10 @@ def test_optional_cdxml_importer_is_used_when_available(monkeypatch):
 def test_optional_cdxml_importer_is_skipped_when_unavailable(monkeypatch):
     original_import = builtins.__import__
 
-    def import_without_cdxml(name, globals=None, locals=None, fromlist=(), level=0):
+    def import_without_cdxml(name, globals_=None, locals_=None, fromlist=(), level=0):
         if name == "aiidalab_widgets_base" and "CdxmlUploadWidget" in fromlist:
             raise ImportError("CdxmlUploadWidget is unavailable")
-        return original_import(name, globals, locals, fromlist, level)
+        return original_import(name, globals_, locals_, fromlist, level)
 
     monkeypatch.setattr(builtins, "__import__", import_without_cdxml)
 

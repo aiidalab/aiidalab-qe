@@ -49,6 +49,7 @@ def _get_optional_cdxml_importer():
     try:
         from aiidalab_widgets_base import CdxmlUploadWidget
     except ImportError:
+        # Keep the app usable with widget-base releases that predate CDXML support.
         return None
     return CdxmlUploadWidget(title="CDXML")
 
