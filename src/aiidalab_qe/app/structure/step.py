@@ -44,6 +44,15 @@ Examples = [
 ]
 
 
+def _get_optional_cdxml_importer():
+    """Create the CDXML importer when the installed widget base provides it."""
+    try:
+        from aiidalab_widgets_base import CdxmlUploadWidget
+    except ImportError:
+        return None
+    return CdxmlUploadWidget(title="CDXML")
+
+
 class StructureStep(ConfirmableWizardStep[StructureStepModel]):
     """Integrated widget for the selection and edition of structure.
     The widget includes a structure manager that allows to select a structure
@@ -107,6 +116,10 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
                 title="From examples", examples_by_category=examples_by_category
             ),
         ]
+
+        cdxml_importer = _get_optional_cdxml_importer()
+        if cdxml_importer is not None:
+            importers.insert(1, cdxml_importer)
 
         plugin_importers = get_entry_items("aiidalab_qe.properties", "importer")
         importers.extend([importer() for importer in plugin_importers.values()])
