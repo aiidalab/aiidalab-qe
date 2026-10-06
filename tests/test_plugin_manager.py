@@ -45,17 +45,18 @@ def test_plugin_manager_local_config_file():
         assert len(manager.accordion.children) == 2, "Should build 2 accordion panels."
 
         # Check that the titles are set correctly
-        assert "My Test Plugin" in manager.accordion.get_title(
-            0
-        ), "Check initial title for not-installed plugin"
-        assert "Another Plugin" in manager.accordion.get_title(
-            1
-        ), "Check second plugin title"
+        assert "My Test Plugin" in manager.accordion.get_title(0), (
+            "Check initial title for not-installed plugin"
+        )
+        assert "Another Plugin" in manager.accordion.get_title(1), (
+            "Check second plugin title"
+        )
 
 
 def test_checked_in_plugin_registry_is_valid():
-    registry_path = Path(__file__).parents[1] / "plugins.yaml"
-    registry = plugin_manager.yaml.safe_load(registry_path.read_text())
+    registry = plugin_manager.yaml.safe_load(
+        plugin_manager.DEFAULT_PLUGIN_CONFIG_SOURCE.read_text()
+    )
 
     plugins = [
         QeAppPluginData.from_mapping(name, data) for name, data in registry.items()
@@ -321,9 +322,9 @@ def test_plugin_manager_default_config_file():
     """
     manager = PluginManager()
     manager._build_accordion()
-    assert (
-        len(manager.accordion.children) > 0
-    ), "Should build at least one accordion panels."
+    assert len(manager.accordion.children) > 0, (
+        "Should build at least one accordion panels."
+    )
 
 
 @pytest.mark.parametrize(
@@ -398,7 +399,10 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
     monkeypatch.setattr(
         plugin_manager.subprocess,
         "run",
-        lambda command, **_kwargs: daemon_commands.append(command),
+        lambda command, **_kwargs: (
+            daemon_commands.append(command)
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
     )
     monkeypatch.setattr(
         PluginManager,
@@ -408,6 +412,7 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
                 "title": "My Test Plugin",
                 "description": "A test plugin",
                 "pip": "my-plugin>=1.2.9",
+                "post_install": "setup",
             }
         },
     )
@@ -430,7 +435,17 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
     assert plugin.version_warning.value == ""
     assert plugin.update_button.disabled
     assert manager.accordion.get_title(0).endswith("✅")
-    assert daemon_commands == [["verdi", "daemon", "restart"]]
+    assert daemon_commands == [
+        [plugin_manager.sys.executable, "-m", "my_plugin", "setup"],
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "aiidalab_qe",
+            "test-plugin",
+            "my-plugin",
+        ],
+        ["verdi", "daemon", "restart"],
+    ]
 
 
 def test_update_package_resolves_version_above_upper_bound(monkeypatch):
@@ -459,8 +474,14 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
         ),
     )
     monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    subprocess_commands = []
     monkeypatch.setattr(
-        plugin_manager.subprocess, "run", lambda *_args, **_kwargs: None
+        plugin_manager.subprocess,
+        "run",
+        lambda command, **_kwargs: (
+            subprocess_commands.append(command)
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
     )
     monkeypatch.setattr(
         PluginManager,
@@ -491,6 +512,75 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
     ]
     assert plugin.version_warning.value == ""
     assert plugin.update_button.disabled
+    assert subprocess_commands == [
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "aiidalab_qe",
+            "test-plugin",
+            "my-plugin",
+        ],
+        ["verdi", "daemon", "restart"],
+    ]
+
+
+def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
+    installed_version = {"value": "1.2.8"}
+    commands = []
+
+    def execute(_row, command, *_args, **_kwargs):
+        commands.append(command)
+        installed_version["value"] = "1.2.9"
+        return True
+
+    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda *_args: (
+            installed_version["value"],
+            installed_version["value"] == "1.2.9",
+            None,
+        ),
+    )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+
+    subprocess_commands = []
+
+    def fail_plugin_test(command, **_kwargs):
+        subprocess_commands.append(command)
+        return plugin_manager.subprocess.CompletedProcess(command, 1, "", "failed")
+
+    monkeypatch.setattr(plugin_manager.subprocess, "run", fail_plugin_test)
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin>=1.2.9",
+            }
+        },
+    )
+    manager = PluginManager()
+    manager._build_accordion()
+    plugin = manager.accordion.children[0]
+
+    plugin._on_update(None)
+
+    assert len(commands) == 1
+    assert subprocess_commands == [
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "aiidalab_qe",
+            "test-plugin",
+            "my-plugin",
+        ]
+    ]
+    assert "did not pass" in plugin.message_container.value
+    assert "Updated my-plugin" not in plugin.message_container.value
 
 
 def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
@@ -510,8 +600,14 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
         lambda *_args: ("1.2.8", False, None),
     )
     monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    subprocess_commands = []
     monkeypatch.setattr(
-        plugin_manager.subprocess, "run", lambda *_args, **_kwargs: None
+        plugin_manager.subprocess,
+        "run",
+        lambda command, **_kwargs: (
+            subprocess_commands.append(command)
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
     )
     monkeypatch.setattr(
         PluginManager,
@@ -532,6 +628,15 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
     assert 'class="alert alert-danger"' in plugin.version_warning.value
     assert not plugin.update_button.disabled
     assert "does not meet the required version" in plugin.message_container.value
+    assert subprocess_commands == [
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "aiidalab_qe",
+            "test-plugin",
+            "my-plugin",
+        ]
+    ]
 
 
 def test_remove_reconciles_all_plugin_controls(monkeypatch):

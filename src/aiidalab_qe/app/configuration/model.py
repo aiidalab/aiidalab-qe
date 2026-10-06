@@ -34,6 +34,7 @@ class ConfigurationStepModel(
 
     installed_properties_fetched = tl.Bool(False)
     available_properties_fetched = tl.Bool(False)
+    loaded_from_process = tl.Bool(False)
 
     _dependencies = [
         "structure_uuid",

@@ -363,15 +363,21 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             package_name = plugin_data.get("package") or plugin_name
             pip_requirement = plugin_data.get("pip") or package_name
 
-            (
-                installed_version,
-                plugin_compatible,
-                requirement_error,
-            ) = get_plugin_version_info(package_name, pip_requirement)
-
-            is_installed = installed_version is not None
-            compatible_app_version = plugin_data.get("requires_aiidalab_qe")
-            app_compatible = is_version_compatible(compatible_app_version)
+            if self._model.loaded_from_process:
+                installed_version = None
+                plugin_compatible = True
+                requirement_error = None
+                app_compatible = True
+                is_installed = is_package_installed(package_name)
+            else:
+                (
+                    installed_version,
+                    plugin_compatible,
+                    requirement_error,
+                ) = get_plugin_version_info(package_name, pip_requirement)
+                is_installed = installed_version is not None
+                compatible_app_version = plugin_data.get("requires_aiidalab_qe")
+                app_compatible = is_version_compatible(compatible_app_version)
 
             try:
                 requirement = Requirement(pip_requirement)

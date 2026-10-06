@@ -29,6 +29,7 @@ class QeWizard(Wizard):
         model: QeWizardModel,
         auto_setup: bool = True,
         log_widget: ipw.VBox | None = None,
+        loaded_from_process: bool = False,
         **kwargs,
     ):
         super().__init__(model, ICONS, **kwargs)
@@ -45,6 +46,7 @@ class QeWizard(Wizard):
         )
 
         self.configuration_model = ConfigurationStepModel(auto_advance=True)
+        self.configuration_model.loaded_from_process = loaded_from_process
         self.configuration_step = ConfigurationStep(model=self.configuration_model)
         self.add_step(
             step=self.configuration_step,

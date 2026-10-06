@@ -49,13 +49,11 @@ def test_panel():
 
 
 def test_fetching_available_properties():
-    import os
+    from aiidalab_qe.app.utils.plugin_manager import DEFAULT_PLUGIN_CONFIG_SOURCE
 
-    current_file = os.path.abspath(__file__)
-    plugin_file = os.path.join(os.path.dirname(current_file), "../plugins.yaml")
     model = ConfigurationStepModel()
     config = ConfigurationStep(model=model)
-    config._fetch_available_properties(str(plugin_file))
+    config._fetch_available_properties(str(DEFAULT_PLUGIN_CONFIG_SOURCE))
     assert len(config.available_properties_list) > 0
     assert model.available_properties_fetched
     assert all("<li>" not in title for title in config.available_properties_list)
@@ -145,3 +143,59 @@ def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
     )
     assert not model.get_model("bands").include
     assert "bands" not in model._get_properties()
+
+
+def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.configuration import step as configuration_step
+
+    class Registry:
+        data = {
+            "my-plugin": {
+                "title": "My plugin",
+                "package": "my-plugin",
+                "pip": "my-plugin>=2.0",
+                "category": "calculation",
+            }
+        }
+
+        def __init__(self, _source):
+            pass
+
+    distribution = SimpleNamespace(
+        metadata={"Name": "my-plugin"},
+        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
+    )
+    monkeypatch.setattr(configuration_step, "PluginManager", Registry)
+    monkeypatch.setattr(configuration_step, "distributions", lambda: [distribution])
+    monkeypatch.setattr(
+        configuration_step,
+        "get_plugin_version_info",
+        lambda *_args: (_ for _ in ()).throw(
+            AssertionError("process-backed Step 2 must skip compatibility checks")
+        ),
+    )
+    monkeypatch.setattr(
+        configuration_step,
+        "is_version_compatible",
+        lambda *_args: (_ for _ in ()).throw(
+            AssertionError("process-backed Step 2 must skip compatibility checks")
+        ),
+    )
+    monkeypatch.setattr(configuration_step, "is_package_installed", lambda *_: True)
+
+    model = ConfigurationStepModel()
+    model.loaded_from_process = True
+    config = ConfigurationStep(model=model)
+    config.render()
+    model.set_model_state(
+        {"workchain": {"properties": ["bands"], "relax_type": "none"}}
+    )
+
+    assert config.incompatible_properties_list == []
+    assert "Electronic band structure" in [
+        row.children[0].title for row in config.installed_properties_list
+    ]
+    assert model.get_model("bands").include
+    assert "bands" in model._get_properties()

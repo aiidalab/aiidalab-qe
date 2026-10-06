@@ -13,6 +13,7 @@ import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from importlib import metadata
+from importlib.resources import files
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -35,9 +36,7 @@ COLOR_MAP = {
     "deprecated": "#FF0000",  # 🔴 Red - No longer maintained
     "archived": "#808080",  # ⚪ Grey - Retained for reference, no updates
 }
-DEFAULT_PLUGIN_CONFIG_SOURCE = (
-    "https://raw.githubusercontent.com/aiidalab/aiidalab-qe/main/plugins.yaml"
-)
+DEFAULT_PLUGIN_CONFIG_SOURCE = files("aiidalab_qe.plugins").joinpath("plugins.yaml")
 BUTTON_WIDTH = "120px"
 
 
@@ -466,9 +465,21 @@ class QeAppPlugin(ipw.VBox):
             self.reconcile_state()
             return
 
-        if self.data.post_install and not self._run_post_install(clear_output=False):
+        if not self._validate_plugin_installation(remove_on_test_failure=True):
             self.reconcile_state()
             return
+
+        self._append_message("Plugin installed successfully.", color="#008000")
+        self._restart_daemon()
+
+        self.reconcile_state()
+
+    def _validate_plugin_installation(
+        self, remove_on_test_failure: bool = False
+    ) -> bool:
+        """Run the plugin setup hook and verify that its entry points load."""
+        if self.data.post_install and not self._run_post_install(clear_output=False):
+            return False
 
         self._append_message("Testing plugin loading...", color="#008000")
 
@@ -493,35 +504,37 @@ class QeAppPlugin(ipw.VBox):
                 "The plugin test could not be started. Details were logged for debugging.",
                 color="#FF0000",
             )
-            self.reconcile_state()
-            return
+            return False
 
         if result.stdout:
             self._append_output(result.stdout)
-
         if result.stderr:
             self._append_output(result.stderr)
 
         if result.returncode == 0:
             self._append_message("Plugin test passed.", color="#008000")
-            self._append_message("Plugin installed successfully.", color="#008000")
-            self._restart_daemon()
+            return True
+
+        LOGGER.error(
+            "Plugin test failed for %s (exit code %s): %s%s",
+            self.data.package,
+            result.returncode,
+            result.stdout,
+            result.stderr,
+        )
+        message = f"The plugin test for {self.data.package} did not pass."
+        if remove_on_test_failure:
+            message += (
+                " The package will be removed to prevent use in an incomplete state."
+            )
         else:
-            LOGGER.error(
-                "Plugin test failed for %s (exit code %s): %s%s",
-                self.data.package,
-                result.returncode,
-                result.stdout,
-                result.stderr,
-            )
-            self._append_message(
-                f"The plugin test for {self.data.package} did not pass. The package will be "
-                "removed to prevent use in an incomplete state. Details were logged.",
-                color="#FF0000",
-            )
+            message += " The update was not activated."
+        self._append_message(message + " Details were logged.", color="#FF0000")
+
+        if remove_on_test_failure:
             self._remove_package(clear_output=False)
 
-        self.reconcile_state()
+        return False
 
     def _on_update(self, _button: ipw.Button) -> None:
         output = self.output_container
@@ -544,12 +557,23 @@ class QeAppPlugin(ipw.VBox):
                 "--user",
             ]
         )
-        if result:
-            self._restart_daemon()
+        if not result:
+            self.reconcile_state()
+            return
+
+        if not self._validate_plugin_installation():
+            self.reconcile_state()
+            return
 
         self.reconcile_state()
 
-        if result and self.is_installed and self.plugin_compatible:
+        if (
+            self.is_installed
+            and self.plugin_compatible
+            and self.app_compatible
+            and not self.requirement_error
+        ):
+            self._restart_daemon()
             self._append_message(
                 f"Updated {self.data.package} to {self.installed_version}.",
                 color="#008000",
@@ -727,10 +751,10 @@ class PluginManager:
     those plugins in a Jupyter environment.
     """
 
-    def __init__(self, config_source: str = DEFAULT_PLUGIN_CONFIG_SOURCE):
+    def __init__(self, config_source: str | Path = DEFAULT_PLUGIN_CONFIG_SOURCE):
         """Initialize the PluginManager with a path to a YAML config or a URL.
 
-        :param config_source: Either a local YAML file path or a URL to a remote YAML file.
+        :param config_source: A local YAML path, a package resource, or a remote URL.
         """
         self.config_source = config_source
         self.config_error = None
@@ -779,12 +803,15 @@ class PluginManager:
     def _load_config(self) -> dict:
         """Load YAML from the configured local path or HTTP(S) URL."""
         try:
-            if urlparse(self.config_source).scheme in {"http", "https"}:
-                response = requests.get(self.config_source, timeout=10)
-                response.raise_for_status()
-                content = response.text
+            if isinstance(self.config_source, str):
+                if urlparse(self.config_source).scheme in {"http", "https"}:
+                    response = requests.get(self.config_source, timeout=10)
+                    response.raise_for_status()
+                    content = response.text
+                else:
+                    content = Path(self.config_source).read_text(encoding="utf-8")
             else:
-                content = Path(self.config_source).read_text(encoding="utf-8")
+                content = self.config_source.read_text(encoding="utf-8")
 
             data = yaml.safe_load(content)
         except requests.RequestException as error:

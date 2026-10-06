@@ -81,7 +81,12 @@ class AppController:
         duplicating: bool = False,
     ) -> None:
         """Load and initialize the wizard."""
-        self.wizard = QeWizard(self._wizard_model, auto_setup, log_widget)
+        self.wizard = QeWizard(
+            self._wizard_model,
+            auto_setup,
+            log_widget,
+            loaded_from_process=bool(self._model.process_uuid),
+        )
 
         state = {"process_uuid": self._model.process_uuid}
         if self._model.process_uuid:
@@ -129,6 +134,33 @@ class AppController:
         self._view.app_container.children = [self.wizard]
         self._wizard_model.state = state
         self._model.loaded = True
+        self._update_duplicate_workflow_link(state)
+
+    def _update_duplicate_workflow_link(self, state: dict | None = None) -> None:
+        """Disable duplicating a process that selected incompatible plugins."""
+        if not self._model.process_uuid:
+            self._view.duplicate_workflow_link.disabled = False
+            return
+
+        if state is None:
+            state = self._model.get_state_from_process()
+        configuration = state.get("configuration_state", {})
+        selected_properties = set(
+            configuration.get("workchain", {}).get("properties", [])
+        )
+        if not selected_properties:
+            selected_properties = set(self.wizard.configuration_model._get_properties())
+
+        incompatible_properties = (
+            self.wizard.results_step.results_panel.incompatible_plugin_ids
+        )
+        blocked = bool(selected_properties & incompatible_properties)
+        self._view.duplicate_workflow_link.disabled = blocked
+        self._view.duplicate_workflow_link.tooltip = (
+            "Duplication disabled due to incompatible plugins. Visit the Plugin manager to resolve."
+            if blocked
+            else "Duplicate calculation parameters in a separate tab"
+        )
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -314,6 +346,7 @@ class AppView(ipw.VBox):
             link="./qe.ipynb?duplicating=True",
             icon="clone",
             tooltip="Duplicate calculation parameters in a separate tab",
+            disabled=True,
         )
 
         self.calculation_history_link = LinkButton(

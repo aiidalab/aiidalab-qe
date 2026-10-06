@@ -19,6 +19,7 @@ def print_error(entry_point, e):
 def get_entries(
     entry_point_name="aiidalab_qe.properties",
     priority=None,  # Use None as the default value
+    entry_point_filter=None,
 ):
     if priority is None:
         priority = [
@@ -40,10 +41,12 @@ def get_entries(
 
     entries = {}
     for entry_point in sorted_entry_points:
+        if entry_point.name in entries:
+            continue
+        if entry_point_filter is not None and not entry_point_filter(entry_point):
+            continue
         try:
             # Attempt to load the entry point
-            if entry_point.name in entries:
-                continue
             loaded_entry_point = entry_point.load()
             entries[entry_point.name] = loaded_entry_point
         except Exception as e:
@@ -52,8 +55,11 @@ def get_entries(
     return entries
 
 
-def get_entry_items(entry_point_name, item_name="outline"):
-    entries = get_entries(entry_point_name)
+def get_entry_items(entry_point_name, item_name="outline", entry_point_filter=None):
+    entries = get_entries(
+        entry_point_name,
+        entry_point_filter=entry_point_filter,
+    )
     return {
         name: entry_point.get(item_name)
         for name, entry_point in entries.items()
