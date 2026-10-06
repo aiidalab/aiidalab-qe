@@ -313,8 +313,8 @@ class CalculationHistory:
 
         # Figure out which columns to show the table
         columns = []
-        for key in COLUMNS.keys():
-            col_spec = dict(COLUMNS[key])
+        for key, column in COLUMNS.items():
+            col_spec = dict(column)
             col_spec["field"] = key
             columns.append(col_spec)
 
