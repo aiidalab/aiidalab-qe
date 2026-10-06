@@ -145,10 +145,62 @@ def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
     assert "bands" not in model._get_properties()
 
 
+def test_activation_failed_plugin_is_not_ready_for_new_calculations(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.configuration import step as configuration_step
+    from aiidalab_qe.plugins import utils as plugin_utils
+
+    class Registry:
+        data = {
+            "my-plugin": {
+                "title": "My plugin",
+                "package": "my-plugin",
+                "pip": "my-plugin>=2.0",
+                "category": "calculation",
+            }
+        }
+
+        def __init__(self, _source):
+            pass
+
+    distribution = SimpleNamespace(
+        metadata={"Name": "my-plugin"},
+        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
+    )
+    monkeypatch.setattr(configuration_step, "PluginManager", Registry)
+    monkeypatch.setattr(configuration_step, "distributions", lambda: [distribution])
+    monkeypatch.setattr(
+        configuration_step,
+        "get_plugin_version_info",
+        lambda *_args: ("2.0", True, None),
+    )
+    monkeypatch.setattr(configuration_step, "is_version_compatible", lambda *_: True)
+    monkeypatch.setattr(
+        configuration_step,
+        "get_activation_failure",
+        lambda _package: "Plugin validation failed",
+    )
+    monkeypatch.setattr(
+        plugin_utils,
+        "get_activation_failure",
+        lambda _package: "Plugin validation failed",
+    )
+
+    config = ConfigurationStep(model=ConfigurationStepModel())
+    config.render()
+
+    assert config.incompatible_properties_list == ["My plugin"]
+    assert "Electronic band structure" not in [
+        row.children[0].title for row in config.installed_properties_list
+    ]
+
+
 def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
     from types import SimpleNamespace
 
     from aiidalab_qe.app.configuration import step as configuration_step
+    from aiidalab_qe.plugins import utils as plugin_utils
 
     class Registry:
         data = {
@@ -184,6 +236,11 @@ def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
         ),
     )
     monkeypatch.setattr(configuration_step, "is_package_installed", lambda *_: True)
+    monkeypatch.setattr(
+        plugin_utils,
+        "get_activation_failure",
+        lambda _plugin: "previous validation failure",
+    )
 
     model = ConfigurationStepModel()
     model.loaded_from_process = True

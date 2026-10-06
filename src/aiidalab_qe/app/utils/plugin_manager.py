@@ -25,6 +25,12 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 
+from aiidalab_qe.plugins.state import (
+    clear_activation_failure,
+    get_activation_failure,
+    set_activation_failure,
+)
+
 LOGGER = logging.getLogger(__name__)
 
 # Define badge colors based on status
@@ -252,6 +258,7 @@ class QeAppPlugin(ipw.VBox):
         self.plugin_compatible = True
         self.app_compatible = True
         self.requirement_error: str | None = None
+        self.activation_error: str | None = None
 
         self.version_warning = ipw.HTML()
         self.message_container = ipw.HTML(
@@ -303,6 +310,13 @@ class QeAppPlugin(ipw.VBox):
         )
         self.remove_button.on_click(self._on_remove)
 
+        self.retry_activation_button = ipw.Button(
+            description="Retry activation",
+            button_style="info",
+            layout=ipw.Layout(width=BUTTON_WIDTH, display="none"),
+        )
+        self.retry_activation_button.on_click(self._on_retry_activation)
+
         self.clear_output_button = ipw.Button(
             description="Clear output",
             tooltip="Clear plugin messages and command output",
@@ -327,6 +341,7 @@ class QeAppPlugin(ipw.VBox):
                         self.post_install_button,
                         self.update_button,
                         self.remove_button,
+                        self.retry_activation_button,
                         self.clear_output_button,
                     ]
                 ),
@@ -344,6 +359,7 @@ class QeAppPlugin(ipw.VBox):
 
     def reconcile_state(self) -> None:
         """Refresh package compatibility and every widget derived from it."""
+        self.activation_error = get_activation_failure(self.data.package)
         self.installed_version, self.plugin_compatible, self.requirement_error = (
             get_plugin_version_info(
                 self.data.package, self.data.pip or self.data.package
@@ -356,6 +372,13 @@ class QeAppPlugin(ipw.VBox):
             return
 
         warning = ""
+
+        if self.activation_error:
+            warning += (
+                '<div class="alert alert-danger" role="alert">'
+                "Plugin activation is not confirmed: "
+                f"{html.escape(self.activation_error)}</div>"
+            )
 
         if not self.app_compatible:
             warning += (
@@ -391,12 +414,18 @@ class QeAppPlugin(ipw.VBox):
         if self.update_button is not None:
             self.update_button.disabled = (
                 not self.is_installed
-                or self.plugin_compatible
+                or (self.plugin_compatible and not self.activation_error)
                 or not self.app_compatible
             )
 
         if self.remove_button is not None:
             self.remove_button.disabled = not self.is_installed
+
+        if self.retry_activation_button is not None:
+            self.retry_activation_button.layout.display = (
+                "" if self.activation_error and self.is_installed else "none"
+            )
+            self.retry_activation_button.disabled = not self.app_compatible
 
         self.update_title(warning)
 
@@ -407,9 +436,7 @@ class QeAppPlugin(ipw.VBox):
         if warning is None and self.version_warning is not None:
             warning = self.version_warning.value
 
-        status = (
-            "⚠️" if self.is_installed and warning else "✅" if self.is_installed else ""
-        )
+        status = "⚠️" if warning else "✅" if self.is_installed else ""
 
         self.title_updater(f"{self.data.title} {status}".rstrip())
 
@@ -452,14 +479,23 @@ class QeAppPlugin(ipw.VBox):
         output.value = ""
 
         self._append_message(f"Installing {self.data.package}...")
+        set_activation_failure(
+            self.data.package,
+            "Installation is in progress; activation has not been confirmed.",
+        )
 
         install_source = self.data.pip or f"git+{self.data.github}"
         installed = self._execute_command(
             [sys.executable, "-m", "pip", "install", install_source, "--user"],
         )
         if not installed:
+            set_activation_failure(
+                self.data.package,
+                "Installation did not complete; the package state may have changed.",
+            )
             self._append_message(
-                "Installation did not complete. Review the command output for details.",
+                "Installation did not complete. The package state may have changed, "
+                "so activation is not confirmed. Review the command output.",
                 color="#FF0000",
             )
             self.reconcile_state()
@@ -467,10 +503,32 @@ class QeAppPlugin(ipw.VBox):
 
         if not self._validate_plugin_installation(remove_on_test_failure=True):
             self.reconcile_state()
+            if self.is_installed:
+                set_activation_failure(
+                    self.data.package,
+                    "Installation setup or plugin validation failed. The package "
+                    "remains installed, and the daemon was not restarted.",
+                )
+            else:
+                clear_activation_failure(self.data.package)
+            self.reconcile_state()
             return
 
+        if not self._restart_daemon():
+            set_activation_failure(
+                self.data.package,
+                "Plugin validation passed, but the daemon restart failed.",
+            )
+            self._append_message(
+                "Plugin validation passed, but the daemon restart failed. "
+                "Activation is not confirmed.",
+                color="#FF0000",
+            )
+            self.reconcile_state()
+            return
+
+        clear_activation_failure(self.data.package)
         self._append_message("Plugin installed successfully.", color="#008000")
-        self._restart_daemon()
 
         self.reconcile_state()
 
@@ -528,11 +586,14 @@ class QeAppPlugin(ipw.VBox):
                 " The package will be removed to prevent use in an incomplete state."
             )
         else:
-            message += " The update was not activated."
+            message += (
+                " The package remains installed, but activation is not confirmed. "
+                "The daemon was not restarted."
+            )
         self._append_message(message + " Details were logged.", color="#FF0000")
 
         if remove_on_test_failure:
-            self._remove_package(clear_output=False)
+            self._remove_package(clear_output=False, restart_daemon=False)
 
         return False
 
@@ -544,6 +605,10 @@ class QeAppPlugin(ipw.VBox):
         message.value = ""
 
         self._append_message(f"Updating {self.data.package}...")
+        set_activation_failure(
+            self.data.package,
+            "Update is in progress; activation has not been confirmed.",
+        )
 
         requirement = self.data.pip or f"git+{self.data.github}"
         result = self._execute_command(
@@ -558,10 +623,24 @@ class QeAppPlugin(ipw.VBox):
             ]
         )
         if not result:
+            set_activation_failure(
+                self.data.package,
+                "Update did not complete; the package state may have changed.",
+            )
+            self._append_message(
+                "Update did not complete. The package state may have changed, "
+                "so activation is not confirmed and the daemon was not restarted.",
+                color="#FF0000",
+            )
             self.reconcile_state()
             return
 
         if not self._validate_plugin_installation():
+            set_activation_failure(
+                self.data.package,
+                "Setup or plugin validation failed after the package update. "
+                "The package remains installed, but the daemon was not restarted.",
+            )
             self.reconcile_state()
             return
 
@@ -573,7 +652,20 @@ class QeAppPlugin(ipw.VBox):
             and self.app_compatible
             and not self.requirement_error
         ):
-            self._restart_daemon()
+            if not self._restart_daemon():
+                set_activation_failure(
+                    self.data.package,
+                    "Plugin validation passed, but the daemon restart failed.",
+                )
+                self._append_message(
+                    "Plugin validation passed, but the daemon restart failed. "
+                    "Activation is not confirmed.",
+                    color="#FF0000",
+                )
+                self.reconcile_state()
+                return
+            clear_activation_failure(self.data.package)
+            self.reconcile_state()
             self._append_message(
                 f"Updated {self.data.package} to {self.installed_version}.",
                 color="#008000",
@@ -583,14 +675,69 @@ class QeAppPlugin(ipw.VBox):
                 f"Installed version {self.installed_version or 'unknown'} does not meet "
                 "the required version."
             )
+            set_activation_failure(
+                self.data.package,
+                f"Update completed, but activation was not confirmed: {reason}",
+            )
+            self.reconcile_state()
             self._append_message(reason, color="#FF0000")
+
+    def _on_retry_activation(self, _button: ipw.Button) -> None:
+        self.message_container.layout.display = "block"
+        self.output_container.layout.display = "block"
+        self.message_container.value = ""
+        set_activation_failure(
+            self.data.package,
+            "Activation retry is in progress; activation has not been confirmed.",
+        )
+
+        if not self._validate_plugin_installation():
+            set_activation_failure(
+                self.data.package,
+                "Setup or plugin validation failed. The daemon was not restarted.",
+            )
+            self.reconcile_state()
+            return
+
+        self.reconcile_state()
+        if (
+            not self.plugin_compatible
+            or not self.app_compatible
+            or self.requirement_error
+        ):
+            set_activation_failure(
+                self.data.package,
+                "Validation passed, but the installed plugin does not satisfy the "
+                "registered compatibility requirements.",
+            )
+            self.reconcile_state()
+            return
+
+        if not self._restart_daemon():
+            set_activation_failure(
+                self.data.package,
+                "Plugin validation passed, but the daemon restart failed.",
+            )
+            self._append_message(
+                "Plugin validation passed, but the daemon restart failed. "
+                "Activation is not confirmed.",
+                color="#FF0000",
+            )
+            self.reconcile_state()
+            return
+
+        clear_activation_failure(self.data.package)
+        self._append_message("Plugin activation succeeded.", color="#008000")
+        self.reconcile_state()
 
     def _on_remove(self, _button: ipw.Button) -> None:
         self.message_container.layout.display = "block"
         self.output_container.layout.display = "block"
         self._remove_package()
 
-    def _remove_package(self, clear_output: bool = True) -> bool:
+    def _remove_package(
+        self, clear_output: bool = True, restart_daemon: bool = True
+    ) -> bool:
         self._append_message(f"Removing {self.data.package}...")
 
         requirement = Requirement(self.data.pip or self.data.package)
@@ -599,11 +746,23 @@ class QeAppPlugin(ipw.VBox):
             clear_output=clear_output,
         )
         if result:
+            restart_succeeded = not restart_daemon or self._restart_daemon()
+            if restart_succeeded:
+                clear_activation_failure(self.data.package)
+            else:
+                set_activation_failure(
+                    self.data.package,
+                    "Package removal succeeded, but the daemon restart failed.",
+                )
             self._append_message(
                 f"{self.data.package} removed successfully.",
                 color="#008000",
             )
-            self._restart_daemon()
+            if not restart_succeeded:
+                self._append_message(
+                    "The daemon restart failed; reload the app before using plugins.",
+                    color="#FF0000",
+                )
 
         self.reconcile_state()
 
@@ -740,8 +899,18 @@ class QeAppPlugin(ipw.VBox):
         )
 
     @staticmethod
-    def _restart_daemon() -> None:
-        subprocess.run(["verdi", "daemon", "restart"], capture_output=True, check=False)
+    def _restart_daemon() -> bool:
+        try:
+            result = subprocess.run(
+                ["verdi", "daemon", "restart"], capture_output=True, check=False
+            )
+        except OSError:
+            LOGGER.exception("Could not restart the AiiDA daemon")
+            return False
+        if result.returncode:
+            LOGGER.error("Could not restart the AiiDA daemon: %s", result.stderr)
+            return False
+        return True
 
 
 class PluginManager:

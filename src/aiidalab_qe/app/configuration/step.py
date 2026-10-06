@@ -23,6 +23,7 @@ from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.plugins.state import get_activation_failure
 from aiidalab_qe.plugins.utils import get_entry_items
 
 from .advanced import (
@@ -150,8 +151,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 ipw.HTML("<hr>"),
                 ipw.HTML("<h4>Incompatible</h4>"),
                 ipw.HTML(
-                    "<em>The following installed plugins are incompatible with this app "
-                    "version:</em>"
+                    "<em>The following plugins require attention in the Plugin store:</em>"
                 ),
                 self.incompatible_properties,
             ],
@@ -287,8 +287,17 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self.tabs.selected_index = 0
 
     def _fetch_plugin_calculation_settings(self):
-        outlines = get_entry_items("aiidalab_qe.properties", "outline")
-        entries = get_entry_items("aiidalab_qe.properties", "configuration")
+        include_activation_failures = self._model.loaded_from_process
+        outlines = get_entry_items(
+            "aiidalab_qe.properties",
+            "outline",
+            include_activation_failures=include_activation_failures,
+        )
+        entries = get_entry_items(
+            "aiidalab_qe.properties",
+            "configuration",
+            include_activation_failures=include_activation_failures,
+        )
 
         self.incompatible_properties_list = [
             plugin_data["title"]
@@ -362,6 +371,11 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
             package_name = plugin_data.get("package") or plugin_name
             pip_requirement = plugin_data.get("pip") or package_name
+            activation_error = (
+                None
+                if self._model.loaded_from_process
+                else get_activation_failure(package_name)
+            )
 
             if self._model.loaded_from_process:
                 installed_version = None
@@ -389,7 +403,10 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 is_installed = is_package_installed(package_name)
 
             if is_installed and (
-                not plugin_compatible or not app_compatible or requirement_error
+                not plugin_compatible
+                or not app_compatible
+                or requirement_error
+                or activation_error
             ):
                 self.incompatible_plugin_data[distribution_name] = {
                     **plugin_data,
@@ -398,6 +415,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                     "app_compatible": app_compatible,
                     "requirement_error": requirement_error,
                     "requirement": requirement_text,
+                    "activation_error": activation_error,
                 }
 
             if not is_installed:

@@ -222,6 +222,67 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
     assert "./plugin_manager.ipynb" in viewer.children[1].value
 
 
+def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
+    import importlib_metadata
+
+    from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+    from aiidalab_qe.plugins import state
+
+    plugin_data = SimpleNamespace(
+        package="aiidalab-qe-vibroscopy",
+        pip="aiidalab-qe-vibroscopy>=1.2.9",
+        requires_aiidalab_qe=None,
+        title="Phonons and IR/Raman",
+    )
+    monkeypatch.setattr(
+        viewer_module,
+        "PluginManager",
+        lambda: SimpleNamespace(plugins={"vibroscopy": plugin_data}),
+    )
+    monkeypatch.setattr(
+        viewer_module,
+        "get_plugin_version_info",
+        lambda *_: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(viewer_module, "is_version_compatible", lambda *_: True)
+    monkeypatch.setattr(
+        state, "ACTIVATION_STATE_PATH", tmp_path / "plugin-activation.json"
+    )
+    state.set_activation_failure(plugin_data.package, "plugin test failed")
+
+    distribution_metadata = {"Name": "aiidalab-qe-vibroscopy"}
+
+    class EntryPoint:
+        name = "vibroscopy"
+        group = "aiidalab_qe.properties"
+        dist = SimpleNamespace(metadata=distribution_metadata)
+
+        def load(self):
+            raise AssertionError("failed plugin entry point must not be loaded")
+
+    entry_point = EntryPoint()
+    monkeypatch.setattr(
+        viewer_module,
+        "distributions",
+        lambda: [
+            SimpleNamespace(
+                metadata=distribution_metadata,
+                entry_points=[entry_point],
+            )
+        ],
+    )
+
+    monkeypatch.setattr(importlib_metadata, "entry_points", lambda **_: [entry_point])
+
+    viewer = viewer_module.WorkflowResultsViewer(model=WorkflowResultsViewerModel())
+    viewer.render()
+
+    assert viewer.incompatible_plugin_ids == {"vibroscopy"}
+    assert "Result panels are disabled" in viewer.children[1].value
+    assert "Phonons and IR/Raman" in viewer.children[1].value
+    assert "Phonons and IR/Raman" in viewer.children[1].value
+
+
 def test_summary_report(data_regression, generate_qeapp_workchain):
     """Test the summary report can be properly generated."""
     workchain = generate_qeapp_workchain()

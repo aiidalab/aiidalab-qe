@@ -157,7 +157,7 @@ class AppController:
         blocked = bool(selected_properties & incompatible_properties)
         self._view.duplicate_workflow_link.disabled = blocked
         self._view.duplicate_workflow_link.tooltip = (
-            "Duplication disabled due to incompatible plugins. Visit the Plugin manager to resolve."
+            "Duplication disabled due to incompatible plugins. Visit the Plugin store to resolve."
             if blocked
             else "Duplicate calculation parameters in a separate tab"
         )
@@ -357,7 +357,7 @@ class AppView(ipw.VBox):
         )
 
         self.plugin_manager_link = LinkButton(
-            description="Plugin manager",
+            description="Plugin store",
             link="./plugin_manager.ipynb",
             icon="puzzle-piece",
             tooltip="Manage community-developed plugins that extend the app's functionality",

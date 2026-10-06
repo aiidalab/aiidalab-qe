@@ -15,6 +15,7 @@ from aiidalab_qe.app.utils.plugin_manager import (
 )
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
+from aiidalab_qe.plugins.state import get_activation_failure
 from aiidalab_qe.plugins.utils import get_entry_items
 
 from .model import WorkflowResultsViewerModel
@@ -105,8 +106,12 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
                 requirement_text,
             )
             app_compatible = is_version_compatible(plugin_data.requires_aiidalab_qe)
+            activation_error = get_activation_failure(plugin_data.package)
             if version is not None and (
-                not plugin_compatible or requirement_error or not app_compatible
+                not plugin_compatible
+                or requirement_error
+                or not app_compatible
+                or activation_error
             ):
                 incompatible_packages[canonicalize_name(requirement.name)] = (
                     plugin_data.title
@@ -161,8 +166,8 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
         items = "".join(f"<li>{html.escape(title)}</li>" for title in plugins)
         return (
             '<div class="alert alert-danger" role="alert">'
-            "Result panels are disabled for incompatible plugins:"
+            "Result panels are disabled for the following plugins:"
             f"<ul>{items}</ul>"
-            'Visit the <a href="./plugin_manager.ipynb" target="_blank">Plugin Manager</a> to '
+            'Visit the <a href="./plugin_manager.ipynb" target="_blank">Plugin store</a> to '
             "update or remove these plugins, then reload the app.</div>"
         )

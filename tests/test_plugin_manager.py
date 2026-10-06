@@ -11,6 +11,17 @@ from aiidalab_qe.app.utils.plugin_manager import (
     QeAppPlugin,
     QeAppPluginData,
 )
+from aiidalab_qe.plugins import state as plugin_state
+
+
+@pytest.fixture(autouse=True)
+def isolate_plugin_activation_state(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        plugin_state,
+        "ACTIVATION_STATE_PATH",
+        tmp_path / "plugin-activation.json",
+    )
+
 
 # mock the content of the YAML file
 yaml_content = """
@@ -174,9 +185,14 @@ def test_outdated_plugin_actions(monkeypatch):
         manager._build_accordion()
 
     buttons = manager.accordion.children[0].children[2].children
-    install_button, _post_install_button, update_button, remove_button, clear_button = (
-        buttons
-    )
+    (
+        install_button,
+        _post_install_button,
+        update_button,
+        remove_button,
+        _retry_activation_button,
+        clear_button,
+    ) = buttons
     assert install_button.disabled
     assert not update_button.disabled
     assert not remove_button.disabled
@@ -373,6 +389,27 @@ def test_get_plugin_version_info_invalid_requirement():
     assert version is None
     assert not compatible
     assert error
+
+
+def test_plugin_activation_failure_persists_and_clears(monkeypatch, tmp_path):
+    from aiidalab_qe.plugins import state
+
+    state_path = tmp_path / "plugin-activation.json"
+    monkeypatch.setattr(state, "ACTIVATION_STATE_PATH", state_path)
+
+    state.set_activation_failure("my-plugin", "Plugin validation failed")
+
+    assert state.get_activation_failure("my-plugin") == "Plugin validation failed"
+    assert state_path.exists()
+
+    state.set_activation_failure("another-plugin", "Daemon restart failed")
+    state.clear_activation_failure("my-plugin")
+
+    assert state.get_activation_failure("my-plugin") is None
+    assert state.get_activation_failure("another-plugin") == "Daemon restart failed"
+
+    state.clear_activation_failure("another-plugin")
+    assert not state_path.exists()
 
 
 def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
@@ -580,7 +617,120 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
         ]
     ]
     assert "did not pass" in plugin.message_container.value
+    assert "package remains installed" in plugin.message_container.value
+    assert "daemon was not restarted" in plugin.message_container.value
     assert "Updated my-plugin" not in plugin.message_container.value
+    assert plugin.activation_error
+    assert plugin.retry_activation_button.layout.display == ""
+    assert plugin.update_button.disabled is False
+    assert plugin_state.get_activation_failure("my-plugin") == plugin.activation_error
+
+
+def test_retry_activation_clears_failure_and_restarts_daemon(monkeypatch):
+    plugin_state.set_activation_failure("my-plugin", "Previous validation failed")
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    calls = []
+
+    def run(command, **_kwargs):
+        calls.append(command)
+        return plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(plugin_manager.subprocess, "run", run)
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin>=1.2.9",
+            }
+        },
+    )
+    manager = PluginManager()
+    manager._build_accordion()
+    plugin = manager.accordion.children[0]
+
+    assert plugin.retry_activation_button.layout.display == ""
+    plugin._on_retry_activation(None)
+
+    assert calls == [
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "aiidalab_qe",
+            "test-plugin",
+            "my-plugin",
+        ],
+        ["verdi", "daemon", "restart"],
+    ]
+    assert plugin_state.get_activation_failure("my-plugin") is None
+    assert plugin.retry_activation_button.layout.display == "none"
+    assert manager.accordion.get_title(0).endswith("✅")
+
+
+@pytest.mark.parametrize("failure_stage", ["post_install", "daemon_restart"])
+def test_update_failure_keeps_activation_warning(monkeypatch, failure_stage):
+    monkeypatch.setattr(
+        QeAppPlugin,
+        "_execute_command",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    commands = []
+
+    def run(command, **_kwargs):
+        commands.append(command)
+        if command[1:3] == ["-m", "my_plugin"]:
+            return plugin_manager.subprocess.CompletedProcess(
+                command,
+                1 if failure_stage == "post_install" else 0,
+                "",
+                "setup failed" if failure_stage == "post_install" else "",
+            )
+        if command[-2:] == ["daemon", "restart"]:
+            return plugin_manager.subprocess.CompletedProcess(
+                command, 1, "", "restart failed"
+            )
+        return plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(plugin_manager.subprocess, "run", run)
+    plugin_config = {
+        "title": "My Test Plugin",
+        "description": "A test plugin",
+        "pip": "my-plugin>=1.2.9",
+    }
+    if failure_stage == "post_install":
+        plugin_config["post_install"] = "setup"
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {"my-plugin": plugin_config},
+    )
+
+    manager = PluginManager()
+    manager._build_accordion()
+    plugin = manager.accordion.children[0]
+    plugin._on_update(None)
+
+    failure = plugin_state.get_activation_failure("my-plugin")
+    assert failure == plugin.activation_error
+    assert "daemon was not restarted" in failure or "daemon restart failed" in failure
+    assert plugin.retry_activation_button.layout.display == ""
+    assert plugin.version_warning.value
+    assert (any(command[-2:] == ["daemon", "restart"] for command in commands)) == (
+        failure_stage == "daemon_restart"
+    )
 
 
 def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
@@ -664,7 +814,10 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
     monkeypatch.setattr(
         plugin_manager.subprocess,
         "run",
-        lambda command, **_kwargs: daemon_commands.append(command),
+        lambda command, **_kwargs: (
+            daemon_commands.append(command)
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
     )
     monkeypatch.setattr(
         PluginManager,
