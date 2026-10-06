@@ -36,7 +36,7 @@ class QeAppWorkChain(WorkChain):
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
         spec.input('on_unhandled_failure', valid_type=orm.Str, default=lambda: orm.Str('pause'),
                help='Action to take when a first-level plugin workflow encounters an unhandled failure.')
-        spec.input('properties', valid_type=orm.List, default=lambda: orm.List(),
+        spec.input('properties', valid_type=orm.List, default=orm.List,
                    help='The properties to calculate, used to control the logic of QeAppWorkChain.')
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
