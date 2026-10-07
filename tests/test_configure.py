@@ -101,7 +101,6 @@ def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
         data = {
             "my-plugin": {
                 "title": "My plugin",
-                "package": "my-plugin",
                 "pip": "my-plugin>=2.0",
                 "category": "calculation",
             }
@@ -155,7 +154,6 @@ def test_activation_failed_plugin_is_not_ready_for_new_calculations(monkeypatch)
         data = {
             "my-plugin": {
                 "title": "My plugin",
-                "package": "my-plugin",
                 "pip": "my-plugin>=2.0",
                 "category": "calculation",
             }
@@ -206,7 +204,6 @@ def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
         data = {
             "my-plugin": {
                 "title": "My plugin",
-                "package": "my-plugin",
                 "pip": "my-plugin>=2.0",
                 "category": "calculation",
             }
@@ -235,7 +232,7 @@ def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
             AssertionError("process-backed Step 2 must skip compatibility checks")
         ),
     )
-    monkeypatch.setattr(configuration_step, "is_package_installed", lambda *_: True)
+    monkeypatch.setattr(configuration_step, "is_plugin_installed", lambda *_: True)
     monkeypatch.setattr(
         plugin_utils,
         "get_activation_failure",

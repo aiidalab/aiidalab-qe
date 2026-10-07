@@ -16,13 +16,13 @@ To include your plugin in the catalog, follow these steps:
 
    .. code-block:: yaml
 
-      aiidalab-qe-xyz:
+      Top-level key:
          title: "XYZ"
          description: "Quantum ESPRESSO plugin for XYZ."
-         package: "aiidalab-qe-xyz"
-         github: "https://github.com/alicedoe/aiidalab-qe-xyz"
-         documentation: "https://aiidalab-qe-xyz.readthedocs.io/"
          pip: "aiidalab-qe-xyz>=1.2,<2"
+         github: "https://github.com/alicedoe/aiidalab-qe-xyz"
+         author: "Alice Doe"
+         documentation: "https://aiidalab-qe-xyz.readthedocs.io/"
          post_install: "post-install-command"
          status: "stable"
          category: "calculation"
@@ -37,13 +37,12 @@ The catalog is bundled with the app release at ``src/aiidalab_qe/plugins/plugins
 
 **Required Keys**
 
-- **Top-level key:** A unique registry identifier, conventionally the lowercase distribution name (for example, ``aiidalab-qe-coolfeature``).
+- **Top-level key:** A unique registry identifier and installed distribution name, conventionally lowercase (for example, ``aiidalab-qe-xyz``).
 - **title:** Brief title to show on top of the plugin entry. Should contain the main properties we can compute with the given plugin.
 - **description:** A brief description of your plugin.
 
 **Optional Keys**
 
-- **package:** Installed Python distribution name. Defaults to the top-level key.
 - **pip:** PEP 508 package requirement used to install the plugin. If both ``pip`` and ``github`` are provided, ``pip`` is used.
 - **github:** GitHub repository URL used as an install source when ``pip`` is omitted. A ref may be specified with ``@ref``.
 - **author:** Plugin authors.
@@ -72,7 +71,7 @@ the loader. The test suite also validates every entry in the checked-in
 
 How to define a post install command in your plugin
 ---------------------------------------------------------------------
-If you need to run a post-install command, you can define it in the CLI of your package. The command should be designed to be run as ``package-name post-install-command``.
+If you need to run a post-install command, you can define it in the CLI of your plugin. The command should be designed to be run as ``plugin-name post-install-command``.
 To define the CLI, you can use the ``__main__.py`` file in your source folder and the ``pyproject.toml`` file. You can refer to the `aiidalab-qe-vibroscopy <https://github.com/mikibonacci/aiidalab-qe-vibroscopy>`_ plugin for an example of how to do this.
 In that plugin, the automatic setup for the phonopy code is implemented. It assumes that the ``phonopy`` binary is already present on the machine, as the plugin will install it as a dependency.
-The post-install command is triggered after installing the plugin from the Plugin Store. If needed, it can also be run on its own from the plugin entry in the store, without reinstalling the package.
+The post-install command is triggered after installing the plugin from the Plugin Store. If needed, it can also be run on its own from the plugin entry in the store, without reinstalling the plugin.

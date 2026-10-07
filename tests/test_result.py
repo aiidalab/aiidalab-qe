@@ -179,7 +179,7 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
     from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
 
     plugin_data = SimpleNamespace(
-        package="aiidalab-qe-vibroscopy",
+        plugin_name="aiidalab-qe-vibroscopy",
         pip="aiidalab-qe-vibroscopy>=1.2.9",
         requires_aiidalab_qe=None,
         title="Phonons and IR/Raman",
@@ -187,7 +187,7 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
     monkeypatch.setattr(
         viewer_module,
         "PluginManager",
-        lambda: SimpleNamespace(plugins={"vibroscopy": plugin_data}),
+        lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
     )
     monkeypatch.setattr(
         viewer_module,
@@ -229,7 +229,7 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
     from aiidalab_qe.plugins import state
 
     plugin_data = SimpleNamespace(
-        package="aiidalab-qe-vibroscopy",
+        plugin_name="aiidalab-qe-vibroscopy",
         pip="aiidalab-qe-vibroscopy>=1.2.9",
         requires_aiidalab_qe=None,
         title="Phonons and IR/Raman",
@@ -237,7 +237,7 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
     monkeypatch.setattr(
         viewer_module,
         "PluginManager",
-        lambda: SimpleNamespace(plugins={"vibroscopy": plugin_data}),
+        lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
     )
     monkeypatch.setattr(
         viewer_module,
@@ -248,7 +248,7 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
     monkeypatch.setattr(
         state, "ACTIVATION_STATE_PATH", tmp_path / "plugin-activation.json"
     )
-    state.set_activation_failure(plugin_data.package, "plugin test failed")
+    state.set_activation_failure(plugin_data.plugin_name, "plugin test failed")
 
     distribution_metadata = {"Name": "aiidalab-qe-vibroscopy"}
 

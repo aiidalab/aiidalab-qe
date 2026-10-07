@@ -15,7 +15,7 @@ from aiidalab_qe.app.utils.plugin_manager import (
     DEFAULT_PLUGIN_CONFIG_SOURCE,
     PluginManager,
     get_plugin_version_info,
-    is_package_installed,
+    is_plugin_installed,
     is_version_compatible,
 )
 from aiidalab_qe.common.infobox import InAppGuide
@@ -369,12 +369,11 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             ):  # Ignore non-property plugins
                 continue
 
-            package_name = plugin_data.get("package") or plugin_name
-            pip_requirement = plugin_data.get("pip") or package_name
+            pip_requirement = plugin_data.get("pip") or plugin_name
             activation_error = (
                 None
                 if self._model.loaded_from_process
-                else get_activation_failure(package_name)
+                else get_activation_failure(plugin_name)
             )
 
             if self._model.loaded_from_process:
@@ -382,13 +381,13 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 plugin_compatible = True
                 requirement_error = None
                 app_compatible = True
-                is_installed = is_package_installed(package_name)
+                is_installed = is_plugin_installed(plugin_name)
             else:
                 (
                     installed_version,
                     plugin_compatible,
                     requirement_error,
-                ) = get_plugin_version_info(package_name, pip_requirement)
+                ) = get_plugin_version_info(plugin_name, pip_requirement)
                 is_installed = installed_version is not None
                 compatible_app_version = plugin_data.get("requires_aiidalab_qe")
                 app_compatible = is_version_compatible(compatible_app_version)
@@ -398,9 +397,9 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 distribution_name = canonicalize_name(requirement.name)
                 requirement_text = str(requirement)
             except InvalidRequirement:
-                distribution_name = canonicalize_name(package_name)
+                distribution_name = canonicalize_name(plugin_name)
                 requirement_text = pip_requirement
-                is_installed = is_package_installed(package_name)
+                is_installed = is_plugin_installed(plugin_name)
 
             if is_installed and (
                 not plugin_compatible

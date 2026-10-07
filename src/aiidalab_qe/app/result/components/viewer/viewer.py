@@ -98,15 +98,15 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
     def _fetch_plugin_results(self, viewer_model: WorkflowResultsViewerModel):
         manager = PluginManager()
         incompatible_packages = {}
-        for plugin_data in manager.plugins.values():
-            requirement_text = plugin_data.pip or plugin_data.package
+        for plugin_name, plugin_data in manager.plugins.items():
+            requirement_text = plugin_data.pip or plugin_name
             requirement = Requirement(requirement_text)
             version, plugin_compatible, requirement_error = get_plugin_version_info(
-                plugin_data.package,
+                plugin_name,
                 requirement_text,
             )
             app_compatible = is_version_compatible(plugin_data.requires_aiidalab_qe)
-            activation_error = get_activation_failure(plugin_data.package)
+            activation_error = get_activation_failure(plugin_name)
             if version is not None and (
                 not plugin_compatible
                 or requirement_error
@@ -118,8 +118,8 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
                 )
 
         for distribution in distributions():
-            package_name = distribution.metadata.get("Name")
-            if not package_name or canonicalize_name(package_name) not in (
+            plugin_name = distribution.metadata.get("Name")
+            if not plugin_name or canonicalize_name(plugin_name) not in (
                 incompatible_packages
             ):
                 continue

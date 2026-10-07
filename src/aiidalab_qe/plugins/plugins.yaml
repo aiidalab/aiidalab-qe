@@ -1,7 +1,6 @@
 ---
 aiidalab-qe-vibroscopy:
     title: Phonons and IR/Raman
-    package: aiidalab-qe-vibroscopy
     description: Plugin to compute phonons, IR/Raman spectra, Inelastic Neutron Scattering of materials via finite displacement and finite field approach.
     author: Miki Bonacci, Andres Ortega Guerrero, Lorenzo Bastonero and Nicola Marzari
     github: https://github.com/aiidalab/aiidalab-qe-vibroscopy
@@ -13,7 +12,6 @@ aiidalab-qe-vibroscopy:
 
 aiidalab-qe-muon:
     title: Muon spectroscopy
-    package: aiidalab-qe-muon
     description: Compute properties to assist µSR experiments, such as muon stopping sites and related properties (local fields and polarization signals).
     author: Miki Bonacci, Ifeanyi J. Onuorah, Pietro Bonfa', Giovanni Pizzi and Roberto de Renzi
     github: https://github.com/aiidalab/aiidalab-qe-muon@v1.2.2
@@ -24,7 +22,6 @@ aiidalab-qe-muon:
 
 aiida-bader:
     title: Bader charge analysis
-    package: aiida-bader
     description: Perform Bader charge analysis of the electronic charge density
     author: Xing Wang
     github: https://github.com/aiidaplugins/aiida-bader
@@ -37,7 +34,6 @@ aiida-bader:
 
 aiida-qe-xspec:
     title: Core-level spectroscopy
-    package: aiida-qe-xspec
     description: Core-level spectroscopy calculations with Quantum ESPRESSO.
     author: Peter Gillespie, Michael A. Hernandez-Bertran, Giovanni Pizzi, Deborah Prezzi, Xing Wang (ordered by last name alphabetically)
     github: https://github.com/aiidaplugins/aiida-qe-xspec
@@ -50,7 +46,6 @@ aiida-qe-xspec:
 
 aiidalab-qe-wannier90:
     title: Wannier functions
-    package: aiidalab-qe-wannier90
     description: A plugin to compute Wannier functions using Quantum ESPRESSO and the Wannier90 code.
     author: Xing Wang, Junfeng Qiao, Nicola Marzari and Giovanni Pizzi
     github: https://github.com/aiidalab/aiidalab-qe-wannier90
@@ -61,7 +56,6 @@ aiidalab-qe-wannier90:
 
 aiidalab-qe-hp:
     title: Hubbard parameters
-    package: aiidalab-qe-hp
     description: A plugin to compute Hubbard parameters with Quantum ESPRESSO.
     author: Xing Wang, Lorenzo Bastonero and Iurii Timrov
     github: https://github.com/aiidalab/aiidalab-qe-hp
@@ -73,7 +67,6 @@ aiidalab-qe-hp:
 
 aiidalab-qe-pp:
     title: Post-processing
-    package: aiidalab-qe-pp
     description: A plugin enabling analysis of charge density, spin density, molecular orbitals, STM images, and more.
     author: Andres Ortega-Guerrero
     github: https://github.com/aiidalab/aiidalab-qe-pp

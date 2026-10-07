@@ -49,7 +49,7 @@ BUTTON_WIDTH = "120px"
 def get_aiidalab_qe_version() -> str:
     """
     Get the installed version of aiidalab_qe.
-    Returns 'unknown' if the package is not installed.
+    Returns 'unknown' if the plugin is not installed.
     """
     import aiidalab_qe
 
@@ -87,12 +87,10 @@ def is_version_compatible(required_version: str) -> bool:
         return False
 
 
-def is_package_installed(package_name: str) -> bool:
-    """
-    Check if a given Python package is already installed.
-    """
+def is_plugin_installed(plugin_name: str) -> bool:
+    """Check if a given plugin is already installed."""
     try:
-        metadata.version(package_name)
+        metadata.version(plugin_name)
     except metadata.PackageNotFoundError:
         return False
     else:
@@ -128,10 +126,8 @@ def get_plugin_version_info(
 
 @dataclass(frozen=True)
 class QeAppPluginData:
-    registry_name: str
     title: str
     description: str
-    package: str
     pip: str | None = None
     github: str | None = None
     author: str = "N/A"
@@ -143,19 +139,17 @@ class QeAppPluginData:
     extra: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_mapping(cls, registry_name: str, data: Mapping) -> "QeAppPluginData":
+    def from_mapping(cls, plugin_name: str, data: Mapping) -> "QeAppPluginData":
         """Create a plugin record after validating fields consumed by the app."""
-        if not isinstance(registry_name, str) or not registry_name.strip():
+        if not isinstance(plugin_name, str) or not plugin_name.strip():
             raise ValueError("plugin registry key must be a non-empty string")
         if not isinstance(data, Mapping):
-            raise TypeError(f"{registry_name}: plugin entry must be a mapping")
+            raise TypeError(f"{plugin_name}: plugin entry must be a mapping")
 
         def required_string(field: str) -> str:
             value = data.get(field)
             if not isinstance(value, str) or not value.strip():
-                raise ValueError(
-                    f"{registry_name}: '{field}' must be a non-empty string"
-                )
+                raise ValueError(f"{plugin_name}: '{field}' must be a non-empty string")
             return value
 
         def optional_string(field: str, default: str | None = None) -> str | None:
@@ -163,7 +157,7 @@ class QeAppPluginData:
             if value is None:
                 return None
             if not isinstance(value, str):
-                raise TypeError(f"{registry_name}: '{field}' must be a string")
+                raise TypeError(f"{plugin_name}: '{field}' must be a string")
             return value or None
 
         title = required_string("title")
@@ -172,16 +166,14 @@ class QeAppPluginData:
         pip_requirement = optional_string("pip")
         github = optional_string("github")
         if not pip_requirement and not github:
-            raise ValueError(f"{registry_name}: either 'pip' or 'github' is required")
-
-        package = optional_string("package", registry_name) or registry_name
+            raise ValueError(f"{plugin_name}: either 'pip' or 'github' is required")
 
         try:
-            Requirement(pip_requirement or package)
+            Requirement(pip_requirement or plugin_name)
         except InvalidRequirement as error:
-            field_name = "pip" if pip_requirement else "package"
+            field_name = "pip" if pip_requirement else "top-level key"
             raise ValueError(
-                f"{registry_name}: invalid '{field_name}' requirement: {error}"
+                f"{plugin_name}: invalid '{field_name}' requirement: {error}"
             ) from error
 
         app_requirement = optional_string("requires_aiidalab_qe")
@@ -190,13 +182,12 @@ class QeAppPluginData:
                 SpecifierSet(app_requirement)
             except InvalidSpecifier as error:
                 raise ValueError(
-                    f"{registry_name}: invalid 'requires_aiidalab_qe' specifier: {error}"
+                    f"{plugin_name}: invalid 'requires_aiidalab_qe' specifier: {error}"
                 ) from error
 
         known_fields = {
             "title",
             "description",
-            "package",
             "pip",
             "github",
             "author",
@@ -208,10 +199,8 @@ class QeAppPluginData:
         }
 
         return cls(
-            registry_name=registry_name,
             title=title,
             description=description,
-            package=package,
             pip=pip_requirement,
             github=github,
             author=optional_string("author", "N/A") or "N/A",
@@ -231,7 +220,6 @@ class QeAppPluginData:
             **self.extra,
             "title": self.title,
             "description": self.description,
-            "package": self.package,
             "pip": self.pip,
             "github": self.github,
             "author": self.author,
@@ -249,10 +237,12 @@ class QeAppPlugin(ipw.VBox):
     def __init__(
         self,
         data: QeAppPluginData,
+        plugin_name: str,
         title_updater: Callable[[str], None] | None = None,
         **kwargs,
     ):
         self.data = data
+        self.plugin_name = plugin_name
         self.title_updater = title_updater
         self.installed_version: str | None = None
         self.plugin_compatible = True
@@ -358,12 +348,10 @@ class QeAppPlugin(ipw.VBox):
         return self.installed_version is not None
 
     def reconcile_state(self) -> None:
-        """Refresh package compatibility and every widget derived from it."""
-        self.activation_error = get_activation_failure(self.data.package)
+        """Refresh plugin compatibility and every widget derived from it."""
+        self.activation_error = get_activation_failure(self.plugin_name)
         self.installed_version, self.plugin_compatible, self.requirement_error = (
-            get_plugin_version_info(
-                self.data.package, self.data.pip or self.data.package
-            )
+            get_plugin_version_info(self.plugin_name, self.data.pip or self.plugin_name)
         )
 
         self.app_compatible = is_version_compatible(self.data.requires_aiidalab_qe)
@@ -394,7 +382,7 @@ class QeAppPlugin(ipw.VBox):
                 f"{self.requirement_error}</div>"
             )
         elif self.is_installed and not self.plugin_compatible:
-            requirement = Requirement(self.data.pip or self.data.package)
+            requirement = Requirement(self.data.pip or self.plugin_name)
             warning += (
                 '<div class="alert alert-danger" role="alert">'
                 f"Installed version {self.installed_version} does not satisfy "
@@ -451,7 +439,7 @@ class QeAppPlugin(ipw.VBox):
         )
 
         details = (
-            f"<b>Package:</b> {self.data.package}<br>"
+            f"<b>Package:</b> {self.plugin_name}<br>"
             f"<b>Author:</b> {self.data.author}<br>"
             f"<b>Description:</b> {self.data.description}<br>"
             f"<b>Status:</b> {badge_html}<br>"
@@ -478,9 +466,9 @@ class QeAppPlugin(ipw.VBox):
         message.value = ""
         output.value = ""
 
-        self._append_message(f"Installing {self.data.package}...")
+        self._append_message(f"Installing {self.plugin_name}...")
         set_activation_failure(
-            self.data.package,
+            self.plugin_name,
             "Installation is in progress; activation has not been confirmed.",
         )
 
@@ -490,11 +478,11 @@ class QeAppPlugin(ipw.VBox):
         )
         if not installed:
             set_activation_failure(
-                self.data.package,
-                "Installation did not complete; the package state may have changed.",
+                self.plugin_name,
+                "Installation did not complete; the plugin state may have changed.",
             )
             self._append_message(
-                "Installation did not complete. The package state may have changed, "
+                "Installation did not complete. The plugin state may have changed, "
                 "so activation is not confirmed. Review the command output.",
                 color="#FF0000",
             )
@@ -505,18 +493,18 @@ class QeAppPlugin(ipw.VBox):
             self.reconcile_state()
             if self.is_installed:
                 set_activation_failure(
-                    self.data.package,
-                    "Installation setup or plugin validation failed. The package "
+                    self.plugin_name,
+                    "Installation setup or plugin validation failed. The plugin "
                     "remains installed, and the daemon was not restarted.",
                 )
             else:
-                clear_activation_failure(self.data.package)
+                clear_activation_failure(self.plugin_name)
             self.reconcile_state()
             return
 
         if not self._restart_daemon():
             set_activation_failure(
-                self.data.package,
+                self.plugin_name,
                 "Plugin validation passed, but the daemon restart failed.",
             )
             self._append_message(
@@ -527,7 +515,7 @@ class QeAppPlugin(ipw.VBox):
             self.reconcile_state()
             return
 
-        clear_activation_failure(self.data.package)
+        clear_activation_failure(self.plugin_name)
         self._append_message("Plugin installed successfully.", color="#008000")
 
         self.reconcile_state()
@@ -548,7 +536,7 @@ class QeAppPlugin(ipw.VBox):
                     "-m",
                     "aiidalab_qe",
                     "test-plugin",
-                    self.data.package,
+                    self.plugin_name,
                 ],
                 capture_output=True,
                 text=True,
@@ -556,7 +544,7 @@ class QeAppPlugin(ipw.VBox):
             )
         except OSError:
             LOGGER.exception(
-                "Could not run plugin loading test for %s", self.data.package
+                "Could not run plugin loading test for %s", self.plugin_name
             )
             self._append_message(
                 "The plugin test could not be started. Details were logged for debugging.",
@@ -575,19 +563,19 @@ class QeAppPlugin(ipw.VBox):
 
         LOGGER.error(
             "Plugin test failed for %s (exit code %s): %s%s",
-            self.data.package,
+            self.plugin_name,
             result.returncode,
             result.stdout,
             result.stderr,
         )
-        message = f"The plugin test for {self.data.package} did not pass."
+        message = f"The plugin test for {self.plugin_name} did not pass."
         if remove_on_test_failure:
             message += (
-                " The package will be removed to prevent use in an incomplete state."
+                " The plugin will be removed to prevent use in an incomplete state."
             )
         else:
             message += (
-                " The package remains installed, but activation is not confirmed. "
+                " The plugin remains installed, but activation is not confirmed. "
                 "The daemon was not restarted."
             )
         self._append_message(message + " Details were logged.", color="#FF0000")
@@ -604,9 +592,9 @@ class QeAppPlugin(ipw.VBox):
         message.layout.display = "block"
         message.value = ""
 
-        self._append_message(f"Updating {self.data.package}...")
+        self._append_message(f"Updating {self.plugin_name}...")
         set_activation_failure(
-            self.data.package,
+            self.plugin_name,
             "Update is in progress; activation has not been confirmed.",
         )
 
@@ -624,11 +612,11 @@ class QeAppPlugin(ipw.VBox):
         )
         if not result:
             set_activation_failure(
-                self.data.package,
-                "Update did not complete; the package state may have changed.",
+                self.plugin_name,
+                "Update did not complete; the plugin state may have changed.",
             )
             self._append_message(
-                "Update did not complete. The package state may have changed, "
+                "Update did not complete. The plugin state may have changed, "
                 "so activation is not confirmed and the daemon was not restarted.",
                 color="#FF0000",
             )
@@ -637,9 +625,9 @@ class QeAppPlugin(ipw.VBox):
 
         if not self._validate_plugin_installation():
             set_activation_failure(
-                self.data.package,
-                "Setup or plugin validation failed after the package update. "
-                "The package remains installed, but the daemon was not restarted.",
+                self.plugin_name,
+                "Setup or plugin validation failed after the plugin update. "
+                "The plugin remains installed, but the daemon was not restarted.",
             )
             self.reconcile_state()
             return
@@ -654,7 +642,7 @@ class QeAppPlugin(ipw.VBox):
         ):
             if not self._restart_daemon():
                 set_activation_failure(
-                    self.data.package,
+                    self.plugin_name,
                     "Plugin validation passed, but the daemon restart failed.",
                 )
                 self._append_message(
@@ -664,10 +652,10 @@ class QeAppPlugin(ipw.VBox):
                 )
                 self.reconcile_state()
                 return
-            clear_activation_failure(self.data.package)
+            clear_activation_failure(self.plugin_name)
             self.reconcile_state()
             self._append_message(
-                f"Updated {self.data.package} to {self.installed_version}.",
+                f"Updated {self.plugin_name} to {self.installed_version}.",
                 color="#008000",
             )
         elif result:
@@ -676,7 +664,7 @@ class QeAppPlugin(ipw.VBox):
                 "the required version."
             )
             set_activation_failure(
-                self.data.package,
+                self.plugin_name,
                 f"Update completed, but activation was not confirmed: {reason}",
             )
             self.reconcile_state()
@@ -687,13 +675,13 @@ class QeAppPlugin(ipw.VBox):
         self.output_container.layout.display = "block"
         self.message_container.value = ""
         set_activation_failure(
-            self.data.package,
+            self.plugin_name,
             "Activation retry is in progress; activation has not been confirmed.",
         )
 
         if not self._validate_plugin_installation():
             set_activation_failure(
-                self.data.package,
+                self.plugin_name,
                 "Setup or plugin validation failed. The daemon was not restarted.",
             )
             self.reconcile_state()
@@ -706,7 +694,7 @@ class QeAppPlugin(ipw.VBox):
             or self.requirement_error
         ):
             set_activation_failure(
-                self.data.package,
+                self.plugin_name,
                 "Validation passed, but the installed plugin does not satisfy the "
                 "registered compatibility requirements.",
             )
@@ -715,7 +703,7 @@ class QeAppPlugin(ipw.VBox):
 
         if not self._restart_daemon():
             set_activation_failure(
-                self.data.package,
+                self.plugin_name,
                 "Plugin validation passed, but the daemon restart failed.",
             )
             self._append_message(
@@ -726,7 +714,7 @@ class QeAppPlugin(ipw.VBox):
             self.reconcile_state()
             return
 
-        clear_activation_failure(self.data.package)
+        clear_activation_failure(self.plugin_name)
         self._append_message("Plugin activation succeeded.", color="#008000")
         self.reconcile_state()
 
@@ -738,9 +726,9 @@ class QeAppPlugin(ipw.VBox):
     def _remove_package(
         self, clear_output: bool = True, restart_daemon: bool = True
     ) -> bool:
-        self._append_message(f"Removing {self.data.package}...")
+        self._append_message(f"Removing {self.plugin_name}...")
 
-        requirement = Requirement(self.data.pip or self.data.package)
+        requirement = Requirement(self.data.pip or self.plugin_name)
         result = self._execute_command(
             [sys.executable, "-m", "pip", "uninstall", "-y", requirement.name],
             clear_output=clear_output,
@@ -748,14 +736,14 @@ class QeAppPlugin(ipw.VBox):
         if result:
             restart_succeeded = not restart_daemon or self._restart_daemon()
             if restart_succeeded:
-                clear_activation_failure(self.data.package)
+                clear_activation_failure(self.plugin_name)
             else:
                 set_activation_failure(
-                    self.data.package,
+                    self.plugin_name,
                     "Package removal succeeded, but the daemon restart failed.",
                 )
             self._append_message(
-                f"{self.data.package} removed successfully.",
+                f"{self.plugin_name} removed successfully.",
                 color="#008000",
             )
             if not restart_succeeded:
@@ -782,12 +770,12 @@ class QeAppPlugin(ipw.VBox):
             output.value = ""
             message.value = ""
 
-        self._append_message(f"Running post-install for {self.data.package}...")
+        self._append_message(f"Running post-install for {self.plugin_name}...")
 
         command = [
             sys.executable,
             "-m",
-            self.data.package.replace("-", "_"),
+            self.plugin_name.replace("-", "_"),
             self.data.post_install,
         ]
 
@@ -800,7 +788,7 @@ class QeAppPlugin(ipw.VBox):
                 check=False,
             )
         except OSError:
-            LOGGER.exception("Could not start post-install for %s", self.data.package)
+            LOGGER.exception("Could not start post-install for %s", self.plugin_name)
             self._append_message(
                 "Post-install could not be started. Details were logged for debugging.",
                 color="#FF0000",
@@ -812,20 +800,20 @@ class QeAppPlugin(ipw.VBox):
 
         if result.returncode == 0:
             self._append_message(
-                f"Post-install completed for {self.data.package}.",
+                f"Post-install completed for {self.plugin_name}.",
                 color="#008000",
             )
             return True
 
         LOGGER.error(
             "Post-install for %s failed with exit code %s: %s",
-            self.data.package,
+            self.plugin_name,
             result.returncode,
             result.stdout,
         )
 
         self._append_message(
-            "Post-install did not complete. The package is present, but setup may be "
+            "Post-install did not complete. The plugin is present, but setup may be "
             "incomplete. Review the command output; details were logged for debugging.",
             color="#FF0000",
         )
@@ -923,7 +911,7 @@ class PluginManager:
     def __init__(self, config_source: str | Path = DEFAULT_PLUGIN_CONFIG_SOURCE):
         """Initialize the PluginManager with a path to a YAML config or a URL.
 
-        :param config_source: A local YAML path, a package resource, or a remote URL.
+        :param config_source: A local YAML path, a plugin resource, or a remote URL.
         """
         self.config_source = config_source
         self.config_error = None
@@ -1005,9 +993,10 @@ class PluginManager:
         self.accordion.children = [
             QeAppPlugin(
                 plugin_data,
+                plugin_name,
                 title_updater=lambda title, index=index: update_title(index, title),
             )
-            for index, plugin_data in enumerate(self.plugins.values())
+            for index, (plugin_name, plugin_data) in enumerate(self.plugins.items())
         ]
 
         for plugin in self.accordion.children:

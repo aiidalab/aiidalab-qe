@@ -124,7 +124,7 @@ def test_plugin_data_and_widget_keep_metadata_and_widgets_separate():
         },
     )
 
-    plugin = QeAppPlugin(data)
+    plugin = QeAppPlugin(data, plugin_name="my-plugin")
 
     assert plugin.data is data
     assert isinstance(plugin, ipw.VBox)
@@ -221,7 +221,8 @@ def test_execute_command_streams_without_changing_widget_policy(monkeypatch):
                 "description": "Test",
                 "pip": "my-plugin",
             },
-        )
+        ),
+        plugin_name="my-plugin",
     )
     row.output_container = ipw.HTML()
 
@@ -617,7 +618,7 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
         ]
     ]
     assert "did not pass" in plugin.message_container.value
-    assert "package remains installed" in plugin.message_container.value
+    assert "plugin remains installed" in plugin.message_container.value
     assert "daemon was not restarted" in plugin.message_container.value
     assert "Updated my-plugin" not in plugin.message_container.value
     assert plugin.activation_error
@@ -946,7 +947,7 @@ def test_run_post_install_runs_only_configured_command(monkeypatch):
             "post_install": "setup",
         },
     )
-    plugin = QeAppPlugin(data)
+    plugin = QeAppPlugin(data, plugin_name="my-plugin")
     plugin.output_container = output
     plugin.message_container = message
     plugin._run_post_install()
