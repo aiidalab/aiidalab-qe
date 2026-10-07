@@ -271,6 +271,7 @@ class QeAppPlugin(ipw.VBox):
         )
         self.install_button = ipw.Button(
             description="Install",
+            tooltip="Install the plugin",
             button_style="success",
             layout=ipw.Layout(width=BUTTON_WIDTH),
         )
@@ -278,6 +279,7 @@ class QeAppPlugin(ipw.VBox):
 
         self.post_install_button = ipw.Button(
             description="Run post-install",
+            tooltip="Run the post-install script",
             button_style="info",
             layout=ipw.Layout(
                 width=BUTTON_WIDTH,
@@ -288,6 +290,7 @@ class QeAppPlugin(ipw.VBox):
 
         self.update_button = ipw.Button(
             description="Update",
+            tooltip="Update the plugin",
             button_style="warning",
             layout=ipw.Layout(width=BUTTON_WIDTH),
         )
@@ -295,13 +298,15 @@ class QeAppPlugin(ipw.VBox):
 
         self.remove_button = ipw.Button(
             description="Remove",
+            tooltip="Remove the plugin",
             button_style="danger",
             layout=ipw.Layout(width=BUTTON_WIDTH),
         )
         self.remove_button.on_click(self._on_remove)
 
         self.retry_activation_button = ipw.Button(
-            description="Retry activation",
+            description="Retry",
+            tooltip="Retry plugin activation",
             button_style="info",
             layout=ipw.Layout(width=BUTTON_WIDTH, display="none"),
         )
