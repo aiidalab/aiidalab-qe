@@ -6,6 +6,8 @@ install and remove Python-based AiiDAlab plugins, with real-time streaming
 of command output in a Jupyter environment.
 """
 
+from __future__ import annotations
+
 import html
 import logging
 import subprocess
@@ -25,6 +27,7 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 
+from aiidalab_qe import __version__
 from aiidalab_qe.plugins.state import (
     clear_activation_failure,
     get_activation_failure,
@@ -33,7 +36,8 @@ from aiidalab_qe.plugins.state import (
 
 LOGGER = logging.getLogger(__name__)
 
-# Define badge colors based on status
+DEFAULT_PLUGIN_CONFIG_SOURCE = files("aiidalab_qe.plugins").joinpath("plugins.yaml")
+
 COLOR_MAP = {
     "experimental": "#FF8C00",  # 🟠 Orange - Early development
     "beta": "#FFA500",  # 🟡 Darker Orange - Testing phase
@@ -42,40 +46,21 @@ COLOR_MAP = {
     "deprecated": "#FF0000",  # 🔴 Red - No longer maintained
     "archived": "#808080",  # ⚪ Grey - Retained for reference, no updates
 }
-DEFAULT_PLUGIN_CONFIG_SOURCE = files("aiidalab_qe.plugins").joinpath("plugins.yaml")
+
 BUTTON_WIDTH = "120px"
 
 
-def get_aiidalab_qe_version() -> str:
-    """
-    Get the installed version of aiidalab_qe.
-    Returns 'unknown' if the plugin is not installed.
-    """
-    import aiidalab_qe
-
-    try:
-        return aiidalab_qe.__version__
-    except AttributeError:
-        return "unknown"
-
-
-INSTALLED_AIIDA_QE_VERSION = get_aiidalab_qe_version()
-
-
 def is_version_compatible(required_version: str) -> bool:
-    """
-    Check if the installed aiidalab_qe version satisfies the required version constraint.
+    """Check if the installed app version satisfies the required version constraint.
+
     This function explicitly allows pre-release versions if they match the specifier.
     """
     if not required_version:
         return True
 
-    if INSTALLED_AIIDA_QE_VERSION == "unknown":
-        return False  # aiidalab_qe is not installed
-
     try:
-        specifier = SpecifierSet(required_version)  # Handles constraints like '>=24.10'
-        installed_version = Version(INSTALLED_AIIDA_QE_VERSION)
+        specifier = SpecifierSet(required_version)
+        installed_version = Version(__version__)
         return specifier.contains(installed_version, prereleases=True)
 
     except (InvalidSpecifier, InvalidVersion) as error:
@@ -139,7 +124,7 @@ class QeAppPluginData:
     extra: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_mapping(cls, plugin_name: str, data: Mapping) -> "QeAppPluginData":
+    def from_mapping(cls, plugin_name: str, data: Mapping) -> QeAppPluginData:
         """Create a plugin record after validating fields consumed by the app."""
         if not isinstance(plugin_name, str) or not plugin_name.strip():
             raise ValueError("plugin registry key must be a non-empty string")
@@ -377,7 +362,7 @@ class QeAppPlugin(ipw.VBox):
             warning += (
                 '<div class="alert alert-danger" role="alert">'
                 f"This plugin requires aiidalab_qe {self.data.requires_aiidalab_qe}, "
-                f"but you have {INSTALLED_AIIDA_QE_VERSION}.</div>"
+                f"but you have {__version__}.</div>"
             )
 
         if self.requirement_error:
