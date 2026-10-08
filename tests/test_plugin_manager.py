@@ -52,7 +52,7 @@ def test_plugin_manager_local_config_file():
 
         # Instantiate the manager
         manager = PluginManager(config_source=str(config_file))
-        manager._build_accordion()
+        manager._build_ui()
         assert len(manager.accordion.children) == 2, "Should build 2 accordion panels."
 
         # Check that the titles are set correctly
@@ -182,7 +182,7 @@ def test_outdated_plugin_actions(monkeypatch):
         config_file = Path(tmp_dir) / "test_plugins.yaml"
         config_file.write_text(yaml_content)
         manager = PluginManager(config_source=str(config_file))
-        manager._build_accordion()
+        manager._build_ui()
 
     buttons = manager.accordion.children[0].children[2].children
     (
@@ -250,7 +250,7 @@ def test_clear_output_button_clears_and_hides_logs(monkeypatch):
     monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
 
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     row = manager.accordion.children[0].children
     message_container, output_container = row[3:5]
     clear_button = row[2].children[-1]
@@ -300,12 +300,12 @@ def test_installed_plugin_status_icon(
     )
 
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
 
     assert manager.accordion.get_title(0).endswith(expected_icon)
 
 
-def test_plugin_manager_displays_accordion_without_refresh_button(monkeypatch):
+def test_plugin_manager_displays_persistent_ui_with_refresh_button(monkeypatch):
     monkeypatch.setattr(
         PluginManager,
         "_load_config",
@@ -328,9 +328,63 @@ def test_plugin_manager_displays_accordion_without_refresh_button(monkeypatch):
 
     manager = PluginManager()
     manager.display_ui()
+    first_row = manager.accordion.children[0]
+    first_row.message_container.value = "Keep this log"
+    manager.display_ui()
 
-    assert displayed == [manager.accordion]
-    assert not hasattr(manager, "refresh_button")
+    assert displayed == [manager.ui, manager.ui]
+    assert manager.ui.children == (manager.refresh_button, manager.accordion)
+    assert manager.accordion.children[0] is first_row
+    assert first_row.message_container.value == "Keep this log"
+
+
+def test_manager_refresh_updates_existing_rows_without_clearing_logs(monkeypatch):
+    monkeypatch.setattr(
+        PluginManager,
+        "_load_config",
+        lambda _self: {
+            name: {
+                "title": name,
+                "description": "A test plugin",
+                "pip": name,
+            }
+            for name in ("first-plugin", "second-plugin")
+        },
+    )
+    version_info = {
+        "first-plugin": (None, True, None),
+        "second-plugin": (None, True, None),
+    }
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda name, *_args: version_info[name],
+    )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+
+    manager = PluginManager()
+    manager._build_ui()
+    first_row, second_row = manager.accordion.children
+    first_row.message_container.value = "Previous update log"
+    first_row.output_container.value = "Previous command output"
+    plugin_state.set_activation_failure("first-plugin", "External activation failure")
+    version_info["first-plugin"] = ("1.0", False, None)
+    version_info["second-plugin"] = ("2.0", True, None)
+
+    manager.refresh_button.click()
+
+    assert manager.accordion.children == (first_row, second_row)
+    assert first_row.installed_version == "1.0"
+    assert not first_row.plugin_compatible
+    assert first_row.activation_error == "External activation failure"
+    assert "Installed version 1.0" in first_row.version_warning.value
+    assert "External activation failure" in first_row.version_warning.value
+    assert first_row.version_warning_text == first_row.version_warning.value
+    assert manager.accordion.get_title(0).endswith("⚠️")
+    assert not first_row.update_button.disabled
+    assert first_row.message_container.value == "Previous update log"
+    assert first_row.output_container.value == "Previous command output"
+    assert second_row.installed_version == "2.0"
 
 
 def test_plugin_manager_default_config_file():
@@ -338,7 +392,7 @@ def test_plugin_manager_default_config_file():
     Test that PluginManager loads the YAML file from default source (GitHub repo).
     """
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     assert len(manager.accordion.children) > 0, (
         "Should build at least one accordion panels."
     )
@@ -455,7 +509,7 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
@@ -533,7 +587,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
@@ -602,7 +656,7 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     plugin = manager.accordion.children[0]
 
     plugin._on_update(None)
@@ -654,7 +708,7 @@ def test_retry_activation_clears_failure_and_restarts_daemon(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     plugin = manager.accordion.children[0]
 
     assert plugin.retry_activation_button.layout.display == ""
@@ -720,7 +774,7 @@ def test_update_failure_keeps_activation_warning(monkeypatch, failure_stage):
     )
 
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
@@ -772,7 +826,7 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
@@ -832,7 +886,7 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     plugin = manager.accordion.children[0]
     assert not plugin.update_button.disabled
     assert not plugin.remove_button.disabled
@@ -891,7 +945,7 @@ def test_install_reconciles_plugin_controls(monkeypatch):
         },
     )
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
     plugin = manager.accordion.children[0]
 
     plugin._on_install(None)
@@ -980,7 +1034,7 @@ def test_post_install_only_button_is_enabled_when_package_is_not_installed(
     monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
 
     manager = PluginManager()
-    manager._build_accordion()
+    manager._build_ui()
 
     post_install_button = manager.accordion.children[0].children[2].children[1]
     assert not post_install_button.disabled

@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 
 import ipywidgets as ipw
 import requests
+import traitlets as tl
 import yaml
 from IPython.display import display
 from packaging.requirements import InvalidRequirement, Requirement
@@ -219,6 +220,13 @@ class QeAppPluginData:
 class QeAppPlugin(ipw.VBox):
     """Widget and actions for one validated plugin registry entry."""
 
+    installed_version = tl.Unicode(default_value=None, allow_none=True)
+    plugin_compatible = tl.Bool(default_value=True)
+    app_compatible = tl.Bool(default_value=True)
+    requirement_error = tl.Unicode(default_value=None, allow_none=True)
+    activation_error = tl.Unicode(default_value=None, allow_none=True)
+    version_warning_text = tl.Unicode(default_value="")
+
     def __init__(
         self,
         data: QeAppPluginData,
@@ -229,13 +237,13 @@ class QeAppPlugin(ipw.VBox):
         self.data = data
         self.plugin_name = plugin_name
         self.title_updater = title_updater
-        self.installed_version: str | None = None
-        self.plugin_compatible = True
-        self.app_compatible = True
-        self.requirement_error: str | None = None
-        self.activation_error: str | None = None
 
         self.version_warning = ipw.HTML()
+        tl.dlink(
+            (self, "version_warning_text"),
+            (self.version_warning, "value"),
+        )
+
         self.message_container = ipw.HTML(
             value="",
             layout=ipw.Layout(
@@ -316,7 +324,7 @@ class QeAppPlugin(ipw.VBox):
                 ipw.HTML(self._details_html()),
                 self.version_warning,
                 ipw.HBox(
-                    [
+                    children=[
                         self.install_button,
                         self.post_install_button,
                         self.update_button,
@@ -331,24 +339,54 @@ class QeAppPlugin(ipw.VBox):
             **kwargs,
         )
 
-        self.reconcile_state()
+        # This separate call ensures that the UI is refreshed even if
+        # the state remains the same after the plugin state refresh.
+        self._refresh_ui_state()
+
+        self.refresh_plugin_state()
 
     @property
     def is_installed(self) -> bool:
         return self.installed_version is not None
 
-    def reconcile_state(self) -> None:
-        """Refresh plugin compatibility and every widget derived from it."""
-        self.activation_error = get_activation_failure(self.plugin_name)
-        self.installed_version, self.plugin_compatible, self.requirement_error = (
+    def refresh_plugin_state(self) -> None:
+        """Refresh plugin state from package metadata and persisted activation status."""
+        installed_version, plugin_compatible, requirement_error = (
             get_plugin_version_info(self.plugin_name, self.data.pip or self.plugin_name)
         )
+        app_compatible = is_version_compatible(self.data.requires_aiidalab_qe)
+        activation_error = get_activation_failure(self.plugin_name)
 
-        self.app_compatible = is_version_compatible(self.data.requires_aiidalab_qe)
+        with self.hold_trait_notifications():
+            self.installed_version = installed_version
+            self.plugin_compatible = plugin_compatible
+            self.requirement_error = requirement_error
+            self.app_compatible = app_compatible
+            self.activation_error = activation_error
 
-        if self.version_warning is None:
+    def update_title(self) -> None:
+        if self.title_updater is None:
             return
 
+        status = "⚠️" if self.version_warning_text else "✅" if self.is_installed else ""
+
+        self.title_updater(f"{self.data.title} {status}".rstrip())
+
+    @tl.observe(
+        "installed_version",
+        "plugin_compatible",
+        "app_compatible",
+        "requirement_error",
+        "activation_error",
+    )
+    def _refresh_ui_state(self, _change: dict | None = None) -> None:
+        """Update the UI state of the plugin."""
+        self._update_version_warning()
+        self._update_action_buttons()
+        self.update_title()
+
+    def _update_version_warning(self) -> None:
+        """Build and store the warning text from the current plugin state."""
         warning = ""
 
         if self.activation_error:
@@ -380,8 +418,10 @@ class QeAppPlugin(ipw.VBox):
                 "</div>"
             )
 
-        self.version_warning.value = warning
+        self.version_warning_text = warning
 
+    def _update_action_buttons(self) -> None:
+        """Set action availability from the current plugin state."""
         if self.install_button is not None:
             self.install_button.disabled = (
                 self.is_installed
@@ -404,19 +444,6 @@ class QeAppPlugin(ipw.VBox):
                 "" if self.activation_error and self.is_installed else "none"
             )
             self.retry_activation_button.disabled = not self.app_compatible
-
-        self.update_title(warning)
-
-    def update_title(self, warning: str | None = None) -> None:
-        if self.title_updater is None:
-            return
-
-        if warning is None and self.version_warning is not None:
-            warning = self.version_warning.value
-
-        status = "⚠️" if warning else "✅" if self.is_installed else ""
-
-        self.title_updater(f"{self.data.title} {status}".rstrip())
 
     def _details_html(self) -> str:
         status_value = self.data.status.strip().lower()
@@ -476,11 +503,11 @@ class QeAppPlugin(ipw.VBox):
                 "so activation is not confirmed. Review the command output.",
                 color="#FF0000",
             )
-            self.reconcile_state()
+            self.refresh_plugin_state()
             return
 
         if not self._validate_plugin_installation(remove_on_test_failure=True):
-            self.reconcile_state()
+            self.refresh_plugin_state()
             if self.is_installed:
                 set_activation_failure(
                     self.plugin_name,
@@ -489,7 +516,7 @@ class QeAppPlugin(ipw.VBox):
                 )
             else:
                 clear_activation_failure(self.plugin_name)
-            self.reconcile_state()
+            self.refresh_plugin_state()
             return
 
         if not self._restart_daemon():
@@ -502,13 +529,13 @@ class QeAppPlugin(ipw.VBox):
                 "Activation is not confirmed.",
                 color="#FF0000",
             )
-            self.reconcile_state()
+            self.refresh_plugin_state()
             return
 
         clear_activation_failure(self.plugin_name)
         self._append_message("Plugin installed successfully.", color="#008000")
 
-        self.reconcile_state()
+        self.refresh_plugin_state()
 
     def _validate_plugin_installation(
         self, remove_on_test_failure: bool = False
@@ -610,7 +637,7 @@ class QeAppPlugin(ipw.VBox):
                 "so activation is not confirmed and the daemon was not restarted.",
                 color="#FF0000",
             )
-            self.reconcile_state()
+            self.refresh_plugin_state()
             return
 
         if not self._validate_plugin_installation():
@@ -619,10 +646,10 @@ class QeAppPlugin(ipw.VBox):
                 "Setup or plugin validation failed after the plugin update. "
                 "The plugin remains installed, but the daemon was not restarted.",
             )
-            self.reconcile_state()
+            self.refresh_plugin_state()
             return
 
-        self.reconcile_state()
+        self.refresh_plugin_state()
 
         if (
             self.is_installed
@@ -640,10 +667,10 @@ class QeAppPlugin(ipw.VBox):
                     "Activation is not confirmed.",
                     color="#FF0000",
                 )
-                self.reconcile_state()
+                self.refresh_plugin_state()
                 return
             clear_activation_failure(self.plugin_name)
-            self.reconcile_state()
+            self.refresh_plugin_state()
             self._append_message(
                 f"Updated {self.plugin_name} to {self.installed_version}.",
                 color="#008000",
@@ -657,7 +684,7 @@ class QeAppPlugin(ipw.VBox):
                 self.plugin_name,
                 f"Update completed, but activation was not confirmed: {reason}",
             )
-            self.reconcile_state()
+            self.refresh_plugin_state()
             self._append_message(reason, color="#FF0000")
 
     def _on_retry_activation(self, _button: ipw.Button) -> None:
@@ -674,10 +701,10 @@ class QeAppPlugin(ipw.VBox):
                 self.plugin_name,
                 "Setup or plugin validation failed. The daemon was not restarted.",
             )
-            self.reconcile_state()
+            self.refresh_plugin_state()
             return
 
-        self.reconcile_state()
+        self.refresh_plugin_state()
         if (
             not self.plugin_compatible
             or not self.app_compatible
@@ -688,7 +715,7 @@ class QeAppPlugin(ipw.VBox):
                 "Validation passed, but the installed plugin does not satisfy the "
                 "registered compatibility requirements.",
             )
-            self.reconcile_state()
+            self.refresh_plugin_state()
             return
 
         if not self._restart_daemon():
@@ -701,12 +728,12 @@ class QeAppPlugin(ipw.VBox):
                 "Activation is not confirmed.",
                 color="#FF0000",
             )
-            self.reconcile_state()
+            self.refresh_plugin_state()
             return
 
         clear_activation_failure(self.plugin_name)
         self._append_message("Plugin activation succeeded.", color="#008000")
-        self.reconcile_state()
+        self.refresh_plugin_state()
 
     def _on_remove(self, _button: ipw.Button) -> None:
         self.message_container.layout.display = "block"
@@ -742,13 +769,13 @@ class QeAppPlugin(ipw.VBox):
                     color="#FF0000",
                 )
 
-        self.reconcile_state()
+        self.refresh_plugin_state()
 
         return result
 
     def _on_post_install(self, _button: ipw.Button) -> None:
         self._run_post_install()
-        self.reconcile_state()
+        self.refresh_plugin_state()
 
     def _run_post_install(self, clear_output: bool = True) -> bool:
         output = self.output_container
@@ -892,7 +919,8 @@ class QeAppPlugin(ipw.VBox):
 
 
 class PluginManager:
-    """
+    """Plugin manager for AiiDAlab Quantum ESPRESSO.
+
     A manager class that reads a plugin configuration file (YAML),
     and creates an interactive Accordion UI for installing/uninstalling
     those plugins in a Jupyter environment.
@@ -923,6 +951,24 @@ class PluginManager:
 
         self.accordion = ipw.Accordion()
 
+        self.refresh_button = ipw.Button(
+            description="Refresh",
+            tooltip="Refresh plugin status",
+            icon="refresh",
+            button_style="primary",
+            layout=ipw.Layout(width="fit-content", margin="0 2px 10px"),
+        )
+        self.refresh_button.on_click(self._on_refresh)
+
+        self.ui = ipw.VBox(
+            children=[
+                self.refresh_button,
+                self.accordion,
+            ],
+        )
+
+        self._accordion_built = False
+
     @property
     def data(self) -> dict:
         """Return normalized registry entries for existing consumers."""
@@ -931,7 +977,10 @@ class PluginManager:
         }
 
     def display_ui(self) -> None:
-        """Display the Accordion UI in a Jupyter notebook."""
+        """Display the plugin management UI.
+
+        Renders a warning if the plugin registry could not be loaded.
+        """
         if self.config_error:
             display(
                 ipw.HTML(
@@ -944,8 +993,17 @@ class PluginManager:
             )
             return
 
-        self._build_accordion()
-        display(self.accordion)
+        self._build_ui()
+
+        display(self.ui)
+
+    def refresh_plugins(self) -> None:
+        """Refresh external status for each existing plugin row."""
+        for plugin in self.accordion.children:
+            plugin.refresh_plugin_state()
+
+    def _on_refresh(self, _button: ipw.Button) -> None:
+        self.refresh_plugins()
 
     def _load_config(self) -> dict:
         """Load YAML from the configured local path or HTTP(S) URL."""
@@ -973,8 +1031,13 @@ class PluginManager:
 
         return data
 
-    def _build_accordion(self) -> None:
-        """Build the Accordion UI from the validated plugin records."""
+    def _build_ui(self) -> None:
+        """Build the Accordion UI from the validated plugin records.
+
+        Title updates are delegated to each individual plugin row.
+        """
+        if self._accordion_built:
+            return
 
         def update_title(index: int, title: str) -> None:
             if index < len(self.accordion.children):
@@ -991,3 +1054,5 @@ class PluginManager:
 
         for plugin in self.accordion.children:
             plugin.update_title()
+
+        self._accordion_built = True
