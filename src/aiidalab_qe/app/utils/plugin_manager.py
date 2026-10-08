@@ -774,7 +774,13 @@ class QeAppPlugin(ipw.VBox):
         return result
 
     def _on_post_install(self, _button: ipw.Button) -> None:
-        self._run_post_install()
+        if self._run_post_install():
+            clear_activation_failure(self.plugin_name)
+        else:
+            set_activation_failure(
+                self.plugin_name,
+                "Post-install failed; plugin setup may be incomplete.",
+            )
         self.refresh_plugin_state()
 
     def _run_post_install(self, clear_output: bool = True) -> bool:

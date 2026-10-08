@@ -48,18 +48,18 @@ def test_panel():
     assert "bands" in parameters
 
 
-def test_fetching_available_properties():
+def test_fetching_available_plugins():
     from aiidalab_qe.app.utils.plugin_manager import DEFAULT_PLUGIN_CONFIG_SOURCE
 
     model = ConfigurationStepModel()
     config = ConfigurationStep(model=model)
-    config._fetch_available_properties(str(DEFAULT_PLUGIN_CONFIG_SOURCE))
-    assert len(config.available_properties_list) > 0
-    assert model.available_properties_fetched
-    assert all("<li>" not in title for title in config.available_properties_list)
+    config._fetch_available_plugins(str(DEFAULT_PLUGIN_CONFIG_SOURCE))
+    assert len(config.available_plugins_list) > 0
+    assert model.available_plugins_fetched
+    assert all("<li>" not in title for title in config.available_plugins_list)
 
 
-def test_available_properties_render_with_single_list_item(monkeypatch):
+def test_available_plugins_render_with_single_list_item(monkeypatch):
     from aiidalab_qe.app.configuration import step as configuration_step
 
     class Registry:
@@ -87,9 +87,9 @@ def test_available_properties_render_with_single_list_item(monkeypatch):
     config = ConfigurationStep(model=ConfigurationStepModel())
     config.render()
 
-    assert config.available_properties_list == ["My plugin"]
-    assert config.available_properties.value.count("<li>") == 1
-    assert "<li></li>" not in config.available_properties.value
+    assert config.available_plugins_list == ["My plugin"]
+    assert config.available_plugins.value.count("<li>") == 1
+    assert "<li></li>" not in config.available_plugins.value
 
 
 def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
@@ -132,9 +132,9 @@ def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
     config = ConfigurationStep(model=model)
     config.render()
 
-    assert config.incompatible_properties_list == ["My plugin"]
+    assert config.incompatible_plugins_list == ["My plugin"]
     assert "Electronic band structure" not in [
-        row.children[0].title for row in config.installed_properties_list
+        row.children[0].title for row in config.installed_plugins_list
     ]
 
     model.set_model_state(
@@ -188,9 +188,9 @@ def test_activation_failed_plugin_is_not_ready_for_new_calculations(monkeypatch)
     config = ConfigurationStep(model=ConfigurationStepModel())
     config.render()
 
-    assert config.incompatible_properties_list == ["My plugin"]
+    assert config.incompatible_plugins_list == ["My plugin"]
     assert "Electronic band structure" not in [
-        row.children[0].title for row in config.installed_properties_list
+        row.children[0].title for row in config.installed_plugins_list
     ]
 
 
@@ -247,9 +247,9 @@ def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
         {"workchain": {"properties": ["bands"], "relax_type": "none"}}
     )
 
-    assert config.incompatible_properties_list == []
+    assert config.incompatible_plugins_list == []
     assert "Electronic band structure" in [
-        row.children[0].title for row in config.installed_properties_list
+        row.children[0].title for row in config.installed_plugins_list
     ]
     assert model.get_model("bands").include
     assert "bands" in model._get_properties()

@@ -151,10 +151,10 @@ class AppController:
         if not selected_properties:
             selected_properties = set(self.wizard.configuration_model._get_properties())
 
-        incompatible_properties = (
+        incompatible_plugins = (
             self.wizard.results_step.results_panel.incompatible_plugin_ids
         )
-        blocked = bool(selected_properties & incompatible_properties)
+        blocked = bool(selected_properties & incompatible_plugins)
         self._view.duplicate_workflow_link.disabled = blocked
         self._view.duplicate_workflow_link.tooltip = (
             "Duplication disabled due to incompatible plugins. Visit the Plugin store to resolve."

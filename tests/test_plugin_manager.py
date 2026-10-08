@@ -1013,6 +1013,50 @@ def test_run_post_install_runs_only_configured_command(monkeypatch):
     assert "Post-install completed" in message.value
 
 
+@pytest.mark.parametrize(
+    ("returncode", "expected_failure"),
+    [
+        (0, None),
+        (1, "Post-install failed; plugin setup may be incomplete."),
+    ],
+)
+def test_standalone_post_install_updates_activation_state(
+    monkeypatch, returncode, expected_failure
+):
+    plugin_state.set_activation_failure("my-plugin", "Previous activation failure")
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_manager.subprocess,
+        "run",
+        lambda command, **_kwargs: plugin_manager.subprocess.CompletedProcess(
+            command, returncode, "setup output", ""
+        ),
+    )
+    data = QeAppPluginData.from_mapping(
+        "my-plugin",
+        {
+            "title": "My Test Plugin",
+            "description": "A test plugin",
+            "pip": "my-plugin",
+            "post_install": "setup",
+        },
+    )
+    plugin = QeAppPlugin(data, plugin_name="my-plugin")
+
+    plugin._on_post_install(None)
+
+    assert plugin_state.get_activation_failure("my-plugin") == expected_failure
+    assert plugin.activation_error == expected_failure
+    assert (plugin.retry_activation_button.layout.display == "") == bool(
+        expected_failure
+    )
+
+
 def test_post_install_only_button_is_enabled_when_package_is_not_installed(
     monkeypatch,
 ):
