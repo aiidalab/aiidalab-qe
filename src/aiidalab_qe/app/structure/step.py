@@ -22,6 +22,7 @@ from aiidalab_qe.plugins.utils import get_entry_items
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
+    SmilesWidget,
     StructureManagerWidget,
     StructureUploadWidget,
 )
@@ -101,6 +102,7 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
 
         importers = [
             StructureUploadWidget(title="Upload file"),
+            SmilesWidget(title="SMILES"),
             LazyLoadedOptimade(title="OPTIMADE"),
             LazyLoadedStructureBrowser(title="AiiDA database"),
             CategorizedStructureExamplesWidget(
