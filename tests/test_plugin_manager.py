@@ -11,6 +11,7 @@ from aiidalab_qe.app.utils.plugin_manager import (
     QeAppPlugin,
     QeAppPluginData,
 )
+from aiidalab_qe.plugins import registry as plugin_registry
 from aiidalab_qe.plugins import state as plugin_state
 
 
@@ -40,6 +41,12 @@ yaml_content = """
     """
 
 
+def _plugin_registry(plugin_name, data):
+    return plugin_registry.PluginRegistry.load(
+        loader=lambda: {plugin_name: data},
+    )
+
+
 def test_plugin_manager_local_config_file():
     """
     Test that PluginManager loads the YAML file and builds the UI (Accordion) properly.
@@ -65,8 +72,8 @@ def test_plugin_manager_local_config_file():
 
 
 def test_checked_in_plugin_registry_is_valid():
-    registry = plugin_manager.yaml.safe_load(
-        plugin_manager.DEFAULT_PLUGIN_CONFIG_SOURCE.read_text()
+    registry = plugin_registry.yaml.safe_load(
+        plugin_registry.DEFAULT_PLUGIN_CONFIG_SOURCE.read_text()
     )
 
     plugins = [
@@ -161,9 +168,9 @@ def test_invalid_registry_entry_is_reported_in_store(tmp_path, monkeypatch):
 
 def test_remote_registry_request_error_is_reported(monkeypatch):
     def fail_request(*_args, **_kwargs):
-        raise plugin_manager.requests.ConnectionError("offline")
+        raise plugin_registry.requests.ConnectionError("offline")
 
-    monkeypatch.setattr(plugin_manager.requests, "get", fail_request)
+    monkeypatch.setattr(plugin_registry.requests, "get", fail_request)
 
     manager = PluginManager(config_source="https://example.test/plugins.yaml")
 
@@ -411,7 +418,7 @@ def test_plugin_manager_default_config_file():
 )
 def test_get_plugin_version_info(monkeypatch, installed_version, requirement, expected):
     monkeypatch.setattr(
-        plugin_manager.metadata, "version", lambda _package: installed_version
+        plugin_registry.metadata, "version", lambda _package: installed_version
     )
 
     version, compatible, error = plugin_manager.get_plugin_version_info(
@@ -425,9 +432,9 @@ def test_get_plugin_version_info(monkeypatch, installed_version, requirement, ex
 
 def test_get_plugin_version_info_not_installed(monkeypatch):
     def missing_package(_package):
-        raise plugin_manager.metadata.PackageNotFoundError
+        raise plugin_registry.metadata.PackageNotFoundError
 
-    monkeypatch.setattr(plugin_manager.metadata, "version", missing_package)
+    monkeypatch.setattr(plugin_registry.metadata, "version", missing_package)
 
     assert plugin_manager.get_plugin_version_info("my-plugin", "my-plugin>=1") == (
         None,
@@ -568,7 +575,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
 
     monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
     monkeypatch.setattr(
-        plugin_manager.metadata,
+        plugin_registry.metadata,
         "version",
         lambda _name: installed_version["value"],
     )

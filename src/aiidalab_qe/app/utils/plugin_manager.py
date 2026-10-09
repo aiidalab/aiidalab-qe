@@ -12,23 +12,23 @@ import html
 import logging
 import subprocess
 import sys
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
-from importlib import metadata
-from importlib.resources import files
+from collections.abc import Callable
 from pathlib import Path
-from urllib.parse import urlparse
 
 import ipywidgets as ipw
-import requests
 import traitlets as tl
-import yaml
 from IPython.display import display
-from packaging.requirements import InvalidRequirement, Requirement
-from packaging.specifiers import InvalidSpecifier, SpecifierSet
-from packaging.version import InvalidVersion, Version
+from packaging.requirements import Requirement
 
 from aiidalab_qe import __version__
+from aiidalab_qe.plugins.registry import (
+    DEFAULT_PLUGIN_CONFIG_SOURCE,
+    PluginRegistry,
+    QeAppPluginData,
+    get_plugin_version_info,
+    is_version_compatible,
+    load_plugin_config,
+)
 from aiidalab_qe.plugins.state import (
     clear_activation_failure,
     get_activation_failure,
@@ -36,8 +36,6 @@ from aiidalab_qe.plugins.state import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-DEFAULT_PLUGIN_CONFIG_SOURCE = files("aiidalab_qe.plugins").joinpath("plugins.yaml")
 
 COLOR_MAP = {
     "experimental": "#FF8C00",  # 🟠 Orange - Early development
@@ -49,172 +47,6 @@ COLOR_MAP = {
 }
 
 BUTTON_WIDTH = "120px"
-
-
-def is_version_compatible(required_version: str) -> bool:
-    """Check if the installed app version satisfies the required version constraint.
-
-    This function explicitly allows pre-release versions if they match the specifier.
-    """
-    if not required_version:
-        return True
-
-    try:
-        specifier = SpecifierSet(required_version)
-        installed_version = Version(__version__)
-        return specifier.contains(installed_version, prereleases=True)
-
-    except (InvalidSpecifier, InvalidVersion) as error:
-        LOGGER.warning(
-            "Could not parse version requirement %r: %s",
-            required_version,
-            error,
-        )
-        return False
-
-
-def is_plugin_installed(plugin_name: str) -> bool:
-    """Check if a given plugin is already installed."""
-    try:
-        metadata.version(plugin_name)
-    except metadata.PackageNotFoundError:
-        return False
-    else:
-        return True
-
-
-def get_plugin_version_info(
-    plugin_name: str,
-    pip_requirement: str | None,
-) -> tuple[str | None, bool, str | None]:
-    """Return the installed version, compatibility, and any requirement error."""
-    try:
-        requirement = Requirement(pip_requirement or plugin_name)
-    except InvalidRequirement as error:
-        return None, False, str(error)
-
-    try:
-        installed_version = metadata.version(requirement.name)
-    except metadata.PackageNotFoundError:
-        return None, True, None
-
-    try:
-        version = Version(installed_version)
-    except InvalidVersion as error:
-        return installed_version, False, str(error)
-
-    compatible = not requirement.specifier or requirement.specifier.contains(
-        version,
-        prereleases=True,
-    )
-    return installed_version, compatible, None
-
-
-@dataclass(frozen=True)
-class QeAppPluginData:
-    title: str
-    description: str
-    pip: str | None = None
-    github: str | None = None
-    author: str = "N/A"
-    documentation: str | None = None
-    post_install: str | None = None
-    status: str = ""
-    category: str = "calculation"
-    requires_aiidalab_qe: str | None = None
-    extra: dict = field(default_factory=dict, repr=False)
-
-    @classmethod
-    def from_mapping(cls, plugin_name: str, data: Mapping) -> QeAppPluginData:
-        """Create a plugin record after validating fields consumed by the app."""
-        if not isinstance(plugin_name, str) or not plugin_name.strip():
-            raise ValueError("plugin registry key must be a non-empty string")
-        if not isinstance(data, Mapping):
-            raise TypeError(f"{plugin_name}: plugin entry must be a mapping")
-
-        def required_string(field: str) -> str:
-            value = data.get(field)
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"{plugin_name}: '{field}' must be a non-empty string")
-            return value
-
-        def optional_string(field: str, default: str | None = None) -> str | None:
-            value = data.get(field, default)
-            if value is None:
-                return None
-            if not isinstance(value, str):
-                raise TypeError(f"{plugin_name}: '{field}' must be a string")
-            return value or None
-
-        title = required_string("title")
-        description = required_string("description")
-
-        pip_requirement = optional_string("pip")
-        github = optional_string("github")
-        if not pip_requirement and not github:
-            raise ValueError(f"{plugin_name}: either 'pip' or 'github' is required")
-
-        try:
-            Requirement(pip_requirement or plugin_name)
-        except InvalidRequirement as error:
-            field_name = "pip" if pip_requirement else "top-level key"
-            raise ValueError(
-                f"{plugin_name}: invalid '{field_name}' requirement: {error}"
-            ) from error
-
-        app_requirement = optional_string("requires_aiidalab_qe")
-        if app_requirement:
-            try:
-                SpecifierSet(app_requirement)
-            except InvalidSpecifier as error:
-                raise ValueError(
-                    f"{plugin_name}: invalid 'requires_aiidalab_qe' specifier: {error}"
-                ) from error
-
-        known_fields = {
-            "title",
-            "description",
-            "pip",
-            "github",
-            "author",
-            "documentation",
-            "post_install",
-            "status",
-            "category",
-            "requires_aiidalab_qe",
-        }
-
-        return cls(
-            title=title,
-            description=description,
-            pip=pip_requirement,
-            github=github,
-            author=optional_string("author", "N/A") or "N/A",
-            documentation=optional_string("documentation"),
-            post_install=optional_string("post_install"),
-            status=optional_string("status", "") or "",
-            category=optional_string("category", "calculation") or "calculation",
-            requires_aiidalab_qe=app_requirement,
-            extra={
-                key: value for key, value in data.items() if key not in known_fields
-            },
-        )
-
-    def as_mapping(self) -> dict:
-        """Expose normalized metadata for existing registry consumers."""
-        return {
-            **self.extra,
-            "title": self.title,
-            "description": self.description,
-            "pip": self.pip,
-            "github": self.github,
-            "author": self.author,
-            "documentation": self.documentation,
-            "post_install": self.post_install,
-            "status": self.status,
-            "category": self.category,
-            "requires_aiidalab_qe": self.requires_aiidalab_qe,
-        }
 
 
 class QeAppPlugin(ipw.VBox):
@@ -938,22 +770,9 @@ class PluginManager:
         :param config_source: A local YAML path, a plugin resource, or a remote URL.
         """
         self.config_source = config_source
-        self.config_error = None
-
-        try:
-            self.plugins = {
-                name: QeAppPluginData.from_mapping(name, data)
-                for name, data in self._load_config().items()
-            }
-        except (
-            OSError,
-            requests.RequestException,
-            ValueError,
-            yaml.YAMLError,
-        ) as error:
-            LOGGER.exception("Could not load plugin registry from %s", config_source)
-            self.config_error = str(error)
-            self.plugins = {}
+        self.registry = PluginRegistry.load(config_source, loader=self._load_config)
+        self.config_error = self.registry.config_error
+        self.plugins = self.registry.plugins
 
         self.accordion = ipw.Accordion()
 
@@ -978,9 +797,7 @@ class PluginManager:
     @property
     def data(self) -> dict:
         """Return normalized registry entries for existing consumers."""
-        return {
-            name: plugin_data.as_mapping() for name, plugin_data in self.plugins.items()
-        }
+        return self.registry.data
 
     def display_ui(self) -> None:
         """Display the plugin management UI.
@@ -1012,30 +829,8 @@ class PluginManager:
         self.refresh_plugins()
 
     def _load_config(self) -> dict:
-        """Load YAML from the configured local path or HTTP(S) URL."""
-        try:
-            if isinstance(self.config_source, str):
-                if urlparse(self.config_source).scheme in {"http", "https"}:
-                    response = requests.get(self.config_source, timeout=10)
-                    response.raise_for_status()
-                    content = response.text
-                else:
-                    content = Path(self.config_source).read_text(encoding="utf-8")
-            else:
-                content = self.config_source.read_text(encoding="utf-8")
-
-            data = yaml.safe_load(content)
-        except requests.RequestException as error:
-            raise ValueError(f"Could not fetch plugin registry: {error}") from error
-        except (OSError, yaml.YAMLError) as error:
-            raise ValueError(f"Could not read plugin registry: {error}") from error
-
-        if data is None:
-            return {}
-        if not isinstance(data, Mapping):
-            raise TypeError("plugin registry must be a mapping of names to entries")
-
-        return data
+        """Load raw YAML data from the configured source."""
+        return load_plugin_config(self.config_source)
 
     def _build_ui(self) -> None:
         """Build the Accordion UI from the validated plugin records.

@@ -4,18 +4,15 @@ import html
 from importlib.metadata import distributions
 
 import ipywidgets as ipw
-from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from aiidalab_qe.app.result.components import ResultsComponent
-from aiidalab_qe.app.utils.plugin_manager import (
-    PluginManager,
-    get_plugin_version_info,
-    is_version_compatible,
-)
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
-from aiidalab_qe.plugins.state import get_activation_failure
+from aiidalab_qe.plugins.registry import (
+    get_default_plugin_registry,
+    get_plugin_status,
+)
 from aiidalab_qe.plugins.utils import get_entry_items
 
 from .model import WorkflowResultsViewerModel
@@ -96,26 +93,12 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
         }
 
     def _fetch_plugin_results(self, viewer_model: WorkflowResultsViewerModel):
-        manager = PluginManager()
+        registry = get_default_plugin_registry()
         incompatible_packages = {}
-        for plugin_name, plugin_data in manager.plugins.items():
-            requirement_text = plugin_data.pip or plugin_name
-            requirement = Requirement(requirement_text)
-            version, plugin_compatible, requirement_error = get_plugin_version_info(
-                plugin_name,
-                requirement_text,
-            )
-            app_compatible = is_version_compatible(plugin_data.requires_aiidalab_qe)
-            activation_error = get_activation_failure(plugin_name)
-            if version is not None and (
-                not plugin_compatible
-                or requirement_error
-                or not app_compatible
-                or activation_error
-            ):
-                incompatible_packages[canonicalize_name(requirement.name)] = (
-                    plugin_data.title
-                )
+        for plugin_name, plugin_data in registry.plugins.items():
+            status = get_plugin_status(plugin_name, plugin_data)
+            if status.is_incompatible:
+                incompatible_packages[status.distribution_name] = plugin_data.title
 
         for distribution in distributions():
             plugin_name = distribution.metadata.get("Name")

@@ -1,4 +1,5 @@
 from aiidalab_qe.app.configuration import ConfigurationStep, ConfigurationStepModel
+from aiidalab_qe.plugins import registry as plugin_registry
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 
@@ -62,27 +63,25 @@ def test_fetching_available_plugins():
 def test_available_plugins_render_with_single_list_item(monkeypatch):
     from aiidalab_qe.app.configuration import step as configuration_step
 
-    class Registry:
-        data = {
+    registry = plugin_registry.PluginRegistry.load(
+        loader=lambda: {
             "my-plugin": {
                 "title": "My plugin",
+                "description": "Plugin description",
                 "pip": "my-plugin",
                 "category": "calculation",
             }
         }
-
-        def __init__(self, _source):
-            pass
-
-    monkeypatch.setattr(configuration_step, "PluginManager", Registry)
+    )
     monkeypatch.setattr(
-        configuration_step,
+        configuration_step, "get_default_plugin_registry", lambda: registry
+    )
+    monkeypatch.setattr(
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: (None, True, None),
     )
-    monkeypatch.setattr(
-        configuration_step, "is_version_compatible", lambda *_args: True
-    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
 
     config = ConfigurationStep(model=ConfigurationStepModel())
     config.render()
@@ -97,36 +96,34 @@ def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
 
     from aiidalab_qe.app.configuration import step as configuration_step
 
-    class Registry:
-        data = {
-            "my-plugin": {
-                "title": "My plugin",
-                "pip": "my-plugin>=2.0",
-                "category": "calculation",
-            }
-        }
-
-        def __init__(self, _source):
-            pass
-
     distribution = SimpleNamespace(
         metadata={"Name": "my-plugin"},
         entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
     )
-    monkeypatch.setattr(configuration_step, "PluginManager", Registry)
+    registry = plugin_registry.PluginRegistry.load(
+        loader=lambda: {
+            "my-plugin": {
+                "title": "My plugin",
+                "description": "Plugin description",
+                "pip": "my-plugin>=2.0",
+                "category": "calculation",
+            }
+        }
+    )
+    monkeypatch.setattr(
+        configuration_step, "get_default_plugin_registry", lambda: registry
+    )
     monkeypatch.setattr(
         configuration_step,
         "distributions",
         lambda: [distribution],
     )
     monkeypatch.setattr(
-        configuration_step,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("1.0", False, None),
     )
-    monkeypatch.setattr(
-        configuration_step, "is_version_compatible", lambda *_args: True
-    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
 
     model = ConfigurationStepModel()
     config = ConfigurationStep(model=model)
@@ -150,32 +147,32 @@ def test_activation_failed_plugin_is_not_ready_for_new_calculations(monkeypatch)
     from aiidalab_qe.app.configuration import step as configuration_step
     from aiidalab_qe.plugins import utils as plugin_utils
 
-    class Registry:
-        data = {
-            "my-plugin": {
-                "title": "My plugin",
-                "pip": "my-plugin>=2.0",
-                "category": "calculation",
-            }
-        }
-
-        def __init__(self, _source):
-            pass
-
     distribution = SimpleNamespace(
         metadata={"Name": "my-plugin"},
         entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
     )
-    monkeypatch.setattr(configuration_step, "PluginManager", Registry)
+    registry = plugin_registry.PluginRegistry.load(
+        loader=lambda: {
+            "my-plugin": {
+                "title": "My plugin",
+                "description": "Plugin description",
+                "pip": "my-plugin>=2.0",
+                "category": "calculation",
+            }
+        }
+    )
+    monkeypatch.setattr(
+        configuration_step, "get_default_plugin_registry", lambda: registry
+    )
     monkeypatch.setattr(configuration_step, "distributions", lambda: [distribution])
     monkeypatch.setattr(
-        configuration_step,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("2.0", True, None),
     )
-    monkeypatch.setattr(configuration_step, "is_version_compatible", lambda *_: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
     monkeypatch.setattr(
-        configuration_step,
+        plugin_registry,
         "get_activation_failure",
         lambda _package: "Plugin validation failed",
     )
@@ -200,39 +197,39 @@ def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
     from aiidalab_qe.app.configuration import step as configuration_step
     from aiidalab_qe.plugins import utils as plugin_utils
 
-    class Registry:
-        data = {
-            "my-plugin": {
-                "title": "My plugin",
-                "pip": "my-plugin>=2.0",
-                "category": "calculation",
-            }
-        }
-
-        def __init__(self, _source):
-            pass
-
     distribution = SimpleNamespace(
         metadata={"Name": "my-plugin"},
         entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
     )
-    monkeypatch.setattr(configuration_step, "PluginManager", Registry)
+    registry = plugin_registry.PluginRegistry.load(
+        loader=lambda: {
+            "my-plugin": {
+                "title": "My plugin",
+                "description": "Plugin description",
+                "pip": "my-plugin>=2.0",
+                "category": "calculation",
+            }
+        }
+    )
+    monkeypatch.setattr(
+        configuration_step, "get_default_plugin_registry", lambda: registry
+    )
     monkeypatch.setattr(configuration_step, "distributions", lambda: [distribution])
     monkeypatch.setattr(
-        configuration_step,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: (_ for _ in ()).throw(
             AssertionError("process-backed Step 2 must skip compatibility checks")
         ),
     )
     monkeypatch.setattr(
-        configuration_step,
+        plugin_registry,
         "is_version_compatible",
         lambda *_args: (_ for _ in ()).throw(
             AssertionError("process-backed Step 2 must skip compatibility checks")
         ),
     )
-    monkeypatch.setattr(configuration_step, "is_plugin_installed", lambda *_: True)
+    monkeypatch.setattr(plugin_registry, "is_plugin_installed", lambda *_: True)
     monkeypatch.setattr(
         plugin_utils,
         "get_activation_failure",

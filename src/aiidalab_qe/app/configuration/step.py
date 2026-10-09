@@ -8,23 +8,19 @@ from __future__ import annotations
 from importlib.metadata import distributions
 
 import ipywidgets as ipw
-from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
-from aiidalab_qe.app.utils.plugin_manager import (
-    DEFAULT_PLUGIN_CONFIG_SOURCE,
-    PluginManager,
-    get_plugin_version_info,
-    is_plugin_installed,
-    is_version_compatible,
-)
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.plugins.state import get_activation_failure
-from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.plugins.registry import (
+    get_default_plugin_registry,
+    get_plugin_status,
+    load_plugin_registry,
+)
+from aiidalab_qe.plugins.utils import get_entries
 
 from .advanced import (
     AdvancedConfigurationSettingsModel,
@@ -284,16 +280,20 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
     def _fetch_plugin_calculation_settings(self):
         include_activation_failures = self._model.loaded_from_process
-        outlines = get_entry_items(
+        loaded_entries = get_entries(
             "aiidalab_qe.properties",
-            "outline",
             include_activation_failures=include_activation_failures,
         )
-        entries = get_entry_items(
-            "aiidalab_qe.properties",
-            "configuration",
-            include_activation_failures=include_activation_failures,
-        )
+        outlines = {
+            identifier: entry["outline"]
+            for identifier, entry in loaded_entries.items()
+            if entry.get("outline", False)
+        }
+        entries = {
+            identifier: entry["configuration"]
+            for identifier, entry in loaded_entries.items()
+            if entry.get("configuration", False)
+        }
 
         self.incompatible_plugins_list = [
             plugin_data["title"]
@@ -356,60 +356,36 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         self._model.installed_plugins_fetched = True
 
     def _fetch_available_plugins(self, plugin_config_source=None):
-        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
-        plugin_manager = PluginManager(plugin_config_source)
+        registry = (
+            load_plugin_registry(plugin_config_source)
+            if plugin_config_source
+            else get_default_plugin_registry()
+        )
 
-        for plugin_name, plugin_data in plugin_manager.data.items():
+        for plugin_name, plugin_record in registry.plugins.items():
+            plugin_data = plugin_record.as_mapping()
             if plugin_data.get("category", "calculation").lower() != "calculation":
                 # Ignore non-property plugins
                 continue
 
-            pip_requirement = plugin_data.get("pip") or plugin_name
+            status = get_plugin_status(
+                plugin_name,
+                plugin_record,
+                loaded_from_process=self._model.loaded_from_process,
+            )
 
-            if self._model.loaded_from_process:
-                installed_version = None
-                plugin_compatible = True
-                requirement_error = None
-                app_compatible = True
-                activation_error = None
-                is_installed = is_plugin_installed(plugin_name)
-            else:
-                (
-                    installed_version,
-                    plugin_compatible,
-                    requirement_error,
-                ) = get_plugin_version_info(plugin_name, pip_requirement)
-                is_installed = installed_version is not None
-                compatible_app_version = plugin_data.get("requires_aiidalab_qe")
-                app_compatible = is_version_compatible(compatible_app_version)
-                activation_error = get_activation_failure(plugin_name)
-
-            try:
-                requirement = Requirement(pip_requirement)
-                distribution_name = canonicalize_name(requirement.name)
-                requirement_text = str(requirement)
-            except InvalidRequirement:
-                distribution_name = canonicalize_name(plugin_name)
-                requirement_text = pip_requirement
-                is_installed = is_plugin_installed(plugin_name)
-
-            if is_installed and (
-                not plugin_compatible
-                or not app_compatible
-                or requirement_error
-                or activation_error
-            ):
-                self.incompatible_plugin_data[distribution_name] = {
+            if status.is_incompatible:
+                self.incompatible_plugin_data[status.distribution_name] = {
                     **plugin_data,
-                    "installed_version": installed_version,
-                    "plugin_compatible": plugin_compatible,
-                    "app_compatible": app_compatible,
-                    "requirement_error": requirement_error,
-                    "requirement": requirement_text,
-                    "activation_error": activation_error,
+                    "installed_version": status.installed_version,
+                    "plugin_compatible": status.plugin_compatible,
+                    "app_compatible": status.app_compatible,
+                    "requirement_error": status.requirement_error,
+                    "requirement": status.requirement,
+                    "activation_error": status.activation_error,
                 }
 
-            if not is_installed:
+            if not status.is_installed:
                 self.available_plugins_list.append(plugin_data["title"])
 
         self._model.incompatible_plugins = {

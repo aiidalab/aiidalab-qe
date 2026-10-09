@@ -176,7 +176,10 @@ def test_workchainview(generate_qeapp_workchain):
 
 
 def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
+    from types import SimpleNamespace
+
     from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+    from aiidalab_qe.plugins import registry as plugin_registry
 
     plugin_data = SimpleNamespace(
         plugin_name="aiidalab-qe-vibroscopy",
@@ -186,15 +189,15 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
     )
     monkeypatch.setattr(
         viewer_module,
-        "PluginManager",
+        "get_default_plugin_registry",
         lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
     )
     monkeypatch.setattr(
-        viewer_module,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_: ("1.2.8", False, None),
     )
-    monkeypatch.setattr(viewer_module, "is_version_compatible", lambda *_: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
 
     class EntryPoint:
         dist = SimpleNamespace(
@@ -226,6 +229,7 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
     import importlib_metadata
 
     from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+    from aiidalab_qe.plugins import registry as plugin_registry
     from aiidalab_qe.plugins import state
 
     plugin_data = SimpleNamespace(
@@ -236,15 +240,15 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         viewer_module,
-        "PluginManager",
+        "get_default_plugin_registry",
         lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
     )
     monkeypatch.setattr(
-        viewer_module,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_: ("1.2.9", True, None),
     )
-    monkeypatch.setattr(viewer_module, "is_version_compatible", lambda *_: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
     monkeypatch.setattr(
         state, "ACTIVATION_STATE_PATH", tmp_path / "plugin-activation.json"
     )

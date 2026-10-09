@@ -178,7 +178,9 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
                 </p>
                 <p>
                     <b>Note:</b> App plugins may add structure importers, examples, and/or editors.
-                    Visit the plugin store for more information about available plugins.
+                    Visit the <span style="color: #007bff;">
+                        <i class="fa fa-puzzle-piece"></i> <b>Plugin Store</b>
+                    </span> for more information about available plugins.
                 </p>
             """),
             self.manager,
