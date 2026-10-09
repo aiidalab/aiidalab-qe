@@ -175,6 +175,118 @@ def test_workchainview(generate_qeapp_workchain):
     assert viewer.tabs.titles[0] == "Structure"
 
 
+def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+    from aiidalab_qe.plugins import registry as plugin_registry
+
+    plugin_data = SimpleNamespace(
+        plugin_name="aiidalab-qe-vibroscopy",
+        pip="aiidalab-qe-vibroscopy>=1.2.9",
+        requires_aiidalab_qe=None,
+        title="Phonons and IR/Raman",
+    )
+    monkeypatch.setattr(
+        viewer_module,
+        "get_default_plugin_registry",
+        lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_: ("1.2.8", False, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
+
+    class EntryPoint:
+        dist = SimpleNamespace(
+            metadata={"Name": "aiidalab-qe-vibroscopy"},
+        )
+        loaded = False
+
+        def load(self):
+            self.loaded = True
+            raise AssertionError("incompatible plugin must not be loaded")
+
+    entry_point = EntryPoint()
+
+    def get_entry_items(_group, _item, entry_point_filter):
+        assert entry_point_filter(entry_point) is False
+        return {}
+
+    monkeypatch.setattr(viewer_module, "get_entry_items", get_entry_items)
+
+    viewer = viewer_module.WorkflowResultsViewer(model=WorkflowResultsViewerModel())
+    viewer.render()
+
+    assert not entry_point.loaded
+    assert "Phonons and IR/Raman" in viewer.children[1].value
+    assert "./plugin_manager.ipynb" in viewer.children[1].value
+
+
+def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
+    import importlib_metadata
+
+    from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+    from aiidalab_qe.plugins import registry as plugin_registry
+    from aiidalab_qe.plugins import state
+
+    plugin_data = SimpleNamespace(
+        plugin_name="aiidalab-qe-vibroscopy",
+        pip="aiidalab-qe-vibroscopy>=1.2.9",
+        requires_aiidalab_qe=None,
+        title="Phonons and IR/Raman",
+    )
+    monkeypatch.setattr(
+        viewer_module,
+        "get_default_plugin_registry",
+        lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
+    monkeypatch.setattr(
+        state, "ACTIVATION_STATE_PATH", tmp_path / "plugin-activation.json"
+    )
+    state.set_activation_failure(plugin_data.plugin_name, "plugin test failed")
+
+    distribution_metadata = {"Name": "aiidalab-qe-vibroscopy"}
+
+    class EntryPoint:
+        name = "vibroscopy"
+        group = "aiidalab_qe.properties"
+        dist = SimpleNamespace(metadata=distribution_metadata)
+
+        def load(self):
+            raise AssertionError("failed plugin entry point must not be loaded")
+
+    entry_point = EntryPoint()
+    monkeypatch.setattr(
+        viewer_module,
+        "distributions",
+        lambda: [
+            SimpleNamespace(
+                metadata=distribution_metadata,
+                entry_points=[entry_point],
+            )
+        ],
+    )
+
+    monkeypatch.setattr(importlib_metadata, "entry_points", lambda **_: [entry_point])
+
+    viewer = viewer_module.WorkflowResultsViewer(model=WorkflowResultsViewerModel())
+    viewer.render()
+
+    assert viewer.incompatible_plugin_ids == {"vibroscopy"}
+    assert "Result panels are disabled" in viewer.children[1].value
+    assert "Phonons and IR/Raman" in viewer.children[1].value
+    assert "Phonons and IR/Raman" in viewer.children[1].value
+
+
 def test_summary_report(data_regression, generate_qeapp_workchain):
     """Test the summary report can be properly generated."""
     workchain = generate_qeapp_workchain()

@@ -5,19 +5,22 @@ Authors: AiiDAlab team
 
 from __future__ import annotations
 
-import ipywidgets as ipw
+from importlib.metadata import distributions
 
-from aiidalab_qe.app.utils.plugin_manager import (
-    DEFAULT_PLUGIN_CONFIG_SOURCE,
-    PluginManager,
-    is_package_installed,
-)
+import ipywidgets as ipw
+from packaging.utils import canonicalize_name
+
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.plugins.registry import (
+    get_default_plugin_registry,
+    get_plugin_status,
+    load_plugin_registry,
+)
+from aiidalab_qe.plugins.utils import get_entries
 
 from .advanced import (
     AdvancedConfigurationSettingsModel,
@@ -64,12 +67,12 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             "structure_uuid",
         )
         self._model.observe(
-            self._on_installed_properties_fetched,
-            "installed_properties_fetched",
+            self._on_installed_plugins_fetched,
+            "installed_plugins_fetched",
         )
         self._model.observe(
-            self._on_available_properties_fetched,
-            "available_properties_fetched",
+            self._on_available_plugins_fetched,
+            "available_plugins_fetched",
         )
 
         self.settings = {
@@ -77,11 +80,23 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             "advanced": self.advanced_settings,
         }
 
-        self.installed_properties_list = []
-        self.available_properties_list = []
+        self.installed_plugins_list = []
+        self.incompatible_plugins_list = []
+        self.available_plugins_list = []
+        self.incompatible_plugin_data = {}
+        self.properties = {}
+        self.observed_property_models = set()
 
+        self.entry_point_distributions = {
+            entry_point.name: distribution.metadata["Name"]
+            for distribution in distributions()
+            for entry_point in distribution.entry_points
+            if entry_point.group == "aiidalab_qe.properties"
+            and distribution.metadata.get("Name")
+        }
+
+        self._fetch_available_plugins()
         self._fetch_plugin_calculation_settings()
-        self._fetch_available_properties()
 
     def reset(self):
         self._model.reset()
@@ -122,11 +137,24 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             link="plugin_manager.ipynb",
             icon="puzzle-piece",  # More intuitive icon
             tooltip="Browse and install additional plugins from the Plugin Store",
+            layout=ipw.Layout(margin="4px 0"),
         )
 
-        self.installed_properties = ipw.VBox(children=self.installed_properties_list)
+        self.installed_plugins = ipw.VBox(children=self.installed_plugins_list)
+        self.incompatible_plugins = ipw.HTML()
+        self.incompatible_plugins_section = ipw.VBox(
+            children=[
+                ipw.HTML("<hr>"),
+                ipw.HTML("<h4>Incompatible</h4>"),
+                ipw.HTML(
+                    "<em>The following plugins require attention in the Plugin store:</em>"
+                ),
+                self.incompatible_plugins,
+            ],
+            layout=ipw.Layout(display="" if self.incompatible_plugins_list else "none"),
+        )
 
-        self.available_properties = ipw.HTML("""
+        self.available_plugins = ipw.HTML("""
             <div class="loading" style="display: flex; align-items: center; font-size: unset;">
                 Loading available properties
                 <i class="fa fa-spinner fa-spin fa-2x fa-fw"></i>
@@ -138,24 +166,28 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 ipw.VBox(
                     children=[
                         InAppGuide(identifier="properties-selection"),
-                        self.installed_properties,
+                        ipw.HTML("<h4>Ready for use</h4>"),
+                        ipw.HTML(
+                            "<em>Select a property to add its settings panel in "
+                            "step 2.2:</em>"
+                        ),
+                        self.installed_plugins,
+                        self.incompatible_plugins_section,
+                        ipw.HTML("<hr>"),
+                        ipw.HTML("<h4>Available in store</h4>"),
+                        ipw.HTML(
+                            "<em>The following plugins are available in the "
+                            "plugin store:</em>"
+                        ),
+                        self.available_plugins,
                         ipw.HTML("<hr>"),
                         ipw.HTML(
-                            value="""
-                            <p style="font-size:14px; line-height:1.6;">
-                                The following additional property calculations are available in the
-                                <b>Plugin registry</b> but are currently disabled because the required plugins are not installed.
-                            </p>
-                            <p style="font-size:14px; line-height:1.6;">
-                                To enable them, please visit the <b>Plugin store</b> and install the necessary plugins
-                                (Note: after installation of the plugins, to use them you will need to refresh this page
-                                and restart this submission.).
-                            </p>
-                            """,
-                            layout=ipw.Layout(margin="10px 0px"),
+                            "Visit the plugin store to browse and install additional plugins, "
+                            "or to resolve incompatible plugins.<br/>"
+                            "<b>Note:</b> The app <b>must be reloaded</b> for changes to take "
+                            "effect.",
                         ),
                         self.install_new_plugin_button,
-                        self.available_properties,
                     ]
                 ),
                 ipw.VBox(
@@ -186,7 +218,8 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
     def _post_render(self):
         super()._post_render()
-        self._set_available_properties()
+        self._set_incompatible_plugins()
+        self._set_available_plugins()
         self._update_tabs()
 
     def _on_tab_change(self, change):
@@ -198,20 +231,35 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
     def _on_input_structure_change(self, _):
         self._model.update()
 
-    def _on_installed_properties_fetched(self, _):
+    def _on_installed_plugins_fetched(self, _):
         if not self.rendered:
             return
-        self.installed_properties.children = self.installed_properties_list
+        self.installed_plugins.children = self.installed_plugins_list
+        self._set_incompatible_plugins()
+        self._toggle_incompatible_plugins()
 
-    def _on_available_properties_fetched(self, _):
+    def _on_available_plugins_fetched(self, _):
         if not self.rendered:
             return
-        self._set_available_properties()
+        self._set_incompatible_plugins()
+        self._toggle_incompatible_plugins()
+        self._set_available_plugins()
 
-    def _set_available_properties(self):
-        self.available_properties.value = f"""
-            <ul style="margin-top: 8px">
-                {"".join(f"<li>{title}</li>" for title in self.available_properties_list)}
+    def _toggle_incompatible_plugins(self):
+        self.incompatible_plugins_section.layout.display = (
+            "" if self.incompatible_plugins_list else "none"
+        )
+
+    def _set_incompatible_plugins(self):
+        items = "".join(f"<li>{title}</li>" for title in self.incompatible_plugins_list)
+        self.incompatible_plugins.value = (
+            f"<ul style='margin: 0;'>{items}</ul>" if items else ""
+        )
+
+    def _set_available_plugins(self):
+        self.available_plugins.value = f"""
+            <ul style='margin: 0;'>
+                {"".join(f"<li>{title}</li>" for title in self.available_plugins_list)}
             </ul>
         """
 
@@ -231,8 +279,27 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self.tabs.selected_index = 0
 
     def _fetch_plugin_calculation_settings(self):
-        outlines = get_entry_items("aiidalab_qe.properties", "outline")
-        entries = get_entry_items("aiidalab_qe.properties", "configuration")
+        include_activation_failures = self._model.loaded_from_process
+        loaded_entries = get_entries(
+            "aiidalab_qe.properties",
+            include_activation_failures=include_activation_failures,
+        )
+        outlines = {
+            identifier: entry["outline"]
+            for identifier, entry in loaded_entries.items()
+            if entry.get("outline", False)
+        }
+        entries = {
+            identifier: entry["configuration"]
+            for identifier, entry in loaded_entries.items()
+            if entry.get("configuration", False)
+        }
+
+        self.incompatible_plugins_list = [
+            plugin_data["title"]
+            for plugin_data in self.incompatible_plugin_data.values()
+        ]
+
         for identifier, configuration in entries.items():
             for key in ("panel", "model"):
                 if key not in configuration:
@@ -240,6 +307,15 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
             model: PanelModel = configuration["model"]()
             self._model.add_model(identifier, model)
+
+            owner = self.entry_point_distributions.get(identifier)
+            plugin_data = self.incompatible_plugin_data.get(
+                canonicalize_name(owner) if owner else None
+            )
+            if plugin_data is not None:
+                model.include = False
+                self.settings[identifier] = configuration["panel"](model=model)
+                continue
 
             outline = outlines[identifier]()
             info = ipw.HTML()
@@ -257,13 +333,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
             panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
 
-            def toggle_plugin(change, identifier=identifier, panel=panel, info=info):
-                if change["new"]:
-                    info.value = (
-                        f"Customize {identifier} settings in <b>Step 2.2</b> if needed"
-                    )
-                else:
-                    info.value = ""
+            def toggle_plugin(_, panel=panel):
                 panel.refresh()
                 self._update_tabs()
 
@@ -272,7 +342,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 "include",
             )
 
-            self.installed_properties_list.append(
+            self.installed_plugins_list.append(
                 ipw.HBox(
                     children=[
                         outline,
@@ -283,20 +353,45 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
             self.settings[identifier] = panel
 
-        self._model.installed_properties_fetched = True
+        self._model.installed_plugins_fetched = True
 
-    def _fetch_available_properties(self, plugin_config_source=None):
-        plugin_config_source = plugin_config_source or DEFAULT_PLUGIN_CONFIG_SOURCE
-        plugin_manager = PluginManager(plugin_config_source)
+    def _fetch_available_plugins(self, plugin_config_source=None):
+        registry = (
+            load_plugin_registry(plugin_config_source)
+            if plugin_config_source
+            else get_default_plugin_registry()
+        )
 
-        for plugin_name, plugin_data in plugin_manager.data.items():
-            if (
-                plugin_data.get("category", "calculation").lower() != "calculation"
-            ):  # Ignore non-property plugins
+        for plugin_name, plugin_record in registry.plugins.items():
+            plugin_data = plugin_record.as_mapping()
+            if plugin_data.get("category", "calculation").lower() != "calculation":
+                # Ignore non-property plugins
                 continue
 
-            is_installed = is_package_installed(plugin_name)
-            if not is_installed:
-                self.available_properties_list.append(plugin_data["title"])
+            status = get_plugin_status(
+                plugin_name,
+                plugin_record,
+                loaded_from_process=self._model.loaded_from_process,
+            )
 
-        self._model.available_properties_fetched = True
+            if status.is_incompatible:
+                self.incompatible_plugin_data[status.distribution_name] = {
+                    **plugin_data,
+                    "installed_version": status.installed_version,
+                    "plugin_compatible": status.plugin_compatible,
+                    "app_compatible": status.app_compatible,
+                    "requirement_error": status.requirement_error,
+                    "requirement": status.requirement,
+                    "activation_error": status.activation_error,
+                }
+
+            if not status.is_installed:
+                self.available_plugins_list.append(plugin_data["title"])
+
+        self._model.incompatible_plugins = {
+            identifier
+            for identifier, owner in self.entry_point_distributions.items()
+            if owner and canonicalize_name(owner) in self.incompatible_plugin_data
+        }
+
+        self._model.available_plugins_fetched = True
