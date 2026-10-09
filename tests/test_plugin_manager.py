@@ -467,6 +467,22 @@ def test_plugin_activation_failure_persists_and_clears(monkeypatch, tmp_path):
     assert not state_path.exists()
 
 
+@pytest.mark.parametrize("contents", ["not valid json", "[]"])
+def test_invalid_plugin_activation_state_is_logged_and_recovered(
+    monkeypatch, tmp_path, caplog, contents
+):
+    state_path = tmp_path / "plugin-activation.json"
+    state_path.write_text(contents, encoding="utf-8")
+    monkeypatch.setattr(plugin_state, "ACTIVATION_STATE_PATH", state_path)
+
+    assert plugin_state.get_activation_failure("my-plugin") is None
+    plugin_state.clear_activation_failure("my-plugin")
+    plugin_state.set_activation_failure("my-plugin", "Validation failed")
+
+    assert plugin_state.get_activation_failure("my-plugin") == "Validation failed"
+    assert "plugin activation state" in caplog.text.lower()
+
+
 def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
     commands = []
 
