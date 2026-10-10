@@ -102,3 +102,51 @@ def test_download_and_install_pseudos(tmp_path, aiida_profile, monkeypatch):
 
     # Check the install without download is slower than install with download
     assert install_without_download_time > install_time
+
+
+@pytest.mark.parametrize("post_install", ["setup", None])
+def test_test_plugin_runs_post_install_verifier_when_configured(
+    monkeypatch, post_install
+):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.plugins import registry
+    from aiidalab_qe.plugins import utils as plugin_utils
+
+    calls = []
+    monkeypatch.setattr(aiida, "load_profile", lambda _profile: None)
+    monkeypatch.setattr(
+        plugin_utils, "test_plugin_functionality", lambda _name: (True, "")
+    )
+    monkeypatch.setattr(
+        registry,
+        "get_default_plugin_registry",
+        lambda: SimpleNamespace(
+            plugins={"my-plugin": SimpleNamespace(post_install=post_install)}
+        ),
+    )
+    monkeypatch.setattr(
+        cli.subprocess,
+        "run",
+        lambda command, check: calls.append((command, check)),
+    )
+
+    result = CliRunner().invoke(cli.test_plugin, ["my-plugin", "--profile", "test"])
+
+    assert result.exit_code == 0
+    if post_install:
+        assert calls == [
+            (
+                [
+                    cli.sys.executable,
+                    "-m",
+                    "my_plugin",
+                    "verify-post-install",
+                    "--profile",
+                    "test",
+                ],
+                True,
+            )
+        ]
+    else:
+        assert calls == []
