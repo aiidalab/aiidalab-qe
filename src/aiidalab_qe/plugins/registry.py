@@ -22,6 +22,7 @@ from aiidalab_qe import __version__
 
 LOGGER = logging.getLogger(__name__)
 POST_INSTALL_VERIFY_TIMEOUT = 60
+PLUGIN_REGISTRATION_TIMEOUT = 60
 
 
 def poll_post_install(
@@ -73,15 +74,39 @@ def poll_post_install(
 
 
 def poll_plugin_registration(plugin_id: str) -> str | None:
-    """Check entry-point loading and app integration for an installed plugin."""
-    from aiidalab_qe.plugins.utils import test_plugin_functionality
+    """Check plugin entry points in a fresh interpreter."""
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "aiidalab_qe",
+                "check-plugin-registration",
+                plugin_id,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=PLUGIN_REGISTRATION_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return (
+            "Plugin registration check timed out after "
+            f"{PLUGIN_REGISTRATION_TIMEOUT} seconds."
+        )
+    except OSError as error:
+        LOGGER.warning(
+            "Could not start plugin registration check for %s: %s", plugin_id, error
+        )
+        return f"Could not start plugin registration check: {error}"
 
-    registered, error = test_plugin_functionality(plugin_id)
-    if registered:
+    if result.returncode == 0:
         return None
-    if not registered and not error:
-        error = "Plugin entry-point validation failed without an error message."
-    return error
+    return (
+        result.stderr.strip()
+        or result.stdout.strip()
+        or "Plugin entry-point validation failed without an error message."
+    )
 
 
 def poll_daemon_status() -> str | None:

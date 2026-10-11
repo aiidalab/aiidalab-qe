@@ -481,26 +481,44 @@ def test_poll_post_install_skips_plugins_without_a_hook(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    ("result", "expected_error"),
+    ("returncode", "stdout", "stderr", "expected_error"),
     [
-        ((True, ""), None),
-        ((False, "broken entry point"), "broken entry point"),
+        (0, "", "", None),
+        (1, "", "broken entry point", "broken entry point"),
         (
-            (False, ""),
+            1,
+            "",
+            "",
             "Plugin entry-point validation failed without an error message.",
         ),
     ],
 )
 def test_poll_plugin_registration_normalizes_result(
-    monkeypatch, result, expected_error
+    monkeypatch, returncode, stdout, stderr, expected_error
 ):
-    from aiidalab_qe.plugins import utils as plugin_utils
+    calls = []
 
-    monkeypatch.setattr(plugin_utils, "test_plugin_functionality", lambda _name: result)
+    def run(command, **kwargs):
+        calls.append((command, kwargs))
+        return plugin_manager.subprocess.CompletedProcess(
+            command, returncode, stdout, stderr
+        )
+
+    monkeypatch.setattr(plugin_registry.subprocess, "run", run)
 
     error = plugin_registry.poll_plugin_registration("my-plugin")
 
     assert error == expected_error
+    assert calls[0][0] == [
+        plugin_manager.sys.executable,
+        "-m",
+        "aiidalab_qe",
+        "check-plugin-registration",
+        "my-plugin",
+    ]
+    assert calls[0][1]["capture_output"] is True
+    assert calls[0][1]["text"] is True
+    assert calls[0][1]["timeout"] == plugin_registry.PLUGIN_REGISTRATION_TIMEOUT
 
 
 def test_poll_post_install_runs_plugin_verifier(monkeypatch):
@@ -777,14 +795,20 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
     plugin._on_update(None)
 
     assert len(commands) == 1
-    assert subprocess_commands == [
-        [
-            plugin_manager.sys.executable,
-            "-m",
-            "aiidalab_qe",
-            "test-plugin",
-            "my-plugin",
-        ]
+    assert subprocess_commands[0] == [
+        plugin_manager.sys.executable,
+        "-m",
+        "aiidalab_qe",
+        "test-plugin",
+        "my-plugin",
+    ]
+    assert len(subprocess_commands) == 2
+    assert subprocess_commands[1] == [
+        plugin_manager.sys.executable,
+        "-m",
+        "aiidalab_qe",
+        "check-plugin-registration",
+        "my-plugin",
     ]
     assert "did not pass" in plugin.message_container.value
     assert "plugin remains installed" in plugin.message_container.value

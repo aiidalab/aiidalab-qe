@@ -126,3 +126,30 @@ def test_test_plugin_runs_post_install_verifier_when_configured(
         ]
     else:
         assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("result", "expected_exit_code", "expected_message"),
+    [
+        ((True, ""), 0, ""),
+        ((False, "broken entry point"), 1, "broken entry point"),
+    ],
+)
+def test_check_plugin_registration(
+    monkeypatch, result, expected_exit_code, expected_message
+):
+    from aiidalab_qe.plugins import utils as plugin_utils
+
+    monkeypatch.setattr(
+        plugin_utils,
+        "test_plugin_functionality",
+        lambda _plugin_name: result,
+    )
+
+    result = CliRunner().invoke(
+        cli.cli,
+        ["check-plugin-registration", "my-plugin"],
+    )
+
+    assert result.exit_code == expected_exit_code
+    assert expected_message in result.output

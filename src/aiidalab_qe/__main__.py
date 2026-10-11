@@ -132,5 +132,21 @@ def test_plugin(plugin_name, profile):
         sys.exit(1)  # Exit with status 1 to indicate failure
 
 
+@cli.command(hidden=True)
+@click.argument("plugin_name")
+def check_plugin_registration(plugin_name):
+    """Validate plugin entry points for a fresh-process status check."""
+    from aiidalab_qe.plugins.utils import test_plugin_functionality
+
+    success, message = test_plugin_functionality(plugin_name)
+    if not success:
+        click.secho(
+            message or "Plugin entry-point validation failed without an error message.",
+            fg="red",
+            err=True,
+        )
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     cli()
