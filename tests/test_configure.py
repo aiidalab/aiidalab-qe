@@ -55,11 +55,16 @@ def test_panel():
 
 
 def test_fetching_available_plugins():
+    from types import SimpleNamespace
+
     model = ConfigurationStepModel()
     config = ConfigurationStep(model=model)
-    config._fetch_available_plugins()
+    statuses = {
+        name: SimpleNamespace(is_installed=False, is_incompatible=False)
+        for name in config._plugin_registry.plugins
+    }
+    config._update_plugin_lists(statuses)
     assert len(config.available_plugins_list) > 0
-    assert model.available_plugins_fetched
     assert all("<li>" not in title for title in config.available_plugins_list)
 
 

@@ -32,8 +32,6 @@ class ConfigurationStepModel(
     relax_type_options = tl.List(default_value=[NO_RELAXATION_OPTION])
     relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
 
-    installed_plugins_fetched = tl.Bool(False)
-    available_plugins_fetched = tl.Bool(False)
     loaded_from_process = tl.Bool(False)
 
     _dependencies = [

@@ -18,7 +18,6 @@ from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.plugins.registry import (
     get_plugin_registry,
-    get_plugin_status,
     get_plugin_statuses,
     is_plugin_installed,
 )
@@ -68,38 +67,21 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self._on_input_structure_change,
             "structure_uuid",
         )
-        self._model.observe(
-            self._on_installed_plugins_fetched,
-            "installed_plugins_fetched",
-        )
-        self._model.observe(
-            self._on_available_plugins_fetched,
-            "available_plugins_fetched",
-        )
-
         self.settings = {
             "workchain": self.workchain_settings,
             "advanced": self.advanced_settings,
         }
 
         self.installed_plugins_list = []
-        self.installed_plugin_rows = {}
         self.incompatible_plugins_list = []
         self.available_plugins_list = []
+
+        self.installed_plugin_rows = {}
         self.incompatible_plugin_data = {}
-        self.properties = {}
-        self.observed_property_models = set()
 
-        self.entry_point_distributions = {
-            entry_point.name: distribution.metadata["Name"]
-            for distribution in distributions()
-            for entry_point in distribution.entry_points
-            if entry_point.group == "aiidalab_qe.properties"
-            and distribution.metadata.get("Name")
-        }
+        self._plugin_registry = get_plugin_registry()
 
-        self._fetch_available_plugins()
-        self._fetch_plugin_calculation_settings()
+        self._fetch_configuration_plugins()
 
     def reset(self):
         self._model.reset()
@@ -219,12 +201,9 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self.confirm_box,
         ]
 
-        self._schedule_runtime_plugin_checks()
-
     def _post_render(self):
         super()._post_render()
-        self._set_incompatible_plugins()
-        self._set_available_plugins()
+        self._schedule_runtime_plugin_checks()
         self._update_tabs()
 
     def _on_tab_change(self, change):
@@ -235,38 +214,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
     def _on_input_structure_change(self, _):
         self._model.update()
-
-    def _on_installed_plugins_fetched(self, _):
-        if not self.rendered:
-            return
-        self.installed_plugins.children = self.installed_plugins_list
-        self._set_incompatible_plugins()
-        self._toggle_incompatible_plugins()
-
-    def _on_available_plugins_fetched(self, _):
-        if not self.rendered:
-            return
-        self._set_incompatible_plugins()
-        self._toggle_incompatible_plugins()
-        self._set_available_plugins()
-
-    def _toggle_incompatible_plugins(self):
-        self.incompatible_plugins_section.layout.display = (
-            "" if self.incompatible_plugins_list else "none"
-        )
-
-    def _set_incompatible_plugins(self):
-        items = "".join(f"<li>{title}</li>" for title in self.incompatible_plugins_list)
-        self.incompatible_plugins.value = (
-            f"<ul style='margin: 0;'>{items}</ul>" if items else ""
-        )
-
-    def _set_available_plugins(self):
-        self.available_plugins.value = f"""
-            <ul style='margin: 0;'>
-                {"".join(f"<li>{title}</li>" for title in self.available_plugins_list)}
-            </ul>
-        """
 
     def _update_tabs(self):
         children = []
@@ -283,7 +230,8 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 self.tabs.set_title(i, title)
             self.tabs.selected_index = 0
 
-    def _fetch_plugin_calculation_settings(self):
+    def _fetch_configuration_plugins(self):
+        """Fetch, wire, and store plugin configuration models/panels."""
         loaded_entries = get_entries("aiidalab_qe.properties")
         outlines = {
             identifier: entry["outline"]
@@ -296,11 +244,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             if entry.get("configuration", False)
         }
 
-        self.incompatible_plugins_list = [
-            plugin_data["title"]
-            for plugin_data in self.incompatible_plugin_data.values()
-        ]
-
         for identifier, configuration in entries.items():
             for key in ("panel", "model"):
                 if key not in configuration:
@@ -309,21 +252,13 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             model: PanelModel = configuration["model"]()
             self._model.add_model(identifier, model)
 
-            owner = self.entry_point_distributions.get(identifier)
-            plugin_data = self.incompatible_plugin_data.get(
-                canonicalize_name(owner) if owner else None
-            )
-            if plugin_data is not None:
-                model.include = False
-                self.settings[identifier] = configuration["panel"](model=model)
-                continue
-
             outline = outlines[identifier]()
             ipw.link(
                 (model, "include"),
                 (outline.include, "value"),
             )
 
+            # Disable electronic bands for non-periodic systems
             if identifier == "bands":
                 ipw.dlink(
                     (self._model, "structure_uuid"),
@@ -337,30 +272,21 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 panel.refresh()
                 self._update_tabs()
 
-            model.observe(
-                toggle_plugin,
-                "include",
-            )
+            model.observe(toggle_plugin, "include")
 
             self.installed_plugin_rows[identifier] = outline
-            self.installed_plugins_list.append(outline)
 
             self.settings[identifier] = panel
 
-        self._model.installed_plugins_fetched = True
-
-    def _fetch_available_plugins(
-        self,
-        *,
-        statuses=None,
-    ):
-        registry = get_plugin_registry()
-        self._plugin_registry = registry
+    def _update_plugin_lists(self, statuses=None):
+        """Update the lists of ready, incompatible, and available plugins."""
+        if not self.rendered:
+            return
 
         self.available_plugins_list = []
-        self.incompatible_plugin_data = {}
+        incompatible_packages = {}
 
-        for plugin_name, plugin_record in registry.plugins.items():
+        for plugin_name, plugin_record in self._plugin_registry.plugins.items():
             plugin_data = plugin_record.as_mapping()
             if plugin_data.get("category", "calculation").lower() != "calculation":
                 # Ignore non-property plugins
@@ -369,18 +295,10 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             if self._model.loaded_from_process:
                 is_installed = is_plugin_installed(plugin_name)
             else:
-                status = (
-                    statuses[plugin_name]
-                    if statuses is not None
-                    else get_plugin_status(
-                        plugin_name,
-                        plugin_record,
-                        check_runtime=False,
-                    )
-                )
+                status = statuses[plugin_name]
                 is_installed = status.is_installed
                 if status.is_incompatible:
-                    self.incompatible_plugin_data[status.distribution_name] = {
+                    incompatible_packages[status.distribution_name] = {
                         **plugin_data,
                         "installed_version": status.installed_version,
                         "plugin_compatible": status.plugin_compatible,
@@ -393,16 +311,67 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             if not is_installed:
                 self.available_plugins_list.append(plugin_data["title"])
 
-        self._model.incompatible_plugins = {
-            identifier
-            for identifier, owner in self.entry_point_distributions.items()
-            if owner and canonicalize_name(owner) in self.incompatible_plugin_data
-        }
+        self.incompatible_plugin_data = {}
+        if incompatible_packages:
+            for distribution in distributions():
+                package_name = distribution.metadata.get("Name")
+                if not package_name:
+                    continue
+                plugin_data = incompatible_packages.get(canonicalize_name(package_name))
+                if plugin_data is None:
+                    continue
+                self.incompatible_plugin_data.update(
+                    {
+                        entry_point.name: plugin_data
+                        for entry_point in distribution.entry_points
+                        if entry_point.group == "aiidalab_qe.properties"
+                    }
+                )
 
-        self._model.available_plugins_fetched = True
+        self._model.incompatible_plugins = set(self.incompatible_plugin_data)
+        self.incompatible_plugins_list = list(
+            dict.fromkeys(
+                plugin_data["title"]
+                for plugin_data in self.incompatible_plugin_data.values()
+            )
+        )
+
+        self._render_installed_plugins_list()
+        self._render_incompatibe_plugins_list()
+        self._render_available_plugins_list()
+
+    def _render_installed_plugins_list(self):
+        self.installed_plugins_list = [
+            row
+            for identifier, row in self.installed_plugin_rows.items()
+            if identifier not in self._model.incompatible_plugins
+        ]
+        self.installed_plugins.children = self.installed_plugins_list
+
+    def _render_incompatibe_plugins_list(self):
+        items = "".join(f"<li>{title}</li>" for title in self.incompatible_plugins_list)
+        self.incompatible_plugins.value = (
+            f"<ul style='margin: 0;'>{items}</ul>" if items else ""
+        )
+        self.incompatible_plugins_section.layout.display = (
+            "" if self.incompatible_plugins_list else "none"
+        )
+
+    def _render_available_plugins_list(self):
+        self.available_plugins.value = f"""
+            <ul style='margin: 0;'>
+                {"".join(f"<li>{title}</li>" for title in self.available_plugins_list)}
+            </ul>
+        """
 
     def _schedule_runtime_plugin_checks(self) -> None:
+        """Schedule the runtime plugin checks to be performed asynchronously.
+
+        If the app is loaded from a process, the checks are skipped, and the plugin
+        lists are built from the process metadata.
+        """
         if self._model.loaded_from_process:
+            self._update_plugin_lists()
             return
 
         loading_message = """
@@ -425,6 +394,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             )
 
     async def _refresh_runtime_plugin_checks(self) -> None:
+        """Refresh the runtime plugin checks and update the plugin lists."""
         registry = self._plugin_registry
         plugin_records = {
             name: record
@@ -432,22 +402,8 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             if record.category.lower() == "calculation"
         }
         statuses = await get_plugin_statuses(plugin_records)
-        self._fetch_available_plugins(statuses=statuses)
+        self._update_plugin_lists(statuses=statuses)
 
         for identifier, model in self._model.get_models():
             if identifier in self._model.incompatible_plugins:
                 model.include = False
-
-        self.incompatible_plugins_list = [
-            plugin_data["title"]
-            for plugin_data in self.incompatible_plugin_data.values()
-        ]
-        self.installed_plugins_list = [
-            row
-            for identifier, row in self.installed_plugin_rows.items()
-            if identifier not in self._model.incompatible_plugins
-        ]
-        self.installed_plugins.children = self.installed_plugins_list
-        self._set_incompatible_plugins()
-        self._toggle_incompatible_plugins()
-        self._set_available_plugins()
