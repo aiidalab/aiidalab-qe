@@ -31,6 +31,7 @@ class TestApp:
         assert wizard.configuration_model.get_model("pdos").include is False
         assert wizard.configuration_model.state == State.SUCCESS
         results_model = wizard.results_model
+        results_model.plugin_status_checked = False
         results_model.incompatible_plugin_ids = {"bands"}
         results_model.plugin_status_checked = True
         assert self.view.duplicate_workflow_link.disabled

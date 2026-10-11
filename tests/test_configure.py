@@ -59,7 +59,7 @@ def test_fetching_available_plugins(monkeypatch):
 
     model = ConfigurationStepModel()
     config = ConfigurationStep(model=model)
-    monkeypatch.setattr(config, "_schedule_runtime_plugin_checks", lambda: None)
+    monkeypatch.setattr(config, "_schedule_plugin_status_check", lambda: None)
     config.render()
     statuses = {
         name: SimpleNamespace(is_installed=False, is_incompatible=False)
@@ -122,9 +122,7 @@ def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
     )
     monkeypatch.setattr(configuration_step, "get_plugin_registry", lambda: registry)
     monkeypatch.setattr(
-        configuration_step,
-        "distributions",
-        lambda: [distribution],
+        plugin_registry.metadata, "distributions", lambda: [distribution]
     )
     monkeypatch.setattr(
         plugin_registry,
@@ -168,7 +166,9 @@ def test_activation_failed_plugin_is_not_ready_for_new_calculations(monkeypatch)
         },
     )
     monkeypatch.setattr(configuration_step, "get_plugin_registry", lambda: registry)
-    monkeypatch.setattr(configuration_step, "distributions", lambda: [distribution])
+    monkeypatch.setattr(
+        plugin_registry.metadata, "distributions", lambda: [distribution]
+    )
     monkeypatch.setattr(
         plugin_registry,
         "get_plugin_version_info",
@@ -209,7 +209,9 @@ def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
         },
     )
     monkeypatch.setattr(configuration_step, "get_plugin_registry", lambda: registry)
-    monkeypatch.setattr(configuration_step, "distributions", lambda: [distribution])
+    monkeypatch.setattr(
+        plugin_registry.metadata, "distributions", lambda: [distribution]
+    )
     monkeypatch.setattr(
         plugin_registry,
         "get_plugin_version_info",

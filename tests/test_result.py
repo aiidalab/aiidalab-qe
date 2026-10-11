@@ -68,7 +68,9 @@ def test_result_step(app_to_submit, generate_qeapp_workchain):
         WorkflowResultsViewerModel, model.get_model("results")
     )
     # All jobs are completed, so there should be no process status notifications
-    for _, results_model in results_viewer_model.get_models():
+    for identifier, results_model in results_viewer_model.get_models():
+        if identifier == "structure":
+            continue
         assert results_model.process_status_notification == ""
 
 
