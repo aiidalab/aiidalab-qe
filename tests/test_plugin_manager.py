@@ -33,6 +33,16 @@ def _plugin_registry(monkeypatch, plugins):
     return plugin_registry.PluginRegistry.load()
 
 
+def _set_plugin_manager_registry(monkeypatch, plugins):
+    registry = plugin_registry.PluginRegistry(
+        plugins={
+            name: QeAppPluginData.from_mapping(name, data)
+            for name, data in plugins.items()
+        }
+    )
+    monkeypatch.setattr(plugin_manager, "get_plugin_registry", lambda: registry)
+
+
 def test_plugin_manager_uses_packaged_registry():
     """
     Test that PluginManager loads the packaged YAML and builds its UI properly.
@@ -228,10 +238,9 @@ def test_execute_command_streams_without_changing_widget_policy(monkeypatch):
 
 
 def test_clear_output_button_clears_and_hides_logs(monkeypatch):
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -274,10 +283,9 @@ def test_clear_output_button_clears_and_hides_logs(monkeypatch):
 def test_installed_plugin_status_icon(
     monkeypatch, plugin_compatible, app_compatible, expected_icon
 ):
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -306,10 +314,9 @@ def test_installed_plugin_status_icon(
 
 
 def test_plugin_manager_displays_persistent_ui_with_refresh_button(monkeypatch):
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -355,10 +362,9 @@ def test_plugin_manager_displays_persistent_ui_with_refresh_button(monkeypatch):
 
 
 def test_manager_refresh_updates_existing_rows_without_clearing_logs(monkeypatch):
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             name: {
                 "title": name,
                 "description": "A test plugin",
@@ -608,10 +614,9 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
             or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
         ),
     )
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -687,10 +692,9 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
             or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
         ),
     )
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -756,10 +760,9 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
         return plugin_manager.subprocess.CompletedProcess(command, 1, "", "failed")
 
     monkeypatch.setattr(plugin_manager.subprocess, "run", fail_plugin_test)
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -811,10 +814,9 @@ def test_retry_activation_clears_failure_and_restarts_daemon(monkeypatch):
         return plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr(plugin_manager.subprocess, "run", run)
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -882,11 +884,7 @@ def test_update_failure_keeps_activation_warning(monkeypatch, failure_stage):
     }
     if failure_stage == "post_install":
         plugin_config["post_install"] = "setup"
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {"my-plugin": plugin_config},
-    )
+    _set_plugin_manager_registry(monkeypatch, {"my-plugin": plugin_config})
 
     manager = PluginManager()
     manager._build_ui()
@@ -934,10 +932,9 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
             or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
         ),
     )
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -994,10 +991,9 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
             or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
         ),
     )
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -1053,10 +1049,9 @@ def test_install_reconciles_plugin_controls(monkeypatch):
         return Result()
 
     monkeypatch.setattr(plugin_manager.subprocess, "run", run)
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",
@@ -1214,10 +1209,9 @@ def test_runtime_post_install_failure_warns_and_offers_retry(monkeypatch):
 def test_post_install_only_button_is_enabled_when_package_is_not_installed(
     monkeypatch,
 ):
-    monkeypatch.setattr(
-        PluginManager,
-        "_load_config",
-        lambda _self: {
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
             "my-plugin": {
                 "title": "My Test Plugin",
                 "description": "A test plugin",

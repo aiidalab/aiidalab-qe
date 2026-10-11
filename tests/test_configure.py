@@ -54,11 +54,13 @@ def test_panel():
     assert "bands" in parameters
 
 
-def test_fetching_available_plugins():
+def test_fetching_available_plugins(monkeypatch):
     from types import SimpleNamespace
 
     model = ConfigurationStepModel()
     config = ConfigurationStep(model=model)
+    monkeypatch.setattr(config, "_schedule_runtime_plugin_checks", lambda: None)
+    config.render()
     statuses = {
         name: SimpleNamespace(is_installed=False, is_incompatible=False)
         for name in config._plugin_registry.plugins
@@ -136,9 +138,7 @@ def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
     config.render()
 
     assert config.incompatible_plugins_list == ["My plugin"]
-    assert "Electronic band structure" not in [
-        row.children[0].title for row in config.installed_plugins_list
-    ]
+    assert config.installed_plugin_rows["bands"] not in config.installed_plugins_list
 
     model.set_model_state(
         {"workchain": {"properties": ["bands"], "relax_type": "none"}}
@@ -185,9 +185,7 @@ def test_activation_failed_plugin_is_not_ready_for_new_calculations(monkeypatch)
     config.render()
 
     assert config.incompatible_plugins_list == ["My plugin"]
-    assert "Electronic band structure" not in [
-        row.children[0].title for row in config.installed_plugins_list
-    ]
+    assert config.installed_plugin_rows["bands"] not in config.installed_plugins_list
 
 
 def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
@@ -236,8 +234,6 @@ def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
     )
 
     assert config.incompatible_plugins_list == []
-    assert "Electronic band structure" in [
-        row.children[0].title for row in config.installed_plugins_list
-    ]
+    assert config.installed_plugin_rows["bands"] in config.installed_plugins_list
     assert model.get_model("bands").include
     assert "bands" in model._get_properties()

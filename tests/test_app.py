@@ -30,15 +30,16 @@ class TestApp:
         assert wizard.configuration_model.get_model("bands").include is True
         assert wizard.configuration_model.get_model("pdos").include is False
         assert wizard.configuration_model.state == State.SUCCESS
-        results_viewer = wizard.results_step.results_panel
-        results_viewer.incompatible_plugin_ids = {"bands"}
-        self.controller._update_duplicate_workflow_link()
+        results_model = wizard.results_model
+        results_model.incompatible_plugin_ids = {"bands"}
+        results_model.plugin_status_checked = True
         assert self.view.duplicate_workflow_link.disabled
         assert "Duplication disabled due to incompatible plugins" in (
             self.view.duplicate_workflow_link.tooltip
         )
-        results_viewer.incompatible_plugin_ids = {"pdos"}
-        self.controller._update_duplicate_workflow_link()
+        results_model.plugin_status_checked = False
+        results_model.incompatible_plugin_ids = {"pdos"}
+        results_model.plugin_status_checked = True
         assert not self.view.duplicate_workflow_link.disabled
         advanced_model = wizard.configuration_model.get_model("advanced")
         pseudos_model = advanced_model.get_model("pseudos")

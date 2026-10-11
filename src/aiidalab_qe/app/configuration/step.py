@@ -203,7 +203,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
     def _post_render(self):
         super()._post_render()
-        self._schedule_runtime_plugin_checks()
+        self._schedule_plugin_status_check()
         self._update_tabs()
 
     def _on_tab_change(self, change):
@@ -364,7 +364,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             </ul>
         """
 
-    def _schedule_runtime_plugin_checks(self) -> None:
+    def _schedule_plugin_status_check(self) -> None:
         """Schedule the runtime plugin checks to be performed asynchronously.
 
         If the app is loaded from a process, the checks are skipped, and the plugin
@@ -387,14 +387,14 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            asyncio.run(self._refresh_runtime_plugin_checks())
+            asyncio.run(self._check_and_refresh_plugins())
         else:
             self._plugin_status_task = loop.create_task(
-                self._refresh_runtime_plugin_checks()
+                self._check_and_refresh_plugins()
             )
 
-    async def _refresh_runtime_plugin_checks(self) -> None:
-        """Refresh the runtime plugin checks and update the plugin lists."""
+    async def _check_and_refresh_plugins(self) -> None:
+        """Check the status of plugins and refresh the plugin lists."""
         registry = self._plugin_registry
         plugin_records = {
             name: record

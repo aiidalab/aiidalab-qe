@@ -66,8 +66,6 @@ class AppController:
         self._model = model
         self._view = view
         self._wizard_model = QeWizardModel()
-        self._plugin_status_checked = False
-        self._incompatible_plugin_ids: set[str] = set()
         self._set_event_handlers()
 
     def enable_toggles(self) -> None:
@@ -84,15 +82,16 @@ class AppController:
     ) -> None:
         """Load and initialize the wizard."""
         loaded_from_process = bool(self._model.process_uuid)
-        self._plugin_status_checked = not loaded_from_process
-        self._incompatible_plugin_ids = set()
 
         self.wizard = QeWizard(
             self._wizard_model,
             auto_setup,
             log_widget,
             loaded_from_process=loaded_from_process,
-            on_plugin_status_checked=self._on_plugin_status_checked,
+        )
+        self.wizard.results_model.observe(
+            self._on_plugin_status_checked,
+            "plugin_status_checked",
         )
 
         state = {"process_uuid": self._model.process_uuid}
@@ -149,7 +148,7 @@ class AppController:
             self._view.duplicate_workflow_link.disabled = False
             return
 
-        if not self._plugin_status_checked:
+        if not self.wizard.results_model.plugin_status_checked:
             self._view.duplicate_workflow_link.disabled = True
             self._view.duplicate_workflow_link.tooltip = (
                 "Checking plugin compatibility before allowing duplication"
@@ -165,7 +164,9 @@ class AppController:
         if not selected_properties:
             selected_properties = set(self.wizard.configuration_model._get_properties())
 
-        blocked = bool(selected_properties & self._incompatible_plugin_ids)
+        blocked = bool(
+            selected_properties & self.wizard.results_model.incompatible_plugin_ids
+        )
         self._view.duplicate_workflow_link.disabled = blocked
         self._view.duplicate_workflow_link.tooltip = (
             "Duplication disabled due to incompatible plugins. Visit the Plugin store to resolve."
@@ -173,10 +174,9 @@ class AppController:
             else "Duplicate calculation parameters in a separate tab"
         )
 
-    def _on_plugin_status_checked(self, incompatible_plugin_ids: set[str]) -> None:
-        self._plugin_status_checked = True
-        self._incompatible_plugin_ids = incompatible_plugin_ids
-        self._update_duplicate_workflow_link()
+    def _on_plugin_status_checked(self, change: dict) -> None:
+        if change["new"]:
+            self._update_duplicate_workflow_link()
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):

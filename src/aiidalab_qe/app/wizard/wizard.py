@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-
 import ipywidgets as ipw
 
 from aiidalab_qe.app.configuration import ConfigurationStep, ConfigurationStepModel
@@ -32,7 +30,6 @@ class QeWizard(Wizard):
         auto_setup: bool = True,
         log_widget: ipw.VBox | None = None,
         loaded_from_process: bool = False,
-        on_plugin_status_checked: Callable[[set[str]], None] | None = None,
         **kwargs,
     ):
         super().__init__(model, ICONS, **kwargs)
@@ -73,7 +70,6 @@ class QeWizard(Wizard):
             model=self.results_model,
             log_widget=log_widget,
             check_plugin_compatibility=loaded_from_process,
-            on_plugin_status_checked=on_plugin_status_checked,
         )
         self.add_step(
             step=self.results_step,

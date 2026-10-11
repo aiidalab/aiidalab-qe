@@ -170,6 +170,7 @@ def test_workchainview(generate_qeapp_workchain):
     model = WorkflowResultsViewerModel()
     viewer = WorkflowResultsViewer(model=model)
     model.process_uuid = workchain.node.uuid
+    model.plugin_status_checked = True
     viewer.render()
     assert len(viewer.tabs.children) == 2
     assert viewer.tabs.titles[0] == "Structure"
@@ -179,27 +180,9 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
     from types import SimpleNamespace
 
     from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
-    from aiidalab_qe.plugins import registry as plugin_registry
-
-    plugin_data = SimpleNamespace(
-        plugin_name="aiidalab-qe-vibroscopy",
-        pip="aiidalab-qe-vibroscopy>=1.2.9",
-        requires_aiidalab_qe=None,
-        title="Phonons and IR/Raman",
-    )
-    monkeypatch.setattr(
-        viewer_module,
-        "get_plugin_registry",
-        lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
-    )
-    monkeypatch.setattr(
-        plugin_registry,
-        "get_plugin_version_info",
-        lambda *_: ("1.2.8", False, None),
-    )
-    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
 
     class EntryPoint:
+        name = "vibronic"
         dist = SimpleNamespace(
             metadata={"Name": "aiidalab-qe-vibroscopy"},
         )
@@ -217,7 +200,11 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
 
     monkeypatch.setattr(viewer_module, "get_entry_items", get_entry_items)
 
-    viewer = viewer_module.WorkflowResultsViewer(model=WorkflowResultsViewerModel())
+    model = WorkflowResultsViewerModel()
+    model.incompatible_plugin_ids = {"vibronic"}
+    model.incompatible_plugin_titles = ["Phonons and IR/Raman"]
+    model.plugin_status_checked = True
+    viewer = viewer_module.WorkflowResultsViewer(model=model)
     viewer.render()
 
     assert not entry_point.loaded
@@ -226,65 +213,122 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
 
 
 def test_failed_activation_plugin_result_is_not_loaded(monkeypatch):
-    import importlib_metadata
-
     from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
-    from aiidalab_qe.plugins import registry as plugin_registry
-
-    plugin_data = SimpleNamespace(
-        plugin_name="aiidalab-qe-vibroscopy",
-        pip="aiidalab-qe-vibroscopy>=1.2.9",
-        requires_aiidalab_qe=None,
-        title="Phonons and IR/Raman",
-    )
-    monkeypatch.setattr(
-        viewer_module,
-        "get_plugin_registry",
-        lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
-    )
-    monkeypatch.setattr(
-        plugin_registry,
-        "get_plugin_version_info",
-        lambda *_: ("1.2.9", True, None),
-    )
-    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
-    monkeypatch.setattr(
-        plugin_registry,
-        "poll_plugin_registration",
-        lambda _plugin: "Plugin test failed",
-    )
-
-    distribution_metadata = {"Name": "aiidalab-qe-vibroscopy"}
 
     class EntryPoint:
         name = "vibroscopy"
         group = "aiidalab_qe.properties"
-        dist = SimpleNamespace(metadata=distribution_metadata)
+        dist = SimpleNamespace(metadata={"Name": "aiidalab-qe-vibroscopy"})
 
         def load(self):
             raise AssertionError("failed plugin entry point must not be loaded")
 
     entry_point = EntryPoint()
-    monkeypatch.setattr(
-        viewer_module,
-        "distributions",
-        lambda: [
-            SimpleNamespace(
-                metadata=distribution_metadata,
-                entry_points=[entry_point],
-            )
-        ],
-    )
 
-    monkeypatch.setattr(importlib_metadata, "entry_points", lambda **_: [entry_point])
+    def get_entry_items(_group, _item, entry_point_filter):
+        assert entry_point_filter(entry_point) is False
+        return {}
 
-    viewer = viewer_module.WorkflowResultsViewer(model=WorkflowResultsViewerModel())
+    monkeypatch.setattr(viewer_module, "get_entry_items", get_entry_items)
+    model = WorkflowResultsViewerModel()
+    model.incompatible_plugin_ids = {"vibroscopy"}
+    model.incompatible_plugin_titles = ["Phonons and IR/Raman"]
+    model.plugin_status_checked = True
+    viewer = viewer_module.WorkflowResultsViewer(model=model)
     viewer.render()
 
-    assert viewer.incompatible_plugin_ids == {"vibroscopy"}
+    assert viewer._model.incompatible_plugin_ids == {"vibroscopy"}
     assert "Result panels are disabled" in viewer.children[1].value
     assert "Phonons and IR/Raman" in viewer.children[1].value
     assert "Phonons and IR/Raman" in viewer.children[1].value
+
+
+def test_result_panels_are_limited_to_process_properties(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+
+    viewer = WorkflowResultsViewer(model=WorkflowResultsViewerModel())
+    selected_properties = {"bands"}
+
+    class ResultModel:
+        def __init__(self, properties):
+            self.properties = properties
+            self.process_uuid = None
+            self.auto_render = False
+
+        def update(self):
+            self.auto_render = True
+
+        @property
+        def include(self):
+            return bool(self.properties & selected_properties)
+
+    viewer_model = SimpleNamespace(
+        process_uuid="process-uuid",
+        properties=["bands"],
+        incompatible_plugin_ids=set(),
+        add_model=lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        viewer_module,
+        "get_entry_items",
+        lambda *_args, **_kwargs: {
+            "electronic_structure": {
+                "model": lambda: ResultModel({"bands", "pdos"}),
+                "panel": lambda model: model,
+            },
+            "vibronic": {
+                "model": lambda: ResultModel({"vibronic"}),
+                "panel": lambda model: model,
+            },
+        },
+    )
+    viewer._model = viewer_model
+    viewer._load_result_plugins()
+
+    assert "electronic_structure" in viewer.panels
+    assert "vibronic" not in viewer.panels
+    assert viewer.panels["electronic_structure"].auto_render
+
+
+def test_results_step_checks_only_plugins_selected_by_process(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.result import step as results_step_module
+
+    distribution = SimpleNamespace(
+        metadata={"Name": "aiidalab-qe-vibroscopy"},
+        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="vibronic")],
+    )
+    monkeypatch.setattr(results_step_module, "distributions", lambda: [distribution])
+    monkeypatch.setattr(
+        ResultsStepModel,
+        "properties",
+        property(lambda _self: ["vibronic"]),
+    )
+    plugins = {
+        "aiidalab-qe-vibroscopy": SimpleNamespace(pip="aiidalab-qe-vibroscopy>=1.0"),
+        "aiidalab-qe-muon": SimpleNamespace(pip="aiidalab-qe-muon>=1.0"),
+    }
+    step = ResultsStep(model=ResultsStepModel(), log_widget=None)
+
+    assert step._get_plugins_to_check(plugins) == {
+        "aiidalab-qe-vibroscopy": plugins["aiidalab-qe-vibroscopy"]
+    }
+
+
+def test_results_step_status_is_linked_to_viewer_model():
+    model = ResultsStepModel()
+    step = ResultsStep(model=model, log_widget=None, check_plugin_compatibility=False)
+
+    model.incompatible_plugin_ids = {"bands"}
+    model.incompatible_plugin_titles = ["Electronic bands"]
+    model.plugin_status_checked = True
+
+    assert step.results_panel._model.plugin_status_checked
+    assert step.results_panel._model.incompatible_plugin_ids == {"bands"}
+    assert step.results_panel._model.incompatible_plugin_titles == ["Electronic bands"]
 
 
 def test_summary_report(data_regression, generate_qeapp_workchain):
