@@ -216,9 +216,7 @@ class AppController:
                     guide_manager.load_plugin_guides()
                     self._show_guide_selectors()
                 else:
-                    self._guide_load_task = loop.create_task(
-                        self._load_plugin_guides()
-                    )
+                    self._guide_load_task = loop.create_task(self._load_plugin_guides())
         else:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
