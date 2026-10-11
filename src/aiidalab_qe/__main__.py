@@ -93,7 +93,7 @@ def download_pseudos(dest):
 @click.option("-p", "--profile", default=_DEFAULT_PROFILE)
 def test_plugin(plugin_name, profile):
     from aiida import load_profile
-    from aiidalab_qe.plugins.registry import get_default_plugin_registry
+    from aiidalab_qe.plugins.registry import get_plugin_registry
     from aiidalab_qe.plugins.utils import test_plugin_functionality
 
     load_profile(profile)
@@ -101,7 +101,7 @@ def test_plugin(plugin_name, profile):
     try:
         success, message = test_plugin_functionality(plugin_name)
         if success:
-            plugin_data = get_default_plugin_registry().plugins.get(plugin_name)
+            plugin_data = get_plugin_registry().plugins.get(plugin_name)
             if plugin_data and plugin_data.post_install:
                 module_name = plugin_name.replace("-", "_")
                 try:

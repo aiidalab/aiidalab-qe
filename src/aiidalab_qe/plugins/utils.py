@@ -1,6 +1,6 @@
-from importlib.metadata import distributions
+from importlib import invalidate_caches
 
-from aiidalab_qe.plugins.state import get_activation_failure
+from importlib_metadata import distributions
 
 
 def print_error(entry_point, e):
@@ -22,7 +22,6 @@ def get_entries(
     entry_point_name="aiidalab_qe.properties",
     priority=None,  # Use None as the default value
     entry_point_filter=None,
-    include_activation_failures=False,
 ):
     if priority is None:
         priority = [
@@ -48,15 +47,6 @@ def get_entries(
             continue
         if entry_point_filter is not None and not entry_point_filter(entry_point):
             continue
-        distribution = getattr(entry_point, "dist", None)
-        distribution_name = getattr(distribution, "name", None)
-        if distribution_name is None and distribution is not None:
-            distribution_metadata = getattr(distribution, "metadata", {})
-            distribution_name = distribution_metadata.get("Name")
-        if not include_activation_failures and get_activation_failure(
-            distribution_name or entry_point.name
-        ):
-            continue
         try:
             # Attempt to load the entry point
             loaded_entry_point = entry_point.load()
@@ -71,12 +61,10 @@ def get_entry_items(
     entry_point_name,
     item_name="outline",
     entry_point_filter=None,
-    include_activation_failures=False,
 ):
     entries = get_entries(
         entry_point_name,
         entry_point_filter=entry_point_filter,
-        include_activation_failures=include_activation_failures,
     )
     return {
         name: entry_point.get(item_name)
@@ -114,6 +102,7 @@ def test_plugin_functionality(plugin_name):
     from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
 
     try:
+        invalidate_caches()
         eps = get_entry_points_for_package(plugin_name)
         # check if we can load all entry points
         for ep in eps:

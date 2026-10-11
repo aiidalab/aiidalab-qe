@@ -120,7 +120,7 @@ def test_test_plugin_runs_post_install_verifier_when_configured(
     )
     monkeypatch.setattr(
         registry,
-        "get_default_plugin_registry",
+        "get_plugin_registry",
         lambda: SimpleNamespace(
             plugins={"my-plugin": SimpleNamespace(post_install=post_install)}
         ),

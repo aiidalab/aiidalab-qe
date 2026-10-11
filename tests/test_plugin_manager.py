@@ -1,6 +1,4 @@
-import tempfile
 from io import StringIO
-from pathlib import Path
 
 import ipywidgets as ipw
 import pytest
@@ -12,17 +10,6 @@ from aiidalab_qe.app.utils.plugin_manager import (
     QeAppPluginData,
 )
 from aiidalab_qe.plugins import registry as plugin_registry
-from aiidalab_qe.plugins import state as plugin_state
-
-
-@pytest.fixture(autouse=True)
-def isolate_plugin_activation_state(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        plugin_state,
-        "ACTIVATION_STATE_PATH",
-        tmp_path / "plugin-activation.json",
-    )
-
 
 # mock the content of the YAML file
 yaml_content = """
@@ -41,40 +28,25 @@ yaml_content = """
     """
 
 
-def _plugin_registry(plugin_name, data):
-    return plugin_registry.PluginRegistry.load(
-        loader=lambda: {plugin_name: data},
-    )
+def _plugin_registry(monkeypatch, plugins):
+    monkeypatch.setattr(plugin_registry, "load_plugin_config", lambda: plugins)
+    return plugin_registry.PluginRegistry.load()
 
 
-def test_plugin_manager_local_config_file():
+def test_plugin_manager_uses_packaged_registry():
     """
-    Test that PluginManager loads the YAML file and builds the UI (Accordion) properly.
+    Test that PluginManager loads the packaged YAML and builds its UI properly.
     """
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_path = Path(tmp_dir)
-
-        config_file = tmp_path / "test_plugins.yaml"
-        config_file.write_text(yaml_content)
-
-        # Instantiate the manager
-        manager = PluginManager(config_source=str(config_file))
-        manager._build_ui()
-        assert len(manager.accordion.children) == 2, "Should build 2 accordion panels."
-
-        # Check that the titles are set correctly
-        assert "My Test Plugin" in manager.accordion.get_title(0), (
-            "Check initial title for not-installed plugin"
-        )
-        assert "Another Plugin" in manager.accordion.get_title(1), (
-            "Check second plugin title"
-        )
+    manager = PluginManager()
+    manager._build_ui()
+    assert manager.registry is plugin_registry.get_plugin_registry()
+    assert len(manager.accordion.children) == len(manager.plugins)
+    for index, plugin in enumerate(manager.plugins.values()):
+        assert plugin.title in manager.accordion.get_title(index)
 
 
 def test_checked_in_plugin_registry_is_valid():
-    registry = plugin_registry.yaml.safe_load(
-        plugin_registry.DEFAULT_PLUGIN_CONFIG_SOURCE.read_text()
-    )
+    registry = plugin_registry.load_plugin_config()
 
     plugins = [
         QeAppPluginData.from_mapping(name, data) for name, data in registry.items()
@@ -105,6 +77,13 @@ def test_checked_in_plugin_registry_is_valid():
 def test_plugin_registry_entry_validation(data, message):
     with pytest.raises(ValueError, match=message):
         QeAppPluginData.from_mapping("my-plugin", data)
+
+
+def test_plugin_registry_load_reports_type_errors(monkeypatch):
+    registry = _plugin_registry(monkeypatch, {"my-plugin": []})
+
+    assert not registry.plugins
+    assert "plugin entry must be a mapping" in registry.config_error
 
 
 def test_plugin_registry_preserves_unknown_metadata():
@@ -141,55 +120,64 @@ def test_plugin_data_and_widget_keep_metadata_and_widgets_separate():
     assert isinstance(plugin.install_button, ipw.Button)
 
 
-def test_empty_registry_is_normalized_to_mapping(tmp_path):
-    config_file = tmp_path / "plugins.yaml"
-    config_file.write_text("")
-
-    manager = PluginManager(config_source=str(config_file))
+def test_empty_registry_is_normalized_to_mapping(monkeypatch):
+    registry = _plugin_registry(monkeypatch, {})
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_registry",
+        lambda: registry,
+    )
+    manager = PluginManager()
 
     assert manager.data == {}
     assert manager.config_error is None
 
 
-def test_invalid_registry_entry_is_reported_in_store(tmp_path, monkeypatch):
-    config_file = tmp_path / "plugins.yaml"
-    config_file.write_text(
-        "my-plugin:\n  title: My plugin\n  description: Test\n  pip: 'not a requirement'\n"
+def test_invalid_registry_entry_is_reported_in_store(monkeypatch):
+    registry = _plugin_registry(
+        monkeypatch,
+        {
+            "my-plugin": {
+                "title": "My plugin",
+                "description": "Test",
+                "pip": "not a requirement",
+            }
+        },
+    )
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_registry",
+        lambda: registry,
     )
     displayed = []
     monkeypatch.setattr(plugin_manager, "display", displayed.append)
 
-    manager = PluginManager(config_source=str(config_file))
+    manager = PluginManager()
     manager.display_ui()
 
     assert "invalid 'pip' requirement" in manager.config_error
     assert "invalid &#x27;pip&#x27; requirement" in displayed[0].value
 
 
-def test_remote_registry_request_error_is_reported(monkeypatch):
-    def fail_request(*_args, **_kwargs):
-        raise plugin_registry.requests.ConnectionError("offline")
-
-    monkeypatch.setattr(plugin_registry.requests, "get", fail_request)
-
-    manager = PluginManager(config_source="https://example.test/plugins.yaml")
-
-    assert "Could not fetch plugin registry: offline" in manager.config_error
-
-
 def test_outdated_plugin_actions(monkeypatch):
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("1.0", False, None),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        config_file = Path(tmp_dir) / "test_plugins.yaml"
-        config_file.write_text(yaml_content)
-        manager = PluginManager(config_source=str(config_file))
-        manager._build_ui()
+    registry = _plugin_registry(
+        monkeypatch,
+        plugin_registry.yaml.safe_load(yaml_content),
+    )
+    monkeypatch.setattr(
+        plugin_manager,
+        "get_plugin_registry",
+        lambda: registry,
+    )
+    manager = PluginManager()
+    manager._build_ui()
 
     buttons = manager.accordion.children[0].children[2].children
     (
@@ -252,9 +240,9 @@ def test_clear_output_button_clears_and_hides_logs(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        plugin_manager, "get_plugin_version_info", lambda *_args: (None, True, None)
+        plugin_registry, "get_plugin_version_info", lambda *_args: (None, True, None)
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
 
     manager = PluginManager()
     manager._build_ui()
@@ -298,12 +286,17 @@ def test_installed_plugin_status_icon(
         },
     )
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("1.0", plugin_compatible, None),
     )
     monkeypatch.setattr(
-        plugin_manager, "is_version_compatible", lambda *_args: app_compatible
+        plugin_registry, "is_version_compatible", lambda *_args: app_compatible
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_plugin_registration",
+        lambda *_args: None,
     )
 
     manager = PluginManager()
@@ -325,22 +318,38 @@ def test_plugin_manager_displays_persistent_ui_with_refresh_button(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: (None, True, None),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry, "poll_plugin_registration", lambda *_args: None
+    )
     displayed = []
     monkeypatch.setattr(plugin_manager, "display", displayed.append)
 
     manager = PluginManager()
+    loading_states = []
+    original_build_ui = PluginManager._build_ui
+
+    def build_ui(self):
+        loading_states.append(self.accordion.children[0].value)
+        original_build_ui(self)
+
+    monkeypatch.setattr(PluginManager, "_build_ui", build_ui)
     manager.display_ui()
     first_row = manager.accordion.children[0]
     first_row.message_container.value = "Keep this log"
     manager.display_ui()
 
+    assert loading_states == ["Loading/validating plugins..."]
     assert displayed == [manager.ui, manager.ui]
-    assert manager.ui.children == (manager.refresh_button, manager.accordion)
+    assert manager.ui.children == (
+        manager.refresh_button,
+        manager.daemon_warning,
+        manager.accordion,
+    )
     assert manager.accordion.children[0] is first_row
     assert first_row.message_container.value == "Keep this log"
 
@@ -363,18 +372,21 @@ def test_manager_refresh_updates_existing_rows_without_clearing_logs(monkeypatch
         "second-plugin": (None, True, None),
     }
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda name, *_args: version_info[name],
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry, "poll_plugin_registration", lambda *_args: None
+    )
+    monkeypatch.setattr(plugin_manager, "poll_daemon_status", lambda: None)
 
     manager = PluginManager()
     manager._build_ui()
     first_row, second_row = manager.accordion.children
     first_row.message_container.value = "Previous update log"
     first_row.output_container.value = "Previous command output"
-    plugin_state.set_activation_failure("first-plugin", "External activation failure")
     version_info["first-plugin"] = ("1.0", False, None)
     version_info["second-plugin"] = ("2.0", True, None)
 
@@ -383,9 +395,8 @@ def test_manager_refresh_updates_existing_rows_without_clearing_logs(monkeypatch
     assert manager.accordion.children == (first_row, second_row)
     assert first_row.installed_version == "1.0"
     assert not first_row.plugin_compatible
-    assert first_row.activation_error == "External activation failure"
+    assert first_row.registration_error is None
     assert "Installed version 1.0" in first_row.version_warning.value
-    assert "External activation failure" in first_row.version_warning.value
     assert first_row.version_warning_text == first_row.version_warning.value
     assert manager.accordion.get_title(0).endswith("⚠️")
     assert not first_row.update_button.disabled
@@ -421,7 +432,7 @@ def test_get_plugin_version_info(monkeypatch, installed_version, requirement, ex
         plugin_registry.metadata, "version", lambda _package: installed_version
     )
 
-    version, compatible, error = plugin_manager.get_plugin_version_info(
+    version, compatible, error = plugin_registry.get_plugin_version_info(
         "my-plugin", requirement
     )
 
@@ -436,7 +447,7 @@ def test_get_plugin_version_info_not_installed(monkeypatch):
 
     monkeypatch.setattr(plugin_registry.metadata, "version", missing_package)
 
-    assert plugin_manager.get_plugin_version_info("my-plugin", "my-plugin>=1") == (
+    assert plugin_registry.get_plugin_version_info("my-plugin", "my-plugin>=1") == (
         None,
         True,
         None,
@@ -444,7 +455,7 @@ def test_get_plugin_version_info_not_installed(monkeypatch):
 
 
 def test_get_plugin_version_info_invalid_requirement():
-    version, compatible, error = plugin_manager.get_plugin_version_info(
+    version, compatible, error = plugin_registry.get_plugin_version_info(
         "my-plugin", "not a requirement"
     )
 
@@ -453,41 +464,119 @@ def test_get_plugin_version_info_invalid_requirement():
     assert error
 
 
-def test_plugin_activation_failure_persists_and_clears(monkeypatch, tmp_path):
-    from aiidalab_qe.plugins import state
+def test_poll_post_install_skips_plugins_without_a_hook(monkeypatch):
+    monkeypatch.setattr(
+        plugin_registry.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("no verifier should be run"),
+    )
 
-    state_path = tmp_path / "plugin-activation.json"
-    monkeypatch.setattr(state, "ACTIVATION_STATE_PATH", state_path)
-
-    state.set_activation_failure("my-plugin", "Plugin validation failed")
-
-    assert state.get_activation_failure("my-plugin") == "Plugin validation failed"
-    assert state_path.exists()
-
-    state.set_activation_failure("another-plugin", "Daemon restart failed")
-    state.clear_activation_failure("my-plugin")
-
-    assert state.get_activation_failure("my-plugin") is None
-    assert state.get_activation_failure("another-plugin") == "Daemon restart failed"
-
-    state.clear_activation_failure("another-plugin")
-    assert not state_path.exists()
+    assert plugin_registry.poll_post_install("my-plugin", None) == (None, None)
 
 
-@pytest.mark.parametrize("contents", ["not valid json", "[]"])
-def test_invalid_plugin_activation_state_is_logged_and_recovered(
-    monkeypatch, tmp_path, caplog, contents
+@pytest.mark.parametrize(
+    ("result", "expected_error"),
+    [
+        ((True, ""), None),
+        ((False, "broken entry point"), "broken entry point"),
+        (
+            (False, ""),
+            "Plugin entry-point validation failed without an error message.",
+        ),
+    ],
+)
+def test_poll_plugin_registration_normalizes_result(
+    monkeypatch, result, expected_error
 ):
-    state_path = tmp_path / "plugin-activation.json"
-    state_path.write_text(contents, encoding="utf-8")
-    monkeypatch.setattr(plugin_state, "ACTIVATION_STATE_PATH", state_path)
+    from aiidalab_qe.plugins import utils as plugin_utils
 
-    assert plugin_state.get_activation_failure("my-plugin") is None
-    plugin_state.clear_activation_failure("my-plugin")
-    plugin_state.set_activation_failure("my-plugin", "Validation failed")
+    monkeypatch.setattr(plugin_utils, "test_plugin_functionality", lambda _name: result)
 
-    assert plugin_state.get_activation_failure("my-plugin") == "Validation failed"
-    assert "plugin activation state" in caplog.text.lower()
+    error = plugin_registry.poll_plugin_registration("my-plugin")
+
+    assert error == expected_error
+
+
+def test_poll_post_install_runs_plugin_verifier(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        plugin_registry.subprocess,
+        "run",
+        lambda command, **kwargs: (
+            calls.append((command, kwargs))
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
+    )
+
+    assert plugin_registry.poll_post_install("aiida-bader", "post-install", "test") == (
+        True,
+        None,
+    )
+    assert calls[0][0] == [
+        plugin_manager.sys.executable,
+        "-m",
+        "aiida_bader",
+        "verify-post-install",
+        "--profile",
+        "test",
+    ]
+    assert calls[0][1]["timeout"] == plugin_registry.POST_INSTALL_VERIFY_TIMEOUT
+
+
+def test_poll_post_install_reports_verifier_failure(monkeypatch):
+    monkeypatch.setattr(
+        plugin_registry.subprocess,
+        "run",
+        lambda command, **_kwargs: plugin_manager.subprocess.CompletedProcess(
+            command, 1, "", "missing AiiDA code"
+        ),
+    )
+
+    verified, error = plugin_registry.poll_post_install("my-plugin", "setup")
+
+    assert verified is False
+    assert "missing AiiDA code" in error
+
+
+def test_poll_post_install_reports_timeout(monkeypatch):
+    def timeout(*_args, **_kwargs):
+        raise plugin_registry.subprocess.TimeoutExpired("verifier", 60)
+
+    monkeypatch.setattr(plugin_registry.subprocess, "run", timeout)
+
+    verified, error = plugin_registry.poll_post_install("my-plugin", "setup")
+
+    assert verified is False
+    assert "timed out" in error
+
+
+def test_plugin_status_marks_failed_post_install_incompatible(monkeypatch):
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("1.0", True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_post_install",
+        lambda *_args: (False, "Post-install check failed"),
+    )
+    plugin_data = QeAppPluginData.from_mapping(
+        "my-plugin",
+        {
+            "title": "My plugin",
+            "description": "Test plugin",
+            "pip": "my-plugin",
+            "post_install": "setup",
+        },
+    )
+
+    status = plugin_registry.get_plugin_status("my-plugin", plugin_data)
+
+    assert status.post_install_verified is False
+    assert status.post_install_error == "Post-install check failed"
+    assert status.is_incompatible
 
 
 def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
@@ -501,7 +590,7 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
     installed_version = {"value": "1.2.8"}
     monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: (
             installed_version["value"],
@@ -509,7 +598,7 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
             None,
         ),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
     daemon_commands = []
     monkeypatch.setattr(
         plugin_manager.subprocess,
@@ -580,7 +669,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
         lambda _name: installed_version["value"],
     )
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: (
             installed_version["value"],
@@ -588,7 +677,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
             None,
         ),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
     subprocess_commands = []
     monkeypatch.setattr(
         plugin_manager.subprocess,
@@ -650,7 +739,7 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
 
     monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: (
             installed_version["value"],
@@ -658,7 +747,7 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
             None,
         ),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
 
     subprocess_commands = []
 
@@ -698,20 +787,23 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
     assert "plugin remains installed" in plugin.message_container.value
     assert "daemon was not restarted" in plugin.message_container.value
     assert "Updated my-plugin" not in plugin.message_container.value
-    assert plugin.activation_error
+    assert plugin.registration_error
     assert plugin.retry_activation_button.layout.display == ""
     assert plugin.update_button.disabled is False
-    assert plugin_state.get_activation_failure("my-plugin") == plugin.activation_error
 
 
 def test_retry_activation_clears_failure_and_restarts_daemon(monkeypatch):
-    plugin_state.set_activation_failure("my-plugin", "Previous validation failed")
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("1.2.9", True, None),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_plugin_registration",
+        lambda *_args: "Previous validation failed",
+    )
     calls = []
 
     def run(command, **_kwargs):
@@ -747,7 +839,7 @@ def test_retry_activation_clears_failure_and_restarts_daemon(monkeypatch):
         ],
         ["verdi", "daemon", "restart"],
     ]
-    assert plugin_state.get_activation_failure("my-plugin") is None
+    assert plugin.registration_error is None
     assert plugin.retry_activation_button.layout.display == "none"
     assert manager.accordion.get_title(0).endswith("✅")
 
@@ -760,11 +852,11 @@ def test_update_failure_keeps_activation_warning(monkeypatch, failure_stage):
         lambda *_args, **_kwargs: True,
     )
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("1.2.9", True, None),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
     commands = []
 
     def run(command, **_kwargs):
@@ -801,11 +893,16 @@ def test_update_failure_keeps_activation_warning(monkeypatch, failure_stage):
     plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
-    failure = plugin_state.get_activation_failure("my-plugin")
-    assert failure == plugin.activation_error
-    assert "daemon was not restarted" in failure or "daemon restart failed" in failure
+    if failure_stage == "post_install":
+        assert plugin.post_install_error
+    else:
+        assert plugin.daemon_error
     assert plugin.retry_activation_button.layout.display == ""
-    assert plugin.version_warning.value
+    assert (
+        plugin.version_warning.value
+        if failure_stage == "post_install"
+        else plugin.daemon_error
+    )
     assert (any(command[-2:] == ["daemon", "restart"] for command in commands)) == (
         failure_stage == "daemon_restart"
     )
@@ -818,16 +915,16 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
         lambda *_args, **_kwargs: True,
     )
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("1.2.8", False, None),
     )
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("1.2.8", False, None),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
     subprocess_commands = []
     monkeypatch.setattr(
         plugin_manager.subprocess,
@@ -873,7 +970,7 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
     daemon_commands = []
 
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: (
             (installed["version"], False, None)
@@ -881,7 +978,7 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
             else (None, True, None)
         ),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
 
     def execute(_row, command, *_args, **_kwargs):
         commands.append(command)
@@ -933,11 +1030,11 @@ def test_install_reconciles_plugin_controls(monkeypatch):
     daemon_commands = []
 
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: (installed["version"], installed["version"] == "2.0", None),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
 
     def execute(_row, command, *_args, **_kwargs):
         commands.append(command)
@@ -1037,22 +1134,31 @@ def test_run_post_install_runs_only_configured_command(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    ("returncode", "expected_failure"),
+    ("returncode", "expected_error"),
     [
         (0, None),
-        (1, "Post-install failed; plugin setup may be incomplete."),
+        (1, "Post-install verifier failed"),
     ],
 )
-def test_standalone_post_install_updates_activation_state(
-    monkeypatch, returncode, expected_failure
+def test_standalone_post_install_refreshes_runtime_status(
+    monkeypatch, returncode, expected_error
 ):
-    plugin_state.set_activation_failure("my-plugin", "Previous activation failure")
     monkeypatch.setattr(
-        plugin_manager,
+        plugin_registry,
         "get_plugin_version_info",
         lambda *_args: ("1.2.9", True, None),
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_plugin_registration",
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_post_install",
+        lambda *_args: (returncode == 0, expected_error),
+    )
     monkeypatch.setattr(
         plugin_manager.subprocess,
         "run",
@@ -1073,11 +1179,36 @@ def test_standalone_post_install_updates_activation_state(
 
     plugin._on_post_install(None)
 
-    assert plugin_state.get_activation_failure("my-plugin") == expected_failure
-    assert plugin.activation_error == expected_failure
-    assert (plugin.retry_activation_button.layout.display == "") == bool(
-        expected_failure
+    assert plugin.post_install_error == expected_error
+    assert (plugin.retry_activation_button.layout.display == "") == bool(expected_error)
+
+
+def test_runtime_post_install_failure_warns_and_offers_retry(monkeypatch):
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.9", True, None),
     )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_post_install",
+        lambda *_args: (False, "AiiDA code phonopy@localhost is missing."),
+    )
+    data = QeAppPluginData.from_mapping(
+        "my-plugin",
+        {
+            "title": "My Test Plugin",
+            "description": "A test plugin",
+            "pip": "my-plugin",
+            "post_install": "setup",
+        },
+    )
+
+    plugin = QeAppPlugin(data, plugin_name="my-plugin")
+
+    assert "phonopy@localhost is missing" in plugin.version_warning.value
+    assert plugin.retry_activation_button.layout.display == ""
 
 
 def test_post_install_only_button_is_enabled_when_package_is_not_installed(
@@ -1096,9 +1227,9 @@ def test_post_install_only_button_is_enabled_when_package_is_not_installed(
         },
     )
     monkeypatch.setattr(
-        plugin_manager, "get_plugin_version_info", lambda *_args: (None, True, None)
+        plugin_registry, "get_plugin_version_info", lambda *_args: (None, True, None)
     )
-    monkeypatch.setattr(plugin_manager, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
 
     manager = PluginManager()
     manager._build_ui()

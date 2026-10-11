@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import Callable, Mapping
+import subprocess
+import sys
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
 from importlib import metadata
 from importlib.resources import files
-from pathlib import Path
-from urllib.parse import urlparse
 
-import requests
 import yaml
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
@@ -19,11 +19,83 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from aiidalab_qe import __version__
-from aiidalab_qe.plugins.state import get_activation_failure
 
 LOGGER = logging.getLogger(__name__)
+POST_INSTALL_VERIFY_TIMEOUT = 60
 
-DEFAULT_PLUGIN_CONFIG_SOURCE = files("aiidalab_qe.plugins").joinpath("plugins.yaml")
+
+def poll_post_install(
+    plugin_id: str,
+    post_install: str | None,
+    profile: str = "default",
+) -> tuple[bool | None, str | None]:
+    """Check post-install state using the plugin's read-only verifier."""
+    if not post_install:
+        return None, None
+
+    command = [
+        sys.executable,
+        "-m",
+        plugin_id.replace("-", "_"),
+        "verify-post-install",
+        "--profile",
+        profile,
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=POST_INSTALL_VERIFY_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return False, (
+            "Post-install verification timed out after "
+            f"{POST_INSTALL_VERIFY_TIMEOUT} seconds."
+        )
+    except OSError as error:
+        LOGGER.warning(
+            "Could not start post-install verification for %s: %s", plugin_id, error
+        )
+        return False, f"Could not start post-install verification: {error}"
+
+    if result.returncode == 0:
+        return True, None
+
+    details = (result.stderr or result.stdout or "").strip()
+    if len(details) > 500:
+        details = f"{details[:497]}..."
+    message = "Post-install verification failed."
+    if details:
+        message = f"{message} {details}"
+    return False, message
+
+
+def poll_plugin_registration(plugin_id: str) -> str | None:
+    """Check entry-point loading and app integration for an installed plugin."""
+    from aiidalab_qe.plugins.utils import test_plugin_functionality
+
+    registered, error = test_plugin_functionality(plugin_id)
+    if registered:
+        return None
+    if not registered and not error:
+        error = "Plugin entry-point validation failed without an error message."
+    return error
+
+
+def poll_daemon_status() -> str | None:
+    """Return a warning when the current AiiDA daemon is unavailable."""
+    from aiida.engine.daemon.client import get_daemon_client
+
+    try:
+        if get_daemon_client().is_daemon_running:
+            return None
+    except Exception as error:
+        LOGGER.warning("Could not determine AiiDA daemon status: %s", error)
+        return f"Could not determine AiiDA daemon status: {error}"
+
+    return "The AiiDA daemon is not running. Restart it, then refresh plugin status."
 
 
 @dataclass(frozen=True)
@@ -133,24 +205,17 @@ class QeAppPluginData:
         }
 
 
-def load_plugin_config(config_source=DEFAULT_PLUGIN_CONFIG_SOURCE) -> Mapping:
-    """Load raw plugin definitions from a local source or HTTP(S) URL."""
+def load_plugin_config() -> Mapping:
+    """Load raw plugin definitions from the packaged registry."""
     try:
-        if isinstance(config_source, str):
-            if urlparse(config_source).scheme in {"http", "https"}:
-                response = requests.get(config_source, timeout=10)
-                response.raise_for_status()
-                content = response.text
-            else:
-                content = Path(config_source).read_text(encoding="utf-8")
-        else:
-            content = config_source.read_text(encoding="utf-8")
-
+        content = (
+            files("aiidalab_qe.plugins")
+            .joinpath("plugins.yaml")
+            .read_text(encoding="utf-8")
+        )
         data = yaml.safe_load(content)
-    except requests.RequestException as error:
-        raise ValueError(f"Could not fetch plugin registry: {error}") from error
     except (OSError, yaml.YAMLError) as error:
-        raise ValueError(f"Could not read plugin registry: {error}") from error
+        raise ValueError(f"Could not read packaged plugin registry: {error}") from error
 
     if data is None:
         return {}
@@ -160,7 +225,7 @@ def load_plugin_config(config_source=DEFAULT_PLUGIN_CONFIG_SOURCE) -> Mapping:
 
 
 class PluginRegistry:
-    """Validated, data-only view of a plugin configuration source."""
+    """Validated, data-only view of the packaged plugin registry."""
 
     def __init__(
         self,
@@ -171,26 +236,21 @@ class PluginRegistry:
         self.config_error = config_error
 
     @classmethod
-    def load(
-        cls,
-        config_source=DEFAULT_PLUGIN_CONFIG_SOURCE,
-        *,
-        loader: Callable[[], Mapping] | None = None,
-    ) -> PluginRegistry:
+    def load(cls) -> PluginRegistry:
         """Load and validate a registry, retaining errors for UI presentation."""
         try:
-            raw_plugins = loader() if loader else load_plugin_config(config_source)
+            raw_plugins = load_plugin_config()
             plugins = {
                 name: QeAppPluginData.from_mapping(name, data)
                 for name, data in raw_plugins.items()
             }
         except (
             OSError,
-            requests.RequestException,
+            TypeError,
             ValueError,
             yaml.YAMLError,
         ) as error:
-            LOGGER.exception("Could not load plugin registry from %s", config_source)
+            LOGGER.exception("Could not load packaged plugin registry")
             return cls(config_error=str(error))
 
         return cls(plugins=plugins)
@@ -203,13 +263,8 @@ class PluginRegistry:
         }
 
 
-def load_plugin_registry(config_source=DEFAULT_PLUGIN_CONFIG_SOURCE) -> PluginRegistry:
-    """Load a fresh registry from a source."""
-    return PluginRegistry.load(config_source)
-
-
 @lru_cache(maxsize=1)
-def get_default_plugin_registry() -> PluginRegistry:
+def get_plugin_registry() -> PluginRegistry:
     """Return the packaged registry cached for this Python process."""
     return PluginRegistry.load()
 
@@ -274,7 +329,9 @@ class PluginStatus:
     plugin_compatible: bool
     requirement_error: str | None
     app_compatible: bool
-    activation_error: str | None
+    registration_error: str | None
+    post_install_verified: bool | None
+    post_install_error: str | None
     is_installed: bool
     distribution_name: str
     requirement: str
@@ -285,7 +342,8 @@ class PluginStatus:
             not self.plugin_compatible
             or self.requirement_error
             or not self.app_compatible
-            or self.activation_error
+            or self.registration_error
+            or self.post_install_verified is False
         )
 
 
@@ -293,25 +351,22 @@ def get_plugin_status(
     plugin_name: str,
     plugin_data: QeAppPluginData,
     *,
-    loaded_from_process: bool = False,
+    check_runtime: bool = True,
 ) -> PluginStatus:
     """Collect live compatibility and activation status for one plugin."""
     requirement_text = plugin_data.pip or plugin_name
+    registration_error = None
+    post_install_verified = None
+    post_install_error = None
 
-    if loaded_from_process:
-        installed_version = None
-        plugin_compatible = True
-        requirement_error = None
-        app_compatible = True
-        activation_error = None
-        is_installed = is_plugin_installed(plugin_name)
-    else:
-        installed_version, plugin_compatible, requirement_error = (
-            get_plugin_version_info(plugin_name, requirement_text)
-        )
-        app_compatible = is_version_compatible(plugin_data.requires_aiidalab_qe)
-        activation_error = get_activation_failure(plugin_name)
-        is_installed = installed_version is not None
+    (
+        installed_version,
+        plugin_compatible,
+        requirement_error,
+    ) = get_plugin_version_info(plugin_name, requirement_text)
+
+    app_compatible = is_version_compatible(plugin_data.requires_aiidalab_qe)
+    is_installed = installed_version is not None
 
     try:
         requirement = Requirement(requirement_text)
@@ -322,13 +377,59 @@ def get_plugin_status(
         distribution_name = canonicalize_name(requirement.name)
         requirement_text = str(requirement)
 
+    post_install = getattr(plugin_data, "post_install", None)
+    if (
+        is_installed
+        and plugin_compatible
+        and app_compatible
+        and not requirement_error
+        and check_runtime
+    ):
+
+        def verify_runtime():
+            registration = poll_plugin_registration(plugin_name)
+            if post_install:
+                verified, error = poll_post_install(plugin_name, post_install)
+            else:
+                verified, error = None, None
+            return registration, verified, error
+
+        (
+            registration_error,
+            post_install_verified,
+            post_install_error,
+        ) = verify_runtime()
+
     return PluginStatus(
         installed_version=installed_version,
         plugin_compatible=plugin_compatible,
         requirement_error=requirement_error,
         app_compatible=app_compatible,
-        activation_error=activation_error,
+        registration_error=registration_error,
+        post_install_verified=post_install_verified,
+        post_install_error=post_install_error,
         is_installed=is_installed,
         distribution_name=distribution_name,
         requirement=requirement_text,
     )
+
+
+async def get_plugin_statuses(
+    plugins: Mapping[str, QeAppPluginData],
+    *,
+    check_runtime: bool = True,
+) -> dict[str, PluginStatus]:
+    """Collect multiple plugin statuses concurrently without blocking the UI loop."""
+    names = list(plugins)
+    statuses = await asyncio.gather(
+        *(
+            asyncio.to_thread(
+                get_plugin_status,
+                name,
+                plugins[name],
+                check_runtime=check_runtime,
+            )
+            for name in names
+        )
+    )
+    return dict(zip(names, statuses, strict=True))

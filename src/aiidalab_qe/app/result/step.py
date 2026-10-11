@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import ipywidgets as ipw
 
 from aiidalab_qe.common.infobox import InAppGuide
@@ -20,6 +22,8 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         self,
         model: ResultsStepModel,
         log_widget: ipw.VBox | None,
+        check_plugin_compatibility: bool = True,
+        on_plugin_status_checked: Callable[[set[str]], None] | None = None,
         **kwargs,
     ):
         super().__init__(model=model, **kwargs)
@@ -29,7 +33,11 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         self._model.add_model("summary", summary_model)
 
         results_model = WorkflowResultsViewerModel()
-        self.results_panel = WorkflowResultsViewer(model=results_model)
+        self.results_panel = WorkflowResultsViewer(
+            model=results_model,
+            check_plugin_compatibility=check_plugin_compatibility,
+            on_plugin_status_checked=on_plugin_status_checked,
+        )
         self._model.add_model("results", results_model)
 
         status_model = WorkChainStatusModel()
@@ -190,6 +198,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         self._on_daemon_status_change(None)
         self._set_default_results_panel()
         self._set_up_monitor()
+        self.results_panel.ensure_plugin_status_check()
 
     def _on_toggle_change(self, change):
         panel = self.panels[change["new"]]

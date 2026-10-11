@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import html
+from collections.abc import Callable
 from importlib.metadata import distributions
 
 import ipywidgets as ipw
@@ -10,8 +12,8 @@ from aiidalab_qe.app.result.components import ResultsComponent
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
 from aiidalab_qe.plugins.registry import (
-    get_default_plugin_registry,
-    get_plugin_status,
+    get_plugin_registry,
+    get_plugin_statuses,
 )
 from aiidalab_qe.plugins.utils import get_entry_items
 
@@ -20,7 +22,16 @@ from .structure import StructureResultsModel, StructureResultsPanel
 
 
 class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
-    def __init__(self, model: WorkflowResultsViewerModel, **kwargs):
+    def __init__(
+        self,
+        model: WorkflowResultsViewerModel,
+        check_plugin_compatibility: bool = True,
+        on_plugin_status_checked: Callable[[set[str]], None] | None = None,
+        **kwargs,
+    ):
+        self.check_plugin_compatibility = check_plugin_compatibility
+        self.on_plugin_status_checked = on_plugin_status_checked
+        self.plugin_status_checked = False
         # NOTE: here we want to add the structure and plugin models to the viewer
         # model BEFORE we define the observation of the process uuid. This ensures
         # that when the process changes, its reflected in the sub-models prior to
@@ -30,7 +41,6 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
         self.incompatible_plugin_results: list[str] = []
         self.incompatible_plugin_ids: set[str] = set()
         self._add_structure_panel(model)
-        self._fetch_plugin_results(model)
         super().__init__(model=model, **kwargs)
 
     def _on_process_change(self, _):
@@ -50,11 +60,19 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             self._on_tab_change,
             "selected_index",
         )
+        self.plugin_compatibility_warning = ipw.HTML(
+            value=(
+                self._get_plugin_compatibility_warning()
+                if self.plugin_status_checked
+                else "Loading/validating plugin results..."
+            )
+        )
         self.children = [
             InAppGuide(identifier="results-panel"),
-            ipw.HTML(self._get_plugin_compatibility_warning()),
+            self.plugin_compatibility_warning,
             self.tabs,
         ]
+        self.ensure_plugin_status_check()
 
     def _post_render(self):
         self._set_tabs()
@@ -92,11 +110,44 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             **self.panels,
         }
 
-    def _fetch_plugin_results(self, viewer_model: WorkflowResultsViewerModel):
-        registry = get_default_plugin_registry()
+    def ensure_plugin_status_check(self) -> None:
+        """Start runtime plugin checks once the viewer is on screen."""
+        if self.plugin_status_checked or getattr(self, "_plugin_status_task", None):
+            return
+        if not self.check_plugin_compatibility:
+            self.plugin_status_checked = True
+            self.plugin_compatibility_warning.value = ""
+            self._notify_plugin_status_checked()
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self._fetch_plugin_results_async())
+        else:
+            self._plugin_status_task = loop.create_task(
+                self._fetch_plugin_results_async()
+            )
+
+    async def _fetch_plugin_results_async(self) -> None:
+        registry = get_plugin_registry()
+        statuses = await get_plugin_statuses(registry.plugins)
+        self._fetch_plugin_results(self._model, registry, statuses)
+        self.plugin_status_checked = True
+        if self.rendered:
+            self.plugin_compatibility_warning.value = (
+                self._get_plugin_compatibility_warning()
+            )
+            self._set_tabs()
+        self._notify_plugin_status_checked()
+
+    def _notify_plugin_status_checked(self) -> None:
+        if self.on_plugin_status_checked is not None:
+            self.on_plugin_status_checked(self.incompatible_plugin_ids)
+
+    def _fetch_plugin_results(self, viewer_model, registry, statuses):
         incompatible_packages = {}
         for plugin_name, plugin_data in registry.plugins.items():
-            status = get_plugin_status(plugin_name, plugin_data)
+            status = statuses[plugin_name]
             if status.is_incompatible:
                 incompatible_packages[status.distribution_name] = plugin_data.title
 
@@ -106,6 +157,7 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
                 incompatible_packages
             ):
                 continue
+
             self.incompatible_plugin_ids.update(
                 entry_point.name
                 for entry_point in distribution.entry_points

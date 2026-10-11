@@ -189,7 +189,7 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
     )
     monkeypatch.setattr(
         viewer_module,
-        "get_default_plugin_registry",
+        "get_plugin_registry",
         lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
     )
     monkeypatch.setattr(
@@ -225,12 +225,11 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
     assert "./plugin_manager.ipynb" in viewer.children[1].value
 
 
-def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
+def test_failed_activation_plugin_result_is_not_loaded(monkeypatch):
     import importlib_metadata
 
     from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
     from aiidalab_qe.plugins import registry as plugin_registry
-    from aiidalab_qe.plugins import state
 
     plugin_data = SimpleNamespace(
         plugin_name="aiidalab-qe-vibroscopy",
@@ -240,7 +239,7 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         viewer_module,
-        "get_default_plugin_registry",
+        "get_plugin_registry",
         lambda: SimpleNamespace(plugins={"aiidalab-qe-vibroscopy": plugin_data}),
     )
     monkeypatch.setattr(
@@ -250,9 +249,10 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
     monkeypatch.setattr(
-        state, "ACTIVATION_STATE_PATH", tmp_path / "plugin-activation.json"
+        plugin_registry,
+        "poll_plugin_registration",
+        lambda _plugin: "Plugin test failed",
     )
-    state.set_activation_failure(plugin_data.plugin_name, "plugin test failed")
 
     distribution_metadata = {"Name": "aiidalab-qe-vibroscopy"}
 

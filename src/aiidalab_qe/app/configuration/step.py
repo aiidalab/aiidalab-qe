@@ -5,6 +5,7 @@ Authors: AiiDAlab team
 
 from __future__ import annotations
 
+import asyncio
 from importlib.metadata import distributions
 
 import ipywidgets as ipw
@@ -16,9 +17,10 @@ from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.plugins.registry import (
-    get_default_plugin_registry,
+    get_plugin_registry,
     get_plugin_status,
-    load_plugin_registry,
+    get_plugin_statuses,
+    is_plugin_installed,
 )
 from aiidalab_qe.plugins.utils import get_entries
 
@@ -81,6 +83,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         }
 
         self.installed_plugins_list = []
+        self.installed_plugin_rows = {}
         self.incompatible_plugins_list = []
         self.available_plugins_list = []
         self.incompatible_plugin_data = {}
@@ -216,6 +219,8 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self.confirm_box,
         ]
 
+        self._schedule_runtime_plugin_checks()
+
     def _post_render(self):
         super()._post_render()
         self._set_incompatible_plugins()
@@ -279,11 +284,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self.tabs.selected_index = 0
 
     def _fetch_plugin_calculation_settings(self):
-        include_activation_failures = self._model.loaded_from_process
-        loaded_entries = get_entries(
-            "aiidalab_qe.properties",
-            include_activation_failures=include_activation_failures,
-        )
+        loaded_entries = get_entries("aiidalab_qe.properties")
         outlines = {
             identifier: entry["outline"]
             for identifier, entry in loaded_entries.items()
@@ -318,7 +319,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 continue
 
             outline = outlines[identifier]()
-            info = ipw.HTML()
             ipw.link(
                 (model, "include"),
                 (outline.include, "value"),
@@ -342,25 +342,23 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 "include",
             )
 
-            self.installed_plugins_list.append(
-                ipw.HBox(
-                    children=[
-                        outline,
-                        info,
-                    ]
-                )
-            )
+            self.installed_plugin_rows[identifier] = outline
+            self.installed_plugins_list.append(outline)
 
             self.settings[identifier] = panel
 
         self._model.installed_plugins_fetched = True
 
-    def _fetch_available_plugins(self, plugin_config_source=None):
-        registry = (
-            load_plugin_registry(plugin_config_source)
-            if plugin_config_source
-            else get_default_plugin_registry()
-        )
+    def _fetch_available_plugins(
+        self,
+        *,
+        statuses=None,
+    ):
+        registry = get_plugin_registry()
+        self._plugin_registry = registry
+
+        self.available_plugins_list = []
+        self.incompatible_plugin_data = {}
 
         for plugin_name, plugin_record in registry.plugins.items():
             plugin_data = plugin_record.as_mapping()
@@ -368,24 +366,31 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 # Ignore non-property plugins
                 continue
 
-            status = get_plugin_status(
-                plugin_name,
-                plugin_record,
-                loaded_from_process=self._model.loaded_from_process,
-            )
+            if self._model.loaded_from_process:
+                is_installed = is_plugin_installed(plugin_name)
+            else:
+                status = (
+                    statuses[plugin_name]
+                    if statuses is not None
+                    else get_plugin_status(
+                        plugin_name,
+                        plugin_record,
+                        check_runtime=False,
+                    )
+                )
+                is_installed = status.is_installed
+                if status.is_incompatible:
+                    self.incompatible_plugin_data[status.distribution_name] = {
+                        **plugin_data,
+                        "installed_version": status.installed_version,
+                        "plugin_compatible": status.plugin_compatible,
+                        "app_compatible": status.app_compatible,
+                        "requirement_error": status.requirement_error,
+                        "requirement": status.requirement,
+                        "registration_error": status.registration_error,
+                    }
 
-            if status.is_incompatible:
-                self.incompatible_plugin_data[status.distribution_name] = {
-                    **plugin_data,
-                    "installed_version": status.installed_version,
-                    "plugin_compatible": status.plugin_compatible,
-                    "app_compatible": status.app_compatible,
-                    "requirement_error": status.requirement_error,
-                    "requirement": status.requirement,
-                    "activation_error": status.activation_error,
-                }
-
-            if not status.is_installed:
+            if not is_installed:
                 self.available_plugins_list.append(plugin_data["title"])
 
         self._model.incompatible_plugins = {
@@ -395,3 +400,54 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         }
 
         self._model.available_plugins_fetched = True
+
+    def _schedule_runtime_plugin_checks(self) -> None:
+        if self._model.loaded_from_process:
+            return
+
+        loading_message = """
+            <div class="loading" style="display: flex; align-items: center; font-size: unset;">
+                Loading/validating plugins...
+                <i class="fa fa-spinner fa-spin fa-1x fa-fw"></i>
+            </div>
+        """
+
+        self.available_plugins.value = loading_message
+        self.installed_plugins.children = [ipw.HTML(value=loading_message)]
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self._refresh_runtime_plugin_checks())
+        else:
+            self._plugin_status_task = loop.create_task(
+                self._refresh_runtime_plugin_checks()
+            )
+
+    async def _refresh_runtime_plugin_checks(self) -> None:
+        registry = self._plugin_registry
+        plugin_records = {
+            name: record
+            for name, record in registry.plugins.items()
+            if record.category.lower() == "calculation"
+        }
+        statuses = await get_plugin_statuses(plugin_records)
+        self._fetch_available_plugins(statuses=statuses)
+
+        for identifier, model in self._model.get_models():
+            if identifier in self._model.incompatible_plugins:
+                model.include = False
+
+        self.incompatible_plugins_list = [
+            plugin_data["title"]
+            for plugin_data in self.incompatible_plugin_data.values()
+        ]
+        self.installed_plugins_list = [
+            row
+            for identifier, row in self.installed_plugin_rows.items()
+            if identifier not in self._model.incompatible_plugins
+        ]
+        self.installed_plugins.children = self.installed_plugins_list
+        self._set_incompatible_plugins()
+        self._toggle_incompatible_plugins()
+        self._set_available_plugins()
