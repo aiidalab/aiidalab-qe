@@ -26,6 +26,7 @@ from aiidalab_qe.plugins.registry import (
     get_plugin_status,
     poll_daemon_status,
 )
+from aiidalab_widgets_base import LoadingWidget
 
 LOGGER = logging.getLogger(__name__)
 
@@ -781,7 +782,9 @@ class PluginManager:
             return
 
         if not self._accordion_built:
-            self.accordion.children = [ipw.HTML(value="Loading/validating plugins...")]
+            self.accordion.children = [
+                LoadingWidget(message="Loading/validating plugins")
+            ]
             display(self.ui)
             self._build_ui()
         else:

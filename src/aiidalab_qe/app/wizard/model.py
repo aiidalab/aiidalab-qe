@@ -10,6 +10,13 @@ from aiidalab_qe.common.wizard import WizardModel
 
 
 class QeWizardModel(WizardModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._plugin_loader: t.Callable[[int], None] | None = None
+
+    def register_plugin_loader(self, plugin_loader: t.Callable[[int], None]) -> None:
+        self._plugin_loader = plugin_loader
+
     def load_from_state(self, state: dict):
         super().load_from_state(state)
 
@@ -21,6 +28,9 @@ class QeWizardModel(WizardModel):
 
         if step_index >= 0:
             self.loading = True
+            if self._plugin_loader is not None:
+                self._plugin_loader(step_index)
+
             structure_model = t.cast(
                 StructureStepModel,
                 self.get_model("structure"),

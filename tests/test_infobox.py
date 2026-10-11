@@ -45,3 +45,22 @@ def test_in_app_guide():
     )
     in_app_guide = InAppGuide(identifier="guide-header")
     assert "You've activated the basic in-app guide" in in_app_guide.children[0].value
+
+
+def test_plugin_guides_load_on_demand(monkeypatch):
+    import aiidalab_qe.common.guide_manager as guide_manager_module
+
+    calls = []
+    monkeypatch.setattr(
+        guide_manager_module,
+        "get_entry_items",
+        lambda *args: calls.append(args) or {},
+    )
+
+    manager = guide_manager_module.GuideManager()
+    assert calls == []
+
+    manager.load_plugin_guides()
+    manager.load_plugin_guides()
+
+    assert calls == [("aiidalab_qe.properties", "guides")]

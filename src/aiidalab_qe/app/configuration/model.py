@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing as t
+
 import traitlets as tl
 
 from aiida_quantumespresso.common.types import RelaxType
@@ -40,6 +42,7 @@ class ConfigurationStepModel(
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._plugin_loader: t.Callable[[], None] | None = None
 
         self._default_models = {
             "workchain",
@@ -59,6 +62,14 @@ class ConfigurationStepModel(
                 {full_relaxation_option}
             </div>
         """
+
+    def register_plugin_loader(self, plugin_loader: t.Callable[[], None]) -> None:
+        self._plugin_loader = plugin_loader
+
+    def get_model(self, identifier: str):
+        if not self.has_model(identifier.split(".", 1)[0]) and self._plugin_loader:
+            self._plugin_loader()
+        return super().get_model(identifier)
 
     def _update(self, specific=""):
         self.update_relaxation_options()

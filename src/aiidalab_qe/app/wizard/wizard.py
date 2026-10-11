@@ -77,6 +77,8 @@ class QeWizard(Wizard):
             title="Status & results",
         )
 
+        model.register_plugin_loader(self._load_plugins_for_state)
+
         for model in self._models:
             model.observe(
                 self._on_step_state_change,
@@ -97,6 +99,12 @@ class QeWizard(Wizard):
         )
 
         self.render()
+
+    def _load_plugins_for_state(self, step_index: int) -> None:
+        if step_index >= 1:
+            self.configuration_step._fetch_configuration_plugins()
+        if step_index >= 2:
+            self.submission_step._fetch_resource_plugins()
 
     def _on_structure_confirmation_change(self, _):
         self._model.auto_advance()

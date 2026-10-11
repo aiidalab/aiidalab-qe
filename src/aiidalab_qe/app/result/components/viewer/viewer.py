@@ -8,16 +8,10 @@ from aiidalab_qe.app.result.components import ResultsComponent
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
 from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_widgets_base import LoadingWidget
 
 from .model import WorkflowResultsViewerModel
 from .structure import StructureResultsModel, StructureResultsPanel
-
-_VALIDATION_MESSAGE = """
-    <div class="loading" style="display: flex; align-items: center; font-size: unset;">
-        Loading/validating plugins...
-        <i class="fa fa-spinner fa-spin fa-1x fa-fw"></i>
-    </div>
-    """
 
 
 class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
@@ -48,11 +42,11 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             self._on_tab_change,
             "selected_index",
         )
-        self.plugin_compatibility_warning = ipw.HTML(
-            value=(
-                self._get_plugin_compatibility_warning()
-                if self._model.plugin_status_checked
-                else _VALIDATION_MESSAGE
+        self.plugin_compatibility_warning = LoadingWidget(
+            message=(
+                "Loading/validating plugins"
+                if not self._model.plugin_status_checked
+                else ""
             )
         )
         self.children = [
@@ -65,10 +59,10 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
         if self._model.plugin_status_checked:
             self._load_result_plugins()
         self._set_tabs()
-        self.plugin_compatibility_warning.value = (
+        self.plugin_compatibility_warning.message.value = (
             self._get_plugin_compatibility_warning()
             if self._model.plugin_status_checked
-            else _VALIDATION_MESSAGE
+            else "Loading/validating plugins"
         )
 
     def _update_panels(self):
