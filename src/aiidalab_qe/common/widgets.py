@@ -18,7 +18,6 @@ import numpy as np
 import traitlets
 from IPython.display import HTML, Javascript, display
 from pymatgen.io.ase import AseAtomsAdaptor
-from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
@@ -1291,6 +1290,8 @@ class ShakeNBreakEditor(ipw.VBox):
         self.selected_atoms.value = list_to_string_range(self.selection)
 
     def _apply_bond_distortion(self, _=None):
+        from shakenbreak.distortions import distort
+
         if not self.defect_position.value and not self.vacancy_coords.value:
             self._status_message.message = """
             <div class="alert alert-info">
@@ -1316,6 +1317,8 @@ class ShakeNBreakEditor(ipw.VBox):
             )
 
     def _apply_random_distortion(self, _=None):
+        from shakenbreak.distortions import local_mc_rattle
+
         if not self.defect_position.value and not self.vacancy_coords.value:
             self._status_message.message = """
             <div class="alert alert-info">
@@ -1349,6 +1352,8 @@ class ShakeNBreakEditor(ipw.VBox):
                 )
 
     def _apply_random_distortion_all(self, _=None):
+        from shakenbreak.distortions import rattle
+
         self._apply_distortion(
             rattle,
             active_atoms=None,
