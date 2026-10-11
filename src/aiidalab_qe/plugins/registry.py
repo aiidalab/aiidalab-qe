@@ -224,6 +224,24 @@ def load_plugin_config() -> Mapping:
     return data
 
 
+def get_plugin_property_packages() -> dict[str, str]:
+    """Map property entry-point identifiers to normalized package names."""
+    property_packages = {}
+    for distribution in metadata.distributions():
+        package_name = distribution.metadata.get("Name")
+        if not package_name:
+            continue
+        normalized_name = canonicalize_name(package_name)
+        property_packages.update(
+            {
+                entry_point.name: normalized_name
+                for entry_point in distribution.entry_points
+                if entry_point.group == "aiidalab_qe.properties"
+            }
+        )
+    return property_packages
+
+
 class PluginRegistry:
     """Validated, data-only view of the packaged plugin registry."""
 

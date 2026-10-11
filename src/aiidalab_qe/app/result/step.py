@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from importlib.metadata import distributions
 
 import ipywidgets as ipw
 import traitlets as tl
@@ -10,7 +9,11 @@ from packaging.utils import canonicalize_name
 
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.wizard import DependentWizardStep, State
-from aiidalab_qe.plugins.registry import get_plugin_registry, get_plugin_statuses
+from aiidalab_qe.plugins.registry import (
+    get_plugin_property_packages,
+    get_plugin_registry,
+    get_plugin_statuses,
+)
 from aiidalab_widgets_base import ProcessMonitor
 
 from .components import ResultsComponent
@@ -243,17 +246,14 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
                 self._check_plugin_compatibility()
             )
 
-    def _get_plugins_to_check(self, plugins):
+    def _get_plugins_to_check(self, plugins, property_packages=None):
+        if property_packages is None:
+            property_packages = get_plugin_property_packages()
         selected_properties = set(self._model.properties)
         selected_packages = {
-            canonicalize_name(package_name)
-            for distribution in distributions()
-            if (package_name := distribution.metadata.get("Name"))
-            and any(
-                entry_point.group == "aiidalab_qe.properties"
-                and entry_point.name in selected_properties
-                for entry_point in distribution.entry_points
-            )
+            package_name
+            for property_id, package_name in property_packages.items()
+            if property_id in selected_properties
         }
         return {
             plugin_name: plugin_data
@@ -264,7 +264,8 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
 
     async def _check_plugin_compatibility(self) -> None:
         registry = get_plugin_registry()
-        plugins = self._get_plugins_to_check(registry.plugins)
+        property_packages = get_plugin_property_packages()
+        plugins = self._get_plugins_to_check(registry.plugins, property_packages)
         statuses = await get_plugin_statuses(plugins)
 
         incompatible_packages = {}
@@ -274,18 +275,11 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
                     plugin_name
                 ].title
 
-        incompatible_plugin_ids = set()
-        for distribution in distributions():
-            package_name = distribution.metadata.get("Name")
-            if not package_name or canonicalize_name(package_name) not in (
-                incompatible_packages
-            ):
-                continue
-            incompatible_plugin_ids.update(
-                entry_point.name
-                for entry_point in distribution.entry_points
-                if entry_point.group == "aiidalab_qe.properties"
-            )
+        incompatible_plugin_ids = {
+            property_id
+            for property_id, package_name in property_packages.items()
+            if package_name in incompatible_packages
+        }
 
         self._model.incompatible_plugin_ids = incompatible_plugin_ids
         self._model.incompatible_plugin_titles = list(

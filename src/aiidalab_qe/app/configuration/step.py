@@ -6,10 +6,8 @@ Authors: AiiDAlab team
 from __future__ import annotations
 
 import asyncio
-from importlib.metadata import distributions
 
 import ipywidgets as ipw
-from packaging.utils import canonicalize_name
 
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
@@ -17,6 +15,7 @@ from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.plugins.registry import (
+    get_plugin_property_packages,
     get_plugin_registry,
     get_plugin_statuses,
     is_plugin_installed,
@@ -312,21 +311,12 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
                 self.available_plugins_list.append(plugin_data["title"])
 
         self.incompatible_plugin_data = {}
-        if incompatible_packages:
-            for distribution in distributions():
-                package_name = distribution.metadata.get("Name")
-                if not package_name:
-                    continue
-                plugin_data = incompatible_packages.get(canonicalize_name(package_name))
-                if plugin_data is None:
-                    continue
-                self.incompatible_plugin_data.update(
-                    {
-                        entry_point.name: plugin_data
-                        for entry_point in distribution.entry_points
-                        if entry_point.group == "aiidalab_qe.properties"
-                    }
-                )
+        property_packages = get_plugin_property_packages()
+        self.incompatible_plugin_data = {
+            property_id: incompatible_packages[package_name]
+            for property_id, package_name in property_packages.items()
+            if package_name in incompatible_packages
+        }
 
         self._model.incompatible_plugins = set(self.incompatible_plugin_data)
         self.incompatible_plugins_list = list(

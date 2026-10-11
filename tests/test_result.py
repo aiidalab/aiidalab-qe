@@ -297,11 +297,11 @@ def test_results_step_checks_only_plugins_selected_by_process(monkeypatch):
 
     from aiidalab_qe.app.result import step as results_step_module
 
-    distribution = SimpleNamespace(
-        metadata={"Name": "aiidalab-qe-vibroscopy"},
-        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="vibronic")],
+    monkeypatch.setattr(
+        results_step_module,
+        "get_plugin_property_packages",
+        lambda: {"vibronic": "aiidalab-qe-vibroscopy"},
     )
-    monkeypatch.setattr(results_step_module, "distributions", lambda: [distribution])
     monkeypatch.setattr(
         ResultsStepModel,
         "properties",
