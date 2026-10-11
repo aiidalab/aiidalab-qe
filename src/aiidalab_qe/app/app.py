@@ -210,8 +210,15 @@ class AppController:
             if guide_manager._plugin_guides_loaded:
                 self._show_guide_selectors()
             elif self._guide_load_task is None or self._guide_load_task.done():
-                loop = asyncio.get_running_loop()
-                self._guide_load_task = loop.create_task(self._load_plugin_guides())
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    guide_manager.load_plugin_guides()
+                    self._show_guide_selectors()
+                else:
+                    self._guide_load_task = loop.create_task(
+                        self._load_plugin_guides()
+                    )
         else:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"

@@ -103,7 +103,7 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             return
         self._load_result_plugins()
         if self.rendered:
-            self.plugin_compatibility_warning.value = (
+            self.plugin_compatibility_warning.message.value = (
                 self._get_plugin_compatibility_warning()
             )
             self._set_tabs()

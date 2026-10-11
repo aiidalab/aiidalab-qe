@@ -47,6 +47,7 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
         self.global_resources = GlobalResourceSettingsPanel(
             model=global_resources_model
         )
+        global_resources_model.register_resource_loader(self._fetch_resource_plugins)
         self._model.add_model("global", global_resources_model)
         ipw.dlink(
             (self._model, "plugin_overrides"),
@@ -308,5 +309,8 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
 
         self.global_resources.build_global_codes(codes)
 
-        self._model.fetched_resources = True
         self._plugins_loaded = True
+        self._model.fetched_resources = True
+
+        self.global_resources._model.update_active_codes()
+        self.global_resources._model.update_blockers()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing as t
+
 import numpy as np
 import traitlets as tl
 
@@ -26,6 +28,7 @@ class GlobalResourceSettingsModel(
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._resource_loader: t.Callable[[], None] | None = None
         self.dependencies.append("structure_uuid")
         self.conditions = {}
 
@@ -42,6 +45,14 @@ class GlobalResourceSettingsModel(
         """
 
         self.plugin_mapping: dict[str, list[str]] = {}
+
+    def register_resource_loader(self, resource_loader: t.Callable[[], None]) -> None:
+        self._resource_loader = resource_loader
+
+    def get_model(self, identifier: str):
+        if not self.has_model(identifier.split(".", 1)[0]) and self._resource_loader:
+            self._resource_loader()
+        return super().get_model(identifier)
 
     def update_global_codes(self):
         self.global_codes = self.get_model_state()["codes"]

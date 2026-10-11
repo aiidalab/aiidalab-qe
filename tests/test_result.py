@@ -205,13 +205,13 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
     model = WorkflowResultsViewerModel()
     model.incompatible_plugin_ids = {"vibronic"}
     model.incompatible_plugin_titles = ["Phonons and IR/Raman"]
-    model.plugin_status_checked = True
     viewer = viewer_module.WorkflowResultsViewer(model=model)
     viewer.render()
+    model.plugin_status_checked = True
 
     assert not entry_point.loaded
-    assert "Phonons and IR/Raman" in viewer.children[1].value
-    assert "./plugin_manager.ipynb" in viewer.children[1].value
+    assert "Phonons and IR/Raman" in viewer.plugin_compatibility_warning.message.value
+    assert "./plugin_manager.ipynb" in viewer.plugin_compatibility_warning.message.value
 
 
 def test_failed_activation_plugin_result_is_not_loaded(monkeypatch):
@@ -235,14 +235,16 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch):
     model = WorkflowResultsViewerModel()
     model.incompatible_plugin_ids = {"vibroscopy"}
     model.incompatible_plugin_titles = ["Phonons and IR/Raman"]
-    model.plugin_status_checked = True
     viewer = viewer_module.WorkflowResultsViewer(model=model)
     viewer.render()
+    model.plugin_status_checked = True
 
     assert viewer._model.incompatible_plugin_ids == {"vibroscopy"}
-    assert "Result panels are disabled" in viewer.children[1].value
-    assert "Phonons and IR/Raman" in viewer.children[1].value
-    assert "Phonons and IR/Raman" in viewer.children[1].value
+    assert (
+        "Result panels are disabled"
+        in viewer.plugin_compatibility_warning.message.value
+    )
+    assert "Phonons and IR/Raman" in viewer.plugin_compatibility_warning.message.value
 
 
 def test_result_panels_are_limited_to_process_properties(monkeypatch):

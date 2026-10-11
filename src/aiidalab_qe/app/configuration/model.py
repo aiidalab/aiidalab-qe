@@ -128,6 +128,9 @@ class ConfigurationStepModel(
         return state
 
     def set_model_state(self, state: dict):
+        if self._plugin_loader:
+            self._plugin_loader()
+
         workchain_parameters: dict = state.get("workchain", {})
         self.relax_type = workchain_parameters.get("relax_type")
         properties = set(workchain_parameters.get("properties", []))

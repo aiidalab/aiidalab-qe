@@ -96,8 +96,9 @@ def test_available_plugins_render_with_single_list_item(monkeypatch):
     config.render()
 
     assert config.available_plugins_list == ["My plugin"]
-    assert config.available_plugins.value.count("<li>") == 1
-    assert "<li></li>" not in config.available_plugins.value
+    available_plugins_html = config.available_plugins.children[0].value
+    assert available_plugins_html.count("<li>") == 1
+    assert "<li></li>" not in available_plugins_html
 
 
 def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):

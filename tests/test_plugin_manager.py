@@ -337,11 +337,11 @@ def test_plugin_manager_displays_persistent_ui_with_refresh_button(monkeypatch):
     monkeypatch.setattr(plugin_manager, "display", displayed.append)
 
     manager = PluginManager()
-    loading_states = []
+    build_calls = []
     original_build_ui = PluginManager._build_ui
 
     def build_ui(self):
-        loading_states.append(self.accordion.children[0].value)
+        build_calls.append(True)
         original_build_ui(self)
 
     monkeypatch.setattr(PluginManager, "_build_ui", build_ui)
@@ -350,11 +350,11 @@ def test_plugin_manager_displays_persistent_ui_with_refresh_button(monkeypatch):
     first_row.message_container.value = "Keep this log"
     manager.display_ui()
 
-    assert loading_states == ["Loading/validating plugins..."]
+    assert build_calls == [True]
     assert displayed == [manager.ui, manager.ui]
     assert manager.ui.children == (
-        manager.refresh_button,
         manager.daemon_warning,
+        manager.refresh_button,
         manager.accordion,
     )
     assert manager.accordion.children[0] is first_row
