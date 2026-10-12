@@ -3,6 +3,7 @@ from io import StringIO
 import ipywidgets as ipw
 import pytest
 
+from aiida.manage.configuration import get_profile
 from aiidalab_qe.app.utils import plugin_manager
 from aiidalab_qe.app.utils.plugin_manager import (
     PluginManager,
@@ -10,6 +11,13 @@ from aiidalab_qe.app.utils.plugin_manager import (
     QeAppPluginData,
 )
 from aiidalab_qe.plugins import registry as plugin_registry
+from aiidalab_qe.plugins import state as plugin_state
+
+
+@pytest.fixture(autouse=True)
+def isolate_pending_plugin_restarts(monkeypatch, tmp_path):
+    monkeypatch.setattr(plugin_state, "_pending_restarts_dir", lambda: tmp_path)
+
 
 # mock the content of the YAML file
 yaml_content = """
@@ -41,6 +49,36 @@ def _set_plugin_manager_registry(monkeypatch, plugins):
         }
     )
     monkeypatch.setattr(plugin_manager, "get_plugin_registry", lambda: registry)
+
+
+def _daemon_restart_command():
+    return ["verdi", "--profile", get_profile().name, "daemon", "restart"]
+
+
+def test_pending_restart_is_scoped_to_profile_and_cleared_after_restart(
+    monkeypatch, tmp_path
+):
+    from types import SimpleNamespace
+
+    profile = SimpleNamespace(uuid="first-profile")
+    monkeypatch.setattr(plugin_state, "get_profile", lambda: profile)
+    monkeypatch.setattr(plugin_state, "_pending_restarts_dir", lambda: tmp_path)
+
+    plugin_state.set_restart_pending("My_Plugin")
+    plugin_state.set_restart_pending("another-plugin")
+    assert plugin_state.get_restart_failure("my-plugin")
+
+    profile.uuid = "second-profile"
+    assert plugin_state.get_restart_failure("my-plugin") is None
+    plugin_state.set_restart_pending("my-plugin")
+
+    profile.uuid = "first-profile"
+    plugin_state.clear_restart_pending("my-plugin")
+    assert plugin_state.get_restart_failure("my-plugin") is None
+    assert plugin_state.get_restart_failure("another-plugin") is None
+
+    profile.uuid = "second-profile"
+    assert plugin_state.get_restart_failure("my-plugin")
 
 
 def test_plugin_manager_uses_packaged_registry():
@@ -361,6 +399,23 @@ def test_plugin_manager_displays_persistent_ui_with_refresh_button(monkeypatch):
     assert first_row.message_container.value == "Keep this log"
 
 
+def test_plugin_manager_checks_daemon_status_when_displayed(monkeypatch):
+    _set_plugin_manager_registry(monkeypatch, {})
+    daemon_checks = []
+    monkeypatch.setattr(
+        plugin_manager,
+        "poll_daemon_status",
+        lambda: daemon_checks.append(True) or "The AiiDA daemon is not running.",
+    )
+    monkeypatch.setattr(plugin_manager, "display", lambda *_args: None)
+
+    manager = PluginManager()
+    manager.display_ui()
+
+    assert daemon_checks == [True]
+    assert "The AiiDA daemon is not running" in manager.daemon_warning.value
+
+
 def test_manager_refresh_updates_existing_rows_without_clearing_logs(monkeypatch):
     _set_plugin_manager_registry(
         monkeypatch,
@@ -547,6 +602,219 @@ def test_poll_post_install_runs_plugin_verifier(monkeypatch):
     assert calls[0][1]["timeout"] == plugin_registry.POST_INSTALL_VERIFY_TIMEOUT
 
 
+def test_poll_post_install_uses_active_profile_when_unspecified(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiida.manage import configuration
+
+    monkeypatch.setattr(
+        configuration,
+        "get_profile",
+        lambda: SimpleNamespace(name="custom-profile"),
+    )
+    calls = []
+    monkeypatch.setattr(
+        plugin_registry.subprocess,
+        "run",
+        lambda command, **_kwargs: (
+            calls.append(command)
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
+    )
+
+    assert plugin_registry.poll_post_install("my-plugin", "setup") == (True, None)
+    assert calls[0][-2:] == ["--profile", "custom-profile"]
+
+
+def test_poll_post_install_preserves_explicit_profile(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiida.manage import configuration
+
+    monkeypatch.setattr(
+        configuration,
+        "get_profile",
+        lambda: SimpleNamespace(name="active-profile"),
+    )
+    calls = []
+    monkeypatch.setattr(
+        plugin_registry.subprocess,
+        "run",
+        lambda command, **_kwargs: (
+            calls.append(command)
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
+    )
+
+    assert plugin_registry.poll_post_install("my-plugin", "setup", "given-profile") == (
+        True,
+        None,
+    )
+    assert calls[0][-2:] == ["--profile", "given-profile"]
+
+
+def test_legacy_post_install_verifier_is_unverified_not_incompatible(monkeypatch):
+    message = (
+        "Post-install verification is not available in this plugin version; "
+        "setup status is unverified."
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry, "poll_plugin_registration", lambda *_args: None
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_post_install",
+        lambda *_args: (None, message),
+    )
+    plugin_data = QeAppPluginData.from_mapping(
+        "my-plugin",
+        {
+            "title": "My plugin",
+            "description": "Test plugin",
+            "pip": "my-plugin",
+            "post_install": "setup",
+        },
+    )
+
+    status = plugin_registry.get_plugin_status("my-plugin", plugin_data)
+
+    assert status.post_install_verified is None
+    assert status.post_install_error == message
+    assert not status.is_incompatible
+
+
+def test_legacy_unverified_plugin_is_visible_but_not_blocked(monkeypatch):
+    message = (
+        "Post-install verification is not available in this plugin version; "
+        "setup status is unverified."
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry, "poll_plugin_registration", lambda *_args: None
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_post_install",
+        lambda *_args: (None, message),
+    )
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin",
+                "post_install": "setup",
+            }
+        },
+    )
+
+    manager = PluginManager()
+    manager._build_ui()
+    plugin = manager.accordion.children[0]
+
+    assert "alert-warning" in plugin.version_warning.value
+    assert "setup status is unverified" in plugin.version_warning.value
+    assert plugin.retry_activation_button.layout.display == "none"
+    assert not plugin.update_button.disabled
+    assert not plugin_registry.get_plugin_status(
+        "my-plugin", plugin.data
+    ).is_incompatible
+
+
+def test_update_without_post_install_verifier_does_not_restart_daemon(monkeypatch):
+    message = (
+        "Post-install verification is not available in this plugin version; "
+        "setup status is unverified."
+    )
+    monkeypatch.setattr(
+        QeAppPlugin,
+        "_execute_command",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry, "poll_plugin_registration", lambda *_args: None
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_post_install",
+        lambda *_args: (None, message),
+    )
+    monkeypatch.setattr(
+        plugin_manager,
+        "poll_post_install",
+        lambda *_args: (None, message),
+    )
+    commands = []
+    monkeypatch.setattr(
+        plugin_manager.subprocess,
+        "run",
+        lambda command, **_kwargs: (
+            commands.append(command)
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
+    )
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin",
+                "post_install": "setup",
+            }
+        },
+    )
+
+    manager = PluginManager()
+    manager._build_ui()
+    plugin = manager.accordion.children[0]
+    plugin._on_update(None)
+
+    assert not any(command[-2:] == ["daemon", "restart"] for command in commands)
+    assert plugin.post_install_verified is None
+    assert plugin.restart_error
+    assert "setup status is unverified" in plugin.version_warning.value
+    assert plugin.retry_activation_button.layout.display == ""
+    assert not plugin.update_button.disabled
+
+
+def test_poll_post_install_treats_missing_verifier_as_unverified(monkeypatch):
+    monkeypatch.setattr(
+        plugin_registry.subprocess,
+        "run",
+        lambda command, **_kwargs: plugin_manager.subprocess.CompletedProcess(
+            command,
+            2,
+            "",
+            "Usage: plugin [OPTIONS] COMMAND [ARGS]...\n"
+            "Error: No such command 'verify-post-install'.",
+        ),
+    )
+
+    verified, message = plugin_registry.poll_post_install("my-plugin", "setup")
+
+    assert verified is None
+    assert "setup status is unverified" in message
+
+
 def test_poll_post_install_reports_verifier_failure(monkeypatch):
     monkeypatch.setattr(
         plugin_registry.subprocess,
@@ -601,6 +869,119 @@ def test_plugin_status_marks_failed_post_install_incompatible(monkeypatch):
     assert status.post_install_verified is False
     assert status.post_install_error == "Post-install check failed"
     assert status.is_incompatible
+
+
+def test_plugin_status_marks_pending_restart_incompatible(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    profile = SimpleNamespace(name="custom-profile", uuid="profile-uuid")
+    monkeypatch.setattr(plugin_manager, "get_profile", lambda: profile)
+    monkeypatch.setattr(plugin_state, "get_profile", lambda: profile)
+    monkeypatch.setattr(plugin_state, "_pending_restarts_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("1.0", True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    plugin_data = QeAppPluginData.from_mapping(
+        "my-plugin",
+        {"title": "My plugin", "description": "Test plugin", "pip": "my-plugin"},
+    )
+    plugin_state.set_restart_pending("my-plugin")
+
+    status = plugin_registry.get_plugin_status(
+        "my-plugin", plugin_data, check_runtime=False
+    )
+
+    assert status.restart_error
+    assert status.is_incompatible
+
+
+def test_failed_restart_survives_reopen_and_post_install_until_retry(
+    monkeypatch, tmp_path
+):
+    from types import SimpleNamespace
+
+    profile = SimpleNamespace(name="custom-profile", uuid="profile-uuid")
+    monkeypatch.setattr(plugin_manager, "get_profile", lambda: profile)
+    monkeypatch.setattr(plugin_state, "get_profile", lambda: profile)
+    monkeypatch.setattr(plugin_state, "_pending_restarts_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("1.2.9", True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+    monkeypatch.setattr(
+        plugin_registry, "poll_plugin_registration", lambda *_args: None
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_post_install",
+        lambda *_args: (True, None),
+    )
+    _set_plugin_manager_registry(
+        monkeypatch,
+        {
+            "my-plugin": {
+                "title": "My Test Plugin",
+                "description": "A test plugin",
+                "pip": "my-plugin>=1.2.9",
+                "post_install": "setup",
+            }
+        },
+    )
+
+    restart_succeeds = {"value": False}
+    commands = []
+
+    def run(command, **_kwargs):
+        commands.append(command)
+        if command[-2:] == ["daemon", "restart"] and not restart_succeeds["value"]:
+            return plugin_manager.subprocess.CompletedProcess(
+                command, 1, "", "restart failed"
+            )
+        return plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(plugin_manager.subprocess, "run", run)
+    manager = PluginManager()
+    manager._build_ui()
+    plugin = manager.accordion.children[0]
+
+    assert not plugin._restart_daemon()
+    plugin.refresh_plugin_state(check_runtime=False)
+    assert plugin.restart_error
+
+    reopened_manager = PluginManager()
+    reopened_manager._build_ui()
+    reopened_plugin = reopened_manager.accordion.children[0]
+    assert reopened_plugin.restart_error
+    assert reopened_plugin.retry_activation_button.layout.display == ""
+    assert plugin_registry.get_plugin_status(
+        "my-plugin", reopened_plugin.data
+    ).is_incompatible
+
+    reopened_plugin._on_post_install(None)
+    assert reopened_plugin.restart_error
+    assert plugin_state.get_restart_failure("my-plugin")
+
+    restart_succeeds["value"] = True
+    reopened_plugin._on_retry_activation(None)
+
+    assert commands[-1] == [
+        "verdi",
+        "--profile",
+        "custom-profile",
+        "daemon",
+        "restart",
+    ]
+    assert reopened_plugin.restart_error is None
+    assert reopened_plugin.retry_activation_button.layout.display == "none"
+    assert reopened_manager.accordion.get_title(0).endswith("✅")
+    assert not plugin_registry.get_plugin_status(
+        "my-plugin", reopened_plugin.data
+    ).is_incompatible
 
 
 def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
@@ -671,8 +1052,48 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
             "test-plugin",
             "my-plugin",
         ],
-        ["verdi", "daemon", "restart"],
+        [
+            plugin_manager.sys.executable,
+            "-m",
+            "my_plugin",
+            "verify-post-install",
+            "--profile",
+            get_profile().name,
+        ],
+        _daemon_restart_command(),
     ]
+
+
+def test_update_from_github_source_uses_plugin_identity_for_restart_state(monkeypatch):
+    plugin_data = QeAppPluginData.from_mapping(
+        "aiidalab-qe-vibroscopy",
+        {
+            "title": "Phonons and IR/Raman",
+            "description": "Vibroscopy test plugin",
+            "github": "https://github.com/aiidalab/aiidalab-qe-vibroscopy@verify-post-install",
+        },
+    )
+    pending = []
+    monkeypatch.setattr(
+        plugin_manager,
+        "set_restart_pending",
+        lambda package_name: pending.append(package_name),
+    )
+    monkeypatch.setattr(QeAppPlugin, "_execute_command", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        QeAppPlugin, "_validate_plugin_installation", lambda *_args: True
+    )
+    monkeypatch.setattr(
+        QeAppPlugin,
+        "refresh_plugin_state",
+        lambda self, **_kwargs: setattr(self, "installed_version", "1.3.0"),
+    )
+    monkeypatch.setattr(QeAppPlugin, "_restart_daemon", lambda _self: True)
+
+    plugin = QeAppPlugin(plugin_data, plugin_name="aiidalab-qe-vibroscopy")
+    plugin._on_update(None)
+
+    assert pending == ["aiidalab-qe-vibroscopy"]
 
 
 def test_update_package_resolves_version_above_upper_bound(monkeypatch):
@@ -746,7 +1167,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
             "test-plugin",
             "my-plugin",
         ],
-        ["verdi", "daemon", "restart"],
+        _daemon_restart_command(),
     ]
 
 
@@ -863,7 +1284,7 @@ def test_retry_activation_clears_failure_and_restarts_daemon(monkeypatch):
             "test-plugin",
             "my-plugin",
         ],
-        ["verdi", "daemon", "restart"],
+        _daemon_restart_command(),
     ]
     assert plugin.registration_error is None
     assert plugin.retry_activation_button.layout.display == "none"
@@ -1041,7 +1462,7 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
     assert plugin.remove_button.disabled
     assert plugin.version_warning.value == ""
     assert manager.accordion.get_title(0) == "My Test Plugin"
-    assert daemon_commands == [["verdi", "daemon", "restart"]]
+    assert daemon_commands == [_daemon_restart_command()]
 
 
 def test_install_reconciles_plugin_controls(monkeypatch):
@@ -1112,7 +1533,7 @@ def test_install_reconciles_plugin_controls(monkeypatch):
             "test-plugin",
             "my-plugin",
         ],
-        ["verdi", "daemon", "restart"],
+        _daemon_restart_command(),
     ]
 
 

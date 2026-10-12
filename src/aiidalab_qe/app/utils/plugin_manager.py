@@ -19,6 +19,7 @@ import traitlets as tl
 from IPython.display import display
 from packaging.requirements import Requirement
 
+from aiida.manage.configuration import get_profile
 from aiidalab_qe import __version__
 from aiidalab_qe.plugins.registry import (
     QeAppPluginData,
@@ -27,6 +28,7 @@ from aiidalab_qe.plugins.registry import (
     poll_daemon_status,
     poll_post_install,
 )
+from aiidalab_qe.plugins.state import clear_restart_pending, set_restart_pending
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ class QeAppPlugin(ipw.VBox):
     post_install_verified = tl.Bool(default_value=None, allow_none=True)
     post_install_error = tl.Unicode(default_value=None, allow_none=True)
     daemon_error = tl.Unicode(default_value=None, allow_none=True)
+    restart_error = tl.Unicode(default_value=None, allow_none=True)
     version_warning_text = tl.Unicode(default_value="")
 
     def __init__(
@@ -177,6 +180,11 @@ class QeAppPlugin(ipw.VBox):
     def is_installed(self) -> bool:
         return self.installed_version is not None
 
+    def _distribution_name(self) -> str:
+        if self.data.pip:
+            return Requirement(self.data.pip).name
+        return self.plugin_name
+
     def refresh_plugin_state(self, check_runtime: bool = True) -> None:
         """Refresh package, registration, and post-install status at runtime."""
         status = get_plugin_status(
@@ -193,6 +201,7 @@ class QeAppPlugin(ipw.VBox):
             self.registration_error = status.registration_error
             self.post_install_verified = status.post_install_verified
             self.post_install_error = status.post_install_error
+            self.restart_error = status.restart_error
 
     def update_title(self) -> None:
         if self.title_updater is None:
@@ -211,6 +220,7 @@ class QeAppPlugin(ipw.VBox):
         "post_install_verified",
         "post_install_error",
         "daemon_error",
+        "restart_error",
     )
     def _refresh_ui_state(self, _change: dict | None = None) -> None:
         """Update the UI state of the plugin."""
@@ -236,6 +246,12 @@ class QeAppPlugin(ipw.VBox):
             warning += (
                 f'<div class="alert alert-{alert_class}" role="alert">'
                 f"{html.escape(self.post_install_error)}</div>"
+            )
+
+        if self.restart_error:
+            warning += (
+                '<div class="alert alert-danger" role="alert">'
+                f"{html.escape(self.restart_error)}</div>"
             )
 
         if not self.app_compatible:
@@ -279,6 +295,7 @@ class QeAppPlugin(ipw.VBox):
                     and not self.registration_error
                     and not self.post_install_error
                     and not self.daemon_error
+                    and not self.restart_error
                 )
                 or not self.app_compatible
             )
@@ -291,8 +308,9 @@ class QeAppPlugin(ipw.VBox):
                 ""
                 if (
                     self.registration_error
-                    or self.post_install_error
+                    or (self.post_install_error and self.post_install_verified is False)
                     or self.daemon_error
+                    or self.restart_error
                 )
                 and self.is_installed
                 else "none"
@@ -410,6 +428,22 @@ class QeAppPlugin(ipw.VBox):
 
         if result.returncode == 0:
             self._append_message("Plugin test passed.", color="#008000")
+            if self.data.post_install:
+                verified, error = poll_post_install(
+                    self.plugin_name,
+                    self.data.post_install,
+                )
+                if verified is not True:
+                    self._append_message(
+                        error or "Post-install verification did not pass.",
+                        color="#FF0000",
+                    )
+                    if remove_on_test_failure:
+                        self._remove_package(
+                            clear_output=False,
+                            restart_daemon=False,
+                        )
+                    return False
             return True
 
         LOGGER.error(
@@ -466,6 +500,8 @@ class QeAppPlugin(ipw.VBox):
             self.refresh_plugin_state()
             return
 
+        set_restart_pending(self._distribution_name())
+
         if not self._validate_plugin_installation():
             self.refresh_plugin_state()
             return
@@ -507,7 +543,7 @@ class QeAppPlugin(ipw.VBox):
         self.message_container.value = ""
 
         if (
-            self.daemon_error
+            (self.daemon_error or self.restart_error)
             and not self.registration_error
             and not self.post_install_error
         ):
@@ -714,18 +750,22 @@ class QeAppPlugin(ipw.VBox):
             self.message_container.value or self.output_container.value
         )
 
-    @staticmethod
-    def _restart_daemon() -> bool:
+    def _restart_daemon(self) -> bool:
+        package_name = self._distribution_name()
+        set_restart_pending(package_name)
+        command = ["verdi"]
+        if profile := get_profile():
+            command.extend(["--profile", profile.name])
+        command.extend(["daemon", "restart"])
         try:
-            result = subprocess.run(
-                ["verdi", "daemon", "restart"], capture_output=True, check=False
-            )
+            result = subprocess.run(command, capture_output=True, check=False)
         except OSError:
             LOGGER.exception("Could not restart the AiiDA daemon")
             return False
         if result.returncode:
             LOGGER.error("Could not restart the AiiDA daemon: %s", result.stderr)
             return False
+        clear_restart_pending(package_name)
         return True
 
 
@@ -789,26 +829,10 @@ class PluginManager:
 
         if not self._accordion_built:
             self._build_ui()
-            display(self.ui)
-        else:
-            display(self.ui)
 
-    def refresh_plugins(self) -> None:
-        """Refresh external status for each existing plugin row."""
-        daemon_error = poll_daemon_status()
-        self.daemon_warning.value = (
-            '<div class="alert alert-warning" role="alert">'
-            f"{html.escape(daemon_error)}</div>"
-            if daemon_error
-            else ""
-        )
-        for plugin in self.accordion.children:
-            if isinstance(plugin, QeAppPlugin):
-                plugin.daemon_error = daemon_error
-                plugin.refresh_plugin_state()
+        self._update_daemon_status()
 
-    def _on_refresh(self, _button: ipw.Button) -> None:
-        self.refresh_plugins()
+        display(self.ui)
 
     def _build_ui(self) -> None:
         """Build the Accordion UI from the validated plugin records.
@@ -835,3 +859,27 @@ class PluginManager:
             plugin.update_title()
 
         self._accordion_built = True
+
+    def _update_daemon_status(self) -> str | None:
+        """Refresh and display the current daemon status."""
+        daemon_error = poll_daemon_status()
+        self.daemon_warning.value = (
+            '<div class="alert alert-warning" role="alert">'
+            f"{html.escape(daemon_error)}</div>"
+            if daemon_error
+            else ""
+        )
+        for plugin in self.accordion.children:
+            if isinstance(plugin, QeAppPlugin):
+                plugin.daemon_error = daemon_error
+        return daemon_error
+
+    def _refresh_plugins(self) -> None:
+        """Refresh daemon, package, and plugin status."""
+        self._update_daemon_status()
+        for plugin in self.accordion.children:
+            if isinstance(plugin, QeAppPlugin):
+                plugin.refresh_plugin_state()
+
+    def _on_refresh(self, _button: ipw.Button) -> None:
+        self._refresh_plugins()

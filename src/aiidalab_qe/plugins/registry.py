@@ -19,6 +19,7 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from aiidalab_qe import __version__
+from aiidalab_qe.plugins.state import get_restart_failure
 
 LOGGER = logging.getLogger(__name__)
 POST_INSTALL_VERIFY_TIMEOUT = 60
@@ -28,11 +29,17 @@ PLUGIN_REGISTRATION_TIMEOUT = 60
 def poll_post_install(
     plugin_id: str,
     post_install: str | None,
-    profile: str = "default",
+    profile: str | None = None,
 ) -> tuple[bool | None, str | None]:
     """Check post-install state using the plugin's read-only verifier."""
     if not post_install:
         return None, None
+
+    if profile is None:
+        from aiida.manage.configuration import get_profile
+
+        active_profile = get_profile()
+        profile = active_profile.name if active_profile else "default"
 
     command = [
         sys.executable,
@@ -384,6 +391,7 @@ class PluginStatus:
     is_installed: bool
     distribution_name: str
     requirement: str
+    restart_error: str | None = None
 
     @property
     def is_incompatible(self) -> bool:
@@ -393,6 +401,7 @@ class PluginStatus:
             or not self.app_compatible
             or self.registration_error
             or self.post_install_verified is False
+            or self.restart_error
         )
 
 
@@ -460,6 +469,7 @@ def get_plugin_status(
         is_installed=is_installed,
         distribution_name=distribution_name,
         requirement=requirement_text,
+        restart_error=get_restart_failure(distribution_name) if is_installed else None,
     )
 
 
