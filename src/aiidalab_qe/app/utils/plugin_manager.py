@@ -388,6 +388,7 @@ class QeAppPlugin(ipw.VBox):
         self._append_message("Testing plugin loading...", color="#008000")
 
         try:
+            profile = get_profile()
             result = subprocess.run(
                 [
                     sys.executable,
@@ -395,6 +396,8 @@ class QeAppPlugin(ipw.VBox):
                     "aiidalab_qe",
                     "test-plugin",
                     self.plugin_name,
+                    "--profile",
+                    profile.name if profile else "default",
                 ],
                 capture_output=True,
                 text=True,

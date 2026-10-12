@@ -55,6 +55,18 @@ def _daemon_restart_command():
     return ["verdi", "--profile", get_profile().name, "daemon", "restart"]
 
 
+def _test_plugin_command(plugin_name):
+    return [
+        plugin_manager.sys.executable,
+        "-m",
+        "aiidalab_qe",
+        "test-plugin",
+        plugin_name,
+        "--profile",
+        get_profile().name,
+    ]
+
+
 def test_pending_restart_is_scoped_to_profile_and_cleared_after_restart(
     monkeypatch, tmp_path
 ):
@@ -79,6 +91,39 @@ def test_pending_restart_is_scoped_to_profile_and_cleared_after_restart(
 
     profile.uuid = "second-profile"
     assert plugin_state.get_restart_failure("my-plugin")
+
+
+def test_plugin_validation_uses_active_profile(monkeypatch):
+    from types import SimpleNamespace
+
+    profile = SimpleNamespace(name="custom-profile")
+    monkeypatch.setattr(plugin_manager, "get_profile", lambda: profile)
+    monkeypatch.setattr(
+        plugin_manager.subprocess,
+        "run",
+        lambda command, **_kwargs: plugin_manager.subprocess.CompletedProcess(
+            command, 0, "", ""
+        ),
+    )
+    plugin = QeAppPlugin(
+        QeAppPluginData.from_mapping(
+            "my-plugin",
+            {"title": "My plugin", "description": "Test", "pip": "my-plugin"},
+        ),
+        plugin_name="my-plugin",
+    )
+    commands = []
+    monkeypatch.setattr(
+        plugin_manager.subprocess,
+        "run",
+        lambda command, **_kwargs: (
+            commands.append(command)
+            or plugin_manager.subprocess.CompletedProcess(command, 0, "", "")
+        ),
+    )
+
+    assert plugin._validate_plugin_installation()
+    assert commands[0][-2:] == ["--profile", "custom-profile"]
 
 
 def test_plugin_manager_uses_packaged_registry():
@@ -1065,13 +1110,7 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
     assert manager.accordion.get_title(0).endswith("✅")
     assert daemon_commands == [
         [plugin_manager.sys.executable, "-m", "my_plugin", "setup"],
-        [
-            plugin_manager.sys.executable,
-            "-m",
-            "aiidalab_qe",
-            "test-plugin",
-            "my-plugin",
-        ],
+        _test_plugin_command("my-plugin"),
         [
             plugin_manager.sys.executable,
             "-m",
@@ -1180,13 +1219,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
     assert plugin.version_warning.value == ""
     assert plugin.update_button.disabled
     assert subprocess_commands == [
-        [
-            plugin_manager.sys.executable,
-            "-m",
-            "aiidalab_qe",
-            "test-plugin",
-            "my-plugin",
-        ],
+        _test_plugin_command("my-plugin"),
         _daemon_restart_command(),
     ]
 
@@ -1236,13 +1269,7 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
     plugin._on_update(None)
 
     assert len(commands) == 1
-    assert subprocess_commands[0] == [
-        plugin_manager.sys.executable,
-        "-m",
-        "aiidalab_qe",
-        "test-plugin",
-        "my-plugin",
-    ]
+    assert subprocess_commands[0] == _test_plugin_command("my-plugin")
     assert len(subprocess_commands) == 2
     assert subprocess_commands[1] == [
         plugin_manager.sys.executable,
@@ -1297,13 +1324,7 @@ def test_retry_activation_clears_failure_and_restarts_daemon(monkeypatch):
     plugin._on_retry_activation(None)
 
     assert calls == [
-        [
-            plugin_manager.sys.executable,
-            "-m",
-            "aiidalab_qe",
-            "test-plugin",
-            "my-plugin",
-        ],
+        _test_plugin_command("my-plugin"),
         _daemon_restart_command(),
     ]
     assert plugin.registration_error is None
@@ -1415,15 +1436,7 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
     assert 'class="alert alert-danger warning-box' in plugin.version_warning.value
     assert not plugin.update_button.disabled
     assert "does not meet the required version" in plugin.message_container.value
-    assert subprocess_commands == [
-        [
-            plugin_manager.sys.executable,
-            "-m",
-            "aiidalab_qe",
-            "test-plugin",
-            "my-plugin",
-        ]
-    ]
+    assert subprocess_commands == [_test_plugin_command("my-plugin")]
 
 
 def test_remove_reconciles_all_plugin_controls(monkeypatch):
@@ -1546,13 +1559,7 @@ def test_install_reconciles_plugin_controls(monkeypatch):
     assert plugin.version_warning.value == ""
     assert manager.accordion.get_title(0).endswith("✅")
     assert daemon_commands == [
-        [
-            plugin_manager.sys.executable,
-            "-m",
-            "aiidalab_qe",
-            "test-plugin",
-            "my-plugin",
-        ],
+        _test_plugin_command("my-plugin"),
         _daemon_restart_command(),
     ]
 
