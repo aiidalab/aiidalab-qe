@@ -144,6 +144,7 @@ def test_pending_kill_failure_keeps_monitoring_and_allows_retry(
     step: ResultsStep = app.results_step
     model: ResultsStepModel = app.results_model
     model.process_uuid = generate_qeapp_workchain().node.uuid
+    monkeypatch.setattr(step, "_set_up_monitor", Mock())
     step.render()
     model.daemon_is_running = True
     model.daemon_status_known = True
