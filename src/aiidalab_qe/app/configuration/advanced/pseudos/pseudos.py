@@ -137,6 +137,7 @@ class PseudosConfigurationSettingsPanel(
                     Switching the protocol in <b>Basic settings</b> will also reset the
                     pseudopotentials to the defaults of the selected protocol.
                 """,
+                allow_html=True,
                 class_="text-center",
                 style_="line-height: 2;",
             ),

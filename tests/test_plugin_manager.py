@@ -241,7 +241,7 @@ def test_outdated_plugin_actions(monkeypatch):
     assert not remove_button.disabled
     assert clear_button.description == "Clear output"
     warning = manager.accordion.children[0].children[1].value
-    assert 'class="alert alert-danger"' in warning
+    assert 'class="alert alert-danger warning-box' in warning
     assert "Installed version 1.0" in warning
 
 
@@ -733,6 +733,26 @@ def test_legacy_unverified_plugin_is_visible_but_not_blocked(monkeypatch):
     ).is_incompatible
 
 
+def test_plugin_alert_escapes_untrusted_message(monkeypatch):
+    _set_plugin_manager_registry(monkeypatch, {})
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: (None, True, None),
+    )
+    plugin = QeAppPlugin(
+        QeAppPluginData.from_mapping(
+            "my-plugin",
+            {"title": "My Plugin", "description": "Test", "pip": "my-plugin"},
+        ),
+        plugin_name="my-plugin",
+    )
+    plugin.registration_error = "<script>alert('bad')</script>"
+
+    assert "&lt;script&gt;" in plugin.version_warning.value
+    assert "<script>" not in plugin.version_warning.value
+
+
 def test_update_without_post_install_verifier_does_not_restart_daemon(monkeypatch):
     message = (
         "Post-install verification is not available in this plugin version; "
@@ -1077,7 +1097,7 @@ def test_update_from_github_source_uses_plugin_identity_for_restart_state(monkey
     monkeypatch.setattr(
         plugin_manager,
         "set_restart_pending",
-        lambda package_name: pending.append(package_name),
+        pending.append,
     )
     monkeypatch.setattr(QeAppPlugin, "_execute_command", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(
@@ -1392,7 +1412,7 @@ def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
     plugin = manager.accordion.children[0]
     plugin._on_update(None)
 
-    assert 'class="alert alert-danger"' in plugin.version_warning.value
+    assert 'class="alert alert-danger warning-box' in plugin.version_warning.value
     assert not plugin.update_button.disabled
     assert "does not meet the required version" in plugin.message_container.value
     assert subprocess_commands == [

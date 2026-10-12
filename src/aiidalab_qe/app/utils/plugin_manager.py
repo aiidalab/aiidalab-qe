@@ -29,6 +29,7 @@ from aiidalab_qe.plugins.registry import (
     poll_post_install,
 )
 from aiidalab_qe.plugins.state import clear_restart_pending, set_restart_pending
+from aiidalab_qe.utils import generate_alert
 
 LOGGER = logging.getLogger(__name__)
 
@@ -233,48 +234,36 @@ class QeAppPlugin(ipw.VBox):
         warning = ""
 
         if self.registration_error:
-            warning += (
-                '<div class="alert alert-danger" role="alert">'
-                "Plugin registration check failed: "
-                f"{html.escape(self.registration_error)}</div>"
-            )
+            msg = f"Plugin registration check failed: {self.registration_error}"
+            warning += generate_alert("danger", msg)
 
         if self.post_install_error:
             # We use an amber alert for null verification to cover legacy cases
             # where post-install verification has yet to be implemented.
             alert_class = "warning" if self.post_install_verified is None else "danger"
-            warning += (
-                f'<div class="alert alert-{alert_class}" role="alert">'
-                f"{html.escape(self.post_install_error)}</div>"
-            )
+            warning += generate_alert(alert_class, self.post_install_error)
 
         if self.restart_error:
-            warning += (
-                '<div class="alert alert-danger" role="alert">'
-                f"{html.escape(self.restart_error)}</div>"
-            )
+            warning += generate_alert("danger", self.restart_error)
 
         if not self.app_compatible:
-            warning += (
-                '<div class="alert alert-danger" role="alert">'
+            msg = (
                 f"This plugin requires aiidalab_qe {self.data.requires_aiidalab_qe}, "
-                f"but you have {__version__}.</div>"
+                f"but you have {__version__}."
             )
+            warning += generate_alert("danger", msg)
 
         if self.requirement_error:
-            warning += (
-                '<div class="alert alert-danger" role="alert">'
-                "Could not evaluate plugin requirement/version: "
-                f"{self.requirement_error}</div>"
-            )
+            msg = f"Could not evaluate plugin requirement/version: {self.requirement_error}"
+            warning += generate_alert("danger", msg)
+
         elif self.is_installed and not self.plugin_compatible:
             requirement = Requirement(self.data.pip or self.plugin_name)
-            warning += (
-                '<div class="alert alert-danger" role="alert">'
+            msg = (
                 f"Installed version {self.installed_version} does not satisfy "
                 f"{requirement.name}{requirement.specifier}. Please update accordingly."
-                "</div>"
             )
+            warning += generate_alert("danger", msg)
 
         self.version_warning_text = warning
 
@@ -818,10 +807,9 @@ class PluginManager:
         if self.config_error:
             display(
                 ipw.HTML(
-                    value=(
-                        '<div class="alert alert-danger" role="alert">'
-                        "Plugin registry could not be loaded: "
-                        f"{html.escape(self.config_error)}</div>"
+                    value=generate_alert(
+                        "danger",
+                        f"Plugin registry could not be loaded: {self.config_error}",
                     )
                 )
             )
@@ -864,10 +852,7 @@ class PluginManager:
         """Refresh and display the current daemon status."""
         daemon_error = poll_daemon_status()
         self.daemon_warning.value = (
-            '<div class="alert alert-warning" role="alert">'
-            f"{html.escape(daemon_error)}</div>"
-            if daemon_error
-            else ""
+            generate_alert("warning", daemon_error) if daemon_error else ""
         )
         for plugin in self.accordion.children:
             if isinstance(plugin, QeAppPlugin):
