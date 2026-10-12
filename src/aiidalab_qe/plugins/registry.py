@@ -65,6 +65,12 @@ def poll_post_install(
         return True, None
 
     details = (result.stderr or result.stdout or "").strip()
+    if "No such command" in details and "verify-post-install" in details:
+        return (
+            None,
+            "Post-install verification is not available in this plugin version; "
+            "setup status is unverified.",
+        )
     if len(details) > 500:
         details = f"{details[:497]}..."
     message = "Post-install verification failed."

@@ -25,6 +25,7 @@ from aiidalab_qe.plugins.registry import (
     get_plugin_registry,
     get_plugin_status,
     poll_daemon_status,
+    poll_post_install,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ class QeAppPlugin(ipw.VBox):
     app_compatible = tl.Bool(default_value=True)
     requirement_error = tl.Unicode(default_value=None, allow_none=True)
     registration_error = tl.Unicode(default_value=None, allow_none=True)
+    post_install_verified = tl.Bool(default_value=None, allow_none=True)
     post_install_error = tl.Unicode(default_value=None, allow_none=True)
     daemon_error = tl.Unicode(default_value=None, allow_none=True)
     version_warning_text = tl.Unicode(default_value="")
@@ -189,6 +191,7 @@ class QeAppPlugin(ipw.VBox):
             self.requirement_error = status.requirement_error
             self.app_compatible = status.app_compatible
             self.registration_error = status.registration_error
+            self.post_install_verified = status.post_install_verified
             self.post_install_error = status.post_install_error
 
     def update_title(self) -> None:
@@ -205,6 +208,7 @@ class QeAppPlugin(ipw.VBox):
         "app_compatible",
         "requirement_error",
         "registration_error",
+        "post_install_verified",
         "post_install_error",
         "daemon_error",
     )
@@ -226,8 +230,11 @@ class QeAppPlugin(ipw.VBox):
             )
 
         if self.post_install_error:
+            # We use an amber alert for null verification to cover legacy cases
+            # where post-install verification has yet to be implemented.
+            alert_class = "warning" if self.post_install_verified is None else "danger"
             warning += (
-                '<div class="alert alert-danger" role="alert">'
+                f'<div class="alert alert-{alert_class}" role="alert">'
                 f"{html.escape(self.post_install_error)}</div>"
             )
 
