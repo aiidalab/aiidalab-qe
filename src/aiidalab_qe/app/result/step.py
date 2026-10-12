@@ -1,9 +1,19 @@
 from __future__ import annotations
 
+import asyncio
+
 import ipywidgets as ipw
+import traitlets as tl
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.wizard import DependentWizardStep, State
+from aiidalab_qe.plugins.registry import (
+    get_plugin_property_packages,
+    get_plugin_registry,
+    get_plugin_statuses,
+)
 from aiidalab_widgets_base import ProcessMonitor
 
 from .components import ResultsComponent
@@ -20,9 +30,12 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         self,
         model: ResultsStepModel,
         log_widget: ipw.VBox | None,
+        check_plugin_compatibility: bool = True,
         **kwargs,
     ):
         super().__init__(model=model, **kwargs)
+        self.check_plugin_compatibility = check_plugin_compatibility
+        self._plugin_status_check_started = False
 
         summary_model = WorkflowSummaryModel()
         self.summary_panel = WorkflowSummary(model=summary_model)
@@ -31,6 +44,15 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         results_model = WorkflowResultsViewerModel()
         self.results_panel = WorkflowResultsViewer(model=results_model)
         self._model.add_model("results", results_model)
+        for trait in (
+            "plugin_status_checked",
+            "incompatible_plugin_ids",
+            "incompatible_plugin_titles",
+        ):
+            tl.dlink(
+                (self._model, trait),
+                (results_model, trait),
+            )
 
         status_model = WorkChainStatusModel()
         self.status_panel = WorkChainStatusPanel(model=status_model)
@@ -190,6 +212,7 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         self._on_daemon_status_change(None)
         self._set_default_results_panel()
         self._set_up_monitor()
+        self._schedule_plugin_status_check()
 
     def _on_toggle_change(self, change):
         panel = self.panels[change["new"]]
@@ -199,6 +222,70 @@ class ResultsStep(DependentWizardStep[ResultsStepModel]):
         self._model.update()
         self._model.update_state()
         self._on_daemon_status_change(None)
+        self._schedule_plugin_status_check()
+
+    def _schedule_plugin_status_check(self) -> None:
+        if (
+            self._plugin_status_check_started
+            or not self.rendered
+            or not self._model.process_uuid
+        ):
+            return
+
+        self._plugin_status_check_started = True
+        if not self.check_plugin_compatibility:
+            self._model.plugin_status_checked = True
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self._check_plugin_compatibility())
+        else:
+            self._plugin_status_task = loop.create_task(
+                self._check_plugin_compatibility()
+            )
+
+    def _get_plugins_to_check(self, plugins, property_packages=None):
+        if property_packages is None:
+            property_packages = get_plugin_property_packages()
+        selected_properties = set(self._model.properties)
+        selected_packages = {
+            package_name
+            for property_id, package_name in property_packages.items()
+            if property_id in selected_properties
+        }
+        return {
+            plugin_name: plugin_data
+            for plugin_name, plugin_data in plugins.items()
+            if canonicalize_name(Requirement(plugin_data.pip or plugin_name).name)
+            in selected_packages
+        }
+
+    async def _check_plugin_compatibility(self) -> None:
+        registry = get_plugin_registry()
+        property_packages = get_plugin_property_packages()
+        plugins = self._get_plugins_to_check(registry.plugins, property_packages)
+        statuses = await get_plugin_statuses(plugins)
+
+        incompatible_packages = {}
+        for plugin_name, status in statuses.items():
+            if status.is_incompatible:
+                incompatible_packages[status.distribution_name] = registry.plugins[
+                    plugin_name
+                ].title
+
+        incompatible_plugin_ids = {
+            property_id
+            for property_id, package_name in property_packages.items()
+            if package_name in incompatible_packages
+        }
+
+        self._model.incompatible_plugin_ids = incompatible_plugin_ids
+        self._model.incompatible_plugin_titles = list(
+            dict.fromkeys(incompatible_packages.values())
+        )
+        self._model.plugin_status_checked = True
 
     def _on_daemon_status_change(self, _):
         if not self.rendered:

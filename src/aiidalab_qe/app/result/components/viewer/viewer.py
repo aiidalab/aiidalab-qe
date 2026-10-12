@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import html
+
 import ipywidgets as ipw
 
 from aiidalab_qe.app.result.components import ResultsComponent
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
 from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_widgets_base import LoadingWidget
 
 from .model import WorkflowResultsViewerModel
 from .structure import StructureResultsModel, StructureResultsPanel
@@ -13,15 +16,14 @@ from .structure import StructureResultsModel, StructureResultsPanel
 
 class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
     def __init__(self, model: WorkflowResultsViewerModel, **kwargs):
-        # NOTE: here we want to add the structure and plugin models to the viewer
-        # model BEFORE we define the observation of the process uuid. This ensures
-        # that when the process changes, its reflected in the sub-models prior to
-        # the logic of the process change event handler.
-        # TODO avoid exceptions! Ensure sub-model synchronization in general!
         self.panels: dict[str, ResultsPanel] = {}
+        self._result_plugins_loaded = False
         self._add_structure_panel(model)
-        self._fetch_plugin_results(model)
         super().__init__(model=model, **kwargs)
+        self._model.observe(
+            self._on_plugin_status_checked,
+            "plugin_status_checked",
+        )
 
     def _on_process_change(self, _):
         self._update_panels()
@@ -40,19 +42,34 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             self._on_tab_change,
             "selected_index",
         )
+        self.plugin_compatibility_warning = LoadingWidget(
+            message=(
+                "Loading/validating plugins"
+                if not self._model.plugin_status_checked
+                else ""
+            )
+        )
         self.children = [
             InAppGuide(identifier="results-panel"),
+            self.plugin_compatibility_warning,
             self.tabs,
         ]
 
     def _post_render(self):
+        if self._model.plugin_status_checked:
+            self._load_result_plugins()
         self._set_tabs()
+        self.plugin_compatibility_warning.message.value = (
+            self._get_plugin_compatibility_warning()
+            if self._model.plugin_status_checked
+            else "Loading/validating plugins"
+        )
 
     def _update_panels(self):
         self.panels = {
             identifier: self.panels[identifier]
             for identifier, model in self._model.get_models()
-            if model.include
+            if model.include and identifier in self.panels
         }
 
     def _set_tabs(self):
@@ -65,8 +82,8 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             titles.append(model.title)
             children.append(results)
         self.tabs.children = children
-        for i, title in enumerate(titles):
-            self.tabs.set_title(i, title)
+        for index, title in enumerate(titles):
+            self.tabs.set_title(index, title)
         if children:
             self.tabs.selected_index = 0
 
@@ -81,15 +98,55 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             **self.panels,
         }
 
-    def _fetch_plugin_results(self, viewer_model: WorkflowResultsViewerModel):
-        entries = get_entry_items("aiidalab_qe.properties", "result")
+    def _on_plugin_status_checked(self, change):
+        if not change["new"]:
+            return
+        self._load_result_plugins()
+        if self.rendered:
+            self.plugin_compatibility_warning.message.value = (
+                self._get_plugin_compatibility_warning()
+            )
+            self._set_tabs()
+
+    def _load_result_plugins(self):
+        if self._result_plugins_loaded:
+            return
+
+        incompatible_plugin_ids = self._model.incompatible_plugin_ids
+
+        def is_entry_compatible(entry_point):
+            return entry_point.name not in incompatible_plugin_ids
+
+        entries = get_entry_items(
+            "aiidalab_qe.properties",
+            "result",
+            entry_point_filter=is_entry_compatible,
+        )
         for identifier, entry in entries.items():
             for key in ("panel", "model"):
                 if key not in entry:
                     raise ValueError(
                         f"Entry {identifier} is missing the results '{key}' key"
                     )
-            panel = entry["panel"]
             model = entry["model"]()
-            viewer_model.add_model(identifier, model)
-            self.panels[identifier] = panel(model=model)
+            if self._model.process_uuid:
+                model.process_uuid = self._model.process_uuid
+                model.update()
+                if not model.include:
+                    continue
+            self._model.add_model(identifier, model)
+            self.panels[identifier] = entry["panel"](model=model)
+        self._result_plugins_loaded = True
+
+    def _get_plugin_compatibility_warning(self) -> str:
+        plugins = sorted(set(self._model.incompatible_plugin_titles))
+        if not plugins:
+            return ""
+        items = "".join(f"<li>{html.escape(title)}</li>" for title in plugins)
+        return (
+            '<div class="alert alert-danger" role="alert">'
+            "Result panels are disabled for the following plugins:"
+            f"<ul>{items}</ul>"
+            'Visit the <a href="./plugin_manager.ipynb" target="_blank">Plugin store</a> to '
+            "update or remove these plugins, then reload the app.</div>"
+        )

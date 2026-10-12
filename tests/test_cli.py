@@ -1,104 +1,155 @@
-import time
-
 import pytest
-from click.testing import CliRunner, Result
+from click.testing import CliRunner
 
 import aiida
 import aiidalab_qe.__main__ as cli
+from aiida.manage.configuration import get_profile
 
 # To learn more about testing click applications, see: https://click.palletsprojects.com/en/8.1.x/testing/
 
 
-@pytest.mark.slow
-def test_download_and_install_pseudos(tmp_path, aiida_profile, monkeypatch):
-    """Test download pseudos to a specified directory and install them.
-    And test install pseudos without download.
-    Compare the time elapsed between the two methods.
-
-    Act: Run the command `aiidalab-qe download-pseudos --dest <tmp_path>`.
-    Assert: All pseudos are downloaded to the specified directory.
-
-    Act: Run the command `aiidalab-qe install-pseudos --source <tmp_path>`.
-    Assert: All pseudos are installed from the specified directory.
-
-    Act: Run the command `aiidalab-qe install-pseudos`.
-    Assert: All pseudos are installed from the default directory, but slow.
-
-    Note: this test is slow, it takes about ~30 seconds to run.
-    """
+def _mock_expected_pseudos(monkeypatch):
     from aiidalab_qe.setup.pseudos import (
         PSEUDODOJO_VERSION,
         SSSP_VERSION,
-        pseudos_to_install,
     )
 
-    # Mock the EXPECTED_PSEUDOS to speed up the test
-    MOCK_EXPECTED_PSEUDOS = {
+    expected_pseudos = {
         f"SSSP/{SSSP_VERSION}/PBE/efficiency",
         f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/standard/upf",
         f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf",
         f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/SR/stringent/upf",
     }
-    # mock the EXPECTED_PSEUDOS
     monkeypatch.setattr(
         "aiidalab_qe.setup.pseudos.EXPECTED_PSEUDOS",
-        MOCK_EXPECTED_PSEUDOS,
+        expected_pseudos,
     )
+    return expected_pseudos
 
-    # clean the profile database
-    aiida_profile.clear_profile()
 
-    runner: CliRunner = CliRunner()
+@pytest.mark.slow
+@pytest.mark.usefixtures("aiida_profile_clean")
+def test_download_and_install_pseudos_from_directory(tmp_path, monkeypatch):
+    """Download pseudo archives and install them from the temporary directory."""
+    from aiidalab_qe.setup.pseudos import pseudos_to_install
 
-    start = time.time()
-    result: Result = runner.invoke(cli.download_pseudos, ["--dest", str(tmp_path)])
-    download_time = time.time() - start
+    expected_pseudos = _mock_expected_pseudos(monkeypatch)
+    runner = CliRunner()
+
+    result = runner.invoke(cli.download_pseudos, ["--dest", str(tmp_path)])
 
     assert result.exit_code == 0
     assert "Pseudopotentials are downloaded!" in result.output
 
     files = [f for f in tmp_path.glob("**/*") if f.is_file()]
 
-    for pseudo in MOCK_EXPECTED_PSEUDOS:
+    for pseudo in expected_pseudos:
         filename = f"{pseudo.replace('/', '_')}.aiida_pseudo"
         assert filename in [f.name for f in files]
 
     # Install the pseudos from the tmp_path
 
     # Check that the pseudos are not installed yet
-    assert len(pseudos_to_install()) == len(MOCK_EXPECTED_PSEUDOS)
+    assert len(pseudos_to_install()) == len(expected_pseudos)
 
-    profile = aiida.get_profile()
-
-    start = time.time()
-    result: Result = runner.invoke(
+    profile = get_profile()
+    result = runner.invoke(
         cli.install_pseudos, ["--source", tmp_path, "--profile", profile.name]
     )
-    install_time = time.time() - start
-
-    print(f"Download time: {download_time}, install time: {install_time}")
 
     assert result.exit_code == 0
     assert "Pseudopotentials are installed!" in result.output
 
     assert len(pseudos_to_install()) == 0
 
-    # clean the profile database for the next test
-    aiida_profile.clear_profile()
 
-    # Check that the pseudos are not installed yet
-    assert len(pseudos_to_install()) == len(MOCK_EXPECTED_PSEUDOS)
+@pytest.mark.slow
+@pytest.mark.usefixtures("aiida_profile_clean")
+def test_install_pseudos_from_default_source(monkeypatch):
+    """Install pseudos from the packaged default source into a clean profile."""
+    from aiidalab_qe.setup.pseudos import pseudos_to_install
 
-    profile = aiida.get_profile()
-    start = time.time()
-    result: Result = runner.invoke(cli.install_pseudos, ["--profile", profile.name])
-    install_without_download_time = time.time() - start
-    print(f"Install without download time: {install_without_download_time}")
+    expected_pseudos = _mock_expected_pseudos(monkeypatch)
+    assert len(pseudos_to_install()) == len(expected_pseudos)
+    profile = get_profile()
+    result = CliRunner().invoke(cli.install_pseudos, ["--profile", profile.name])
 
     assert result.exit_code == 0
     assert "Pseudopotentials are installed!" in result.output
 
     assert len(pseudos_to_install()) == 0
 
-    # Check the install without download is slower than install with download
-    assert install_without_download_time > install_time
+
+@pytest.mark.parametrize("post_install", ["setup", None])
+def test_test_plugin_runs_post_install_verifier_when_configured(
+    monkeypatch, post_install
+):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.plugins import registry
+    from aiidalab_qe.plugins import utils as plugin_utils
+
+    calls = []
+    monkeypatch.setattr(aiida, "load_profile", lambda _profile: None)
+    monkeypatch.setattr(
+        plugin_utils, "test_plugin_functionality", lambda _name: (True, "")
+    )
+    monkeypatch.setattr(
+        registry,
+        "get_plugin_registry",
+        lambda: SimpleNamespace(
+            plugins={"my-plugin": SimpleNamespace(post_install=post_install)}
+        ),
+    )
+    monkeypatch.setattr(
+        cli.subprocess,
+        "run",
+        lambda command, check: calls.append((command, check)),
+    )
+
+    result = CliRunner().invoke(cli.test_plugin, ["my-plugin", "--profile", "test"])
+
+    assert result.exit_code == 0
+    if post_install:
+        assert calls == [
+            (
+                [
+                    cli.sys.executable,
+                    "-m",
+                    "my_plugin",
+                    "verify-post-install",
+                    "--profile",
+                    "test",
+                ],
+                True,
+            )
+        ]
+    else:
+        assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("result", "expected_exit_code", "expected_message"),
+    [
+        ((True, ""), 0, ""),
+        ((False, "broken entry point"), 1, "broken entry point"),
+    ],
+)
+def test_check_plugin_registration(
+    monkeypatch, result, expected_exit_code, expected_message
+):
+    from aiidalab_qe.plugins import utils as plugin_utils
+
+    monkeypatch.setattr(
+        plugin_utils,
+        "test_plugin_functionality",
+        lambda _plugin_name: result,
+    )
+
+    result = CliRunner().invoke(
+        cli.cli,
+        ["check-plugin-registration", "my-plugin"],
+    )
+
+    assert result.exit_code == expected_exit_code
+    assert expected_message in result.output

@@ -68,7 +68,9 @@ def test_result_step(app_to_submit, generate_qeapp_workchain):
         WorkflowResultsViewerModel, model.get_model("results")
     )
     # All jobs are completed, so there should be no process status notifications
-    for _, results_model in results_viewer_model.get_models():
+    for identifier, results_model in results_viewer_model.get_models():
+        if identifier == "structure":
+            continue
         assert results_model.process_status_notification == ""
 
 
@@ -142,6 +144,7 @@ def test_pending_kill_failure_keeps_monitoring_and_allows_retry(
     step: ResultsStep = app.results_step
     model: ResultsStepModel = app.results_model
     model.process_uuid = generate_qeapp_workchain().node.uuid
+    monkeypatch.setattr(step, "_set_up_monitor", Mock())
     step.render()
     model.daemon_is_running = True
     model.daemon_status_known = True
@@ -170,9 +173,167 @@ def test_workchainview(generate_qeapp_workchain):
     model = WorkflowResultsViewerModel()
     viewer = WorkflowResultsViewer(model=model)
     model.process_uuid = workchain.node.uuid
+    model.plugin_status_checked = True
     viewer.render()
     assert len(viewer.tabs.children) == 2
     assert viewer.tabs.titles[0] == "Structure"
+
+
+def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+
+    class EntryPoint:
+        name = "vibronic"
+        dist = SimpleNamespace(
+            metadata={"Name": "aiidalab-qe-vibroscopy"},
+        )
+        loaded = False
+
+        def load(self):
+            self.loaded = True
+            raise AssertionError("incompatible plugin must not be loaded")
+
+    entry_point = EntryPoint()
+
+    def get_entry_items(_group, _item, entry_point_filter):
+        assert entry_point_filter(entry_point) is False
+        return {}
+
+    monkeypatch.setattr(viewer_module, "get_entry_items", get_entry_items)
+
+    model = WorkflowResultsViewerModel()
+    model.incompatible_plugin_ids = {"vibronic"}
+    model.incompatible_plugin_titles = ["Phonons and IR/Raman"]
+    viewer = viewer_module.WorkflowResultsViewer(model=model)
+    viewer.render()
+    model.plugin_status_checked = True
+
+    assert not entry_point.loaded
+    assert "Phonons and IR/Raman" in viewer.plugin_compatibility_warning.message.value
+    assert "./plugin_manager.ipynb" in viewer.plugin_compatibility_warning.message.value
+
+
+def test_failed_activation_plugin_result_is_not_loaded(monkeypatch):
+    from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+
+    class EntryPoint:
+        name = "vibroscopy"
+        group = "aiidalab_qe.properties"
+        dist = SimpleNamespace(metadata={"Name": "aiidalab-qe-vibroscopy"})
+
+        def load(self):
+            raise AssertionError("failed plugin entry point must not be loaded")
+
+    entry_point = EntryPoint()
+
+    def get_entry_items(_group, _item, entry_point_filter):
+        assert entry_point_filter(entry_point) is False
+        return {}
+
+    monkeypatch.setattr(viewer_module, "get_entry_items", get_entry_items)
+    model = WorkflowResultsViewerModel()
+    model.incompatible_plugin_ids = {"vibroscopy"}
+    model.incompatible_plugin_titles = ["Phonons and IR/Raman"]
+    viewer = viewer_module.WorkflowResultsViewer(model=model)
+    viewer.render()
+    model.plugin_status_checked = True
+
+    assert viewer._model.incompatible_plugin_ids == {"vibroscopy"}
+    assert (
+        "Result panels are disabled"
+        in viewer.plugin_compatibility_warning.message.value
+    )
+    assert "Phonons and IR/Raman" in viewer.plugin_compatibility_warning.message.value
+
+
+def test_result_panels_are_limited_to_process_properties(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.result.components.viewer import viewer as viewer_module
+
+    viewer = WorkflowResultsViewer(model=WorkflowResultsViewerModel())
+    selected_properties = {"bands"}
+
+    class ResultModel:
+        def __init__(self, properties):
+            self.properties = properties
+            self.process_uuid = None
+            self.auto_render = False
+
+        def update(self):
+            self.auto_render = True
+
+        @property
+        def include(self):
+            return bool(self.properties & selected_properties)
+
+    viewer_model = SimpleNamespace(
+        process_uuid="process-uuid",
+        properties=["bands"],
+        incompatible_plugin_ids=set(),
+        add_model=lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        viewer_module,
+        "get_entry_items",
+        lambda *_args, **_kwargs: {
+            "electronic_structure": {
+                "model": lambda: ResultModel({"bands", "pdos"}),
+                "panel": lambda model: model,
+            },
+            "vibronic": {
+                "model": lambda: ResultModel({"vibronic"}),
+                "panel": lambda model: model,
+            },
+        },
+    )
+    viewer._model = viewer_model
+    viewer._load_result_plugins()
+
+    assert "electronic_structure" in viewer.panels
+    assert "vibronic" not in viewer.panels
+    assert viewer.panels["electronic_structure"].auto_render
+
+
+def test_results_step_checks_only_plugins_selected_by_process(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.result import step as results_step_module
+
+    monkeypatch.setattr(
+        results_step_module,
+        "get_plugin_property_packages",
+        lambda: {"vibronic": "aiidalab-qe-vibroscopy"},
+    )
+    monkeypatch.setattr(
+        ResultsStepModel,
+        "properties",
+        property(lambda _self: ["vibronic"]),
+    )
+    plugins = {
+        "aiidalab-qe-vibroscopy": SimpleNamespace(pip="aiidalab-qe-vibroscopy>=1.0"),
+        "aiidalab-qe-muon": SimpleNamespace(pip="aiidalab-qe-muon>=1.0"),
+    }
+    step = ResultsStep(model=ResultsStepModel(), log_widget=None)
+
+    assert step._get_plugins_to_check(plugins) == {
+        "aiidalab-qe-vibroscopy": plugins["aiidalab-qe-vibroscopy"]
+    }
+
+
+def test_results_step_status_is_linked_to_viewer_model():
+    model = ResultsStepModel()
+    step = ResultsStep(model=model, log_widget=None, check_plugin_compatibility=False)
+
+    model.incompatible_plugin_ids = {"bands"}
+    model.incompatible_plugin_titles = ["Electronic bands"]
+    model.plugin_status_checked = True
+
+    assert step.results_panel._model.plugin_status_checked
+    assert step.results_panel._model.incompatible_plugin_ids == {"bands"}
+    assert step.results_panel._model.incompatible_plugin_titles == ["Electronic bands"]
 
 
 def test_summary_report(data_regression, generate_qeapp_workchain):

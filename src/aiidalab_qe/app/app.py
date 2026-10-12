@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import typing as t
 from datetime import datetime
@@ -16,13 +17,15 @@ from aiida import orm
 from aiida.orm.utils.serialize import deserialize_unsafe
 from aiidalab_qe.app.static import images as images_folder
 from aiidalab_qe.app.static import templates
-from aiidalab_qe.app.wizard import QeWizard
-from aiidalab_qe.app.wizard.model import QeWizardModel
 from aiidalab_qe.common.guide_manager import guide_manager
 from aiidalab_qe.common.infobox import InAppGuide, InfoBox
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.version import __version__
 from aiidalab_widgets_base import LoadingWidget
+
+if t.TYPE_CHECKING:
+    from aiidalab_qe.app.wizard import QeWizard
+    from aiidalab_qe.app.wizard.model import QeWizardModel
 
 CURRENT_STATE_PATH = Path("/tmp/current_state.json")
 
@@ -65,7 +68,9 @@ class AppController:
         """
         self._model = model
         self._view = view
-        self._wizard_model = QeWizardModel()
+        self._wizard_model: QeWizardModel | None = None
+        self._wizard_loading_linked = False
+        self._guide_load_task: asyncio.Task | None = None
         self._set_event_handlers()
 
     def enable_toggles(self) -> None:
@@ -81,7 +86,32 @@ class AppController:
         duplicating: bool = False,
     ) -> None:
         """Load and initialize the wizard."""
-        self.wizard = QeWizard(self._wizard_model, auto_setup, log_widget)
+        from aiidalab_qe.app.wizard import QeWizard
+        from aiidalab_qe.app.wizard.model import QeWizardModel
+
+        if self._wizard_model is None:
+            self._wizard_model = QeWizardModel()
+
+        if not self._wizard_loading_linked:
+            ipw.dlink(
+                (self._wizard_model, "loading"),
+                (self._view.wizard_loading_message.layout, "display"),
+                lambda loading: "flex" if loading else "none",
+            )
+            self._wizard_loading_linked = True
+
+        loaded_from_process = bool(self._model.process_uuid)
+
+        self.wizard = QeWizard(
+            self._wizard_model,
+            auto_setup,
+            log_widget,
+            loaded_from_process=loaded_from_process,
+        )
+        self.wizard.results_model.observe(
+            self._on_plugin_status_checked,
+            "plugin_status_checked",
+        )
 
         state = {"process_uuid": self._model.process_uuid}
         if self._model.process_uuid:
@@ -129,6 +159,43 @@ class AppController:
         self._view.app_container.children = [self.wizard]
         self._wizard_model.state = state
         self._model.loaded = True
+        self._update_duplicate_workflow_link(state)
+
+    def _update_duplicate_workflow_link(self, state: dict | None = None) -> None:
+        """Disable duplicating a process that selected incompatible plugins."""
+        if not self._model.process_uuid:
+            self._view.duplicate_workflow_link.disabled = False
+            return
+
+        if not self.wizard.results_model.plugin_status_checked:
+            self._view.duplicate_workflow_link.disabled = True
+            self._view.duplicate_workflow_link.tooltip = (
+                "Checking plugin compatibility before allowing duplication"
+            )
+            return
+
+        if state is None:
+            state = self._model.get_state_from_process()
+        configuration = state.get("configuration_state", {})
+        selected_properties = set(
+            configuration.get("workchain", {}).get("properties", [])
+        )
+        if not selected_properties:
+            selected_properties = set(self.wizard.configuration_model._get_properties())
+
+        blocked = bool(
+            selected_properties & self.wizard.results_model.incompatible_plugin_ids
+        )
+        self._view.duplicate_workflow_link.disabled = blocked
+        self._view.duplicate_workflow_link.tooltip = (
+            "Duplication disabled due to incompatible plugins. Visit the Plugin store to resolve."
+            if blocked
+            else "Duplicate calculation parameters in a separate tab"
+        )
+
+    def _on_plugin_status_checked(self, change: dict) -> None:
+        if change["new"]:
+            self._update_duplicate_workflow_link()
 
     @without_triggering("about_toggle")
     def _on_guide_toggle(self, change: dict):
@@ -136,18 +203,56 @@ class AppController:
         if change["new"]:
             self._view.info_container.children = [
                 self._view.guide,
-                ipw.HBox(
-                    children=[
-                        self._view.guide_category_selection,
-                        self._view.guide_selection,
-                    ],
-                    layout=ipw.Layout(align_items="baseline", grid_gap="10px"),
-                ),
+                self._view.guide_loading_message,
             ]
             self._view.info_container.layout.display = "flex"
+
+            if guide_manager._plugin_guides_loaded:
+                self._show_guide_selectors()
+            elif self._guide_load_task is None or self._guide_load_task.done():
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    guide_manager.load_plugin_guides()
+                    self._show_guide_selectors()
+                else:
+                    self._guide_load_task = loop.create_task(self._load_plugin_guides())
         else:
             self._view.info_container.children = []
             self._view.info_container.layout.display = "none"
+
+    async def _load_plugin_guides(self) -> None:
+        try:
+            await asyncio.to_thread(guide_manager.load_plugin_guides)
+        except Exception:
+            if self._view.guide_toggle.value:
+                self._view.info_container.children = [
+                    self._view.guide,
+                    ipw.HTML(
+                        '<div class="alert alert-warning">Unable to load tutorials.</div>'
+                    ),
+                ]
+        else:
+            if self._view.guide_toggle.value:
+                self._show_guide_selectors()
+        finally:
+            self._guide_load_task = None
+
+    def _show_guide_selectors(self) -> None:
+        self._model.guide_category_options = [
+            "No guides",
+            *guide_manager.get_guide_categories(),
+        ]
+        self._view.info_container.children = [
+            self._view.guide,
+            ipw.HBox(
+                children=[
+                    self._view.guide_category_selection,
+                    self._view.guide_selection,
+                ],
+                layout=ipw.Layout(align_items="baseline", grid_gap="10px"),
+            ),
+        ]
 
     @without_triggering("guide_toggle")
     def _on_about_toggle(self, change: dict):
@@ -220,19 +325,12 @@ class AppController:
             (self._model, "selected_guide"),
             (self._view.guide_selection, "value"),
         )
-        ipw.dlink(
-            (self._wizard_model, "loading"),
-            (self._view.wizard_loading_message.layout, "display"),
-            lambda loading: "flex" if loading else "none",
-        )
 
 
 class AppModel(tl.HasTraits):
     """An MVC model for the app."""
 
-    guide_category_options = tl.List(
-        ["No guides", *guide_manager.get_guide_categories()]
-    )
+    guide_category_options = tl.List(["No guides", []])
     selected_guide_category = tl.Unicode("No guides")
     guide_options = tl.List(tl.Unicode())
     selected_guide = tl.Unicode(None, allow_none=True)
@@ -314,6 +412,7 @@ class AppView(ipw.VBox):
             link="./qe.ipynb?duplicating=True",
             icon="clone",
             tooltip="Duplicate calculation parameters in a separate tab",
+            disabled=True,
         )
 
         self.calculation_history_link = LinkButton(
@@ -324,7 +423,7 @@ class AppView(ipw.VBox):
         )
 
         self.plugin_manager_link = LinkButton(
-            description="Plugin manager",
+            description="Plugin store",
             link="./plugin_manager.ipynb",
             icon="puzzle-piece",
             tooltip="Manage community-developed plugins that extend the app's functionality",
@@ -397,6 +496,7 @@ class AppView(ipw.VBox):
             layout=ipw.Layout(width="max-content"),
         )
         self.guide_selection = ipw.RadioButtons(layout=ipw.Layout(width="max-content"))
+        self.guide_loading_message = LoadingWidget("Loading tutorials")
 
         self.info_container = InfoBox(layout=ipw.Layout(margin="14px 2px 0"))
 

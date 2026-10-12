@@ -22,6 +22,7 @@ class TestApp:
         self.model.process_uuid = workchain.node.uuid
         self.controller.load_wizard()
         wizard = self.controller.wizard
+        assert wizard.configuration_model.loaded_from_process
         assert wizard.configuration_model.relax_type == "positions"
         assert (
             wizard.configuration_model.get_model("workchain").spin_type == "collinear"
@@ -29,11 +30,27 @@ class TestApp:
         assert wizard.configuration_model.get_model("bands").include is True
         assert wizard.configuration_model.get_model("pdos").include is False
         assert wizard.configuration_model.state == State.SUCCESS
+        results_model = wizard.results_model
+        results_model.plugin_status_checked = False
+        results_model.incompatible_plugin_ids = {"bands"}
+        results_model.plugin_status_checked = True
+        assert self.view.duplicate_workflow_link.disabled
+        assert "Duplication disabled due to incompatible plugins" in (
+            self.view.duplicate_workflow_link.tooltip
+        )
+        results_model.plugin_status_checked = False
+        results_model.incompatible_plugin_ids = {"pdos"}
+        results_model.plugin_status_checked = True
+        assert not self.view.duplicate_workflow_link.disabled
         advanced_model = wizard.configuration_model.get_model("advanced")
         pseudos_model = advanced_model.get_model("pseudos")
         assert len(pseudos_model.dictionary) > 0
         assert pseudos_model.functional == "PBE"
         self.controller.wizard.results_model.process_uuid = None  # terminate monitor
+
+    def test_duplicate_button_starts_disabled(self):
+        view = AppView()
+        assert view.duplicate_workflow_link.disabled
 
     def test_enable_toggles(self):
         """Test enable_toggles method."""

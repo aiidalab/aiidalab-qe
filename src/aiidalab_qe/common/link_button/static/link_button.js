@@ -13,7 +13,14 @@ export const render = ({ model, el }) => {
 
   a.href = model.get("link") || "#";
   a.target = model.get("target") || "_blank";
-  a.title = model.get("tooltip") || "";
+  const set_tooltip = () => {
+    const tooltip = model.get("tooltip") || "";
+    a.title = tooltip;
+    el.title = tooltip;
+  };
+
+  set_tooltip();
+  model.on("change:tooltip", set_tooltip);
 
   const userClasses = (model.get("class_") || "").trim();
   const defaults = "jupyter-button widget-button link-button";
@@ -24,8 +31,16 @@ export const render = ({ model, el }) => {
   else a.removeAttribute("style");
 
   const set_disabled = () => {
-    if (model.get("disabled")) el.setAttribute("aria-disabled", "true");
-    else el.removeAttribute("aria-disabled");
+    const disabled = model.get("disabled");
+    if (disabled) {
+      el.setAttribute("aria-disabled", "true");
+      a.setAttribute("aria-disabled", "true");
+      a.tabIndex = -1;
+    } else {
+      el.removeAttribute("aria-disabled");
+      a.removeAttribute("aria-disabled");
+      a.removeAttribute("tabindex");
+    }
   };
 
   set_disabled();

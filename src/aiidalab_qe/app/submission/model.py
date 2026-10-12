@@ -11,7 +11,6 @@ from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettin
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStepModel, State
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.utils import shallow_copy_nested_dict
-from aiidalab_qe.workflows import QeAppWorkChain
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -214,6 +213,8 @@ class SubmissionStepModel(
         return self.input_parameters.get("workchain", {}).get("properties", [])
 
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
+        from aiidalab_qe.workflows import QeAppWorkChain
+
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             # Use shallow copy to avoid parameter mutation by the workflow

@@ -27,6 +27,9 @@ class ResultsStepModel(
     process_info = tl.Unicode("")
     process_remote_folder_is_clean = tl.Bool(False)
     kill_pending = tl.Bool(False)
+    plugin_status_checked = tl.Bool(False)
+    incompatible_plugin_ids = tl.Set(tl.Unicode())
+    incompatible_plugin_titles = tl.List(tl.Unicode())
 
     STATUS_TEMPLATE = "<h4>Workflow status: {}</h4"
 

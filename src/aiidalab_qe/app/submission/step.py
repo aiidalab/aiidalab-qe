@@ -47,6 +47,7 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
         self.global_resources = GlobalResourceSettingsPanel(
             model=global_resources_model
         )
+        global_resources_model.register_resource_loader(self._fetch_resource_plugins)
         self._model.add_model("global", global_resources_model)
         ipw.dlink(
             (self._model, "plugin_overrides"),
@@ -90,7 +91,7 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
             "global": self.global_resources,
         }
 
-        self._fetch_plugin_resource_settings()
+        self._plugins_loaded = False
 
         self._set_up_qe(auto_setup)
 
@@ -98,6 +99,7 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
         self._model.reset()
 
     def _render(self):
+        self._fetch_resource_plugins()
         super()._render()
 
         self.process_label = ipw.Text(
@@ -267,7 +269,10 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
                 self.tabs.set_title(i, title)
             self.tabs.selected_index = 0
 
-    def _fetch_plugin_resource_settings(self):
+    def _fetch_resource_plugins(self):
+        if self._plugins_loaded:
+            return
+
         entries = get_entry_items("aiidalab_qe.properties", "resources")
         codes: PluginCodes = {
             "dft": {
@@ -304,4 +309,8 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
 
         self.global_resources.build_global_codes(codes)
 
+        self._plugins_loaded = True
         self._model.fetched_resources = True
+
+        self.global_resources._model.update_active_codes()
+        self.global_resources._model.update_blockers()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing as t
+
 import traitlets as tl
 
 from aiida_quantumespresso.common.types import RelaxType
@@ -32,8 +34,7 @@ class ConfigurationStepModel(
     relax_type_options = tl.List(default_value=[NO_RELAXATION_OPTION])
     relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
 
-    installed_properties_fetched = tl.Bool(False)
-    available_properties_fetched = tl.Bool(False)
+    loaded_from_process = tl.Bool(False)
 
     _dependencies = [
         "structure_uuid",
@@ -41,11 +42,13 @@ class ConfigurationStepModel(
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._plugin_loader: t.Callable[[], None] | None = None
 
         self._default_models = {
             "workchain",
             "advanced",
         }
+        self.incompatible_plugins: set[str] = set()
 
         self.relax_type_help_template = """
             <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
@@ -59,6 +62,14 @@ class ConfigurationStepModel(
                 {full_relaxation_option}
             </div>
         """
+
+    def register_plugin_loader(self, plugin_loader: t.Callable[[], None]) -> None:
+        self._plugin_loader = plugin_loader
+
+    def get_model(self, identifier: str):
+        if not self.has_model(identifier.split(".", 1)[0]) and self._plugin_loader:
+            self._plugin_loader()
+        return super().get_model(identifier)
 
     def _update(self, specific=""):
         self.update_relaxation_options()
@@ -117,11 +128,16 @@ class ConfigurationStepModel(
         return state
 
     def set_model_state(self, state: dict):
+        if self._plugin_loader:
+            self._plugin_loader()
+
         workchain_parameters: dict = state.get("workchain", {})
         self.relax_type = workchain_parameters.get("relax_type")
         properties = set(workchain_parameters.get("properties", []))
         for identifier, model in self.get_models():
-            model.include = identifier in self._default_models | properties
+            model.include = identifier in self._default_models | (
+                properties - self.incompatible_plugins
+            )
             if state.get(identifier):
                 model.set_model_state(state[identifier])
 
@@ -156,7 +172,7 @@ class ConfigurationStepModel(
         for identifier, model in self.get_models():
             if identifier in self._default_models:
                 continue
-            if model.include:
+            if model.include and identifier not in self.incompatible_plugins:
                 properties.append(identifier)
         if RelaxType(self.relax_type) is not RelaxType.NONE or not properties:
             properties.append("relax")

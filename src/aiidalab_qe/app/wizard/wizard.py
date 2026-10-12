@@ -29,6 +29,7 @@ class QeWizard(Wizard):
         model: QeWizardModel,
         auto_setup: bool = True,
         log_widget: ipw.VBox | None = None,
+        loaded_from_process: bool = False,
         **kwargs,
     ):
         super().__init__(model, ICONS, **kwargs)
@@ -45,6 +46,7 @@ class QeWizard(Wizard):
         )
 
         self.configuration_model = ConfigurationStepModel(auto_advance=True)
+        self.configuration_model.loaded_from_process = loaded_from_process
         self.configuration_step = ConfigurationStep(model=self.configuration_model)
         self.add_step(
             step=self.configuration_step,
@@ -67,12 +69,15 @@ class QeWizard(Wizard):
         self.results_step = ResultsStep(
             model=self.results_model,
             log_widget=log_widget,
+            check_plugin_compatibility=loaded_from_process,
         )
         self.add_step(
             step=self.results_step,
             model=self.results_model,
             title="Status & results",
         )
+
+        model.register_plugin_loader(self._load_plugins_for_state)
 
         for model in self._models:
             model.observe(
@@ -94,6 +99,12 @@ class QeWizard(Wizard):
         )
 
         self.render()
+
+    def _load_plugins_for_state(self, step_index: int) -> None:
+        if step_index >= 1:
+            self.configuration_step._fetch_configuration_plugins()
+        if step_index >= 2:
+            self.submission_step._fetch_resource_plugins()
 
     def _on_structure_confirmation_change(self, _):
         self._model.auto_advance()

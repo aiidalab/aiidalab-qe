@@ -1,3 +1,4 @@
+import html
 import typing as t
 
 from aiida import orm
@@ -5,9 +6,18 @@ from aiida.common.exceptions import NotExistent
 from aiida.engine import ProcessBuilderNamespace
 
 
-def generate_alert(alert_type: str, message: str, class_: str = "", style_: str = ""):
+def generate_alert(
+    alert_type: str,
+    message: str,
+    class_: str = "",
+    style_: str = "",
+    allow_html: bool = False,
+):
+    if not allow_html:
+        message = html.escape(message)
+
     return f"""
-        <div class="alert alert-{alert_type} warning-box {class_}" style="{style_}">
+        <div role="alert" class="alert alert-{alert_type} warning-box {class_}" style="{style_}">
             {message}
         </div>
     """
