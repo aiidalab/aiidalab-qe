@@ -1,4 +1,4 @@
-from aiidalab_qe.app.utils.calculation_history import CalculationHistory
+from aiidalab_qe.utils.calculation_history import CalculationHistory
 
 
 def test_calculation_history(generate_qeapp_workchain):

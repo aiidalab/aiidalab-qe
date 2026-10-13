@@ -4,14 +4,14 @@ import ipywidgets as ipw
 import pytest
 
 from aiida.manage.configuration import get_profile
-from aiidalab_qe.app.utils import plugin_manager
-from aiidalab_qe.app.utils.plugin_manager import (
+from aiidalab_qe.plugins import registry as plugin_registry
+from aiidalab_qe.plugins import state as plugin_state
+from aiidalab_qe.utils import plugin_manager
+from aiidalab_qe.utils.plugin_manager import (
     PluginManager,
     QeAppPlugin,
     QeAppPluginData,
 )
-from aiidalab_qe.plugins import registry as plugin_registry
-from aiidalab_qe.plugins import state as plugin_state
 
 
 @pytest.fixture(autouse=True)
