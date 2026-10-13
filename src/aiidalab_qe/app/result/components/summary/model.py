@@ -9,12 +9,12 @@ from jinja2 import Environment
 
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
+from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
 from aiidalab_qe.app.result.utils import ResultsSubModel
 from aiidalab_qe.app.static import styles, templates
 from aiidalab_qe.common.time import format_time, relative_time
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.utils import get_pseudo_info
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -218,6 +218,11 @@ class WorkflowSummaryModel(ResultsSubModel):
             "advanced_settings": {},
         }
 
+        pseudos = {
+            kind: self._get_pseudo_summary(pp_uuid)
+            for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
+        }
+
         if pseudo_family := advanced.get("pseudo_family"):
             pseudo_family_info = pseudo_family.split("/")
             pseudo_library = pseudo_family_info[0]
@@ -238,22 +243,22 @@ class WorkflowSummaryModel(ResultsSubModel):
                 },
             }
         else:
-            pp_uuid = next(iter(advanced["pw"]["pseudos"].values()))
-            pseudo_info = get_pseudo_info(pp_uuid)
-            functional = pseudo_info["functional"]
+            pseudo_info = next(iter(pseudos.values()), {})
+            functional = pseudo_info.get("functional", "Unavailable")
             report["advanced_settings"]["functional"] = {
                 "url": FUNCTIONAL_LINK_MAP.get(functional),
                 "value": functional,
             }
-            report["advanced_settings"]["relativistic"] = pseudo_info["relativistic"]
+            report["advanced_settings"]["relativistic"] = pseudo_info.get(
+                "relativistic", "Unavailable"
+            )
             report["advanced_settings"]["pseudo_library"] = {
                 "url": None,
                 "value": "custom",
             }
 
         report["advanced_settings"]["pseudos"] = [
-            f"<b>{kind}:</b> {orm.load_node(pp_uuid).filename}"
-            for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
+            f"<b>{kind}:</b> {info['filename']}" for kind, info in pseudos.items()
         ]
 
         # Extract the pw calculation parameters from the ui_parameters
@@ -307,6 +312,20 @@ class WorkflowSummaryModel(ResultsSubModel):
         report["advanced_settings"]["spin_orbit"] = "on" if spin_orbit else "off"
 
         return report
+
+    @staticmethod
+    def _get_pseudo_summary(pp_uuid: str) -> dict:
+        """Read pseudopotential metadata referenced by saved UI settings."""
+        try:
+            pseudo = orm.load_node(pp_uuid)
+        except NotExistent:
+            # UUIDs in extras are not necessarily included in exported provenance.
+            return {"filename": f"Unavailable in this profile (UUID: {pp_uuid})"}
+        return {
+            "filename": pseudo.filename,
+            "functional": pseudo.base.extras.get("functional", None),
+            "relativistic": pseudo.base.extras.get("relativistic", None),
+        }
 
     def _get_symmetry_group_info(self, structure: orm.StructureData) -> dict:
         # HACK the use of the clone for non-molecular systems is due to a rigid
