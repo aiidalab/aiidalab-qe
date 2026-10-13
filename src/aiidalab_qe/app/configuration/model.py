@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-import ipywidgets as ipw
+import typing as t
+
 import traitlets as tl
 
 from aiida_quantumespresso.common.types import RelaxType
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import (
     HasInputStructure,
     HasModels,
 )
-from aiidalab_qe.common.panel import ConfigurationSettingsModel
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
+from aiidalab_qe.common.panel import PanelModel
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStepModel, State
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -18,23 +19,36 @@ NO_RELAXATION_OPTION = ("Structure as is", "none")
 
 
 class ConfigurationStepModel(
-    QeConfirmableWizardStepModel,
-    HasModels[ConfigurationSettingsModel],
+    ConfirmableDependentWizardStepModel,
+    HasModels[PanelModel],
     HasInputStructure,
 ):
     identifier = "configuration"
 
-    relax_type_help = tl.Unicode()
-    relax_type_options = tl.List([NO_RELAXATION_OPTION])
+    relax_type_help = tl.Unicode("""
+        <div style="display: flex; margin: 4px 2px">
+            Loading help text
+            <i class="fa fa-spinner fa-spin fa-2x fa-fw"></i>
+        </div>
+    """)
+    relax_type_options = tl.List(default_value=[NO_RELAXATION_OPTION])
     relax_type = tl.Unicode(NO_RELAXATION_OPTION[-1], allow_none=True)
+
+    loaded_from_process = tl.Bool(False)
+
+    _dependencies = [
+        "structure_uuid",
+    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._plugin_loader: t.Callable[[], None] | None = None
 
         self._default_models = {
             "workchain",
             "advanced",
         }
+        self.incompatible_plugins: set[str] = set()
 
         self.relax_type_help_template = """
             <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
@@ -49,7 +63,18 @@ class ConfigurationStepModel(
             </div>
         """
 
-    def update(self):
+    def register_plugin_loader(self, plugin_loader: t.Callable[[], None]) -> None:
+        self._plugin_loader = plugin_loader
+
+    def get_model(self, identifier: str):
+        if not self.has_model(identifier.split(".", 1)[0]) and self._plugin_loader:
+            self._plugin_loader()
+        return super().get_model(identifier)
+
+    def _update(self, specific=""):
+        self.update_relaxation_options()
+
+    def update_relaxation_options(self):
         if self.has_pbc:
             relax_type_help = self.relax_type_help_template.format(
                 option_count="three",
@@ -86,44 +111,57 @@ class ConfigurationStepModel(
             "relax_type": relax_type,
         }
 
-        self.relax_type_help = self._get_default_relax_type_help()
-        self.relax_type_options = self._get_default_relax_type_options()
+        self.relax_type_help = self._get_default("relax_type_help")
+        self.relax_type_options = self._get_default("relax_type_options")
         self.relax_type = self._get_default_relax_type()
 
-    def get_model_state(self):
-        parameters = {
+    def get_model_state(self) -> dict:
+        state = {
             identifier: model.get_model_state()
             for identifier, model in self.get_models()
             if model.include
         }
-        parameters["workchain"] |= {
+        state["workchain"] |= {
             "relax_type": self.relax_type,
             "properties": self._get_properties(),
         }
-        return parameters
+        return state
 
-    def set_model_state(self, parameters):
-        with self.hold_trait_notifications():
-            workchain_parameters: dict = parameters.get("workchain", {})
-            self.relax_type = workchain_parameters.get("relax_type")
-            properties = set(workchain_parameters.get("properties", []))
-            for identifier, model in self.get_models():
-                model.include = identifier in self._default_models | properties
-                if parameters.get(identifier):
-                    model.set_model_state(parameters[identifier])
-                    model.loaded_from_process = True
+    def set_model_state(self, state: dict):
+        if self._plugin_loader:
+            self._plugin_loader()
+
+        workchain_parameters: dict = state.get("workchain", {})
+        self.relax_type = workchain_parameters.get("relax_type")
+        properties = set(workchain_parameters.get("properties", []))
+        for identifier, model in self.get_models():
+            model.include = identifier in self._default_models | (
+                properties - self.incompatible_plugins
+            )
+            if state.get(identifier):
+                model.set_model_state(state[identifier])
+
+    def update_state(self):
+        if self.confirmed:
+            self.state = State.SUCCESS
+        elif self.is_blocked:
+            self.state = State.BLOCKED
+        elif self.is_previous_step_successful and self.has_all_dependencies:
+            self.state = State.CONFIGURED
+        else:
+            self.state = State.INIT
 
     def reset(self):
         self.confirmed = False
-        self.relax_type_help = self._get_default_relax_type_help()
-        self.relax_type_options = self._get_default_relax_type_options()
+        self.relax_type_help = self._get_default("relax_type_help")
+        self.relax_type_options = self._get_default("relax_type_options")
         self.relax_type = self._get_default_relax_type()
         for identifier, model in self.get_models():
             if identifier not in self._default_models:
                 model.include = False
 
-    def _link_model(self, model: ConfigurationSettingsModel):
-        ipw.link(
+    def _link_model(self, model: PanelModel):
+        tl.link(
             (self, "confirmed"),
             (model, "confirmed"),
         )
@@ -134,23 +172,21 @@ class ConfigurationStepModel(
         for identifier, model in self.get_models():
             if identifier in self._default_models:
                 continue
-            if model.include:
+            if model.include and identifier not in self.incompatible_plugins:
                 properties.append(identifier)
         if RelaxType(self.relax_type) is not RelaxType.NONE or not properties:
             properties.append("relax")
         return properties
 
-    def _get_default_relax_type_help(self):
-        return self._defaults.get("relax_type_help", "")
-
-    def _get_default_relax_type_options(self):
-        return self._defaults.get("relax_type_options", [NO_RELAXATION_OPTION])
-
     def _get_default_relax_type(self):
-        options = self._get_default_relax_type_options()
-        relax_type = self._defaults.get("relax_type", NO_RELAXATION_OPTION[-1])
+        options = self._get_default("relax_type_options")
+        relax_type = self._get_default("relax_type")
         return (
             relax_type
             if relax_type in [option[1] for option in options]
             else options[-1][-1]
         )
+
+    def _check_blockers(self):
+        if not self.has_structure:
+            yield "No selected input structure"

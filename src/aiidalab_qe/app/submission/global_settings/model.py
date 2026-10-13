@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import typing as t
+
+import numpy as np
 import traitlets as tl
 
 from aiida import orm
@@ -18,13 +21,6 @@ class GlobalResourceSettingsModel(
     title = "Global resources"
     identifier = "global"
 
-    dependencies = [
-        "input_structure",
-        "input_parameters",
-    ]
-
-    input_parameters = tl.Dict()
-
     plugin_overrides = tl.List(tl.Unicode())
     plugin_overrides_notification = tl.Unicode("")
 
@@ -32,6 +28,9 @@ class GlobalResourceSettingsModel(
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._resource_loader: t.Callable[[], None] | None = None
+        self.dependencies.append("structure_uuid")
+        self.conditions = {}
 
         self._RUN_ON_LOCALHOST_NUM_SITES_WARN_THRESHOLD = 10
         self._RUN_ON_LOCALHOST_VOLUME_WARN_THRESHOLD = 1000  # \AA^3
@@ -47,18 +46,36 @@ class GlobalResourceSettingsModel(
 
         self.plugin_mapping: dict[str, list[str]] = {}
 
+    def register_resource_loader(self, resource_loader: t.Callable[[], None]) -> None:
+        self._resource_loader = resource_loader
+
+    def get_model(self, identifier: str):
+        if not self.has_model(identifier.split(".", 1)[0]) and self._resource_loader:
+            self._resource_loader()
+        return super().get_model(identifier)
+
     def update_global_codes(self):
         self.global_codes = self.get_model_state()["codes"]
 
     def update_active_codes(self):
+        """Toggle code selectors conditional on plugin activity and required parameters.
+
+        For a given code (e.g., pw), if at least one active plugin requires it (if any condition
+        registered for the code is met), we activate it.
+        """
         for identifier, code_model in self.get_models():
             if identifier != "quantumespresso__pw":
                 code_model.deactivate()
         properties = self._get_properties()
-        for identifier, code_names in self.plugin_mapping.items():
+        for identifier, global_model_keys in self.plugin_mapping.items():
             if identifier in properties:
-                for code_name in code_names:
-                    self.get_model(code_name).activate()
+                for model_key in global_model_keys:
+                    code_model = self.get_model(model_key)
+                    if any(
+                        condition(self.input_parameters)
+                        for condition in self._get_active_conditions(model_key)
+                    ):
+                        code_model.activate()
 
     def update_plugin_overrides_notification(self):
         if self.plugin_overrides:
@@ -82,13 +99,16 @@ class GlobalResourceSettingsModel(
         code_model: CodeModel,
     ) -> CodeModel | None:
         """Registers a code with this model."""
-        base_code_model = None
         default_calc_job_plugin = code_model.default_calc_job_plugin
         name = default_calc_job_plugin.split(".")[-1]
         # "." in the model key means nested models
         model_key = default_calc_job_plugin.replace(".", "__")
 
-        if not self.has_model(default_calc_job_plugin):
+        if model_key not in self.conditions:
+            self.conditions[model_key] = {}
+        self.conditions[model_key][identifier] = code_model.check_condition
+
+        if not self.has_model(model_key):
             if default_calc_job_plugin == "quantumespresso.pw":
                 base_code_model = PwCodeModel(
                     name=name,
@@ -101,6 +121,7 @@ class GlobalResourceSettingsModel(
                     name=name,
                     description=name,
                     default_calc_job_plugin=default_calc_job_plugin,
+                    condition=code_model.check_condition,
                 )
             self.add_model(model_key, base_code_model)
 
@@ -109,7 +130,7 @@ class GlobalResourceSettingsModel(
         else:
             self.plugin_mapping[identifier].append(model_key)
 
-        return base_code_model
+        return self.get_model(model_key)
 
     def check_resources(self):
         if not self.has_model("quantumespresso__pw"):
@@ -125,7 +146,7 @@ class GlobalResourceSettingsModel(
         on_localhost = (
             orm.load_node(pw_code_model.selected).computer.hostname == "localhost"
         )
-        num_sites = len(self.input_structure.sites)
+        num_sites = self.get_num_atoms()
         volume = self.input_structure.get_cell_volume()
 
         code = orm.load_node(pw_code_model.selected)
@@ -207,7 +228,19 @@ class GlobalResourceSettingsModel(
     def _get_properties(self) -> list[str]:
         return self.input_parameters.get("workchain", {}).get("properties", [])
 
+    def _get_active_conditions(self, model_key: str) -> list[callable]:
+        active_conditions = []
+        properties = self._get_properties()
+        if model_key in self.conditions:
+            for identifier, condition in self.conditions[model_key].items():
+                if identifier in properties:
+                    active_conditions.append(condition)
+        return active_conditions
+
     def _check_blockers(self):
+        if not self.input_parameters:
+            return
+
         warning_in_blockers = (
             """
              <b>Please note</b> that, if this blocker is shown for an already finished workflow,
@@ -215,7 +248,7 @@ class GlobalResourceSettingsModel(
             AiiDAlab user. This usually happens if the workflow has been imported from somewhere else (e.g. from
             the Download examples page).
             """
-            if self.loaded_from_process
+            if self.locked
             else ""
         )
 
@@ -234,16 +267,16 @@ class GlobalResourceSettingsModel(
             if identifier in properties:
                 for name in code_names:
                     code_model = self.get_model(name)
-                    if not code_model.is_ready:
+                    if code_model.is_active and code_model.selected is None:
                         blocker = True
                         yield message.format(
-                            property=name,
+                            property=identifier,
                             code=code_model.description,
                         )
 
         # in the test, we need to consider one more blocker,
         # even if empty:
-        if blocker:
+        if blocker and warning_in_blockers:
             yield (warning_in_blockers)
 
         # Check if the QEAppComputationalResourcesWidget is used
@@ -252,7 +285,8 @@ class GlobalResourceSettingsModel(
             if not code_model.is_ready:
                 continue
             if not issubclass(
-                code_model.code_widget_class, QEAppComputationalResourcesWidget
+                code_model.code_widget_class,
+                QEAppComputationalResourcesWidget,
             ):
                 yield (
                     f"Error: hi, plugin developer, please use the QEAppComputationalResourcesWidget from aiidalab_qe.common.widgets for code {identifier}."
@@ -306,8 +340,6 @@ class GlobalResourceSettingsModel(
         `int`
             The estimated minimum number of CPUs required.
         """
-        import numpy as np
-
         return int(
             np.ceil(
                 num_cpus0

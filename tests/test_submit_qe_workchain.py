@@ -1,4 +1,15 @@
-from aiidalab_qe.app.wizard_app import WizardApp
+import typing as t
+
+from aiidalab_qe.app.submission.global_settings import GlobalResourceSettingsModel
+from aiidalab_qe.app.wizard import QeWizard
+from aiidalab_qe.utils import shallow_copy_nested_dict
+
+
+def assert_builder_is_valid(builder):
+    validation_error = builder.process_class.spec().inputs.validate(
+        builder._inputs(prune=True)
+    )
+    assert validation_error is None, validation_error
 
 
 def test_create_builder_default(
@@ -10,10 +21,25 @@ def test_create_builder_default(
     metal, non-magnetic
     """
 
-    app: WizardApp = submit_app_generator(properties=["bands", "pdos"])
+    app: QeWizard = submit_app_generator(properties=["bands", "pdos"])
 
-    parameters = app.submit_model.get_model_state()
-    app.submit_model._create_builder(parameters)
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
+
+    restart_workchains = [
+        builder.relax.base_relax,
+        builder.bands.bands.scf,
+        builder.bands.bands.bands,
+        builder.pdos.scf,
+        builder.pdos.nscf,
+    ]
+    for workchain in restart_workchains:
+        assert workchain.on_unhandled_failure.value == "pause"
+        assert workchain.pause_on_max_iterations.value is True
+
+    assert_builder_is_valid(builder)
+
     # since uuid is specific to each run, we remove it from the output
     ui_parameters = remove_uuid_fields(parameters)
     remove_code_options(ui_parameters)
@@ -21,31 +47,74 @@ def test_create_builder_default(
     # this parameters are passed to the workchain
     data_regression.check(ui_parameters)
     # test if create builder successfully
-    # app.submit_model._create_builder(ui_parameters)  # TODO what are we doing here?
+    # app.submission_model._create_builder(ui_parameters)  # TODO what are we doing here?
     # In the future, we will check the builder parameters using regresion test
+
+
+def test_create_builder_scf_only(submit_app_generator):
+    """Test that the no-relaxation mode runs exactly one SCF."""
+
+    app: QeWizard = submit_app_generator(relax_type="none")
+
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
+
+    assert "base_init_relax" not in builder.relax
+    assert builder.relax.base_relax.pw.parameters["CONTROL"]["calculation"] == "scf"
+
+
+def test_create_builder_propagates_failure_policy(submit_app_generator):
+    app: QeWizard = submit_app_generator(properties=["bands", "pdos"])
+
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters["advanced"]["on_unhandled_failure"] = "abort"
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
+
+    assert builder.on_unhandled_failure.value == "abort"
+    assert builder.bands.bands.scf.on_unhandled_failure.value == "abort"
+    assert builder.pdos.scf.on_unhandled_failure.value == "abort"
+
+
+def test_create_builder_fat_bands(submit_app_generator):
+    """Test that failure-policy defaults do not activate the normal bands branch."""
+
+    app: QeWizard = submit_app_generator(
+        relax_type="none",
+        properties=["bands"],
+        projwfc_bands=True,
+    )
+
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
+
+    assert builder.bands.bands_projwfc.scf.pw.parameters
+    assert_builder_is_valid(builder)
 
 
 def test_create_process_label(submit_app_generator):
     """Test the creation of the correct process label."""
-    app: WizardApp = submit_app_generator(properties=["bands", "pdos"])
-    app.submit_model.update_process_label()
+    app: QeWizard = submit_app_generator(properties=["bands", "pdos"])
+    app.submission_model.update_process_label()
 
     assert (
-        app.submit_model.process_label
+        app.submission_model.process_label
         == "Si2 [relax: atoms+cell, balanced protocol] → bands, pdos"
     )
     # suppose we change the label of the structure:
-    app.submit_model.input_structure.label = "Si2, unit cell"
-    app.submit_model.update_process_label()
+    app.submission_model.input_structure.label = "Si2, unit cell"
+    app.submission_model.update_process_label()
     assert (
-        app.submit_model.process_label
+        app.submission_model.process_label
         == "Si2, unit cell [relax: atoms+cell, balanced protocol] → bands, pdos"
     )
     # suppose by mistake we provide an empty label, we then fallback to use the formula:
-    app.submit_model.input_structure.label = ""
-    app.submit_model.update_process_label()
+    app.submission_model.input_structure.label = ""
+    app.submission_model.update_process_label()
     assert (
-        app.submit_model.process_label
+        app.submission_model.process_label
         == "Si2 [relax: atoms+cell, balanced protocol] → bands, pdos"
     )
 
@@ -58,11 +127,12 @@ def test_create_builder_insulator(
     insulator, non-magnetic, no smearing
     the occupation type is set to fixed, smearing and degauss should not be set"""
 
-    app: WizardApp = submit_app_generator(
+    app: QeWizard = submit_app_generator(
         electronic_type="insulator", properties=["bands", "pdos"]
     )
-    parameters = app.submit_model.get_model_state()
-    builder = app.submit_model._create_builder(parameters)
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
 
     # check and validate the builder
     got = builder_to_readable_dict(builder)
@@ -88,7 +158,7 @@ def test_create_builder_advanced_settings(
     -properties: bands, pdos
     """
 
-    app: WizardApp = submit_app_generator(
+    app: QeWizard = submit_app_generator(
         electronic_type="metal",
         spin_type="collinear",
         tot_charge=1.0,
@@ -97,15 +167,26 @@ def test_create_builder_advanced_settings(
         electron_maxstep=100,
         properties=["bands", "pdos"],
     )
-    parameters = app.submit_model.get_model_state()
-    builder = app.submit_model._create_builder(parameters)
+    parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+    parameters |= {"codes": app.submission_model.get_model_state()}
+    builder = app.submission_model._create_builder(parameters)
+
+    # check if the AiiDA nodes are passed to the plugins instead of copied, take psuedos as an example
+    assert (
+        builder.relax.base_relax.pw.pseudos["Si"].uuid
+        == builder.bands.bands.scf.pw.pseudos["Si"].uuid
+    )
+    assert (
+        builder.relax.base_relax.pw.pseudos["Si"].uuid
+        == builder.pdos.scf.pw.pseudos["Si"].uuid
+    )
 
     # check and validate the builder
     got = builder_to_readable_dict(builder)
 
     # test tot_charge is updated in the three steps
     for parameters in [
-        got["relax"]["base"],
+        got["relax"]["base_relax"],
         got["bands"]["bands"]["scf"],
         got["pdos"]["scf"],
         got["pdos"]["nscf"],
@@ -117,9 +198,9 @@ def test_create_builder_advanced_settings(
 
     # test initial_magnetic_moments set 'starting_magnetization' in pw.in
     assert (
-        got["relax"]["base"]["pw"]["parameters"]["SYSTEM"]["starting_magnetization"][
-            "Si"
-        ]
+        got["relax"]["base_relax"]["pw"]["parameters"]["SYSTEM"][
+            "starting_magnetization"
+        ]["Si"]
         == 0.025
     )
 
@@ -143,9 +224,12 @@ def test_warning_messages(
         "avoid_overloading": "Reduce the number of CPUs to avoid the overloading of the local machine",
     }
 
-    app: WizardApp = submit_app_generator(properties=["bands", "pdos"])
-    submit_model = app.submit_model
-    global_model = submit_model.get_model("global")
+    app: QeWizard = submit_app_generator(properties=["bands", "pdos"])
+    submission_model = app.submission_model
+    global_model = t.cast(
+        GlobalResourceSettingsModel,
+        submission_model.get_model("global"),
+    )
 
     pw_code = global_model.get_model("quantumespresso__pw")
 
@@ -153,11 +237,11 @@ def test_warning_messages(
     pw_code.num_cpus = len(os.sched_getaffinity(0))
     global_model.check_resources()
     for suggestion in ["avoid_overloading", "go_remote"]:
-        assert suggestions[suggestion] in submit_model.warning_messages
+        assert suggestions[suggestion] in submission_model.warning_messages
 
     # now we use a large structure, so we should have the Warning-1 (and 2 if not on localhost)
     structure = generate_structure_data("H2O-larger")
-    submit_model.input_structure = structure
+    submission_model.structure_uuid = structure.uuid
     pw_code.num_cpus = 1
     global_model.check_resources()
     num_sites = len(structure.sites)
@@ -165,7 +249,7 @@ def test_warning_messages(
     estimated_CPUs = global_model._estimate_min_cpus(num_sites, volume)
     assert estimated_CPUs == 2
     for suggestion in ["more_resources", "change_configuration"]:
-        assert suggestions[suggestion] in submit_model.warning_messages
+        assert suggestions[suggestion] in submission_model.warning_messages
 
 
 def builder_to_readable_dict(builder):

@@ -172,45 +172,32 @@ def generate_kpath_2d(structure, kpoints_distance, kpath_2d):
     return kpoints
 
 
-def determine_symmetry_path(structure):
-    # Tolerance for checking equality
-    cell_lengths = structure.cell_lengths
-    cell_angles = structure.cell_angles
-    tolerance = 1e-3
+def determine_symmetry_path(structure, tol=1e-3):
+    a, b, _ = structure.cell_lengths
+    _, _, gamma = structure.cell_angles
 
-    # Define symmetry conditions and their corresponding types in a dictionary
-    symmetry_conditions = {
-        (
-            math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance)
-            and math.isclose(cell_angles[2], 120.0, abs_tol=tolerance)
-        ): "hexagonal",
-        (
-            math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance)
-            and math.isclose(cell_angles[2], 90.0, abs_tol=tolerance)
-        ): "square",
-        (
-            not math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance)
-            and math.isclose(cell_angles[2], 90.0, abs_tol=tolerance)
-        ): "rectangular",
-        (
-            math.isclose(
-                cell_lengths[1] * math.cos(math.radians(cell_angles[2])),
-                cell_lengths[0] / 2,
-                abs_tol=tolerance,
-            )
-        ): "rectangular_centered",
-        (
-            not math.isclose(cell_lengths[0], cell_lengths[1], abs_tol=tolerance)
-            and not math.isclose(cell_angles[2], 90.0, abs_tol=tolerance)
-        ): "oblique",
-    }
+    # hexagonal (triangular): a = b, gamma = 120
+    if math.isclose(a, b, abs_tol=tol) and math.isclose(gamma, 120.0, abs_tol=tol):
+        return "hexagonal"
 
-    # Check for symmetry type based on conditions
-    for condition, symmetry_type in symmetry_conditions.items():
-        if condition:
-            return symmetry_type
+    # square: a = b, gamma = 90
+    if math.isclose(a, b, abs_tol=tol) and math.isclose(gamma, 90.0, abs_tol=tol):
+        return "square"
 
-    raise ValueError("Invalid symmetry type")
+    # centered rectangular: b*cos(gamma) = a/2
+    if math.isclose(
+        b * math.cos(math.radians(gamma)),
+        a / 2.0,
+        abs_tol=tol,
+    ):
+        return "rectangular_centered"
+
+    # simple rectangular: a != b, gamma = 90
+    if (not math.isclose(a, b, abs_tol=tol)) and math.isclose(gamma, 90.0, abs_tol=tol):
+        return "rectangular"
+
+    # everything else is oblique
+    return "oblique"
 
 
 class BandsWorkChain(WorkChain):
@@ -226,7 +213,7 @@ class BandsWorkChain(WorkChain):
         spec.expose_inputs(
             PwBandsWorkChain,
             namespace="bands",
-            exclude=["structure", "relax"],
+            exclude=["structure"],
             namespace_options={
                 "required": False,
                 "populate_defaults": False,
@@ -236,7 +223,7 @@ class BandsWorkChain(WorkChain):
         spec.expose_inputs(
             ProjwfcBandsWorkChain,
             namespace="bands_projwfc",
-            exclude=["structure", "relax"],
+            exclude=["structure"],
             namespace_options={
                 "required": False,
                 "populate_defaults": False,
@@ -290,16 +277,23 @@ class BandsWorkChain(WorkChain):
 
         builder = cls.get_builder()
 
+        # Update protocol names, This should be removed once ProjwfcBandsWorkChain is updated.
+        protocol_map = {"balanced": "moderate", "stringent": "precise"}
+        protocol = protocol_map.get(protocol, protocol)
+
         if simulation_mode == "normal":
             builder_bands = PwBandsWorkChain.get_builder_from_protocol(
                 pw_code, structure, protocol, overrides=overrides, **kwargs
             )
             builder.pop("bands_projwfc", None)
-            builder_bands.pop("relax", None)
             builder_bands.pop("structure", None)
             builder.bands = builder_bands
 
         elif simulation_mode == "fat_bands":
+            if projwfc_code is None:
+                raise ValueError(
+                    "projwfc_code must be provided for fat bands simulation mode"
+                )
             builder_bands_projwfc = ProjwfcBandsWorkChain.get_builder_from_protocol(
                 pw_code,
                 projwfc_code,
@@ -309,7 +303,6 @@ class BandsWorkChain(WorkChain):
                 **kwargs,
             )
             builder.pop("bands", None)
-            builder_bands_projwfc.pop("relax", None)
             builder_bands_projwfc.pop("structure", None)
             builder.bands_projwfc = builder_bands_projwfc
 

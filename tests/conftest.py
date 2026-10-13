@@ -1,16 +1,36 @@
 from __future__ import annotations
 
 import io
-import pathlib
-import tempfile
+import typing as t
 
+import numpy as np
 import pytest
+from aiida_pseudo.data.pseudo import UpfData
+from aiida_pseudo.groups.family import PseudoDojoFamily, SsspFamily
 
-from aiida import orm
-from aiidalab_qe.app.wizard_app import WizardApp
+from aiida import engine, orm
+from aiida.engine.utils import instantiate_process
+from aiida.manage.manager import get_manager
+from aiida.orm.utils.serialize import serialize
+from aiida.plugins import DataFactory, OrbitalFactory
+from aiida_quantumespresso.workflows.pdos import PdosWorkChain
+from aiidalab_qe.app.configuration.advanced import (
+    AdvancedConfigurationSettingsModel,
+    ConvergenceConfigurationSettingsModel,
+    GeneralConfigurationSettingsModel,
+    MagnetizationConfigurationSettingsModel,
+    PseudosConfigurationSettingsModel,
+    SmearingConfigurationSettingsModel,
+)
+from aiidalab_qe.app.configuration.basic import BasicConfigurationSettingsModel
+from aiidalab_qe.app.wizard import QeWizard, QeWizardModel
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
+from aiidalab_qe.utils import shallow_copy_nested_dict
+from aiidalab_qe.workflows import QeAppWorkChain
 
-pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
+pytest_plugins = ["aiida.tools.pytest_fixtures"]
 
 ELEMENTS = [
     "H",
@@ -20,7 +40,16 @@ ELEMENTS = [
     "Si",
     "Co",
     "Mo",
+    "Ni",
 ]
+
+CUTOFFS = {
+    element: {
+        "cutoff_wfc": 30.0,
+        "cutoff_rho": 240.0,
+    }
+    for element in ELEMENTS
+}
 
 
 def pytest_addoption(parser):
@@ -51,32 +80,10 @@ def fixture_localhost(aiida_localhost):
 
 
 @pytest.fixture
-def fixture_code(fixture_localhost):
-    """Return an ``InstalledCode`` instance configured to run calculations of given entry point on localhost."""
-
-    def _fixture_code(entry_point_name):
-        from aiida.orm import InstalledCode, load_code
-
-        label = f"test.{entry_point_name}"
-
-        try:
-            return load_code(label=label)
-        except Exception:
-            return InstalledCode(
-                label=label,
-                computer=fixture_localhost,
-                filepath_executable="/bin/true",
-                default_calc_job_plugin=entry_point_name,
-            )
-
-    return _fixture_code
-
-
-@pytest.fixture
 def generate_structure_data():
     """generate a `StructureData` object."""
 
-    def _generate_structure_data(name="silicon", pbc=(True, True, True)):
+    def _generate_structure_data(name="silicon", pbc=(True, True, True), store=True):
         if name == "silicon":
             structure = orm.StructureData(
                 cell=[
@@ -87,6 +94,7 @@ def generate_structure_data():
             )
             structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Si")
             structure.append_atom(position=(1.923685, 1.110640, 0.785341), symbols="Si")
+
         elif name == "silica":
             structure = orm.StructureData(
                 cell=[
@@ -142,7 +150,16 @@ def generate_structure_data():
             structure.append_atom(position=(0.0, 0.0, 1.0), symbols="O")
             structure.append_atom(position=(0.0, 1.0, 0.0), symbols="H")
 
+        elif name == "CeO":
+            cell = [[3.04, 0.0, 1.76], [1.01, 2.87, 1.76], [0.0, 0.0, 3.51]]
+            structure = orm.StructureData(cell=cell)
+            structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Ce")
+            structure.append_atom(position=(3.51, 2.03, 1.43), symbols="O")
+
         structure.pbc = pbc
+
+        if store:
+            structure.store()
 
         return structure
 
@@ -157,12 +174,10 @@ def generate_xy_data():
         """Return an ``XyData`` node.
         xvals and yvals are lists, and should have the same length.
         """
-        from aiida.orm import XyData
-
         xunits = "n/a"
         yunits = ["n/a"] * len(ylabel)
 
-        xy_node = XyData()
+        xy_node = orm.XyData()
         xy_node.set_x(xvals, xlabel, xunits)
         xy_node.set_y(yvals, ylabel, yunits)
         xy_node.store()
@@ -177,10 +192,6 @@ def generate_bands_data():
 
     def _generate_bands_data():
         """Return a `BandsData` instance with some basic `kpoints` and `bands` arrays."""
-        import numpy as np
-
-        from aiida.plugins import DataFactory
-
         BandsData = DataFactory("core.array.bands")
 
         kpoints = np.array([[0.0, 0.0, 0.0]])
@@ -201,10 +212,6 @@ def generate_projection_data(generate_bands_data):
 
     def _generate_projection_data():
         """Return an ``ProjectionData`` node."""
-        import numpy as np
-
-        from aiida.plugins import DataFactory, OrbitalFactory
-
         ProjectionData = DataFactory("core.array.projection")
         OrbitalCls = OrbitalFactory("core.realhydrogen")
 
@@ -234,92 +241,34 @@ def generate_projection_data(generate_bands_data):
     return _generate_projection_data
 
 
-@pytest.fixture(scope="session", autouse=True)
-def sssp(generate_upf_data_for_session):
-    """Create SSSP pseudopotentials from scratch."""
-    from aiida_pseudo.groups.family import SsspFamily
+def _generate_upf_data(element, filename=None, params=None):
+    """Return `UpfData` node.
 
-    cutoffs = {}
-    stringency = "standard"
+    NOTE: `params` is used to render the generated UPF unique per pseudo
+    """
+    extras = "\n\t\t".join(f'{key}="{value}"' for key, value in (params or {}).items())
+    content = f"""
+        <UPF version="2.0.1">
+            <PP_HEADER
+                element="{element}"
+                z_valence="4.0"
+                {extras}
+            />
+        </UPF>
+    """
+    stream = io.BytesIO(content.encode("utf-8"))
 
-    with tempfile.TemporaryDirectory() as d:
-        dirpath = pathlib.Path(d)
+    filename = element
+    if params:
+        filename += f"_{'_'.join(params.values())}"
+    filename += ".upf"
 
-        for element in ELEMENTS:
-            upf = generate_upf_data_for_session(element)
-            filename = dirpath / f"{element}.upf"
-
-            with open(filename, "w+b") as handle:
-                with upf.open(mode="rb") as source:
-                    handle.write(source.read())
-                    handle.flush()
-
-            cutoffs[element] = {
-                "cutoff_wfc": 30.0,
-                "cutoff_rho": 240.0,
-            }
-
-        for functional in ("PBE", "PBEsol"):
-            for accuracy in ("efficiency", "precision"):
-                label = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
-                family = SsspFamily.create_from_folder(dirpath, label)
-                family.set_cutoffs(cutoffs, stringency, unit="Ry")
-
-
-@pytest.fixture(scope="session", autouse=True)
-def pseudodojo(generate_upf_data_for_session):
-    """Create pseudodojo pseudopotentials from scratch."""
-    from aiida_pseudo.data.pseudo import UpfData
-    from aiida_pseudo.groups.family import PseudoDojoFamily
-
-    cutoffs = {}
-
-    with tempfile.TemporaryDirectory() as d:
-        dirpath = pathlib.Path(d)
-
-        for element in ELEMENTS:
-            upf = generate_upf_data_for_session(element)
-            filename = dirpath / f"{element}.upf"
-
-            with open(filename, "w+b") as handle:
-                with upf.open(mode="rb") as source:
-                    handle.write(source.read())
-                    handle.flush()
-
-            cutoffs[element] = {
-                "cutoff_wfc": 36.0,
-                "cutoff_rho": 144.0,
-            }
-
-        ROOT = f"PseudoDojo/{PSEUDODOJO_VERSION}"
-        for stringency in ("standard", "stringent"):
-            for functional in ("PBE", "PBEsol"):
-                for spin_orbit in ("SR", "FR"):
-                    label = f"{ROOT}/{functional}/{spin_orbit}/{stringency}/upf"
-                    family = PseudoDojoFamily.create_from_folder(
-                        dirpath,
-                        label,
-                        pseudo_type=UpfData,
-                    )
-                    family.set_cutoffs(cutoffs, stringency, unit="Ry")
+    return UpfData(stream, filename=filename)
 
 
 @pytest.fixture(scope="function")
 def generate_upf_data():
     """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
-
-    def _generate_upf_data(element, filename=None):
-        """Return `UpfData` node."""
-        from aiida_pseudo.data.pseudo import UpfData
-
-        content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="4.0"\n/></UPF>\n'
-        stream = io.BytesIO(content.encode("utf-8"))
-
-        if filename is None:
-            filename = f"{element}.upf"
-
-        return UpfData(stream, filename=filename)
-
     return _generate_upf_data
 
 
@@ -329,127 +278,112 @@ def generate_upf_data_for_session():
 
     NOTE: Duplicated fixture for use in the session-scoped pseudos fixtures
     """
-
-    def _generate_upf_data(element, filename=None):
-        """Return `UpfData` node."""
-        from aiida_pseudo.data.pseudo import UpfData
-
-        content = f'<UPF version="2.0.1"><PP_HEADER\nelement="{element}"\nz_valence="4.0"\n/></UPF>\n'
-        stream = io.BytesIO(content.encode("utf-8"))
-
-        if filename is None:
-            filename = f"{element}.upf"
-
-        return UpfData(stream, filename=filename)
-
     return _generate_upf_data
 
 
-@pytest.fixture
-def pw_code(aiida_local_code_factory):
-    """Return a `Code` configured for the pw.x executable."""
+@pytest.fixture(scope="session", autouse=True)
+def sssp(generate_upf_data_for_session):
+    """Create SSSP pseudopotentials from scratch."""
 
-    return aiida_local_code_factory(
-        label="pw", executable="bash", entry_point="quantumespresso.pw"
-    )
-
-
-@pytest.fixture
-def dos_code(aiida_local_code_factory):
-    """Return a `Code` configured for the dos.x executable."""
-    return aiida_local_code_factory(
-        label="dos", executable="bash", entry_point="quantumespresso.dos"
-    )
-
-
-@pytest.fixture
-def projwfc_code(aiida_local_code_factory):
-    """Return a `Code` configured for the projwfc.x executable."""
-    return aiida_local_code_factory(
-        label="projwfc",
-        executable="bash",
-        entry_point="quantumespresso.projwfc",
-    )
+    for functional in ("PBE", "PBEsol"):
+        for accuracy in ("efficiency", "precision"):
+            label = f"SSSP/{SSSP_VERSION}/{functional}/{accuracy}"
+            family = SsspFamily(label)
+            family.store()
+            nodes = []
+            for element in ELEMENTS:
+                params = {
+                    "functional": functional,
+                    "accuracy": accuracy,
+                }
+                filename = f"{element}_{'_'.join(params.values())}.upf"
+                upf = generate_upf_data_for_session(element, filename, params)
+                upf.store()
+                upf.base.extras.set("functional", functional)
+                nodes.append(upf)
+            family.add_nodes(nodes)
+            family.set_cutoffs(CUTOFFS, accuracy, unit="Ry")
 
 
-@pytest.fixture
-def projwfc_bands_code(aiida_local_code_factory):
-    """Return a `Code` configured for the projwfc.x executable."""
-    return aiida_local_code_factory(
-        label="projwfc_bands",
-        executable="bash",
-        entry_point="quantumespresso.projwfc",
-    )
+@pytest.fixture(scope="session", autouse=True)
+def pseudodojo(generate_upf_data_for_session):
+    """Create pseudodojo pseudopotentials from scratch."""
 
-
-@pytest.fixture()
-def workchain_settings_generator():
-    """Return a function that generates a workchain settings dictionary."""
-    from aiidalab_qe.app.configuration.basic import (
-        BasicConfigurationSettingsModel,
-        BasicConfigurationSettingsPanel,
-    )
-
-    def _workchain_settings_generator(**kwargs):
-        model = BasicConfigurationSettingsModel()
-        workchain_settings = BasicConfigurationSettingsPanel(model=model)
-        workchain_settings._update_settings(**kwargs)
-        return workchain_settings
-
-    return _workchain_settings_generator
-
-
-@pytest.fixture()
-def smearing_settings_generator():
-    """Return a function that generates a smearing settings dictionary."""
-    from aiidalab_qe.app.configuration.advanced.smearing import (
-        SmearingConfigurationSettingsModel,
-        SmearingConfigurationSettingsPanel,
-    )
-
-    def _smearing_settings_generator(**kwargs):
-        model = SmearingConfigurationSettingsModel()
-        smearing_settings = SmearingConfigurationSettingsPanel(model=model)
-        smearing_settings.update_settings(**kwargs)
-        return smearing_settings
-
-    return _smearing_settings_generator
+    ROOT = f"PseudoDojo/{PSEUDODOJO_VERSION}"
+    for stringency in ("standard", "stringent"):
+        for functional in ("PBE", "PBEsol"):
+            for relativistic in ("SR", "FR"):
+                label = f"{ROOT}/{functional}/{relativistic}/{stringency}/upf"
+                family = PseudoDojoFamily(label)
+                family.store()
+                nodes = []
+                for element in ELEMENTS:
+                    params = {
+                        "functional": functional,
+                        "stringency": stringency,
+                        "relativistic": relativistic,
+                    }
+                    filename = f"{element}_{'_'.join(params.values())}.upf"
+                    upf = generate_upf_data_for_session(element, filename, params)
+                    upf.store()
+                    upf.base.extras.set("functional", functional)
+                    nodes.append(upf)
+                family.add_nodes(nodes)
+                family.set_cutoffs(CUTOFFS, stringency, unit="Ry")
 
 
 @pytest.fixture
-def app(pw_code, dos_code, projwfc_code, projwfc_bands_code):
-    app = WizardApp(auto_setup=False)
+def generate_code(aiida_code_installed):
+    def _generate_code(label):
+        return aiida_code_installed(
+            label=label,
+            default_calc_job_plugin=f"quantumespresso.{label}",
+        )
+
+    return _generate_code
+
+
+@pytest.fixture
+def pw_code(generate_code):
+    return generate_code("pw")
+
+
+@pytest.fixture
+def dos_code(generate_code):
+    return generate_code("dos")
+
+
+@pytest.fixture
+def projwfc_code(generate_code):
+    return generate_code("projwfc")
+
+
+@pytest.fixture
+def app(pw_code, dos_code, projwfc_code):
+    # Assign test codes as defaults
+    DEFAULTS = t.cast(dict, DEFAULT_PARAMETERS)
+    DEFAULTS["codes"]["pw"]["code"] = pw_code.full_label
+    DEFAULTS["codes"]["dos"]["code"] = dos_code.full_label
+    DEFAULTS["codes"]["projwfc"]["code"] = projwfc_code.full_label
+
+    model = QeWizardModel()
+    app = QeWizard(model=model, auto_setup=False)
 
     # Since we use `auto_setup=False`, which will skip the pseudo library
     # installation, we need to mock set the installation status to `True` to
     # avoid the blocker message pop up in the submission step.
     app.structure_model.installing_sssp = False
     app.structure_model.sssp_installed = True
-    app.submit_model.installing_qe = False
-    app.submit_model.qe_installed = True
-
-    # set up codes
-    global_model = app.submit_model.get_model("global")
-    global_model.get_model("quantumespresso__pw").activate()
-    global_model.get_model("quantumespresso__dos").activate()
-    global_model.get_model("quantumespresso__projwfc").activate()
-
-    global_model.set_selected_codes(
-        {
-            "pw": {"code": pw_code.label},
-            "dos": {"code": dos_code.label},
-            "projwfc": {"code": projwfc_code.label},
-        }
-    )
+    app.submission_model.installing_qe = False
+    app.submission_model.qe_installed = True
 
     yield app
 
+    app.results_model.process_uuid = None  # terminate monitor
+
 
 @pytest.fixture()
-def submit_app_generator(
-    app: WizardApp,
-    generate_structure_data,
-):
+def submit_app_generator(app: QeWizard, generate_structure_data):
     """Return a function that generates a submit step widget."""
 
     def _submit_app_generator(
@@ -465,9 +399,11 @@ def submit_app_generator(
         vdw_corr="none",
         initial_magnetic_moments=0.0,
         electron_maxstep=80,
+        projwfc_bands=False,
     ):
-        # Settings
-        app.configure_model.input_structure = generate_structure_data()
+        app.structure_model.structure_uuid = generate_structure_data().uuid
+        app.structure_model.confirm()
+
         parameters = {
             "workchain": {
                 "relax_type": relax_type,
@@ -477,33 +413,54 @@ def submit_app_generator(
                 "protocol": workchain_protocol,
             }
         }
-        app.configure_model.set_model_state(parameters)
+        app.configuration_model.set_model_state(parameters)
 
-        # Advanced settings
-        advanced_model = app.configure_model.get_model("advanced")
+        advanced_model = t.cast(
+            AdvancedConfigurationSettingsModel,
+            app.configuration_model.get_model("advanced"),
+        )
 
-        advanced_model.total_charge = tot_charge
-        advanced_model.van_der_waals = vdw_corr
-        advanced_model.kpoints_distance = kpoints_distance
-        advanced_model.electron_maxstep = electron_maxstep
+        general_model = t.cast(
+            GeneralConfigurationSettingsModel,
+            advanced_model.get_model("general"),
+        )
+        general_model.total_charge = tot_charge
+        general_model.van_der_waals = vdw_corr
+
+        convergence_model = t.cast(
+            ConvergenceConfigurationSettingsModel,
+            advanced_model.get_model("convergence"),
+        )
+        convergence_model.electron_maxstep = electron_maxstep
+        convergence_model.kpoints_distance = kpoints_distance
+
+        smearing_model = t.cast(
+            SmearingConfigurationSettingsModel,
+            advanced_model.get_model("smearing"),
+        )
+        smearing_model.type = smearing
+        smearing_model.degauss = degauss
+
         if isinstance(initial_magnetic_moments, (int, float)):
             initial_magnetic_moments = [initial_magnetic_moments]
-        advanced_model.get_model("magnetization").moments = dict(
+
+        magnetization_model = t.cast(
+            MagnetizationConfigurationSettingsModel,
+            advanced_model.get_model("magnetization"),
+        )
+        magnetization_model.moments = dict(
             zip(
-                app.configure_model.input_structure.get_kind_names(),
+                app.configuration_model.input_structure.get_kind_names(),
                 initial_magnetic_moments,
             )
         )
-        # mimic the behavior of the smearing widget set up
-        smearing_model = advanced_model.get_model("smearing")
-        smearing_model.type = smearing
-        smearing_model.degauss = degauss
-        app.configure_model.confirm()
 
-        app.submit_model.input_structure = generate_structure_data()
-        app.submit_model.get_model("global").get_model(
-            "quantumespresso__pw"
-        ).num_cpus = 2
+        app.configuration_model.get_model("bands").projwfc_bands = projwfc_bands
+
+        app.configuration_model.confirm()
+
+        global_resources_model = app.submission_model.get_model("global")
+        global_resources_model.get_model("quantumespresso__pw").num_cpus = 2
 
         return app
 
@@ -511,15 +468,15 @@ def submit_app_generator(
 
 
 @pytest.fixture
-def app_to_submit(app: WizardApp, generate_structure_data):
+def app_to_submit(app: QeWizard, generate_structure_data):
     # Step 1: select structure from example
-    app.structure_model.input_structure = generate_structure_data()
+    app.structure_model.structure_uuid = generate_structure_data().uuid
     app.structure_model.confirm()
     # Step 2: configure calculation
     # TODO do we need to include bands and pdos here?
-    app.configure_model.get_model("bands").include = True
-    app.configure_model.get_model("pdos").include = True
-    app.configure_model.confirm()
+    app.configuration_model.get_model("bands").include = True
+    app.configuration_model.get_model("pdos").include = True
+    app.configuration_model.confirm()
     yield app
 
 
@@ -534,9 +491,6 @@ def generate_workchain():
         :param inputs: inputs to be passed to process construction.
         :return: a `WorkChain` instance.
         """
-        from aiida.engine.utils import instantiate_process
-        from aiida.manage.manager import get_manager
-
         runner = get_manager().get_runner()
         process = instantiate_process(runner, process_class, **inputs)
 
@@ -548,7 +502,9 @@ def generate_workchain():
 @pytest.fixture
 def generate_pdos_workchain(
     fixture_localhost,
-    fixture_code,
+    pw_code,
+    dos_code,
+    projwfc_code,
     generate_xy_data,
     generate_projection_data,
     generate_workchain,
@@ -556,18 +512,12 @@ def generate_pdos_workchain(
     """Generate an instance of a `XpsWorkChain`."""
 
     def _generate_pdos_workchain(structure, spin_type="none"):
-        import numpy as np
-
-        from aiida import engine
-        from aiida.orm import Dict, FolderData, RemoteData
-        from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-
         pseudo_family = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
         inputs = {
-            "pw_code": fixture_code("quantumespresso.pw"),
-            "dos_code": fixture_code("quantumespresso.dos"),
-            "projwfc_code": fixture_code("quantumespresso.projwfc"),
+            "pw_code": pw_code,
+            "dos_code": dos_code,
+            "projwfc_code": projwfc_code,
             "structure": structure,
             "overrides": {
                 "scf": {
@@ -583,12 +533,12 @@ def generate_pdos_workchain(
         wkchain = generate_workchain(PdosWorkChain, inputs)
         wkchain.setup()
         # wkchain.run_pdos()
-        remote = RemoteData(remote_path="/tmp/aiida_run")
+        remote = orm.RemoteData(remote_path="/tmp/aiida_run")
         remote.computer = fixture_localhost
         remote.store()
-        retrieved = FolderData(tree="/tmp/aiida_run")
+        retrieved = orm.FolderData(tree="/tmp/aiida_run")
         retrieved.store()
-        output_parameters = Dict(dict={"fermi_energy": 2.0})
+        output_parameters = orm.Dict(dict={"fermi_energy": 2.0})
         output_parameters.store()
         proj = generate_projection_data()
         proj.store()
@@ -664,22 +614,19 @@ def generate_pdos_workchain(
 
 @pytest.fixture
 def generate_bands_workchain(
-    fixture_code,
+    pw_code,
+    projwfc_code,
     generate_bands_data,
     generate_workchain,
 ):
     """Generate an instance of a the WorkChain."""
 
     def _generate_bands_workchain(structure):
-        from aiida import engine
-        from aiida.orm import Dict
-        from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
-
         pseudo_family = f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
 
         inputs = {
-            "pw_code": fixture_code("quantumespresso.pw"),
-            "projwfc_code": fixture_code("quantumespresso.projwfc"),
+            "pw_code": pw_code,
+            "projwfc_code": projwfc_code,
             "structure": structure,
             "simulation_mode": "normal",
             "overrides": {
@@ -689,14 +636,6 @@ def generate_bands_workchain(
                 "bands": {
                     "pseudo_family": pseudo_family,
                 },
-                "relax": {
-                    "base": {
-                        "pseudo_family": pseudo_family,
-                    },
-                    "base_final_scf": {
-                        "pseudo_family": pseudo_family,
-                    },
-                },
             },
         }
         builder = BandsWorkChain.get_builder_from_protocol(**inputs)
@@ -704,7 +643,7 @@ def generate_bands_workchain(
         wkchain = generate_workchain(BandsWorkChain, inputs)
         wkchain.setup()
         # run bands and return the process
-        fermi_dict = Dict(dict={"fermi_energy": 2.0})
+        fermi_dict = orm.Dict(dict={"fermi_energy": 2.0})
         fermi_dict.store()
         output_parameters = {
             "bands": {
@@ -736,12 +675,12 @@ def generate_bands_workchain(
 
 @pytest.fixture
 def generate_qeapp_workchain(
-    app: WizardApp,
+    app: QeWizard,
+    projwfc_code,
     generate_structure_data,
     generate_workchain,
     generate_pdos_workchain,
     generate_bands_workchain,
-    fixture_code,
 ):
     """Generate an instance of the WorkChain."""
 
@@ -755,45 +694,44 @@ def generate_qeapp_workchain(
         magnetization_type="starting_magnetization",  # Options: "starting_magnetization", "tot_magnetization"
         initial_magnetic_moments=0.0,
         tot_magnetization=0.0,
+        functional="PBEsol",
     ):
-        from copy import deepcopy
-
-        from aiida.orm import Dict
-        from aiida.orm.utils.serialize import serialize
-        from aiidalab_qe.workflows import QeAppWorkChain
-
         # Step 1: select structure from example
         if structure is None:
             structure = generate_structure_data()
         else:
             structure.store()
-            # TODO is this necessary?
-            # aiida_database_wrapper = app.structure_step.manager.children[0].children[2]  # type: ignore
-            # aiida_database_wrapper.render()
-            # aiida_database = aiida_database_wrapper.children[0]  # type: ignore
-            # aiida_database.search()
-            # aiida_database.results.value = structure
 
-        app.structure_model.input_structure = structure
+        app.structure_model.structure_uuid = structure.uuid
         app.structure_model.confirm()
 
         # step 2 configure
-        workchain_model = app.configure_model.get_model("workchain")
-        advanced_model = app.configure_model.get_model("advanced")
+        basic_model = t.cast(
+            BasicConfigurationSettingsModel,
+            app.configuration_model.get_model("workchain"),
+        )
 
-        app.configure_model.relax_type = relax_type
+        app.configuration_model.relax_type = relax_type
 
         # In order to prepare complete inputs, I set all the properties to true
         # this can be overridden later
-        app.configure_model.get_model("bands").include = run_bands
-        app.configure_model.get_model("pdos").include = run_pdos
+        app.configuration_model.get_model("bands").include = run_bands
+        app.configuration_model.get_model("pdos").include = run_pdos
 
-        workchain_model.protocol = "fast"
-        workchain_model.spin_type = spin_type
-        workchain_model.electronic_type = electronic_type
+        basic_model.protocol = "fast"
+        basic_model.spin_type = spin_type
+        basic_model.electronic_type = electronic_type
+
+        advanced_model = t.cast(
+            AdvancedConfigurationSettingsModel,
+            app.configuration_model.get_model("advanced"),
+        )
 
         if spin_type == "collinear":
-            magnetization_model = advanced_model.get_model("magnetization")
+            magnetization_model = t.cast(
+                MagnetizationConfigurationSettingsModel,
+                advanced_model.get_model("magnetization"),
+            )
             if electronic_type == "insulator":
                 magnetization_model.total = tot_magnetization
             elif magnetization_type == "starting_magnetization":
@@ -808,25 +746,28 @@ def generate_qeapp_workchain(
             else:
                 magnetization_model.total = tot_magnetization
 
-        app.configure_model.confirm()
+        pseudos = t.cast(
+            PseudosConfigurationSettingsModel,
+            advanced_model.get_model("pseudos"),
+        )
+        pseudos.functional = functional
+
+        app.configuration_model.confirm()
 
         # step 3 setup code and resources
-        app.submit_model.get_model("global").get_model(
-            "quantumespresso__pw"
-        ).num_cpus = 4
-        parameters = app.submit_model.get_model_state()
-        builder = app.submit_model._create_builder(parameters)
+        global_resources_model = app.submission_model.get_model("global")
+        global_resources_model.get_model("quantumespresso__pw").num_cpus = 4
+        parameters = shallow_copy_nested_dict(app.submission_model.input_parameters)
+        parameters |= {"codes": app.submission_model.get_model_state()}
+        builder = app.submission_model._create_builder(parameters)
 
         inputs = builder._inputs()
-        if "relax" in inputs:
-            inputs["relax"]["base_final_scf"] = deepcopy(inputs["relax"]["base"])
-
         if run_bands:
             # Setting up inputs for bands_projwfc
-            inputs["bands"]["bands_projwfc"]["scf"]["pw"] = deepcopy(
+            inputs["bands"]["bands_projwfc"]["scf"]["pw"] = shallow_copy_nested_dict(
                 inputs["bands"]["bands"]["scf"]["pw"]
             )
-            inputs["bands"]["bands_projwfc"]["bands"]["pw"] = deepcopy(
+            inputs["bands"]["bands_projwfc"]["bands"]["pw"] = shallow_copy_nested_dict(
                 inputs["bands"]["bands"]["bands"]["pw"]
             )
             inputs["bands"]["bands_projwfc"]["bands"]["pw"]["code"] = inputs["bands"][
@@ -837,11 +778,11 @@ def generate_qeapp_workchain(
             ]["scf"]["pw"]["code"]
 
             inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["code"] = (
-                fixture_code("quantumespresso.projwfc")
+                projwfc_code
             )
-            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = Dict(
-                {"PROJWFC": {"DeltaE": 0.01}}
-            ).store()
+            inputs["bands"]["bands_projwfc"]["projwfc"]["projwfc"]["parameters"] = (
+                orm.Dict({"PROJWFC": {"deltae": 0.01}}).store()
+            )
             inputs["properties"].append("bands")
 
         if run_pdos:
@@ -855,8 +796,6 @@ def generate_qeapp_workchain(
             workchain.out("structure", app.structure_model.input_structure)
 
         if run_pdos:
-            from aiida_quantumespresso.workflows.pdos import PdosWorkChain
-
             pdos = generate_pdos_workchain(structure, spin_type)
             workchain.out_many(
                 workchain.exposed_outputs(
@@ -867,8 +806,6 @@ def generate_qeapp_workchain(
             )
 
         if run_bands:
-            from aiidalab_qe.plugins.bands.bands_workchain import BandsWorkChain
-
             bands = generate_bands_workchain(structure)
             workchain.out_many(
                 workchain.exposed_outputs(

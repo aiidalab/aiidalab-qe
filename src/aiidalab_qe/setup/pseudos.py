@@ -74,7 +74,7 @@ class PseudoFamily:
         # where <relativistic> is either 'SR' or 'FR' and <file_type> is either 'upf' or 'psml'
         # Before we unify the format of family strings, the conditions below are necessary
         # to distinguish between the two families
-        library = pseudo_family_string.split("/")[0]
+        library = pseudo_family_string.split("/", maxsplit=1)[0]
         if library == "SSSP":
             version, functional, accuracy = pseudo_family_string.split("/")[1:]
             relativistic = None
@@ -201,7 +201,7 @@ def _install_pseudos(
 
 def install(
     download_only: bool = False, cwd: Path | None = None
-) -> Iterable[tuple[str, float]]:
+) -> Iterable[tuple[str, float | None]]:
     yield "Checking installation status...", 0.1
     try:
         with FileLock(FN_LOCKFILE, timeout=5):
@@ -212,11 +212,9 @@ def install(
 
     except Timeout:
         # Assume that the installation was triggered by a different process.
-        from aiidalab_qe.common.widgets import ProgressBar
-
         yield (
             "Installation was already started elsewhere, waiting for it to finish...",
-            ProgressBar.AnimationRate(1.0),
+            None,
         )
         with FileLock(FN_LOCKFILE, timeout=300):
             if len(pseudos_to_install()) > 0:

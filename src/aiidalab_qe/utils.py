@@ -1,6 +1,26 @@
-from aiida_pseudo.groups.family import PseudoPotentialFamily
+import html
+import typing as t
 
 from aiida import orm
+from aiida.common.exceptions import NotExistent
+from aiida.engine import ProcessBuilderNamespace
+
+
+def generate_alert(
+    alert_type: str,
+    message: str,
+    class_: str = "",
+    style_: str = "",
+    allow_html: bool = False,
+):
+    if not allow_html:
+        message = html.escape(message)
+
+    return f"""
+        <div role="alert" class="alert alert-{alert_type} warning-box {class_}" style="{style_}">
+            {message}
+        </div>
+    """
 
 
 def set_component_resources(component, code_info):
@@ -34,6 +54,54 @@ def enable_pencil_decomposition(component):
     component.settings = orm.Dict({"CMDLINE": ["-pd", ".true."]})
 
 
-def fetch_pseudo_family_by_label(label) -> PseudoPotentialFamily:
-    """Fetch the pseudo family by label."""
-    return orm.Group.collection.get(label=label)  # type: ignore
+def set_default_process_failure_policy(
+    builder: ProcessBuilderNamespace,
+    on_unhandled_failure: str = "pause",
+    pause_on_max_iterations: bool = True,
+):
+    """Recursively set defaults on populated restart-workchain namespaces."""
+    populated_namespaces = [
+        builder[key]
+        for key in builder._inputs(prune=True)
+        if isinstance(builder[key], ProcessBuilderNamespace)
+    ]
+
+    if (
+        "on_unhandled_failure" in builder._valid_fields
+        and builder.get("on_unhandled_failure") is None
+    ):
+        builder.on_unhandled_failure = orm.Str(on_unhandled_failure)
+
+    if (
+        "pause_on_max_iterations" in builder._valid_fields
+        and builder.get("pause_on_max_iterations") is None
+    ):
+        builder.pause_on_max_iterations = orm.Bool(pause_on_max_iterations)
+
+    for namespace in populated_namespaces:
+        set_default_process_failure_policy(
+            namespace,
+            on_unhandled_failure=on_unhandled_failure,
+            pause_on_max_iterations=pause_on_max_iterations,
+        )
+
+
+def shallow_copy_nested_dict(d):
+    """Recursively copies only the dictionary structure but keeps value references."""
+    if isinstance(d, dict):
+        return {key: shallow_copy_nested_dict(value) for key, value in d.items()}
+    return d
+
+
+def get_pseudo_info(pp_uuid) -> dict[str, t.Any]:
+    try:
+        pp_node = orm.load_node(pp_uuid)
+    except NotExistent as err:
+        raise ValueError(
+            f"Pseudo potential with UUID {pp_uuid} does not exist"
+        ) from err
+
+    return {
+        "functional": pp_node.base.extras.get("functional", None),
+        "relativistic": pp_node.base.extras.get("relativistic", None),
+    }

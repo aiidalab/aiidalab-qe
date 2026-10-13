@@ -2,41 +2,31 @@ from __future__ import annotations
 
 import typing as t
 
-import ipywidgets as ipw
-import numpy as np
 import traitlets as tl
 
-from aiida import orm
-from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
-    create_kpoints_from_distance,
-)
-from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.mixins import HasInputStructure, HasModels
-from aiidalab_qe.common.panel import ConfigurationSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 from aiidalab_qe.setup.pseudos import PseudoFamily
+from aiidalab_qe.utils import get_pseudo_info
 
-from .subsettings import AdvancedCalculationSubSettingsModel
-
-if t.TYPE_CHECKING:
-    from .hubbard.hubbard import HubbardConfigurationSettingsModel
-    from .magnetization import MagnetizationConfigurationSettingsModel
-    from .pseudos.pseudos import PseudosConfigurationSettingsModel
-    from .smearing import SmearingConfigurationSettingsModel
-
-DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
+from .convergence import ConvergenceConfigurationSettingsModel
+from .general import GeneralConfigurationSettingsModel
+from .hubbard import HubbardConfigurationSettingsModel
+from .magnetization import MagnetizationConfigurationSettingsModel
+from .pseudos import PseudosConfigurationSettingsModel
+from .smearing import SmearingConfigurationSettingsModel
 
 
 class AdvancedConfigurationSettingsModel(
-    ConfigurationSettingsModel,
-    HasModels[AdvancedCalculationSubSettingsModel],
+    PanelModel,
+    HasModels[PanelModel],
     HasInputStructure,
 ):
     title = "Advanced settings"
     identifier = "advanced"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
         "workchain.protocol",
         "workchain.spin_type",
         "workchain.electronic_type",
@@ -48,113 +38,98 @@ class AdvancedConfigurationSettingsModel(
     electronic_type = tl.Unicode()
     spin_orbit = tl.Unicode()
 
-    clean_workdir = tl.Bool(DEFAULT["advanced"]["clean_workdir"])
-    total_charge = tl.Float(DEFAULT["advanced"]["tot_charge"])
-    van_der_waals_options = tl.List(
-        trait=tl.List(tl.Unicode()),
-        default_value=[
-            ["None", "none"],
-            ["Grimme-D3", "dft-d3"],
-            ["Grimme-D3BJ", "dft-d3bj"],
-            ["Grimme-D3M", "dft-d3m"],
-            ["Grimme-D3MBJ", "dft-d3mbj"],
-            ["Tkatchenko-Scheffler", "ts-vdw"],
-        ],
-    )
-    van_der_waals = tl.Unicode(DEFAULT["advanced"]["vdw_corr"])
-    forc_conv_thr = tl.Float(0.0)
-    forc_conv_thr_step = tl.Float(1e-4)
-    etot_conv_thr = tl.Float(0.0)
-    etot_conv_thr_step = tl.Float(1e-5)
-    scf_conv_thr = tl.Float(0.0)
-    scf_conv_thr_step = tl.Float(1e-10)
-    electron_maxstep = tl.Int(80)
-    optimization_maxsteps = tl.Int(50)
-
-    kpoints_distance = tl.Float(0.0)
-    mesh_grid = tl.Unicode("")
-
     include = True
 
-    dftd3_version = {
-        "dft-d3": 3,
-        "dft-d3bj": 4,
-        "dft-d3m": 5,
-        "dft-d3mbj": 6,
-    }
+    def get_model_state(self) -> dict:
+        num_atoms = self.get_num_atoms() or 1
 
-    def update(self, specific=""):
-        with self.hold_trait_notifications():
-            if not specific or specific != "mesh":
-                parameters = PwBaseWorkChain.get_protocol_inputs(self.protocol)
-                self._update_kpoints_distance(parameters)
-                if specific == "protocol":
-                    self._update_thresholds(parameters)
-            self._update_kpoints_mesh()
-
-    def get_model_state(self):
-        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
-        parameters = {
+        general = t.cast(
+            GeneralConfigurationSettingsModel,
+            self.get_model("general"),
+        )
+        convergence = t.cast(
+            ConvergenceConfigurationSettingsModel,
+            self.get_model("convergence"),
+        )
+        state = {
             "initial_magnetic_moments": None,
             "pw": {
                 "parameters": {
                     "SYSTEM": {
-                        "tot_charge": self.total_charge,
+                        "tot_charge": general.total_charge,
                     },
                     "CONTROL": {
-                        "forc_conv_thr": self.forc_conv_thr,
-                        "etot_conv_thr": self.etot_conv_thr * num_atoms,
+                        "forc_conv_thr": convergence.forc_conv_thr,
+                        "etot_conv_thr": convergence.etot_conv_thr * num_atoms,
                     },
                     "ELECTRONS": {
-                        "conv_thr": self.scf_conv_thr * num_atoms,
-                        "electron_maxstep": self.electron_maxstep,
+                        "conv_thr": convergence.scf_conv_thr * num_atoms,
+                        "electron_maxstep": convergence.electron_maxstep,
+                        "mixing_beta": convergence.mixing_beta,
                     },
                 }
             },
-            "clean_workdir": self.clean_workdir,
-            "kpoints_distance": self.kpoints_distance,
-            "optimization_maxsteps": self.optimization_maxsteps,
+            "clean_workdir": general.clean_workdir,
+            "on_unhandled_failure": general.on_unhandled_failure,
+            "kpoints_distance": convergence.kpoints_distance,
+            "optimization_maxsteps": convergence.optimization_maxsteps,
         }
 
-        hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
+        # Only modify if mixing mode is different than default
+        if convergence.mixing_mode != "plain":
+            state["pw"]["parameters"]["ELECTRONS"]["mixing_mode"] = (
+                convergence.mixing_mode
+            )
+
+        hubbard = t.cast(
+            HubbardConfigurationSettingsModel,
+            self.get_model("hubbard"),
+        )
         if hubbard.is_active:
-            parameters["hubbard_parameters"] = {
+            state["hubbard_parameters"] = {
                 "hubbard_u": {
                     label: value for label, value in hubbard.parameters.items() if value
                 }
             }
             if hubbard.has_eigenvalues:
-                parameters["pw"]["parameters"]["SYSTEM"] |= {
+                state["pw"]["parameters"]["SYSTEM"] |= {
                     "starting_ns_eigenvalue": hubbard.get_active_eigenvalues()
                 }
 
-        pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
-        parameters["pseudo_family"] = pseudos.family
+        pseudos = t.cast(
+            PseudosConfigurationSettingsModel,
+            self.get_model("pseudos"),
+        )
+        state["pseudo_family"] = pseudos.family
         if pseudos.dictionary:
-            parameters["pw"]["pseudos"] = pseudos.dictionary
-            parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = pseudos.ecutwfc
-            parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"] = pseudos.ecutrho
+            state["pw"]["pseudos"] = pseudos.dictionary
+            state["pw"]["parameters"]["SYSTEM"]["ecutwfc"] = pseudos.ecutwfc
+            state["pw"]["parameters"]["SYSTEM"]["ecutrho"] = pseudos.ecutrho
 
-        if self.van_der_waals in ["none", "ts-vdw"]:
-            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = self.van_der_waals
+        if general.van_der_waals in ["none", "ts-vdw"]:
+            state["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = general.van_der_waals
         else:
-            parameters["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
-            parameters["pw"]["parameters"]["SYSTEM"]["dftd3_version"] = (
-                self.dftd3_version[self.van_der_waals]
+            state["pw"]["parameters"]["SYSTEM"]["vdw_corr"] = "dft-d3"
+            state["pw"]["parameters"]["SYSTEM"]["dftd3_version"] = (
+                general.dftd3_version[general.van_der_waals]
             )
 
-        smearing: SmearingConfigurationSettingsModel = self.get_model("smearing")  # type: ignore
+        smearing = t.cast(
+            SmearingConfigurationSettingsModel,
+            self.get_model("smearing"),
+        )
         if self.electronic_type == "metal":
             # smearing type setting
-            parameters["pw"]["parameters"]["SYSTEM"]["smearing"] = smearing.type
+            state["pw"]["parameters"]["SYSTEM"]["smearing"] = smearing.type
             # smearing degauss setting
-            parameters["pw"]["parameters"]["SYSTEM"]["degauss"] = smearing.degauss
+            state["pw"]["parameters"]["SYSTEM"]["degauss"] = smearing.degauss
 
-        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
-            "magnetization"
-        )  # type: ignore
+        magnetization = t.cast(
+            MagnetizationConfigurationSettingsModel,
+            self.get_model("magnetization"),
+        )
         if self.spin_type == "collinear":
-            parameters["initial_magnetic_moments"] = magnetization.moments
+            state["initial_magnetic_moments"] = magnetization.moments
 
         # Set tot_magnetization for collinear simulations.
         if self.spin_type == "collinear":
@@ -162,177 +137,149 @@ class AdvancedConfigurationSettingsModel(
             # Select the magnetization type and set the value
             if self.electronic_type == "metal":
                 if magnetization.type == "tot_magnetization":
-                    parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+                    state["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
                         magnetization.total
                     )
                 else:
-                    parameters["initial_magnetic_moments"] = magnetization.moments
+                    state["initial_magnetic_moments"] = magnetization.moments
             # Conditions for insulator systems. Default value is 0.0
             elif self.electronic_type == "insulator":
-                parameters["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
+                state["pw"]["parameters"]["SYSTEM"]["tot_magnetization"] = (
                     magnetization.total
                 )
 
         # Spin-Orbit calculation
         if self.spin_orbit == "soc":
-            parameters["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
-            parameters["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
-            parameters["pw"]["parameters"]["SYSTEM"]["nspin"] = 4
+            state["pw"]["parameters"]["SYSTEM"]["lspinorb"] = True
+            state["pw"]["parameters"]["SYSTEM"]["noncolin"] = True
+            state["pw"]["parameters"]["SYSTEM"]["nspin"] = 4
 
-        return parameters
+        return state
 
-    def set_model_state(self, parameters):
-        pseudos: PseudosConfigurationSettingsModel = self.get_model("pseudos")  # type: ignore
-        if "pseudo_family" in parameters:
-            pseudo_family = PseudoFamily.from_string(parameters["pseudo_family"])
-            library = pseudo_family.library
-            accuracy = pseudo_family.accuracy
-            pseudos.library = f"{library} {accuracy}"
-            pseudos.functional = pseudo_family.functional
-            pseudos.family = parameters["pseudo_family"]
+    def set_model_state(self, state: dict):
+        PW: dict = state.get("pw", {})
+        PW_PARAMS: dict = PW.get("parameters", {})
+        SYSTEM: dict = PW_PARAMS.get("SYSTEM", {})
+        CONTROL: dict = PW_PARAMS.get("CONTROL", {})
+        ELECTRONS: dict = PW_PARAMS.get("ELECTRONS", {})
 
-        if "pseudos" in parameters["pw"]:
-            pseudos.dictionary = parameters["pw"]["pseudos"]
-            pseudos.ecutwfc = parameters["pw"]["parameters"]["SYSTEM"]["ecutwfc"]
-            pseudos.ecutrho = parameters["pw"]["parameters"]["SYSTEM"]["ecutrho"]
+        num_atoms = self.get_num_atoms() or 1
 
-        self.kpoints_distance = parameters.get("kpoints_distance", 0.15)
-        self.optimization_maxsteps = parameters.get("optimization_maxsteps", 50)
+        self.spin_orbit = "soc" if "lspinorb" in SYSTEM else "wo_soc"
 
-        if (pw_parameters := parameters.get("pw", {}).get("parameters")) is not None:
-            self._set_pw_parameters(pw_parameters)
-
-        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
-            "magnetization"
-        )  # type: ignore
-        if magnetic_moments := parameters.get("initial_magnetic_moments"):
-            if isinstance(magnetic_moments, (int, float)):
-                magnetic_moments = [magnetic_moments]
-            if isinstance(magnetic_moments, list):
-                magnetic_moments = dict(
-                    zip(
-                        self.input_structure.get_kind_names(),
-                        magnetic_moments,
-                    )
-                )
-            magnetization.moments = magnetic_moments
-
-        hubbard: HubbardConfigurationSettingsModel = self.get_model("hubbard")  # type: ignore
-        if parameters.get("hubbard_parameters"):
-            hubbard.is_active = True
-            hubbard.parameters = parameters["hubbard_parameters"]["hubbard_u"]
-            starting_ns_eigenvalue = (
-                parameters.get("pw", {})
-                .get("parameters", {})
-                .get("SYSTEM", {})
-                .get("starting_ns_eigenvalue")
-            )
-            if starting_ns_eigenvalue is not None:
-                hubbard.set_active_eigenvalues(starting_ns_eigenvalue)
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.total_charge = self._get_default("total_charge")
-            self.van_der_waals = self._get_default("van_der_waals")
-            self.forc_conv_thr = self._get_default("forc_conv_thr")
-            self.forc_conv_thr_step = self._get_default("forc_conv_thr_step")
-            self.etot_conv_thr = self._get_default("etot_conv_thr")
-            self.etot_conv_thr_step = self._get_default("etot_conv_thr_step")
-            self.scf_conv_thr = self._get_default("scf_conv_thr")
-            self.scf_conv_thr_step = self._get_default("scf_conv_thr_step")
-            self.electron_maxstep = self._get_default("electron_maxstep")
-            self.kpoints_distance = self._get_default("kpoints_distance")
-            self.optimization_maxsteps = self._get_default("optimization_maxsteps")
-
-    def _get_default(self, trait):
-        return self._defaults.get(trait, self.traits()[trait].default_value)
-
-    def _link_model(self, model: AdvancedCalculationSubSettingsModel):
-        ipw.dlink(
-            (self, "loaded_from_process"),
-            (model, "loaded_from_process"),
+        general = t.cast(
+            GeneralConfigurationSettingsModel,
+            self.get_model("general"),
         )
-        model.observe(
-            self._on_any_change,
-            tl.All,
+        with general.hold_trait_notifications():
+            general.clean_workdir = state.get("clean_workdir", True)
+            general.on_unhandled_failure = state.get("on_unhandled_failure", "pause")
+            general.total_charge = SYSTEM.get("tot_charge", 0)
+            general.van_der_waals = general.dftd3_version.get(
+                SYSTEM.get("dftd3_version", ""),
+                SYSTEM.get("vdw_corr", "none"),
+            )
+
+        convergence = t.cast(
+            ConvergenceConfigurationSettingsModel,
+            self.get_model("convergence"),
+        )
+        with convergence.hold_trait_notifications():
+            convergence.optimization_maxsteps = state.get("optimization_maxsteps", 50)
+            convergence.kpoints_distance = state.get("kpoints_distance", 0.15)
+            convergence.forc_conv_thr = CONTROL.get("forc_conv_thr", 0.0)
+            convergence.etot_conv_thr = CONTROL.get("etot_conv_thr", 0.0) / num_atoms
+            convergence.scf_conv_thr = ELECTRONS.get("conv_thr", 0.0) / num_atoms
+            convergence.electron_maxstep = ELECTRONS.get("electron_maxstep", 80)
+            convergence.mixing_mode = ELECTRONS.get("mixing_mode", "plain")
+            convergence.mixing_beta = ELECTRONS.get("mixing_beta", 0.4)
+
+        smearing = t.cast(
+            SmearingConfigurationSettingsModel,
+            self.get_model("smearing"),
+        )
+        with smearing.hold_trait_notifications():
+            if "degauss" in SYSTEM:
+                smearing.degauss = SYSTEM["degauss"]
+            if "smearing" in SYSTEM:
+                smearing.type = SYSTEM["smearing"]
+
+        pseudos = t.cast(
+            PseudosConfigurationSettingsModel,
+            self.get_model("pseudos"),
+        )
+        with pseudos.hold_trait_notifications():
+            if pseudo_family_string := state.get("pseudo_family"):
+                # If a pseudo family string exists, we can assume that no custom pseudos were uploaded.
+                # We therefore populate the UI from the pseudo family.
+                pseudo_family = PseudoFamily.from_string(pseudo_family_string)
+                library = f"{pseudo_family.library} {pseudo_family.accuracy}"
+                if relativistic := pseudo_family.relativistic:
+                    library += f" ({relativistic})"
+                pseudos.functional = pseudo_family.functional
+                pseudos.library = library
+                pseudos.family = pseudo_family_string
+            else:
+                # Otherwise, we assume a custom pseudo upload (warning enabled).
+                # Everything is set to None except the functional, which we extract from the pseudos.
+                pseudos.show_upload_warning = True
+                functionals = []
+                try:
+                    for pp_uuid in PW["pseudos"].values():
+                        pseudo_info = get_pseudo_info(pp_uuid)
+                        functionals.append(pseudo_info["functional"])
+                    if len(set(functionals)) == 1:
+                        pseudos.functional = functionals[0]
+                    else:
+                        pseudos.functional = None
+                except Exception as err:
+                    print(f"Error loading pseudos: {err}")
+                    pseudos.functional = None
+                pseudos.library = None
+                pseudos.family = None
+
+        if pseudos_dictionary := PW.get("pseudos"):
+            # We set these outside of the context manager to avoid a reset by other trait notifications.
+            pseudos.dictionary = pseudos_dictionary
+            pseudos.ecutwfc = SYSTEM.get("ecutwfc", 0.0)
+            pseudos.ecutrho = SYSTEM.get("ecutrho", 0.0)
+
+        magnetization = t.cast(
+            MagnetizationConfigurationSettingsModel,
+            self.get_model("magnetization"),
+        )
+        with magnetization.hold_trait_notifications():
+            if "tot_magnetization" in SYSTEM:
+                magnetization.type = "tot_magnetization"
+                magnetization.total = SYSTEM["tot_magnetization"]
+
+            if magnetic_moments := state.get("initial_magnetic_moments"):
+                if isinstance(magnetic_moments, (int, float)):
+                    magnetic_moments = [magnetic_moments]
+                if isinstance(magnetic_moments, list):
+                    magnetic_moments = dict(
+                        zip(
+                            self.input_structure.get_kind_names(),
+                            magnetic_moments,
+                        )
+                    )
+                magnetization.moments = magnetic_moments
+
+        hubbard = t.cast(
+            HubbardConfigurationSettingsModel,
+            self.get_model("hubbard"),
+        )
+        with hubbard.hold_trait_notifications():
+            if hubbard_parameters := state.get("hubbard_parameters"):
+                hubbard.is_active = True
+                hubbard.parameters = hubbard_parameters["hubbard_u"]
+                starting_ns_eigenvalue = SYSTEM.get("starting_ns_eigenvalue")
+                if starting_ns_eigenvalue is not None:
+                    hubbard.set_active_eigenvalues(starting_ns_eigenvalue)
+
+    def _link_model(self, model: PanelModel):
+        tl.link(
+            (self, "confirmed"),
+            (model, "confirmed"),
         )
         super()._link_model(model)
-
-    def _update_kpoints_mesh(self, _=None):
-        if not self.has_structure:
-            mesh_grid = ""
-        elif self.kpoints_distance > 0:
-            mesh = create_kpoints_from_distance.process_class._func(
-                self.input_structure,
-                orm.Float(self.kpoints_distance),
-                orm.Bool(False),
-            )
-            mesh_grid = f"Mesh {mesh.get_kpoints_mesh()[0]!s}"
-        else:
-            mesh_grid = "Please select a number higher than 0.0"
-        self._defaults["mesh_grid"] = mesh_grid
-        self.mesh_grid = mesh_grid
-
-    def _update_kpoints_distance(self, parameters):
-        kpoints_distance = parameters["kpoints_distance"] if self.has_pbc else 100.0
-        self._defaults["kpoints_distance"] = kpoints_distance
-        self.kpoints_distance = self._defaults["kpoints_distance"]
-
-    def _update_thresholds(self, parameters):
-        etot_value = parameters["meta_parameters"]["etot_conv_thr_per_atom"]
-        self._set_value_and_step("etot_conv_thr", etot_value)
-        self.etot_conv_thr = self._defaults["etot_conv_thr"]
-        self.etot_conv_thr_step = self._defaults["etot_conv_thr_step"]
-
-        scf_value = parameters["meta_parameters"]["conv_thr_per_atom"]
-        self._set_value_and_step("scf_conv_thr", scf_value)
-        self.scf_conv_thr = self._defaults["scf_conv_thr"]
-        self.scf_conv_thr_step = self._defaults["scf_conv_thr_step"]
-
-        forc_value = parameters["pw"]["parameters"]["CONTROL"]["forc_conv_thr"]
-        self._set_value_and_step("forc_conv_thr", forc_value)
-        self.forc_conv_thr = self._defaults["forc_conv_thr"]
-        self.forc_conv_thr_step = self._defaults["forc_conv_thr_step"]
-
-    def _set_value_and_step(self, attribute, value):
-        self._defaults[attribute] = value
-        if value != 0:
-            order_of_magnitude = np.floor(np.log10(abs(value)))
-            step = 10 ** (order_of_magnitude - 1)
-        else:
-            step = 0.1
-        self._defaults[f"{attribute}_step"] = step
-
-    def _set_pw_parameters(self, pw_parameters):
-        system_params = pw_parameters.get("SYSTEM", {})
-        control_params = pw_parameters.get("CONTROL", {})
-        electron_params = pw_parameters.get("ELECTRONS", {})
-
-        num_atoms = len(self.input_structure.sites) if self.input_structure else 1
-
-        self.forc_conv_thr = control_params.get("forc_conv_thr", 0.0)
-        self.etot_conv_thr = control_params.get("etot_conv_thr", 0.0) / num_atoms
-        self.scf_conv_thr = electron_params.get("conv_thr", 0.0) / num_atoms
-        self.electron_maxstep = electron_params.get("electron_maxstep", 80)
-
-        self.total_charge = system_params.get("tot_charge", 0)
-        self.spin_orbit = "soc" if "lspinorb" in system_params else "wo_soc"
-
-        self.van_der_waals = self.dftd3_version.get(
-            system_params.get("dftd3_version"),
-            system_params.get("vdw_corr", "none"),
-        )
-
-        smearing: SmearingConfigurationSettingsModel = self.get_model("smearing")  # type: ignore
-        if "degauss" in system_params:
-            smearing.degauss = system_params["degauss"]
-
-        if "smearing" in system_params:
-            smearing.type = system_params["smearing"]
-
-        magnetization: MagnetizationConfigurationSettingsModel = self.get_model(
-            "magnetization"
-        )  # type: ignore
-        if "tot_magnetization" in system_params:
-            magnetization.type = "tot_magnetization"
-            magnetization.total = system_params["tot_magnetization"]

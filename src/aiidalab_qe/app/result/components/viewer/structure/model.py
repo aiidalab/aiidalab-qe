@@ -31,10 +31,18 @@ class StructureResultsModel(ResultsModel):
 
     @property
     def is_relaxed(self):
-        return "relax" in self.properties
+        if not self.inputs or "relax" not in self.properties:
+            return False
+        try:
+            base = self.inputs.relax.base_relax
+        except AttributeError:
+            # Workflows created with aiida-quantumespresso v4 used the base namespace.
+            base = self.inputs.relax.base
+        parameters = base.pw.parameters.get_dict()
+        return "relax" in parameters["CONTROL"]["calculation"]
 
-    def update(self):
-        super().update()
+    def _update(self, specific=""):
+        super()._update(specific)
         with self.hold_trait_notifications():
             if not self.is_relaxed or self.selected_view == "initial":
                 self.sub_header = self._SUB_HEADER_TEMPLATE.format(content="Initial")
@@ -57,7 +65,6 @@ class StructureResultsModel(ResultsModel):
         try:
             return self.source.structure if self.source else None
         except AttributeError:
-            # If source is outputs but job failed, there may not be a structure
             return None
 
     def _get_structure_info(self):
@@ -66,11 +73,11 @@ class StructureResultsModel(ResultsModel):
         relative = relative_time(structure.ctime)
         return f"""
             <div style='line-height: 1.4;'>
-                <strong>PK:</strong> {structure.pk}<br>
-                <strong>Label:</strong> {structure.label}<br>
-                <strong>Description:</strong> {structure.description}<br>
-                <strong>Number of atoms:</strong> {len(structure.sites)}<br>
-                <strong>Creation time:</strong> {formatted} ({relative})<br>
+                <b>PK:</b> {structure.pk}<br>
+                <b>Label:</b> {structure.label}<br>
+                <b>Description:</b> {structure.description}<br>
+                <b>Number of atoms:</b> {len(structure.sites)}<br>
+                <b>Creation time:</b> {formatted} ({relative})<br>
             </div>
         """
 
@@ -97,3 +104,11 @@ class StructureResultsModel(ResultsModel):
             data.append([index, symbol, tag, *formatted_position])
 
         return data
+
+    def get_model_state(self):
+        return {
+            "selected_view": self.selected_view,
+        }
+
+    def set_model_state(self, parameters):
+        self.selected_view = parameters.get("selected_view", "initial")

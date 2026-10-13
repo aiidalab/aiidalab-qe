@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 import pytest
 import requests
 import selenium.webdriver.support.expected_conditions as ec
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError as ReqConnectionError
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -15,13 +15,19 @@ def is_responsive(url):
         response = requests.get(url)
         if response.status_code == 200:
             return True
-    except ConnectionError:
+    except ReqConnectionError:
         return False
 
 
 @pytest.fixture(scope="session")
 def docker_compose_file(pytestconfig):
     return str(Path(pytestconfig.rootdir) / "tests_integration" / "docker-compose.yml")
+
+
+@pytest.fixture(scope="session")
+def docker_setup():
+    """Start compose without Docker's --wait; notebook_service handles readiness."""
+    return ["up --build -d"]
 
 
 @pytest.fixture(scope="session")

@@ -5,62 +5,72 @@ Authors: AiiDAlab team
 
 import base64
 import hashlib
-import importlib
-import subprocess
-import typing as t
+import warnings
 from copy import deepcopy
 from queue import Queue
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
-from time import time
+from uuid import uuid4
 
-import anywidget
 import ase
 import ipywidgets as ipw
 import numpy as np
-import requests as req
 import traitlets
-from IPython.display import HTML, Javascript, clear_output, display
+from IPython.display import HTML, Javascript, display
 from pymatgen.io.ase import AseAtomsAdaptor
-from shakenbreak.distortions import distort, local_mc_rattle, rattle
 
 from aiida.orm import CalcJobNode, load_code, load_node
 from aiida.orm import Data as orm_Data
-from aiidalab_widgets_base import (
-    ComputationalResourcesWidget,
-    StructureExamplesWidget,
-)
+from aiidalab_widgets_base import ComputationalResourcesWidget, StructureExamplesWidget
+from aiidalab_widgets_base import LoadingWidget as _LoadingWidget
 from aiidalab_widgets_base.utils import (
     StatusHTML,
     list_to_string_range,
     string_range_to_list,
 )
 
+from .link_button import LinkButton
+from .progress_bar import ProgressBar
+from .table_widget import TableWidget
+
 __all__ = [
     "CalcJobOutputFollower",
+    "LinkButton",
     "LogOutputWidget",
+    "ProgressBar",
+    "TableWidget",
 ]
 
 
 class RollingOutput(ipw.VBox):
-    style = (
-        "background-color: #253239; color: #cdd3df; line-height: normal; custom=test"
-    )
+    style = "background-color: #253239; color: #cdd3df; line-height: normal;"
 
     value = traitlets.Unicode()
     auto_scroll = traitlets.Bool()
 
-    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):  # noqa: ARG002
+    def __init__(self, num_min_lines=10, max_output_height="200px", **kwargs):
         self._num_min_lines = num_min_lines
+        self._scroll_class = f"rolling-output-{uuid4().hex}"
+
         self._output = ipw.HTML(layout=ipw.Layout(min_width="80em"))
         self._refresh_output()
+
+        layout = kwargs.pop("layout", {})
+        if isinstance(layout, dict):
+            layout = ipw.Layout(**layout)
+        if not layout.max_height:
+            layout.max_height = max_output_height
+        if not layout.overflow:
+            layout.overflow = "auto"
+
         super().__init__(
-            children=[
-                self._output,
-            ],
-            layout=ipw.Layout(max_height=max_output_height),
+            children=[self._output],
+            layout=layout,
+            **kwargs,
         )
+
         self.add_class("rolling-output")
+        self.add_class(self._scroll_class)
 
     @traitlets.default("value")
     def _default_value(self):
@@ -72,19 +82,16 @@ class RollingOutput(ipw.VBox):
         return True
 
     def scroll_to_bottom(self):
-        # Slight hack because it will scroll all widgets with the same class
-        # name and max height to the bottom. That would primarily be an issue in
-        # case that there are two LogOutputWidgets in the DOM. Could probably be
-        # alleviated by adding a custom class.
         display(
             Javascript(
+                f"""
+                    requestAnimationFrame(() => {{
+                        const el = document.querySelector(".{self._scroll_class}");
+                        if (el) {{
+                            el.scrollTop = el.scrollHeight;
+                        }}
+                    }});
                 """
-            Array.from(document.getElementsByClassName('{class_name}'))
-            .filter(el => el.style["max-height"] === "{max_height}")
-            .forEach(el => el.scrollTop = el.scrollHeight)""".format(
-                    class_name="p-Widget p-Panel jupyter-widgets widget-container widget-box widget-vbox",
-                    max_height=self.layout.max_height,
-                )
             )
         )
 
@@ -136,20 +143,23 @@ class DownloadButton(ipw.Button):
         display(
             HTML(
                 f"""
-            <html>
-            <body>
-            <a id="{link_id}" download="{self.filename}" href="data:text/plain;base64,{payload}" download>
-            </a>
+                    <html>
+                        <body>
+                            <a
+                                id="{link_id}"
+                                download="{self.filename}"
+                                href="data:text/plain;base64,{payload}"
+                            ></a>
 
-            <script>
-            (function download() {{
-            document.getElementById('{id}').click();
-            }})()
-            </script>
+                            <script>
+                                (function download() {{
+                                    document.getElementById('{link_id}').click();
+                                }})()
+                            </script>
 
-            </body>
-            </html>
-            """
+                        </body>
+                    </html>
+                """
             )
         )
 
@@ -267,7 +277,7 @@ class LogOutputWidget(ipw.VBox):
 class CalcJobOutputFollower(traitlets.HasTraits):
     calcjob_uuid = traitlets.Unicode(allow_none=True)
     filename = traitlets.Unicode(allow_none=True)
-    output = traitlets.List(trait=traitlets.Unicode)
+    output = traitlets.List(trait=traitlets.Unicode())
     lineno = traitlets.Int()
 
     def __init__(self, **kwargs):
@@ -303,15 +313,17 @@ class CalcJobOutputFollower(traitlets.HasTraits):
             # (Re/)start following
             if change["new"]:
                 self._follow_output_thread = Thread(
-                    target=self._follow_output, args=(calcjob_uuid,)
+                    target=self._follow_output, args=(calcjob_uuid,), daemon=True
                 )
                 self._follow_output_thread.start()
 
     def _follow_output(self, calcjob_uuid):
         """Monitor calcjob and orchestrate pushing and pulling of output."""
-        self._pull_thread = Thread(target=self._pull_output)
+        self._pull_thread = Thread(target=self._pull_output, daemon=True)
         self._pull_thread.start()
-        self._push_thread = Thread(target=self._push_output, args=(calcjob_uuid,))
+        self._push_thread = Thread(
+            target=self._push_output, args=(calcjob_uuid,), daemon=True
+        )
         self._push_thread.start()
 
     def _fetch_output(self, calcjob):
@@ -370,90 +382,12 @@ class CalcJobOutputFollower(traitlets.HasTraits):
                 self._output_queue.task_done()
 
 
-class ProgressBar(ipw.HBox):
-    class AnimationRate(float):
-        pass
-
-    description = traitlets.Unicode()
-    value = traitlets.Union([traitlets.Float(), traitlets.Instance(AnimationRate)])
-    bar_style = traitlets.Unicode()
-
-    _animation_rate = traitlets.Float()
-
-    def __init__(self, description_layout=None, *args, **kwargs):
-        if description_layout is None:
-            description_layout = ipw.Layout(width="auto", flex="2 1 auto")
-
-        self._label = ipw.Label(layout=description_layout)
-        self._progress_bar = ipw.FloatProgress(
-            min=0, max=1.0, layout=ipw.Layout(width="auto", flex="1 1 auto")
-        )
-
-        traitlets.link((self, "description"), (self._label, "value"))
-        traitlets.link((self, "bar_style"), (self._progress_bar, "bar_style"))
-
-        self._animate_stop_event = Event()
-        self._animate_thread = None
-
-        super().__init__([self._label, self._progress_bar], *args, **kwargs)
-
-    def _animate(self, refresh_rate=0.01):
-        v0 = self._progress_bar.value
-        t0 = time()
-
-        while not self._animate_stop_event.wait(refresh_rate):
-            self._progress_bar.value = (v0 + (time() - t0) * self._animation_rate) % 1.0
-
-    def _start_animate(self):
-        if self._animate_thread is not None:
-            raise RuntimeError("Cannot start animation more than once!")
-
-        self._animate_thread = Thread(target=self._animate)
-        self._animate_thread.start()
-
-    def _stop_animate(self):
-        self._animate_stop_event.set()
-        self._animate_thread.join()
-        self._animate_stop_event.clear()
-        self._animate_thread = None
-
-    @traitlets.default("_animation_rate")
-    def _default_animation_rate(self):
-        return 0
-
-    @traitlets.observe("_animation_rate")
-    def _observe_animation_rate(self, change):
-        if change["new"] and not change["old"]:
-            self._start_animate()
-        elif not change["new"] and change["old"]:
-            self._stop_animate()
-
-    @traitlets.validate("value")
-    def _validate_value(self, proposal):
-        if isinstance(proposal["value"], self.AnimationRate):
-            if proposal["value"] < 0:
-                raise traitlets.TraitError("The animation rate must be non-negative.")
-
-        elif not 0 <= proposal["value"] <= 1.0:
-            raise traitlets.TraitError("The value must be between 0 and 1.0.")
-
-        return proposal["value"]
-
-    @traitlets.observe("value")
-    def _observe_value(self, change):
-        if isinstance(change["new"], self.AnimationRate):
-            self._animation_rate = change["new"]
-        else:
-            self._animation_rate = 0
-            self._progress_bar.value = change["new"]
-
-
 class AddingTagsEditor(ipw.VBox):
     """Editor for adding tags to atoms."""
 
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
-    selection = traitlets.List(traitlets.Int, allow_none=True)
-    input_selection = traitlets.List(traitlets.Int, allow_none=True)
+    selection = traitlets.List(traitlets.Int(), allow_none=True)
+    input_selection = traitlets.List(traitlets.Int(), allow_none=True)
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
     def __init__(self, title="", **kwargs):
@@ -492,7 +426,7 @@ class AddingTagsEditor(ipw.VBox):
             value="<p style='font-style: italic;'>Note: The table is scrollable.</p>",
             layout={"visibility": "hidden"},
         )
-        self.tag_display = ipw.Output()
+        self.tag_display = ipw.VBox()
         self.add_tags.on_click(self._add_tags)
         self.reset_tags.on_click(self._reset_tags)
         self.reset_all_tags.on_click(self._reset_all_tags)
@@ -565,14 +499,11 @@ class AddingTagsEditor(ipw.VBox):
                 "height": "100px",
                 "width": "150px",
             }
-            with self.tag_display:
-                clear_output()
-                display(HTML(table_html))
+            self.tag_display.children = [ipw.HTML(table_html)]
             self.scroll_note.layout = {"visibility": "visible"}
         else:
             self.tag_display.layout = {}
-            with self.tag_display:
-                clear_output()
+            self.tag_display.children = []
             self.scroll_note.layout = {"visibility": "hidden"}
 
     def _from_selection(self, _=None):
@@ -698,21 +629,32 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
         the number of nodes and the number of cpus.
         """
         self.code_selection = ComputationalResourcesWidget(
+            description=kwargs.pop("description", None),
+            default_calc_job_plugin=kwargs.pop("default_calc_job_plugin", None),
             include_setup_widget=False,
-            fetch_codes=True,  # TODO resolve testing issues when set to `False`
+            fetch_codes=False,
             **kwargs,
         )
         self.code_selection.layout.width = "80%"
 
         self.num_nodes = ipw.BoundedIntText(
-            value=1, step=1, min=1, max=1000, description="Nodes", width="10%"
+            value=1,
+            step=1,
+            min=1,
+            max=1000,
+            description="Nodes",
         )
+
         self.num_cpus = ipw.BoundedIntText(
-            value=1, step=1, min=1, description="CPUs", width="10%"
+            value=1,
+            step=1,
+            min=1,
+            description="CPUs",
         )
+
         self.btn_setup_resource_detail = ipw.ToggleButton(description="More")
         self.btn_setup_resource_detail.observe(self._setup_resource_detail, "value")
-        self._setup_resource_detail_output = ipw.Output(layout={"width": "500px"})
+        self._setup_resource_detail_output = ipw.VBox(layout={"width": "500px"})
 
         # combine code, nodes and cpus
         children = [
@@ -791,23 +733,20 @@ class QEAppComputationalResourcesWidget(ipw.VBox):
             ]
 
     def _setup_resource_detail(self, _=None):
-        with self._setup_resource_detail_output:
-            clear_output()
-            if self.btn_setup_resource_detail.value:
-                self._setup_resource_detail_output.layout = {
-                    "width": "500px",
-                    "border": "1px solid gray",
-                }
-
-                children = [
-                    self.resource_detail,
-                ]
-                display(*children)
-            else:
-                self._setup_resource_detail_output.layout = {
-                    "width": "500px",
-                    "border": "none",
-                }
+        if self.btn_setup_resource_detail.value:
+            self._setup_resource_detail_output.layout = {
+                "width": "500px",
+                "border": "1px solid gray",
+            }
+            self._setup_resource_detail_output.children = [
+                self.resource_detail,
+            ]
+        else:
+            self._setup_resource_detail_output.layout = {
+                "width": "500px",
+                "border": "none",
+            }
+            self._setup_resource_detail_output.children = []
 
 
 class ResourceDetailSettings(ipw.VBox):
@@ -901,7 +840,7 @@ class ParallelizationSettings(ipw.VBox):
             value=1, step=1, min=1, max=128, description="Number of k-pools", **extra
         )
         self.override = ipw.Checkbox(
-            escription="",
+            description="",
             indent=False,
             value=False,
             layout=ipw.Layout(max_width="20px"),
@@ -971,27 +910,15 @@ class PwCodeResourceSetupWidget(QEAppComputationalResourcesWidget):
             self.set_parallelization(parameters["parallelization"])
 
 
-class LoadingWidget(ipw.HBox):
-    """Widget for displaying a loading spinner."""
-
-    def __init__(self, message="Loading", **kwargs):
-        self.message = ipw.Label(message)
-        super().__init__(
-            children=[
-                ipw.Label(message),
-                ipw.HTML(
-                    value="<i class='fa fa-spinner fa-spin fa-2x fa-fw'/>",
-                    layout=ipw.Layout(margin="12px 0 6px"),
-                ),
-            ],
-            layout=ipw.Layout(
-                justify_content="center",
-                align_items="center",
-                **kwargs.pop("layout", {}),
-            ),
-            **kwargs,
+class LoadingWidget(_LoadingWidget):
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "`LoadingWidget` has moved to `aiidalab-widgets-base` and will be "
+            "deprecated here in the next major release. Please update your imports.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        self.add_class("loading")
+        super().__init__(*args, **kwargs)
 
 
 class LazyLoader(ipw.VBox):
@@ -1138,152 +1065,6 @@ class CategorizedStructureExamplesWidget(StructureExamplesWidget):
         self._select_structure.options = self.get_example_structures(new_examples)
 
 
-class LinkButton(ipw.HTML):
-    disabled = traitlets.Bool(False)
-
-    def __init__(
-        self,
-        description=None,
-        link="",
-        in_place=False,
-        class_="",
-        style_="",
-        icon="",
-        tooltip="",
-        disabled=False,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
-        html = f"""
-            <a
-                role="button"
-                href="{link}"
-                title="{tooltip or description}"
-                target="{"_self" if in_place else "_blank"}"
-                style="cursor: default; {style_}"
-            >
-        """
-        if icon:
-            html += f"<i class='fa fa-{icon}'></i>"
-
-        html += f"{description}</a>"
-
-        self.value = html
-
-        self.add_class("jupyter-button")
-        self.add_class("widget-button")
-        self.add_class("link-button")
-        self.add_class(class_)
-
-        self.disabled = disabled
-
-    @traitlets.observe("disabled")
-    def _on_disabled(self, change):
-        if change["new"]:
-            self.add_class("disabled")
-        else:
-            self.remove_class("disabled")
-
-
-class TableWidget(anywidget.AnyWidget):
-    _esm = """
-    function render({ model, el }) {
-        let domElement = document.createElement("div");
-        el.classList.add("custom-table");
-        let selectedIndices = [];
-
-        function drawTable() {
-            const data = model.get("data");
-            domElement.innerHTML = "";
-            let innerHTML = '<table><tr>' + data[0].map(header => `<th>${header}</th>`).join('') + '</tr>';
-
-            for (let i = 1; i < data.length; i++) {
-                innerHTML += '<tr>' + data[i].map(cell => `<td>${cell}</td>`).join('') + '</tr>';
-            }
-
-            innerHTML += "</table>";
-            domElement.innerHTML = innerHTML;
-
-            const rows = domElement.querySelectorAll('tr');
-            rows.forEach((row, index) => {
-                if (index > 0) {
-                    row.addEventListener('click', () => {
-                        const rowIndex = index - 1;
-                        if (selectedIndices.includes(rowIndex)) {
-                            selectedIndices = selectedIndices.filter(i => i !== rowIndex);
-                            row.classList.remove('selected-row');
-                        } else {
-                            selectedIndices.push(rowIndex);
-                            row.classList.add('selected-row');
-                        }
-                        model.set('selected_rows', [...selectedIndices]);
-                        model.save_changes();
-                    });
-
-                    row.addEventListener('mouseover', () => {
-                        if (!row.classList.contains('selected-row')) {
-                            row.classList.add('hover-row');
-                        }
-                    });
-
-                    row.addEventListener('mouseout', () => {
-                        row.classList.remove('hover-row');
-                    });
-                }
-            });
-        }
-
-        function updateSelection() {
-            const newSelection = model.get("selected_rows");
-            selectedIndices = [...newSelection]; // Synchronize the JavaScript state with the Python state
-            const rows = domElement.querySelectorAll('tr');
-            rows.forEach((row, index) => {
-                if (index > 0) {
-                    if (selectedIndices.includes(index - 1)) {
-                        row.classList.add('selected-row');
-                    } else {
-                        row.classList.remove('selected-row');
-                    }
-                }
-            });
-        }
-
-        drawTable();
-        model.on("change:data", drawTable);
-        model.on("change:selected_rows", updateSelection);
-        el.appendChild(domElement);
-    }
-    export default { render };
-    """
-    _css = """
-    .custom-table table, .custom-table th, .custom-table td {
-        border: 1px solid black;
-        border-collapse: collapse;
-        text-align: left;
-        padding: 4px;
-    }
-    .custom-table th, .custom-table td {
-        min-width: 50px;
-        word-wrap: break-word;
-    }
-    .custom-table table {
-        width: 70%;
-        font-size: 1.0em;
-    }
-    /* Hover effect with light gray background */
-    .custom-table tr.hover-row:not(.selected-row) {
-        background-color: #f0f0f0;
-    }
-    /* Selected row effect with light green background */
-    .custom-table tr.selected-row {
-        background-color: #DFF0D8;
-    }
-    """
-    data = traitlets.List().tag(sync=True)
-    selected_rows = traitlets.List().tag(sync=True)
-
-
 class HBoxWithUnits(ipw.HBox):
     def __init__(self, widget: ipw.ValueWidget, units: str, **kwargs):
         super().__init__(
@@ -1301,171 +1082,9 @@ class HBoxWithUnits(ipw.HBox):
         self.add_class("hbox-with-units")
 
 
-class ArchiveImporter(ipw.VBox):
-    GITHUB = "https://github.com"
-    INFO_TEMPLATE = "{} <i class='fa fa-spinner fa-spin'></i>"
-
-    def __init__(
-        self,
-        repo: str,
-        tag: str,
-        archive_list: str,
-        archives_dir: str,
-        logger: t.Optional[dict] = None,
-        **kwargs,
-    ):
-        refs = "refs/tags"
-        raw = f"https://raw.githubusercontent.com/{repo}/{refs}/{tag}"
-        self.archive_list_url = f"{raw}/{archive_list}"
-        self.archives_url = f"{self.GITHUB}/{repo}/raw/{refs}/{tag}/{archives_dir}"
-        if logger:
-            self.logger_placeholder = logger.get("placeholder", "")
-            self.clear_log_on_import = logger.get("clear_on_import", False)
-            self.logger = RollingOutput()
-            self.logger.value = self.logger_placeholder
-        super().__init__(children=[LoadingWidget()], **kwargs)
-
-    def render(self):
-        self.selector = ipw.SelectMultiple(
-            options=[],
-            description="Examples:",
-            rows=10,
-            style={"description_width": "initial"},
-            layout=ipw.Layout(width="auto"),
-        )
-        self.selector.observe(self.check_plugins, "value")
-
-        self.import_button = ipw.Button(
-            description="Import",
-            button_style="success",
-            layout=ipw.Layout(width="fit-content"),
-            icon="download",
-        )
-        self.import_button.on_click(self.import_archives)
-
-        self.info = ipw.HTML()
-
-        self.info_plugins = ipw.HTML()
-        ipw.dlink(
-            (self.info_plugins, "value"),
-            (self.import_button, "disabled"),
-            lambda x: x != "",
-        )
-
-        history_link = LinkButton(
-            description="Calculation history",
-            link="./calculation_history.ipynb",
-            icon="list",
-            layout=ipw.Layout(
-                width="fit-content",
-                margin="2px 0 2px auto",
-            ),
-        )
-
-        accordion = None
-        if self.logger:
-            accordion = ipw.Accordion(children=[self.logger])
-            accordion.set_title(0, "Archive import log")
-            accordion.selected_index = None
-
-        self.children = [
-            self.selector,
-            ipw.HBox(
-                [
-                    self.import_button,
-                    self.info,
-                    history_link,
-                ],
-                layout=ipw.Layout(
-                    margin="2px 2px 4px 68px",
-                    align_items="center",
-                    grid_gap="4px",
-                ),
-            ),
-            self.info_plugins,
-            accordion or ipw.Box,
-        ]
-
-        self.selector.options = self.get_options()
-
-    def get_options(self) -> list[tuple[str, str]]:
-        response: req.Response = req.get(self.archive_list_url)
-        if not response.ok:
-            self.info.value = "Failed to fetch archive list"
-            return []
-        if archives := response.content.decode("utf-8").strip().split("\n"):
-            options = [(archive, archive.split("-")[0].strip()) for archive in archives]
-            self.required_plugins = {
-                archive.split("-")[0].strip(): [
-                    plugin.strip()
-                    for plugin in archive.split("/")[-1]
-                    .replace("plugins: ", "")
-                    .split(",")
-                ]
-                for archive in archives
-                if len(archive.split("/")) > 1
-            }
-            return options
-        self.info.value = "No archives found"
-        return []
-
-    def check_plugins(self, _) -> str:
-        self.info_plugins.value = ""
-        required_plugins_not_installed = set()
-        for example in self.selector.value:
-            for plugin in self.required_plugins.get(example, []):
-                try:
-                    importlib.import_module(plugin)
-                except ImportError:
-                    required_plugins_not_installed.add(plugin)
-
-        if len(required_plugins_not_installed) > 0:
-            self.info_plugins.value = """<div class="alert alert-warning">Required plugins not installed: <ul>"""
-            for plugin in required_plugins_not_installed:
-                self.info_plugins.value += f"<li>{plugin}</li>"
-            self.info_plugins.value += "</ul> Please install the required plugins using the <a href='./plugin_manager.ipynb' target='_blank'>plugin manager</a> and try again.</div>"
-        else:
-            self.info_plugins.value = ""
-
-        return required_plugins_not_installed
-
-    def import_archives(self, _):
-        self.import_button.disabled = True
-        if self.logger and self.clear_log_on_import:
-            self.logger.value = ""
-        for filename in self.selector.value:
-            self.import_archive(filename)
-        self.import_button.disabled = False
-
-    def import_archive(self, filename: str):
-        self.info.value = self.INFO_TEMPLATE.format(f"Importing {filename}")
-        file_url = f"{self.archives_url}/{filename}"
-        process = subprocess.Popen(
-            ["verdi", "archive", "import", "-v", "critical", file_url],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        stdout, stderr = process.communicate()
-        self._report(filename, stdout, stderr)
-
-    def _report(self, filename: str, stdout: str, stderr: str):
-        if stderr and "Success" not in stdout:
-            self.info.value = f"Failed to import {filename}"
-        if self.logger:
-            self.logger.value += stdout
-            if stderr:
-                if "Success" not in stdout:
-                    self.logger.value += "\n[ERROR]"
-                    self.info.value = "Error -> see log for details"
-                else:
-                    self.info.value = ""
-                self.logger.value += f"\n{stderr}"
-
-
 class ShakeNBreakEditor(ipw.VBox):
     structure = traitlets.Instance(ase.Atoms, allow_none=True)
-    selection = traitlets.List(traitlets.Int)
+    selection = traitlets.List(traitlets.Int())
     structure_node = traitlets.Instance(orm_Data, allow_none=True, read_only=True)
 
     def __init__(self, title="Editor ShakeNbreak"):
@@ -1671,6 +1290,8 @@ class ShakeNBreakEditor(ipw.VBox):
         self.selected_atoms.value = list_to_string_range(self.selection)
 
     def _apply_bond_distortion(self, _=None):
+        from shakenbreak.distortions import distort
+
         if not self.defect_position.value and not self.vacancy_coords.value:
             self._status_message.message = """
             <div class="alert alert-info">
@@ -1696,6 +1317,8 @@ class ShakeNBreakEditor(ipw.VBox):
             )
 
     def _apply_random_distortion(self, _=None):
+        from shakenbreak.distortions import local_mc_rattle
+
         if not self.defect_position.value and not self.vacancy_coords.value:
             self._status_message.message = """
             <div class="alert alert-info">
@@ -1729,6 +1352,8 @@ class ShakeNBreakEditor(ipw.VBox):
                 )
 
     def _apply_random_distortion_all(self, _=None):
+        from shakenbreak.distortions import rattle
+
         self._apply_distortion(
             rattle,
             active_atoms=None,
@@ -1746,3 +1371,21 @@ class ShakeNBreakEditor(ipw.VBox):
             atoms = pymatgen_ase.get_atoms(struc_distorted)
         atoms.set_pbc(periodicity)
         self.structure = atoms
+
+
+class WarningWidget(ipw.HTML):
+    message = traitlets.Unicode()
+
+    _TEMPLATE = """
+        <div class="alert alert-danger" style="text-align: center; margin-bottom: 0;">
+            <b>{message}</b>
+        </div>
+    """
+
+    def __init__(self, message: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.message = message
+
+    @traitlets.observe("message")
+    def _update_message(self, change: dict):
+        self.value = self._TEMPLATE.format(message=change["new"])

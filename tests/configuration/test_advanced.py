@@ -1,6 +1,14 @@
 from aiidalab_qe.app.configuration.advanced import (
     AdvancedConfigurationSettingsModel,
     AdvancedConfigurationSettingsPanel,
+    ConvergenceConfigurationSettingsModel,
+    ConvergenceConfigurationSettingsPanel,
+    GeneralConfigurationSettingsModel,
+    GeneralConfigurationSettingsPanel,
+    HubbardConfigurationSettingsModel,
+    HubbardConfigurationSettingsPanel,
+    MagnetizationConfigurationSettingsModel,
+    MagnetizationConfigurationSettingsPanel,
 )
 
 
@@ -10,19 +18,130 @@ def test_advanced_default():
     _ = AdvancedConfigurationSettingsPanel(model=model)
 
     smearing_model = model.get_model("smearing")
+    convergence_model = model.get_model("convergence")
 
     model.protocol = "fast"
     smearing_model.type = "methfessel-paxton"
     smearing_model.degauss = 0.03
-    model.kpoints_distance = 0.22
+    convergence_model.kpoints_distance = 0.22
 
     # Reset values to default w.r.t protocol
     model.reset()
     smearing_model.reset()
+    convergence_model.reset()
 
     assert smearing_model.type == "cold"
     assert smearing_model.degauss == 0.0275
+    assert convergence_model.kpoints_distance == 0.3
+
+
+def test_advanced_general_settings():
+    """Test General settings."""
+    model = GeneralConfigurationSettingsModel()
+    _ = GeneralConfigurationSettingsPanel(model=model)
+
+    assert model.total_charge == 0.0
+    assert model.van_der_waals == "none"
+    assert model.on_unhandled_failure == "pause"
+
+    # Check reset
+    model.total_charge = 1.0
+    model.van_der_waals = "dft-d3"
+    model.on_unhandled_failure = "abort"
+
+    model.reset()
+
+    assert model.total_charge == 0.0
+    assert model.van_der_waals == "none"
+    assert model.on_unhandled_failure == "pause"
+
+
+def test_advanced_convergence_settings(generate_structure_data):
+    """Test Convergence Settings."""
+    model = ConvergenceConfigurationSettingsModel()
+    panel = ConvergenceConfigurationSettingsPanel(model=model)
+
+    # Test structure-dependent convergence change
+    model.structure_uuid = generate_structure_data("silica").uuid
+
+    assert "num_atoms = 6" in model.help_message
+
+    model.protocol = "fast"
+
+    assert model.scf_conv_thr == 4e-10
+    assert model.scf_conv_thr_step == 1e-11
+    assert model.etot_conv_thr == 1e-4
+    assert model.etot_conv_thr_step == 1e-5
+    assert model.forc_conv_thr == 1e-3
+    assert model.forc_conv_thr_step == 1e-4
     assert model.kpoints_distance == 0.3
+    assert model.electron_maxstep == 80
+    assert model.optimization_maxsteps == 50
+
+    # Check reset
+    model.scf_conv_thr = 0.1
+    model.reset()
+    assert model.scf_conv_thr == 4e-10
+
+    # Test absolute convergence threshold display
+    panel.render()
+    assert panel.scf_conv_thr_abs.value == f"{4e-10 * model.get_num_atoms():.5e}"
+    assert panel.etot_conv_thr_abs.value == f"{1e-4 * model.get_num_atoms():.5e}"
+
+
+def test_advanced_kpoints_settings():
+    """Test kpoints setting of advanced setting widget."""
+    model = ConvergenceConfigurationSettingsModel()
+    _ = ConvergenceConfigurationSettingsPanel(model=model)
+
+    model.protocol = "balanced"
+    assert model.kpoints_distance == 0.15
+
+    model.protocol = "fast"
+    assert model.kpoints_distance == 0.3
+
+    # Check reset
+    model.kpoints_distance = 0.1
+    model.reset()
+
+    assert model.protocol == "fast"  # reset does not apply to protocol
+    assert model.kpoints_distance == 0.3
+
+
+def test_advanced_kpoints_mesh(generate_structure_data):
+    """Test Mesh Grid HTML widget."""
+    model = ConvergenceConfigurationSettingsModel()
+    _ = ConvergenceConfigurationSettingsPanel(model=model)
+
+    structure = generate_structure_data(name="silicon")
+    model.structure_uuid = structure.uuid
+
+    assert model.mesh_grid == "Mesh [14, 14, 14]"
+
+    # change protocol
+    model.protocol = "fast"
+    assert model.mesh_grid == "Mesh [7, 7, 7]"
+
+
+def test_advanced_molecule_settings(generate_structure_data):
+    """Test kpoints setting of advanced setting widget."""
+    model = ConvergenceConfigurationSettingsModel()
+    _ = ConvergenceConfigurationSettingsPanel(model=model)
+
+    # Create molecule
+    structure = generate_structure_data(name="H2O", pbc=(False, False, False))
+    model.structure_uuid = structure.uuid
+
+    # Confirm the value of kpoints_distance is fixed
+    assert model.kpoints_distance == 100.0
+
+    model.protocol = "fast"
+    assert model.kpoints_distance == 100.0
+
+    # Check that reset is done w.r.t the molecule structure
+    model.reset()
+    assert model.protocol == "fast"  # reset does not apply to protocol
+    assert model.kpoints_distance == 100
 
 
 def test_advanced_smearing_settings():
@@ -52,88 +171,15 @@ def test_advanced_smearing_settings():
     assert smearing_model.degauss == 0.0275
 
 
-def test_advanced_kpoints_settings():
-    """Test kpoints setting of advanced setting widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    model.protocol = "balanced"
-    assert model.kpoints_distance == 0.15
-
-    model.protocol = "fast"
-    assert model.kpoints_distance == 0.3
-
-    # Check reset
-    model.kpoints_distance = 0.1
-    model.reset()
-
-    assert model.protocol == "fast"  # reset does not apply to protocol
-    assert model.kpoints_distance == 0.3
-
-
-def test_advanced_molecule_settings(generate_structure_data):
-    """Test kpoints setting of advanced setting widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    # Create molecule
-    structure = generate_structure_data(name="H2O", pbc=(False, False, False))
-    model.input_structure = structure
-
-    # Confirm the value of kpoints_distance is fixed
-    assert model.kpoints_distance == 100.0
-
-    model.protocol = "fast"
-    assert model.kpoints_distance == 100.0
-
-    # Check that reset is done w.r.t the molecule structure
-    model.reset()
-    assert model.protocol == "fast"  # reset does not apply to protocol
-    assert model.kpoints_distance == 100
-
-
-def test_advanced_tot_charge_settings():
-    """Test TotCharge widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    assert model.total_charge == 0.0
-
-    # Check reset
-    model.total_charge = 1.0
-    model.reset()
-
-    assert model.total_charge == 0.0
-
-
-def test_advanced_kpoints_mesh(generate_structure_data):
-    """Test Mesh Grid HTML widget."""
-    model = AdvancedConfigurationSettingsModel()
-    _ = AdvancedConfigurationSettingsPanel(model=model)
-
-    structure = generate_structure_data(name="silicon")
-    model.input_structure = structure
-
-    assert model.mesh_grid == "Mesh [14, 14, 14]"
-
-    # change protocol
-    model.protocol = "fast"
-    assert model.mesh_grid == "Mesh [7, 7, 7]"
-
-
 def test_advanced_hubbard_settings(generate_structure_data):
     """Test Hubbard widget."""
-    from aiidalab_qe.app.configuration.advanced.hubbard import (
-        HubbardConfigurationSettingsModel,
-        HubbardConfigurationSettingsPanel,
-    )
 
     model = HubbardConfigurationSettingsModel()
     hubbard = HubbardConfigurationSettingsPanel(model=model)
     hubbard.render()
 
     structure = generate_structure_data(name="LiCoO2")
-    model.input_structure = structure
+    model.structure_uuid = structure.uuid
 
     # Activate Hubbard U widget
     model.is_active = True
@@ -188,24 +234,25 @@ def test_advanced_hubbard_settings(generate_structure_data):
 def test_advanced_magnetic_settings(generate_structure_data):
     """Test Magnetization widget."""
     from aiida.orm import StructureData
-    from aiidalab_qe.app.configuration.advanced.magnetization import (
-        MagnetizationConfigurationSettingsModel,
-        MagnetizationConfigurationSettingsPanel,
+    from aiidalab_qe.app.configuration.advanced.pseudos.utils import (
+        get_pseudo_family_by_label,
     )
 
     model = MagnetizationConfigurationSettingsModel()
     magnetic = MagnetizationConfigurationSettingsPanel(model=model)
-    magnetic.render()
 
-    model.family = "SSSP/1.3/PBE/efficiency"
+    pseudo_family = get_pseudo_family_by_label("SSSP/1.3/PBE/efficiency")
 
     structure = generate_structure_data(name="LiCoO2")
-    model.input_structure = structure
-    model._update_default_moments()
+    model.structure_uuid = structure.uuid
+    model.spin_type = "collinear"
+    model.dictionary = {
+        kind.name: pseudo_family.get_pseudo(kind.symbol).uuid
+        for kind in structure.kinds
+    }
 
-    # The sssp fixture sets the number of valence electrons to 4 for all electrons. Here, we are only
-    # testing that the correct logic is applied, i.e., 0.1 * number of electrons for elements with
-    # default magnetic moment 0.
+    magnetic.render()
+
     assert model._defaults["moments"] == {"Li": 0.4, "Co": 5, "O": 0.4}
 
     structure = StructureData(
@@ -215,14 +262,32 @@ def test_advanced_magnetic_settings(generate_structure_data):
             [1.923685, 1.110640, 3.141364],
         ]
     )
-    structure.append_atom(position=(0.0, 0.0, 0.0), symbols="Ni", name="Ni1")
     structure.append_atom(
-        position=(1.923685, 1.110640, 0.785341), symbols="Ni", name="Ni2"
+        position=(0.0, 0.0, 0.0),
+        symbols="Ni",
+        name="Ni1",
     )
-    structure.append_atom(position=(1.923685, 0.0, 2.356204), symbols="O", name="O1")
-    structure.append_atom(position=(1.923685, 0.0, 0.785341), symbols="O", name="O2")
+    structure.append_atom(
+        position=(1.923685, 1.110640, 0.785341),
+        symbols="Ni",
+        name="Ni2",
+    )
+    structure.append_atom(
+        position=(1.923685, 0.0, 2.356204),
+        symbols="O",
+        name="O1",
+    )
+    structure.append_atom(
+        position=(1.923685, 0.0, 0.785341),
+        symbols="O",
+        name="O2",
+    )
+    structure.store()
 
-    model.input_structure = structure
-    model._update_default_moments()
+    model.structure_uuid = structure.uuid
+    model.dictionary = {
+        kind.name: pseudo_family.get_pseudo(kind.symbol).uuid
+        for kind in structure.kinds
+    }
 
     assert model._defaults["moments"] == {"O1": 0.4, "O2": 0.4, "Ni1": 5, "Ni2": 5}

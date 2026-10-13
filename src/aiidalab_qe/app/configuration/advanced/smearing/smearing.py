@@ -1,13 +1,13 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.common.widgets import HBoxWithUnits
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import SmearingConfigurationSettingsModel
 
 
 class SmearingConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[SmearingConfigurationSettingsModel],
+    ConfigurationSettingsPanel[SmearingConfigurationSettingsModel],
 ):
     def __init__(self, model: SmearingConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
@@ -36,6 +36,7 @@ class SmearingConfigurationSettingsPanel(
 
         self.degauss = ipw.FloatText(
             step=0.005,
+            min=0.0,
             description="Width:",
             style={"description_width": "150px"},
         )
@@ -45,7 +46,6 @@ class SmearingConfigurationSettingsPanel(
         )
 
         self.children = [
-            ipw.HTML("<h2>Smearing</h2>"),
             ipw.HTML("""
                 <div style="line-height: 1.4; margin-bottom: 5px;">
                     Smear electronic state occupations near the Fermi level to
@@ -56,7 +56,7 @@ class SmearingConfigurationSettingsPanel(
                     The smearing type and width are set by the chosen <b>protocol</b>.
                     <br>
                     Changes are not advised unless you've mastered
-                    <a href="http://theossrv1.epfl.ch/Main/ElectronicTemperature"
+                    <a href="https://theos-wiki.epfl.ch/Main/ElectronicTemperature.md"
                     target="_blank"><b>smearing effects</b></a>.
                 </div>
             """),

@@ -1,7 +1,18 @@
+import typing as t
+
 import pytest
 
 from aiida import orm
-from aiidalab_qe.app.configuration.advanced.pseudos import PseudoUploadWidget
+from aiidalab_qe.app.configuration.advanced import (
+    PseudosConfigurationSettingsModel,
+    PseudosConfigurationSettingsPanel,
+)
+from aiidalab_qe.app.configuration.advanced.pseudos.uploader import (
+    PseudoPotentialUploader,
+    PseudoPotentialUploaderModel,
+)
+from aiidalab_qe.common import setup_pseudos as setup_pseudos_module
+from aiidalab_qe.setup import pseudos as pseudos_module
 from aiidalab_qe.setup.pseudos import (
     PSEUDODOJO_VERSION,
     SSSP_VERSION,
@@ -101,6 +112,53 @@ def test_setup_pseudos_cmd(tmp_path):
     ]
 
 
+def test_install_reports_indeterminate_progress_when_lock_is_held(monkeypatch):
+    class ContendedThenReleasedLock:
+        def __init__(self, _filename, timeout):
+            self.filename = _filename
+            self.timeout = timeout
+
+        def __enter__(self):
+            if self.timeout == 5:
+                raise pseudos_module.Timeout(self.filename)
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+    monkeypatch.setattr(pseudos_module, "FileLock", ContendedThenReleasedLock)
+    monkeypatch.setattr(pseudos_module, "pseudos_to_install", set)
+
+    assert list(pseudos_module.install()) == [
+        ("Checking installation status...", 0.1),
+        (
+            "Installation was already started elsewhere, waiting for it to finish...",
+            None,
+        ),
+    ]
+
+
+def test_pseudo_widget_stops_animation_on_numeric_progress(monkeypatch):
+    from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
+
+    monkeypatch.setattr(
+        setup_pseudos_module,
+        "install",
+        lambda: iter([("Waiting...", None), ("Installing...", 0.5)]),
+    )
+    monkeypatch.setattr(setup_pseudos_module, "pseudos_to_install", set)
+
+    widget = PseudosInstallWidget(auto_start=False, hide_by_default=False)
+    animation_states = []
+    widget.observe(lambda change: animation_states.append(change["new"]), "animating")
+
+    widget._refresh_installed()
+
+    assert animation_states == [True, False]
+    assert widget.value == 1.0
+    assert widget.animating is False
+
+
 @pytest.mark.slow
 @pytest.mark.usefixtures("aiida_profile_clean")
 def test_pseudos_installation():
@@ -143,17 +201,17 @@ def test_download_and_install_pseudo_from_file(tmp_path):
 
 
 def test_pseudos_settings(generate_structure_data, generate_upf_data):
-    from aiidalab_qe.app.configuration.advanced.pseudos import (
-        PseudosConfigurationSettingsModel,
-        PseudosConfigurationSettingsPanel,
-    )
-
     model = PseudosConfigurationSettingsModel()
     pseudos = PseudosConfigurationSettingsPanel(model=model)
 
+    silicon = generate_structure_data("silicon")
+    model.structure_uuid = silicon.uuid
+
     # Test the default family
-    model.spin_orbit = "wo_soc"
     assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
+    assert "Si" in model.dictionary.keys()
+    assert model.ecutwfc == 30
+    assert model.ecutrho == 240
 
     # Test protocol-dependent family change
     model.protocol = "stringent"
@@ -164,105 +222,228 @@ def test_pseudos_settings(generate_structure_data, generate_upf_data):
     assert model.family == f"SSSP/{SSSP_VERSION}/PBE/precision"
 
     # Test library-dependent family change
-    model.library = "PseudoDojo stringent"
+    model.library = "PseudoDojo stringent (SR)"
     assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBE/SR/stringent/upf"
 
     # Test spin-orbit-dependent family change
     model.spin_orbit = "soc"
-    model.protocol = "balanced"
-    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/standard/upf"
+    assert model.family == f"PseudoDojo/{PSEUDODOJO_VERSION}/PBEsol/FR/stringent/upf"
 
     # Reset the external dependencies of the model
     model.spin_orbit = "wo_soc"
-
-    # Test structure-dependent family change
-    silicon = generate_structure_data("silicon")
-    model.input_structure = silicon
-    assert "Si" in model.dictionary.keys()
-    assert model.ecutwfc == 30
-    assert model.ecutrho == 240
+    model.protocol = "balanced"
 
     # Test that changing the structure triggers a reset
     silica = generate_structure_data("silica")
-    model.input_structure = silica
+    model.structure_uuid = silica.uuid
+    assert model.family == f"SSSP/{SSSP_VERSION}/PBEsol/efficiency"
     assert "Si" in model.dictionary.keys()
     assert "O" in model.dictionary.keys()
 
-    # Test pseudo upload
     pseudos.render()
 
-    uploader: PseudoUploadWidget = pseudos.setter_widget.children[1]  # type: ignore
-    new_O_pseudo = generate_upf_data("O", "O_new.upf")
-    uploader._on_file_upload(
+    # Check uploaders
+    assert len(pseudos.pseudos_list.children) == 2
+
+    message = "{ecutwfc} | {ecutrho} | {functional} | {relativistic}"
+
+    # Check Si uploader (Si.upf)
+    Si_uploader = t.cast(
+        PseudoPotentialUploader,
+        pseudos.pseudos_list.children[0],  # type: ignore
+    )
+    assert Si_uploader._model.kind_name == "Si"
+    assert Si_uploader._model.kind_symbol == "Si"
+    pseudo = orm.load_node(model.dictionary["Si"])  # type: ignore[index]
+    assert Si_uploader._model.pseudo == pseudo
+    assert Si_uploader._model.cutoffs == [30, 240]
+    assert Si_uploader.pseudo_filename.value == pseudo.filename
+    assert (
+        message.format(
+            ecutwfc=30.0,
+            ecutrho=240.0,
+            functional="PBEsol",
+            relativistic="N/A",
+        )
+        in Si_uploader._model.info
+    )
+
+    # Check O uploader (O.upf)
+    O_uploader = t.cast(
+        PseudoPotentialUploader,
+        pseudos.pseudos_list.children[1],  # type: ignore
+    )
+    assert O_uploader._model.kind_name == "O"
+    assert O_uploader._model.kind_symbol == "O"
+    pseudo = orm.load_node(model.dictionary["O"])  # type: ignore[index]
+    assert O_uploader._model.pseudo == pseudo
+    assert O_uploader._model.cutoffs == [30, 240]
+    assert O_uploader.pseudo_filename.value == pseudo.filename
+    assert (
+        message.format(
+            ecutwfc=30.0,
+            ecutrho=240.0,
+            functional="PBEsol",
+            relativistic="N/A",
+        )
+        in O_uploader._model.info
+    )
+
+    # Test reset from uploaded state
+    new_O_pseudo = generate_upf_data(
+        "O",
+        "O_new.upf",
+        params={"accuracy": "high"},
+    )
+    O_uploader._on_file_upload(
         {
             "new": {
                 "O_new.upf": {
-                    "content": bytes(new_O_pseudo.get_content(), encoding="utf-8"),
+                    "content": bytes(
+                        new_O_pseudo.get_content(),
+                        encoding="utf-8",
+                    ),
                 },
             },
         }
     )
-    pseudo = model.dictionary["O"]  # type: ignore
-    assert orm.load_node(pseudo).filename == "O_new.upf"
-
-    # TODO necessary for final test - see comment below
-    # cutoffs = [model.ecutwfc, model.ecutrho]
+    assert O_uploader._model.pseudo.filename == "O_new.upf"
+    assert O_uploader.pseudo_filename.value == "O_new.upf"
 
     model.reset()
-    pseudo = model.dictionary["O"]  # type: ignore
-    assert orm.load_node(pseudo).filename != "O_new.upf"
 
-    # TODO what is this about?
-    # model.set_pseudos(pseudos, cutoffs)
-    # assert orm.load_node(pseudo).filename == "O_new.upf"
+    assert O_uploader._model.pseudo.filename != "O_new.upf"
+    assert O_uploader.pseudo_filename.value != "O_new.upf"
 
 
-# TODO test against model, not against widget
 def test_pseudo_upload_widget(generate_upf_data):
     """Test the pseudo upload widget."""
 
     # Test that the kind can be not the element symbol
     # the widget initialize with the pseudo as input to mock how it will
     # be used in PseudoSetter when the pseudo family is set.
-    old_pseudo = generate_upf_data("O", "O_old.upf")
-    w = PseudoUploadWidget(kind_name="O1")
-    w.pseudo = old_pseudo
-    w.cutoffs = [30, 240]
-    w.render()
+    old_pseudo = generate_upf_data("O", "O.upf")
+    old_pseudo.store()
 
-    message = "ψ: <b>{ecutwfc} Ry</b> | ρ: <b>{ecutrho} Ry</b>"  # noqa: RUF001
+    model = PseudoPotentialUploaderModel(kind_name="O1", kind_symbol="O")
+    uploader = PseudoPotentialUploader(model=model)
 
-    assert w.pseudo.filename == "O_old.upf"
-    assert w.kind_name == "O1"
-    assert message.format(ecutwfc=30.0, ecutrho=240.0) in w.cutoff_message.value
-    assert w.error_message is None
+    model.pseudo = old_pseudo
+    model.cutoffs = [30, 240]
+    model.update_pseudo_info()
 
-    # mimic upload a new pseudo and set cutoffs
-    new_pseudo = generate_upf_data("O", "O_new.upf")
-    w._on_file_upload(
+    message = "{ecutwfc} | {ecutrho}"
+
+    assert model.pseudo.filename == "O.upf"
+    assert message.format(ecutwfc=30.0, ecutrho=240.0) in model.info
+    assert not model.message
+
+    uploader.render()
+
+    # Check different element is rejected
+    different_element = generate_upf_data("Si", "Si.upf")
+    uploader._on_file_upload(
         {
             "new": {
-                "O_new.upf": {
-                    "content": bytes(new_pseudo.get_content(), encoding="utf-8")
-                }
-            }
+                "Si.upf": {
+                    "content": bytes(
+                        different_element.get_content(),
+                        encoding="utf-8",
+                    )
+                },
+            },
         }
     )
+    assert model.pseudo.filename == "O.upf"
+    assert "does not match" in model.message
 
-    assert w.pseudo.filename == "O_new.upf"
-    assert w.kind_name == "O1"
-    assert w.error_message is None
-
-    # test upload a invalid pseudo of other element
-    invalid_pseudo = generate_upf_data("Ba", "Ba.upf")
-    w._on_file_upload(
+    # Check identical content is rejected in favor of existing one
+    same_content_different_name = generate_upf_data("O", "O_copy.upf")
+    uploader._on_file_upload(
         {
             "new": {
-                "Ba_upf.upf": {
-                    "content": bytes(invalid_pseudo.get_content(), encoding="utf-8")
-                }
-            }
+                "O_copy.upf": {
+                    "content": bytes(
+                        same_content_different_name.get_content(),
+                        encoding="utf-8",
+                    ),
+                },
+            },
         }
     )
-    assert w.error_message is not None
-    assert w.pseudo is None
+    assert model.pseudo.filename == "O.upf"
+    assert "Identical pseudo" in model.message
+
+    # Check invalid pseudo content is rejected
+    uploader._on_file_upload(
+        {
+            "new": {
+                "O_invalid.upf": {
+                    "content": b"<UPF version='...'>...</UPF>",
+                },
+            },
+        }
+    )
+    assert "not a valid UPF file" in model.message
+
+    # Check valid pseudo is accepted
+    valid = generate_upf_data(
+        "O",
+        "O_valid.upf",
+        params={"accuracy": "normal"},
+    )
+    uploader._on_file_upload(
+        {
+            "new": {
+                "O_valid.upf": {
+                    "content": bytes(
+                        valid.get_content(),
+                        encoding="utf-8",
+                    ),
+                },
+            },
+        }
+    )
+    assert model.pseudo.filename == "O_valid.upf"
+    assert "uploaded successfully" in model.message
+
+
+def test_missing_pseudos(generate_structure_data):
+    """Test that the model handles missing pseudos correctly."""
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.structure_uuid = generate_structure_data("CeO").uuid
+    model.functional = "PBEsol"
+    model.library = "PseudoDojo standard (SR)"
+    assert model.family == "PseudoDojo/0.4/PBEsol/SR/standard/upf"
+    assert model.dictionary["Ce"] is None  # type: ignore
+    assert model.dictionary["O"] is not None  # type: ignore
+    assert len(model.blockers) == 1
+    assert "does not contain a pseudopotential for Ce" in model.blockers[0]  # type: ignore
+
+
+def test_functional_mismatch_blocker(generate_structure_data, generate_upf_data):
+    """Test blocker for inconsistent functional across selected pseudopotentials."""
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.structure_uuid = generate_structure_data("silica").uuid
+    pseudo1 = generate_upf_data("Si", "Si_PBE.upf").store()
+    pseudo1.base.extras.set("functional", "PBE")
+    pseudo2 = generate_upf_data("O", "O_PBEsol.upf").store()
+    pseudo2.base.extras.set("functional", "PBEsol")
+    model.dictionary = {"Si": pseudo1.uuid, "O": pseudo2.uuid}
+    assert len(model.blockers) == 1
+    assert "must have the same exchange-correlation" in model.blockers[0]  # type: ignore
+
+
+def test_relativistic_mismatch_blocker(generate_structure_data):
+    """Test blocker for inconsistent relativistic treatment across selected
+    pseudopotentials with SOC.
+    """
+    model = PseudosConfigurationSettingsModel()
+    _ = PseudosConfigurationSettingsPanel(model=model)
+    model.structure_uuid = generate_structure_data("silica").uuid
+    model.spin_orbit = "soc"
+    model.family = "SSSP/1.3/PBEsol/efficiency"
+    assert len(model.blockers) == 1
+    assert "pseudopotentials must be fully relativistic" in model.blockers[0]  # type: ignore

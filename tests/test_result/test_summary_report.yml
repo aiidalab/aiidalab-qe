@@ -11,6 +11,8 @@ advanced_settings:
   pseudo_library:
     url: https://www.materialscloud.org/discover/sssp/table/efficiency
     value: SSSP efficiency v1.3
+  pseudos:
+  - <b>Si:</b> Si_PBEsol_efficiency.upf
   scf_kpoints_distance: 0.3 Å<sup>-1</sup>
   smearing: cold
   spin_orbit: 'off'
@@ -20,7 +22,7 @@ basic_settings:
   electronic_type: metal
   periodicity: xyz
   protocol: fast
-  relaxed: positions_cell
+  relaxed: full geometry
   spin_type: 'off'
 initial_structure_properties:
   cell_angles: 60 60 60

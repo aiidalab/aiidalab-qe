@@ -1,10 +1,9 @@
 from collections.abc import Mapping
 from importlib import resources
-from pathlib import Path
 
 import yaml
 
-from aiidalab_qe.app import parameters
+from aiidalab_qe.config import CONFIG_DIR_PATH
 
 
 def recursive_merge(d1, d2):
@@ -45,9 +44,7 @@ def recursive_merge(d1, d2):
     return d1
 
 
-DEFAULT_PARAMETERS = yaml.safe_load(resources.read_text(parameters, "qeapp.yaml"))
-
-CONFIG_DIR_PATH = Path.home() / ".aiidalab" / "quantum-espresso"
+DEFAULT_PARAMETERS = yaml.safe_load(resources.read_text(__package__, "qeapp.yaml"))
 
 custom_config_file = CONFIG_DIR_PATH / "qe-config.yml"
 if custom_config_file.exists():

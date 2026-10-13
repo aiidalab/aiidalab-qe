@@ -8,45 +8,16 @@ from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinTy
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
-from aiidalab_qe.utils import enable_pencil_decomposition
+from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.utils import (
+    enable_pencil_decomposition,
+    set_default_process_failure_policy,
+)
 
 XyData = DataFactory("core.array.xy")
 StructureData = DataFactory("core.structure")
 BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
-
-
-# functions to get entry points is copied from aiidalab_qe.app.utils
-# because we want to decouple the workflows from the app, so I copied it here
-# instead of importing it.
-# load entry points
-
-
-def get_entries(entry_point_name="aiidalab_qe.property"):
-    from importlib.metadata import entry_points
-
-    entries = {}
-    for entry_point in entry_points().get(entry_point_name, []):
-        try:
-            # Attempt to load the entry point
-            loaded_entry_point = entry_point.load()
-            entries[entry_point.name] = loaded_entry_point
-        except Exception as e:
-            # Handle loading errors
-            print(f"Failed to load entry point {entry_point.name}: {e}")
-
-    return entries
-
-
-# load entry point items
-def get_entry_items(entry_point_name, item_name="workchain"):
-    entries = get_entries(entry_point_name)
-    return {
-        name: entry_point.get(item_name)
-        for name, entry_point in entries.items()
-        if entry_point.get(item_name, False)
-    }
-
 
 plugin_entries = get_entry_items("aiidalab_qe.properties", "workchain")
 
@@ -63,7 +34,9 @@ class QeAppWorkChain(WorkChain):
                    help='The inputs structure.')
         spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(True),
                    help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
-        spec.input('properties', valid_type=orm.List, default=lambda: orm.List(),
+        spec.input('on_unhandled_failure', valid_type=orm.Str, default=lambda: orm.Str('pause'),
+               help='Action to take when a first-level plugin workflow encounters an unhandled failure.')
+        spec.input('properties', valid_type=orm.List, default=orm.List,
                    help='The properties to calculate, used to control the logic of QeAppWorkChain.')
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('clean_workdir', 'structure'),
                            namespace_options={'required': False, 'populate_defaults': False,
@@ -115,7 +88,7 @@ class QeAppWorkChain(WorkChain):
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
-        import copy
+        from aiidalab_qe.utils import shallow_copy_nested_dict
 
         parameters = parameters or {}
         properties = parameters["workchain"].pop("properties", [])
@@ -172,14 +145,10 @@ class QeAppWorkChain(WorkChain):
 
         # relax
         relax_overrides = {
-            "base": parameters["advanced"],
-            "base_final_scf": parameters["advanced"],
+            "base_relax": parameters["advanced"],
         }
         # nsteps only for relaxation workflow
-        relax_overrides["base"]["pw"]["parameters"]["CONTROL"]["nstep"] = parameters[
-            "advanced"
-        ]["optimization_maxsteps"]
-        relax_overrides["base_final_scf"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
+        relax_overrides["base_relax"]["pw"]["parameters"]["CONTROL"]["nstep"] = (
             parameters["advanced"]["optimization_maxsteps"]
         )
 
@@ -201,12 +170,13 @@ class QeAppWorkChain(WorkChain):
                 overrides=relax_overrides,
                 **kwargs,
             )
-            enable_pencil_decomposition(relax_builder.base.pw)
+            enable_pencil_decomposition(relax_builder.base_relax.pw)
             # pop the inputs that are excluded from the expose_inputs
             relax_builder.pop("structure", None)
             relax_builder.pop("clean_workdir", None)
-            relax_builder.pop("base_final_scf", None)  # never run a final scf
             builder.relax = relax_builder
+            # Preserve the app's existing single-stage relaxation behavior.
+            builder.relax.pop("base_init_relax", None)
         else:
             builder.pop("relax")
 
@@ -214,23 +184,35 @@ class QeAppWorkChain(WorkChain):
         # clean workdir
         clean_workdir = orm.Bool(parameters["advanced"]["clean_workdir"])
         builder.clean_workdir = clean_workdir
+        on_unhandled_failure = parameters["advanced"].get(
+            "on_unhandled_failure",
+            "pause",
+        )
+        builder.on_unhandled_failure = orm.Str(on_unhandled_failure)
         # add plugin workchain
         for name, entry_point in plugin_entries.items():
             if name in properties:
                 plugin_builder = entry_point["get_builder"](
                     codes[name]["codes"],
                     builder.structure,
-                    copy.deepcopy(parameters),
+                    shallow_copy_nested_dict(parameters),
                     **kwargs,
                 )
                 plugin_workchain = entry_point["workchain"]
                 if plugin_workchain.spec().has_input("clean_workdir"):
                     plugin_builder.clean_workdir = clean_workdir
+                if plugin_workchain.spec().has_input("on_unhandled_failure"):
+                    plugin_builder.on_unhandled_failure = orm.Str(on_unhandled_failure)
                 # some plugin's logic depend on whether a input exist or not, but not check if it is empty.
                 # here we remove the empty namespace for safety.
                 setattr(builder, name, plugin_builder._inputs(prune=True))
             else:
                 builder.pop(name, None)
+
+        set_default_process_failure_policy(
+            builder,
+            on_unhandled_failure=on_unhandled_failure,
+        )
         return builder
 
     def setup(self):

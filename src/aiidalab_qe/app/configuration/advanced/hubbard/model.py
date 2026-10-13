@@ -8,18 +8,18 @@ from pymatgen.core.periodic_table import Element
 
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiidalab_qe.common.mixins import HasInputStructure
-
-from ..subsettings import AdvancedCalculationSubSettingsModel
+from aiidalab_qe.common.panel import PanelModel
 
 
 class HubbardConfigurationSettingsModel(
-    AdvancedCalculationSubSettingsModel,
+    PanelModel,
     HasInputStructure,
 ):
+    title = "Hubbard (DFT+U)"
     identifier = "hubbard"
 
     dependencies = [
-        "input_structure",
+        "structure_uuid",
     ]
 
     is_active = tl.Bool(False)
@@ -41,7 +41,13 @@ class HubbardConfigurationSettingsModel(
     applicable_kind_names = []
     orbital_labels = []
 
-    def update(self, specific=""):  # noqa: ARG002
+    include = True  # build-in panel
+
+    @property
+    def needs_eigenvalues_widget(self):
+        return len(self.applicable_kind_names) > 0
+
+    def _update(self, specific=""):
         if not self.has_structure:
             self.applicable_kind_names = []
             self.orbital_labels = []
@@ -63,7 +69,6 @@ class HubbardConfigurationSettingsModel(
         with self.hold_trait_notifications():
             self.parameters = self._get_default_parameters()
             self.eigenvalues = self._get_default_eigenvalues()
-            self.needs_eigenvalues_widget = len(self.applicable_kind_names) > 0
 
     def get_active_eigenvalues(self):
         if not (
@@ -83,17 +88,29 @@ class HubbardConfigurationSettingsModel(
             for eigenvalue in eigenvalues_array.reshape(new_shape).tolist()
         ]
 
-    def set_active_eigenvalues(self, eigenvalues: list):
-        eigenvalues_array = np.array(eigenvalues, dtype=object)
-        num_states = len(set(eigenvalues_array[:, 0]))
-        num_spins = len(set(eigenvalues_array[:, 1]))
-        num_kinds = len(set(eigenvalues_array[:, 2]))
-        new_shape = (num_kinds, num_spins, num_states, 4)
-        self.eigenvalues = eigenvalues_array.reshape(new_shape).tolist()
+    def set_active_eigenvalues(self, active_eigenvalues: list):
+        active_map = {
+            (int(state), int(spin), kind_name): [state, spin, kind_name, value]
+            for state, spin, kind_name, value in active_eigenvalues
+        }
+
+        self.eigenvalues = [
+            [
+                [
+                    active_map.get(
+                        (state, spin, kind_name),
+                        [state, spin, kind_name, -1],
+                    )
+                    for state in range(1, num_states + 1)
+                ]
+                for spin in (1, 2)
+            ]
+            for kind_name, num_states in self.applicable_kind_names
+        ]
         self.has_eigenvalues = True
 
     def get_parameters_from_hubbard_structure(self):
-        hubbard_parameters = self.input_structure.hubbard.dict()["parameters"]
+        hubbard_parameters = self.input_structure.hubbard.model_dump()["parameters"]
         sites = self.input_structure.sites
         return {
             f"{sites[hp['atom_index']].kind_name} - {hp['atom_manifold']}": hp["value"]
@@ -121,7 +138,7 @@ class HubbardConfigurationSettingsModel(
         ]
 
     def _define_default_parameters(self):
-        return {label: 0.0 for label in self.orbital_labels}
+        return dict.fromkeys(self.orbital_labels, 0.0)
 
     def _define_applicable_kind_names(self):
         applicable_kind_names = []

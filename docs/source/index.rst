@@ -145,7 +145,15 @@ Welcome Page
 How to cite
 ===========
 
-If you use the app for research, please follow these links to:
+.. raw:: html
+
+   If you use the app in your research, please cite:
+   <div style="padding: 8px 20px">
+      Wang, X., Bainglass, E., Bonacci, M., Ortega-Guerrero, A. et al.<br />
+      Making atomistic materials calculations accessible with the AiiDAlab Quantum ESPRESSO app<br />
+      <em>npj. Comput. Mater.</em> <b>12</b>, 72 (2026). <a href="https://doi.org/10.1038/s41524-025-01936-4" target="_blank">https://doi.org/10.1038/s41524-025-01936-4</a>
+   </div>
+   In addition, please follow these links to:
 
 - `cite AiiDA <https://aiida.readthedocs.io/projects/aiida-core/en/latest/#how-to-cite>`_
 - `cite AiiDA's Quantum ESPRESSO plugin <https://aiida-quantumespresso.readthedocs.io/en/latest/#how-to-cite>`_

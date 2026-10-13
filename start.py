@@ -3,6 +3,26 @@ import ipywidgets as ipw
 
 def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
     return ipw.HTML(f"""
+        <style>
+            details {{
+                border: 1px solid #aaaaaa;
+                border-radius: 4px;
+                padding: 1rem 2rem 0.25rem;
+                margin: 1rem 2px 2rem;
+            }}
+            summary {{
+                font-weight: bold;
+                margin: -0.5em -0.5em 0;
+                padding: 0.5em;
+                cursor: pointer;
+            }}
+            summary::before {{
+                content: "▶";
+            }}
+            details[open] summary::before {{
+                content: "▼";
+            }}
+        </style>
         <div class="app-container">
             <a
                 class="logo"
@@ -32,7 +52,7 @@ def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
                         src="{appbase}/miscellaneous/logos/history.png"
                         alt="Calculation history"
                     />
-                    <div class="feature-label">Calculation History</div>
+                    <div class="feature-label">Calculation history</div>
                 </a>
                 <a
                     class="feature"
@@ -68,5 +88,6 @@ def get_start_widget(appbase, jupbase, notebase):  # noqa: ARG001
                     <div class="feature-label">Quantum ESPRESSO</div>
                 </a>
             </div>
+
         </div>
     """)

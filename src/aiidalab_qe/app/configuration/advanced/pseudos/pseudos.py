@@ -1,33 +1,28 @@
 from __future__ import annotations
 
-import io
+import typing as t
 
 import ipywidgets as ipw
-import traitlets as tl
 
 from aiida import orm
-from aiida.plugins import DataFactory, GroupFactory
-from aiidalab_qe.common.widgets import HBoxWithUnits, LoadingWidget
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
+from aiidalab_qe.common.widgets import HBoxWithUnits
+from aiidalab_qe.utils import generate_alert
 from aiidalab_widgets_base.utils import StatusHTML
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import PseudosConfigurationSettingsModel
-
-UpfData = DataFactory("pseudo.upf")
-SsspFamily = GroupFactory("pseudo.family.sssp")
-PseudoDojoFamily = GroupFactory("pseudo.family.pseudo_dojo")
-CutoffsPseudoPotentialFamily = GroupFactory("pseudo.family.cutoffs")
+from .uploader import PseudoPotentialUploader, PseudoPotentialUploaderModel
 
 
 class PseudosConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[PseudosConfigurationSettingsModel],
+    ConfigurationSettingsPanel[PseudosConfigurationSettingsModel],
 ):
     def __init__(self, model: PseudosConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._model.observe(
             self._on_protocol_change,
@@ -38,49 +33,47 @@ class PseudosConfigurationSettingsPanel(
             "spin_orbit",
         )
         self._model.observe(
-            self._on_family_parameters_change,
-            ["library", "functional"],
+            self._on_functional_change,
+            "functional",
+        )
+        self._model.observe(
+            self._on_library_change,
+            "library",
         )
         self._model.observe(
             self._on_family_change,
             "family",
         )
         self._model.observe(
-            self._on_reset_trigger_change,
-            "pseudo_filename_reset_trigger",
+            self._on_dictionary_change,
+            "dictionary",
+        )
+        self._model.observe(
+            self._on_cutoffs_change,
+            "cutoffs",
+        )
+        self._model.observe(
+            self._on_ecut_change,
+            ["ecutwfc", "ecutrho"],
         )
 
-        ipw.dlink(
-            (self._model, "cutoffs"),
-            (self._model, "ecutwfc"),
-            lambda cutoffs: max(cutoffs[0]),
-        )
-        ipw.dlink(
-            (self._model, "cutoffs"),
-            (self._model, "ecutrho"),
-            lambda cutoffs: max(cutoffs[1]),
-        )
+        self._uploader_dictionary_observers: list[t.Callable] = []
 
     def render(self):
         if self.rendered:
             return
 
-        self.family_prompt = ipw.HTML()
+        self.family_header = ipw.HTML()
+        ipw.dlink(
+            (self._model, "family_header"),
+            (self.family_header, "value"),
+        )
 
         self.family_help = ipw.HTML()
         ipw.dlink(
             (self._model, "family_help_message"),
             (self.family_help, "value"),
         )
-
-        self.functional_help = ipw.HTML("""
-            <div class="pseudo-text">
-                The exchange-correlation energy is calculated using this functional.
-                <br>
-                We currently provide support for two well-established generalized
-                gradient approximation (GGA) functionals: PBE and PBEsol.
-            </div>
-        """)
 
         self.functional = ipw.ToggleButtons()
         ipw.dlink(
@@ -92,7 +85,7 @@ class PseudosConfigurationSettingsPanel(
             (self.functional, "value"),
         )
 
-        self.library = ipw.ToggleButtons()
+        self.library = ipw.ToggleButtons(style={"button_width": "fit-content"})
         ipw.dlink(
             (self._model, "library_options"),
             (self.library, "options"),
@@ -102,24 +95,22 @@ class PseudosConfigurationSettingsPanel(
             (self.library, "value"),
         )
 
-        self.setter_widget = ipw.VBox()
+        self.pseudos_list = ipw.VBox()
 
-        self._status_message = StatusHTML(clear_after=20)
-        ipw.dlink(
-            (self._model, "status_message"),
-            (self._status_message, "message"),
-        )
-
-        self.ecutwfc = ipw.FloatText(
+        self.ecutwfc = ipw.BoundedFloatText(
             description="Wavefunction",
+            min=0.0,
+            max=1e4,
             style={"description_width": "150px"},
         )
         ipw.link(
             (self._model, "ecutwfc"),
             (self.ecutwfc, "value"),
         )
-        self.ecutrho = ipw.FloatText(
+        self.ecutrho = ipw.BoundedFloatText(
             description="Charge density",
+            min=0.0,
+            max=1e4,
             style={"description_width": "150px"},
         )
         ipw.link(
@@ -127,32 +118,65 @@ class PseudosConfigurationSettingsPanel(
             (self.ecutrho, "value"),
         )
 
+        self._status_message = StatusHTML(clear_after=20)
+        ipw.link(
+            (self._model, "status_message"),
+            (self._status_message, "message"),
+        )
+
+        self._warning_message = ipw.HTML(
+            value=generate_alert(
+                alert_type="warning",
+                message="""
+                    <h4><b>⚠️ Pseudopotential upload detected ⚠️</b></h4>
+                    Adjust plane-wave cutoff energies below to ensure convergence
+                    <br>
+                    To reset to protocol defaults, select both an exchange-correlation
+                    functional and a pseudopotential family above.
+                    <br>
+                    Switching the protocol in <b>Basic settings</b> will also reset the
+                    pseudopotentials to the defaults of the selected protocol.
+                """,
+                allow_html=True,
+                class_="text-center",
+                style_="line-height: 2;",
+            ),
+            layout=ipw.Layout(
+                display="block" if self._model.show_upload_warning else "none",
+            ),
+        )
+        ipw.dlink(
+            (self._model, "show_upload_warning"),
+            (self._warning_message.layout, "display"),
+            lambda show: "block" if show else "none",
+        )
+
         self.children = [
-            ipw.HTML("<h2>Accuracy and precision</h2>"),
             ipw.HTML("""
                 <div class="pseudo-text">
-                    The exchange-correlation functional and pseudopotential library is
+                    The exchange-correlation functional and pseudopotential library are
                     set by the <b>protocol</b> configured in the <b>Basic settings</b>
                     tab.
                     <br>
                     Here you can override the defaults if desired.
                 </div>
             """),
-            ipw.VBox(
-                children=[
-                    ipw.HTML("<h4>Exchange-correlation functional</h4>"),
-                    self.functional,
-                    self.functional_help,
-                ],
-            ),
-            ipw.VBox(
-                children=[
-                    self.family_prompt,
-                    self.library,
-                    self.family_help,
-                ],
-            ),
+            ipw.HTML("<h4>Exchange-correlation functional</h4>"),
+            ipw.HTML("""
+                <div class="pseudo-text">
+                    The exchange-correlation energy is described using the selected
+                    functional.
+                    <br>
+                    We currently provide support for two well-established generalized
+                    gradient approximation (GGA) functionals: PBE and PBEsol.
+                </div>
+            """),
+            self.functional,
+            self.family_header,
+            self.family_help,
+            self.library,
             ipw.HTML("<h4>Pseudopotentials</h4>"),
+            self._warning_message,
             ipw.HTML("""
                 <div class="pseudo-text">
                     The pseudopotential for each kind of atom in the structure can be
@@ -161,11 +185,24 @@ class PseudosConfigurationSettingsPanel(
                     The default pseudopotential and cutoffs are taken from the
                     pseudopotential family.
                     <br>
-                    Recommended wavefunction (ψ) and charge density (ρ) cutoffs are
-                    given to the right of each pseudopotential.
+                    Pseudopotential information is shown (if provided) in the following order:
+                    <ul>
+                        <li>
+                            Recommended wavefunction cutoff energy (Ry)
+                        </li>
+                        <li>
+                            Recommended charge density cutoff energy (Ry)
+                        </li>
+                        <li>
+                            Exchange-correlation functional
+                        </li>
+                        <li>
+                            Relativistic treatment
+                        </li>
+                    </ul>
                 </div>
-            """),  # noqa: RUF001
-            self.setter_widget,
+            """),
+            self.pseudos_list,
             ipw.HTML("<h4>Cutoffs</h4>"),
             ipw.HTML("""
                 <div style="line-height: 1.4;">
@@ -191,6 +228,7 @@ class PseudosConfigurationSettingsPanel(
         self.refresh(specific="widgets")
 
     def _on_input_structure_change(self, _):
+        self._unsubscribe_uploader_observations()
         self.refresh(specific="structure")
 
     def _on_protocol_change(self, _):
@@ -199,196 +237,105 @@ class PseudosConfigurationSettingsPanel(
     def _on_spin_orbit_change(self, _):
         self._model.update_library_options()
 
-    def _on_family_parameters_change(self, _):
+    def _on_functional_change(self, _):
+        self._model.update_family()
+
+    def _on_library_change(self, _):
+        self._model.update_family_header()
         self._model.update_family()
 
     def _on_family_change(self, _):
-        self._update_family_link()
-        self._model.update_default_pseudos()
-        self._model.update_default_cutoffs()
+        self._toggle_upload_warning()
+        self._model.update_dictionary()
 
-    def _on_reset_trigger_change(self, _):
+    def _on_dictionary_change(self, _):
+        self._model.update_functional()
+        self._model.update_cutoffs()
+        self._model.update_blockers()
+
+    def _on_cutoffs_change(self, change):
+        cutoffs = change["new"]  # [[ecutwfc...], [ecutrho...]]
+        self._model.ecutwfc = max(cutoffs[0])
+        self._model.ecutrho = max(cutoffs[1])
+
+    def _on_ecut_change(self, _):
+        self._model.update_blockers()
+
+    def _update_ui(self):
+        self._build_pseudos_list()
+        self._model.update_family_header()
+
+    def _unsubscribe_uploader_observations(self):
+        for observer in self._uploader_dictionary_observers:
+            self._model.unobserve(observer, "dictionary")
+        self._uploader_dictionary_observers.clear()
+
+    def _toggle_upload_warning(self):
+        self._model.show_upload_warning = not self._model.family
+
+    def _build_pseudos_list(self):
         if not self.rendered:
             return
-        upload_widget: PseudoUploadWidget
-        for upload_widget in self.setter_widget.children:
-            upload_widget.reset_pseudo_filename_widget()
 
-    def _update(self, specific=""):
-        if self.updated:
-            return
-        self._show_loading()
-        if not self._model.loaded_from_process or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_setter_widgets()
-        self._model.update_library_options()
-        self._update_family_link()
-        self.updated = True
-
-    def _update_family_link(self):
-        if not self.rendered:
-            return
-
-        library, accuracy = self._model.library.split()
-        if library == "SSSP":
-            pseudo_family_link = (
-                f"https://www.materialscloud.org/discover/sssp/table/{accuracy}"
-            )
-        else:
-            pseudo_family_link = "http://www.pseudo-dojo.org/"
-
-        self.family_prompt.value = f"""
-            <h4>
-                <a href="{pseudo_family_link}" target="_blank">
-                    Pseudopotential family
-                </a>
-            </h4>
-        """
-
-    def _show_loading(self):
-        if self.rendered:
-            self.setter_widget.children = [self.loading_message]
-
-    def _build_setter_widgets(self):
-        if not self.rendered:
-            return
+        self.pseudos_list.children = [self.loading_message]
 
         children = []
 
-        kinds = self._model.input_structure.kinds if self._model.input_structure else []
+        kinds = self._model.input_structure.kinds if self._model.has_structure else []
 
         for index, kind in enumerate(kinds):
-            upload_widget = PseudoUploadWidget(kind_name=kind.name)
-            pseudo_link = ipw.link(
-                (self._model, "dictionary"),
-                (upload_widget, "pseudo"),
-                [
-                    lambda dictionary, kind_name=kind.name: orm.load_node(
-                        dictionary.get(kind_name)
-                    ),
-                    lambda pseudo, kind_name=kind.name: {
+            uploader_model = PseudoPotentialUploaderModel(kind.name, kind.symbol)
+
+            def on_pseudo_upload(
+                _=None,
+                model=uploader_model,
+                kind_name=kind.name,
+            ):
+                if not (model.uploaded and model.pseudo):
+                    return
+                with self._model.hold_trait_notifications():
+                    self._model.dictionary = {
                         **self._model.dictionary,
-                        kind_name: pseudo.uuid,
-                    },
-                ],
-            )
-            cutoffs_link = ipw.dlink(
-                (self._model, "cutoffs"),
-                (upload_widget, "cutoffs"),
-                lambda cutoffs, index=index: [cutoffs[0][index], cutoffs[1][index]]
-                if len(cutoffs[0]) > index
-                else [0.0, 0.0],
-            )
-            upload_widget.render()
+                        kind_name: model.pseudo.uuid,
+                    }
+                    self._model.library = None
+                    self._model.family = None
 
-            self.links.extend(
-                [
-                    pseudo_link,
-                    cutoffs_link,
-                    *upload_widget.links,
-                ]
+            uploader_model.observe(
+                on_pseudo_upload,
+                "uploaded",
             )
 
-            children.append(upload_widget)
+            def synchronize_pseudo(
+                _=None,
+                model=uploader_model,
+                kind_name=kind.name,
+                index=index,
+            ):
+                if not self._model.dictionary:
+                    return
+                try:
+                    pseudo = orm.load_node(self._model.dictionary.get(kind_name))
+                except Exception:
+                    pseudo = None
+                model.uploaded = model.pseudo is pseudo
+                model.pseudo = pseudo
+                model.cutoffs = self._model.get_cutoffs_by_index(index)
+                model.update_pseudo_info()
 
-        self.setter_widget.children = children
+            self._model.observe(
+                synchronize_pseudo,
+                "dictionary",
+            )
+            self._uploader_dictionary_observers.append(synchronize_pseudo)
 
+            uploader = PseudoPotentialUploader(model=uploader_model)
+            uploader.render()
 
-# TODO implement/improve MVC in this widget
-class PseudoUploadWidget(ipw.HBox):
-    """Class that allows to upload pseudopotential from user's computer."""
+            self._links.extend(uploader.links)
 
-    pseudo = tl.Instance(UpfData, allow_none=True)
-    cutoffs = tl.List(tl.Float(), [])
-    error_message = tl.Unicode(allow_none=True)
+            children.append(uploader)
 
-    def __init__(self, kind_name, **kwargs):
-        super().__init__(
-            children=[LoadingWidget("Loading pseudopotential uploader")],
-            **kwargs,
-        )
+            synchronize_pseudo()
 
-        self.kind_name = kind_name
-
-        self.rendered = False
-
-    def render(self):
-        if self.rendered:
-            return
-
-        self.pseudo_text = ipw.Text(
-            description=self.kind_name,
-            style={"description_width": "50px"},
-        )
-        pseudo_link = ipw.dlink(
-            (self, "pseudo"),
-            (self.pseudo_text, "value"),
-            lambda pseudo: pseudo.filename if pseudo else "",
-        )
-        self.file_upload = ipw.FileUpload(
-            description="Upload",
-            multiple=False,
-            layout=ipw.Layout(
-                width="fit-content",
-                margin="2px 10px 2px 2px",
-            ),
-        )
-        self.file_upload.observe(self._on_file_upload, "value")
-
-        cutoffs_message_template = """
-            <div class="pseudo-text">
-                ψ: <b>{ecutwfc} Ry</b> | ρ: <b>{ecutrho} Ry</b>
-            </div>
-        """  # noqa: RUF001
-
-        self.cutoff_message = ipw.HTML()
-        cutoff_link = ipw.dlink(
-            (self, "cutoffs"),
-            (self.cutoff_message, "value"),
-            lambda cutoffs: cutoffs_message_template.format(
-                ecutwfc=cutoffs[0] if len(cutoffs) else "not set",
-                ecutrho=cutoffs[1] if len(cutoffs) else "not set",
-            ),
-        )
-
-        self.links = [
-            pseudo_link,
-            cutoff_link,
-        ]
-
-        self.error_message = None
-
-        self.children = [
-            self.pseudo_text,
-            self.file_upload,
-            self.cutoff_message,
-        ]
-
-        self.rendered = True
-
-    def reset_pseudo_filename_widget(self):
-        self.pseudo_text.value = self.pseudo.filename if self.pseudo else ""
-
-    def _on_file_upload(self, change=None):
-        """When file upload button is pressed."""
-        filename, item = next(iter(change["new"].items()))
-        content = item["content"]
-
-        # Order matters make sure when pseudo change
-        # the pseudo_filename is set
-        with self.hold_trait_notifications():
-            self.pseudo = UpfData(io.BytesIO(content), filename=filename)
-            self.pseudo.store()
-
-            # check if element is matched with the pseudo
-            element = "".join([i for i in self.kind_name if not i.isdigit()])
-            if element != self.pseudo.element:
-                self.error_message = f"""<div class="alert alert-danger"> ERROR: Element {self.kind_name} is not matched with the pseudo {self.pseudo.element}</div>"""
-                self._reset()
-            else:
-                self.pseudo_text.value = filename
-
-    def _reset(self):
-        """Reset the widget to the initial state."""
-        self.pseudo = None
-        self.cutoffs = []
+        self.pseudos_list.children = children

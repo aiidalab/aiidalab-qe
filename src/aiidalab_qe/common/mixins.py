@@ -8,17 +8,23 @@ from aiida import orm
 from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
-T = t.TypeVar("T")
+if t.TYPE_CHECKING:
+    from aiidalab_qe.common.mvc import Model
+
+StructureType = t.Union[orm.StructureData, HubbardStructureData]
 
 
 class HasInputStructure(tl.HasTraits):
-    input_structure = tl.Union(
-        [
-            tl.Instance(orm.StructureData),
-            tl.Instance(HubbardStructureData),
-        ],
-        allow_none=True,
-    )
+    structure_uuid = tl.Unicode(None, allow_none=True)
+
+    @property
+    def input_structure(self) -> StructureType | None:
+        if not self.structure_uuid:
+            return None
+        try:
+            return t.cast(StructureType, orm.load_node(self.structure_uuid))
+        except NotExistent:
+            return None
 
     @property
     def has_structure(self):
@@ -30,42 +36,59 @@ class HasInputStructure(tl.HasTraits):
 
     @property
     def has_tags(self):
-        return any(
+        return self.has_structure and any(
             not kind_name.isalpha()
             for kind_name in self.input_structure.get_kind_names()
         )
 
+    def get_num_atoms(self) -> int:
+        return len(self.input_structure.sites) if self.has_structure else 0
 
-class HasModels(t.Generic[T]):
+
+M = t.TypeVar("M", bound="Model")
+
+
+class HasModels(t.Generic[M]):
     def __init__(self):
-        self._models: dict[str, T] = {}
+        self._models: dict[str, M] = {}
 
-    def has_model(self, identifier):
+    def has_model(self, identifier: str):
         return identifier in self._models
 
-    def add_model(self, identifier, model: T):
+    def add_model(self, identifier: str, model: M):
         self._models[identifier] = model
         self._link_model(model)
 
-    def add_models(self, models: dict[str, T]):
+    def add_models(self, models: dict[str, M]):
         for identifier, model in models.items():
             self.add_model(identifier, model)
 
-    def get_model(self, identifier) -> T:
+    def get_model(self, identifier: str) -> M:
         keys = identifier.split(".", 1)
         if self.has_model(keys[0]):
             if len(keys) == 1:
                 return self._models[identifier]
             else:
-                return self._models[keys[0]].get_model(keys[1])
+                sub_model = self._models[keys[0]]
+                if isinstance(sub_model, HasModels):
+                    return sub_model.get_model(keys[1])
+                raise TypeError(
+                    f"Model with identifier '{identifier}' does not have sub-models."
+                )
         raise ValueError(f"Model with identifier '{identifier}' not found.")
 
-    def get_models(self) -> t.Iterable[tuple[str, T]]:
+    def get_models(self) -> t.Iterable[tuple[str, M]]:
         return self._models.items()
 
-    def _link_model(self, model: T):
-        if not hasattr(model, "dependencies"):
-            return
+    def _link_model(self, model: M):
+        tl.dlink(
+            (self, "locked"),
+            (model, "locked"),
+        )
+        tl.dlink(
+            (model, "blockers"),
+            (self, "blockers"),
+        )
         for dependency in model.dependencies:
             dependency_parts = dependency.rsplit(".", 1)
             if len(dependency_parts) == 1:  # from parent
@@ -83,37 +106,37 @@ class HasModels(t.Generic[T]):
 class HasProcess(tl.HasTraits):
     process_uuid = tl.Unicode(None, allow_none=True)
     monitor_counter = tl.Int(0)  # used for continuous updates
+    daemon_is_running = tl.Bool(False)
+    daemon_status_known = tl.Bool(False)
+
+    @property
+    def process(self) -> orm.WorkChainNode | None:
+        if not self.process_uuid:
+            return None
+        try:
+            return t.cast(orm.WorkChainNode, orm.load_node(self.process_uuid))
+        except NotExistent:
+            return None
 
     @property
     def has_process(self):
-        return self.fetch_process_node() is not None
+        return self.process is not None
 
     @property
-    def inputs(self):
-        process_node = self.fetch_process_node()
-        return process_node.inputs if process_node else []
+    def inputs(self) -> orm.NodeLinksManager | None:
+        return self.process.inputs if self.has_process else None
 
     @property
-    def properties(self):
-        process_node = self.fetch_process_node()
-        # read the attributes directly instead of using the `get_list` method
-        # to avoid error in case of the orm.List object being converted to a orm.Data object
+    def properties(self) -> list:
         return (
-            process_node.inputs.properties.base.attributes.get("list")
-            if process_node
+            self.inputs.properties.base.attributes.get("list")
+            if self.inputs and "properties" in self.inputs
             else []
         )
 
     @property
-    def outputs(self):
-        process_node = self.fetch_process_node()
-        return process_node.outputs if process_node else []
-
-    def fetch_process_node(self) -> orm.ProcessNode | None:
-        try:
-            return orm.load_node(self.process_uuid) if self.process_uuid else None  # type: ignore
-        except NotExistent:
-            return None
+    def outputs(self) -> orm.NodeLinksManager | None:
+        return self.process.outputs if self.has_process else None
 
 
 class Confirmable(tl.HasTraits):
@@ -137,33 +160,25 @@ class Confirmable(tl.HasTraits):
 
 class HasBlockers(tl.HasTraits):
     blockers = tl.List(tl.Unicode())
-    blocker_messages = tl.Unicode("")
 
     @property
     def is_blocked(self):
         return any(self.blockers)
 
     def update_blockers(self):
-        blockers = list(self._check_blockers())
+        blockers = list(self._check_blockers() or [])
         if isinstance(self, HasModels):
             for _, model in self.get_models():
                 if isinstance(model, HasBlockers):
-                    blockers += model.blockers
+                    blockers.extend(model.blockers)
         self.blockers = blockers
 
-    def update_blocker_messages(self):
-        if self.is_blocked:
-            formatted = "\n".join(f"<li>{item}</li>" for item in self.blockers)
-            self.blocker_messages = f"""
-                <div class="alert alert-danger">
-                    <b>The step is blocked due to the following reason(s):</b>
-                    <ul>
-                        {formatted}
-                    </ul>
-                </div>
-            """
-        else:
-            self.blocker_messages = ""
+    def reset_blockers(self):
+        self.blockers = []
+        if isinstance(self, HasModels):
+            for _, model in self.get_models():
+                if isinstance(model, HasBlockers):
+                    model.reset_blockers()
 
-    def _check_blockers(self):
-        raise NotImplementedError
+    def _check_blockers(self) -> t.Generator[str, None, None] | None:
+        pass

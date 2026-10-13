@@ -4,7 +4,7 @@ import ipywidgets as ipw
 
 from aiidalab_qe.common.bands_pdos import BandsPdosModel, BandsPdosWidget
 from aiidalab_qe.common.panel import ResultsPanel
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_widgets_base import LoadingWidget
 
 from .model import ElectronicStructureResultsModel
 
@@ -14,7 +14,11 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
 
     def _render(self):
         self.bands_pdos_container = ipw.VBox()
-        children = []
+        # If the model implements `get_model_state` and `set_model_state`
+        # we can add the `state_buttons` to the results container.
+        # If we force all models to implement these methods, we can
+        # move this logic to the base class.
+        children = [self.state_buttons]
         if self._model.needs_property_selector:
             children.append(self._render_property_selector())
             self.has_property_selector = True
@@ -96,9 +100,30 @@ class ElectronicStructureResultsPanel(ResultsPanel[ElectronicStructureResultsMod
                 identifier: self._model.fetch_child_process_node(identifier)
                 for identifier in node_identifiers
             },
-            "root": self._model.fetch_process_node(),
+            "root": self._model.process,
         }
         model = BandsPdosModel.from_nodes(**nodes)
         widget = BandsPdosWidget(model=model)
         widget.render()
         self.bands_pdos_container.children = [widget]
+
+        ipw.link(
+            (self._model, "dos_atoms_group"),
+            (model, "dos_atoms_group"),
+        )
+        ipw.link(
+            (self._model, "dos_plot_group"),
+            (model, "dos_plot_group"),
+        )
+        ipw.link(
+            (self._model, "selected_atoms"),
+            (model, "selected_atoms"),
+        )
+        ipw.link(
+            (self._model, "horizontal_width_percentage"),
+            (model, "horizontal_width_percentage"),
+        )
+        ipw.link(
+            (self._model, "bands_width_percentage"),
+            (model, "bands_width_percentage"),
+        )

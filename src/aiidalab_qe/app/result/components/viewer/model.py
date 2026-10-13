@@ -1,22 +1,14 @@
-import ipywidgets as ipw
+import traitlets as tl
 
-from aiidalab_qe.app.result.components import ResultsComponentModel
-from aiidalab_qe.common.mixins import HasModels
+from aiidalab_qe.app.result.utils import HasProcessModels, ResultsSubModel
 from aiidalab_qe.common.panel import ResultsModel
 
 
-class WorkChainResultsViewerModel(
-    ResultsComponentModel,
-    HasModels[ResultsModel],
+class WorkflowResultsViewerModel(
+    ResultsSubModel,
+    HasProcessModels[ResultsModel],
 ):
-    identifier = "workflow results"
-
-    def _link_model(self, model: ResultsModel):
-        ipw.dlink(
-            (self, "process_uuid"),
-            (model, "process_uuid"),
-        )
-        ipw.dlink(
-            (self, "monitor_counter"),
-            (model, "monitor_counter"),
-        )
+    identifier = "results"
+    plugin_status_checked = tl.Bool(False)
+    incompatible_plugin_ids = tl.Set(tl.Unicode())
+    incompatible_plugin_titles = tl.List(tl.Unicode())

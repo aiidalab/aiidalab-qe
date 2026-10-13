@@ -5,7 +5,7 @@ from table_widget import TableWidget
 
 from aiida.orm import QueryBuilder, load_node
 from aiidalab_qe.common.process import STATE_ICONS
-from aiidalab_qe.common.widgets import LoadingWidget
+from aiidalab_widgets_base import LoadingWidget
 
 
 def determine_state_icon(row):
@@ -313,8 +313,8 @@ class CalculationHistory:
 
         # Figure out which columns to show the table
         columns = []
-        for key in COLUMNS.keys():
-            col_spec = dict(COLUMNS[key])
+        for key, column in COLUMNS.items():
+            col_spec = dict(column)
             col_spec["field"] = key
             columns.append(col_spec)
 

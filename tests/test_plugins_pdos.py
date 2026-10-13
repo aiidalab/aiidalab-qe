@@ -17,7 +17,8 @@ def test_result(generate_qeapp_workchain):
 
     panel.render()
 
-    assert len(panel.results_container.children) == 1  # only pdos, so no controls
+    # only state buttons container and pdos, so no controls
+    assert len(panel.results_container.children) == 2
 
     widget = panel.bands_pdos_container.children[0]  # type: ignore
     model = widget._model

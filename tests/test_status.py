@@ -2,19 +2,36 @@ from __future__ import annotations
 
 import threading
 import time
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import ipywidgets as ipw
 import pytest
+from ipywidgets.widgets.widget import _instances as widget_instances
 
 from aiida import orm
 from aiida.common.links import LinkType
 from aiida.engine import ProcessState
+from aiida.engine.processes import control
 from aiidalab_qe.app.result.components.status import (
     WorkChainStatusModel,
     WorkChainStatusPanel,
 )
-from aiidalab_qe.common.process.tree import (
-    TITLE_MAPPING,
+from aiidalab_qe.app.result.components.status.paused import (
+    ACTION_BUTTON_LAYOUT,
+    ACTIONS_LAYOUT,
+    FULL_WIDTH_LAYOUT,
+    LABEL_LAYOUT,
+    PK_LAYOUT,
+    PLAY_ALL_LAYOUT,
+    REASON_LAYOUT,
+    TABLE_LAYOUT,
+    PausedProcess,
+    PausedProcessesModel,
+    PausedProcessesTable,
+)
+from aiidalab_qe.app.result.components.status.tree import (
+    _BUILTIN_TITLE_MAPPING,
     CalcJobTreeNode,
     SimplifiedProcessTree,
     SimplifiedProcessTreeModel,
@@ -36,6 +53,36 @@ def mock_workchain(label):
     workchain.set_exit_status(0)
     workchain.set_process_label(label)
     return workchain
+
+
+def create_process_graph():
+    root = orm.WorkChainNode()
+    root.set_process_label("QeAppWorkChain")
+    root.set_process_state(ProcessState.RUNNING)
+
+    child = orm.WorkChainNode()
+    child.set_process_label("PwBaseWorkChain")
+    child.set_process_state(ProcessState.RUNNING)
+
+    calculation = orm.CalcJobNode()
+    calculation.set_process_label("PwCalculation")
+    calculation.set_process_state(ProcessState.RUNNING)
+
+    child.base.links.add_incoming(
+        root,
+        link_type=LinkType.CALL_WORK,
+        link_label="child",
+    )
+    calculation.base.links.add_incoming(
+        child,
+        link_type=LinkType.CALL_CALC,
+        link_label="calculation",
+    )
+
+    root.store()
+    child.store()
+    calculation.store()
+    return root, child, calculation
 
 
 @pytest.fixture(scope="module")
@@ -147,7 +194,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
     def test_update_on_process_change(self, mock_qeapp_workchain):
         self.model.process_uuid = mock_qeapp_workchain.uuid
         assert self.tree.rendered
-        human_label = TITLE_MAPPING["QeAppWorkChain"]
+        human_label = _BUILTIN_TITLE_MAPPING["QeAppWorkChain"]
         assert self.tree.trunk.label.value == human_label
         assert not self.tree.trunk.collapsed
         assert len(self.tree.trunk.branches) == 1
@@ -157,7 +204,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         assert self.relax_workchain_node.level == 1
         assert self.relax_workchain_node.emoji.value == "✅"
         assert self.relax_workchain_node.state.value == "finished"
-        human_label = TITLE_MAPPING["PwRelaxWorkChain"]
+        human_label = _BUILTIN_TITLE_MAPPING["PwRelaxWorkChain"]
         assert self.relax_workchain_node.label.value == human_label
         assert isinstance(self.relax_workchain_node.label, ipw.HTML)
         assert self.relax_workchain_node.collapsed
@@ -190,7 +237,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         assert self.base_workchain_node.level == 2
         assert self.base_workchain_node.emoji.value == "✅"
         assert self.base_workchain_node.state.value == "finished"
-        human_label = TITLE_MAPPING["PwBaseWorkChain"]["relax"]
+        human_label = _BUILTIN_TITLE_MAPPING["PwBaseWorkChain"]["relax"]
         assert self.base_workchain_node.label.value == human_label
         assert isinstance(self.base_workchain_node.label, ipw.HTML)
         assert len(self.base_workchain_node.branches) == 1
@@ -217,7 +264,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
         assert self.calcjob_node.level == 3
         assert self.calcjob_node.emoji.value == "✅"
         assert self.calcjob_node.state.value == "finished"
-        human_label = TITLE_MAPPING["PwCalculation"]["relax"]
+        human_label = _BUILTIN_TITLE_MAPPING["PwCalculation"]["relax"]
         assert isinstance(self.calcjob_node.label, ipw.Button)
         assert self.calcjob_node.label.description == human_label
 
@@ -237,7 +284,7 @@ class TestSimplifiedProcessTree(TreeTestingMixin):
             def delayed_add_branches_recursive(
                 node: orm.ProcessNode | None = None,
             ):
-                node = node or self.tree.trunk.node
+                node = node or self.tree.trunk.process
                 for child in sorted(node.called, key=lambda child: child.ctime):
                     if isinstance(child, orm.CalcFunctionNode):
                         continue
@@ -296,7 +343,7 @@ class TestWorkChainStatusPanel(TreeTestingMixin):
     def test_render(self):
         self.panel.render()
         assert self.panel.children[0] is self.panel.accordion
-        assert self.panel.accordion.selected_index == 0
+        assert self.panel.accordion.selected_index == 1
         assert self.panel.simplified_process_tree.rendered
 
     def test_calcjob_node_link(self):
@@ -306,8 +353,8 @@ class TestWorkChainStatusPanel(TreeTestingMixin):
         trunk = self.tree.trunk
         trunk.expand(recursive=True)
         self.calcjob_node.label.click()
-        assert self.panel.process_tree.value == self.calcjob_node.uuid
-        assert self.panel.process_tree._tree.nodes == (self.calcjob_node.node,)
+        assert self.panel.process_tree.value == self.calcjob_node.process_uuid
+        assert self.panel.process_tree._tree.nodes == (self.calcjob_node.process,)
         # TODO understand why the following does not trigger automatically as in the app
         # TODO understand why the following triggers a thread
         # self.panel.process_tree.set_trait("selected_nodes", [self.calcjob_node.node])
@@ -315,6 +362,276 @@ class TestWorkChainStatusPanel(TreeTestingMixin):
         # assert self.panel.node_view_container.children[0] is self.node_view  # type: ignore
 
     def test_to_advanced_view_button(self):
-        assert self.panel.accordion.selected_index == 0
-        self.panel.to_advanced_view_button.click()
         assert self.panel.accordion.selected_index == 1
+        self.panel.to_advanced_view_button.click()
+        assert self.panel.accordion.selected_index == 2
+
+    def test_paused_title_and_navigation(self, mock_qeapp_workchain):
+        calculation = next(
+            node
+            for node in mock_qeapp_workchain.called_descendants
+            if isinstance(node, orm.CalcJobNode)
+        )
+        self.panel.paused_processes_model.paused_count = 2
+        assert self.panel.accordion.titles[0] == "Paused Processes (2)"
+
+        self.panel._on_paused_inspect(calculation.uuid)
+
+        assert self.panel.accordion.selected_index == 2
+        assert self.panel.process_tree.value == calculation.uuid
+
+
+def test_paused_model_detects_paused_root_and_descendants():
+    root, child, calculation = create_process_graph()
+    root.pause()
+    root.set_process_status("Root paused")
+    calculation.pause()
+    calculation.set_process_status("Calculation paused")
+
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+    model.update()
+
+    assert model.paused_count == 2
+    assert {process.uuid for process in model.paused_processes} == {
+        root.uuid,
+        calculation.uuid,
+    }
+    assert child.uuid not in {process.uuid for process in model.paused_processes}
+
+
+def test_paused_model_updates_when_monitor_counter_changes():
+    root, _, calculation = create_process_graph()
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+
+    model.monitor_counter += 1
+    assert model.paused_count == 0
+
+    calculation.pause()
+    model.monitor_counter += 1
+    assert model.paused_count == 1
+    assert model.paused_processes[0].uuid == calculation.uuid
+
+
+def test_paused_model_play_clears_previous_error(monkeypatch):
+    root, _, _ = create_process_graph()
+    root.pause()
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+    model.error_message = "previous error"
+    play_processes = Mock()
+    monkeypatch.setattr(control, "play_processes", play_processes)
+
+    model.play(root.uuid)
+
+    play_processes.assert_called_once()
+    assert play_processes.call_args.args[0][0].uuid == root.uuid
+    assert model.error_message == ""
+
+
+def test_paused_model_play_reports_errors(monkeypatch):
+    root, _, _ = create_process_graph()
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+    monkeypatch.setattr(
+        control,
+        "play_processes",
+        Mock(side_effect=RuntimeError("daemon unavailable")),
+    )
+
+    model.play(root.uuid)
+
+    assert model.error_message == "daemon unavailable"
+
+
+@pytest.mark.parametrize("play_action", ["play", "play_all"])
+def test_paused_model_surfaces_logged_unreachable_process(
+    monkeypatch,
+    play_action,
+):
+    root, _, calculation = create_process_graph()
+    calculation.pause()
+    model = PausedProcessesModel()
+    model.process_uuid = root.uuid
+    model.update()
+
+    controller = Mock()
+    controller.play_process.side_effect = control.communications.UnroutableError(
+        "unreachable"
+    )
+    manager = Mock()
+    manager.get_process_controller.return_value = controller
+    monkeypatch.setattr(control, "get_manager", lambda: manager)
+    monkeypatch.setattr(
+        control,
+        "get_daemon_client",
+        lambda: SimpleNamespace(is_daemon_running=True),
+    )
+
+    if play_action == "play":
+        model.play(calculation.uuid)
+    else:
+        model.play_all()
+
+    assert "unreachable" in model.error_message
+
+
+class TestPausedProcessesTable:
+    def test_renders_rows_and_actions(self):
+        root, _, calculation = create_process_graph()
+        calculation.pause()
+        calculation.set_process_status("SCF paused")
+
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        on_inspect = Mock()
+        panel = PausedProcessesTable(model=model, on_inspect=on_inspect)
+
+        assert len(panel.table.children) == 2
+        assert panel.table.children[0].children[0].value == "<b>PK</b>"
+
+        row = panel.table.children[1]
+        assert len(row.children) == 5
+        assert row.children[0].value == f"<b>{calculation.pk}</b>"
+        assert row.children[2].value == "SCF paused"
+
+        row.children[3].click()
+        on_inspect.assert_called_once_with(calculation.uuid)
+
+    def test_play_button_delegates_to_model(self, monkeypatch):
+        root, _, calculation = create_process_graph()
+        calculation.pause()
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        play = Mock()
+        monkeypatch.setattr(model, "play", play)
+        panel = PausedProcessesTable(model=model)
+
+        panel.table.children[1].children[4].click()
+
+        play.assert_called_once_with(calculation.uuid)
+
+    def test_displays_error_message(self):
+        model = PausedProcessesModel()
+        panel = PausedProcessesTable(model=model)
+
+        model.error_message = "daemon unavailable"
+
+        assert "alert-danger" in panel.alert.value
+        assert "daemon unavailable" in panel.alert.value
+
+        model.error_message = ""
+        assert panel.alert.value == ""
+
+    def test_daemon_status_disables_play(self):
+        root, _, calculation = create_process_graph()
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        model.daemon_is_running = False
+        model.daemon_status_known = True
+        panel = PausedProcessesTable(model=model)
+
+        calculation.pause()
+        model.monitor_counter += 1
+
+        assert panel.table.children[1].children[4].disabled
+        assert panel.play_all_button.disabled
+
+        model.daemon_is_running = True
+
+        assert not panel.table.children[1].children[4].disabled
+        assert not panel.play_all_button.disabled
+
+    def test_reset_clears_table_immediately(self):
+        root, _, calculation = create_process_graph()
+        calculation.pause()
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        panel = PausedProcessesTable(model=model)
+        assert len(panel.table.children) == 2
+
+        model.reset()
+
+        assert len(panel.table.children) == 1
+        assert panel.table.children[0].value == "<b>No paused processes</b>"
+        assert panel.play_all_button.layout.display == "none"
+
+    def test_refresh_reuses_header_and_updates_rows_incrementally(self):
+        root, child, calculation = create_process_graph()
+        calculation.pause()
+        calculation.set_process_status("SCF paused")
+        model = PausedProcessesModel()
+        model.process_uuid = root.uuid
+        model.update()
+        panel = PausedProcessesTable(model=model)
+
+        header = panel.table.children[0]
+        row = panel.table.children[1]
+
+        calculation.set_process_status("SCF paused again")
+        model.monitor_counter += 1
+
+        assert panel.table.children[0] is header
+        assert panel.table.children[1] is row
+        assert row.children[2].value == "SCF paused again"
+
+        child.pause()
+        model.monitor_counter += 1
+
+        assert panel.table.children[0] is header
+        assert panel.table.children[1] is panel._rows[child.uuid][0]
+        assert panel.table.children[2] is row
+        assert len(panel.table.children) == 3
+
+        calculation.unpause()
+        model.monitor_counter += 1
+
+        assert panel.table.children[0] is header
+        assert panel.table.children[1] is panel._rows[child.uuid][0]
+        assert len(panel.table.children) == 2
+
+    def test_removed_rows_close_owned_widgets(self):
+        model = PausedProcessesModel()
+        panel = PausedProcessesTable(model=model)
+        baseline_widget_ids = set(widget_instances)
+        shared_layouts = (
+            ACTION_BUTTON_LAYOUT,
+            ACTIONS_LAYOUT,
+            FULL_WIDTH_LAYOUT,
+            LABEL_LAYOUT,
+            PK_LAYOUT,
+            PLAY_ALL_LAYOUT,
+            REASON_LAYOUT,
+            TABLE_LAYOUT,
+        )
+
+        for index in range(1000):
+            process = PausedProcess(
+                uuid=f"process-{index}",
+                pk=index,
+                label=f"Process {index}",
+                status="Paused",
+            )
+            model.paused_processes = (process,)
+            model.paused_count = 1
+            row = panel._rows[process.uuid]
+            owned_widgets = [*row[0].children, row[0]]
+            owned_styles = [
+                widget.style
+                for widget in row[0].children
+                if isinstance(getattr(widget, "style", None), ipw.Widget)
+            ]
+
+            model.paused_processes = ()
+            model.paused_count = 0
+
+            assert all(widget.comm is None for widget in owned_widgets)
+            assert all(style.comm is None for style in owned_styles)
+
+        assert set(widget_instances) == baseline_widget_ids
+        assert all(layout.comm is not None for layout in shared_layouts)

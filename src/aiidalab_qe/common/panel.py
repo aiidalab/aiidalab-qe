@@ -7,41 +7,46 @@ Authors:
 
 from __future__ import annotations
 
-import os
 import typing as t
+import warnings
 
 import ipywidgets as ipw
 import traitlets as tl
 
 from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.common.code.model import CodeModel
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.mixins import Confirmable, HasBlockers, HasModels, HasProcess
+from aiidalab_qe.common.mixins import Confirmable, HasModels, HasProcess
 from aiidalab_qe.common.mvc import Model
 from aiidalab_qe.common.widgets import (
-    LoadingWidget,
     PwCodeResourceSetupWidget,
     QEAppComputationalResourcesWidget,
 )
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
+from aiidalab_widgets_base import LoadingWidget
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class PanelModel(Model):
+class PanelModel(Model, Confirmable):
     """Base class for all panel models.
 
     Attributes
     ----------
     `title` : `str`
         The title to be shown in the GUI.
-    `identifier` : `str`
-        Which plugin this panel belong to.
+    `include` : `bool`
+        Whether this panel is included in the current workflow.
     """
 
     title = ""
-    identifier = ""
+
+    include = tl.Bool(False)
+
+    def update_blockers(self):
+        if self.include:
+            super().update_blockers()
 
 
 PM = t.TypeVar("PM", bound=PanelModel)
@@ -59,6 +64,7 @@ class Panel(ipw.VBox, t.Generic[PM]):
         self.loading_message = LoadingWidget(loading_message)
         super().__init__(children=[self.loading_message], **kwargs)
         self._model = model
+        self._links: list[tl.directional_link | tl.link] = []
 
     def render(self):
         raise NotImplementedError()
@@ -89,66 +95,19 @@ class PluginOutline(ipw.HBox):
         )
 
 
-class SettingsModel(PanelModel, HasBlockers):
-    """Base model for settings models."""
-
-    dependencies: list[str] = []
-
-    include = tl.Bool(False)
-    loaded_from_process = tl.Bool(False)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._defaults = {}
-
-    def update(self):
-        """Updates the model."""
-        pass
-
-    def get_model_state(self) -> dict:
-        """Retrieves the current state of the model as a dictionary."""
-        raise NotImplementedError()
-
-    def set_model_state(self, parameters: dict):
-        """Distributes the parameters of a loaded calculation to the model."""
-        raise NotImplementedError()
-
-    def reset(self):
-        """Resets the model to present defaults."""
-        pass
-
-
-SM = t.TypeVar("SM", bound=SettingsModel)
-
-
-class SettingsPanel(Panel[SM]):
-    """Base model for settings panels."""
-
-    updated = False
-
-    def __init__(self, model: SM, **kwargs):
-        super().__init__(model=model, **kwargs)
-        self.links = []
-
-
-class ConfigurationSettingsModel(SettingsModel, Confirmable):
+class ConfigurationSettingsModel(PanelModel):
     """Base model for configuration settings models."""
 
-    def update(self, specific=""):
-        """Updates the model.
-
-        Parameters
-        ----------
-        `specific` : `str`, optional
-            If provided, specifies the level of update.
-        """
-        pass
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "`ConfigurationSettingsModel` is deprecated. Please extend `PanelModel` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
 
-CSM = t.TypeVar("CSM", bound=ConfigurationSettingsModel)
-
-
-class ConfigurationSettingsPanel(SettingsPanel[CSM]):
+class ConfigurationSettingsPanel(Panel[PM]):
     """Base class for configuration settings panels."""
 
     def refresh(self, specific=""):
@@ -163,44 +122,27 @@ class ConfigurationSettingsPanel(SettingsPanel[CSM]):
         `specific` : `str`, optional
             If provided, specifies the level of refresh.
         """
-        self.updated = False
         self._unsubscribe()
         if self._model.include:
-            self.update(specific)
-        if "PYTEST_CURRENT_TEST" in os.environ:
-            # Skip resetting to avoid having to inject a structure when testing
-            return
-        if hasattr(self._model, "input_structure") and not self._model.input_structure:
-            self._reset()
-
-    def update(self, specific=""):
-        """Updates the model if not yet updated.
-
-        Parameters
-        ----------
-        `specific` : `str`, optional
-            If provided, specifies the level of update.
-        """
-        if self.updated:
-            return
-        if not self._model.loaded_from_process:
             self._model.update(specific)
-        self.updated = True
+            self._update_ui()
+        else:
+            self._model.reset_blockers()
+
+    def _update_ui(self):
+        pass
 
     def _unsubscribe(self):
         """Unlinks any linked widgets."""
-        for link in self.links:
+        for link in self._links:
             link.unlink()
-        self.links.clear()
-
-    def _reset(self):
-        """Resets the model to present defaults."""
-        self.updated = False
-        self._model.reset()
+        self._links.clear()
 
 
-class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
+class ResourceSettingsModel(PanelModel, HasModels[CodeModel]):
     """Base model for resource setting models."""
+
+    input_parameters = tl.Dict()
 
     global_codes = tl.Dict(
         key_trait=tl.Unicode(),
@@ -209,19 +151,36 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
 
     warning_messages = tl.Unicode("")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, default_user_email: str, *args, **kwargs):
+        self.default_codes: dict[str, dict] = kwargs.pop("default_codes", {})
+        self.default_user_email = default_user_email
         super().__init__(*args, **kwargs)
-
-        # Used by the code-setup thread to fetch code options
-        self.DEFAULT_USER_EMAIL = orm.User.collection.get_default().email
+        self.dependencies = ["input_parameters"]
 
     def add_model(self, identifier, model):
         super().add_model(identifier, model)
-        model.update(self.DEFAULT_USER_EMAIL)
+        code_key = model.default_calc_job_plugin.split(".")[-1]
+        model.update(
+            user_email=self.default_user_email,
+            default_code=self.default_codes.get(code_key, {}).get("code"),
+        )
 
-    def refresh_codes(self):
+    def update_active_codes(self):
         for _, code_model in self.get_models():
-            code_model.update(self.DEFAULT_USER_EMAIL, refresh=True)
+            if code_model.check_condition(self.input_parameters):
+                code_model.activate()
+            else:
+                code_model.deactivate()
+
+    def refresh_codes(self, filter_codes_for_user: bool = True):
+        for _, code_model in self.get_models():
+            code_key = code_model.default_calc_job_plugin.split(".")[-1]
+            code_model.update(
+                user_email=self.default_user_email,
+                default_code=self.default_codes.get(code_key, {}).get("code"),
+                filter_codes_for_user=filter_codes_for_user,
+                refresh=True,
+            )
 
     def get_model_state(self):
         return {
@@ -233,16 +192,7 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
         }
 
     def set_model_state(self, parameters: dict):
-        self.set_selected_codes(parameters.get("codes", {}))
-
-    def get_selected_codes(self) -> dict[str, dict]:
-        return {
-            identifier: code_model.get_model_state()
-            for identifier, code_model in self.get_models()
-            if code_model.is_ready
-        }
-
-    def set_selected_codes(self, code_data=DEFAULT["codes"]):
+        code_data = parameters.get("codes", {}) or self.default_codes
         for identifier, code_model in self.get_models():
             if identifier in code_data:
                 code_model.set_model_state(code_data[identifier])
@@ -254,12 +204,45 @@ class ResourceSettingsModel(SettingsModel, HasModels[CodeModel]):
 RSM = t.TypeVar("RSM", bound=ResourceSettingsModel)
 
 
-class ResourceSettingsPanel(SettingsPanel[RSM]):
+class ResourceSettingsPanel(Panel[RSM]):
     """Base class for resource setting panels."""
 
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs)
         self.code_widgets = {}
+
+        self._model.observe(
+            self._on_input_parameters_change,
+            "input_parameters",
+        )
+
+        for _, code_model in self._model.get_models():
+            self._register_code_trait_callbacks(code_model)
+
+    def render(self):
+        if self.rendered:
+            return
+        self._render()
+        self.rendered = True
+        self._post_render()
+
+    def _render(self):
+        self.code_widgets_container = ipw.VBox()
+
+    def _post_render(self):
+        for _, code_model in self._model.get_models():
+            if code_model.is_active:
+                self._toggle_code(code_model)
+
+    def _on_input_parameters_change(self, _):
+        self._model.update_active_codes()
+        self._model.update_blockers()
+
+    def _on_code_activation_change(self, change):
+        self._toggle_code(change["owner"])
+
+    def _on_code_selection_change(self, _):
+        self._model.update_blockers()
 
     def _on_code_resource_change(self, _):
         pass
@@ -268,10 +251,40 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
         widget: ipw.Dropdown = change["owner"]
         widget.disabled = not widget.options
 
+    def _register_code_trait_callbacks(self, code_model: CodeModel):
+        """Registers event handlers on code model traits."""
+        if code_model.default_calc_job_plugin == "quantumespresso.pw":
+            code_model.observe(
+                self._on_code_resource_change,
+                [
+                    "parallelization_override",
+                    "npool",
+                ],
+            )
+        code_model.observe(
+            self._on_code_resource_change,
+            [
+                "selected",
+                "num_cpus",
+                "num_nodes",
+                "ntasks_per_node",
+                "cpus_per_task",
+                "max_wallclock_seconds",
+            ],
+        )
+        code_model.observe(
+            self._on_code_activation_change,
+            "is_active",
+        )
+        code_model.observe(
+            self._on_code_selection_change,
+            "selected",
+        )
+
     def _toggle_code(self, code_model: CodeModel):
         if not self.rendered:
             return
-        if not code_model.is_rendered:
+        if not code_model.is_widget_rendered:
             loading_message = LoadingWidget(f"Loading {code_model.name} code")
             self.code_widgets_container.children += (loading_message,)
         if code_model.name not in self.code_widgets:
@@ -282,12 +295,16 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
             self.code_widgets[code_model.name] = code_widget
         else:
             code_widget = self.code_widgets[code_model.name]
-        if not code_model.is_rendered:
+        if not code_model.is_widget_rendered:
             code_widget.observe(
                 code_widget.update_resources,
                 "value",
             )
             self._render_code_widget(code_model, code_widget)
+        if code_model.is_active:
+            code_widget.layout.display = "block"
+        else:
+            code_widget.layout.display = "none"
 
     def _render_code_widget(
         self,
@@ -297,6 +314,10 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
         ipw.dlink(
             (code_model, "options"),
             (code_widget.code_selection.code_select_dropdown, "options"),
+        )
+        ipw.link(
+            (code_model, "warning"),
+            (code_widget.code_selection.output, "value"),
         )
         ipw.link(
             (code_model, "selected"),
@@ -331,47 +352,29 @@ class ResourceSettingsPanel(SettingsPanel[RSM]):
                 (code_model, "npool"),
                 (code_widget.parallelization.npool, "value"),
             )
-            code_model.observe(
-                self._on_code_resource_change,
-                [
-                    "parallelization_override",
-                    "npool",
-                ],
-            )
-        code_model.observe(
-            self._on_code_resource_change,
-            [
-                "selected",
-                "num_cpus",
-                "num_nodes",
-                "ntasks_per_node",
-                "cpus_per_task",
-                "max_wallclock_seconds",
-            ],
-        )
         code_widget.code_selection.code_select_dropdown.observe(
             self._on_code_options_change,
             "options",
         )
         code_widgets = self.code_widgets_container.children[:-1]  # type: ignore
         self.code_widgets_container.children = [*code_widgets, code_widget]
-        code_model.is_rendered = True
+        code_model.is_widget_rendered = True
 
 
 class PluginResourceSettingsModel(ResourceSettingsModel):
     """Base model for plugin resource setting models."""
 
-    dependencies = [
-        "global.global_codes",
-    ]
-
     override = tl.Bool(False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dependencies.append("global.global_codes")
 
     def add_model(self, identifier, model: CodeModel):
         super().add_model(identifier, model)
         model.activate()
 
-    def update(self):
+    def _update(self, specific=""):
         """Updates the code models from the global resources.
 
         Skips synchronization with global resources if the user has chosen to override
@@ -420,9 +423,8 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             "override",
         )
 
-    def render(self):
-        if self.rendered:
-            return
+    def _render(self):
+        super()._render()
 
         self.override_help = ipw.HTML(
             "Click to override the resource settings for this plugin."
@@ -436,7 +438,6 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             (self._model, "override"),
             (self.override, "value"),
         )
-        self.code_widgets_container = ipw.VBox()
 
         self.children = [
             ipw.HBox(
@@ -447,15 +448,6 @@ class PluginResourceSettingsPanel(ResourceSettingsPanel[PRSM]):
             ),
             self.code_widgets_container,
         ]
-
-        self.rendered = True
-
-        # Render any active codes
-        for _, code_model in self._model.get_models():
-            if code_model.is_active:
-                self._toggle_code(code_model)
-
-        return self.code_widgets_container
 
     def _on_global_codes_change(self, _):
         self._model.update()
@@ -535,7 +527,7 @@ class ResultsModel(PanelModel, HasProcess):
         node = self.fetch_child_process_node()
         return node and node.is_finished_ok
 
-    def update(self):
+    def _update(self, specific=""):
         self.auto_render = self.has_results
 
     def update_process_status_notification(self):
@@ -554,10 +546,22 @@ class ResultsModel(PanelModel, HasProcess):
         uuid = getattr(self, f"_{which}_process_uuid")
         label = getattr(self, f"_{which}_process_label")
         if not uuid:
-            root = self.fetch_process_node()
+            root = self.process
             child = next((c for c in root.called if c.process_label == label), None)
             uuid = child.uuid if child else None
         return orm.load_node(uuid) if uuid else None  # type: ignore
+
+    def save_state(self):
+        """Saves the current state of the model to the AiiDA database."""
+        results = self.process.base.extras.get("results", {})
+        results[self.identifier] = self.get_model_state()
+        self.process.base.extras.set("results", results)
+
+    def load_state(self):
+        """Loads the state of the model from the AiiDA database."""
+        results = self.process.base.extras.get("results", {})
+        if self.identifier in results:
+            self.set_model_state(results[self.identifier])
 
     def _get_child_process_status(self, which="this"):
         state, exit_message = self._get_child_state_and_exit_message(which)
@@ -589,7 +593,9 @@ class ResultsModel(PanelModel, HasProcess):
         if not (node := self.fetch_child_process_node(which)):
             outputs = super().outputs
             child = which if which != "this" else self.identifier
-            return getattr(outputs, child) if child in outputs else AttributeDict({})
+            if outputs is not None and child in outputs:
+                return getattr(outputs, child)
+            return AttributeDict({})
         return AttributeDict({key: getattr(node.outputs, key) for key in node.outputs})
 
 
@@ -629,6 +635,23 @@ class ResultsPanel(Panel[RM]):
         self.guide = InAppGuide(
             identifier=f"{self._model.identifier}-results",
             classes=["results-panel-guide"],
+        )
+        self.save_state_button = ipw.Button(
+            description="Save state",
+            tooltip="Save the current visualization settings",
+            button_style="primary",
+            icon="save",
+        )
+        self.save_state_button.on_click(self._save_state)
+        self.load_state_button = ipw.Button(
+            description="Load state",
+            tooltip="Load previously saved visualization settings",
+            button_style="primary",
+            icon="download",
+        )
+        self.load_state_button.on_click(self._load_state)
+        self.state_buttons = ipw.HBox(
+            children=[self.save_state_button, self.load_state_button],
         )
 
         self.results_container = ipw.VBox()
@@ -714,3 +737,11 @@ class ResultsPanel(Panel[RM]):
 
     def _post_render(self):
         pass
+
+    def _save_state(self, _=None):
+        """Save the current state of the results panel."""
+        self._model.save_state()
+
+    def _load_state(self, _=None):
+        """Load a previously saved state of the results panel."""
+        self._model.load_state()

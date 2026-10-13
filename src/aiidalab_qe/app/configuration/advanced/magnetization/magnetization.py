@@ -1,13 +1,13 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.common.widgets import HBoxWithUnits
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import MagnetizationConfigurationSettingsModel
 
 
 class MagnetizationConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[MagnetizationConfigurationSettingsModel],
+    ConfigurationSettingsPanel[MagnetizationConfigurationSettingsModel],
 ):
     """Widget to set the type of magnetization used in the calculation:
     1) Total magnetization: Total majority spin charge - minority spin charge.
@@ -27,7 +27,7 @@ class MagnetizationConfigurationSettingsPanel(
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._model.observe(
             self._on_electronic_type_change,
@@ -38,19 +38,17 @@ class MagnetizationConfigurationSettingsPanel(
             "spin_type",
         )
         self._model.observe(
-            self._on_magnetization_type_change,
-            "type",
+            self._on_pseudos_dictionary_change,
+            "dictionary",
         )
         self._model.observe(
-            self._on_family_change,
-            "family",
+            self._on_magnetization_type_change,
+            "type",
         )
 
     def render(self):
         if self.rendered:
             return
-
-        self.header = ipw.HTML("<h2>Magnetization</h2>")
 
         self.unit = "µ<sub>B</sub>"
 
@@ -99,7 +97,7 @@ class MagnetizationConfigurationSettingsPanel(
             self.unit,
         )
 
-        self.kind_moment_widgets = ipw.VBox()
+        self.moments_list = ipw.VBox()
 
         self.container = ipw.VBox(
             children=[
@@ -123,29 +121,24 @@ class MagnetizationConfigurationSettingsPanel(
     def _on_spin_type_change(self, _):
         self.refresh(specific="spin")
 
+    def _on_pseudos_dictionary_change(self, _):
+        self.refresh(specific="dictionary")
+
     def _on_magnetization_type_change(self, _):
         self._toggle_widgets()
         self._model.update_type_help()
 
-    def _on_family_change(self, _):
-        self._model._update_default_moments()
-
-    def _update(self, specific=""):
-        if self.updated:
-            return
+    def _update_ui(self):
         self._show_loading()
-        if not self._model.loaded_from_process or (specific and specific != "widgets"):
-            self._model.update(specific)
-        self._build_kinds_widget()
+        self._build_moments_list()
         self._switch_widgets()
         self._toggle_widgets()
-        self.updated = True
 
     def _show_loading(self):
         if self.rendered:
-            self.kind_moment_widgets.children = [self.loading_message]
+            self.moments_list.children = [self.loading_message]
 
-    def _build_kinds_widget(self):
+    def _build_moments_list(self):
         if not self.rendered:
             return
 
@@ -153,12 +146,12 @@ class MagnetizationConfigurationSettingsPanel(
 
         kind_names = (
             self._model.input_structure.get_kind_names()
-            if self._model.input_structure
+            if self._model.has_structure
             else []
         )
 
         for kind_name in kind_names:
-            kind_moment_widget = ipw.BoundedFloatText(
+            kind_moment = ipw.BoundedFloatText(
                 description=kind_name,
                 min=-7,
                 max=7,
@@ -167,7 +160,7 @@ class MagnetizationConfigurationSettingsPanel(
             )
             link = ipw.link(
                 (self._model, "moments"),
-                (kind_moment_widget, "value"),
+                (kind_moment, "value"),
                 [
                     lambda moments, kind_name=kind_name: moments.get(kind_name, 0.0),
                     lambda value, kind_name=kind_name: {
@@ -176,10 +169,10 @@ class MagnetizationConfigurationSettingsPanel(
                     },
                 ],
             )
-            self.links.append(link)
-            children.append(HBoxWithUnits(kind_moment_widget, "µ<sub>B</sub>"))
+            self._links.append(link)
+            children.append(HBoxWithUnits(kind_moment, "µ<sub>B</sub>"))
 
-        self.kind_moment_widgets.children = children
+        self.moments_list.children = children
 
     def _switch_widgets(self):
         if not self.rendered:
@@ -187,23 +180,19 @@ class MagnetizationConfigurationSettingsPanel(
         if self._model.spin_type == "none":
             children = []
         else:
-            children = [self.header]
             if self._model.electronic_type == "metal":
-                children.extend(
-                    [
-                        self.magnetization_type,
-                        self.magnetization_type_help,
-                        self.container,
-                    ]
-                )
+                children = [
+                    self.magnetization_type,
+                    self.magnetization_type_help,
+                    self.container,
+                ]
+
             else:
-                children.extend(
-                    [
-                        self.insulator_help,
-                        self.magnetization_type_help,
-                        self.tot_magnetization_with_unit,
-                    ],
-                )
+                children = [
+                    self.insulator_help,
+                    self.magnetization_type_help,
+                    self.tot_magnetization_with_unit,
+                ]
         self.children = children
 
     def _toggle_widgets(self):
@@ -212,5 +201,5 @@ class MagnetizationConfigurationSettingsPanel(
         self.container.children = [
             self.tot_magnetization_with_unit
             if self._model.type == "tot_magnetization"
-            else self.kind_moment_widgets
+            else self.moments_list
         ]

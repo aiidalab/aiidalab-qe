@@ -1,0 +1,263 @@
+import ipywidgets as ipw
+
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
+from aiidalab_qe.common.widgets import HBoxWithUnits
+
+from .model import ConvergenceConfigurationSettingsModel
+
+
+class ConvergenceConfigurationSettingsPanel(
+    ConfigurationSettingsPanel[ConvergenceConfigurationSettingsModel],
+):
+    def __init__(self, model: ConvergenceConfigurationSettingsModel, **kwargs):
+        super().__init__(model, **kwargs)
+
+        self._model.observe(
+            self._on_input_structure_change,
+            "structure_uuid",
+        )
+        self._model.observe(
+            self._on_protocol_change,
+            "protocol",
+        )
+        self._model.observe(
+            self._on_kpoints_distance_change,
+            "kpoints_distance",
+        )
+
+    def render(self):
+        if self.rendered:
+            return
+
+        self.scf_conv_thr = ipw.BoundedFloatText(
+            min=1e-18,
+            max=1.0,
+            description="Energy:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "scf_conv_thr"),
+            (self.scf_conv_thr, "value"),
+        )
+        ipw.dlink(
+            (self._model, "scf_conv_thr_step"),
+            (self.scf_conv_thr, "step"),
+        )
+
+        self.scf_conv_thr_abs = ipw.Label(
+            layout=ipw.Layout(
+                width="150px",
+                text_align="center",
+            )
+        )
+        ipw.dlink(
+            (self.scf_conv_thr, "value"),
+            (self.scf_conv_thr_abs, "value"),
+            lambda v: f"{v * self._model.get_num_atoms():.5e}",
+        )
+        self.scf_conv_thr_abs.add_class("convergence-label")
+
+        scf_conv_thr_with_units = HBoxWithUnits(
+            widget=self.scf_conv_thr_abs,
+            units="Ry",
+            layout={"margin": "-8px 0 0 150px"},
+        )
+        ipw.dlink(
+            (self._model, "structure_uuid"),
+            (scf_conv_thr_with_units.layout, "display"),
+            lambda _: "flex" if self._model.has_structure else "none",
+        )
+
+        self.etot_conv_thr = ipw.BoundedFloatText(
+            min=1e-15,
+            max=1.0,
+            description="Energy:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "etot_conv_thr"),
+            (self.etot_conv_thr, "value"),
+        )
+        ipw.dlink(
+            (self._model, "etot_conv_thr_step"),
+            (self.etot_conv_thr, "step"),
+        )
+
+        self.etot_conv_thr_abs = ipw.Label()
+        ipw.dlink(
+            (self.etot_conv_thr, "value"),
+            (self.etot_conv_thr_abs, "value"),
+            lambda v: f"{v * self._model.get_num_atoms():.5e}",
+        )
+        self.etot_conv_thr_abs.add_class("convergence-label")
+
+        etot_conv_thr_with_units = HBoxWithUnits(
+            widget=self.etot_conv_thr_abs,
+            units="Ry",
+            layout={"margin": "-8px 0 0 150px"},
+        )
+        ipw.dlink(
+            (self._model, "structure_uuid"),
+            (etot_conv_thr_with_units.layout, "display"),
+            lambda _: "flex" if self._model.has_structure else "none",
+        )
+
+        self.forc_conv_thr = ipw.BoundedFloatText(
+            min=1e-15,
+            max=1.0,
+            description="Force:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "forc_conv_thr"),
+            (self.forc_conv_thr, "value"),
+        )
+        ipw.dlink(
+            (self._model, "forc_conv_thr_step"),
+            (self.forc_conv_thr, "step"),
+        )
+
+        # Kpoints setting
+        self.kpoints_distance = ipw.BoundedFloatText(
+            min=0.0,
+            step=0.05,
+            description="K-points distance:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "kpoints_distance"),
+            (self.kpoints_distance, "value"),
+        )
+        ipw.dlink(
+            (self._model, "structure_uuid"),
+            (self.kpoints_distance, "disabled"),
+            lambda _: not self._model.has_pbc,
+        )
+        self.mesh_grid = ipw.HTML(layout=ipw.Layout(margin="0 0 0 10px"))
+        ipw.dlink(
+            (self._model, "mesh_grid"),
+            (self.mesh_grid, "value"),
+        )
+        kpoint_row = ipw.HBox(
+            children=[
+                HBoxWithUnits(self.kpoints_distance, "Å<sup>-1</sup>"),
+                self.mesh_grid,
+            ],
+            layout=ipw.Layout(align_items="center"),
+        )
+
+        self.electron_maxstep = ipw.BoundedIntText(
+            min=20,
+            max=1000,
+            step=1,
+            description="Electronic:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "electron_maxstep"),
+            (self.electron_maxstep, "value"),
+        )
+
+        self.optimization_maxsteps = ipw.BoundedIntText(
+            min=50,
+            max=1000,
+            step=1,
+            description="Ionic:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "optimization_maxsteps"),
+            (self.optimization_maxsteps, "value"),
+        )
+
+        self.mixing_mode = ipw.Dropdown(
+            description="Mixing mode:",
+            style={"description_width": "150px"},
+        )
+        ipw.dlink(
+            (self._model, "mixing_mode_options"),
+            (self.mixing_mode, "options"),
+        )
+        ipw.link(
+            (self._model, "mixing_mode"),
+            (self.mixing_mode, "value"),
+        )
+
+        self.mixing_beta = ipw.BoundedFloatText(
+            min=0.1,
+            max=1.0,
+            step=0.01,
+            description="Mixing beta:",
+            style={"description_width": "150px"},
+        )
+        ipw.link(
+            (self._model, "mixing_beta"),
+            (self.mixing_beta, "value"),
+        )
+
+        self.help_message = ipw.HTML()
+        ipw.dlink(
+            (self._model, "help_message"),
+            (self.help_message, "value"),
+        )
+
+        self.children = [
+            self.help_message,
+            ipw.HTML("<h4>Threshold for SCF cycles</h4>"),
+            ipw.VBox(
+                children=[
+                    HBoxWithUnits(self.scf_conv_thr, "Ry/atom"),
+                    scf_conv_thr_with_units,
+                ]
+            ),
+            ipw.HTML("<h4>Thresholds for ionic convergence</h4>"),
+            ipw.VBox(
+                children=[
+                    HBoxWithUnits(self.etot_conv_thr, "Ry/atom"),
+                    etot_conv_thr_with_units,
+                ]
+            ),
+            HBoxWithUnits(self.forc_conv_thr, "Ry/Bohr"),
+            ipw.HTML("<h4>K-points</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    The k-points mesh density of the SCF calculation is set by the
+                    <b>protocol</b>.
+                    <br>
+                    The value below represents the maximum distance between k-points
+                    in each direction of reciprocal space.
+                    <br>
+                    Smaller is more accurate and costly.
+                </div>
+            """),
+            kpoint_row,
+            ipw.HTML("<h4>Maximum cycle steps</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    Setting a maximum number of electronic and ionic convergence steps
+                    ensures that the calculation does not run indefinitely.
+                </div>
+            """),
+            self.electron_maxstep,
+            self.optimization_maxsteps,
+            ipw.HTML("<h4>Mixing mode</h4>"),
+            ipw.HTML("""
+                <div style="line-height: 1.4; margin-bottom: 5px;">
+                    The mixing mode determines how the charge density is updated during
+                    the SCF cycles.
+                </div>
+            """),
+            self.mixing_mode,
+            self.mixing_beta,
+        ]
+
+        self.rendered = True
+
+    def _on_input_structure_change(self, _):
+        self.refresh(specific="structure")
+
+    def _on_protocol_change(self, _):
+        self.refresh(specific="protocol")
+
+    def _on_kpoints_distance_change(self, _):
+        self.refresh(specific="mesh")

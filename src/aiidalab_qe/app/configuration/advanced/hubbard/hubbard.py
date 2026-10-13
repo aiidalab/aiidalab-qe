@@ -1,20 +1,20 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.common.panel import ConfigurationSettingsPanel
 from aiidalab_qe.common.widgets import HBoxWithUnits
 
-from ..subsettings import AdvancedConfigurationSubSettingsPanel
 from .model import HubbardConfigurationSettingsModel
 
 
 class HubbardConfigurationSettingsPanel(
-    AdvancedConfigurationSubSettingsPanel[HubbardConfigurationSettingsModel],
+    ConfigurationSettingsPanel[HubbardConfigurationSettingsModel],
 ):
     def __init__(self, model: HubbardConfigurationSettingsModel, **kwargs):
         super().__init__(model, **kwargs)
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._model.observe(
             self._on_hubbard_activation,
@@ -69,7 +69,6 @@ class HubbardConfigurationSettingsPanel(
         self.container = ipw.VBox()
 
         self.children = [
-            ipw.HTML("<h2>Hubbard (DFT+U)</h2>"),
             self.activate_hubbard_checkbox,
             self.container,
         ]
@@ -87,16 +86,11 @@ class HubbardConfigurationSettingsPanel(
     def _on_eigenvalues_definition(self, _):
         self._toggle_eigenvalues_widget()
 
-    def _update(self, specific=""):
-        if self.updated:
-            return
+    def _update_ui(self):
         self._show_loading()
-        if not self._model.loaded_from_process or (specific and specific != "widgets"):
-            self._model.update(specific)
         self._build_hubbard_widget()
         self._toggle_hubbard_widget()
         self._toggle_eigenvalues_widget()
-        self.updated = True
 
     def _show_loading(self):
         if self.rendered:
@@ -127,7 +121,7 @@ class HubbardConfigurationSettingsPanel(
                     },
                 ],
             )
-            self.links.append(link)
+            self._links.append(link)
             children.append(HBoxWithUnits(float_widget, "eV"))
 
         if self._model.needs_eigenvalues_widget:
@@ -175,24 +169,21 @@ class HubbardConfigurationSettingsPanel(
                     (self._model, "eigenvalues"),
                     (eigenvalues_up, "value"),
                     [
-                        lambda eigenvalues,
-                        kind_index=kind_index,
-                        state_index=state_index: str(
-                            int(eigenvalues[kind_index][0][state_index][-1])
+                        lambda eigenvalues, kind_index=kind_index, state_index=state_index: (
+                            str(int(eigenvalues[kind_index][0][state_index][-1]))
                         ),
-                        lambda value,
-                        kind_index=kind_index,
-                        state_index=state_index,
-                        kind_name=kind_name: update(
-                            kind_index,
-                            1,
-                            state_index,
-                            kind_name,
-                            float(value),
+                        lambda value, kind_index=kind_index, state_index=state_index, kind_name=kind_name: (
+                            update(
+                                kind_index,
+                                1,
+                                state_index,
+                                kind_name,
+                                float(value),
+                            )
                         ),
                     ],
                 )
-                self.links.extend([options_link, value_link])
+                self._links.extend([options_link, value_link])
                 spin_up_row.children += (eigenvalues_up,)
 
                 eigenvalues_down = ipw.Dropdown(
@@ -208,24 +199,21 @@ class HubbardConfigurationSettingsPanel(
                     (self._model, "eigenvalues"),
                     (eigenvalues_down, "value"),
                     [
-                        lambda eigenvalues,
-                        kind_index=kind_index,
-                        state_index=state_index: str(
-                            int(eigenvalues[kind_index][1][state_index][-1])
+                        lambda eigenvalues, kind_index=kind_index, state_index=state_index: (
+                            str(int(eigenvalues[kind_index][1][state_index][-1]))
                         ),
-                        lambda value,
-                        kind_index=kind_index,
-                        state_index=state_index,
-                        kind_name=kind_name: update(
-                            kind_index,
-                            2,
-                            state_index,
-                            kind_name,
-                            float(value),
+                        lambda value, kind_index=kind_index, state_index=state_index, kind_name=kind_name: (
+                            update(
+                                kind_index,
+                                2,
+                                state_index,
+                                kind_name,
+                                float(value),
+                            )
                         ),
                     ],
                 )
-                self.links.extend([options_link, value_link])
+                self._links.extend([options_link, value_link])
                 spin_down_row.children += (eigenvalues_down,)
 
             children.append(

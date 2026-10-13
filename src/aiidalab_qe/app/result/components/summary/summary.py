@@ -1,15 +1,15 @@
 import ipywidgets as ipw
 
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.app.result.components import ResultsComponent
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
-from .model import WorkChainSummaryModel
+from .model import WorkflowSummaryModel
 from .outputs import WorkChainOutputs
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
-class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
+class WorkflowSummary(ResultsComponent[WorkflowSummaryModel]):
     has_settings_report = False
     has_download_widget = False
 
@@ -81,9 +81,8 @@ class WorkChainSummary(ResultsComponent[WorkChainSummaryModel]):
         self.has_settings_report = True
 
     def _render_download_widget(self):
-        process_node = self._model.fetch_process_node()
-        if process_node and process_node.is_terminated:
-            output_download_widget = WorkChainOutputs(node=process_node)
+        if self._model.has_process and self._model.process.is_terminated:
+            output_download_widget = WorkChainOutputs(node=self._model.process)
             output_download_widget.layout.width = "100%"
             self.output_download_container.children = [
                 self.output_download_help,

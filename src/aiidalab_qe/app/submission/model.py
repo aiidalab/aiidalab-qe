@@ -1,33 +1,30 @@
 from __future__ import annotations
 
-from copy import deepcopy
-
-import ipywidgets as ipw
 import traitlets as tl
 from IPython.display import Javascript, display
 
 from aiida import orm
 from aiida.engine import ProcessBuilderNamespace, submit
 from aiida.orm.utils.serialize import serialize
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.common.mixins import HasInputStructure, HasModels
+from aiidalab_qe.common.mixins import HasInputStructure, HasModels, HasProcess
 from aiidalab_qe.common.panel import PluginResourceSettingsModel, ResourceSettingsModel
-from aiidalab_qe.common.wizard import QeConfirmableWizardStepModel
-from aiidalab_qe.workflows import QeAppWorkChain
+from aiidalab_qe.common.wizard import ConfirmableDependentWizardStepModel, State
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
+from aiidalab_qe.utils import shallow_copy_nested_dict
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
 
 class SubmissionStepModel(
-    QeConfirmableWizardStepModel,
+    ConfirmableDependentWizardStepModel,
     HasModels[ResourceSettingsModel],
     HasInputStructure,
+    HasProcess,
 ):
     identifier = "submission"
 
     input_parameters = tl.Dict()
 
-    process_node = tl.Instance(orm.WorkChainNode, allow_none=True)
     process_label = tl.Unicode("")
     process_description = tl.Unicode("")
 
@@ -38,40 +35,47 @@ class SubmissionStepModel(
 
     plugin_overrides = tl.List(tl.Unicode())
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.confirmation_exceptions += [
-            "warning_messages",
-            "installing_qe",
-            "qe_installed",
-        ]
+    fetched_resources = tl.Bool(False)
 
+    _dependencies = [
+        "structure_uuid",
+        "input_parameters",
+    ]
+
+    def __init__(self, *args, **kwargs):
         self._default_models = {
             "global",
         }
 
-        self._ALERT_MESSAGE = """
-            <div class="alert alert-{alert_class} alert-dismissible">
-                <a href="#" class="close" data-dismiss="alert" aria-label="close">
-                    &times;
-                </a>
-                <strong>{message}</strong>
-            </div>
-        """
+        super().__init__(*args, **kwargs)
+
+        self.confirmation_exceptions += [
+            "warning_messages",
+            "installing_qe",
+            "qe_installed",
+            "fetched_resources",
+        ]
+
+        self.default_user_email = orm.User.collection.get_default().email
 
     def confirm(self):
         super().confirm()
-        if not self.process_node:
+        if not self.has_process:
             self._submit()
+        self.lock()
 
-    def update(self):
+    def _update(self, specific=""):
+        self.update_process_label()
+        self.update_plugin_inclusion()
+        self.update_plugin_overrides()
         for _, model in self.get_models():
             model.update()
 
     def update_process_label(self):
-        if not self.input_structure:
+        if not self.has_structure or not self.input_parameters:
             self.process_label = ""
             return
+
         structure_label = (
             self.input_structure.label
             if len(self.input_structure.label) > 0
@@ -115,6 +119,8 @@ class SubmissionStepModel(
         self.process_label = label
 
     def update_plugin_inclusion(self):
+        if not self.input_parameters:
+            return
         properties = self._get_properties()
         for identifier, model in self.get_models():
             if identifier in self._default_models:
@@ -122,6 +128,8 @@ class SubmissionStepModel(
             model.include = identifier in properties
 
     def update_plugin_overrides(self):
+        if not self.input_parameters:
+            return
         self.plugin_overrides = [
             identifier
             for identifier, model in self.get_models()
@@ -136,57 +144,50 @@ class SubmissionStepModel(
             warning_messages += model.warning_messages
         self.warning_messages = warning_messages
 
-    def get_model_state(self) -> dict[str, dict[str, dict]]:
-        parameters: dict = deepcopy(self.input_parameters)  # type: ignore
-        parameters["codes"] = {
+    def update_process_metadata(self):
+        if not self.has_process:
+            return
+        self.process_label = self.process.label
+        self.process_description = self.process.description
+
+    def refresh_codes(self, filter_codes_for_user: bool = True):
+        for _, resource_model in self.get_models():
+            resource_model.refresh_codes(filter_codes_for_user=filter_codes_for_user)
+
+    def get_model_state(self) -> dict:
+        return {
             identifier: model.get_model_state()
             for identifier, model in self.get_models()
             if model.include
         }
-        return parameters
 
-    def set_model_state(self, parameters):
-        codes: dict = parameters.get("codes", {})
-
-        if "resources" in parameters:
-            resources = parameters["resources"]
-            codes |= {key: {"code": value} for key, value in codes.items()}
-            codes["pw"]["nodes"] = resources["num_machines"]
-            codes["pw"]["cpus"] = resources["num_mpiprocs_per_machine"]
-            codes["pw"]["parallelization"] = {"npool": resources["npools"]}
-
-        workchain_parameters: dict = parameters.get("workchain", {})
-        properties = set(workchain_parameters.get("properties", []))
-        included = self._default_models | properties
+    def set_model_state(self, state: dict):
         for identifier, model in self.get_models():
-            model.include = identifier in included
-            if codes.get(identifier):
-                model.set_model_state(codes[identifier])
-                model.loaded_from_process = True
+            if state.get(identifier):
+                model.include = True
+                model.set_model_state(state[identifier])
 
-        if self.process_node:
-            self.process_label = self.process_node.label
-            self.process_description = self.process_node.description
-            self.loaded_from_process = True
-
-    def get_selected_codes(self) -> dict[str, dict]:
-        return {
-            identifier: code_model.get_model_state()
-            for identifier, code_model in self.get_model("global").get_models()
-            if code_model.is_ready
-        }
+    def update_state(self):
+        if self.confirmed:
+            self.state = State.SUCCESS
+        elif self.is_blocked:
+            self.state = State.BLOCKED
+        elif self.is_previous_step_successful and self.has_all_dependencies:
+            self.state = State.CONFIGURED
+        else:
+            self.state = State.INIT
 
     def reset(self):
         with self.hold_trait_notifications():
-            self.input_structure = None
             self.input_parameters = {}
-            self.process_node = None
+            self.process_uuid = None
             for identifier, model in self.get_models():
                 if identifier not in self._default_models:
                     model.include = False
 
     def _submit(self):
-        parameters = self.get_model_state()
+        parameters = shallow_copy_nested_dict(self.input_parameters)
+        parameters |= {"codes": self.get_model_state()}
         builder = self._create_builder(parameters)
 
         with self.hold_trait_notifications():
@@ -203,40 +204,26 @@ class SubmissionStepModel(
                 "structure",
                 self.input_structure.get_formula(),
             )
-            self.process_node = process_node
+            self.process_uuid = process_node.uuid
 
-            self._update_url()
-
-    def _update_url(self):
-        pk = self.process_node.pk
-        display(Javascript(f"window.history.pushState(null, '', '?pk={pk}');"))
-
-    def _link_model(self, model: ResourceSettingsModel):
-        for dependency in model.dependencies:
-            dependency_parts = dependency.split(".")
-            if len(dependency_parts) == 1:  # from parent, e.g. input_structure
-                target_model = self
-                trait = dependency
-            else:  # from sibling, e.g. workchain.protocol
-                sibling, trait = dependency_parts
-                target_model = self.get_model(sibling)
-            ipw.dlink(
-                (target_model, trait),
-                (model, trait),
-            )
+            pk = process_node.pk
+            display(Javascript(f"window.history.pushState(null, '', '?pk={pk}');"))
 
     def _get_properties(self) -> list[str]:
         return self.input_parameters.get("workchain", {}).get("properties", [])
 
     def _create_builder(self, parameters) -> ProcessBuilderNamespace:
+        from aiidalab_qe.workflows import QeAppWorkChain
+
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            parameters=deepcopy(parameters),  # TODO why deepcopy again?
+            # Use shallow copy to avoid parameter mutation by the workflow
+            parameters=shallow_copy_nested_dict(parameters),
         )
 
         codes = parameters["codes"]["global"]["codes"]
         if "relax" in builder:
-            builder.relax.base.pw.metadata.options.resources = {
+            builder.relax.base_relax.pw.metadata.options.resources = {
                 "num_machines": codes.get("quantumespresso__pw")["nodes"],
                 "num_mpiprocs_per_machine": codes.get("quantumespresso__pw")[
                     "ntasks_per_node"
@@ -246,18 +233,18 @@ class SubmissionStepModel(
                 ],
             }
             mws = codes.get("quantumespresso__pw")["max_wallclock_seconds"]
-            builder.relax.base.pw.metadata.options["max_wallclock_seconds"] = mws
+            builder.relax.base_relax.pw.metadata.options["max_wallclock_seconds"] = mws
             parallelization = codes["quantumespresso__pw"]["parallelization"]
-            builder.relax.base.pw.parallelization = orm.Dict(dict=parallelization)
+            builder.relax.base_relax.pw.parallelization = orm.Dict(dict=parallelization)
 
         return builder
 
     def _check_blockers(self):
-        if self.installing_qe:
-            yield "Installing Quantum ESPRESSO codes..."
+        if not self.has_structure:
+            yield "No selected input structure"
 
-        if not self.qe_installed:
-            yield "Quantum ESPRESSO is not yet installed"
+        if not self.input_parameters:
+            yield "No selected input parameters"
 
     def _check_warnings(self):
         """Check for any warnings that should be displayed to the user."""

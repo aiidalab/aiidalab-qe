@@ -18,15 +18,15 @@ class PdosConfigurationSettingPanel(
 
         self._model.observe(
             self._on_input_structure_change,
-            "input_structure",
+            "structure_uuid",
         )
         self._model.observe(
             self._on_protocol_change,
             "protocol",
         )
         self._model.observe(
-            self._on_kpoints_distance_change,
-            "kpoints_distance",
+            self._on_nscf_kpoints_distance_change,
+            "nscf_kpoints_distance",
         )
 
     def render(self):
@@ -40,11 +40,11 @@ class PdosConfigurationSettingPanel(
             style={"description_width": "initial"},
         )
         ipw.link(
-            (self._model, "kpoints_distance"),
+            (self._model, "nscf_kpoints_distance"),
             (self.nscf_kpoints_distance, "value"),
         )
         ipw.dlink(
-            (self._model, "input_structure"),
+            (self._model, "structure_uuid"),
             (self.nscf_kpoints_distance, "disabled"),
             lambda _: not self._model.has_pbc,
         )
@@ -65,7 +65,7 @@ class PdosConfigurationSettingPanel(
             (self.use_pdos_degauss, "value"),
         )
         ipw.dlink(
-            (self._model, "input_structure"),
+            (self._model, "structure_uuid"),
             (self.use_pdos_degauss, "disabled"),
             lambda _: not self._model.has_pbc,
         )
@@ -147,5 +147,5 @@ class PdosConfigurationSettingPanel(
     def _on_protocol_change(self, _):
         self.refresh(specific="protocol")
 
-    def _on_kpoints_distance_change(self, _):
+    def _on_nscf_kpoints_distance_change(self, _):
         self.refresh(specific="mesh")

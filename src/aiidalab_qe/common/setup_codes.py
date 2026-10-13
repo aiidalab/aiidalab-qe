@@ -139,10 +139,12 @@ class QESetupWidget(ipw.VBox):
 
             if self.error or self.installed:
                 self._progress_bar.value = 1.0
+                self._progress_bar.animating = False
             elif self.busy:
-                self._progress_bar.value = ProgressBar.AnimationRate(1.0)
+                self._progress_bar.animating = True
             else:
                 self._progress_bar.value = 0
+                self._progress_bar.animating = False
 
             self._progress_bar.bar_style = (
                 "info"

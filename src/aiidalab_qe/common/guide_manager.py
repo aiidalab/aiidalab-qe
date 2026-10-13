@@ -6,7 +6,7 @@ import traitlets as tl
 from bs4 import BeautifulSoup, PageElement
 
 import aiidalab_qe
-from aiidalab_qe.app.utils import get_entry_items
+from aiidalab_qe.plugins.utils import get_entry_items
 
 
 class GuideManager(tl.HasTraits):
@@ -25,8 +25,7 @@ class GuideManager(tl.HasTraits):
                 for guide in sorted(guides, key=lambda x: x.stem.split("_")[0])
             }
         }
-
-        self._fetch_plugin_guides()
+        self._plugin_guides_loaded = False
 
         self.content = BeautifulSoup()
 
@@ -48,6 +47,13 @@ class GuideManager(tl.HasTraits):
             A list of the names of available guides.
         """
         return [*self._guides.keys()]
+
+    def load_plugin_guides(self) -> None:
+        """Load plugin guides once, when the Tutorials UI is opened."""
+        if self._plugin_guides_loaded:
+            return
+        self._fetch_plugin_guides()
+        self._plugin_guides_loaded = True
 
     def get_guides(self, identifier: str) -> list[str]:
         """Return a list of available sub-guides.

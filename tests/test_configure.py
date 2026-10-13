@@ -1,21 +1,16 @@
-from aiidalab_qe.app.configuration import ConfigureQeAppWorkChainStep
-from aiidalab_qe.app.configuration.model import ConfigurationStepModel
+from aiidalab_qe.app.configuration import ConfigurationStep, ConfigurationStepModel
+from aiidalab_qe.plugins import registry as plugin_registry
 from aiidalab_qe.setup.pseudos import PSEUDODOJO_VERSION, SSSP_VERSION
 
 
-def test_protocol():
-    model = ConfigurationStepModel()
-    _ = ConfigureQeAppWorkChainStep(model=model)
-    workchain_model = model.get_model("workchain")
-    advanced_model = model.get_model("advanced")
-    workchain_model.protocol = "fast"
-    assert advanced_model.protocol == "fast"
-    assert advanced_model.kpoints_distance == 0.3
+def _load_test_registry(monkeypatch, plugins):
+    monkeypatch.setattr(plugin_registry, "load_plugin_config", lambda: plugins)
+    return plugin_registry.PluginRegistry.load()
 
 
 def test_get_configuration_parameters():
     model = ConfigurationStepModel()
-    _ = ConfigureQeAppWorkChainStep(model=model)
+    _ = ConfigurationStep(model=model)
     parameters = model.get_model_state()
     parameters_ref = {
         "workchain": {
@@ -30,7 +25,7 @@ def test_get_configuration_parameters():
 
 def test_set_configuration_parameters():
     model = ConfigurationStepModel()
-    _ = ConfigureQeAppWorkChainStep(model=model)
+    _ = ConfigurationStep(model=model)
     parameters = model.get_model_state()
     parameters["workchain"]["relax_type"] = "positions"
     parameters["advanced"]["pseudo_family"] = f"SSSP/{SSSP_VERSION}/PBE/efficiency"
@@ -48,7 +43,7 @@ def test_set_configuration_parameters():
 def test_panel():
     """Dynamic add/remove the panel based on the workchain settings."""
     model = ConfigurationStepModel()
-    config = ConfigureQeAppWorkChainStep(model=model)
+    config = ConfigurationStep(model=model)
     config.render()
     assert len(config.tabs.children) == 2
     parameters = model.get_model_state()
@@ -59,33 +54,189 @@ def test_panel():
     assert "bands" in parameters
 
 
-def test_reminder_info():
-    """Dynamic add/remove the reminder text based on the workchain settings."""
+def test_fetching_available_plugins(monkeypatch):
+    from types import SimpleNamespace
+
     model = ConfigurationStepModel()
-    config = ConfigureQeAppWorkChainStep(model=model)
+    config = ConfigurationStep(model=model)
+    monkeypatch.setattr(config, "_schedule_plugin_status_check", lambda: None)
     config.render()
-    bands_info = next(
-        (
-            child.children[1]
-            for child in config.installed_property_children
-            if "Electronic band structure" in child.children[0].title
-        ),
-        None,
+    statuses = {
+        name: SimpleNamespace(is_installed=False, is_incompatible=False)
+        for name in config._plugin_registry.plugins
+    }
+    config._update_plugin_lists(statuses)
+    assert len(config.available_plugins_list) > 0
+    assert all("<li>" not in title for title in config.available_plugins_list)
+
+
+def test_available_plugins_render_with_single_list_item(monkeypatch):
+    from aiidalab_qe.app.configuration import step as configuration_step
+
+    registry = _load_test_registry(
+        monkeypatch,
+        {
+            "my-plugin": {
+                "title": "My plugin",
+                "description": "Plugin description",
+                "pip": "my-plugin",
+                "category": "calculation",
+            }
+        },
     )
-    assert bands_info.value == ""
-    bands_model = model.get_model("bands")
-    bands_model.include = True
-    assert bands_info.value == "Customize bands settings in <b>Step 2.2</b> if needed"
-    bands_model.include = False
-    assert bands_info.value == ""
+    monkeypatch.setattr(configuration_step, "get_plugin_registry", lambda: registry)
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: (None, True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+
+    config = ConfigurationStep(model=ConfigurationStepModel())
+    config.render()
+
+    assert config.available_plugins_list == ["My plugin"]
+    available_plugins_html = config.available_plugins.children[0].value
+    assert available_plugins_html.count("<li>") == 1
+    assert "<li></li>" not in available_plugins_html
 
 
-def test_not_installed_property_children():
-    import os
+def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
+    from types import SimpleNamespace
 
-    current_file = os.path.abspath(__file__)
-    plugin_file = os.path.join(os.path.dirname(current_file), "../plugins.yaml")
+    from aiidalab_qe.app.configuration import step as configuration_step
+
+    distribution = SimpleNamespace(
+        metadata={"Name": "my-plugin"},
+        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
+    )
+    registry = _load_test_registry(
+        monkeypatch,
+        {
+            "my-plugin": {
+                "title": "My plugin",
+                "description": "Plugin description",
+                "pip": "my-plugin>=2.0",
+                "category": "calculation",
+            }
+        },
+    )
+    monkeypatch.setattr(configuration_step, "get_plugin_registry", lambda: registry)
+    monkeypatch.setattr(
+        plugin_registry.metadata, "distributions", lambda: [distribution]
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("1.0", False, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_args: True)
+
     model = ConfigurationStepModel()
-    config = ConfigureQeAppWorkChainStep(model=model)
-    config._fetch_not_installed_property(str(plugin_file))
-    assert len(config.not_installed_property_children) > 0
+    config = ConfigurationStep(model=model)
+    config.render()
+
+    assert config.incompatible_plugins_list == ["My plugin"]
+    assert config.installed_plugin_rows["bands"] not in config.installed_plugins_list
+
+    model.set_model_state(
+        {"workchain": {"properties": ["bands"], "relax_type": "none"}}
+    )
+    assert not model.get_model("bands").include
+    assert "bands" not in model._get_properties()
+
+
+def test_activation_failed_plugin_is_not_ready_for_new_calculations(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.configuration import step as configuration_step
+
+    distribution = SimpleNamespace(
+        metadata={"Name": "my-plugin"},
+        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
+    )
+    registry = _load_test_registry(
+        monkeypatch,
+        {
+            "my-plugin": {
+                "title": "My plugin",
+                "description": "Plugin description",
+                "pip": "my-plugin>=2.0",
+                "category": "calculation",
+            }
+        },
+    )
+    monkeypatch.setattr(configuration_step, "get_plugin_registry", lambda: registry)
+    monkeypatch.setattr(
+        plugin_registry.metadata, "distributions", lambda: [distribution]
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: ("2.0", True, None),
+    )
+    monkeypatch.setattr(plugin_registry, "is_version_compatible", lambda *_: True)
+    monkeypatch.setattr(
+        plugin_registry,
+        "poll_plugin_registration",
+        lambda _package: "Plugin validation failed",
+    )
+
+    config = ConfigurationStep(model=ConfigurationStepModel())
+    config.render()
+
+    assert config.incompatible_plugins_list == ["My plugin"]
+    assert config.installed_plugin_rows["bands"] not in config.installed_plugins_list
+
+
+def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
+    from types import SimpleNamespace
+
+    from aiidalab_qe.app.configuration import step as configuration_step
+
+    distribution = SimpleNamespace(
+        metadata={"Name": "my-plugin"},
+        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
+    )
+    registry = _load_test_registry(
+        monkeypatch,
+        {
+            "my-plugin": {
+                "title": "My plugin",
+                "description": "Plugin description",
+                "pip": "my-plugin>=2.0",
+                "category": "calculation",
+            }
+        },
+    )
+    monkeypatch.setattr(configuration_step, "get_plugin_registry", lambda: registry)
+    monkeypatch.setattr(
+        plugin_registry.metadata, "distributions", lambda: [distribution]
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "get_plugin_version_info",
+        lambda *_args: (_ for _ in ()).throw(
+            AssertionError("process-backed Step 2 must skip compatibility checks")
+        ),
+    )
+    monkeypatch.setattr(
+        plugin_registry,
+        "is_version_compatible",
+        lambda *_args: (_ for _ in ()).throw(
+            AssertionError("process-backed Step 2 must skip compatibility checks")
+        ),
+    )
+    monkeypatch.setattr(plugin_registry, "is_plugin_installed", lambda *_: True)
+    model = ConfigurationStepModel()
+    model.loaded_from_process = True
+    config = ConfigurationStep(model=model)
+    config.render()
+    model.set_model_state(
+        {"workchain": {"properties": ["bands"], "relax_type": "none"}}
+    )
+
+    assert config.incompatible_plugins_list == []
+    assert config.installed_plugin_rows["bands"] in config.installed_plugins_list
+    assert model.get_model("bands").include
+    assert "bands" in model._get_properties()

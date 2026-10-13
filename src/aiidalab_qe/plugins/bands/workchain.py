@@ -50,26 +50,24 @@ def update_resources(builder, codes):
 
 def get_builder(codes, structure, parameters, **kwargs):
     """Get a builder for the BandsWorkChain."""
-    from copy import deepcopy
+    from aiidalab_qe.utils import shallow_copy_nested_dict
 
     pw_code = codes.get("pw")["code"]
     protocol = parameters["workchain"]["protocol"]
-    scf_overrides = deepcopy(parameters["advanced"])
-    relax_overrides = {
-        "base": deepcopy(parameters["advanced"]),
-        "base_final_scf": deepcopy(parameters["advanced"]),
-    }
-    bands_overrides = deepcopy(parameters["advanced"])
+    scf_overrides = shallow_copy_nested_dict(parameters["advanced"])
+    bands_overrides = shallow_copy_nested_dict(parameters["advanced"])
     bands_overrides.pop("kpoints_distance", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("smearing", None)
     bands_overrides["pw"]["parameters"]["SYSTEM"].pop("degauss", None)
 
-    check_codes(pw_code, codes.get("projwfc_bands")["code"])
+    projwfc_code = None
+    if "projwfc_bands" in codes:
+        projwfc_code = codes.get("projwfc_bands")["code"]
+        check_codes(pw_code, projwfc_code)
 
     overrides = {
         "scf": scf_overrides,
         "bands": bands_overrides,
-        "relax": relax_overrides,
     }
 
     if parameters["bands"]["projwfc_bands"]:
@@ -79,7 +77,7 @@ def get_builder(codes, structure, parameters, **kwargs):
 
     bands_builder = BandsWorkChain.get_builder_from_protocol(
         pw_code=pw_code,
-        projwfc_code=codes.get("projwfc_bands")["code"],
+        projwfc_code=projwfc_code,
         structure=structure,
         simulation_mode=simulation_mode,
         protocol=protocol,

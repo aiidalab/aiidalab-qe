@@ -9,11 +9,12 @@ from jinja2 import Environment
 
 from aiida import orm
 from aiida.cmdline.utils.common import get_workchain_report
+from aiida.common.exceptions import NotExistent
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
-from aiidalab_qe.app.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.app.result.components import ResultsComponentModel
+from aiidalab_qe.app.result.utils import ResultsSubModel
 from aiidalab_qe.app.static import styles, templates
 from aiidalab_qe.common.time import format_time, relative_time
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
 
@@ -52,8 +53,8 @@ VDW_CORRECTION_VERSION = {
 }
 
 
-class WorkChainSummaryModel(ResultsComponentModel):
-    identifier = "workflow summary"
+class WorkflowSummaryModel(ResultsSubModel):
+    identifier = "summary"
 
     failed_calculation_report = tl.Unicode("")
 
@@ -87,17 +88,17 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "All calculations are performed within the density-functional "
             "theory formalism as implemented in the Quantum ESPRESSO code. "
             "The pseudopotential for each element is extracted from the "
-            f'{report_dict["Pseudopotential library"][0]} '
+            f"{report_dict['Pseudopotential library'][0]} "
             "library. The wave functions "
             "of the valence electrons are expanded in a plane wave basis set, using an "
             "energy cutoff equal to "
-            f'{round(report_dict["Plane wave energy cutoff (wave functions)"][0])} Ry '
+            f"{round(report_dict['Plane wave energy cutoff (wave functions)'][0])} Ry "
             "for the wave functions and "
-            f'{round(report_dict["Plane wave energy cutoff (charge density)"][0])} Ry '
+            f"{round(report_dict['Plane wave energy cutoff (charge density)'][0])} Ry "
             "for the charge density and potential. "
             "The exchange-correlation energy is "
             "calculated using the "
-            f'{FUNCTIONAL_REPORT_MAP[report_dict["Functional"][0]]}. '
+            f"{FUNCTIONAL_REPORT_MAP[report_dict['Functional'][0]]}. "
             "A Monkhorst-Pack mesh is used for sampling the Brillouin zone, where the "
             "distance between the k-points is set to "
         )
@@ -123,16 +124,15 @@ class WorkChainSummaryModel(ResultsComponentModel):
 
     def generate_failure_report(self):
         """Generate a html for reporting the failure of the `QeAppWorkChain`."""
-        process_node = self.fetch_process_node()
-        if not (process_node and process_node.exit_status):
+        if not (self.has_process and self.process.exit_status):
             return
-        final_calcjob = self._get_final_calcjob(process_node)
+        final_calcjob = self._get_final_calcjob(self.process)
         env = Environment()
         template = files(templates).joinpath("workflow_failure.jinja").read_text()
         style = files(styles).joinpath("style.css").read_text()
         self.failed_calculation_report = env.from_string(template).render(
             style=style,
-            process_report=get_workchain_report(process_node, "REPORT"),
+            process_report=get_workchain_report(self.process, "REPORT"),
             calcjob_exit_message=final_calcjob.exit_message,
         )
         self.has_failure_report = True
@@ -150,29 +150,32 @@ class WorkChainSummaryModel(ResultsComponentModel):
         """
         from aiida.orm.utils.serialize import deserialize_unsafe
 
-        qeapp_wc = self.fetch_process_node()
+        if not self.process:
+            return {}
 
-        ui_parameters = qeapp_wc.base.extras.get("ui_parameters", {})
+        ui_parameters = self.process.base.extras.get("ui_parameters", {})
+
         if isinstance(ui_parameters, str):
             ui_parameters = deserialize_unsafe(ui_parameters)
-        # Construct the report parameters needed for the report
-        # drop support for old ui parameters
+
         if "workchain" not in ui_parameters:
             return {}
 
-        inputs = qeapp_wc.inputs
+        inputs = self.inputs
+        assert inputs is not None, "BUG! Missing process inputs"  # shouldn't happen!
+        assert inputs.structure, "BUG! Missing structure input"  # shouldn't happen!
         structure: orm.StructureData = inputs.structure
         basic = ui_parameters["workchain"]
         advanced = ui_parameters["advanced"]
-        ctime = qeapp_wc.ctime
-        mtime = qeapp_wc.mtime
+        ctime = self.process.ctime
+        mtime = self.process.mtime
 
         report = {
             "workflow_properties": {
-                "pk": qeapp_wc.pk,
-                "uuid": str(qeapp_wc.uuid),
-                "label": qeapp_wc.label,
-                "description": qeapp_wc.description,
+                "pk": self.process.pk,
+                "uuid": str(self.process.uuid),
+                "label": self.process.label,
+                "description": self.process.description,
                 "creation_time": f"{format_time(ctime)} ({relative_time(ctime)})",
                 "modification_time": f"{format_time(mtime)} ({relative_time(mtime)})",
             },
@@ -193,11 +196,20 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "cell_angles": "{:.0f} {:.0f} {:.0f}".format(*structure.cell_angles),
         }
 
+        relax_value_mapping = {
+            "none": "off",
+            "positions": "atomic positions",
+            "positions_cell": "full geometry",
+        }
+
+        if self.properties == ["pp"]:
+            # If the workflow only included post-processing, no PW calculation was run.
+            # In this case, we return a minimal report.
+            return report
+
         report |= {
             "basic_settings": {
-                "relaxed": "off"
-                if basic["relax_type"] == "none"
-                else basic["relax_type"],
+                "relaxed": relax_value_mapping.get(basic["relax_type"], "off"),
                 "protocol": basic["protocol"],
                 "spin_type": "off" if basic["spin_type"] == "none" else "on",
                 "electronic_type": basic["electronic_type"],
@@ -206,25 +218,48 @@ class WorkChainSummaryModel(ResultsComponentModel):
             "advanced_settings": {},
         }
 
-        pseudo_family = advanced.get("pseudo_family")
-        pseudo_family_info = pseudo_family.split("/")
-        pseudo_library = pseudo_family_info[0]
-        pseudo_version = pseudo_family_info[1]
-        functional = pseudo_family_info[2]
-        if pseudo_library == "SSSP":
-            pseudo_protocol = pseudo_family_info[3]
-        elif pseudo_library == "PseudoDojo":
-            pseudo_protocol = pseudo_family_info[4]
-        report["advanced_settings"] |= {
-            "functional": {
-                "url": FUNCTIONAL_LINK_MAP[functional],
-                "value": functional,
-            },
-            "pseudo_library": {
-                "url": PSEUDO_LINK_MAP[pseudo_library],
-                "value": f"{pseudo_library} {pseudo_protocol} v{pseudo_version}",
-            },
+        pseudos = {
+            kind: self._get_pseudo_summary(pp_uuid)
+            for kind, pp_uuid in advanced.get("pw", {}).get("pseudos", {}).items()
         }
+
+        if pseudo_family := advanced.get("pseudo_family"):
+            pseudo_family_info = pseudo_family.split("/")
+            pseudo_library = pseudo_family_info[0]
+            pseudo_version = pseudo_family_info[1]
+            functional = pseudo_family_info[2]
+            if pseudo_library == "SSSP":
+                pseudo_protocol = pseudo_family_info[3]
+            elif pseudo_library == "PseudoDojo":
+                pseudo_protocol = pseudo_family_info[4]
+            report["advanced_settings"] |= {
+                "functional": {
+                    "url": FUNCTIONAL_LINK_MAP[functional],
+                    "value": functional,
+                },
+                "pseudo_library": {
+                    "url": PSEUDO_LINK_MAP[pseudo_library],
+                    "value": f"{pseudo_library} {pseudo_protocol} v{pseudo_version}",
+                },
+            }
+        else:
+            pseudo_info = next(iter(pseudos.values()), {})
+            functional = pseudo_info.get("functional", "Unavailable")
+            report["advanced_settings"]["functional"] = {
+                "url": FUNCTIONAL_LINK_MAP.get(functional),
+                "value": functional,
+            }
+            report["advanced_settings"]["relativistic"] = pseudo_info.get(
+                "relativistic", "Unavailable"
+            )
+            report["advanced_settings"]["pseudo_library"] = {
+                "url": None,
+                "value": "custom",
+            }
+
+        report["advanced_settings"]["pseudos"] = [
+            f"<b>{kind}:</b> {info['filename']}" for kind, info in pseudos.items()
+        ]
 
         # Extract the pw calculation parameters from the ui_parameters
         pw_parameters = ui_parameters["advanced"].get("pw", {}).get("parameters", {})
@@ -277,6 +312,20 @@ class WorkChainSummaryModel(ResultsComponentModel):
         report["advanced_settings"]["spin_orbit"] = "on" if spin_orbit else "off"
 
         return report
+
+    @staticmethod
+    def _get_pseudo_summary(pp_uuid: str) -> dict:
+        """Read pseudopotential metadata referenced by saved UI settings."""
+        try:
+            pseudo = orm.load_node(pp_uuid)
+        except NotExistent:
+            # UUIDs in extras are not necessarily included in exported provenance.
+            return {"filename": f"Unavailable in this profile (UUID: {pp_uuid})"}
+        return {
+            "filename": pseudo.filename,
+            "functional": pseudo.base.extras.get("functional", None),
+            "relativistic": pseudo.base.extras.get("relativistic", None),
+        }
 
     def _get_symmetry_group_info(self, structure: orm.StructureData) -> dict:
         # HACK the use of the clone for non-molecular systems is due to a rigid

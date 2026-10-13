@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import typing as t
+
 import ipywidgets as ipw
 import traitlets as tl
 
@@ -25,6 +29,9 @@ class CodeModel(Model):
     allow_hidden_codes = tl.Bool(False)
     allow_disabled_computers = tl.Bool(False)
     override = tl.Bool(False)
+    warning = tl.Unicode(allow_none=True)
+
+    _WARNING_TEMPLATE = "<span style='color: red;'>{warning}</span>"
 
     def __init__(
         self,
@@ -33,12 +40,14 @@ class CodeModel(Model):
         description,
         default_calc_job_plugin,
         code_widget_class=QEAppComputationalResourcesWidget,
+        condition: t.Callable[[dict], bool] | None = None,
     ):
         self.name = name
         self.description = description
         self.default_calc_job_plugin = default_calc_job_plugin
         self.code_widget_class = code_widget_class
-        self.is_rendered = False
+        self.is_widget_rendered = False
+        self.check_condition = condition or (lambda _: True)
 
         ipw.dlink(
             (self, "num_cpus"),
@@ -47,7 +56,7 @@ class CodeModel(Model):
 
     @property
     def is_ready(self):
-        return self.is_active and bool(self.selected)
+        return self.is_active and self.selected is not None
 
     @property
     def first_option(self):
@@ -59,10 +68,23 @@ class CodeModel(Model):
     def deactivate(self):
         self.is_active = False
 
-    def update(self, user_email="", refresh=False):
+    def update(
+        self,
+        user_email: str,
+        default_code: str | None = None,
+        filter_codes_for_user: bool = True,
+        refresh: bool = False,
+    ):
         if not self.options or refresh:
-            self.options = self._get_codes(user_email)
-            self.selected = self.first_option
+            self.options = self._get_codes(user_email, filter_codes_for_user)
+            if default_code:
+                try:
+                    selected = orm.load_code(default_code).uuid
+                except NotExistent:
+                    selected = self.first_option
+            else:
+                selected = self.first_option
+            self.selected = selected
 
     def get_model_state(self) -> dict:
         return {
@@ -96,7 +118,11 @@ class CodeModel(Model):
         # in the app and thus will not be considered as an option!
         return uuid if uuid in [opt[1] for opt in self.options] else None
 
-    def _get_codes(self, user_email: str = ""):
+    def _get_codes(
+        self,
+        user_email: str,
+        filter_codes_for_user: bool = True,
+    ) -> list[tuple[str, str]]:
         user = orm.User.collection.get(email=user_email)
 
         filters = (
@@ -105,25 +131,33 @@ class CodeModel(Model):
             else {}
         )
 
-        codes = (
-            orm.QueryBuilder()
-            .append(
-                orm.Code,
-                filters=filters,
-            )
-            .all(flat=True)
+        codes = t.cast(
+            list[orm.Code],
+            (
+                orm.QueryBuilder()
+                .append(
+                    orm.Code,
+                    filters=filters,
+                )
+                .all(flat=True)
+            ),
         )
 
         return [
             (self._full_code_label(code), code.uuid)
             for code in codes
-            if code.computer.is_user_configured(user)
-            and (self.allow_hidden_codes or not code.is_hidden)
-            and (self.allow_disabled_computers or code.computer.is_user_enabled(user))
+            if not filter_codes_for_user
+            or (
+                code.computer.is_user_configured(user)
+                and (self.allow_hidden_codes or not code.is_hidden)
+                and (
+                    self.allow_disabled_computers or code.computer.is_user_enabled(user)
+                )
+            )
         ]
 
     @staticmethod
-    def _full_code_label(code):
+    def _full_code_label(code: orm.Code) -> str:
         return f"{code.label}@{code.computer.label}"
 
 

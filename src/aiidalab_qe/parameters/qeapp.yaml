@@ -16,6 +16,7 @@ workchain:
 ## Advanced pw settings
 advanced:
     clean_workdir: false
+    on_unhandled_failure: pause
     pseudo_family:
         library: SSSP
         version: 1.3

@@ -1,0 +1,368 @@
+from __future__ import annotations
+
+import asyncio
+
+import ipywidgets as ipw
+import traitlets as tl
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
+
+from aiidalab_qe.common.infobox import InAppGuide
+from aiidalab_qe.common.wizard import DependentWizardStep, State
+from aiidalab_qe.plugins.registry import (
+    get_plugin_property_packages,
+    get_plugin_registry,
+    get_plugin_statuses,
+)
+from aiidalab_widgets_base import ProcessMonitor
+
+from .components import ResultsComponent
+from .components.status import WorkChainStatusModel, WorkChainStatusPanel
+from .components.summary import WorkflowSummary, WorkflowSummaryModel
+from .components.viewer import WorkflowResultsViewer, WorkflowResultsViewerModel
+from .model import ResultsStepModel
+
+
+class ResultsStep(DependentWizardStep[ResultsStepModel]):
+    _missing_message = "Please submit or load a calculation"
+
+    def __init__(
+        self,
+        model: ResultsStepModel,
+        log_widget: ipw.VBox | None,
+        check_plugin_compatibility: bool = True,
+        **kwargs,
+    ):
+        super().__init__(model=model, **kwargs)
+        self.check_plugin_compatibility = check_plugin_compatibility
+        self._plugin_status_check_started = False
+
+        summary_model = WorkflowSummaryModel()
+        self.summary_panel = WorkflowSummary(model=summary_model)
+        self._model.add_model("summary", summary_model)
+
+        results_model = WorkflowResultsViewerModel()
+        self.results_panel = WorkflowResultsViewer(model=results_model)
+        self._model.add_model("results", results_model)
+        for trait in (
+            "plugin_status_checked",
+            "incompatible_plugin_ids",
+            "incompatible_plugin_titles",
+        ):
+            tl.dlink(
+                (self._model, trait),
+                (results_model, trait),
+            )
+
+        status_model = WorkChainStatusModel()
+        self.status_panel = WorkChainStatusPanel(model=status_model)
+        self._model.add_model("status", status_model)
+
+        self.panels = {
+            "Summary": self.summary_panel,
+            "Status": self.status_panel,
+            "Results": self.results_panel,
+        }
+
+        self._model.observe(
+            self._on_process_change,
+            "process_uuid",
+        )
+        self._model.observe(
+            self._on_daemon_status_change,
+            [
+                "daemon_is_running",
+                "daemon_status_known",
+                "kill_pending",
+            ],
+        )
+
+        self.log_widget = log_widget
+
+    def reset(self):
+        self._model.reset()
+
+    def _render(self):
+        self.kill_button = ipw.Button(
+            description="Kill workflow",
+            tooltip="Checking AiiDA daemon status",
+            button_style="danger",
+            icon="stop",
+            layout=ipw.Layout(width="auto", display="none"),
+        )
+        ipw.dlink(
+            (self._model, "state"),
+            (self.kill_button, "disabled"),
+            lambda state: (
+                state is not State.ACTIVE
+                or self._model.kill_pending
+                or not self._model.daemon_status_known
+                or not self._model.daemon_is_running
+            ),
+        )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.kill_button.layout, "display"),
+            lambda _: (
+                "none"
+                if not self._model.has_process
+                or self._model.process.is_finished
+                or self._model.process.is_excepted
+                or self._model.state in {State.SUCCESS, State.FAIL}
+                else "block"
+            ),
+        )
+        self.kill_button.on_click(self._on_kill_button_click)
+
+        self.clean_scratch_button = ipw.Button(
+            description="Clean remote data",
+            tooltip="Clean the remote folders of the workchain.",
+            button_style="danger",
+            icon="trash",
+            layout=ipw.Layout(width="auto", display="none"),
+        )
+        ipw.dlink(
+            (self._model, "process_remote_folder_is_clean"),
+            (self.clean_scratch_button, "disabled"),
+        )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.clean_scratch_button.layout, "display"),
+            lambda _: (
+                "block"
+                if self._model.has_process and self._model.process.is_terminated
+                else "none"
+            ),
+        )
+        self.clean_scratch_button.on_click(self._on_clean_scratch_button_click)
+
+        self.daemon_warning = ipw.HTML()
+
+        self.process_info = ipw.HTML()
+        ipw.dlink(
+            (self._model, "process_info"),
+            (self.process_info, "value"),
+        )
+
+        PAUSED_PROCESSES_WARNING = """
+            <div class="alert alert-warning">
+                ⚠️ Detected <b>{count} paused processes</b>
+                <ul>
+                    <li>To review and resume, go to <b>Status</b> > <b>Paused processes</b></li>
+                    <li>To terminate the workflow, click the <b>Kill workflow</b> button above</li>
+                </ul>
+            </div>
+        """
+
+        self.paused_processes_warning = ipw.HTML()
+        ipw.dlink(
+            (self.status_panel.paused_processes_model, "paused_count"),
+            (self.paused_processes_warning, "value"),
+            lambda count: PAUSED_PROCESSES_WARNING.format(count=count) if count else "",
+        )
+
+        self.toggle_controls = ipw.ToggleButtons(
+            options=[*self.panels.keys()],
+            tooltips=[
+                "A summary of calculation parameters",
+                "The calculation results",
+                "A detailed progress status of the workflow",
+            ],
+            icons=[
+                "file-text-o",
+                "tasks",
+                "bar-chart",
+            ],
+            value=None,
+        )
+        self.toggle_controls.add_class("results-step-toggles")
+        self.toggle_controls.observe(
+            self._on_toggle_change,
+            "value",
+        )
+
+        self.container = ipw.VBox(
+            children=[
+                self.status_panel,
+            ],
+        )
+
+        self.content.children = [
+            InAppGuide(identifier="results-step"),
+            ipw.HBox(
+                children=[
+                    self.process_info,
+                    ipw.HBox(
+                        children=[
+                            self.clean_scratch_button,
+                            self.kill_button,
+                        ],
+                    ),
+                ],
+                layout=ipw.Layout(justify_content="space-between"),
+            ),
+            self.daemon_warning,
+            self.paused_processes_warning,
+            self.toggle_controls,
+            self.container,
+        ]
+
+    def _post_render(self):
+        super()._post_render()
+        self._on_daemon_status_change(None)
+        self._set_default_results_panel()
+        self._set_up_monitor()
+        self._schedule_plugin_status_check()
+
+    def _on_toggle_change(self, change):
+        panel = self.panels[change["new"]]
+        self._toggle_view(panel)
+
+    def _on_process_change(self, _):
+        self._model.update()
+        self._model.update_state()
+        self._on_daemon_status_change(None)
+        self._schedule_plugin_status_check()
+
+    def _schedule_plugin_status_check(self) -> None:
+        if (
+            self._plugin_status_check_started
+            or not self.rendered
+            or not self._model.process_uuid
+        ):
+            return
+
+        self._plugin_status_check_started = True
+        if not self.check_plugin_compatibility:
+            self._model.plugin_status_checked = True
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self._check_plugin_compatibility())
+        else:
+            self._plugin_status_task = loop.create_task(
+                self._check_plugin_compatibility()
+            )
+
+    def _get_plugins_to_check(self, plugins, property_packages=None):
+        if property_packages is None:
+            property_packages = get_plugin_property_packages()
+        selected_properties = set(self._model.properties)
+        selected_packages = {
+            package_name
+            for property_id, package_name in property_packages.items()
+            if property_id in selected_properties
+        }
+        return {
+            plugin_name: plugin_data
+            for plugin_name, plugin_data in plugins.items()
+            if canonicalize_name(Requirement(plugin_data.pip or plugin_name).name)
+            in selected_packages
+        }
+
+    async def _check_plugin_compatibility(self) -> None:
+        registry = get_plugin_registry()
+        property_packages = get_plugin_property_packages()
+        plugins = self._get_plugins_to_check(registry.plugins, property_packages)
+        statuses = await get_plugin_statuses(plugins)
+
+        incompatible_packages = {}
+        for plugin_name, status in statuses.items():
+            if status.is_incompatible:
+                incompatible_packages[status.distribution_name] = registry.plugins[
+                    plugin_name
+                ].title
+
+        incompatible_plugin_ids = {
+            property_id
+            for property_id, package_name in property_packages.items()
+            if package_name in incompatible_packages
+        }
+
+        self._model.incompatible_plugin_ids = incompatible_plugin_ids
+        self._model.incompatible_plugin_titles = list(
+            dict.fromkeys(incompatible_packages.values())
+        )
+        self._model.plugin_status_checked = True
+
+    def _on_daemon_status_change(self, _):
+        if not self.rendered:
+            return
+
+        daemon_is_running = self._model.daemon_is_running
+        daemon_status_known = self._model.daemon_status_known
+
+        if not daemon_status_known:
+            daemon_warning = ""
+            kill_disabled = True
+            tooltip = "Checking AiiDA daemon status"
+        elif not daemon_is_running:
+            daemon_warning = (
+                '<div class="alert alert-warning">'
+                "The AiiDA daemon is not running. Monitoring and process actions are unavailable."
+                "</div>"
+                if self._model.has_process
+                else ""
+            )
+            kill_disabled = True
+            tooltip = "Kill is unavailable because the AiiDA daemon is not running"
+        else:
+            daemon_warning = ""
+            kill_disabled = (
+                self._model.state is not State.ACTIVE or self._model.kill_pending
+            )
+            tooltip = (
+                "Waiting for paused processes to resume"
+                if self._model.kill_pending
+                else "Terminate the entire workflow"
+            )
+
+        self.daemon_warning.value = daemon_warning
+        self.kill_button.tooltip = tooltip
+        self.kill_button.disabled = kill_disabled
+
+    def _on_kill_button_click(self, _):
+        self._model.kill_process()
+
+    def _on_clean_scratch_button_click(self, _):
+        self._model.clean_remote_data()
+
+    def _toggle_view(self, panel: ResultsComponent):
+        self.container.children = [panel]
+        panel.render()
+
+    def _set_up_monitor(self):
+        self.process_monitor = ProcessMonitor(
+            timeout=0.5,
+            callbacks=[
+                self._update_status,
+                lambda _: self._model.update_state(),
+            ],
+            log_widget=self.log_widget,
+        )
+        ipw.dlink(
+            (self._model, "process_uuid"),
+            (self.process_monitor, "value"),
+        )
+
+    def _set_default_results_panel(self):
+        self.toggle_controls.value = (
+            "Results"
+            if self._model.has_process and self._model.process.is_finished_ok
+            else "Status"
+        )
+
+    def _update_status(self):
+        self._model.update_daemon_status()
+        self._model.monitor_counter += 1
+        self._model.process_pending_kill()
+
+    def _show_loading_message(self):
+        self.loading_message.message.value = (
+            "Loading results"
+            if self._model.has_process and self._model.process.is_finished
+            else "Submitting workflow"
+        )
+        super()._show_loading_message()
