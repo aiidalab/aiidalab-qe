@@ -75,3 +75,15 @@ aiidalab-qe-pp:
     status: beta
     category: calculation
     requires_aiidalab_qe: '>26.05.0'
+
+aiida-qe-converse:
+    title: NMR shielding & EFG/NQR quadrupolar parameters (aiida-qe-converse)
+    description: Compute NMR chemical shielding tensors (converse GIPAW approach) and electric field gradient / NMR-NQR quadrupolar parameters (Cq, eta,
+        nu_Q) with Quantum ESPRESSO via QE-CONVERSE (qe-converse.x / qe-efg.x). Requires a deployment with QE-CONVERSE built from source; GIPAW pseudopotentials
+        are bundled and imported automatically on install.
+    author: Moritz Gubler
+    github: https://github.com/moritzgubler/aiidaConverseNMR@1.0.1
+    post_install: pseudos
+    status: beta
+    category: calculation
+    requires_aiidalab_qe: '>26.05.0'
