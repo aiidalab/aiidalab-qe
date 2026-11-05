@@ -36,6 +36,14 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
         tab: ResultsPanel = self.tabs.children[tab_index]  # type: ignore
         tab.render()
 
+    def _on_plugin_status_checked(self, change):
+        if not change["new"]:
+            return
+        self._load_result_plugins()
+        if self.rendered:
+            self._update_plugin_compatibility_warning()
+            self._set_tabs()
+
     def _render(self):
         self.tabs = ipw.Tab(selected_index=None)
         self.tabs.observe(
@@ -59,11 +67,7 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
         if self._model.plugin_status_checked:
             self._load_result_plugins()
         self._set_tabs()
-        self.plugin_compatibility_warning.message.value = (
-            self._get_plugin_compatibility_warning()
-            if self._model.plugin_status_checked
-            else "Loading/validating plugins"
-        )
+        self._update_plugin_compatibility_warning()
 
     def _update_panels(self):
         self.panels = {
@@ -98,16 +102,6 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             **self.panels,
         }
 
-    def _on_plugin_status_checked(self, change):
-        if not change["new"]:
-            return
-        self._load_result_plugins()
-        if self.rendered:
-            self.plugin_compatibility_warning.message.value = (
-                self._get_plugin_compatibility_warning()
-            )
-            self._set_tabs()
-
     def _load_result_plugins(self):
         if self._result_plugins_loaded:
             return
@@ -139,10 +133,12 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
         self._result_plugins_loaded = True
 
     def _get_plugin_compatibility_warning(self) -> str:
-        plugins = sorted(set(self._model.incompatible_plugin_titles))
-        if not plugins:
+        incompatible_plugins = sorted(set(self._model.incompatible_plugin_titles))
+        if not incompatible_plugins:
             return ""
-        items = "".join(f"<li>{html.escape(title)}</li>" for title in plugins)
+        items = "".join(
+            f"<li>{html.escape(title)}</li>" for title in incompatible_plugins
+        )
         return (
             '<div class="alert alert-danger" role="alert">'
             "Result panels are disabled for the following plugins:"
@@ -150,3 +146,20 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
             'Visit the <a href="./plugin_manager.ipynb" target="_blank">Plugin store</a> to '
             "update or remove these plugins, then reload the app.</div>"
         )
+
+    def _update_plugin_compatibility_warning(self):
+        if not self.rendered:
+            return
+
+        if not self._model.plugin_status_checked:
+            self.plugin_compatibility_warning.message.value = (
+                "Loading/validating plugins"
+            )
+            return
+
+        warning = self._get_plugin_compatibility_warning()
+        if warning:
+            self.plugin_compatibility_warning.message.value = warning
+            self.plugin_compatibility_warning.layout.display = ""
+        else:
+            self.plugin_compatibility_warning.layout.display = "none"
