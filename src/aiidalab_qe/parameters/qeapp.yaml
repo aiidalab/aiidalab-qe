@@ -28,18 +28,18 @@ advanced:
 ## Computational resources
 codes:
     dos:
-        code: dos-7.4@localhost
+        code: dos-{QE_VERSION}@localhost
     projwfc:
-        code: projwfc-7.4@localhost
+        code: projwfc-{QE_VERSION}@localhost
     projwfc_bands:
-        code: projwfc-7.4@localhost
+        code: projwfc-{QE_VERSION}@localhost
     pw:
-        code: pw-7.4@localhost
+        code: pw-{QE_VERSION}@localhost
     pp:
-        code: pp-7.4@localhost
+        code: pp-{QE_VERSION}@localhost
     xspectra:
-        code: xspectra-7.4@localhost
+        code: xspectra-{QE_VERSION}@localhost
     hp:
-        code: hp-7.4@localhost
+        code: hp-{QE_VERSION}@localhost
 
 summary_format: list
