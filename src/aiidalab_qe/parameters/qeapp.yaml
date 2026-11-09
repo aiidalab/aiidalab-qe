@@ -42,4 +42,4 @@ codes:
     hp:
         code: hp-{QE_VERSION}@localhost
 
-summary_format: list
+summary_format: table
