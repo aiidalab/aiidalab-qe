@@ -5,6 +5,8 @@ import yaml
 
 from aiidalab_qe.config import CONFIG_DIR_PATH
 
+from ..setup.codes import QE_VERSION
+
 
 def recursive_merge(d1, d2):
     """Merge dictionary `d2` into dictionary `d1` recursively.
@@ -44,7 +46,20 @@ def recursive_merge(d1, d2):
     return d1
 
 
+DefaultCodesDict = dict[str, dict[str, str]]
+
+
+def _set_default_code_labels(default_codes: DefaultCodesDict) -> DefaultCodesDict:
+    """Set the default code labels with the QE version."""
+    for code_name in default_codes:
+        label = default_codes[code_name]["code"]
+        assert "{QE_VERSION}" in label, "Code label must contain '{QE_VERSION}'"
+        default_codes[code_name]["code"] = label.format(QE_VERSION=QE_VERSION)
+    return default_codes
+
+
 DEFAULT_PARAMETERS = yaml.safe_load(resources.read_text(__package__, "qeapp.yaml"))
+DEFAULT_PARAMETERS["codes"] = _set_default_code_labels(DEFAULT_PARAMETERS["codes"])
 
 custom_config_file = CONFIG_DIR_PATH / "qe-config.yml"
 if custom_config_file.exists():
