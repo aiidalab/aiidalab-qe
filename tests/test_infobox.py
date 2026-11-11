@@ -53,7 +53,7 @@ def test_plugin_guides_load_on_demand(monkeypatch):
     calls = []
     monkeypatch.setattr(
         guide_manager_module,
-        "get_entry_items",
+        "get_plugin_features",
         lambda *args: calls.append(args) or {},
     )
 
@@ -63,4 +63,4 @@ def test_plugin_guides_load_on_demand(monkeypatch):
     manager.load_plugin_guides()
     manager.load_plugin_guides()
 
-    assert calls == [("aiidalab_qe.properties", "guides")]
+    assert calls == [("guides",)]

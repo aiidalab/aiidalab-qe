@@ -8,7 +8,7 @@ from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinTy
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
-from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.plugins.utils import get_plugin_features
 from aiidalab_qe.utils import (
     enable_pencil_decomposition,
     set_default_process_failure_policy,
@@ -19,7 +19,7 @@ StructureData = DataFactory("core.structure")
 BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
 
-plugin_entries = get_entry_items("aiidalab_qe.properties", "workchain")
+plugin_entries = get_plugin_features("workchain")
 
 
 class QeAppWorkChain(WorkChain):

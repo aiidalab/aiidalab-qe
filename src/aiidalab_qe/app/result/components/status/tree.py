@@ -14,7 +14,7 @@ from aiida.engine import ProcessState
 from aiida.tools.graph.graph_traversers import traverse_graph
 from aiidalab_qe.app.result.utils import ResultsSubModel
 from aiidalab_qe.common.process import STATE_ICONS
-from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.plugins.utils import get_plugin_features
 from aiidalab_widgets_base import LoadingWidget
 
 _BUILTIN_TITLE_MAPPING = {
@@ -41,10 +41,7 @@ _BUILTIN_TITLE_MAPPING = {
 def _get_title_mapping() -> dict:
     plugin_title_mapping = {
         process: human_readable
-        for metadata in get_entry_items(
-            "aiidalab_qe.properties",
-            "metadata",
-        ).values()
+        for metadata in get_plugin_features("metadata").values()
         for process, human_readable in metadata.get("process_labels", {}).items()
     }
     return _BUILTIN_TITLE_MAPPING | plugin_title_mapping

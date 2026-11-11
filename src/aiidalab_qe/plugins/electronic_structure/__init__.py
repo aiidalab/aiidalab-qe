@@ -1,8 +1,18 @@
-from .result import ElectronicStructureResultsModel, ElectronicStructureResultsPanel
+from aiidalab_qe.plugins import QeAppPlugin
 
-electronic_structure = {
-    "result": {
-        "panel": ElectronicStructureResultsPanel,
-        "model": ElectronicStructureResultsModel,
-    }
-}
+
+class ElectronicStructurePlugin(QeAppPlugin):
+    @property
+    def outline(self) -> str:
+        return "Electronic structure"
+
+    def result(self):
+        from .result import (
+            ElectronicStructureResultsModel,
+            ElectronicStructureResultsPanel,
+        )
+
+        return {
+            "panel": ElectronicStructureResultsPanel,
+            "model": ElectronicStructureResultsModel,
+        }

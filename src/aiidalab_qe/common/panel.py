@@ -74,9 +74,16 @@ class PluginOutline(ipw.HBox):
     title = "Outline"
     description = ""
 
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        title: str | None = None,
+        description: str | None = None,
+        **kwargs,
+    ):
+        title = self.title if title is None else title
+        description = self.description if description is None else description
         self.include = ipw.Checkbox(
-            description=self.title,
+            description=title,
             indent=False,
             style={"description_width": "initial"},
         )
@@ -86,7 +93,7 @@ class PluginOutline(ipw.HBox):
                 self.include,
                 ipw.HTML(f"""
                     <div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-                        {self.description}
+                        {description}
                     </div>
                 """),
             ],
