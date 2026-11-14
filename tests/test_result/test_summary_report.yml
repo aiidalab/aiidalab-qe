@@ -29,7 +29,7 @@ initial_structure_properties:
   cell_lengths: 3.847 3.847 3.847
   formula: Si2
   num_atoms: 2
-  space_group: Fd-3m (227)
+  space_group: Fd-3m (No.227)
 workflow_properties:
   description: ''
   label: ''
