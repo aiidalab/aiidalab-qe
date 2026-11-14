@@ -234,9 +234,9 @@ class BandsPdosPlotly:
                     },
                 )
 
-    def adding_projected_bands(self, fig):
+    def adding_projected_bands(self, fig, projections_width=None):
         if self.project_bands:
-            self._add_projection_traces(fig)
+            self._add_projection_traces(fig, projections_width)
 
     def _create_fig(self):
         """Create a plotly figure.
@@ -397,11 +397,12 @@ class BandsPdosPlotly:
                     "y": np.array(proj_bands["y"]) - fermi_energy,
                     "color": proj_bands["color"],
                     "label": proj_bands["label"],
+                    "marker_sizes": proj_bands["marker_sizes"],
                 }
             )
         return prepared_data
 
-    def _add_projection_traces(self, fig):
+    def _add_projection_traces(self, fig, projections_width):
         """Function to add the projected bands traces to the bands plot."""
         prepared_data = self._prepare_bands_projection_traces_data(self.project_bands)
 
@@ -409,12 +410,17 @@ class BandsPdosPlotly:
             go.Scattergl(
                 x=data["x"],
                 y=data["y"],
-                fill="toself",
                 legendgroup=data["label"],
-                mode="lines",
+                mode="markers",
                 line={"width": 0, "color": data["color"]},
                 name=data["label"],
-                # If PDOS is present, use those legend entries
+                marker={
+                    "size": np.array(data["marker_sizes"]) * projections_width,
+                    "sizemode": "diameter",
+                    "color": data["color"],
+                    "opacity": 0.7,
+                    "line": {"width": 0},
+                },
                 showlegend=True if self.plot_type == "bands" else False,
             )
             for data in prepared_data
@@ -422,17 +428,18 @@ class BandsPdosPlotly:
 
         self._add_traces_to_fig(fig, scatter_objects, 1)
 
-    def update_projected_bands_thickness(self, fig):
+    def update_projected_bands_thickness(self, fig, width):
         """Update the projected bands thickness."""
-        prepared_data = self._prepare_bands_projection_traces_data(self.project_bands)
-
         # Create a mapping from labels to y-data for efficient updates
-        y_data_by_label = {data["label"]: data["y"] for data in prepared_data}
+        marker_sizes_by_label = {
+            data["label"]: np.array(data["marker_sizes"]) * width
+            for data in self.project_bands
+        }
 
         with fig.batch_update():
             for trace in fig.data:
-                if trace.xaxis == "x" and trace.legendgroup in y_data_by_label:
-                    trace.y = y_data_by_label[trace.legendgroup]
+                if trace.xaxis == "x" and trace.legendgroup in marker_sizes_by_label:
+                    trace.marker.size = marker_sizes_by_label[trace.legendgroup]
 
     def _customize_combined_layout(self, fig):
         self._customize_layout(fig, self._bands_xaxis, self._bands_yaxis)
