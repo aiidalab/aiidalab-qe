@@ -18,7 +18,7 @@ from aiidalab_qe.common.setup_codes import QESetupWidget
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.plugins.utils import get_plugin_features
 
 from .global_settings import GlobalResourceSettingsModel, GlobalResourceSettingsPanel
 from .model import SubmissionStepModel
@@ -273,7 +273,7 @@ class SubmissionStep(ConfirmableDependentWizardStep[SubmissionStepModel]):
         if self._plugins_loaded:
             return
 
-        entries = get_entry_items("aiidalab_qe.properties", "resources")
+        entries = get_plugin_features("resources")
         codes: PluginCodes = {
             "dft": {
                 "pw": PwCodeModel(),

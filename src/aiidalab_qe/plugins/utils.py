@@ -1,10 +1,28 @@
+"""Discover cached plugin instances and load their optional features."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from functools import lru_cache
 from importlib import invalidate_caches
+from types import MappingProxyType
 
-from importlib_metadata import distributions
+from importlib_metadata import distributions, entry_points
+
+from aiidalab_qe.plugins import QeAppPlugin
+
+PLUGIN_ENTRY_POINT_GROUP = "aiidalab_qe.plugins"
+PRIORITY_PLUGINS = ("electronic_structure", "bands", "pdos")
 
 
-def print_error(entry_point, e):
-    print(f"\033[91mFailed to load plugin entry point {entry_point.name}.\033[0m")
+def print_error(plugin, error, feature_name: str | None = None) -> None:
+    plugin_name = getattr(plugin, "name", plugin)
+    if feature_name:
+        message = f"plugin feature {feature_name} for {plugin_name}"
+    else:
+        message = f"plugin {plugin_name}"
+    print(f"\033[91mFailed to load {message}.\033[0m")
     print(
         "\033[93mThis may be due to compatibility issues with the current QEApp version.\033[0m"
     )
@@ -12,108 +30,123 @@ def print_error(entry_point, e):
     print(
         "\033[93mThus, the plugin will not be available. However, you can still use the rest of the app.\033[0m"
     )
-    print(f"\033[91mError message: {e}\033[0m\n")
+    print(f"\033[91mError message: {error}\033[0m\n")
 
 
-# load entry points.
-# We give priority to built-in plugins, and then we sort alphabetically
-# the rest of the plugins
-def get_entries(
-    entry_point_name="aiidalab_qe.properties",
-    priority=None,  # Use None as the default value
-    entry_point_filter=None,
-):
-    if priority is None:
-        priority = [
-            "electronic_structure",
-            "bands",
-            "pdos",
-        ]  # Initialize inside the function
-    from importlib_metadata import entry_points
+@dataclass(frozen=True)
+class PluginCatalog:
+    """Plugin instances discovered once for the current Python app process."""
 
-    # sort the entry points: first we put the priority plugins by putting False in their
-    # sorted priority. The rest is sorted alphabetically.
+    plugins: Mapping[str, QeAppPlugin]
+
+    def get_features(
+        self,
+        feature_name: str,
+        plugin_filter: Callable[[str, QeAppPlugin], bool] | None = None,
+    ) -> dict[str, object]:
+        features = {}
+        for name, plugin in self.plugins.items():
+            if plugin_filter is not None and not plugin_filter(name, plugin):
+                continue
+            try:
+                feature = plugin.load_feature(feature_name)
+            except Exception as error:
+                print_error(name, error, feature_name=feature_name)
+                continue
+            if feature:
+                features[name] = feature
+        return features
+
+
+@lru_cache(maxsize=1)
+def load_plugin_catalog() -> PluginCatalog:
+    """Discover plugin classes and cache one instance of each."""
     sorted_entry_points = sorted(
-        entry_points(group=entry_point_name),
-        key=lambda x: (
-            x.name not in priority,
-            priority.index(x.name) if x.name in priority else x.name,
+        entry_points(group=PLUGIN_ENTRY_POINT_GROUP),
+        key=lambda entry_point: (
+            entry_point.name not in PRIORITY_PLUGINS,
+            PRIORITY_PLUGINS.index(entry_point.name)
+            if entry_point.name in PRIORITY_PLUGINS
+            else entry_point.name,
         ),
     )
 
-    entries = {}
+    plugins = {}
     for entry_point in sorted_entry_points:
-        if entry_point.name in entries:
-            continue
-        if entry_point_filter is not None and not entry_point_filter(entry_point):
+        if entry_point.name in plugins:
             continue
         try:
-            # Attempt to load the entry point
-            loaded_entry_point = entry_point.load()
-            entries[entry_point.name] = loaded_entry_point
-        except Exception as e:
-            print_error(entry_point, e)
+            plugin_class = entry_point.load()
+            if not isinstance(plugin_class, type) or not issubclass(
+                plugin_class,
+                QeAppPlugin,
+            ):
+                print_error(
+                    entry_point,
+                    TypeError("entry point must reference a QeAppPlugin subclass"),
+                )
+                continue
+            plugins[entry_point.name] = plugin_class()
+        except Exception as error:
+            print_error(entry_point, error)
 
-    return entries
+    return PluginCatalog(MappingProxyType(plugins))
 
 
-def get_entry_items(
-    entry_point_name,
-    item_name="outline",
-    entry_point_filter=None,
+def get_plugins() -> Mapping[str, QeAppPlugin]:
+    """Return all cached plugin instances in registration order."""
+    return load_plugin_catalog().plugins
+
+
+def get_plugin_feature(plugin: QeAppPlugin, feature_name: str):
+    """Load one feature from a plugin instance."""
+    return plugin.load_feature(feature_name)
+
+
+def get_plugin_features(
+    feature_name: str,
+    plugin_filter: Callable[[str, QeAppPlugin], bool] | None = None,
+) -> dict[str, object]:
+    """Load one feature from each selected plugin."""
+    return load_plugin_catalog().get_features(feature_name, plugin_filter)
+
+
+def get_plugin_entry_points_for_package(
+    package_name: str,
+    group: str = PLUGIN_ENTRY_POINT_GROUP,
 ):
-    entries = get_entries(
-        entry_point_name,
-        entry_point_filter=entry_point_filter,
+    """Find plugin entry points for an installed package."""
+    distribution = next(
+        (
+            distribution
+            for distribution in distributions()
+            if distribution.metadata.get("Name") == package_name
+        ),
+        None,
     )
-    return {
-        name: entry_point.get(item_name)
-        for name, entry_point in entries.items()
-        if entry_point.get(item_name, False)
-    }
-
-
-def get_entry_points_for_package(
-    package_name: str, group: str = "aiidalab_qe.properties"
-):
-    """Find the entry points for the specified package"""
-    entry_points_list = []
-
-    dist = next(
-        (d for d in distributions() if d.metadata["Name"] == package_name), None
-    )
-    if not dist:
+    if distribution is None:
         raise ValueError(f"Package '{package_name}' not found.")
-    # Retrieve all entry points associated with this distribution
-    if dist.entry_points:
-        for ep in dist.entry_points:
-            if ep.group == group:
-                entry_points_list.append(ep)
-    else:
-        print(f"No entry points found for package '{package_name}'.")
-    return entry_points_list
+    return [
+        entry_point
+        for entry_point in distribution.entry_points
+        if entry_point.group == group
+    ]
 
 
 def test_plugin_functionality(plugin_name):
-    """Test the functionality of the plugin.
-    1) loading all entry points.
-    2) check if the plugin use correct QEAppComputationalResourcesWidget
-    """
-    from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
-
+    """Validate the functionality of a QE app plugin."""
     try:
         invalidate_caches()
-        eps = get_entry_points_for_package(plugin_name)
-        # check if we can load all entry points
-        for ep in eps:
-            loaded_ep = ep.load()
-            # check if the code uses the correct widget
-            for name, code in loaded_ep.get("code", {}).items():
-                if not isinstance(code, QEAppComputationalResourcesWidget):
-                    return (
-                        False,
-                        f"\nPlugin {plugin_name} code {name} must use QEAppComputationalResourcesWidget class",
-                    )
-    except Exception as e:
-        return False, f"Failed to get entry points for package {plugin_name}: {e}"
+        for entry_point in get_plugin_entry_points_for_package(plugin_name):
+            plugin_class = entry_point.load()
+            if not isinstance(plugin_class, type) or not issubclass(
+                plugin_class,
+                QeAppPlugin,
+            ):
+                return (
+                    False,
+                    "Plugin entry point must reference a QeAppPlugin subclass.",
+                )
+    except Exception as error:
+        return False, f"Failed to validate plugin {plugin_name}: {error}"
     return True, ""

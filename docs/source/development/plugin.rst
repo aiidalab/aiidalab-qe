@@ -1,13 +1,13 @@
 .. _develop:create-plugin:
 
-************************
+******************
 Create your plugin
-************************
+******************
 
 A QuantumESPRESSO app plugin will typically register new panels (setting, result), and workchain to extend the app's functionality.
 
 Your First Plugin
-================================
+=================
 
 Here is the an example plugin to calculate the equation of state (EOS) of a material.
 This plugin will register the following items:
@@ -20,7 +20,7 @@ This plugin will register the following items:
 Let's go through each item in detail.
 
 Outline
------------------------
+-------
 A  :class:`~aiidalab_qe.common.panel.Outline` widget can add an item, as a checkbox, in the properties section of the workflow panel in the configuration step.
 You only need to set the title of the outline.
 
@@ -37,7 +37,7 @@ The ``EOS`` outline is shown below.
     :align: center
 
 Setting
------------------------
+-------
 A setting :class:`~aiidalab_qe.common.panel.Panel` widget will register a new panel in the configuration step, e.g. the ``EOS setting`` panel.
 
 .. image:: ../_static/images/plugin_setting.png
@@ -109,7 +109,7 @@ Beside, you need to override the the following methods:
             self.set_panel_value({"scale": 0.05, "npoint": 5})
 
 Result
------------------------
+------
 A  :class:`~aiidalab_qe.common.panel.ResultPanel` widget will register a new panel in the results step.
 The ``EOS`` panel is shown below:
 
@@ -184,7 +184,7 @@ For example, you can access the ``output_parameters`` output of the ``EOSWorkCha
                 ]
 
 WorkChain and Builder
------------------------
+---------------------
 You need to implement a ``get_builder`` function to tell QuantumESPRESSO app how to use the input parameters from the GUI.
 
 The `parameters` passed to the `get_builder` function has the following structure:
@@ -265,113 +265,140 @@ Then add the workchain and builder into the `workchain_and_builder` dict, so tha
         "get_builder": get_builder,
     }
 
-Entry point
------------------------
-Finally, you need to register the entry point of the plugin.
-Here is the entry point for this plugin.
+Plugin API and entry point
+--------------------------
+Implement ``QeAppPlugin`` and register the plugin class in the
+``aiidalab_qe.plugins`` entry-point group. Keep feature imports inside their
+methods; the app calls each method only when its feature is requested. The
+``outline`` property supplies the title for the app-generated selection row.
+The app instantiates each plugin class once per process, so keep its constructor
+lightweight and avoid storing per-calculation state on the plugin instance.
 
 .. code-block:: python
 
-    # this is the entry point of the plugin
-    eos ={
-        "outline": EosOutline,
-        "setting": Setting,
-        "workchain": workchain_and_builder,
-        "result": Result,
-    }
+    from aiidalab_qe.plugins import QeAppPlugin
 
-Install the plugin
------------------------
-To install the plugin, you can creating a new package or adding it to the `aiidalab_qe.plugins` folder.
-You need to add the path of ``eos`` to ``entry_points`` inside the setup file.
+    class EOSPlugin(QeAppPlugin):
+        @property
+        def outline(self) -> str:
+            return "Equation of State"
+
+        def configuration(self):
+            from .model import SettingModel
+            from .setting import Setting
+
+            return {"panel": Setting, "model": SettingModel}
+
+        def workchain(self):
+            from .workchain import workchain_and_builder
+
+            return workchain_and_builder
+
+        def result(self):
+            from .result import ResultModel, ResultPanel
+
+            return {"panel": ResultPanel, "model": ResultModel}
+
+    plugin = EOSPlugin
+
+Register the class in the package metadata:
 
 .. code-block:: python
 
-    entry_points={
-        "aiidalab_qe.properties": [
-            "eos = aiidalab_qe_plugin_demos.eos:eos",
-        ],
-    },
+    [project.entry-points."aiidalab_qe.plugins"]
+    eos = "aiidalab_qe_plugin_demos.eos:plugin"
 
 **Bringing It All Together**, you can find all the code above in the `aiidalab-qe-plugin-demos`_ repository.
 
 Advanced usage
-================================
+==============
 A plugin does not need to register all the items (settings, workchain, results).
 The panel in each step is pluggable, which means you could only register one item in a plugin.
 For example, the built-in `electronic_structure` plugin only has a result panel without doing any property calculation.
 The pupose of the `electronic_structure` plugin is to show the results of the `bands`` and `pdos`` plugins together.
 In order to do this, it set add both ``pdos`` and ``bands`` to the ``workchain_labels``.
 
-.. code-block:: python
-
-    class Result(ResultPanel):
-        title = "Electronic Structure"
-        workchain_labels = ["bands", "pdos"]
-
-Here is the entry point for the `electronic_structure` plugin.
+The built-in ``electronic_structure`` plugin uses the same class interface:
 
 .. code-block:: python
 
-    from .result import Result
+    from aiidalab_qe.plugins import QeAppPlugin
 
-    electronic_structure = {
-        "result": Result,
-    }
+    class ElectronicStructurePlugin(QeAppPlugin):
+        @property
+        def outline(self) -> str:
+            return "Electronic Structure"
 
-Structure importer and editor
-------------------------------
+        def result(self):
+            from .result import ResultModel, ResultPanel
+
+            return {"panel": ResultPanel, "model": ResultModel}
+
+Structure importers and editors
+-------------------------------
 The app also allows the user to add new panels in the structure selection step:
 
-- structure ``importer``: specific for particular structures, e.g. surface,  adsorbate.
-- structure ``editor``: to edit a structure for the plugin, e.g. edit tags, and cut surface.
+- structure ``importers``: structure sources for particular use cases, e.g. surfaces or adsorbates.
+- structure ``editors``: tools for editing structures, e.g. editing tags or cutting a surface.
 
 You can find an example plugin, ``surface``, in the `aiidalab-qe-plugin-demos`_ repository.
-It adds a new structure importer and editor to generate the surface structure.
-Here is the entry point for the `surface` plugin.
+It adds structure importers and editors for working with surfaces.
+Return a tuple of component classes from each feature method; a plugin may return
+one or more components:
 
 .. code-block:: python
 
-    from .importer import SurfaceImporter
-    from .editor import SurfaceEditor
+    from aiidalab_qe.plugins import QeAppPlugin
 
-    surface ={
-        "importer": SurfaceImporter,
-        "editor": SurfaceEditor,
-    }
+    class SurfacePlugin(QeAppPlugin):
+        @property
+        def outline(self) -> str:
+            return "Surface tools"
+
+        def importers(self):
+            from .importer import AdsorbateImporter, SurfaceImporter
+
+            return (SurfaceImporter, AdsorbateImporter)
+
+        def editors(self):
+            from .editor import SurfaceEditor, SurfaceTagEditor
+
+            return (SurfaceEditor, SurfaceTagEditor)
 
 Computational Resources
-------------------------------
-You can also add new code in the plugin.
-Here is the example of the built-in `pdos` plugins with codes `dos.x` and `projwfc.x`:
+-----------------------
+Resource panels expose code configuration through their model. Add code entries as
+``CodeModel`` (or ``PwCodeModel``) instances; the registration check instantiates
+the resource model and validates those entries.
 
 .. code-block:: python
 
-    from aiidalab_qe.common.widgets import QEAppComputationalResourcesWidget
+    from aiidalab_qe.common.code.model import CodeModel
+    from aiidalab_qe.common.panel import PluginResourceSettingsModel
 
-    dos_code = QEAppComputationalResourcesWidget(
-        description="dos.x",
-        default_calc_job_plugin="quantumespresso.dos",
-    )
-
-    projwfc_code = ComputationalResourcesWidget(
-        description="projwfc.x",
-        default_calc_job_plugin="quantumespresso.projwfc",
-    )
-
-    pdos = {
-        "outline": PdosOutline,
-        "code": {"dos": dos_code, "projwfc": projwfc_code},
-        "setting": Setting,
-        "result": Result,
-        "workchain": workchain_and_builder,
-    }
+    class PdosResourceSettingsModel(PluginResourceSettingsModel):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.add_models(
+                {
+                    "dos": CodeModel(
+                        name="dos.x",
+                        description="dos.x",
+                        default_calc_job_plugin="quantumespresso.dos",
+                    ),
+                    "projwfc": CodeModel(
+                        name="projwfc.x",
+                        description="projwfc.x",
+                        default_calc_job_plugin="quantumespresso.projwfc",
+                    ),
+                }
+            )
 
 For the moment, the app does not support set up the newly added codes automatically.
 Thus, the user needs to set up the codes manually.
 
 Further Reading
-================================
+===============
 QuantumESPRESSO app comes with several built-in plugins, which can be found in the ``aiidalab_qe.plugins`` folder.
 You can also use them as a start point to create your own plugins.
 

@@ -1,3 +1,4 @@
+import asyncio
 from io import StringIO
 
 import ipywidgets as ipw
@@ -9,7 +10,7 @@ from aiidalab_qe.plugins import state as plugin_state
 from aiidalab_qe.utils import plugin_manager
 from aiidalab_qe.utils.plugin_manager import (
     PluginManager,
-    QeAppPlugin,
+    PluginWidget,
     QeAppPluginData,
 )
 
@@ -105,7 +106,7 @@ def test_plugin_validation_uses_active_profile(monkeypatch):
             command, 0, "", ""
         ),
     )
-    plugin = QeAppPlugin(
+    plugin = PluginWidget(
         QeAppPluginData.from_mapping(
             "my-plugin",
             {"title": "My plugin", "description": "Test", "pip": "my-plugin"},
@@ -203,7 +204,7 @@ def test_plugin_data_and_widget_keep_metadata_and_widgets_separate():
         },
     )
 
-    plugin = QeAppPlugin(data, plugin_name="my-plugin")
+    plugin = PluginWidget(data, plugin_name="my-plugin")
 
     assert plugin.data is data
     assert isinstance(plugin, ipw.VBox)
@@ -301,7 +302,7 @@ def test_execute_command_streams_without_changing_widget_policy(monkeypatch):
     monkeypatch.setattr(
         plugin_manager.subprocess, "Popen", lambda *_args, **_kwargs: Process()
     )
-    row = QeAppPlugin(
+    row = PluginWidget(
         QeAppPluginData.from_mapping(
             "my-plugin",
             {
@@ -438,8 +439,10 @@ def test_plugin_manager_displays_persistent_ui_with_refresh_button(monkeypatch):
     assert manager.ui.children == (
         manager.daemon_warning,
         manager.refresh_button,
+        manager.progress_message,
         manager.accordion,
     )
+    assert manager.progress_message.layout.display == "none"
     assert manager.accordion.children[0] is first_row
     assert first_row.message_container.value == "Keep this log"
 
@@ -461,7 +464,7 @@ def test_plugin_manager_checks_daemon_status_when_displayed(monkeypatch):
     assert "The AiiDA daemon is not running" in manager.daemon_warning.value
 
 
-def test_manager_refresh_updates_existing_rows_without_clearing_logs(monkeypatch):
+def test_manager_refresh_rebuilds_rows_with_updated_status(monkeypatch):
     _set_plugin_manager_registry(
         monkeypatch,
         {
@@ -496,19 +499,24 @@ def test_manager_refresh_updates_existing_rows_without_clearing_logs(monkeypatch
     version_info["first-plugin"] = ("1.0", False, None)
     version_info["second-plugin"] = ("2.0", True, None)
 
-    manager.refresh_button.click()
+    asyncio.run(manager._rebuild_accordion())
 
-    assert manager.accordion.children == (first_row, second_row)
-    assert first_row.installed_version == "1.0"
-    assert not first_row.plugin_compatible
-    assert first_row.registration_error is None
-    assert "Installed version 1.0" in first_row.version_warning.value
-    assert first_row.version_warning_text == first_row.version_warning.value
+    refreshed_first_row, refreshed_second_row = manager.accordion.children
+    assert refreshed_first_row is not first_row
+    assert refreshed_second_row is not second_row
+    assert refreshed_first_row.installed_version == "1.0"
+    assert not refreshed_first_row.plugin_compatible
+    assert refreshed_first_row.registration_error is None
+    assert "Installed version 1.0" in refreshed_first_row.version_warning.value
+    assert (
+        refreshed_first_row.version_warning_text
+        == refreshed_first_row.version_warning.value
+    )
     assert manager.accordion.get_title(0).endswith("⚠️")
-    assert not first_row.update_button.disabled
-    assert first_row.message_container.value == "Previous update log"
-    assert first_row.output_container.value == "Previous command output"
-    assert second_row.installed_version == "2.0"
+    assert not refreshed_first_row.update_button.disabled
+    assert refreshed_first_row.message_container.value == ""
+    assert refreshed_first_row.output_container.value == ""
+    assert refreshed_second_row.installed_version == "2.0"
 
 
 def test_plugin_manager_default_config_file():
@@ -785,7 +793,7 @@ def test_plugin_alert_escapes_untrusted_message(monkeypatch):
         "get_plugin_version_info",
         lambda *_args: (None, True, None),
     )
-    plugin = QeAppPlugin(
+    plugin = PluginWidget(
         QeAppPluginData.from_mapping(
             "my-plugin",
             {"title": "My Plugin", "description": "Test", "pip": "my-plugin"},
@@ -804,7 +812,7 @@ def test_update_without_post_install_verifier_does_not_restart_daemon(monkeypatc
         "setup status is unverified."
     )
     monkeypatch.setattr(
-        QeAppPlugin,
+        PluginWidget,
         "_execute_command",
         lambda *_args, **_kwargs: True,
     )
@@ -1058,7 +1066,7 @@ def test_update_package_clears_warning_after_minimum_is_met(monkeypatch):
         return True
 
     installed_version = {"value": "1.2.8"}
-    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
+    monkeypatch.setattr(PluginWidget, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_registry,
         "get_plugin_version_info",
@@ -1138,18 +1146,19 @@ def test_update_from_github_source_uses_plugin_identity_for_restart_state(monkey
         "set_restart_pending",
         pending.append,
     )
-    monkeypatch.setattr(QeAppPlugin, "_execute_command", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(
-        QeAppPlugin, "_validate_plugin_installation", lambda *_args: True
+        PluginWidget, "_execute_command", lambda *_args, **_kwargs: True
     )
     monkeypatch.setattr(
-        QeAppPlugin,
+        PluginWidget, "_validate_plugin_installation", lambda *_args: True
+    )
+    monkeypatch.setattr(
+        PluginWidget,
         "refresh_plugin_state",
         lambda self, **_kwargs: setattr(self, "installed_version", "1.3.0"),
     )
-    monkeypatch.setattr(QeAppPlugin, "_restart_daemon", lambda _self: True)
-
-    plugin = QeAppPlugin(plugin_data, plugin_name="aiidalab-qe-vibroscopy")
+    monkeypatch.setattr(PluginWidget, "_restart_daemon", lambda _self: True)
+    plugin = PluginWidget(plugin_data, plugin_name="aiidalab-qe-vibroscopy")
     plugin._on_update(None)
 
     assert pending == ["aiidalab-qe-vibroscopy"]
@@ -1165,7 +1174,7 @@ def test_update_package_resolves_version_above_upper_bound(monkeypatch):
         installed_version["value"] = "1.2.9"
         return True
 
-    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
+    monkeypatch.setattr(PluginWidget, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_registry.metadata,
         "version",
@@ -1233,7 +1242,7 @@ def test_update_does_not_restart_when_plugin_test_fails(monkeypatch):
         installed_version["value"] = "1.2.9"
         return True
 
-    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
+    monkeypatch.setattr(PluginWidget, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_registry,
         "get_plugin_version_info",
@@ -1335,7 +1344,7 @@ def test_retry_activation_clears_failure_and_restarts_daemon(monkeypatch):
 @pytest.mark.parametrize("failure_stage", ["post_install", "daemon_restart"])
 def test_update_failure_keeps_activation_warning(monkeypatch, failure_stage):
     monkeypatch.setattr(
-        QeAppPlugin,
+        PluginWidget,
         "_execute_command",
         lambda *_args, **_kwargs: True,
     )
@@ -1394,7 +1403,7 @@ def test_update_failure_keeps_activation_warning(monkeypatch, failure_stage):
 
 def test_update_package_keeps_warning_if_minimum_is_not_met(monkeypatch):
     monkeypatch.setattr(
-        QeAppPlugin,
+        PluginWidget,
         "_execute_command",
         lambda *_args, **_kwargs: True,
     )
@@ -1460,7 +1469,7 @@ def test_remove_reconciles_all_plugin_controls(monkeypatch):
         installed["version"] = None
         return True
 
-    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
+    monkeypatch.setattr(PluginWidget, "_execute_command", execute)
     monkeypatch.setattr(
         plugin_manager.subprocess,
         "run",
@@ -1515,7 +1524,7 @@ def test_install_reconciles_plugin_controls(monkeypatch):
         installed["version"] = "2.0"
         return True
 
-    monkeypatch.setattr(QeAppPlugin, "_execute_command", execute)
+    monkeypatch.setattr(PluginWidget, "_execute_command", execute)
 
     class Result:
         returncode = 0
@@ -1588,7 +1597,7 @@ def test_run_post_install_runs_only_configured_command(monkeypatch):
             "post_install": "setup",
         },
     )
-    plugin = QeAppPlugin(data, plugin_name="my-plugin")
+    plugin = PluginWidget(data, plugin_name="my-plugin")
     plugin.output_container = output
     plugin.message_container = message
     plugin._run_post_install()
@@ -1642,7 +1651,7 @@ def test_standalone_post_install_refreshes_runtime_status(
             "post_install": "setup",
         },
     )
-    plugin = QeAppPlugin(data, plugin_name="my-plugin")
+    plugin = PluginWidget(data, plugin_name="my-plugin")
 
     plugin._on_post_install(None)
 
@@ -1672,7 +1681,7 @@ def test_runtime_post_install_failure_warns_and_offers_retry(monkeypatch):
         },
     )
 
-    plugin = QeAppPlugin(data, plugin_name="my-plugin")
+    plugin = PluginWidget(data, plugin_name="my-plugin")
 
     assert "phonopy@localhost is missing" in plugin.version_warning.value
     assert plugin.retry_activation_button.layout.display == ""

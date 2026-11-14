@@ -6,21 +6,32 @@ Authors: AiiDAlab team
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 
 import ipywidgets as ipw
 
 from aiidalab_qe.common.infobox import InAppGuide
-from aiidalab_qe.common.panel import ConfigurationSettingsPanel, PanelModel
+from aiidalab_qe.common.panel import (
+    ConfigurationSettingsPanel,
+    PanelModel,
+    PluginOutline,
+)
 from aiidalab_qe.common.widgets import LinkButton
 from aiidalab_qe.common.wizard import ConfirmableDependentWizardStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.plugins.registry import (
+    PluginStatus,
     get_plugin_property_packages,
     get_plugin_registry,
     get_plugin_statuses,
     is_plugin_installed,
 )
-from aiidalab_qe.plugins.utils import get_entries
+from aiidalab_qe.plugins.utils import (
+    get_plugin_feature,
+    get_plugins,
+    print_error,
+)
+from aiidalab_qe.utils import generate_alert
 from aiidalab_widgets_base import LoadingWidget
 
 from .advanced import (
@@ -30,7 +41,7 @@ from .advanced import (
 from .basic import BasicConfigurationSettingsModel, BasicConfigurationSettingsPanel
 from .model import ConfigurationStepModel
 
-DEFAULT: dict = DEFAULT_PARAMETERS  # type: ignore
+DEFAULT: dict = DEFAULT_PARAMETERS
 
 
 class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
@@ -80,6 +91,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         self.installed_plugin_rows = {}
         self.incompatible_plugin_data = {}
         self._plugins_loaded = False
+        self._plugin_statuses_checked = False
 
         self._plugin_registry = get_plugin_registry()
 
@@ -90,7 +102,6 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             self.tabs.selected_index = 0
 
     def _render(self):
-        self._fetch_configuration_plugins()
         super()._render()
 
         # RelaxType: degrees of freedom in geometry optimization
@@ -141,25 +152,35 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         )
 
         self.available_plugins = ipw.VBox()
+        self.available_plugins_subtitle = ipw.HTML(
+            "<em>Checking available plugins...</em>",
+        )
+        self.plugin_validation_loading_widget = LoadingWidget(message="")
+        self.plugin_validation_message_container = ipw.VBox(
+            layout=ipw.Layout(
+                margin="0",
+                width="100%",
+                display="none",
+            ),
+        )
 
         self.plugin_sections = ipw.VBox(
             children=[
-                ipw.HTML("<h4>Ready for use</h4>"),
+                ipw.HTML("<h4>Ready to use</h4>"),
                 ipw.HTML(
                     "<em>Select a property to add its settings panel in step 2.2:</em>"
                 ),
+                self.plugin_validation_message_container,
                 self.installed_plugins,
                 self.incompatible_plugins_section,
                 ipw.HTML("<hr>"),
                 ipw.HTML("<h4>Available in store</h4>"),
-                ipw.HTML(
-                    "<em>The following plugins are available in the plugin store:</em>"
-                ),
+                self.available_plugins_subtitle,
                 self.available_plugins,
             ]
         )
         self.plugin_sections_container = ipw.VBox(
-            children=[LoadingWidget(message="Loading plugins")]
+            children=[self.plugin_sections],
         )
 
         self.sub_steps = ipw.Accordion(
@@ -206,13 +227,13 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
 
     def _post_render(self):
         super()._post_render()
-        self._schedule_plugin_status_check()
         self._update_tabs()
+        self._schedule_configuration_plugin_loading()
 
     def _on_tab_change(self, change):
         if (tab_index := change["new"]) is None:
             return
-        tab: ConfigurationSettingsPanel = self.tabs.children[tab_index]  # type: ignore
+        tab: ConfigurationSettingsPanel = self.tabs.children[tab_index]
         tab.render()
 
     def _on_input_structure_change(self, _):
@@ -238,55 +259,108 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         if self._plugins_loaded:
             return
 
-        loaded_entries = get_entries("aiidalab_qe.properties")
-        outlines = {
-            identifier: entry["outline"]
-            for identifier, entry in loaded_entries.items()
-            if entry.get("outline", False)
-        }
-        entries = {
-            identifier: entry["configuration"]
-            for identifier, entry in loaded_entries.items()
-            if entry.get("configuration", False)
-        }
+        for identifier, plugin in get_plugins().items():
+            definition = self._get_configuration_definition(identifier, plugin)
+            if definition:
+                self._add_configuration_plugin(identifier, *definition)
 
-        for identifier, configuration in entries.items():
-            for key in ("panel", "model"):
-                if key not in configuration:
-                    raise ValueError(f"Entry {identifier} is missing the '{key}' key")
+        self._plugins_loaded = True
+        if self.rendered and self._plugin_statuses_checked:
+            self._render_installed_plugins_list()
+            self._update_tabs()
 
-            model: PanelModel = configuration["model"]()
-            self._model.add_model(identifier, model)
+    async def _fetch_configuration_plugins_async(self) -> None:
+        if self._plugins_loaded:
+            return
 
-            outline = outlines[identifier]()
-            ipw.link(
-                (model, "include"),
-                (outline.include, "value"),
+        entries = get_plugins()
+        for identifier, plugin in entries.items():
+            definition = await asyncio.to_thread(
+                self._get_configuration_definition,
+                identifier,
+                plugin,
             )
-
-            # Disable electronic bands for non-periodic systems
-            if identifier == "bands":
-                ipw.dlink(
-                    (self._model, "structure_uuid"),
-                    (outline.include, "disabled"),
-                    lambda _: not self._model.has_pbc,
-                )
-
-            panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
-
-            def toggle_plugin(_, panel=panel):
-                panel.refresh()
-                self._update_tabs()
-
-            model.observe(toggle_plugin, "include")
-
-            self.installed_plugin_rows[identifier] = outline
-
-            self.settings[identifier] = panel
+            if definition:
+                self._add_configuration_plugin(identifier, *definition)
 
         self._plugins_loaded = True
 
-    def _update_plugin_lists(self, statuses=None):
+    def _get_configuration_definition(self, identifier, plugin):
+        try:
+            configuration = get_plugin_feature(plugin, "configuration")
+        except Exception as error:
+            print_error(identifier, error, feature_name="configuration")
+            return None
+
+        if not configuration:
+            return None
+        return plugin.outline, plugin.description, configuration
+
+    def _add_configuration_plugin(
+        self,
+        identifier,
+        outline_definition,
+        outline_description,
+        configuration,
+    ):
+        for key in ("panel", "model"):
+            if key not in configuration:
+                raise ValueError(f"Entry {identifier} is missing the '{key}' key")
+
+        model: PanelModel = configuration["model"]()
+        self._model.add_model(identifier, model)
+
+        outline = PluginOutline(
+            title=outline_definition,
+            description=outline_description,
+        )
+        ipw.link(
+            (model, "include"),
+            (outline.include, "value"),
+        )
+
+        if identifier == "bands":
+            ipw.dlink(
+                (self._model, "structure_uuid"),
+                (outline.include, "disabled"),
+                lambda _: not self._model.has_pbc,
+            )
+
+        panel: ConfigurationSettingsPanel = configuration["panel"](model=model)
+
+        def toggle_plugin(_, panel=panel):
+            panel.refresh()
+            self._update_tabs()
+
+        model.observe(toggle_plugin, "include")
+
+        self.installed_plugin_rows[identifier] = outline
+        self.settings[identifier] = panel
+
+    def _set_plugin_validation_message(
+        self,
+        message: str | None,
+        error: bool = False,
+    ) -> None:
+        if not message:
+            self.plugin_validation_message_container.children = ()
+            self.plugin_validation_message_container.layout.display = "none"
+            return
+        if error:
+            self.plugin_validation_message_container.children = (
+                ipw.HTML(value=generate_alert("danger", message)),
+            )
+        else:
+            self.plugin_validation_loading_widget.message.value = message
+            self.plugin_validation_message_container.children = (
+                self.plugin_validation_loading_widget,
+            )
+        self.plugin_validation_message_container.layout.display = ""
+
+    def _update_plugin_lists(
+        self,
+        statuses: Mapping[str, PluginStatus] | None = None,
+    ) -> None:
         """Update the lists of ready, incompatible, and available plugins."""
         if not self.rendered:
             return
@@ -303,6 +377,10 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             if self._model.loaded_from_process:
                 is_installed = is_plugin_installed(plugin_name)
             else:
+                if statuses is None:
+                    raise ValueError(
+                        "Plugin statuses are required for new calculations."
+                    )
                 status = statuses[plugin_name]
                 is_installed = status.is_installed
                 if status.is_incompatible:
@@ -328,6 +406,7 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         }
 
         self._model.incompatible_plugins = set(self.incompatible_plugin_data)
+        self._plugin_statuses_checked = True
         self.incompatible_plugins_list = list(
             dict.fromkeys(
                 plugin_data["title"]
@@ -338,7 +417,9 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         self._render_installed_plugins_list()
         self._render_incompatibe_plugins_list()
         self._render_available_plugins_list()
-        self.plugin_sections_container.children = [self.plugin_sections]
+        self.plugin_sections_container.children = [
+            self.plugin_sections,
+        ]
 
     def _render_installed_plugins_list(self):
         self.installed_plugins_list = [
@@ -358,6 +439,15 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         )
 
     def _render_available_plugins_list(self):
+        if self.available_plugins_list:
+            self.available_plugins_subtitle.value = (
+                "<em>The following plugins are available in the plugin store:</em>"
+            )
+        else:
+            self.available_plugins_subtitle.value = (
+                "<em>All available plugins are installed</em>"
+            )
+
         self.available_plugins.children = [
             ipw.HTML(
                 value=f"""
@@ -368,6 +458,44 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
             )
         ]
 
+    def _schedule_configuration_plugin_loading(self) -> None:
+        if self._model.loaded_from_process:
+            self._fetch_configuration_plugins()
+            self._schedule_plugin_status_check()
+            return
+
+        if self._plugins_loaded:
+            self._set_plugin_validation_message("Checking plugin compatibility")
+            self._schedule_plugin_status_check()
+            return
+
+        self._set_plugin_validation_message("Checking plugin compatibility")
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self._load_configuration_and_status())
+        else:
+            self._configuration_plugin_task = loop.create_task(
+                self._load_configuration_and_status()
+            )
+
+    async def _load_configuration_and_status(self) -> None:
+        self._set_plugin_validation_message("Checking plugin compatibility")
+        try:
+            _, statuses = await asyncio.gather(
+                self._fetch_configuration_plugins_async(),
+                self._load_plugin_statuses(),
+            )
+        except Exception as error:
+            self._set_plugin_validation_message(
+                f"Plugin loading or validation failed: {error}",
+                error=True,
+            )
+            raise
+        self._apply_plugin_statuses(statuses)
+        self._update_tabs()
+        self._set_plugin_validation_message(None)
+
     def _schedule_plugin_status_check(self) -> None:
         """Schedule the runtime plugin checks to be performed asynchronously.
 
@@ -376,26 +504,44 @@ class ConfigurationStep(ConfirmableDependentWizardStep[ConfigurationStepModel]):
         """
         if self._model.loaded_from_process:
             self._update_plugin_lists()
+            self._set_plugin_validation_message(None)
             return
 
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            asyncio.run(self._check_and_refresh_plugins())
+            asyncio.run(self._check_plugin_status_with_message())
         else:
             self._plugin_status_task = loop.create_task(
-                self._check_and_refresh_plugins()
+                self._check_plugin_status_with_message()
             )
+
+    async def _check_plugin_status_with_message(self) -> None:
+        self._set_plugin_validation_message("Checking plugin compatibility")
+        try:
+            await self._check_and_refresh_plugins()
+        except Exception as error:
+            self._set_plugin_validation_message(
+                f"Plugin validation failed: {error}",
+                error=True,
+            )
+            raise
+        self._set_plugin_validation_message(None)
 
     async def _check_and_refresh_plugins(self) -> None:
         """Check the status of plugins and refresh the plugin lists."""
+        self._apply_plugin_statuses(await self._load_plugin_statuses())
+
+    async def _load_plugin_statuses(self) -> dict[str, PluginStatus]:
         registry = self._plugin_registry
         plugin_records = {
             name: record
             for name, record in registry.plugins.items()
             if record.category.lower() == "calculation"
         }
-        statuses = await get_plugin_statuses(plugin_records)
+        return await get_plugin_statuses(plugin_records)
+
+    def _apply_plugin_statuses(self, statuses: Mapping[str, PluginStatus]) -> None:
         self._update_plugin_lists(statuses=statuses)
 
         for identifier, model in self._model.get_models():

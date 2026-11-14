@@ -4,7 +4,7 @@ import ipywidgets as ipw
 import requests as req
 
 from aiidalab_qe.common.widgets import RollingOutput
-from aiidalab_qe.plugins.utils import get_entries
+from aiidalab_qe.plugins.utils import get_plugin_feature, get_plugins
 from aiidalab_widgets_base import LoadingWidget
 
 
@@ -200,16 +200,16 @@ class ExamplesImporter(ipw.Tab):
         self.set_title(0, "Core")
 
         entries: dict[str, dict] = {
-            plugin: entry.get(
-                "examples",
-                {
+            plugin: (
+                get_plugin_feature(entry, "examples")
+                or {
                     "repo": self.core_repo,
                     "tag": self.core_tag,
                     "path": plugin,
                     "metadata_path": f"{plugin}/metadata.json",
-                },
+                }
             )
-            for plugin, entry in get_entries("aiidalab_qe.properties").items()
+            for plugin, entry in get_plugins().items()
             if plugin not in ("bands", "pdos", "electronic_structure")
         }
 
