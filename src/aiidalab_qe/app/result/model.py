@@ -133,6 +133,7 @@ class ResultsStepModel(
             self.state = State.FAIL
         elif self.process.is_failed:
             self.state = State.FAIL
+            status = self._get_process_status("failed")
         elif self.process.is_finished_ok:
             self.state = State.SUCCESS
         else:

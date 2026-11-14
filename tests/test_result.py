@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 from bs4 import BeautifulSoup
 
+from aiida.engine import ProcessState
 from aiida.engine.processes import control
 from aiidalab_qe.app.result import ResultsStep, ResultsStepModel
 from aiidalab_qe.app.result.components.status.paused import PausedProcess
@@ -52,6 +53,36 @@ def test_calcjob_output_follower_threads_are_daemon(monkeypatch):
                 thread.join(timeout=2)
     assert not follower._push_thread.is_alive()
     assert not follower._pull_thread.is_alive()
+
+
+@pytest.mark.parametrize(
+    ("process_state", "failed", "finished_ok", "expected_state", "expected_status"),
+    [
+        (ProcessState.CREATED, False, False, State.ACTIVE, "Created 🚀"),
+        (ProcessState.RUNNING, False, False, State.ACTIVE, "Running ▶️"),
+        (ProcessState.WAITING, False, False, State.ACTIVE, "Running ▶️"),
+        (ProcessState.FINISHED, False, True, State.SUCCESS, "Finished ✅"),
+        (ProcessState.FINISHED, True, False, State.FAIL, "Failed ❌"),
+        (ProcessState.EXCEPTED, False, False, State.FAIL, "Excepted ⚠️"),
+        (ProcessState.KILLED, False, False, State.FAIL, "Killed ☠️"),
+    ],
+)
+def test_result_step_process_status(
+    monkeypatch, process_state, failed, finished_ok, expected_state, expected_status
+):
+    process = SimpleNamespace(
+        process_state=process_state,
+        is_failed=failed,
+        is_finished_ok=finished_ok,
+    )
+    monkeypatch.setattr(ResultsStepModel, "has_process", property(lambda _self: True))
+    monkeypatch.setattr(ResultsStepModel, "process", property(lambda _self: process))
+    model = ResultsStepModel()
+
+    model.update_state()
+
+    assert model.state == expected_state
+    assert model.process_info == model.STATUS_TEMPLATE.format(expected_status)
 
 
 def test_result_step(app_to_submit, generate_qeapp_workchain):
