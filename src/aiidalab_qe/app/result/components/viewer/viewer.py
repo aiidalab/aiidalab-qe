@@ -7,7 +7,7 @@ import ipywidgets as ipw
 from aiidalab_qe.app.result.components import ResultsComponent
 from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.panel import ResultsPanel
-from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.plugins.utils import get_plugin_features
 from aiidalab_widgets_base import LoadingWidget
 
 from .model import WorkflowResultsViewerModel
@@ -108,13 +108,12 @@ class WorkflowResultsViewer(ResultsComponent[WorkflowResultsViewerModel]):
 
         incompatible_plugin_ids = self._model.incompatible_plugin_ids
 
-        def is_entry_compatible(entry_point):
-            return entry_point.name not in incompatible_plugin_ids
+        def is_entry_compatible(plugin_name, _plugin):
+            return plugin_name not in incompatible_plugin_ids
 
-        entries = get_entry_items(
-            "aiidalab_qe.properties",
+        entries = get_plugin_features(
             "result",
-            entry_point_filter=is_entry_compatible,
+            plugin_filter=is_entry_compatible,
         )
         for identifier, entry in entries.items():
             for key in ("panel", "model"):

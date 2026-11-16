@@ -274,7 +274,7 @@ def get_plugin_property_packages() -> dict[str, str]:
             {
                 entry_point.name: normalized_name
                 for entry_point in distribution.entry_points
-                if entry_point.group == "aiidalab_qe.properties"
+                if entry_point.group == "aiidalab_qe.plugins"
             }
         )
     return property_packages

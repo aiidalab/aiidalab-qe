@@ -1,10 +1,11 @@
 def test_entry_point():
-    from aiidalab_qe.plugins.utils import get_entries
+    from aiidalab_qe.plugins.utils import get_plugins, load_plugin_catalog
 
-    entries = get_entries()
+    load_plugin_catalog.cache_clear()
+    entries = get_plugins()
     assert "bands" in entries
     assert "pdos" in entries
-    assert "workchain" in entries["bands"]
+    assert entries["bands"].workchain() is not None
 
     entries_list = list(entries.keys())
     prioritized_entries = ["electronic_structure", "bands", "pdos"]
@@ -14,22 +15,44 @@ def test_entry_point():
         )
 
 
-def test_entry_point_filter_skips_loading(monkeypatch):
-    import importlib_metadata
-
-    from aiidalab_qe.plugins.utils import get_entries
-
-    class EntryPoint:
-        name = "incompatible"
-
-        def load(self):
-            raise AssertionError("filtered entry point must not be loaded")
-
-    monkeypatch.setattr(importlib_metadata, "entry_points", lambda **_: [EntryPoint()])
-
-    entries = get_entries(
-        "test.group",
-        entry_point_filter=lambda _entry_point: False,
+def test_entry_point_instantiates_qe_app_plugin_lazily(monkeypatch, request):
+    from aiidalab_qe.plugins import QeAppPlugin
+    from aiidalab_qe.plugins.utils import (
+        get_plugin_feature,
+        get_plugins,
+        load_plugin_catalog,
     )
 
-    assert entries == {}
+    loaded_features = []
+
+    class ExamplePlugin(QeAppPlugin):
+        @property
+        def outline(self):
+            return "Example plugin"
+
+        def configuration(self):
+            loaded_features.append("configuration")
+            return {"panel": object, "model": object}
+
+    class EntryPoint:
+        name = "example"
+
+        def load(self):
+            return ExamplePlugin
+
+    from aiidalab_qe.plugins import utils
+
+    load_plugin_catalog.cache_clear()
+    request.addfinalizer(load_plugin_catalog.cache_clear)
+    monkeypatch.setattr(utils, "entry_points", lambda **_: [EntryPoint()])
+
+    plugin = get_plugins()["example"]
+    assert isinstance(plugin, ExamplePlugin)
+    assert get_plugins()["example"] is plugin
+    assert loaded_features == []
+    assert plugin.outline == "Example plugin"
+    assert get_plugin_feature(plugin, "configuration") == {
+        "panel": object,
+        "model": object,
+    }
+    assert loaded_features == ["configuration"]

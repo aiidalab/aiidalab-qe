@@ -8,6 +8,7 @@ of command output in a Jupyter environment.
 
 from __future__ import annotations
 
+import asyncio
 import html
 import logging
 import subprocess
@@ -22,6 +23,7 @@ from packaging.requirements import Requirement
 from aiida.manage.configuration import get_profile
 from aiidalab_qe import __version__
 from aiidalab_qe.plugins.registry import (
+    PluginStatus,
     QeAppPluginData,
     get_plugin_registry,
     get_plugin_status,
@@ -45,7 +47,7 @@ COLOR_MAP = {
 BUTTON_WIDTH = "120px"
 
 
-class QeAppPlugin(ipw.VBox):
+class PluginWidget(ipw.VBox):
     """Widget and actions for one validated plugin registry entry."""
 
     installed_version = tl.Unicode(default_value=None, allow_none=True)
@@ -64,6 +66,7 @@ class QeAppPlugin(ipw.VBox):
         data: QeAppPluginData,
         plugin_name: str,
         title_updater: Callable[[str], None] | None = None,
+        initial_status: PluginStatus | None = None,
         **kwargs,
     ):
         self.data = data
@@ -175,7 +178,10 @@ class QeAppPlugin(ipw.VBox):
         # the state remains the same after the plugin state refresh.
         self._refresh_ui_state()
 
-        self.refresh_plugin_state()
+        if initial_status is None:
+            self.refresh_plugin_state()
+        else:
+            self._apply_plugin_status(initial_status)
 
     @property
     def is_installed(self) -> bool:
@@ -194,6 +200,9 @@ class QeAppPlugin(ipw.VBox):
             check_runtime=check_runtime,
         )
 
+        self._apply_plugin_status(status)
+
+    def _apply_plugin_status(self, status: PluginStatus) -> None:
         with self.hold_trait_notifications():
             self.installed_version = status.installed_version
             self.plugin_compatible = status.plugin_compatible
@@ -782,15 +791,25 @@ class PluginManager:
             tooltip="Refresh plugin status",
             icon="refresh",
             button_style="primary",
-            layout=ipw.Layout(width="fit-content", margin="0 2px 10px"),
+            disabled=True,
+            layout=ipw.Layout(
+                width="fit-content",
+                margin="0 2px 10px",
+                align_self="flex-start",
+            ),
         )
         self.refresh_button.on_click(self._on_refresh)
         self.daemon_warning = ipw.HTML()
+        self.progress_message = ipw.HTML(
+            value=self._progress_message("Loading plugins...", loading=True),
+            layout=ipw.Layout(margin="0", width="100%"),
+        )
 
         self.ui = ipw.VBox(
             children=[
                 self.daemon_warning,
                 self.refresh_button,
+                self.progress_message,
                 self.accordion,
             ],
         )
@@ -822,8 +841,123 @@ class PluginManager:
             self._build_ui()
 
         self._update_daemon_status()
+        self.progress_message.layout.display = "none"
+        self.refresh_button.disabled = False
 
         display(self.ui)
+
+    async def display_ui_async(self) -> None:
+        """Display the UI and add rows as checks complete."""
+        if self.config_error:
+            display(
+                ipw.HTML(
+                    value=generate_alert(
+                        "danger",
+                        f"Plugin registry could not be loaded: {self.config_error}",
+                    )
+                )
+            )
+            return
+
+        if self._accordion_built:
+            display(self.ui)
+            daemon_error = await asyncio.to_thread(poll_daemon_status)
+            self._apply_daemon_status(daemon_error)
+            self.progress_message.value = self._progress_message(
+                "Plugin status is up to date."
+            )
+            self.refresh_button.disabled = False
+            return
+
+        display(self.ui)
+        await asyncio.sleep(0)
+
+        await self._rebuild_accordion()
+
+    async def _rebuild_accordion(self) -> None:
+        self.refresh_button.disabled = True
+        self._accordion_built = False
+        self.accordion.selected_index = None
+        self.accordion.children = ()
+        self.progress_message.value = self._progress_message(
+            "Loading plugins...",
+            loading=True,
+        )
+        await asyncio.sleep(0)
+
+        try:
+            daemon_error = await asyncio.to_thread(poll_daemon_status)
+            self._apply_daemon_status(daemon_error)
+
+            total_plugins = len(self.plugins)
+            for index, (plugin_name, plugin_data) in enumerate(
+                self.plugins.items(),
+                start=1,
+            ):
+                self.progress_message.value = self._progress_message(
+                    f"Checking status of {plugin_name} plugin ({index}/{total_plugins})",
+                    loading=True,
+                )
+                await asyncio.sleep(0)
+                status = await asyncio.to_thread(
+                    get_plugin_status,
+                    plugin_name,
+                    plugin_data,
+                )
+
+                plugin = self._create_plugin_widget(
+                    len(self.accordion.children),
+                    plugin_name,
+                    plugin_data,
+                    initial_status=status,
+                )
+                plugin.daemon_error = daemon_error
+                self.accordion.children = (*self.accordion.children, plugin)
+                plugin.update_title()
+
+            self._accordion_built = True
+            self.progress_message.layout.display = "none"
+        except Exception as error:
+            self.progress_message.value = self._progress_message(
+                f"Plugin loading failed: {error}",
+                error=True,
+            )
+            raise
+        finally:
+            self.refresh_button.disabled = False
+
+    @staticmethod
+    def _progress_message(
+        message: str,
+        *,
+        loading: bool = False,
+        error: bool = False,
+    ) -> str:
+        if error:
+            content = generate_alert("danger", html.escape(message))
+        else:
+            content = html.escape(message)
+        if loading:
+            content += " <i class='fa fa-spinner fa-spin fa-1x'></i>"
+        return f"<div style='text-align: center;'>{content}</div>"
+
+    def _create_plugin_widget(
+        self,
+        index: int,
+        plugin_name: str,
+        plugin_data: QeAppPluginData,
+        initial_status: PluginStatus | None = None,
+    ) -> PluginWidget:
+        def update_title(title: str) -> None:
+            if index < len(self.accordion.children):
+                self.accordion.set_title(index, title)
+
+        return PluginWidget(
+            plugin_data,
+            plugin_name,
+            title_updater=update_title,
+            initial_status=initial_status,
+        )
 
     def _build_ui(self) -> None:
         """Build the Accordion UI from the validated plugin records.
@@ -833,15 +967,11 @@ class PluginManager:
         if self._accordion_built:
             return
 
-        def update_title(index: int, title: str) -> None:
-            if index < len(self.accordion.children):
-                self.accordion.set_title(index, title)
-
         self.accordion.children = [
-            QeAppPlugin(
-                plugin_data,
+            self._create_plugin_widget(
+                index,
                 plugin_name,
-                title_updater=lambda title, index=index: update_title(index, title),
+                plugin_data,
             )
             for index, (plugin_name, plugin_data) in enumerate(self.plugins.items())
         ]
@@ -854,20 +984,30 @@ class PluginManager:
     def _update_daemon_status(self) -> str | None:
         """Refresh and display the current daemon status."""
         daemon_error = poll_daemon_status()
+        self._apply_daemon_status(daemon_error)
+        return daemon_error
+
+    def _apply_daemon_status(self, daemon_error: str | None) -> None:
         self.daemon_warning.value = (
             generate_alert("warning", daemon_error) if daemon_error else ""
         )
         for plugin in self.accordion.children:
-            if isinstance(plugin, QeAppPlugin):
+            if isinstance(plugin, PluginWidget):
                 plugin.daemon_error = daemon_error
-        return daemon_error
-
-    def _refresh_plugins(self) -> None:
-        """Refresh daemon, package, and plugin status."""
-        self._update_daemon_status()
-        for plugin in self.accordion.children:
-            if isinstance(plugin, QeAppPlugin):
-                plugin.refresh_plugin_state()
 
     def _on_refresh(self, _button: ipw.Button) -> None:
-        self._refresh_plugins()
+        if self.refresh_button.disabled:
+            return
+        self.refresh_button.disabled = True
+        self.progress_message.layout.display = "block"
+        task = asyncio.create_task(self._rebuild_accordion())
+        task.add_done_callback(self._on_refresh_complete)
+
+    @staticmethod
+    def _on_refresh_complete(task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        try:
+            task.result()
+        except Exception:
+            LOGGER.exception("Could not refresh plugin status")

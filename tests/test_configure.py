@@ -46,12 +46,46 @@ def test_panel():
     config = ConfigurationStep(model=model)
     config.render()
     assert len(config.tabs.children) == 2
+    assert config.plugin_validation_message_container.layout.margin == "0"
+    assert config.plugin_validation_message_container.layout.display == "none"
+    assert config.plugin_validation_message_container.children == ()
+    assert (
+        config.plugin_sections.children[2] is config.plugin_validation_message_container
+    )
     parameters = model.get_model_state()
     assert "bands" not in parameters
     model.get_model("bands").include = True
     assert len(config.tabs.children) == 3
     parameters = model.get_model_state()
     assert "bands" in parameters
+
+
+def test_plugin_validation_message_is_shown_and_hidden(monkeypatch):
+    from aiidalab_widgets_base import LoadingWidget
+
+    config = ConfigurationStep(model=ConfigurationStepModel())
+    monkeypatch.setattr(config, "_schedule_configuration_plugin_loading", lambda: None)
+    config.render()
+
+    config._set_plugin_validation_message("Checking plugin compatibility")
+    assert isinstance(config.plugin_validation_loading_widget, LoadingWidget)
+    assert (
+        config.plugin_validation_loading_widget.message.value
+        == "Checking plugin compatibility"
+    )
+    assert config.plugin_validation_message_container.children == (
+        config.plugin_validation_loading_widget,
+    )
+    assert config.plugin_validation_message_container.layout.display == ""
+
+    config._set_plugin_validation_message(None)
+    assert config.plugin_validation_message_container.layout.display == "none"
+    assert config.plugin_validation_message_container.children == ()
+
+    config._set_plugin_validation_message("Plugin validation failed", error=True)
+    assert "Plugin validation failed" in (
+        config.plugin_validation_message_container.children[0].value
+    )
 
 
 def test_fetching_available_plugins(monkeypatch):
@@ -99,6 +133,24 @@ def test_available_plugins_render_with_single_list_item(monkeypatch):
     available_plugins_html = config.available_plugins.children[0].value
     assert available_plugins_html.count("<li>") == 1
     assert "<li></li>" not in available_plugins_html
+    assert config.available_plugins_subtitle.value == (
+        "<em>The following plugins are available in the plugin store:</em>"
+    )
+
+
+def test_available_plugins_subtitle_when_none_are_available():
+    import ipywidgets as ipw
+
+    config = ConfigurationStep(model=ConfigurationStepModel())
+    config.available_plugins = ipw.VBox()
+    config.available_plugins_subtitle = ipw.HTML()
+    config.available_plugins_list = []
+
+    config._render_available_plugins_list()
+
+    assert config.available_plugins_subtitle.value == (
+        "<em>All available plugins are installed</em>"
+    )
 
 
 def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
@@ -108,7 +160,7 @@ def test_incompatible_plugin_is_listed_and_not_restored(monkeypatch):
 
     distribution = SimpleNamespace(
         metadata={"Name": "my-plugin"},
-        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
+        entry_points=[SimpleNamespace(group="aiidalab_qe.plugins", name="bands")],
     )
     registry = _load_test_registry(
         monkeypatch,
@@ -153,7 +205,7 @@ def test_activation_failed_plugin_is_not_ready_for_new_calculations(monkeypatch)
 
     distribution = SimpleNamespace(
         metadata={"Name": "my-plugin"},
-        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
+        entry_points=[SimpleNamespace(group="aiidalab_qe.plugins", name="bands")],
     )
     registry = _load_test_registry(
         monkeypatch,
@@ -196,7 +248,7 @@ def test_process_loaded_plugin_is_ready_and_restored(monkeypatch):
 
     distribution = SimpleNamespace(
         metadata={"Name": "my-plugin"},
-        entry_points=[SimpleNamespace(group="aiidalab_qe.properties", name="bands")],
+        entry_points=[SimpleNamespace(group="aiidalab_qe.plugins", name="bands")],
     )
     registry = _load_test_registry(
         monkeypatch,

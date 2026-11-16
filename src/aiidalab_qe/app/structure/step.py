@@ -18,7 +18,7 @@ from aiidalab_qe.common.infobox import InAppGuide
 from aiidalab_qe.common.setup_pseudos import PseudosInstallWidget
 from aiidalab_qe.common.widgets import CategorizedStructureExamplesWidget
 from aiidalab_qe.common.wizard import ConfirmableWizardStep
-from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.plugins.utils import get_plugin_features
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
@@ -94,9 +94,7 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
         examples_by_category = {"Simple crystals": Examples}
         plugin_structure_examples = {
             item["title"]: item["structures"]
-            for item in get_entry_items(
-                "aiidalab_qe.properties", "structure_examples"
-            ).values()
+            for item in get_plugin_features("structure_examples").values()
         }
         examples_by_category |= plugin_structure_examples
 
@@ -110,8 +108,12 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
             ),
         ]
 
-        plugin_importers = get_entry_items("aiidalab_qe.properties", "importer")
-        importers.extend([importer() for importer in plugin_importers.values()])
+        plugin_importers = get_plugin_features("importers")
+        importers.extend(
+            importer()
+            for plugin_importers in plugin_importers.values()
+            for importer in plugin_importers
+        )
 
         editors = [
             BasicCellEditor(title="Edit cell"),
@@ -121,8 +123,12 @@ class StructureStep(ConfirmableWizardStep[StructureStepModel]):
             ShakeNBreakEditor(title="ShakeNBreak"),
         ]
 
-        plugin_editors = get_entry_items("aiidalab_qe.properties", "editor")
-        editors.extend([editor() for editor in plugin_editors.values()])
+        plugin_editors = get_plugin_features("editors")
+        editors.extend(
+            editor()
+            for plugin_editors in plugin_editors.values()
+            for editor in plugin_editors
+        )
 
         self.manager = StructureManagerWidget(
             importers=importers,

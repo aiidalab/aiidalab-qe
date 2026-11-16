@@ -6,7 +6,7 @@ import traitlets as tl
 from bs4 import BeautifulSoup, PageElement
 
 import aiidalab_qe
-from aiidalab_qe.plugins.utils import get_entry_items
+from aiidalab_qe.plugins.utils import get_plugin_features
 
 
 class GuideManager(tl.HasTraits):
@@ -92,7 +92,7 @@ class GuideManager(tl.HasTraits):
 
     def _fetch_plugin_guides(self):
         """Fetch guides from plugins."""
-        entries: dict = get_entry_items("aiidalab_qe.properties", "guides")
+        entries: dict = get_plugin_features("guides")
         for plugin_identifier, guides in entries.items():
             if isinstance(guides, dict):
                 identifier = guides.get("title", plugin_identifier)

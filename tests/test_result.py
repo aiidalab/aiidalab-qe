@@ -228,11 +228,11 @@ def test_incompatible_plugin_result_is_not_loaded(monkeypatch):
 
     entry_point = EntryPoint()
 
-    def get_entry_items(_group, _item, entry_point_filter):
-        assert entry_point_filter(entry_point) is False
+    def get_plugin_features(_feature, plugin_filter):
+        assert plugin_filter(entry_point.name, entry_point) is False
         return {}
 
-    monkeypatch.setattr(viewer_module, "get_entry_items", get_entry_items)
+    monkeypatch.setattr(viewer_module, "get_plugin_features", get_plugin_features)
 
     model = WorkflowResultsViewerModel()
     model.incompatible_plugin_ids = {"vibronic"}
@@ -251,7 +251,7 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch):
 
     class EntryPoint:
         name = "vibroscopy"
-        group = "aiidalab_qe.properties"
+        group = "aiidalab_qe.plugins"
         dist = SimpleNamespace(metadata={"Name": "aiidalab-qe-vibroscopy"})
 
         def load(self):
@@ -259,11 +259,11 @@ def test_failed_activation_plugin_result_is_not_loaded(monkeypatch):
 
     entry_point = EntryPoint()
 
-    def get_entry_items(_group, _item, entry_point_filter):
-        assert entry_point_filter(entry_point) is False
+    def get_plugin_features(_feature, plugin_filter):
+        assert plugin_filter(entry_point.name, entry_point) is False
         return {}
 
-    monkeypatch.setattr(viewer_module, "get_entry_items", get_entry_items)
+    monkeypatch.setattr(viewer_module, "get_plugin_features", get_plugin_features)
     model = WorkflowResultsViewerModel()
     model.incompatible_plugin_ids = {"vibroscopy"}
     model.incompatible_plugin_titles = ["Phonons and IR/Raman"]
@@ -308,7 +308,7 @@ def test_result_panels_are_limited_to_process_properties(monkeypatch):
     )
     monkeypatch.setattr(
         viewer_module,
-        "get_entry_items",
+        "get_plugin_features",
         lambda *_args, **_kwargs: {
             "electronic_structure": {
                 "model": lambda: ResultModel({"bands", "pdos"}),

@@ -1,31 +1,38 @@
-from aiidalab_qe.common.panel import PluginOutline
-
-from .model import PdosConfigurationSettingsModel
-from .resources import PdosResourceSettingsModel, PdosResourceSettingsPanel
-from .setting import PdosConfigurationSettingPanel
-from .workchain import workchain_and_builder
+from aiidalab_qe.plugins import QeAppPlugin
 
 
-class PdosPluginOutline(PluginOutline):
-    title = "Electronic projected density of states (PDOS)"
+class PdosPlugin(QeAppPlugin):
+    @property
+    def outline(self) -> str:
+        return "Electronic projected density of states (PDOS)"
 
+    def configuration(self):
+        from .model import PdosConfigurationSettingsModel
+        from .setting import PdosConfigurationSettingPanel
 
-pdos = {
-    "outline": PdosPluginOutline,
-    "configuration": {
-        "panel": PdosConfigurationSettingPanel,
-        "model": PdosConfigurationSettingsModel,
-    },
-    "resources": {
-        "panel": PdosResourceSettingsPanel,
-        "model": PdosResourceSettingsModel,
-    },
-    "workchain": workchain_and_builder,
-    "metadata": {
-        "process_labels": {
-            "PdosWorkChain": "Projected density of states workflow",
-            "DosCalculation": "Density of states calculation",
-            "ProjwfcCalculation": "Orbital projection calculation",
+        return {
+            "panel": PdosConfigurationSettingPanel,
+            "model": PdosConfigurationSettingsModel,
         }
-    },
-}
+
+    def resources(self):
+        from .resources import PdosResourceSettingsModel, PdosResourceSettingsPanel
+
+        return {
+            "panel": PdosResourceSettingsPanel,
+            "model": PdosResourceSettingsModel,
+        }
+
+    def workchain(self):
+        from .workchain import workchain_and_builder
+
+        return workchain_and_builder
+
+    def metadata(self):
+        return {
+            "process_labels": {
+                "PdosWorkChain": "Projected density of states workflow",
+                "DosCalculation": "Density of states calculation",
+                "ProjwfcCalculation": "Orbital projection calculation",
+            }
+        }
