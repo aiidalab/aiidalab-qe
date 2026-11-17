@@ -5,6 +5,36 @@ import aiida
 import aiidalab_qe.__main__ as cli
 from aiida.manage.configuration import get_profile
 
+
+@pytest.mark.parametrize("computer", [None, "localhost", "selected-computer"])
+def test_install_qe_cli_uses_explicit_or_default_computer(monkeypatch, computer):
+    """The post_install invocation without arguments must register on localhost."""
+    from aiidalab_qe.setup import codes
+
+    calls = []
+    monkeypatch.setattr(
+        aiida, "load_profile", lambda name: calls.append(("profile", name))
+    )
+
+    def install_and_setup(*, computer, force):
+        calls.append(("install_and_setup", computer, force))
+        yield "setup checked"
+
+    def codes_are_setup(*, computer):
+        calls.append(("codes_are_setup", computer))
+        return True
+
+    monkeypatch.setattr(codes, "install_and_setup", install_and_setup)
+    monkeypatch.setattr(codes, "codes_are_setup", codes_are_setup)
+    arguments = [] if computer is None else ["--computer", computer]
+    result = CliRunner().invoke(cli.install_qe, arguments)
+    assert result.exit_code == 0, result.output
+    selected = computer or "localhost"
+    assert ("install_and_setup", selected, False) in calls
+    assert ("codes_are_setup", selected) in calls
+    assert "Codes are setup!" in result.output
+
+
 # To learn more about testing click applications, see: https://click.palletsprojects.com/en/8.1.x/testing/
 
 

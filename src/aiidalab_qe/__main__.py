@@ -17,7 +17,7 @@ def cli():
 
 @cli.command()
 @click.option("-f", "--force", is_flag=True)
-@click.option("--computer")
+@click.option("--computer", default="localhost", show_default=True)
 @click.option("-p", "--profile", default=_DEFAULT_PROFILE)
 def install_qe(force, profile, computer):
     from aiida import load_profile
