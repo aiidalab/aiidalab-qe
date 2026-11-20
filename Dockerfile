@@ -31,7 +31,10 @@ ARG TARGETARCH
 
 USER ${NB_USER}
 RUN echo "Installing QE, Bader, and SKEAF..." && \
-    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader skeaf wannier90 && \
+    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader skeaf && \
+    # Remove the QE wannier90 executable to allow the standalone wannier90 package to take precedence
+    rm ${QE_DIR}/bin/wannier90.x && \
+    mamba install -p ${QE_DIR} --yes wannier90 && \
     mamba clean --all -f -y
 
 ###############################################################################
