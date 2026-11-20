@@ -31,7 +31,10 @@ ARG TARGETARCH
 
 USER ${NB_USER}
 RUN echo "Installing QE, Bader, and SKEAF..." && \
-    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader skeaf wannier90 && \
+    mamba create -p ${QE_DIR} --yes qe=${QE_VER} bader skeaf && \
+    # Remove the QE wannier90 executable to allow the standalone wannier90 package to take precedence
+    rm ${QE_DIR}/bin/wannier90.x && \
+    mamba install -p ${QE_DIR} --yes wannier90 && \
     mamba clean --all -f -y
 
 ###############################################################################
@@ -82,6 +85,9 @@ RUN set -ex; \
 RUN python -m pip install --user --no-cache-dir . \
     ${MUON_PKG} \
     aiidalab-qe-vibroscopy \
+    aiida-bader \
+    aiida-qe-xspec \
+    aiidalab-qe-hp \
     # the following git-installed plugins are due to PyPI quarantines - discard when resolved
     aiida-wannier90@git+https://github.com/aiidateam/aiida-wannier90.git@v2.2.0 \
     aiida-wannier90-workflows@git+https://github.com/aiidateam/aiida-wannier90-workflows@v3.1.0 \
@@ -111,6 +117,8 @@ RUN --mount=from=qe_conda_env,source=${QE_DIR},target=${QE_DIR} \
     # run post_install for plugin
     python -m aiidalab_qe_vibroscopy setup-phonopy && \
     python -m aiidalab_qe_muon setup-python3 && \
+    python -m aiida_bader post-install && \
+    python -m aiida_qe_xspec post-install && \
     # wannier90 plugin need SSSP 1.1
     aiida-pseudo install sssp -v 1.1 -x PBE && \
     aiida-pseudo install sssp -v 1.1 -x PBEsol && \
