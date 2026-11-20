@@ -328,33 +328,30 @@ class WorkflowSummaryModel(ResultsSubModel):
         }
 
     def _get_symmetry_group_info(self, structure: orm.StructureData) -> dict:
-        # HACK the use of the clone for non-molecular systems is due to a rigid
-        # condition in AiiDA < 2.6 that only considers 3D systems as pymatgen
-        # `Structure` objects (`Molecule` otherwise). Once AiiDAlab is updated with
-        # AiiDA 2.6 throughout, we can fall back to using `StructureData.get_pymatgen`
-        # (which this method mimics) to obtain the correct pymatgen object
-        # (`Molecule` for 0D systems | `Structure` otherwise)
-        if any(structure.pbc):
-            return self._get_pymatgen_structure(structure)
-        return self._get_pymatgen_molecule(structure)
+        from spglib import get_symmetry_dataset
 
-    @staticmethod
-    def _get_pymatgen_structure(structure: orm.StructureData) -> dict:
-        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+        from aiidalab_widgets_base.utils import (
+            _restore_spglib_old_error_handling,
+            _set_spglib_old_error_handling,
+            ase2spglib,
+        )
 
-        clone = structure.clone()
-        clone.pbc = (True, True, True)
-        analyzer = SpacegroupAnalyzer(structure=clone.get_pymatgen_structure())
-        symbol = analyzer.get_space_group_symbol()
-        number = analyzer.get_space_group_number()
-        return {"space_group": f"{symbol} ({number})"}
+        spg_structure = ase2spglib(structure.get_ase())
 
-    @staticmethod
-    def _get_pymatgen_molecule(structure: orm.StructureData) -> dict:
-        from pymatgen.symmetry.analyzer import PointGroupAnalyzer
+        old_error_handling = _set_spglib_old_error_handling()
+        symmetry_dataset = get_symmetry_dataset(
+            spg_structure,
+            symprec=1e-5,
+            angle_tolerance=1.0,
+        )
+        _restore_spglib_old_error_handling(old_error_handling)
 
-        analyzer = PointGroupAnalyzer(mol=structure.get_pymatgen_molecule())
-        return {"point_group": analyzer.get_pointgroup()}
+        key = "space_group" if any(structure.pbc) else "point_group"
+        if symmetry_dataset is not None:
+            return {
+                key: f"{symmetry_dataset.international} (No.{symmetry_dataset.number})"
+            }
+        return {key: "-"}
 
     @staticmethod
     def _get_final_calcjob(node: orm.WorkChainNode) -> orm.CalcJobNode | None:
